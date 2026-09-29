@@ -1,0 +1,13 @@
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 3efe70832..2621b2698 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -73,6 +73,8 @@ packages.orchestration.approval_queue
+ packages.orchestration.archive_plan
+ packages.orchestration.artifact_contract_gate
+ packages.orchestration.artifact_index
++packages.orchestration.artifact_markdown
++packages.orchestration.artifact_preview
+ packages.orchestration.artifact_summary
+ packages.orchestration.autonomy_readiness
+ packages.orchestration.bench_history

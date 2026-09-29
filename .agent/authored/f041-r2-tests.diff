@@ -1,0 +1,231 @@
+diff --git a/tests/orchestration/test_artifact_markdown.py b/tests/orchestration/test_artifact_markdown.py
+index 29d824f62..ea5acef97 100644
+--- a/tests/orchestration/test_artifact_markdown.py
++++ b/tests/orchestration/test_artifact_markdown.py
+@@ -211,6 +211,9 @@ def test_a_markdown_vector_is_neutralized_by_the_renderer(label, source, expecte
+     ("https://a.example/x", False, "https://a.example/x"),
+     ("http://a.example", False, "http://a.example"),
+     ("mailto:a@b.example", False, "mailto:a@b.example"),
++    # A scheme is read without regard to case: an upper-case https link is kept.
++    ("HTTPS://A.example/x", False, "HTTPS://A.example/x"),
++    ("MailTo:a@b.example", False, "MailTo:a@b.example"),
+     ("  docs/guide.md  ", False, "docs/guide.md"),
+     ("#section", False, "#section"),
+     ("captures/a.png", True, "captures/a.png"),
+diff --git a/tests/orchestration/test_artifact_preview.py b/tests/orchestration/test_artifact_preview.py
+index a0c947e27..ccdad6a43 100644
+--- a/tests/orchestration/test_artifact_preview.py
++++ b/tests/orchestration/test_artifact_preview.py
+@@ -13,9 +13,12 @@ from pathlib import Path
+ import pytest
+ 
+ from packages.orchestration.artifact_preview import (
++    FILE_MAX_BYTES,
+     MAX_LISTED_IMAGES,
++    ArtifactFile,
+     artifact_root,
+     artifacts_view,
++    read_artifact_file,
+     resolve_artifact_path,
+ )
+ 
+@@ -145,3 +148,70 @@ class TestArtifactsView:
+         images = artifacts_view(JOB_ID, data_root)["images"]
+         assert len(images) == MAX_LISTED_IMAGES == 200
+         assert images[-1]["path"] == f"captures/{MAX_LISTED_IMAGES - 1:04d}.png"
++
++
++class TestReadArtifactFile:
++    """The file route's reader (DECISION F041 D2): two servable names, and nothing else."""
++
++    def test_a_screenshot_is_served_with_its_image_type(self, data_root):
++        captures = _evidence(data_root) / "captures"
++        captures.mkdir()
++        (captures / "home.PNG").write_bytes(b"\x89PNG-bytes")
++        assert read_artifact_file(JOB_ID, "evidence", "captures/home.PNG", data_root) == (
++            ArtifactFile(status=200, content_type="image/png", body=b"\x89PNG-bytes", error=""))
++
++    @pytest.mark.parametrize("root", ["workspace", "evidence"])
++    def test_the_readme_is_served_as_plain_text_from_either_root(self, data_root, root):
++        base = _workspace(data_root) if root == "workspace" else _evidence(data_root)
++        (base / "README.md").write_text("<script>x</script>\n")
++        assert read_artifact_file(JOB_ID, root, "README.md", data_root) == ArtifactFile(
++            status=200, content_type="text/plain; charset=utf-8",
++            body=b"<script>x</script>\n", error="")
++
++    @pytest.mark.parametrize(("root", "relative"), [
++        ("repo", "README.md"),
++        ("", "README.md"),
++        ("evidence", ""),
++        ("evidence", "notes.md"),
++        ("evidence", "captures/c.svg"),
++        ("evidence", "captures/sub/a.png"),
++        ("evidence", "captures/../README.md"),
++        ("evidence", "captures/./a.png"),
++        ("evidence", "captures//a.png"),
++        ("evidence", "/captures/a.png"),
++        ("evidence", "../jobs/x/evidence/captures/a.png"),
++        ("workspace", "captures/a.png"),
++        ("evidence", "docs/README.md"),
++    ])
++    def test_any_other_request_is_refused_before_the_disk_is_read(self, data_root, root,
++                                                                  relative):
++        captures = _evidence(data_root) / "captures"
++        captures.mkdir()
++        (captures / "a.png").write_bytes(b"png")
++        (captures / "c.svg").write_text("<svg/>")
++        assert read_artifact_file(JOB_ID, root, relative, data_root) == ArtifactFile(
++            status=400, content_type="", body=b"", error="invalid artifact request")
++
++    def test_a_missing_file_or_root_is_not_found(self, data_root):
++        missing = ArtifactFile(status=404, content_type="", body=b"", error="artifact not found")
++        assert read_artifact_file(JOB_ID, "evidence", "README.md", data_root) == missing
++        (_evidence(data_root) / "captures").mkdir()
++        assert read_artifact_file(JOB_ID, "evidence", "captures/a.png", data_root) == missing
++
++    def test_a_symlink_leaving_the_root_is_not_found(self, data_root, tmp_path):
++        captures = _evidence(data_root) / "captures"
++        captures.mkdir()
++        (tmp_path / "secret.png").write_bytes(b"secret")
++        (captures / "a.png").symlink_to(tmp_path / "secret.png")
++        assert read_artifact_file(JOB_ID, "evidence", "captures/a.png", data_root).status == 404
++
++    def test_a_file_over_the_cap_is_too_large(self, data_root):
++        captures = _evidence(data_root) / "captures"
++        captures.mkdir()
++        (captures / "big.png").write_bytes(b"\0" * (FILE_MAX_BYTES + 1))
++        (captures / "edge.png").write_bytes(b"\0" * FILE_MAX_BYTES)
++        assert read_artifact_file(JOB_ID, "evidence", "captures/big.png", data_root) == (
++            ArtifactFile(status=413, content_type="", body=b"", error="artifact too large"))
++        assert read_artifact_file(JOB_ID, "evidence", "captures/edge.png",
++                                  data_root).status == 200
++        assert FILE_MAX_BYTES == 10_485_760
+diff --git a/tests/ui_server/test_artifacts_route.py b/tests/ui_server/test_artifacts_route.py
+index f31a72df7..9c5e3d4bd 100644
+--- a/tests/ui_server/test_artifacts_route.py
++++ b/tests/ui_server/test_artifacts_route.py
+@@ -34,7 +34,9 @@ def _make_job() -> JobPlan:
+     return job
+ 
+ 
+-class TestArtifactsRoute:
++class _ServerHarness:
++    """A real server for one saved job, and a GET helper."""
++
+     @pytest.fixture(autouse=True)
+     def _setup_job(self, tmp_path, monkeypatch):
+         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+@@ -72,6 +74,8 @@ class TestArtifactsRoute:
+         conn.close()
+         return status, content_type, body
+ 
++
++class TestArtifactsRoute(_ServerHarness):
+     def test_the_route_answers_the_sanitized_view(self):
+         evidence = job_evidence_dir(self.job_id)
+         (evidence / "captures").mkdir(parents=True)
+@@ -118,3 +122,92 @@ class TestArtifactsRoute:
+         status, _, body = self._get(f"/api/jobs/{self.job_id}/artifacts?token=wrong")
+         assert status == 403
+         assert json.loads(body)["error"] == "invalid token"
++
++
++class TestArtifactFileRoute(_ServerHarness):
++    """/api/jobs/<id>/artifacts/file (DECISION F041 D2): the bytes, and the headers that keep
++    a served file from ever running as a page."""
++
++    #: The headers every served artifact carries, literal on purpose.
++    ARTIFACT_HEADERS = {
++        "X-Content-Type-Options": "nosniff",
++        "Content-Security-Policy": "default-src 'none'; sandbox",
++        "Cache-Control": "no-store",
++    }
++
++    def _fetch(self, query: str):
++        port, token = self._start_server()
++        conn = HTTPConnection("127.0.0.1", port, timeout=5)
++        conn.request("GET", f"/api/jobs/{self.job_id}/artifacts/file?token={token}&{query}")
++        resp = conn.getresponse()
++        headers, body = dict(resp.getheaders()), resp.read()
++        conn.close()
++        return resp.status, headers, body
++
++    def test_a_screenshot_is_served_with_its_type_and_the_headers(self):
++        captures = job_evidence_dir(self.job_id) / "captures"
++        captures.mkdir(parents=True)
++        (captures / "home.png").write_bytes(b"\x89PNG-bytes")
++        status, headers, body = self._fetch("root=evidence&path=captures/home.png")
++        assert status == 200
++        assert body == b"\x89PNG-bytes"
++        assert headers["Content-Type"] == "image/png"
++        assert headers["Content-Length"] == str(len(body))
++        for name, value in self.ARTIFACT_HEADERS.items():
++            assert headers[name] == value
++
++    def test_the_readme_is_served_as_plain_text_never_as_html(self):
++        evidence = job_evidence_dir(self.job_id)
++        evidence.mkdir(parents=True)
++        (evidence / "README.md").write_text("<script>alert(1)</script>\n")
++        status, headers, body = self._fetch("root=evidence&path=README.md")
++        assert status == 200
++        assert body == b"<script>alert(1)</script>\n"
++        assert headers["Content-Type"] == "text/plain; charset=utf-8"
++        for name, value in self.ARTIFACT_HEADERS.items():
++            assert headers[name] == value
++
++    @pytest.mark.parametrize(("query", "status", "error"), [
++        ("root=evidence&path=captures/missing.png", 404, "artifact not found"),
++        ("root=evidence&path=captures/../README.md", 400, "invalid artifact request"),
++        ("root=evidence&path=..%2F..%2Fsecret.png", 400, "invalid artifact request"),
++        ("root=repo&path=README.md", 400, "invalid artifact request"),
++        ("path=README.md", 400, "invalid artifact request"),
++    ])
++    def test_a_refused_request_answers_json_and_no_bytes(self, query, status, error):
++        (job_evidence_dir(self.job_id) / "captures").mkdir(parents=True)
++        got, headers, body = self._fetch(query)
++        assert got == status
++        assert headers["Content-Type"] == "application/json"
++        assert json.loads(body) == {"error": error}
++
++    def test_the_file_route_answers_404_for_an_unknown_job(self):
++        status, _, body = self._get(
++            f"/api/jobs/{uuid4()}/artifacts/file?token={{token}}&root=evidence&path=README.md")
++        assert status == 404
++        assert json.loads(body)["error"] == "job not found"
++
++
++class TestStaticAssetContainment(_ServerHarness):
++    """R-1105: `/assets/` serves only from inside the built `dist`, by a path test."""
++
++    def test_a_sibling_whose_name_starts_with_dist_is_not_served(self, monkeypatch):
++        from packages.orchestration import ui_server
++
++        dist = self.tmp_path / "ui" / "dist"
++        (dist / "assets").mkdir(parents=True)
++        (dist / "index.html").write_text("<html></html>")
++        (dist / "assets" / "app.js").write_text("ok")
++        (self.tmp_path / "ui" / "dist-old").mkdir()
++        (self.tmp_path / "ui" / "dist-old" / "secret.js").write_text("secret")
++        monkeypatch.setattr(ui_server, "_get_frontend_dist", lambda: dist)
++        port, _ = self._start_server()
++        answers = {}
++        for path in ("/assets/app.js", "/assets/../../dist-old/secret.js"):
++            conn = HTTPConnection("127.0.0.1", port, timeout=5)
++            conn.request("GET", path)
++            resp = conn.getresponse()
++            answers[path] = (resp.status, resp.read())
++            conn.close()
++        assert answers["/assets/app.js"] == (200, b"ok")
++        assert answers["/assets/../../dist-old/secret.js"][0] == 403
+diff --git a/tests/ui_server/test_command_channel.py b/tests/ui_server/test_command_channel.py
+index ba14d64df..5a914cc27 100644
+--- a/tests/ui_server/test_command_channel.py
++++ b/tests/ui_server/test_command_channel.py
+@@ -1448,6 +1448,7 @@ class TestCommandChannelDoor:
+             f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
+             f"/api/jobs/{self.job_id}/task-runs/T001/diff",
+             f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
++            f"/api/jobs/{self.job_id}/artifacts/file",
+         ]
+         return paths
+ 

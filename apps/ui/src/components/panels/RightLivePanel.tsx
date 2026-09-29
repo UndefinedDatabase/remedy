@@ -14,7 +14,7 @@ import { PauseControl } from "./PauseControl";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, onOpenStory, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; focusedTaskId?: string }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, onOpenStory, onOpenResults, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; onOpenResults?: () => void; focusedTaskId?: string }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -42,6 +42,9 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       {/* The in-app story's entry point (F039 T002, DECISION F039 D6), beside Tour in the same
           quiet style; the shell owns whether the story is open. */}
       {onOpenStory && (<button type="button" className={styles.advancedToggle} onClick={onOpenStory}>Story</button>)}
+      {/* The results panel's entry point (F041 T003, DECISION F041 D5), beside Story in the
+          same quiet style; the shell owns whether the panel is open. */}
+      {onOpenResults && (<button type="button" className={styles.advancedToggle} onClick={onOpenResults}>Results</button>)}
       <button
         type="button"
         className={styles.advancedToggle}

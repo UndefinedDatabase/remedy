@@ -946,6 +946,16 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=5_000_000,
     ),
     ConfigKeySpec(
+        key="preview.idle_ttl_seconds",
+        env_var="REMEDY_PREVIEW_IDLE_TTL_SECONDS",
+        description=(
+            "How long a live preview of a job's project (F041) keeps running while nobody "
+            "views it before the cockpit's server stops it; zero or less never stops it."
+        ),
+        value_type=int,
+        default=900,
+    ),
+    ConfigKeySpec(
         key="tour.model_written",
         env_var="REMEDY_TOUR_MODEL_WRITTEN",
         description=(

@@ -10,6 +10,8 @@ import { decodeOwnershipView, ownershipViewPath } from "./ownership";
 import type { OwnershipView } from "./ownership";
 import { decodeTourView, tourViewPath } from "./resultTour";
 import type { TourView } from "./resultTour";
+import { artifactsViewPath, decodeArtifactsView, decodePreviewView, previewViewPath } from "./artifactPreview";
+import type { ArtifactsView, PreviewView } from "./artifactPreview";
 import { decodeChatTurn, chatTurnPath } from "./chatTurn";
 import type { ChatTurnView } from "./chatTurn";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
@@ -1047,6 +1049,45 @@ export async function loadTourView(
 ): Promise<TourView | null> {
   try {
     return decodeTourView(await fetchPayload(tourViewPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The artifacts and preview doors (F041 T003, DECISION F041 D5), shaped exactly like the
+// tour door above: one injected fetcher, one decoder, and no throw.
+// ---------------------------------------------------------------------------
+
+/** How the artifacts door reaches the network; a test hands `loadArtifactsView` a fake. */
+export type ArtifactsFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's artifacts view through the single door. NEVER THROWS: a failed read and a
+ *  view the decoder refuses both answer `null`, which the results panel renders as
+ *  `ARTIFACTS_UNREADABLE_LINE` and never the server's own error text. */
+export async function loadArtifactsView(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: ArtifactsFetcher = fetchJson,
+): Promise<ArtifactsView | null> {
+  try {
+    return decodeArtifactsView(await fetchPayload(artifactsViewPath(request)));
+  } catch {
+    return null;
+  }
+}
+
+/** How the preview door reaches the network; a test hands `loadPreviewView` a fake. */
+export type PreviewFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's preview view through the single door. NEVER THROWS: a failed read and a
+ *  view the decoder refuses both answer `null`, which the app card renders as
+ *  `PREVIEW_UNREADABLE_LINE`. */
+export async function loadPreviewView(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: PreviewFetcher = fetchJson,
+): Promise<PreviewView | null> {
+  try {
+    return decodePreviewView(await fetchPayload(previewViewPath(request)));
   } catch {
     return null;
   }

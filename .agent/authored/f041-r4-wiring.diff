@@ -1,0 +1,60 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 865b03fe1..3b929c02f 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -2911,6 +2911,10 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
+     "job.inject-answer",
+     # DECISION F029 D4: the subtree rerun, through `subtree_rerun.rerun_subtree_command`.
+     "job.rerun-subtree",
++    # DECISION F041 D4: the preview pair, recorded by `preview_control.request_preview` and
++    # acted on by the server's preview worker.
++    "job.preview-start",
++    "job.preview-stop",
+ })
+ 
+ 
+diff --git a/docs/guides/environment.md b/docs/guides/environment.md
+index e1154d24f..93d61ad6e 100644
+--- a/docs/guides/environment.md
++++ b/docs/guides/environment.md
+@@ -66,6 +66,7 @@ not read as its type; neither warning stops Remedy from running.
+ | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | a whole number | `3` | `planning.granularity.merge_group_size` | Maximum number of consecutive trivial tasks merged into one (F016) |
+ | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | text | `XL` | `planning.granularity.split_band` | Token band at and above which a planned task is split (S, M, L, XL) (F016) |
+ | `REMEDY_POSTMORTEM_LLM_SUMMARY` | yes or no (1, true, yes / 0, false, no) | no | `postmortem.llm_summary` | Generate an LLM summary for failure post-mortems (F010). Disabled by default: v1 post-mortems are fully deterministic and make zero provider calls; no generated prose is ever passed off as analysis. |
++| `REMEDY_PREVIEW_IDLE_TTL_SECONDS` | a whole number | `900` | `preview.idle_ttl_seconds` | How long a live preview of a job's project (F041) keeps running while nobody views it before the cockpit's server stops it; zero or less never stops it. |
+ | `REMEDY_PROJECT` | text | none | env-only | Registered project a command acts on, as UUID or slug, before cwd autodetection (env-only) |
+ | `REMEDY_PROMPT_BUDGET_DEFAULT_CAP` | a whole number | none | `prompt_budget.default_cap` | Global fallback input token cap (F112) for a task class carrying no configured per-class cap. Falls back further to packages.orchestration.prompt_budget.DEFAULT_FALLBACK_CAP_TOKENS when unset. |
+ | `REMEDY_PROMPT_BUDGET_TASK_CLASS_CAPS` | a table, which only remedy.toml can carry | none | `prompt_budget.task_class_caps` | Per-task-class input token cap overrides (F112). Each entry's basis is class_default until F074 calibration ships measured caps. Configured in TOML only — an env var cannot carry a table. |
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 08b17f5fd..bd7329dcd 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -945,6 +945,16 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=int,
+         default=5_000_000,
+     ),
++    ConfigKeySpec(
++        key="preview.idle_ttl_seconds",
++        env_var="REMEDY_PREVIEW_IDLE_TTL_SECONDS",
++        description=(
++            "How long a live preview of a job's project (F041) keeps running while nobody "
++            "views it before the cockpit's server stops it; zero or less never stops it."
++        ),
++        value_type=int,
++        default=900,
++    ),
+     ConfigKeySpec(
+         key="tour.model_written",
+         env_var="REMEDY_TOUR_MODEL_WRITTEN",
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 8547542d5..db606af4a 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -199,6 +199,7 @@ packages.orchestration.plan_editing
+ packages.orchestration.planner_models
+ packages.orchestration.preview_control
+ packages.orchestration.preview_runner
++packages.orchestration.preview_worker
+ packages.orchestration.product_smoke
+ packages.orchestration.project_brain
+ packages.orchestration.project_brain_aggregate

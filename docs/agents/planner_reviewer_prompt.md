@@ -382,6 +382,13 @@ end the response with:
   items were merged, because F286 had written no line to `.agent/prose_slips.md` when this pass
   was made, at its second round: its first round's block was generated from a simulated tree and
   every worker reading matched it. The list stays at 34 items.
+  Consolidated a twenty-eighth time at F041's closure on 2026-09-29: nothing joined and no two items
+  were merged, because neither of F041's two lines in `.agent/prose_slips.md` names a lesson the list
+  lacks. A block that ordered a code commit it had not written to stop rather than split at the cap,
+  and a block that ordered two passes over one string without reading what the first pass writes,
+  are both item 18's reading of an ordered recipe against the property it must establish, here a
+  history of commits under the cap and a README whose rewritten images survive. The list stays at 34
+  items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

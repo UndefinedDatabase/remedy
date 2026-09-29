@@ -55,8 +55,8 @@ export interface TourView {
 
 const TOUR_SCHEMA = "remedy.tour.v1";
 
-/** The four anchor kinds, in round 1's order (`TOUR_ANCHOR_KINDS` in `result_tour.py`). */
-export const TOUR_ANCHOR_KINDS = ["node", "diff", "evidence", "command"] as const;
+/** The five anchor kinds, in `TOUR_ANCHOR_KINDS`'s own order in `result_tour.py`. */
+export const TOUR_ANCHOR_KINDS = ["node", "diff", "evidence", "command", "preview"] as const;
 
 /** The most stops a tour may hold — `MAX_TOUR_STOPS` in `result_tour.py`. */
 export const MAX_TOUR_STOPS = 8;
@@ -193,6 +193,7 @@ export function tourAnchorLabel(anchor: TourAnchor): string {
     case "diff": return `Changed file ${anchor.ref}`;
     case "evidence": return `Evidence file ${anchor.ref}`;
     case "command": return `Command ${anchor.ref}`;
+    case "preview": return "The app preview";
     default: return anchor.ref;
   }
 }
@@ -209,11 +210,12 @@ export function tourGeneratorLabel(generator: string): string {
     : "Built from the job's records";
 }
 
-/** Whether "Show me" has a place to take the operator: a task or a diff, the two anchor kinds
- *  the cockpit can navigate to directly. An evidence or a command anchor names something the
- *  cockpit has no place to open, so the card shows it as text instead. */
+/** Whether "Show me" has a place to take the operator: a task, a diff or the preview (DECISION
+ *  F041 D6), the anchor kinds the cockpit can navigate to directly. An evidence or a command
+ *  anchor names something the cockpit has no place to open, so the card shows it as text
+ *  instead. */
 export function tourCanShow(anchor: TourAnchor): boolean {
-  return anchor.kind === "node" || anchor.kind === "diff";
+  return anchor.kind === "node" || anchor.kind === "diff" || anchor.kind === "preview";
 }
 
 /** The `rowKey` of the FIRST diff summary whose `path` equals `path`, or `null` when none

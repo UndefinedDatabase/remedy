@@ -1,0 +1,52 @@
+diff --git a/README.md b/README.md
+index 46c317526..7b0428669 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-116 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++117 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 39 | 40 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 32 | 36 |
++| 5 | Operator Cockpit | 33 | 36 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -616,6 +616,16 @@ straight from your disk, with no network and no Remedy, and refuses a story larg
+ `story.export_max_bytes` setting rather than cutting it; a test opens such a file in headless
+ Chrome and passes only when the page makes no request but the file itself).
+ 
++F041 artifact preview (a job's results can now be seen in the cockpit without leaving it: the
++Results button opens a panel with the job's README, shown as formatted text that Remedy cleans on
++its own server so that nothing in it can run in your browser, the screenshots the job captured,
++which open large one at a time, and a card that starts the job's project as a live app; the card
++shows a link to the app only after Remedy has checked that the app really answers, says in plain
++words when the app could not start or stopped answering, and stops it again when you ask, after
++fifteen minutes with nobody looking at it, or when the cockpit closes; the commands
++`remedy job preview-start` and `remedy job preview-stop` do the same on the command line, and the
++guided tour now offers a "See it running" stop for a job whose project can run).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index ef9e446b2..0ca9c79a0 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -178,7 +178,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+-- [~] F041 — Artifact preview
++- [x] F041 — Artifact preview (T001–T003 complete, R-1105 and R-1106 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f041r8e1001 · package remedy-review-20260929-110032-READY_FOR_REVIEW.zip · SHA-256 069f6b42c571f38b94f1cd4359faf276b2aeec67afcd0155bef1ead648c5a103 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 72bee58a045277901e163fb1e7f25b30421883ee)
+ - [ ] F042 — Multi-project cockpit
+ - [ ] F043 — Explanation layer
+ - [ ] F044 — Command palette, keyboard, performance budget

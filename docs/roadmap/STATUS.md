@@ -178,7 +178,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F041 — Artifact preview
+- [x] F041 — Artifact preview (T001–T003 complete, R-1105 and R-1106 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f041r8e1001 · package remedy-review-20260929-110032-READY_FOR_REVIEW.zip · SHA-256 069f6b42c571f38b94f1cd4359faf276b2aeec67afcd0155bef1ead648c5a103 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 72bee58a045277901e163fb1e7f25b30421883ee)
 - [ ] F042 — Multi-project cockpit
 - [ ] F043 — Explanation layer
 - [ ] F044 — Command palette, keyboard, performance budget

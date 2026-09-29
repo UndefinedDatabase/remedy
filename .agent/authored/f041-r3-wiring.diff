@@ -1,0 +1,93 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 67bba736c..865b03fe1 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -688,6 +688,34 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.show", "job.ownership"),
+         exit_codes=(0, 1, 2, 3),
+     ),
++    # ── job preview-start / preview-stop (F041 T002, DECISION F041 D3) ────
++    CommandEntry(
++        command_id="job.preview-start",
++        group_id="job",
++        subcommand="preview-start",
++        description="Start the project of a job under its mission with the runtime harness, "
++                    "probe it, and answer its link only when the probe passed (F041).",
++        action_class="write_metadata",
++        args=(_JOB_ID, _JSON_OPT),
++        supports_json=True,
++        may_mutate_repo=False,
++        may_execute_commands=True,
++        related=("job.preview-stop", "runtime.serve"),
++        exit_codes=(0, 1, 2, 3),
++    ),
++    CommandEntry(
++        command_id="job.preview-stop",
++        group_id="job",
++        subcommand="preview-stop",
++        description="Stop the preview of a job under its mission with the runtime harness (F041).",
++        action_class="write_metadata",
++        args=(_JOB_ID, _JSON_OPT),
++        supports_json=True,
++        may_mutate_repo=False,
++        may_execute_commands=True,
++        related=("job.preview-start", "runtime.stop"),
++        exit_codes=(0, 1, 2, 3),
++    ),
+     # ── job rerun-subtree (F029 T002, DECISION F029 D3) ──────────────────
+     CommandEntry(
+         command_id="job.rerun-subtree",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 8b8376c1a..8e63cad94 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -50,6 +50,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+         job_ownership_cmd,
+         job_pause_cmd,
+         job_plan_cmd,
++        job_preview_cmd,
+         job_rerun_cmd,
+         job_steer_cmd,
+         job_stop_cmd,
+@@ -75,6 +76,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_pause_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd, chat_cmd, job_plan_cmd, job_veto_cmd, job_inject_cmd, job_ownership_cmd, job_rerun_cmd, job_steer_cmd, job_story_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_pause_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd, chat_cmd, job_plan_cmd, job_veto_cmd, job_inject_cmd, job_ownership_cmd, job_rerun_cmd, job_steer_cmd, job_story_cmd, job_preview_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/docs/guides/exit-codes.md b/docs/guides/exit-codes.md
+index 5b5a2a7e8..9e476c48a 100644
+--- a/docs/guides/exit-codes.md
++++ b/docs/guides/exit-codes.md
+@@ -62,6 +62,8 @@ Every command not listed here exits only `0`, `1` or `2`.
+ | `remedy job steer` | 3 |
+ | `remedy job ownership` | 3 |
+ | `remedy job story` | 3 |
++| `remedy job preview-start` | 3 |
++| `remedy job preview-stop` | 3 |
+ | `remedy job rerun-subtree` | 3 |
+ | `remedy job inject` | 3 |
+ | `remedy job inject-confirm` | 3 |
+diff --git a/tests/orchestration/import_reachability_allowlist.txt b/tests/orchestration/import_reachability_allowlist.txt
+index 2621b2698..8547542d5 100644
+--- a/tests/orchestration/import_reachability_allowlist.txt
++++ b/tests/orchestration/import_reachability_allowlist.txt
+@@ -29,6 +29,7 @@ apps.cli.commands.job_inject_cmd
+ apps.cli.commands.job_ownership_cmd
+ apps.cli.commands.job_pause_cmd
+ apps.cli.commands.job_plan_cmd
++apps.cli.commands.job_preview_cmd
+ apps.cli.commands.job_rerun_cmd
+ apps.cli.commands.job_steer_cmd
+ apps.cli.commands.job_stop_cmd
+@@ -196,6 +197,8 @@ packages.orchestration.pingpong_loop
+ packages.orchestration.pingpong_provider
+ packages.orchestration.plan_editing
+ packages.orchestration.planner_models
++packages.orchestration.preview_control
++packages.orchestration.preview_runner
+ packages.orchestration.product_smoke
+ packages.orchestration.project_brain
+ packages.orchestration.project_brain_aggregate

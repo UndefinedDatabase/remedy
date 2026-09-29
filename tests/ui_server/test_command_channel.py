@@ -445,7 +445,8 @@ class TestCommandChannelDoor:
         (DECISION F028 D5). `job.rerun-subtree` built the same way names no
         task, a shape error on field `task_id` (DECISION F029 D4). `job.steer`
         built the same way names no task, a shape error on field `task_id`
-        (DECISION F030 D2).
+        (DECISION F030 D2). `job.preview-start` and `job.preview-stop` are recorded
+        and answer 200 `accepted` (DECISION F041 D4).
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
@@ -498,6 +499,10 @@ class TestCommandChannelDoor:
                 # DECISION F030 D2: a steer naming no task is a shape error.
                 assert status == 400, command_id
                 assert body["field"] == "task_id", command_id
+            elif command_id in ("job.preview-start", "job.preview-stop"):
+                # DECISION F041 D4: a preview request is recorded and never declines.
+                assert status == 200, command_id
+                assert (body["command"], body["outcome"]) == (command_id, "accepted"), body
             else:
                 assert status == 409, command_id
                 assert body["error"] == declined[command_id], command_id
@@ -1448,6 +1453,7 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
             f"/api/jobs/{self.job_id}/task-runs/T001/diff",
             f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
+            f"/api/jobs/{self.job_id}/artifacts/file",
         ]
         return paths
 
@@ -1581,6 +1587,7 @@ class TestCommandDoorImportGuard:
         "_dispatch_steer_task",
         "_dispatch_injection",
         "_dispatch_rerun_subtree",
+        "_dispatch_job_preview",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1636,6 +1643,7 @@ class TestCommandDoorImportGuard:
          "start_remainder_follow_up_mission"),                      # F269 D9
         ("packages.orchestration.pause_control", "pause_job_command"),    # F025 D2
         ("packages.orchestration.pause_control", "unpause_job_command"),  # F025 D2
+        ("packages.orchestration.preview_control", "request_preview"),    # F041 D4
         ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4
         ("packages.orchestration.hunk_decision_record",
          "record_hunk_decision_from_view"),                         # F033 D4
@@ -1905,7 +1913,7 @@ class TestUiExposedCommands:
             "job.inject-answer", "job.inject-confirm", "job.pause",
             "job.plan-delete-task", "job.plan-edit-acceptance", "job.plan-edit-task",
             "job.plan-merge-tasks", "job.plan-reorder", "job.plan-split-task",
-            "job.rerun-subtree", "job.steer", "job.stop", "job.unpause", "job.veto-task",
+            "job.preview-start", "job.preview-stop", "job.rerun-subtree", "job.steer", "job.stop", "job.unpause", "job.veto-task",
             "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):

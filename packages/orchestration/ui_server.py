@@ -1985,6 +1985,31 @@ def _build_tour_json(job: Any) -> dict[str, Any]:
     return tour_view(job)
 
 
+def _build_artifacts_json(job: Any) -> dict[str, Any]:
+    """Build the artifacts view — the sanitized README and screenshot list a job's
+    workspace and evidence directories hold (F041 T001, DECISION F041 D1)."""
+    from packages.orchestration.artifact_preview import artifacts_view
+    return artifacts_view(str(job.job_id))
+
+
+def _build_preview_json(job: Any) -> dict[str, Any]:
+    """Build the preview view (F041 T002, DECISION F041 D4). A read of this route
+    counts as a view: `mark_viewed` runs first, so the idle clock resets on every
+    look, then `preview_view` answers the link only while the state is `live`."""
+    from datetime import datetime, timezone
+
+    from packages.orchestration.preview_control import mark_viewed, preview_view
+    mark_viewed(str(job.job_id), now=datetime.now(timezone.utc))
+    return preview_view(str(job.job_id))
+
+
+def _read_artifact_file(job: Any, root: str, relative: str) -> Any:
+    """The file route's reader — a job's screenshot bytes or its whole README (F041
+    T001, DECISION F041 D2). Delegates the whole decision to `read_artifact_file`."""
+    from packages.orchestration.artifact_preview import read_artifact_file
+    return read_artifact_file(str(job.job_id), root, relative)
+
+
 def _build_chat_turn_json(job: Any, text: str, task_id: str) -> dict[str, Any]:
     """Run one chat turn and answer it in the SAME wire shape `remedy chat ask --json`
     emits (F038 T003, DECISION F038 D11). READ-ONLY: a turn sends nothing; confirming a
@@ -2668,6 +2693,13 @@ JOB_RERUN_SUBTREE_COMMAND_ID = "job.rerun-subtree"
 #: through `steering.steer_task_command`.
 JOB_STEER_COMMAND_ID = "job.steer"
 
+#: DECISION F041 D4: the write door's preview pair, recorded by
+#: `preview_control.request_preview` and handed to the server's own preview worker.
+JOB_PREVIEW_START_COMMAND_ID = "job.preview-start"
+JOB_PREVIEW_STOP_COMMAND_ID = "job.preview-stop"
+JOB_PREVIEW_COMMAND_IDS = frozenset(
+    {JOB_PREVIEW_START_COMMAND_ID, JOB_PREVIEW_STOP_COMMAND_ID})
+
 #: DECISION F015 D3: the plan edit refusals, each with its status, its audit outcome and its
 #: message. The edit RAN and DECLINED for all but the argument refusals, which are shape
 #: errors on field `args`. A version conflict carries the current version, and every other
@@ -2841,6 +2873,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     server_token: str = ""
     target_job_id: str = ""
     app_html: str = ""
+    #: DECISION F041 D4: the server's own preview worker, bound by `start_ui_server`;
+    #: `None` in any handler built without one, so the door's preview clause degrades
+    #: to recording the request alone.
+    preview_worker: Any = None
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -2903,6 +2939,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "ownership": _build_ownership_json,
                 "lessons": _build_lessons_json,
                 "tour": _build_tour_json,
+                "artifacts": _build_artifacts_json,
+                "preview": _build_preview_json,
             }
             handler = handlers.get(endpoint)
             if handler:
@@ -3019,6 +3057,25 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(*err)
                 return
             self._send_json(200, _build_task_run_rounds_json(job, parts[5]))
+            return
+
+        # /api/jobs/<job_id>/artifacts/file — a screenshot's bytes or the whole README
+        # (DECISION F041 D2). Structural for the same reason as the two routes above,
+        # and spelled out in `_walkable_paths` (tests/ui_server/test_command_channel.py)
+        # by hand for the same one.
+        if (len(parts) == 6 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "artifacts" and parts[5] == "file"):
+            job, err = _load_job(parts[3])
+            if err:
+                self._send_json(*err)
+                return
+            root = (qs.get("root") or [""])[0]
+            file_path = (qs.get("path") or [""])[0]
+            result = _read_artifact_file(job, root, file_path)
+            if result.status != 200:
+                self._send_json(*_safe_error(result.status, result.error))
+                return
+            self._send_artifact_bytes(result.content_type, result.body)
             return
 
         self._send_json(*_safe_error(404, "not found"))
@@ -3196,6 +3253,32 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 return
             # D18, clause three: both writes below fail SOFT, for the same reason
             # the pause clause above states.
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
+        # DECISION F041 D4 maps `job.preview-start` and `job.preview-stop` to
+        # `preview_control.request_preview`, run with the door's own source, and hands the
+        # job id to the server's preview worker. D18's order is unchanged: effect, then the
+        # audit line, then the publication. Unlike `job.pause`, the effect never declines —
+        # a preview request is recorded whatever the current state, the same reason
+        # `job.stop`'s clause above takes no declining branch — so this clause takes
+        # `job.stop`'s own D18 order, with no declining branch either.
+        if payload["command"] in JOB_PREVIEW_COMMAND_IDS:
+            try:
+                accepted_body = self._dispatch_job_preview(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The request is already
+            # durable, so refusing after the fact would report a request that really
+            # was recorded as one that was not.
             self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
             self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
@@ -3500,6 +3583,25 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             source=COMMAND_EFFECT_SOURCE)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
+
+    def _dispatch_job_preview(self, job: Any, payload: Any) -> dict[str, Any]:
+        """Run `job.preview-start` or `job.preview-stop`'s effect and build the body
+        DECISION F041 D4 rules for it.
+
+        The door only RECORDS the request — `request_preview` runs no verb — and then
+        hands the job id to `self.preview_worker`, when one is set, so the worker's own
+        thread carries the request the rest of the way. Never declines.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.preview_control import request_preview
+        action = "start" if payload["command"] == JOB_PREVIEW_START_COMMAND_ID else "stop"
+        job_id = str(job.job_id)
+        record = request_preview(job_id, action, now=datetime.now(timezone.utc))
+        if self.preview_worker is not None:
+            self.preview_worker.submit(job_id)
+        return {"command": payload["command"], "outcome": "accepted",
+                "state": record["state"]}
 
     def _dispatch_job_pause(self, job: Any, payload: Any) -> dict[str, Any]:
         """Run `job.pause`'s effect and build the body DECISION F025 D2 rules for it.
@@ -4229,6 +4331,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    #: Headers every served artifact file carries (DECISION F041 D2, clause 3): a file
+    #: opened directly cannot be sniffed into another type, cannot run script or load
+    #: anything of its own, and is never cached across a job's lifetime.
+    ARTIFACT_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
+        ("X-Content-Type-Options", "nosniff"),
+        ("Content-Security-Policy", "default-src 'none'; sandbox"),
+        ("Cache-Control", "no-store"),
+    )
+
     _MIME_TYPES: dict[str, str] = {
         ".js": "application/javascript",
         ".css": "text/css",
@@ -4237,6 +4348,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         ".woff2": "font/woff2",
         ".json": "application/json",
     }
+
+    def _send_artifact_bytes(self, content_type: str, body: bytes) -> None:
+        """Send a 200 artifact file response, under `ARTIFACT_RESPONSE_HEADERS` (DECISION
+        F041 D2, clause 3) — a served file never runs as a page."""
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        for name, value in self.ARTIFACT_RESPONSE_HEADERS:
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(body)
 
     def _serve_static(self, url_path: str) -> None:
         """Serve static files from React dist/assets/. Path-traversal safe."""
@@ -4247,7 +4369,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # Resolve and ensure within dist/
         try:
             target = (dist / url_path.lstrip("/")).resolve()
-            if not str(target).startswith(str(dist.resolve())):
+            # R-1105: containment is a PATH test, not a string prefix — the old
+            # `str(target).startswith(str(dist.resolve()))` let a sibling directory
+            # whose name merely starts with `dist` (e.g. `dist-old`) pass unchecked.
+            if not target.is_relative_to(dist.resolve()):
                 self._send_json(*_safe_error(403, "forbidden"))
                 return
             if not target.is_file():
@@ -4308,6 +4433,14 @@ def start_ui_server(
     # Load React frontend (auto-builds if dist/ missing)
     app_html = _load_frontend(job_id, token)
 
+    # DECISION F041 D4: one preview worker per server, created before the handler
+    # class so it can be bound on it, adopting any preview an earlier server left
+    # live and carrying every request the door hands it through `submit`.
+    from packages.orchestration.config import get_config
+    from packages.orchestration.preview_worker import PreviewWorker
+    preview_worker = PreviewWorker(
+        ttl_seconds=int(get_config().get("preview.idle_ttl_seconds")))
+
     # Create handler class with bound state
     handler_class = type(
         "_BoundHandler",
@@ -4316,10 +4449,15 @@ def start_ui_server(
             "server_token": token,
             "target_job_id": job_id,
             "app_html": app_html,
+            "preview_worker": preview_worker,
         },
     )
 
     server = ThreadingHTTPServer((host, port), handler_class)
+    # DECISION F041 D4: adopt and start directly after the socket is bound, so no
+    # preview request the door already accepted can be lost to the gap.
+    preview_worker.adopt_live()
+    preview_worker.start()
     actual_port = server.server_address[1]
     url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
 
@@ -4355,6 +4493,9 @@ def start_ui_server(
         pass
     finally:
         server.server_close()
+        # DECISION F041 D4: close the worker after the socket, stopping every
+        # preview it still keeps live so a server exit never orphans a runtime.
+        preview_worker.close()
 
 
 def _try_open_browser(url: str) -> None:

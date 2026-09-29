@@ -41,9 +41,12 @@ TOUR_FILENAME = "tour.json"
 MAX_TOUR_STOPS = 8
 TOUR_TITLE_MAX_CHARS = 80
 TOUR_BODY_MAX_CHARS = 400
-TOUR_ANCHOR_KINDS = ("node", "diff", "evidence", "command")
+TOUR_ANCHOR_KINDS = ("node", "diff", "evidence", "command", "preview")
 TOUR_GENERATOR_FALLBACK = "fallback"
 TOUR_TOP_LEVEL_AREA = "the top level"
+
+#: The one ref a `preview` anchor ever carries (DECISION F041 D6).
+TOUR_PREVIEW_REF = "app"
 
 
 class ResultTourError(ValueError):
@@ -78,6 +81,8 @@ class TourAnchorContext:
     diff_files: tuple[tuple[str, int, int], ...] = ()
     evidence_files: tuple[str, ...] = ()
     run_commands: tuple[str, ...] = ()
+    #: Whether the job's own project folder resolves a runtime it can preview (DECISION F041 D6).
+    previewable: bool = False
 
 
 def _collect_diff_files(job_id: str) -> tuple[tuple[str, int, int], ...]:
@@ -125,14 +130,39 @@ def _collect_run_commands(job_id: str) -> tuple[str, ...]:
     return tuple(commands)
 
 
+def _project_previewable(job: Any) -> bool:
+    """Whether *job*'s own project folder resolves a runtime this cockpit could preview
+    (DECISION F041 D6).
+
+    False unless ``repo_path`` is a non-empty ``str`` naming an existing directory; else
+    ``resolve_spec`` and ``RuntimeConfigError`` are imported from
+    ``packages.runtimes.runtime_config`` INSIDE this function's body, the way
+    ``tour_model_written`` keeps this module's own import lazy, and the answer is True
+    when ``resolve_spec(repo_path)`` returns and False when it raises ``RuntimeConfigError``.
+    """
+    repo_path = getattr(job, "repo_path", "")
+    if not isinstance(repo_path, str) or not repo_path or not Path(repo_path).is_dir():
+        return False
+
+    from packages.runtimes.runtime_config import RuntimeConfigError, resolve_spec
+
+    try:
+        resolve_spec(repo_path)
+    except RuntimeConfigError:
+        return False
+    return True
+
+
 def collect_tour_context(job: Any) -> TourAnchorContext:
-    """The anchor context for *job* — task ids, diff files, evidence files, run commands."""
+    """The anchor context for *job* — task ids, diff files, evidence files, run commands,
+    and whether its project is previewable."""
     job_id = str(job.job_id)
     return TourAnchorContext(
         task_ids=tuple(str(task.task_id) for task in job.tasks),
         diff_files=_collect_diff_files(job_id),
         evidence_files=_collect_evidence_files(job_id),
         run_commands=_collect_run_commands(job_id),
+        previewable=_project_previewable(job),
     )
 
 
@@ -255,6 +285,8 @@ def anchor_problem(anchor: dict[str, Any], context: TourAnchorContext) -> str:
         resolved = ref in context.evidence_files
     elif kind == "command":
         resolved = ref in context.run_commands
+    elif kind == "preview":
+        resolved = context.previewable and ref == TOUR_PREVIEW_REF
     else:
         resolved = False
     if resolved:
@@ -404,6 +436,20 @@ def _how_to_run_it_stop(context: TourAnchorContext) -> dict | None:
     }
 
 
+def _preview_stop(context: TourAnchorContext) -> dict | None:
+    """"See it running" — None unless *context* is previewable (DECISION F041 D6)."""
+    if not context.previewable:
+        return None
+    return {
+        "title": _bounded_text("See it running", TOUR_TITLE_MAX_CHARS),
+        "body": _bounded_text(
+            "Open Results in the cockpit and press Start app to try the change yourself; "
+            "the link appears once the app answers.",
+            TOUR_BODY_MAX_CHARS),
+        "anchor": {"kind": "preview", "ref": TOUR_PREVIEW_REF},
+    }
+
+
 def _definition_of_done_stop(sources: ReportSources) -> dict | None:
     if sources.dod_released is None:
         return None
@@ -424,16 +470,23 @@ def _definition_of_done_stop(sources: ReportSources) -> dict | None:
 
 def fallback_tour_stops(sources: ReportSources, context: TourAnchorContext) -> list[dict]:
     """The mechanical tour's stops, in order: how it ended, what changed, how to run
-    it, and the Definition of Done — pure and deterministic over *sources* and *context*.
+    it, "See it running" when the project is previewable (DECISION F041 D6), and the
+    Definition of Done — pure and deterministic over *sources* and *context*.
     """
     how_to_run_it = _how_to_run_it_stop(context)
+    preview_stop = _preview_stop(context)
     dod_stop = _definition_of_done_stop(sources)
-    room = MAX_TOUR_STOPS - 1 - (1 if how_to_run_it else 0) - (1 if dod_stop else 0)
+    room = (MAX_TOUR_STOPS - 1
+            - (1 if how_to_run_it else 0)
+            - (1 if preview_stop else 0)
+            - (1 if dod_stop else 0))
 
     stops = [_how_the_run_ended_stop(sources, context)]
     stops.extend(_changed_area_stops(context, room))
     if how_to_run_it is not None:
         stops.append(how_to_run_it)
+    if preview_stop is not None:
+        stops.append(preview_stop)
     if dod_stop is not None:
         stops.append(dod_stop)
     return stops
@@ -647,6 +700,8 @@ def build_tour_prompt(source_text: str, context: TourAnchorContext) -> str:
     anchor_lines += [f"diff {path}" for path, _added, _deleted in context.diff_files]
     anchor_lines += [f"evidence {name}" for name in context.evidence_files]
     anchor_lines += [f"command {command}" for command in context.run_commands]
+    if context.previewable:
+        anchor_lines.append(f"preview {TOUR_PREVIEW_REF}")
 
     rules = "\n".join([
         "Rules:",
