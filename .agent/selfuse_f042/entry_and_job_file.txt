@@ -1,0 +1,5 @@
+Entry ID: SU-036
+Entry Title: Address ledger finding R-1107
+Entry Provenance: generated (self-use-generator tier 1, ledger scan, R-1107)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f042-r6-selfuse/SU-036.md
