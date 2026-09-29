@@ -389,6 +389,14 @@ end the response with:
   are both item 18's reading of an ordered recipe against the property it must establish, here a
   history of commits under the cap and a README whose rewritten images survive. The list stays at 34
   items.
+  Consolidated a twenty-ninth time at F042's closure on 2026-09-29: nothing joined and no two items
+  were merged, because F042 wrote no line to `.agent/prose_slips.md`. Its four authoring defects were
+  registered as findings, because each left something on disk wrong or unguarded: a layout ordered
+  without the grouping its page needed (R-1108) and a style that named a token nothing defines
+  (R-1110) are item 18's reading of an ordered recipe against the property it must establish, here
+  what the page shows; and two promises of a DECISION that no test could see broken (R-1109 and
+  R-1111) are item 12's red control, which binds a decision's own sentences as it binds a gate. The
+  list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

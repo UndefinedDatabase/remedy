@@ -11,17 +11,21 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 5: book round 4 with the resolutions of R-1108 and R-1109 and the
-registration of R-1110, record DECISION F042 D5, and land deep links
-pinned across projects, the dashboard's project line re-pointed, the dock's
-way home at every width, and the repair of R-1110, in a real browser.
+ROUND 6, the closure sequence's first round: book round 5 with R-1110's
+resolution and R-1111's registration, record DECISION F042 D6 and the
+checklist consolidation, write the Built State, land the end-to-end test
+and R-1111's test, take the live browser run, and generate and run the
+closure's self-use item.
 
 ## Next Steps
 
-1. The end-to-end run over a real UI server with two registered projects.
-2. The closure sequence.
+1. The integration gate: book round 6, land or record the self-use
+   item's diff, build the cockpit and run the one full suite.
+2. The evidence round: the evidence bundle and the review package.
+3. The closing round: the rotation, the STATUS line, the README and the
+   pull request.
 
 ## Risks
 
-Open findings: 2 (R-1107 owned by F290; R-1110 owned by F042, repaired
-this round).
+Open findings: 2 (R-1107 owned by F290; R-1111 owned by F042, its test
+landed this round).

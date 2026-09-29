@@ -25711,3 +25711,40 @@ list, rejected because the card beside it would count different jobs for the sam
 HOW TO REVERSE: restore `SideIconDock.tsx`, `HomeGrid.tsx` and `_build_project_summary_section`
 from `1d5a64b3`, delete the added cases from `zoomDeepLink.test.ts` and
 `tests/ui_server/test_projects_route.py`, and delete this paragraph.
+
+## DECISION F042 D6 — the end-to-end run is a CI test over the real CLI and the real UI server holding every card number to `remedy status`, beside a live browser run over the same stack committed as the closure's evidence and kept out of CI; the closure sequence starts in the same round with the self-use item, before the one full suite (2026-09-29)
+
+CONTEXT: T5_F042.md's T003 asks for an end-to-end run over two fixture projects: grid numbers
+exact, a switch, every panel re-scoped, the address round-tripping; its Orchestrator brief names
+the stale-bleed fixtures as a switch during a stream, during a fetch and with panels open.
+Measured by the reviewer at `79a2e780`: the UI server builds the cockpit itself when `apps/ui/dist`
+is missing or older than its sources; the one CI test that drives Chrome,
+`tests/ui_server/test_story_export_file_live.py`, is the one R-1107 records as failing on a hosted
+runner at its first command; the render harnesses of rounds 3 to 5 prove the page against a stand-in
+server; every test under `tests/ui_server/` runs in CI's standard stage.
+
+CHOSEN: (1) THE CI TEST is `tests/ui_server/test_multi_project_live.py`: two git folders registered
+by `remedy init`, jobs planned by `remedy do` and one run to its end on the fake providers, a real
+UI server; it holds the list's two projects, every card's job counts and open decisions to what
+`remedy status --project <slug> --json` prints, the newest job as the last result, each job's own
+project over `/api/jobs/<id>/project`, and the dashboard's project line to the card. (2) THE LIVE
+RUN is `f042-r6-live_measure.py` with its driver, committed under `.agent/authored/`: the same kind
+of stack, the cockpit built from the tree's own sources, and headless Chrome at 1440 by 900
+driving the grid, a card, the rail's switcher with the Story panel open, Back and the dock; it
+holds the address, the switcher and the right panel's project line at each step, and that after a
+switch the Story panel is gone and no request names the old job for three seconds, which is the
+switch during a stream and with a panel open. It is the round's evidence, not a CI test, because
+a second Chrome test in CI would meet R-1107's failure before F290 repairs it. (3) R-1111's test
+gives a job two disagreeing project keys. (4) THE CLOSURE SEQUENCE starts in this round, which
+carries no production code: the checklist consolidation, the Built State, and the closure's
+self-use item, generated from the ledger's oldest open Low finding and run on the `self_use` role
+before the one full suite, so a sound diff it makes can still land on the tree the suite proves.
+The next round lands or records that diff and runs the suite; evidence and the closing follow.
+
+ALTERNATIVES: a Chrome test in CI through `ChromePipe`, rejected until R-1107 is repaired; the
+render harnesses alone, rejected because they answer from a stand-in and never meet the real
+envelopes, the real dashboard or the real stream; a separate round for the tests before the
+closure, rejected because it would carry no production code and buy a second boundary for nothing.
+
+HOW TO REVERSE: delete `tests/ui_server/test_multi_project_live.py`, the R-1111 test in
+`tests/ui_server/test_projects_route.py` and the `f042-r6-live_*` copies, and delete this paragraph.
