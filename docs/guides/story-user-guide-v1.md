@@ -86,8 +86,8 @@ Add `--json` for a machine-readable answer that names the file, its size in byte
 
 A test in Remedy's suite, `tests/ui_server/test_story_export_file_live.py`, runs the demo job on
 the fake providers, saves its story, opens the file in headless Chrome, which is Chrome without a
-window, and records every request the page makes. It passes only when the one request is the file
-itself. It also plays the story: it checks the three chapters of the demo, moves the timeline with
+window, and records every request the page makes while the story plays and for two seconds after.
+It passes only when the one request is the file itself. It also plays the story: it checks the three chapters of the demo, moves the timeline with
 the arrow key, jumps to a chapter, and starts and pauses the story with the space bar. On top of
 that, the file tells the browser to refuse any request it might try, so a later change that adds
 one is blocked and shows up in that test.
