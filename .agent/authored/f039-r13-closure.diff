@@ -1,0 +1,66 @@
+diff --git a/README.md b/README.md
+index b3c881ad9..fa52783f8 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-114 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++115 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 38 | 39 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 31 | 36 |
++| 5 | Operator Cockpit | 32 | 36 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -600,6 +600,17 @@ this on the command line and the Chat tab of a run's evidence panel does it in t
+ each answer says whether it was built from the records alone or written by the summary model,
+ which happens only when you switch on the `chat.model_written` setting).
+ 
++F039 story mode (a finished job can now be told as a short story: its chapters are the phases it
++went through, such as the plan, the build, the review and the finish, and small cards say what
++happened at the moments that mattered, a decision, a failed test or a repair, with the reviewer's
++verdict, who acted and the cost so far, every word taken from Remedy's own fixed wording and never
++from a model; the Story button in the cockpit opens it over the graph, where Play walks the
++timeline one event at a time with a pause before each chapter; the command
++`remedy job story <job id> --export <file>` saves it as one HTML file that plays in any browser
++straight from your disk, with no network and no Remedy, and refuses a story larger than the
++`story.export_max_bytes` setting rather than cutting it; a test opens such a file in headless
++Chrome and passes only when the page makes no request but the file itself).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 27b850e90..efd1f25e4 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -170,7 +170,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ - [x] F035 — Ownership ledger (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f035r9e1001 · package remedy-review-20260928-050815-READY_FOR_REVIEW.zip · SHA-256 9b3e3841d2c11725c8a03579fa2a7d5dcb963aac3386faeb5a6ab5517ac2b8aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f25c03bddca1d9c08b58821288b7eed42d1e3cb)
+ - [x] F036 — Guided result tour (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f036r8e1001 · package remedy-review-20260928-094901-READY_FOR_REVIEW.zip · SHA-256 e2bd771b3f1c1a52fcc7e73cdae50c4fd4a837107ee5e46b76d79d8b8dffc2f4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 153537dc8e5a6bb7061f220cdeaffbc1829d3067)
+ - [x] F038 — Grounded chat & intent dispatch (T001–T003 complete; accepted 2026-09-28 · live review PASS — ACCEPTED · Evidence job f038r14e1001 · package remedy-review-20260928-194656-READY_FOR_REVIEW.zip · SHA-256 98bc29b2c6aa67360bf61f1a85fb4f5583f6552100c2615c918a5b54b426bab4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2fe5345e08ad4b013b8d5a9395e5b1a83b7415f5)
+-- [~] F039 — Story/replay mode
++- [x] F039 — Story/replay mode (T001–T003 complete, R-1104 carried to F286; accepted 2026-09-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f039r12e1001 · package remedy-review-20260929-031523-READY_FOR_REVIEW.zip · SHA-256 e9097684c735ec44a6b33f4bc409de252280e7294e3d2d142b4197684f9dee7d · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD da3d5430681239aff3419da447abbb75f2105112)
+ 
+ ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+ 
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index d3525b32e..3d1ae0613 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -279,7 +279,7 @@
+       "title": "Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md",
+       "why": "backticks the config key `story.html`",
+       "job_markdown": "# Job: Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md\n\n## Task 1\nThe documentation-staleness check `doc_config_keys` found a claim in `docs/guides/story-user-guide-v1.md` that the shipped code contradicts.\n\nClaim: backticks the config key `story.html`\nShipped truth: `story.html` is not a registered config key\n\nEdit `docs/guides/story-user-guide-v1.md` so that it matches the shipped truth. Do not change code to match the document, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The staleness check `doc_config_keys` no longer reports this claim for `docs/guides/story-user-guide-v1.md`.\n- No file under `.agent/` is changed by this task.\n",
+-      "consumed_by": "",
++      "consumed_by": "F039",
+       "provenance": "generated (self-use-generator tier 2, doc staleness, doc_config_keys:docs/guides/story-user-guide-v1.md:backticks the config key `story.html`)"
+     }
+   ]
