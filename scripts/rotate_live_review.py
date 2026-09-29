@@ -6,9 +6,20 @@ sequence runs this script as its own commit: it moves, byte-verbatim, every
 ``Gate:`` record whose feature is ``[x]`` in ``docs/roadmap/STATUS.md`` and
 every resolved finding pair (exactly one ``- R-xxxx — `` registration record
 with exactly one ``Done: R-xxxx — `` record) into the append-only
-``.agent/live_review_archive.md``. Nothing else is touched: the preamble,
-``## Steps``, ``## Findings``, open findings, ``Landed:``/``Recurrence:``
-lines, ``DECISION`` paragraphs and any id with two ``Done:`` records stay.
+``.agent/live_review_archive.md``.
+
+Operator amendment amend0929-context-hygiene (2026-09-29) adds RESOLVED TEXT:
+any other record (``Landed:``, ``Recurrence:``, ``RECURRENCE of``, ``DECISION``,
+triage prose) moves when it names at least one ``R-\\d{4}`` id and every id it
+names is resolved — the id carries a ``Done: R-xxxx — `` line in the ledger or
+the archive and is not open in the ledger. A ``## `` section heading other than
+``## Steps`` and ``## Findings`` moves together with the id-less prose records of
+its section only when every id-bearing, finding or ``Done:`` record of that
+section moves in the same rotation (``Gate:`` records follow their own rule and
+neither block nor ride along). What stays: the ``# `` title and every ``> ``
+record, ``## Steps`` with its section, ``## Findings``, open findings, any text
+naming an open or never-resolved id, id-less prose outside a movable section,
+gates of open features and any id with two ``Done:`` records.
 
 Record model — LINE oriented, not paragraph oriented, because some features
 appended records with a single newline separator. A record starts at a line
@@ -90,6 +101,9 @@ _REGISTRATION_SEVERITY = re.compile(r"^- (R-\d{4}) — ([A-Za-z]+)", re.M)
 _GATE_VERDICT = re.compile(r"\bVERDICT ([A-Z][A-Z_]*)\b")
 GATE_VERDICTS = frozenset({"PASS", "PASS_WITH_RISKS", "FAIL", "NEEDS_REPAIR", "BLOCKED"})
 _CLOSED_FEATURE_LINE = re.compile(r"^- \[x\] F(\d{3}) — ", re.M)
+_FINDING_ID = re.compile(r"\bR-\d{4}\b")
+# WHY fixed: these two headings frame the live record itself and never leave it.
+_KEPT_SECTIONS = ("## Steps", "## Findings")
 
 
 class RotationError(RuntimeError):
@@ -115,6 +129,7 @@ class RotationResult:
     moved: tuple[Record, ...]
     gates_moved: int
     pairs_moved: int
+    text_records_moved: int
     unparsed_gates: int
     old_ledger_size: int
     new_ledger_size: int
@@ -278,6 +293,63 @@ def select_movable(records: list[Record], closed: frozenset[str]) -> list[int]:
     return movable
 
 
+def resolved_finding_ids(ledger_text: str, archive_text: str) -> frozenset[str]:
+    """Ids with a ``Done:`` line in the ledger or the archive that are not open in the ledger."""
+    done = set(_DONE_LINE.findall(ledger_text)) | set(_DONE_LINE.findall(archive_text))
+    return frozenset(done - set(open_finding_ids(ledger_text)))
+
+
+def _is_section_heading(body: str) -> bool:
+    return body.startswith("## ") and not body.startswith(_KEPT_SECTIONS)
+
+
+def select_resolved_text(records: list[Record], resolved: frozenset[str], moving: set[int]) -> list[int]:
+    """Indices of the ``other`` records that move as resolved text (amend0929-context-hygiene).
+
+    ``moving`` holds the indices :func:`select_movable` already chose; a section's
+    blockers are judged against them and this function's own id-bearing picks.
+    """
+    picked: set[int] = set()
+    in_steps = False
+    for index, record in enumerate(records):
+        if record.kind == "other" and record.body.startswith("## "):
+            in_steps = record.body.startswith("## Steps")
+        # WHY: the Steps section is the current feature's plan, so nothing in it leaves.
+        if record.kind != "other" or in_steps or record.body.startswith(("# ", ">", "## ")):
+            continue
+        ids = set(_FINDING_ID.findall(record.body))
+        if ids and ids <= resolved:
+            picked.add(index)
+    heading: int | None = None
+    members: list[int] = []
+
+    def close_section() -> None:
+        if heading is None:
+            return
+        head_ids = set(_FINDING_ID.findall(records[heading].body))
+        if head_ids and not head_ids <= resolved:
+            return
+        for index in members:
+            record = records[index]
+            if record.kind == "gate":
+                continue
+            bears_id = record.kind in ("reg", "done") or _FINDING_ID.search(record.body)
+            if bears_id and index not in picked and index not in moving:
+                return
+        picked.add(heading)
+        picked.update(i for i in members if records[i].kind == "other" and not _FINDING_ID.search(records[i].body))
+
+    for index, record in enumerate(records):
+        if record.kind == "other" and record.body.startswith("## "):
+            close_section()
+            heading = index if _is_section_heading(record.body) else None
+            members = []
+        elif heading is not None:
+            members.append(index)
+    close_section()
+    return sorted(picked)
+
+
 def append_to_archive(old_archive: str, bodies: list[str]) -> str:
     """The new archive text: the old bytes untouched, then each body behind one blank line."""
     out = old_archive if old_archive else ARCHIVE_HEADER
@@ -330,11 +402,13 @@ def rotate(ledger_text: str, status_text: str, archive_text: str | None) -> Rota
     records, trailing = split_records(ledger_text)
     if rebuild_ledger(records, set(), trailing) != ledger_text:
         raise RotationError("the record model does not round-trip the ledger byte for byte")
+    old_archive = archive_text if archive_text is not None else ""
     movable = select_movable(records, closed_feature_ids(status_text))
+    text_movable = select_resolved_text(records, resolved_finding_ids(ledger_text, old_archive), set(movable))
+    movable = sorted(set(movable) | set(text_movable))
     moved = [records[i] for i in movable]
     digests = [record_digest(r.body) for r in moved]
     new_ledger = rebuild_ledger(records, set(movable), trailing)
-    old_archive = archive_text if archive_text is not None else ""
     new_archive = append_to_archive(old_archive, [r.body for r in moved]) if moved else old_archive
     if moved:
         _verify(ledger_text, new_ledger, old_archive, new_archive, records, movable, digests)
@@ -346,6 +420,7 @@ def rotate(ledger_text: str, status_text: str, archive_text: str | None) -> Rota
         moved=tuple(moved),
         gates_moved=sum(1 for r in moved if r.kind == "gate"),
         pairs_moved=sum(1 for r in moved if r.kind == "reg"),
+        text_records_moved=len(text_movable),
         unparsed_gates=sum(1 for r in records if r.kind == "gate" and r.key is None),
         old_ledger_size=len(ledger_text.encode("utf-8")),
         new_ledger_size=len(new_ledger.encode("utf-8")),
@@ -360,6 +435,7 @@ def _report(result: RotationResult) -> list[str]:
     lines = [
         f"gate records moved: {result.gates_moved}",
         f"finding pairs moved: {result.pairs_moved} ({2 * result.pairs_moved} records)",
+        f"resolved-text records moved: {result.text_records_moved}",
         f"old ledger size: {result.old_ledger_size} bytes",
         f"new ledger size: {result.new_ledger_size} bytes",
         f"old archive size: {result.old_archive_size} bytes",
@@ -376,8 +452,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="rotate_live_review.py",
         description=(
-            "Move [x] features' Gate: records and resolved finding pairs from the live-review "
-            "ledger into the append-only archive, byte-verbatim and self-verified."
+            "Move [x] features' Gate: records, resolved finding pairs and resolved finding text "
+            "from the live-review ledger into the append-only archive, byte-verbatim and self-verified."
         ),
     )
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER, help="the ledger (default: .agent/live_review.md)")
