@@ -1,35 +1,52 @@
-// DECISION F042 D3 — one project context around every face of the cockpit: the project list
-// loaded once per token, the opened job's own project loaded once per job, the ACTIVE project
-// resolved by DECISION F042 D1's precedence, and a switch taken through the ONE gate that any
-// other address change also advances, so a switch in flight never lands on a page the reader
-// left by Back. Its context style follows `ReducedMotionProvider.tsx`: one default value, no
-// throw for a reader outside the provider, because `RemedyApp.tsx` mounts exactly one.
+// DECISIONS F042 D3 and D4 — one project context around every face of the cockpit: the project
+// list loaded once per token, the opened job's own project loaded once per job, the ACTIVE
+// project resolved by DECISION F042 D1's precedence, and a switch taken through the ONE gate
+// that any other address change also advances, so a switch in flight never lands on a page the
+// reader left by Back. `enterProject` takes the same gated path as `switchTo`, only replacing
+// the address rather than pushing it, so the home grid's single-project skip never leaves a
+// grid Back would only skip forward again to reach; `goHome` advances the gate to "" before
+// asking the address to move, so a switch already in flight is dropped the same way any other
+// address change drops one. Its context style follows `ReducedMotionProvider.tsx`: one default
+// value, no throw for a reader outside the provider, because `RemedyApp.tsx` mounts exactly one.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { loadJobProject, loadProjectSummary, loadProjectsView } from "../../api/remedyApi";
 import { createSwitchGate, resolveActiveProject, switchProject } from "../../api/projectScope";
-import type { JobProject, ProjectEntry, ProjectsView, ProjectSwitch } from "../../api/projectScope";
+import type {
+  JobProject,
+  ProjectEntry,
+  ProjectsView,
+  ProjectSummary,
+  ProjectSwitch,
+} from "../../api/projectScope";
 
 export interface ProjectContextValue {
   view: ProjectsView | null;
   active: ProjectEntry | null;
   switchTo(slug: string): void;
+  enterProject(slug: string): void;
+  goHome(): void;
+  readSummary(slug: string): Promise<ProjectSummary | null>;
 }
 
 const ProjectContext = createContext<ProjectContextValue>({
   view: null,
   active: null,
   switchTo: () => {},
+  enterProject: () => {},
+  goHome: () => {},
+  readSummary: () => Promise.resolve(null),
 });
 
 export interface ProjectProviderProps {
   token: string;
   jobId: string;
   project: string;
-  onSwitched: (result: ProjectSwitch) => void;
+  onSwitched: (result: ProjectSwitch, replace: boolean) => void;
+  onHome: () => void;
   children: React.ReactNode;
 }
 
-export function ProjectProvider({ token, jobId, project, onSwitched, children }: ProjectProviderProps) {
+export function ProjectProvider({ token, jobId, project, onSwitched, onHome, children }: ProjectProviderProps) {
   const [view, setView] = useState<ProjectsView | null>(null);
   const [jobProjectState, setJobProjectState] = useState<{ jobId: string; jobProject: JobProject | null }>({
     jobId: "",
@@ -65,11 +82,27 @@ export function ProjectProvider({ token, jobId, project, onSwitched, children }:
   const jobProject = jobProjectState.jobId === jobId ? jobProjectState.jobProject : null;
   const active = resolveActiveProject(view, project, jobProject);
 
-  const switchTo = useCallback((slug: string): void => {
-    void switchProject(slug, gate.current, (next) => loadProjectSummary({ project: next, token }), onSwitched);
-  }, [token, onSwitched]);
+  const readSummary = useCallback((slug: string): Promise<ProjectSummary | null> => {
+    return loadProjectSummary({ project: slug, token });
+  }, [token]);
 
-  const value = useMemo<ProjectContextValue>(() => ({ view, active, switchTo }), [view, active, switchTo]);
+  const switchTo = useCallback((slug: string): void => {
+    void switchProject(slug, gate.current, readSummary, (result) => onSwitched(result, false));
+  }, [readSummary, onSwitched]);
+
+  const enterProject = useCallback((slug: string): void => {
+    void switchProject(slug, gate.current, readSummary, (result) => onSwitched(result, true));
+  }, [readSummary, onSwitched]);
+
+  const goHome = useCallback((): void => {
+    gate.current.begin("");
+    onHome();
+  }, [onHome]);
+
+  const value = useMemo<ProjectContextValue>(
+    () => ({ view, active, switchTo, enterProject, goHome, readSummary }),
+    [view, active, switchTo, enterProject, goHome, readSummary],
+  );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }

@@ -7,6 +7,7 @@ import {
   EMPTY_PROJECT_LINE,
   addressFromSearch,
   cockpitFaceOf,
+  homeSearch,
   shellKeyOf,
 } from "./api/cockpitAddress";
 import type { CockpitAddress } from "./api/cockpitAddress";
@@ -16,6 +17,7 @@ import { RemedyShell } from "./components/shell/RemedyShell";
 import { ReducedMotionProvider } from "./components/shell/ReducedMotionProvider";
 import { ProjectProvider } from "./components/shell/ProjectProvider";
 import { ProjectSwitcher } from "./components/shell/ProjectSwitcher";
+import { HomeGrid } from "./components/home/HomeGrid";
 
 function readUrlState(): CockpitAddress {
   return addressFromSearch(window.location.search);
@@ -47,13 +49,26 @@ export default function RemedyApp() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [openAddress]);
 
-  // A switch writes its address with `pushState`, so Back returns to the project left — the
-  // only place this file changes the address other than a Back or Forward step re-reading it.
-  function onSwitched(target: ProjectSwitch): void {
-    const search = searchForProjectSwitch(window.location.search, target.slug, target.jobId);
-    window.history.pushState(window.history.state, "", `${window.location.pathname}${search}${window.location.hash}`);
+  // The ONE writer of the page's address: pushes for a switch or the way home, so Back returns
+  // to the page left, and replaces for the single-project skip, so Back never returns to a grid
+  // that would only skip forward again to reach.
+  const writeAddress = useCallback((search: string, replace: boolean) => {
+    const url = `${window.location.pathname}${search}${window.location.hash}`;
+    if (replace) {
+      window.history.replaceState(window.history.state, "", url);
+    } else {
+      window.history.pushState(window.history.state, "", url);
+    }
     openAddress(search);
-  }
+  }, [openAddress]);
+
+  const onSwitched = useCallback((target: ProjectSwitch, replace: boolean) => {
+    writeAddress(searchForProjectSwitch(window.location.search, target.slug, target.jobId), replace);
+  }, [writeAddress]);
+
+  const onHome = useCallback(() => {
+    writeAddress(homeSearch(window.location.search), false);
+  }, [writeAddress]);
 
   useEffect(() => {
     if (face !== "job") return;
@@ -78,9 +93,20 @@ export default function RemedyApp() {
         {MISSING_ADDRESS_LINE}
       </div>
     );
-  } else if (face === "empty_project") {
+  } else if (face === "home") {
     body = (
-      <div data-ui="remedy-app" style={{ display: "grid", placeItems: "center", height: "100%" }}>
+      <div data-ui="remedy-home" style={{ height: "100%", overflowY: "auto" }}>
+        <HomeGrid />
+      </div>
+    );
+  } else if (face === "empty_project") {
+    // R-1108: `alignContent` and `gap` group the switcher and the sentence into one cluster
+    // instead of each taking its own row of half the page's height.
+    body = (
+      <div
+        data-ui="remedy-app"
+        style={{ display: "grid", placeItems: "center", alignContent: "center", gap: 16, height: "100%" }}
+      >
         <ProjectSwitcher fallback={null} />
         <p data-ui="empty-project">{EMPTY_PROJECT_LINE}</p>
       </div>
@@ -102,7 +128,7 @@ export default function RemedyApp() {
 
   return (
     <ReducedMotionProvider>
-      <ProjectProvider token={token} jobId={jobId} project={project} onSwitched={onSwitched}>
+      <ProjectProvider token={token} jobId={jobId} project={project} onSwitched={onSwitched} onHome={onHome}>
         {body}
       </ProjectProvider>
     </ReducedMotionProvider>
