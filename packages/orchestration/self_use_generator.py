@@ -734,6 +734,10 @@ def _bound_test_names(root: Path) -> frozenset[str]:
     for path in sorted(tests_dir.rglob("*.py")):
         try:
             text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # R-1114, DECISION F291 D4: a test can write and remove a temporary module
+            # under `tests/` beside this read — gone, not unreadable.
+            continue
         except (OSError, UnicodeDecodeError) as exc:
             raise SelfUseGenerationError(f"{path}: unreadable ({exc})") from exc
         try:
