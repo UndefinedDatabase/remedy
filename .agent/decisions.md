@@ -26072,3 +26072,45 @@ HOW TO REVERSE: delete this round's catalog entries and their `Term` wrappers in
 `TaskChecklistCard.tsx`, `DecisionInboxCard.tsx`, `ActivityFeedCard.tsx`, `AgentNowCard.tsx` and
 `BrainGraphStage.tsx`, the `insideControl` prop, the two narrowed selectors, this round's tests, and
 this paragraph.
+
+## DECISION F043 D3 — the token and cost tiles show their breakdown in the label's term, whose tooltip gains a live `detail` under the catalog's explanation, and the tile's own tooltip is deleted; the '?' key and a Terms button open a searchable panel of every entry, placed by its key's first word; `blocked.task` becomes `task.blocked` (2026-09-30)
+
+CONTEXT: DECISION F043 D2 (5) moves the token and cost tiles onto the term's tooltip in this
+round, together with the '?' panel. Measured by the reviewer at `03f77c7f`: `TopMetricsBar.tsx`
+opens a hand-built tooltip on the whole tile, which is focusable for that alone, and
+`tests/ui_contracts/test_design_drift.py` pins that tile's `tabIndex` as the keyboard route to the
+token breakdown, while `tests/ui_contracts/test_cost_metric_render.py` pins the breakdowns' two
+test ids. The shell has no global key handler, and every overlay it owns is a sibling after
+`</main>` that closes on Escape. A first render of the panel showed two entries titled Done with
+nothing to tell them apart, the metrics tile's and a task's.
+
+CHOSEN: (1) `Term` takes an optional `detail`: live figures rendered in the tooltip under the
+catalog's explanation, so the explanation stays the catalog's alone and the figures stay the
+surface's. (2) THE TILES: `metric.tokens` (anchored to T5_F022.md's statement that the token usage
+is an estimate) and `metric.cost` (anchored to its basis rule, the basis golden T5_F043.md names)
+join the catalog; every tile's label is a term, and the token and cost tiles pass their breakdown,
+under the same two test ids, as the term's `detail`. The tile's own tooltip, its hover and focus
+handlers, its `tabIndex` and its `.tooltip` rule are deleted, because the term replaced them
+(AGENTS.md, replacing is deleting); the design-drift pin follows the keyboard route to the term.
+(3) THE PANEL: `apps/ui/src/api/termSearch.ts` keeps the entries whose title or body holds every
+word of the query, sorted by title then key, and opens on "?" unless the key press comes from a
+field, where a question mark is text; `components/term/TermPanel.tsx` is a right-anchored glass
+sheet in the learning overlay's style, named Terms, with a search field that takes focus and a list
+of every entry's title, place and body. Its rows carry `data-term-entry` and never `data-term`,
+because a panel that lists every key by construction would make the audit's dead-key direction
+pass for keys no surface renders. The shell listens for the key and mounts the panel after the
+results panel; the right panel gains a Terms button beside Results. (4) THE PLACE: `TERM_PLACES`
+names where each family of keys is shown, by the key's first word, and a test holds that every
+catalog key has one; to keep the first word the place, the blocked task's key becomes
+`task.blocked`, the keyed variant T5_F043.md's edge case asks for, written family first. (5) THE
+ORDER: the first-run tour follows, on an overlay card shared with the result tour, then the
+end-to-end run over the real shell, then the closure sequence.
+
+ALTERNATIVES: a term on the tile's label beside the tile's own tooltip, rejected because one hover
+would open two; a `place` field on every catalog entry, rejected because the key already carries
+the family; `data-term` on the panel's rows, rejected for the audit reason above; opening the panel
+on "?" inside a field, rejected because it would swallow a typed question mark.
+
+HOW TO REVERSE: restore the tile's tooltip and `tabIndex` from `03f77c7f`, delete `detail`, the two
+entries, `termSearch.ts`, `TermPanel.tsx` with its sheet and tests, the shell's listener and mount,
+the Terms button and the wiring test, rename `task.blocked` back, and delete this paragraph.

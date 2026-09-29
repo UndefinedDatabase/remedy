@@ -9,23 +9,20 @@ Nothing in the cockpit is jargon without a hand to hold: one catalog
 explains every term, one component shows it on hover and focus, an audit
 proves no term lacks an entry and no entry is dead, a first-run tour
 introduces the shell, and '?' opens the catalog as a searchable panel
-(`docs/roadmap/features/T5_F043.md`, DECISIONS F043 D1 and D2).
+(`docs/roadmap/features/T5_F043.md`, DECISIONS F043 D1 to D3).
 
 ## Current Step
 
-ROUND 2: book round 1, record DECISION F043 D2, and carry the terms to
-the right panel's cards, the six plain metrics and the graph's SCRUBBED
-badge, with a term inside a button taking no focus and two descendant
-rules of the panel's sheet narrowed to direct children.
+ROUND 3: book round 2, record DECISION F043 D3, move the token and cost
+tiles' breakdown into their labels' terms, and add the '?' panel with its
+search, its Terms button and the place of every entry.
 
 ## Next Steps
 
-1. The token and cost tiles onto the term's tooltip with their breakdown,
-   the estimate basis as the basis golden, and the '?' panel.
-2. The first-run tour on an overlay card shared with the result tour, with
-   skip and never-show kept in local storage.
-3. The end-to-end run over the real shell.
-4. The closure sequence.
+1. The first-run tour on an overlay card shared with the result tour, with
+   skip and never-show kept in local storage, re-launchable from the panel.
+2. The end-to-end run over the real shell.
+3. The closure sequence.
 
 ## Risks
 
