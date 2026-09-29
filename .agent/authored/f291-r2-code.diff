@@ -1,0 +1,22 @@
+diff --git a/packages/orchestration/self_use_generator.py b/packages/orchestration/self_use_generator.py
+index 280b6405b..21de28b9a 100644
+--- a/packages/orchestration/self_use_generator.py
++++ b/packages/orchestration/self_use_generator.py
+@@ -148,7 +148,7 @@ _DOCTOR_PROVENANCE_RE = re.compile(
+ 
+ #: THE PROVENANCE TIER 4 STAMPS ON AN ITEM, and the pattern that reads the targeted
+ #: mark's key back out of it (DECISION F291 D1). The generator's own source spells no
+-#: BLE001 excuse mark (S0): its text is composed from EXCUSE_MARK_WORDS below, never
++#: BLE001 excuse mark: its text is composed from EXCUSE_MARK_WORDS below, never
+ #: written out directly.
+ _EXCUSED_PROVENANCE = "generated (self-use-generator tier 4, excused handler, {key})"
+ _EXCUSED_PROVENANCE_RE = re.compile(
+@@ -170,7 +170,7 @@ EXCUSED_HANDLER_ROOTS = ("packages", "apps", "scripts")
+ #: never drift — a test pins them equal.
+ EXCUSED_HANDLER_MARK = re.compile(r"#\s*noqa:\s*BLE001\b(?P<rest>.*)")
+ 
+-#: THE WORDS THIS GENERATOR COMPOSES ITS OWN TEXT FROM (S0, DECISION F291 D1): this
++#: THE WORDS THIS GENERATOR COMPOSES ITS OWN TEXT FROM (DECISION F291 D1): this
+ #: module's own source spells the BLE001 excuse mark nowhere, so a job's task text and
+ #: its rendered "# <these words>" line are both built from this constant alone.
+ EXCUSE_MARK_WORDS = "noqa: BLE001"
