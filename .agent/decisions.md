@@ -25898,3 +25898,30 @@ rejected because it would leave Tier 5 unexercised by the run-level proof.
 
 HOW TO REVERSE: delete the class and its import of `TASK_APPLIED`, the two documentation passages,
 and this paragraph.
+
+## DECISION F291 D3 — the closure's self-use item SU-037 is landed as its job's own diff with two reviewer tests, because it is T001's first live repair and no test reached the handler it narrowed (2026-09-29)
+
+CONTEXT: Round 2 ran the closure's self-use item `SU-037`, from Tier 4, as job
+`d6d60ea3d586425a`. Its branch `remedy/job-d6d60ea3d586425a` narrows the handler around
+`load_project_constitution` in `apps/cli/commands/brain.py` from `except Exception` with a BLE001
+excuse mark to `except OSError:`, and lowers `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` from
+290 to 289. Measured by the reviewer at `8cd5855d`: `load_project_constitution` in
+`packages/orchestration/project_constitution.py` documents "Never raises" and reads only the
+repository folder; the five tests of `TestConstitutionGuard` in `tests/test_brain_viewer.py` reach
+only the branch for a missing folder, so no test exercises the old handler or the new one; and the
+command table's handler in `apps/cli/grouped.py` turns an error that escapes a command into exit
+code 1 with the error's type and message.
+
+CHOSEN: (1) The job's diff lands byte for byte as the job wrote it. (2) Two tests join
+`TestConstitutionGuard`: a `PermissionError` from the loader still prints the warning, keeps the
+error's own text out of it and writes the viewer; a `RuntimeError` fails the command with exit code
+1 naming that error, prints no warning and writes no viewer. The first fails if the handler is
+narrowed past `OSError`, the second if it goes back to catching everything. (3) `SU-037`'s
+`consumed_by` is set by the closure commit, as precondition 6 orders.
+
+ALTERNATIVES: recording the diff without landing it, rejected because it is T001's first repair and
+the feature's own proof that a Tier 4 job is worth running; landing it without a test, rejected
+because no test reached the handler either way and the narrowing would stand unguarded.
+
+HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and `MAX_EXCUSED`
+to 290, delete the two tests, and delete this paragraph.
