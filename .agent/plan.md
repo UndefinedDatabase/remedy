@@ -7,22 +7,21 @@ Branch: feature/f291-self-use-sources-v2, cut from `main` at
 
 Give the self-use generator two sources that almost always have real work,
 so a closure's self-use reading is rarely "queue exhausted"
-(`docs/roadmap/features/T5_F291.md`, DECISION F291 D1).
+(`docs/roadmap/features/T5_F291.md`, DECISIONS F291 D1 and D2).
 
 ## Current Step
 
-ROUND 1: claim F291, re-head the live review record, book F042's round 11,
-record DECISION F291 D1, and land T001 (Tier 4, the excused blind
-handlers) and T002 (Tier 5, the test-less modules) against the reviewer's
-tests, with the generator's half of T003.
+ROUND 2: book round 1, record DECISION F291 D2, land the run half of T003
+and the documentation of both tiers, and start the closure sequence: the
+checklist consolidation, the Built State and the closure's self-use run.
 
 ## Next Steps
 
-1. The run half of T003: a Tier 4 item run to the approval gate under the
-   default budget by a test, and both tiers documented in
-   `docs/system/self-use-track-v1.md` and the closure protocol.
-2. The closure sequence: Built State, the self-use run, the one full suite,
-   the evidence bundle and the pull request.
+1. The integration gate: land or record the self-use run's diff and run
+   the one full suite.
+2. The evidence bundle and the review package.
+3. The closing round: STATUS, README, the ledger's rotation and the pull
+   request.
 
 ## Risks
 

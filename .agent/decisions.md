@@ -25863,3 +25863,38 @@ HOW TO REVERSE: delete the two tiers, their constants, `default_source_root` and
 keyword from `packages/orchestration/self_use_generator.py`, the tests this round added to
 `tests/orchestration/test_self_use_generator.py` and the root line of its autouse fixture, and this
 paragraph.
+
+## DECISION F291 D2 — T003's run half is a runner test in which three requests on a queue dry for tiers 0 to 3 give three different items, the first a Tier 4 item run to the approval gate under the default budget by stand-in providers; the two sources are documented, and the closure sequence starts in the same round with the live self-use run (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F291.md` T003 asks that three consecutive requests on a queue
+exhausted for tiers 0 to 3 produce three different items, that a closure's self-use reading is
+never "exhausted" while any tier has an item, and that the first item runs to the approval gate
+within the default budget. Round 1 landed the generator's half. Measured by the reviewer at
+`045de81f`: `run_next_self_use_item` hands `run_job` a provider-call cap of `_MAX_PROVIDER_CALLS`,
+8, a cost cap of `_MAX_COST_USD`, 6.00, and one task when no argument overrides them;
+`TestThreeConsecutiveItemsOnAnEmptyLedger` in `tests/orchestration/test_self_use_runner.py` is
+F289's proof of the same shape for tiers 2 and 3, run with no repair round; and
+`generate_self_use_item()` over the real queue, ledger and tree answers `SU-037`, from Tier 4, on
+line 132 of `apps/cli/commands/brain.py`, because tiers 0 to 3 have nothing to offer.
+
+CHOSEN: (1) A new class in `tests/orchestration/test_self_use_runner.py` drives three requests
+through `generate_and_append_if_empty` over a fixture source tree holding one module with two
+excused handlers, with tiers 2 and 3 stubbed empty as the generator's own tests stub them, an
+empty ledger and a missing order. The first item is run through `run_next_self_use_item` with
+stand-in providers and no budget, task-cap or repair-round argument; it must reach
+`JOB_COMPLETED` with its one task at `TASK_APPLIED`, applied to the job's own workspace, while
+`run_job` is handed the default caps and the run's calls stay inside the provider-call cap. The
+three items are the two handlers and then the module. (2) The two sources are described in
+`docs/system/self-use-track-v1.md` and in precondition 6 of `docs/roadmap/STATUS_closure_protocol.md`.
+(3) F291's closure sequence starts in this round with the checklist consolidation, the Built State
+and the closure's self-use run; the next round lands or records that run's diff and runs the one
+full suite. (4) The round drops the two citations of the step block's clause label `S0` from the
+generator's comments.
+
+ALTERNATIVES: `repair_rounds=0` as F289's test passes it, rejected because the clause names the
+default budget; a live provider call inside the test, rejected because the suite makes no provider
+call (R-1089) and the closure's own run is that reading; a fixture tree with three handlers,
+rejected because it would leave Tier 5 unexercised by the run-level proof.
+
+HOW TO REVERSE: delete the class and its import of `TASK_APPLIED`, the two documentation passages,
+and this paragraph.
