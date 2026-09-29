@@ -1,0 +1,373 @@
+diff --git a/apps/ui/src/api/terminology.test.ts b/apps/ui/src/api/terminology.test.ts
+new file mode 100644
+index 000000000..a96e28c5c
+--- /dev/null
++++ b/apps/ui/src/api/terminology.test.ts
+@@ -0,0 +1,193 @@
++// F043 T001 — the explanation catalog's own tests (DECISION F043 D1): the shape of every entry,
++// the anchor each entry keeps to the file that defines what it explains, the whole key set, and
++// the spot goldens T5_F043.md's Acceptance names.
++import { describe, expect, it } from "vitest";
++import { TERM_BODY_MAX_CHARS, TERM_CATALOG, TERM_KEY_PATTERN, termEntry } from "./terminology";
++
++// `node:fs` and `node:url` are reached through a dynamic import whose specifier is a variable,
++// as `costMetric.test.ts` does, because the app's tsconfig carries no Node types.
++const FS_MODULE = "node:fs";
++const URL_MODULE = "node:url";
++type FsModule = { readFileSync: (path: string, encoding: string) => string };
++type UrlModule = { fileURLToPath: (url: URL) => string };
++
++/** A file's text, by its path from the repository root, which is four levels above this file. */
++async function repoFile(relative: string): Promise<string> {
++  const fs = (await import(FS_MODULE)) as FsModule;
++  const url = (await import(URL_MODULE)) as UrlModule;
++  return fs.readFileSync(url.fileURLToPath(new URL(`../../../../${relative}`, import.meta.url)), "utf8");
++}
++
++/** Runs of white space read as one space, so an anchor matches across a wrapped line. */
++function flatten(text: string): string {
++  return text.replace(/\s+/g, " ");
++}
++
++describe("the explanation catalog's entries", () => {
++  it("holds exactly the terms the shipped surfaces render", () => {
++    expect(Object.keys(TERM_CATALOG).sort()).toEqual([
++      "phase.build",
++      "phase.finalized",
++      "phase.job",
++      "phase.planning",
++      "phase.review",
++      "phase.test",
++      "status.delayed",
++      "status.idle",
++      "status.live",
++      "status.reconnecting",
++      "status.replay",
++    ]);
++  });
++
++  it("keys every entry by dotted lowercase words", () => {
++    for (const key of Object.keys(TERM_CATALOG)) {
++      expect(key, key).toMatch(TERM_KEY_PATTERN);
++    }
++    expect("status").not.toMatch(TERM_KEY_PATTERN);
++    expect("Status.live").not.toMatch(TERM_KEY_PATTERN);
++    expect("status..live").not.toMatch(TERM_KEY_PATTERN);
++  });
++
++  it("gives every entry a title, a bounded body, a source path and an anchor", () => {
++    for (const [key, entry] of Object.entries(TERM_CATALOG)) {
++      expect(entry.title.trim(), key).not.toBe("");
++      expect(entry.body.trim(), key).not.toBe("");
++      expect(entry.body.length, key).toBeLessThanOrEqual(TERM_BODY_MAX_CHARS);
++      expect(entry.anchor.trim(), key).not.toBe("");
++      expect(entry.source, key).toMatch(/^[a-z][A-Za-z0-9_./-]*$/);
++      expect(entry.source.split("/"), key).not.toContain("..");
++    }
++    expect(TERM_BODY_MAX_CHARS).toBe(240);
++  });
++
++  it("anchors every entry to a phrase its source file still states", async () => {
++    const lost: string[] = [];
++    for (const [key, entry] of Object.entries(TERM_CATALOG)) {
++      const text = flatten(await repoFile(entry.source));
++      if (!text.includes(flatten(entry.anchor))) lost.push(`${key}: ${entry.source}`);
++    }
++    expect(lost).toEqual([]);
++  });
++
++  it("reads an anchor across a wrapped line and refuses one the file does not state", async () => {
++    const text = flatten(await repoFile("docs/roadmap/features/T5_F008.md"));
++    expect(text.includes(flatten("labels itself visibly\n(\"delayed\") instead"))).toBe(true);
++    expect(text.includes(flatten("labels itself quietly (\"delayed\")"))).toBe(false);
++  });
++});
++
++describe("the spot goldens", () => {
++  it("explains the delayed transport as T5_F008 defines it", () => {
++    expect(termEntry("status.delayed")).toEqual({
++      title: "Delayed",
++      body: "The live connection is not available, so the cockpit asks for new events at intervals instead. What you see can lag behind the job.",
++      source: "docs/roadmap/features/T5_F008.md",
++      anchor: "labels itself visibly (\"delayed\") instead of pretending to be live",
++    });
++  });
++
++  it("explains the replay pill as T5_F024 defines it", () => {
++    expect(termEntry("status.replay")).toEqual({
++      title: "Replay",
++      body: "You are looking at an earlier moment of this job, chosen on the timeline. Press LIVE on the timeline to return to the present.",
++      source: "docs/roadmap/features/T5_F024.md",
++      anchor: "the pill says REPLAY",
++    });
++  });
++
++  it("explains the finalized phase as T5_F024 defines it", () => {
++    expect(termEntry("phase.finalized")).toEqual({
++      title: "Finalized",
++      body: "Reached when every task has passed, and held only while that stays true.",
++      source: "docs/roadmap/features/T5_F024.md",
++      anchor: "holds only while every task has passed",
++    });
++  });
++});
++
++describe("the whole catalog", () => {
++  it("words every entry exactly as DECISION F043 D1's first round wrote it", () => {
++    expect(TERM_CATALOG).toEqual({
++      "status.live": {
++        title: "Live",
++        body: "This job is running, and the cockpit receives its events the moment they happen.",
++        source: "docs/roadmap/features/T5_F008.md",
++        anchor: "(live | reconnecting | delayed)",
++      },
++      "status.idle": {
++        title: "Idle",
++        body: "No part of this job is running right now. The cockpit shows the job as it last stood.",
++        source: "apps/ui/src/cockpitLogic.ts",
++        anchor: "return dashboard.live.running === true;",
++      },
++      "status.reconnecting": {
++        title: "Reconnecting",
++        body: "The live connection dropped and the cockpit is opening it again. Events that arrive meanwhile are not lost: they are replayed once it is back.",
++        source: "docs/roadmap/features/T5_F008.md",
++        anchor: "resume replays exactly the missed span",
++      },
++      "status.delayed": {
++        title: "Delayed",
++        body: "The live connection is not available, so the cockpit asks for new events at intervals instead. What you see can lag behind the job.",
++        source: "docs/roadmap/features/T5_F008.md",
++        anchor: "labels itself visibly (\"delayed\") instead of pretending to be live",
++      },
++      "status.replay": {
++        title: "Replay",
++        body: "You are looking at an earlier moment of this job, chosen on the timeline. Press LIVE on the timeline to return to the present.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "the pill says REPLAY",
++      },
++      "phase.job": {
++        title: "Job",
++        body: "The job phase begins with the job's first event.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "Job begins at the ledger's first row",
++      },
++      "phase.planning": {
++        title: "Planning",
++        body: "The planning phase begins when planning starts.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "sends the three `planning_*` kinds to Planning",
++      },
++      "phase.build": {
++        title: "Build",
++        body: "The build phase begins when the first task run starts.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "`task_run_started` and the two `builder_*` kinds to Build",
++      },
++      "phase.test": {
++        title: "Test",
++        body: "The test phase begins when the first test or verification runs.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "the `test_run_*` and `verification_*` kinds to Test",
++      },
++      "phase.review": {
++        title: "Review",
++        body: "The review phase begins when the first review verdict arrives.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "a `task_round_completed` carrying a reviewer's verdict to Review",
++      },
++      "phase.finalized": {
++        title: "Finalized",
++        body: "Reached when every task has passed, and held only while that stays true.",
++        source: "docs/roadmap/features/T5_F024.md",
++        anchor: "holds only while every task has passed",
++      },
++    });
++  });
++});
++
++describe("termEntry", () => {
++  it("answers the entry a key names", () => {
++    expect(termEntry("status.live")?.title).toBe("Live");
++  });
++
++  it("answers null for a key the catalog lacks, an inherited name included", () => {
++    expect(termEntry("status.unknown")).toBeNull();
++    expect(termEntry("toString")).toBeNull();
++    expect(termEntry("constructor")).toBeNull();
++    expect(termEntry("")).toBeNull();
++  });
++});
+diff --git a/apps/ui/src/api/terminologyAudit.test.ts b/apps/ui/src/api/terminologyAudit.test.ts
+new file mode 100644
+index 000000000..77478d7b6
+--- /dev/null
++++ b/apps/ui/src/api/terminologyAudit.test.ts
+@@ -0,0 +1,43 @@
++// F043 T002 — the term audit's two readings over fixed inputs (DECISION F043 D1).
++import { describe, expect, it } from "vitest";
++import { auditTermUse, collectDataTerms } from "./terminologyAudit";
++
++describe("collectDataTerms", () => {
++  it("reads every data-term value once, sorted", () => {
++    const markup = '<div><span class="a" data-term="status.live">LIVE</span>'
++      + '<span data-term="phase.job">Job</span><span data-term="status.live">again</span></div>';
++    expect(collectDataTerms(markup)).toEqual(["phase.job", "status.live"]);
++  });
++
++  it("does not read the tooltip's own data-term-tip attribute", () => {
++    expect(collectDataTerms('<span data-term-tip="status.live" role="tooltip">x</span>')).toEqual([]);
++  });
++
++  it("reads an attribute written before or after others, and nothing from text", () => {
++    const markup = '<span data-term="phase.test" tabindex="0">data-term="phase.fake"</span>'
++      + '<span tabindex="0" data-term="phase.build">b</span>';
++    expect(collectDataTerms(markup)).toEqual(["phase.build", "phase.test"]);
++  });
++
++  it("answers nothing for markup with no term", () => {
++    expect(collectDataTerms("<p>plain</p>")).toEqual([]);
++  });
++});
++
++describe("auditTermUse", () => {
++  it("is clean when the used terms and the catalog keys are the same set", () => {
++    expect(auditTermUse(["b", "a"], ["a", "b"])).toEqual({ missing: [], dead: [] });
++  });
++
++  it("names a used term the catalog lacks as missing", () => {
++    expect(auditTermUse(["a", "z.new", "b"], ["a", "b"])).toEqual({ missing: ["z.new"], dead: [] });
++  });
++
++  it("names a catalog key nothing uses as dead", () => {
++    expect(auditTermUse(["a"], ["c.old", "a", "b.old"])).toEqual({ missing: [], dead: ["b.old", "c.old"] });
++  });
++
++  it("reports both directions at once", () => {
++    expect(auditTermUse(["x", "a"], ["a", "y"])).toEqual({ missing: ["x"], dead: ["y"] });
++  });
++});
+diff --git a/apps/ui/src/components/term/termAudit.test.ts b/apps/ui/src/components/term/termAudit.test.ts
+new file mode 100644
+index 000000000..40bcbf284
+--- /dev/null
++++ b/apps/ui/src/components/term/termAudit.test.ts
+@@ -0,0 +1,119 @@
++// F043 T001 and T002 — THE TERM AUDIT over rendered surfaces (DECISION F043 D1). The surfaces
++// are rendered with `react-dom/server`'s `renderToStaticMarkup`, the one DOM surface this
++// repository's vitest config reaches (a node environment with no DOM library, as
++// `evidenceChatAudit.test.ts` records), and their `data-term` attributes are read back with the
++// audit's own reader. Both directions must be clean over the real components, and each drift
++// fixture must turn its direction red. Hover, focus and placement need a browser; the round's
++// render harness proves them.
++import { createElement } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { describe, expect, it } from "vitest";
++import { TERM_CATALOG } from "../../api/terminology";
++import { auditTermUse, collectDataTerms } from "../../api/terminologyAudit";
++import { LiveStatusPill } from "../panels/LiveStatusPill";
++import { PhaseTimeline } from "../timeline/PhaseTimeline";
++import { TIMELINE_PHASES } from "../timeline/phaseMapping";
++import { PHASE_LABELS } from "../timeline/timelineView";
++import type { TimelineScrub } from "../timeline/useTimelineScrub";
++import { Term } from "./Term";
++
++/** A scrubber over an empty ledger, LIVE: every phase shows its label and nothing else moves. */
++const EMPTY_SCRUB: TimelineScrub = {
++  state: { mode: "live", position: -1, head: -1, queued: 0 },
++  view: {
++    segments: TIMELINE_PHASES.map((phase) => ({
++      phase, label: PHASE_LABELS[phase], state: "future", compact: false, fill: 0,
++    })),
++    glyphs: [],
++    readout: "No events yet",
++  },
++  whole: { current: "job", spans: [], lastSeq: null },
++  stops: [],
++  scrubbedModel: null,
++  notice: null,
++  scrubTo: () => {},
++  onKey: () => false,
++  goLive: () => {},
++};
++
++/** Every surface this feature has put a term on, in each state that shows a different term. */
++function renderSurfaces(): string {
++  return [
++    renderToStaticMarkup(createElement(LiveStatusPill, { live: true })),
++    renderToStaticMarkup(createElement(LiveStatusPill, { live: false })),
++    renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "delayed" })),
++    renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "reconnecting" })),
++    renderToStaticMarkup(createElement(LiveStatusPill, { live: true, replay: true })),
++    renderToStaticMarkup(createElement(PhaseTimeline, { scrub: EMPTY_SCRUB })),
++  ].join("\n");
++}
++
++describe("the Term component's markup", () => {
++  it("writes its key, takes keyboard focus, and shows no tooltip until asked", () => {
++    const markup = renderToStaticMarkup(createElement(Term, { term: "status.live", children: "LIVE" }));
++    expect(markup).toMatch(/^<span [^>]*data-term="status\.live"[^>]*>LIVE<\/span>$/);
++    expect(markup).toContain('tabindex="0"');
++    expect(markup).not.toContain('role="tooltip"');
++    expect(markup).not.toContain("aria-describedby");
++  });
++
++  it("still writes the key of a term the catalog lacks, and offers it no focus", () => {
++    const markup = renderToStaticMarkup(createElement(Term, { term: "fixture.unlisted", children: "x" }));
++    expect(collectDataTerms(markup)).toEqual(["fixture.unlisted"]);
++    expect(markup).not.toContain("tabindex");
++  });
++});
++
++describe("the term audit over the shipped surfaces", () => {
++  it("finds exactly the terms the surfaces are built with", () => {
++    expect(collectDataTerms(renderSurfaces())).toEqual([
++      "phase.build",
++      "phase.finalized",
++      "phase.job",
++      "phase.planning",
++      "phase.review",
++      "phase.test",
++      "status.delayed",
++      "status.idle",
++      "status.live",
++      "status.reconnecting",
++      "status.replay",
++    ]);
++  });
++
++  it("is clean in both directions against the catalog", () => {
++    expect(auditTermUse(collectDataTerms(renderSurfaces()), Object.keys(TERM_CATALOG))).toEqual({
++      missing: [],
++      dead: [],
++    });
++  });
++
++  it("puts each pill label and each phase label inside its term", () => {
++    const pill = renderToStaticMarkup(createElement(LiveStatusPill, { live: true, replay: true }));
++    expect(pill).toMatch(/<span [^>]*data-term="status\.replay"[^>]*>REPLAY<\/span>/);
++    const timeline = renderToStaticMarkup(createElement(PhaseTimeline, { scrub: EMPTY_SCRUB }));
++    for (const phase of TIMELINE_PHASES) {
++      const pattern = new RegExp(`data-term="phase\\.${phase}"[^>]*><span[^>]*>${PHASE_LABELS[phase]}</span></span>`);
++      expect(timeline, phase).toMatch(pattern);
++    }
++    expect(timeline).not.toContain(" title=\"");
++  });
++});
++
++describe("the drift fixtures", () => {
++  it("a term rendered without a catalog entry turns the first direction red", () => {
++    const drifted = `${renderSurfaces()}\n${renderToStaticMarkup(createElement(Term, { term: "fixture.unlisted", children: "new" }))}`;
++    expect(auditTermUse(collectDataTerms(drifted), Object.keys(TERM_CATALOG))).toEqual({
++      missing: ["fixture.unlisted"],
++      dead: [],
++    });
++  });
++
++  it("a catalog key no surface renders turns the second direction red", () => {
++    const keys = [...Object.keys(TERM_CATALOG), "fixture.dead"];
++    expect(auditTermUse(collectDataTerms(renderSurfaces()), keys)).toEqual({
++      missing: [],
++      dead: ["fixture.dead"],
++    });
++  });
++});
