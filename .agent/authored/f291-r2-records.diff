@@ -1,0 +1,71 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 6c5ff0297..fa42ec0db 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25863,3 +25863,38 @@ HOW TO REVERSE: delete the two tiers, their constants, `default_source_root` and
+ keyword from `packages/orchestration/self_use_generator.py`, the tests this round added to
+ `tests/orchestration/test_self_use_generator.py` and the root line of its autouse fixture, and this
+ paragraph.
++
++## DECISION F291 D2 — T003's run half is a runner test in which three requests on a queue dry for tiers 0 to 3 give three different items, the first a Tier 4 item run to the approval gate under the default budget by stand-in providers; the two sources are documented, and the closure sequence starts in the same round with the live self-use run (2026-09-29)
++
++CONTEXT: `docs/roadmap/features/T5_F291.md` T003 asks that three consecutive requests on a queue
++exhausted for tiers 0 to 3 produce three different items, that a closure's self-use reading is
++never "exhausted" while any tier has an item, and that the first item runs to the approval gate
++within the default budget. Round 1 landed the generator's half. Measured by the reviewer at
++`045de81f`: `run_next_self_use_item` hands `run_job` a provider-call cap of `_MAX_PROVIDER_CALLS`,
++8, a cost cap of `_MAX_COST_USD`, 6.00, and one task when no argument overrides them;
++`TestThreeConsecutiveItemsOnAnEmptyLedger` in `tests/orchestration/test_self_use_runner.py` is
++F289's proof of the same shape for tiers 2 and 3, run with no repair round; and
++`generate_self_use_item()` over the real queue, ledger and tree answers `SU-037`, from Tier 4, on
++line 132 of `apps/cli/commands/brain.py`, because tiers 0 to 3 have nothing to offer.
++
++CHOSEN: (1) A new class in `tests/orchestration/test_self_use_runner.py` drives three requests
++through `generate_and_append_if_empty` over a fixture source tree holding one module with two
++excused handlers, with tiers 2 and 3 stubbed empty as the generator's own tests stub them, an
++empty ledger and a missing order. The first item is run through `run_next_self_use_item` with
++stand-in providers and no budget, task-cap or repair-round argument; it must reach
++`JOB_COMPLETED` with its one task at `TASK_APPLIED`, applied to the job's own workspace, while
++`run_job` is handed the default caps and the run's calls stay inside the provider-call cap. The
++three items are the two handlers and then the module. (2) The two sources are described in
++`docs/system/self-use-track-v1.md` and in precondition 6 of `docs/roadmap/STATUS_closure_protocol.md`.
++(3) F291's closure sequence starts in this round with the checklist consolidation, the Built State
++and the closure's self-use run; the next round lands or records that run's diff and runs the one
++full suite. (4) The round drops the two citations of the step block's clause label `S0` from the
++generator's comments.
++
++ALTERNATIVES: `repair_rounds=0` as F289's test passes it, rejected because the clause names the
++default budget; a live provider call inside the test, rejected because the suite makes no provider
++call (R-1089) and the closure's own run is that reading; a fixture tree with three handlers,
++rejected because it would leave Tier 5 unexercised by the run-level proof.
++
++HOW TO REVERSE: delete the class and its import of `TASK_APPLIED`, the two documentation passages,
++and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 4d667fc82..072dd76c6 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -163,3 +163,5 @@ Gate: F042 R9 — the F042 round 9 entry, the closure's second repair round: the
+ Gate: F042 R10 — the F042 round 10 entry, the closure sequence's evidence round: the booking of round 9 with R-1113's resolution, the Built State's closure-suite paragraph, the staging reclaim, the evidence bundle and the review package. VERDICT PASS. Re-derived over `7499ca87`..`b05789d3` by the planner and reviewer of F042's second session: the range, the transport, the package's hash and manifest and the integrity check are the reviewer's own readings, and the bundle's test counts are the worker's, equal to the reviewer's own dry run of the same tool. THE RANGE IS 3 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `6741d636` 397, `cf4d59b7` 20 and `b05789d3` 166; the worker declared no deviation. THE TRANSPORT PROOF: the block and the three payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f042-r10/` and `.remedy-wt/f042-r10-payloads/` byte for byte, and the ledger, the plan and the feature file carry at `cf4d59b7` the same blobs as the reviewer's simulation tree `a2d129d1`. THE RECLAIM: `data reclaim --orphans` read `Would free 0 B in 0 paths` with one refused path, `review_staging.n4o46eq_`, `class_not_job_keyed`, the reviewer's own preview's reading, so `--apply` was rightly skipped. THE BUNDLE: evidence job `f042r10e1001` at the accepted head `cf4d59b7` against the fork point `4e643440`, ancestry and plain counts equal at 91, 823 node ids with 10 deselected by name and none unsafe, pytest `823 passed` at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260929-202000-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer recomputed as `44ad4a56316cdecd648fee40d4351c172b88283b2f3efe6b6d34b5d92cbe5672`, `testzip()` None, and whose `.review_zip_manifest.json` names base `4e643440f26e5d0ca617bca0a922633f34605037`, head `cf4d59b747902cd6aa93c117e0baaa135e299ca9`, 91 commits and `READY_FOR_REVIEW`. All six `integrity check` checks read pass. The open set at `b05789d3` is empty.
+ 
+ Gate: F042 R11 — the F042 round 11 entry, the closing round: the booking of round 10, the ledger's rotation into its archive, F042's acceptance in STATUS with its README counters and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `b05789d3`..`69ceaff7` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `0635a1be` 334, `abe15a65` 8, `411ac6ec` 46 and `69ceaff7` 182; the worker declared no deviation. THE TRANSPORT PROOF: the block and the five payloads, each read from `0635a1be`, equal the reviewer's originals under `.remedy-wt/f042-r11/` and `.remedy-wt/f042-r11-payloads/` byte for byte. THE ACCEPTANCE: at `69ceaff7` F042's STATUS line reads `[x]` with its evidence job, package and SHA-256, the README counts 118 of 291 accepted and Tier 5 at 34 of 36, and `SU-036` in `scripts/self_use_queue.json` is consumed by F042. THE PULL REQUEST: number 298, whose hosted CI run 36612727465 on `69ceaff7` ended `success` in both jobs before the reviewer merged it at the Open PR Gate of F291's first session, as `aa5defde`; all six `integrity check` checks read pass on `aa5defde`. The open set at `69ceaff7` is empty.
++
++Gate: F291 R1 — the F291 round 1 entry, the claim with T001 and T002: F291 claimed, this record re-headed, F042's round 11 booked, DECISION F291 D1, and the self-use generator's Tier 4 and Tier 5 with the generator's half of T003. VERDICT PASS. Re-derived over `aa5defde`..`045de81f` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 8 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `066fdade` 378, `180bd880` 141, `89585893` 399, `edb3f1e8` 109, `fe48ed72` 315, `b4107b97` 376, `508bbb5b` 199 and `045de81f` 183. The worker declared one deviation, which the block allowed for: its own writing of S0 to S6 read 315 insertions and 5 deletions against the reviewer's 249 and 2. THE TRANSPORT PROOF: the block and the four payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f291-r1/` and `.remedy-wt/f291-r1-payloads/` byte for byte, and the five files of C2 and the test file of C4 carry the blobs the reviewer's simulation tree printed. THE CODE matches S0 to S6 and spells no mark; two of its comments cite the block's clause label `S0`, which names nothing a later reader can find, and round 2 drops the label. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `045de81f`, read `668 passed, 1 skipped` at exit 0, the skip the D12 quarantine; `ruff check` passed over the three files; all six `integrity check` checks read pass. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `045de81f`, and all fourteen mutations went red, both controls passing and every restore byte-identical; the worktree was removed and `git worktree list` read 13 lines. The open set at `045de81f` is empty.
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 9a0781e5e..5186e9166 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -401,6 +401,13 @@ end the response with:
+   what the page shows; and two promises of a DECISION that no test could see broken (R-1109 and
+   R-1111) are item 12's red control, which binds a decision's own sentences as it binds a gate. The
+   list stays at 34 items.
++  Consolidated a thirtieth time at F291's closure on 2026-09-29: nothing joined and no two items
++  were merged, because F291 had written no line to `.agent/prose_slips.md` when this pass was made,
++  at its second round: its first round's block was generated from a simulated tree and every worker
++  reading matched it. One lesson that round met is recorded in DECISION F291 D1 rather than here: a
++  module that names a pattern a ratchet counts over its own source must never spell that pattern,
++  which is item 7's reading of the guards that count a string over a whole file. The list stays at
++  34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

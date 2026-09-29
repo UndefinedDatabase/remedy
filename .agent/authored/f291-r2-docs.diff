@@ -1,0 +1,96 @@
+diff --git a/docs/roadmap/STATUS_closure_protocol.md b/docs/roadmap/STATUS_closure_protocol.md
+index a4aef1c7a..7f76ad9d1 100644
+--- a/docs/roadmap/STATUS_closure_protocol.md
++++ b/docs/roadmap/STATUS_closure_protocol.md
+@@ -39,8 +39,10 @@
+    the session calls
+    `packages.orchestration.self_use_generator.generate_and_append_if_empty`
+    FIRST (F258 T001) — its Tier 1 (the oldest open Low/Medium finding in
+-   `.agent/live_review.md`) supplies one in practice, since the ledger rarely
+-   runs dry. Only once THAT also answers `None` is the track truly
++   `.agent/live_review.md`) supplies one when the ledger has one, and its
++   Tiers 4 and 5 (an excused blind handler the BLE001 ratchet counts, and a
++   module no test file imports; F291, DECISION F291 D1) almost always do when
++   every tier above them is dry. Only once THAT also answers `None` is the track truly
+    exhausted, not blocked: record `self-use NONE (queue exhausted)` in the
+    handback and close normally, because a genuinely empty queue with no
+    eligible source asks the operator to curate more rather than stopping a
+diff --git a/docs/roadmap/features/T5_F291.md b/docs/roadmap/features/T5_F291.md
+index 381addc65..3142daec6 100644
+--- a/docs/roadmap/features/T5_F291.md
++++ b/docs/roadmap/features/T5_F291.md
+@@ -52,3 +52,38 @@ tiers above them.
+ ## Do not touch
+ Tiers 0 to 3 and their order; the fence over `.agent/` that a self-use run carries (DECISION
+ amend0926-decisions-selfuse D4); the ratchet's rule that the count may only go down.
++
++## Built State (F291, 2026-09-29)
++
++What exists on disk at the close of F291, built on `feature/f291-self-use-sources-v2`, cut from
++`main` at `aa5defde`. Every DECISION named lives in `.agent/decisions.md`; every round's verdict in
++`.agent/live_review.md` or, once rotated, its archive.
++
++**T001 — Tier 4, the excused blind handlers.** `packages/orchestration/self_use_generator.py` reads
++the roots and the mark pattern `tests/test_ble001_ratchet.py` counts, `EXCUSED_HANDLER_ROOTS` and
++`EXCUSED_HANDLER_MARK`, a test pinning both equal to the ratchet's own. It offers the first mark in
++file-path order and then line order that no queue entry targets; "oldest" is read as first in the
++file, because the generator reads files and never git history. An item's key is the file, the
++ordinal of that line's text among identical lines of the file, and the line itself, so a mark that
++only moves keeps its key and two identical handlers are two items. The job's one task narrows the
++handler, deletes its mark and lowers `MAX_EXCUSED` by one in the same change. The module never spells
++the mark itself: its text is composed from `EXCUSE_MARK_WORDS`, and a test holds that no line of the
++module matches the ratchet's pattern (DECISION F291 D1).
++
++**T002 — Tier 5, the test-less modules.** The same module offers the first module, in path order
++under `packages/` and then `apps/cli/`, that is not a package's `__init__.py`, defines a top-level
++function or class, and whose dotted name no `import` statement in any file under `tests/` binds. Its
++job names the functions and classes to test, the public ones or every one when none is public, since
++all fifteen such modules measured at the claim define only private names, and asks for a test file
++named after the module. Both tiers come after Tier 3, Tier 4 first; both read files under
++`default_source_root()`, which `generate_self_use_item` and `generate_and_append_if_empty` accept as
++`source_root`; both screen what they copy with `RETIRED_WORD`; and both raise
++`SelfUseGenerationError` on a file they cannot read or parse (DECISION F291 D1).
++
++**T003 — the requirement.** `tests/orchestration/test_self_use_generator.py` holds that three requests
++on a queue dry for tiers 0 to 3 give three different items and then none, and
++`tests/orchestration/test_self_use_runner.py` that the first of three such items, a Tier 4 item, runs
++through `run_next_self_use_item` to the approval gate under the default budget, its one task applied
++to the job's own workspace and its calls inside the default provider-call cap (DECISION F291 D2). The
++closure's own self-use run is the live reading of the same clause. `docs/system/self-use-track-v1.md`
++and precondition 6 of `docs/roadmap/STATUS_closure_protocol.md` describe the two new sources.
+diff --git a/docs/system/self-use-track-v1.md b/docs/system/self-use-track-v1.md
+index 456b305ab..6fd1e64c2 100644
+--- a/docs/system/self-use-track-v1.md
++++ b/docs/system/self-use-track-v1.md
+@@ -17,7 +17,9 @@
+ > `packages/orchestration/self_use_findings.py` now reads a run's own
+ > `JobPlan` and answers its defects verbatim, for the closing session to
+ > register as normal findings (T003); F258's three T-slices are now all
+-> built.
++> built. **Update (2026-09-29, F291):** the generator gained two last sources,
++> the excused blind handlers and the modules no test imports, described under
++> "Who runs it, and on what budget".
+ 
+ Remedy is used on Remedy on a schedule that cannot be skipped. This page is
+ where to look for the two file formats involved and for the rule that makes the
+@@ -113,6 +115,20 @@ the operator or on another feature. A finding held that way stays in the ledger
+ for a session to pick up by hand; it is no longer handed to a builder who cannot
+ finish it.
+ 
++When the finding ledger, the documentation-staleness catalog and `remedy doctor
++core` all have nothing to offer, two more sources almost always do (F291,
++DECISION F291 D1). The first is an excused blind exception handler: a line
++carrying the BLE001 excuse mark that `tests/test_ble001_ratchet.py` counts, the
++first in file order that no queue entry already names. Its job narrows that
++handler to the errors it really expects, deletes the mark, and lowers the
++ratchet's `MAX_EXCUSED` by one in the same change. The second is a module under
++`packages/` or `apps/cli/` that no test file imports; its job writes that
++module's first tests, naming the functions and classes to cover. Both come last
++because they would otherwise crowd out the sources above them, and a queue entry
++remembers the handler or the module it names, so neither is offered twice. With
++them, a close reads "queue exhausted" only once every such handler and module
++has been offered.
++
+ A self-use run repairs code, never bookkeeping. The job it runs carries a deny
+ fence over `.agent/` (`JobFences` on the planned job, set by
+ `run_next_self_use_item`, because a job file cannot declare one), and `run_job`
