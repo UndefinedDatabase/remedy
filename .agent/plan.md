@@ -11,19 +11,17 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 4: book round 3 with R-1108 and R-1109, record DECISION F042 D4,
-and land T003's home grid: the home face, the card rules, the grid with
-its pages, the single-project skip and the empty invite, "All projects",
-and the repairs of R-1108 and R-1109, proved in a real browser.
+ROUND 5: book round 4 with the resolutions of R-1108 and R-1109 and the
+registration of R-1110, record DECISION F042 D5, and land deep links
+pinned across projects, the dashboard's project line re-pointed, the dock's
+way home at every width, and the repair of R-1110, in a real browser.
 
 ## Next Steps
 
-1. Deep links across projects with the zoom's focus, the dashboard's old
-   project summary re-pointed, a way home at every width, and the
-   end-to-end run over a real server.
+1. The end-to-end run over a real UI server with two registered projects.
 2. The closure sequence.
 
 ## Risks
 
-Open findings: 3 (R-1107 owned by F290; R-1108 and R-1109 owned by F042,
-repaired this round).
+Open findings: 2 (R-1107 owned by F290; R-1110 owned by F042, repaired
+this round).

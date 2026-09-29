@@ -25678,3 +25678,36 @@ HOW TO REVERSE: delete `homeGrid.ts` and its test and `components/home/`, restor
 `cockpitAddress.ts` and its test, `ProjectProvider.tsx`, `ProjectSwitcher.tsx` with its sheet,
 `RemedyApp.tsx` and `tests/ui_contracts/test_project_switcher_wiring.py` from `9d45d749`, and
 delete this paragraph.
+
+## DECISION F042 D5 — deep links across projects are the address the zoom already writes, now pinned to keep the project; the dashboard's project line reads the job's own project and counts `scoped_jobs`; the dock's Overview opens the home grid at every width that shows the rail; and R-1110 is repaired (2026-09-29)
+
+CONTEXT: DECISION F042 D4 (7) orders deep links across projects with the zoom's focus, the
+dashboard's old project summary re-pointed, a way home the rail's hidden copy block no longer
+hides, and the end-to-end run. Measured by the reviewer at `1d5a64b3`: `searchWithZoom` in
+`apps/ui/src/components/graph/zoomDeepLink.ts` deletes only its own three parameters and keeps
+every other one, so an address carrying `project`, `job` and a focus already restores all three,
+and no test says so; `_build_project_summary_section` in `packages/orchestration/ui_server.py`
+reads `job.metadata["project_id"]`, which a job created since F148 does not carry, and counts the
+registry's `job_ids`, so the right panel's "Project: N jobs" line is absent for such a job; below
+1280 pixels the brand rail hides its copy block and the switcher with it, while `SideIconDock`'s
+seven buttons stay and do nothing on a click; R-1110 is open against the grid's result line.
+
+CHOSEN: (1) DEEP LINKS need no new code: a test pins that the zoom's writer keeps the project
+and that the address and the zoom link both read back from one search. (2) THE DASHBOARD'S
+PROJECT LINE reads `job.project_id` before the legacy metadata key and counts `scoped_jobs` over
+that project with F148's rule, so it agrees with the project's card; its shape is unchanged. (3)
+THE WAY HOME: the dock's first slot, Overview, opens the home grid through the provider's
+`goHome` and says "All projects" in its tooltip; the component spec's seven slots are kept and no
+route is invented. Below 760 pixels the rail itself is hidden, and that width belongs to F201's
+mobile view. (4) R-1110: a result with no state keeps the sheet's transparent border. (5) THE
+ORDER: the next round is the end-to-end run over a real UI server with two registered projects,
+and the closure sequence follows it.
+
+ALTERNATIVES: a new "Projects" slot in the dock, rejected because the component spec fixes seven
+slots and says to invent no route; a home link in the command bar, rejected because the bar is
+the task search and the next action; leaving the dashboard's project line on the registry's job
+list, rejected because the card beside it would count different jobs for the same project.
+
+HOW TO REVERSE: restore `SideIconDock.tsx`, `HomeGrid.tsx` and `_build_project_summary_section`
+from `1d5a64b3`, delete the added cases from `zoomDeepLink.test.ts` and
+`tests/ui_server/test_projects_route.py`, and delete this paragraph.
