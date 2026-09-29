@@ -273,6 +273,14 @@
       "job_markdown": "# Job: Fix stale documentation: config_cli_table_complete in docs/guides/remedy-toml-user-guide.md\n\n## Task 1\nThe documentation-staleness check `config_cli_table_complete` found a claim in `docs/guides/remedy-toml-user-guide.md` that the shipped code contradicts.\n\nClaim: the CLI commands table never documents the `config` subcommand `show`\nShipped truth: the `config` subcommand `show` ships\n\nEdit `docs/guides/remedy-toml-user-guide.md` so that it matches the shipped truth. Do not change code to match the document, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The staleness check `config_cli_table_complete` no longer reports this claim for `docs/guides/remedy-toml-user-guide.md`.\n- No file under `.agent/` is changed by this task.\n",
       "consumed_by": "F288",
       "provenance": "generated (self-use-generator tier 2, doc staleness, config_cli_table_complete:docs/guides/remedy-toml-user-guide.md:the CLI commands table never documents the `config` subcommand `show`)"
+    },
+    {
+      "id": "SU-035",
+      "title": "Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md",
+      "why": "backticks the config key `story.html`",
+      "job_markdown": "# Job: Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md\n\n## Task 1\nThe documentation-staleness check `doc_config_keys` found a claim in `docs/guides/story-user-guide-v1.md` that the shipped code contradicts.\n\nClaim: backticks the config key `story.html`\nShipped truth: `story.html` is not a registered config key\n\nEdit `docs/guides/story-user-guide-v1.md` so that it matches the shipped truth. Do not change code to match the document, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The staleness check `doc_config_keys` no longer reports this claim for `docs/guides/story-user-guide-v1.md`.\n- No file under `.agent/` is changed by this task.\n",
+      "consumed_by": "",
+      "provenance": "generated (self-use-generator tier 2, doc staleness, doc_config_keys:docs/guides/story-user-guide-v1.md:backticks the config key `story.html`)"
     }
   ]
 }
