@@ -15,7 +15,6 @@ import subprocess
 import threading
 from datetime import datetime, timezone
 from http.client import HTTPConnection
-from uuid import uuid4
 
 import pytest
 
@@ -108,7 +107,8 @@ class TestProjectRoutes:
         assert body["last_result"]["title"] == "beta job"
         assert body["jobs"]["total"] == 1
 
-    @pytest.mark.parametrize("name", ["gamma", str(uuid4())])
+    # R-1112: a fixed uuid; a fresh uuid4() here gave each xdist worker its own test id.
+    @pytest.mark.parametrize("name", ["gamma", "3f1c9a52-8d4e-4b7a-9c61-2e5f0d8a7b14"])
     def test_an_unknown_project_is_404(self, name):
         status, _, body = self._get(f"/api/projects/{name}/summary?token={{token}}")
         assert (status, body) == (404, {"error": "project not found"})
