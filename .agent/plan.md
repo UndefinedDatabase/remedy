@@ -12,16 +12,16 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 4: book round 3 and record DECISION F041 D4, then land the door's
-preview commands, the UI server's preview worker with its revalidation and
-idle stop, the `preview` view that shows a link only while live, and the
-`preview.idle_ttl_seconds` key.
+ROUND 5: book round 4 and record DECISION F041 D5, then land T003's
+Results panel: the pure rules, the preview send, the two read doors, the
+panel with the README, the screenshot grid and lightbox and the app card,
+its entry and mount, one assumption-log line and a headless render.
 
 ## Next Steps
 
-1. T003: the preview panel with the README, the screenshot grid and
-   lightbox, and the app card, per the design reference.
-2. The end-to-end run on a fixture app, then the closure sequence.
+1. The result tour's preview anchor and the end-to-end run on a fixture
+   app: open, the live link answers, idle, stopped, the state truthful.
+2. The closure sequence: the one full-suite run, the evidence, the close.
 
 ## Risks
 
