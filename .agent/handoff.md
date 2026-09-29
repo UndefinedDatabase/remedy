@@ -1,228 +1,180 @@
-# Handback — F041 round 6: R-1106 repaired, the tour's preview anchor, and the end-to-end proof
+# Handback — F041 round 7: booked round 6, self-use NONE, the Built State, and the closure suite
 
 ## Session
 
-SESSION 2 of feature F041 · round 6 · rounds so far 6. Context self-assessment: after finishing
-G5's mutation run, roughly a third of the session's context budget remained — enough to write
-this handoff carefully and push, not enough to start a seventh round.
+SESSION 2 of feature F041 · round 7 · rounds so far 7. Context self-assessment: after writing this
+handoff and before pushing, roughly half the session's context budget remained.
 
 ## Range
 
-Review of `fd124cc9b`..`669e6cdf1`, this handoff commit follows `669e6cdf1`.
+Review of `b09a30014`..`57f4ad2b4`, this handoff commit follows `57f4ad2b4` as part of C4.
 
 ## Commits
 
-### 82dbb07ef F041 R6 C1a: copy round 6 block and plan into .agent/authored/
+### 3f8f01992 F041 R7 C1: copy round 7 block and payloads
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f041-r6-block.md | +268/-0 | copy of this round's block, byte for byte |
-| .agent/authored/f041-r6-plan.md | +27/-0 | copy of the plan.md payload, byte for byte |
+| .agent/authored/f041-r7-block.md | +159/-0 | copy of this round's block, byte for byte |
+| .agent/authored/f041-r7-closure_docs.diff | +85/-0 | copy of the closure_docs.diff payload, byte for byte |
+| .agent/authored/f041-r7-plan.md | +29/-0 | copy of the plan.md payload, byte for byte |
+| .agent/authored/f041-r7-records.diff | +21/-0 | copy of the records.diff payload, byte for byte |
 
-Expected by the block: 295 (268 + 27); measured: 295. Match.
+Expected by the block: 159 + 135 = 294; measured: 294 (159+85+29+21). Match.
 
-### 5b291f72e F041 R6 C1b: copy round 6 records diff into .agent/authored/
+### bbd5cbc58 F041 R7 C2: book round 6's PASS with R-1106's resolution
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f041-r6-records.diff | +30/-0 | copy of the records diff payload, byte for byte |
+| .agent/live_review.md | +4/-0 | `git apply` of records.diff: round 6's gate entry and R-1106's `Done:` resolution |
+| .agent/plan.md | +9/-7 | rewritten to the plan.md payload |
+| .agent/prose_slips.md | +1/-0 | `git apply` of records.diff: one dated line for round 5 |
 
-Expected: 30; measured: 30. Match.
+Expected by the block: 4/0, 9/7, 1/0; measured: identical. Match.
 
-### f95b1d3ec F041 R6 C2: book round 5, register R-1106, record D6
+### 57f4ad2b4 F041 R7 C3: write the Built State and the checklist consolidation
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +10/-0 | `git apply` of records.diff: DECISION F041 D6 |
-| .agent/live_review.md | +4/-0 | `git apply` of records.diff: round 5's gate entry and R-1106's registration |
-| .agent/plan.md | +7/-8 | rewritten to the plan.md payload |
+| docs/agents/planner_reviewer_prompt.md | +7/-0 | `git apply` of closure_docs.diff: the 28th consolidation paragraph, inserted before "The next consolidation measures against 34." |
+| docs/roadmap/features/T5_F041.md | +59/-0 | `git apply` of closure_docs.diff: the Built State section (T001-T003, acceptance/edge cases, the round 7 self-use reading) |
 
-Expected by the block: 10/0, 4/0, 7/8; measured: identical. Match.
+Expected by the block: 7/0, 59/0; measured: identical. Match.
 
-### a2f4696d5 F041 R6 C3: rewrite the README's images in one pass (R-1106)
+### (this commit) F041 R7 C4: record the closure suite transcript and rewrite handoff for round 7
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/artifactPreview.ts | +20/-20 | S1: `readmeCockpitHtml` now makes ONE `replace` over the alternation `README_IMG_PATTERN`; `STRAY_IMG_PATTERN` and the marker/placeholder mechanism are gone; the comment above the function names R-1106 |
-| apps/ui/src/api/artifactPreview.test.ts | +16/-0 | S1: two new whole-output-literal tests over marker-shaped text (`@@artifact-image-0@@`), with no image and beside a listed capture |
-
-No insertion count was expected by the block for C3-C7; measured 20/20 and 16/0.
-
-### 03a238238 F041 R6 C4: offer a "See it running" stop for a job whose project can run
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/result_tour.py | +59/-4 | S2: `TOUR_PREVIEW_REF`, `TOUR_ANCHOR_KINDS` gains `"preview"`, `TourAnchorContext.previewable`, `_project_previewable`, `_preview_stop`, and the `anchor_problem`/`fallback_tour_stops`/`build_tour_prompt` branches |
-| tests/orchestration/test_result_tour.py | +154/-1 | S4: the five-kind literal, `_project_previewable`'s four cases, `anchor_problem`'s three preview cases, the previewable job's whole-tour literal, the ten-area eight-stop count, and the prompt's byte-equality check |
-
-Measured: 59/4 and 154/1.
-
-### af8eb3d6b F041 R6 C5: open the results panel from the tour's preview stop
-| Path | +/- | Reason |
-|---|---|---|
-| apps/ui/src/api/resultTour.ts | +8/-6 | S3: `TOUR_ANCHOR_KINDS` gains `"preview"`, `tourAnchorLabel` answers "The app preview", `tourCanShow` answers true for it |
-| apps/ui/src/api/resultTour.test.ts | +4/-2 | S4: the five-kind literal, the label case, the `tourCanShow` case |
-| apps/ui/src/components/shell/RemedyShell.tsx | +4/-0 | S3: `handleTourShowAnchor`'s `else if (anchor.kind === "preview")` branch, comment naming DECISION F041 D6 |
-| tests/ui_contracts/test_artifact_preview.py | +10/-0 | S4: the shell's `handleTourShowAnchor` body holds `anchor.kind === "preview"` and `setResultsOpen(true)` |
-
-Measured: 8/6, 4/2, 4/0, 10/0.
-
-### 8acef62cc F041 R6 C6: prove the preview flow on a real small app
-| Path | +/- | Reason |
-|---|---|---|
-| tests/ui_server/test_preview_end_to_end.py | +246/-0 | NEW FILE: S4's end-to-end test, `pytest.mark.subprocess`, one test — a real stdlib fixture app under a real `.remedy/config.toml`, a real UI server, `job.preview-start` through the door, LIVE with the real link, THE LINK answering, the harness's own pids, IDLE read off disk (never through the route, which would re-arm the idle clock), TRUTHFUL, and a `finally` that stops the runtime if it is still recorded |
-
-Measured: 246/0.
-
-### 669e6cdf1 F041 R6 C7: add the round 6 mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f041-r6-mutations.py | +217/-0 | mutations n1-n8, generated mechanically from verified file slices of the actual committed files (never hand-retyped) into `MUTATIONS`, plus the vitest/pytest runners and the control/report loop |
-
-Measured: 217/0.
-
-### (this commit) F041 R6 C8: rewrite handoff for round 6
-| Path | +/- | Reason |
-|---|---|---|
+| .agent/authored/f041-closure-suite.txt | new file | the full suite's command, real exit code, wall time, summary line, bad-node-id list (NONE) and tree SHA |
 | .agent/handoff.md | rewrite | this handback, per the write-once rule (a handoff cannot table the commit that writes it) |
 
 ## External actions
 
-`git worktree add --detach .remedy-wt/f041-r6-mut 669e6cdf1` (G5's disposable worktree); an
-`os.symlink` from that worktree's `apps/ui/node_modules` to the primary's, made before the tool
-ran. DURING the tool's own FIRST control run, the end-to-end test's `start_ui_server` call
-triggered `ui_server.py`'s "auto-build if `dist/` is missing" path inside the worktree (this
-round's own end-to-end test is the first thing in this feature's mutation tool to actually start
-a real UI server there), which replaced that symlink with a real, independently-installed
-`node_modules` (209 entries) and a built `dist/` — reported in Deviations & assumptions below.
-The primary's own `apps/ui/node_modules` was NOT touched: its `.bin/vitest` symlink's mtime stayed
-`Sep 24 01:17` throughout, and `git status --porcelain` in the primary stayed empty the whole
-time. `git worktree remove --force .remedy-wt/f041-r6-mut` and `git worktree prune` after G5.
-`git push origin feature/f041-artifact-preview` after this commit (outcome reported by the worker
-applying this handback in its own reply, since this file cannot record a push that follows it).
-No `gh pr` command of any kind: no PR is created, merged or touched this round.
+`apps/ui/node_modules/.bin/vite build` run with `cwd=apps/ui` from a Python `subprocess.run` call, in
+the primary checkout (not a worktree operation, no `git worktree` command issued). `git push origin
+feature/f041-artifact-preview` after this commit (outcome reported by the worker applying this
+handback in its own reply, since this file cannot record a push that follows it). No `gh pr` command
+of any kind: no PR is created, merged or touched this round. No worktree was added or removed this
+round; `git worktree list | wc -l` and `git branch --list 'remedy/*' | wc -l` were read at BEFORE
+ANYTHING ELSE (63 and 198) and are unchanged by this round's work.
 
 ## Verification
 
-G1 TRANSPORT — payload readings (measured against the PAYLOADS table, all matched):
-`records.diff` 30 lines / 13790 bytes /
-`47a62d052dfdc2b54d34290e9ee2036c1fb7007d146204386bc1a368c931983e`;
-`plan.md` 27 lines / 926 bytes /
-`f75b5bc5d721c87cc25f6ad73e369823cf47343847e2b59ab7bc5639911e48a1`. Both `match=True` against the
-PAYLOADS table. The block itself: 268 lines / 21772 bytes /
-`3c6af51cffa0492958f87b357ef9683a5bb0be2b600148ca52995adf20164adb`, matching the two readings the
-delegation message gave. Each `.agent/authored/f041-r6-*` payload copy, read back with `git show
-<commit>:<path>`, is byte-identical to its source (block copy against
-`.remedy-wt/f041-r6/block.md`): all three `match=True`. `git apply --check` on records.diff: real
-exit 0; the real `git apply`: real exit 0.
+BEFORE ANYTHING ELSE — `.agent/STOP` absent; `pwd` `/home/decodeux/Repos/remedy`; `git status
+--porcelain` empty; `git branch --show-current` `feature/f041-artifact-preview`; `git log --oneline
+-1` `b09a30014`, all matching. Block measured: 159 lines / sha256
+`dfa1100609d26ee9b3d254817abd0e756d610ff504c028a8651411d893610948`, matching both readings given in
+the delegation message exactly. `git worktree list | wc -l` 63; `git branch --list 'remedy/*' | wc -l`
+198.
 
-G2 THE RECORDS — at C2 (`f95b1d3ec`): `.agent/decisions.md` 2471829 bytes,
-`ff24027213680d67f95a6681cad2e50c50bc891083993e8599d9ecdaa9f2b02e`, match True;
-`.agent/live_review.md` 308369 bytes,
-`a4147b1205d3cdf235420170483364e28ead2311d0234800e47fad1bbd3ee09c`, match True; `.agent/plan.md`
-926 bytes, `f75b5bc5d721c87cc25f6ad73e369823cf47343847e2b59ab7bc5639911e48a1`, match True.
-`open_finding_ids` over `.agent/live_review.md`'s TEXT: `[]` at `fd124cc9b` and `['R-1106']` at
-`f95b1d3ec`, matching the reviewer's `[]`/`['R-1106']`. `git diff --name-only 5b291f72e f95b1d3ec`:
-`.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md` — exactly the table's three paths.
+PAYLOADS — measured against the table, all matched: `plan.md` 29 lines / 933 bytes /
+`abaaf17b170018f1292e470e261e4f530d107c86998e32c24a58e3d19e5f799b`; `records.diff` 21 lines / 9508
+bytes / `dd62d06ca92510c09bb7dd654b1c1078b3414ad94758eabf7ef51de4f573c12e`; `closure_docs.diff` 85
+lines / 6758 bytes / `25953af84003b31c6e21d97509408a466aba35773ce0e1397bde48fcb2d45a37`.
 
-G3 THE CODE — `python3 -m ruff check packages/orchestration/result_tour.py
-tests/orchestration/test_result_tour.py tests/ui_contracts/test_artifact_preview.py
-tests/ui_server/test_preview_end_to_end.py .agent/authored/f041-r6-mutations.py`: real exit 0,
-"All checks passed!". The whole of `readmeCockpitHtml`, `_project_previewable`, `_preview_stop`,
-`fallback_tour_stops`, the changed lines of `anchor_problem` and `build_tour_prompt`,
-`resultTour.ts`'s changed lines, `RemedyShell.tsx`'s changed lines, and the whole end-to-end test
-are quoted in the worker's chat reply to the delegating message (this file summarizes rather than
-repeats the source; every quoted block there is read verbatim from the commits named above).
+G1 TRANSPORT AND RECORDS — every payload's measured lines/bytes/sha256 matched the table (above).
+Each `.agent/authored/f041-r7-*` copy, read back with `git show 3f8f01992:<path>`, is byte-identical
+to its source (block against `.remedy-wt/f041-r7/block.md`, each payload against
+`.remedy-wt/f041-r7-payloads/<name>`): all four `match=True`. The five read-at hashes: at C2,
+`.agent/live_review.md` 311721 bytes /
+`c97e59fe856112cc828e62c0b79666e1bd6d4050ba034f427c7db67a01b463be`; `.agent/prose_slips.md` 377365
+bytes / `b7d0f021e08adf4e52e35cf848490d9e608c7199b41f796cf0818bbd35f23aa8`; `.agent/plan.md` 933
+bytes / `abaaf17b170018f1292e470e261e4f530d107c86998e32c24a58e3d19e5f799b`; at C3,
+`docs/agents/planner_reviewer_prompt.md` 111339 bytes /
+`7ae65b1fe99b272bf5a2715deecf5049ed2bdb11cc29797b5063a6fc6374059f`;
+`docs/roadmap/features/T5_F041.md` 9811 bytes /
+`a72e7b0b16c6d9179535d3cb7b4767850c10097f8b75856dcff9a5f38a733310` — all six `match=True` against
+the block's table. `open_finding_ids` over `.agent/live_review.md`'s TEXT at C2 (`bbd5cbc58`): `[]`;
+`latest_gate_verdict`: `PASS` — matching the block's `[]`/`PASS`. `live_checklist_items` over
+`docs/agents/planner_reviewer_prompt.md`'s text: 34 items at `b09a30014` and 34 items at C3
+(`57f4ad2b4`) — matching the block's "34 items" at both points.
 
-G4 THE TESTS — at C7 (`669e6cdf1`), serially:
-- `pytest` selection (tests/orchestration/test_result_tour.py, test_tour_route.py,
-  test_tour_e2e_live.py, test_job_show.py, test_preview_end_to_end.py, test_preview_commands.py,
-  test_preview_worker.py, test_preview_control.py, test_preview_runner.py, test_command_channel.py,
-  tests/ui_contracts, test_dashboard_contract.py, test_import_reachability.py,
-  test_no_orphan_modules.py, tests/docs, test_golden_path.py): `1758 passed, 4 skipped` at real
-  exit 0. The four skips are exactly the D3 quarantine nodes of `test_graph_architecture.py` (2)
-  and `test_ux_quality.py` (2) — the same four the reviewer's own `fd124cc9b` run (without the new
-  file) showed as `1748 passed, 4 skipped`. `--collect-only -q` over the same selection: 1762 nodes
-  (1758 + 4). Per-file growth this round: `test_result_tour.py` 61 nodes (+8: the four
-  `_project_previewable` cases, the three `anchor_problem`/tour-shape/ten-area cases, and the
-  prompt case); `test_artifact_preview.py` 11 nodes (+1: the shell's preview-anchor contract case);
-  `test_preview_end_to_end.py` 1 node (+1, NEW FILE). 1748 + 8 + 1 + 1 = 1758, matching exactly.
-- `apps/ui/node_modules/.bin/vitest run --root apps/ui`: `93 passed | 1 skipped (94)` test files,
-  `1907 passed | 5 skipped (1912)` tests, real exit 0. The reviewer's own `fd124cc9b` run showed
-  `1905 passed | 5 skipped`; this round's two new `it()` cases in `artifactPreview.test.ts` (the
-  R-1106 marker-safety literals) account for the whole +2 — `resultTour.test.ts`'s new preview
-  assertions were added to EXISTING `it()` bodies, not new cases. 1905 + 2 = 1907, matching.
-- The end-to-end test's own duration from a second, solo run with `--durations=0`:
-  `16.17s call tests/ui_server/test_preview_end_to_end.py::TestPreviewEndToEnd::
-  test_the_preview_flow_runs_end_to_end_on_a_real_fixture_app`, `1 passed in 16.36s`, real exit 0.
-  `ps aux | grep -i server.py | grep -v grep` immediately after: no output (grep exit 1) — no
-  `server.py` of its project runs.
-- `python3 -m apps.cli.main integrity check --json`: all six checks `"status": "pass"`,
-  `"fail_count": 0`, `"ok": true`, real exit 0.
+THE S READING — `generate_and_append_if_empty()` of `packages.orchestration.self_use_generator`:
+`None`. `next_self_use_item()` of `packages.orchestration.self_use_queue`: `None`. `git status
+--porcelain` immediately after both calls: empty. Matches the reviewer's own reading of `None`/`None`
+with nothing written; C3 proceeded per the block.
 
-G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f041-r6-mut 669e6cdf1`, then
-`.agent/authored/f041-r6-mutations.py` run against it: `control (first) vitest: exit=0 failed=0`,
-`control (first) pytest: exit=0 failed=0`, `control (first) pytest (end-to-end): exit=0 failed=0`;
-all eight mutations n1-n8 `caught=True` with `restored byte-identical: True` after each (n1 exit=1
-failed=2; n2 exit=1 failed=1; n3 exit=1 failed=7; n4 exit=1 failed=2; n5 exit=1 failed=1; n6 exit=1
-failed=1; n7 exit=1 failed=1; n8 exit=1 failed=1); `control (last) vitest: exit=0 failed=0`,
-`control (last) pytest: exit=0 failed=0`, `control (last) pytest (end-to-end): exit=0 failed=0`;
-`ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`, real exit 0. n8 mutates `idle_stop_due` so it
-never answers true; run against the end-to-end test alone, it FAILED (its own 60-second wait for
-`stopped` timed out and the assertion raised) rather than hanging, and the test's own `finally`
-still ran `run_runtime_verb("stop", project)` since the runtime was still recorded — `ps aux | grep
--i server.py | grep -v grep` after the whole tool run: no output, no `server.py` of n8's project
-left running. `git worktree remove --force .remedy-wt/f041-r6-mut` and `git worktree prune`:
-`git worktree list | wc -l` read 62 (equal to the step 4 reading) and `git status --porcelain` was
-empty.
+G2 THE TESTS — `bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/docs
+tests/orchestration/test_block_lint.py tests/orchestration/test_live_review_rotation.py
+tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py
+tests/orchestration/test_self_use_queue.py tests/orchestration/test_doc_staleness.py
+tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -6; echo
+"REAL_EXIT=${PIPESTATUS[0]}"'`: `569 passed, 1 skipped in 39.25s`, `REAL_EXIT=0`. The one SKIPPED
+line: `SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...` — the same D12
+quarantine node the reviewer's own run named; this round's four `.agent/authored/f041-r7-*` copies
+added no test node, so the count held at the reviewer's own `569 passed, 1 skipped`.
+
+`python3 -m apps.cli.main integrity check --json`: `"check_count": 6`, all six `"status": "pass"`,
+`"fail_count": 0`, `"ok": true`, real exit 0.
+
+`python3 -m apps.cli.main integrity block .remedy-wt/f041-r7/block.md`: real exit 0, `All 7
+checkable items pass.` (items 1, 3, 10, 24, 30, 31, 37 each `[OK]`).
+
+`git status --porcelain` after G2: empty, no untracked file — closure precondition 3 satisfied.
+
+G3 THE INTEGRATION GATE — `apps/ui/node_modules/.bin/vite build` (invoked via its absolute path with
+`cwd=apps/ui`, since a relative program path is resolved against the changed `cwd` by
+`subprocess.run`, not against the repo root; the command and its effect are exactly the block's
+`vite build` in `apps/ui`): real exit 0, last line `✓ built in 2.44s`. `git status --porcelain`
+after the build: empty (build output under `apps/ui/dist` is gitignored).
+
+`python3 -m pytest -n auto -q`, log at
+`.remedy-wt/f041-r7-worker/full_suite.log`: real exit 0. Wall time: pytest's own report `208.68s
+(0:03:28)`; wrapper's wall-clock measurement around the subprocess call `209.50s`. Summary line:
+`20859 passed, 20 skipped, 1 warning in 208.68s (0:03:28)`. Bad node ids (failed plus errors): NONE
+— `grep -E '^(FAILED|ERROR)'` over the full log returned 0 lines. Written to
+`.agent/authored/f041-closure-suite.txt`: the command, real exit code 0, both wall-time readings,
+the summary line, `NONE` for bad node ids, and the tree SHA `57f4ad2b4e19446cca71f4400bc67a4dce0d5602`
+(C3). `ps -eo pid,args` filtered for `server.py` after the suite: no lines — none running. Neither
+`tests/orchestration/test_import_reachability.py` nor `tests/test_no_orphan_modules.py` holds a bad
+node (the full suite's 0 failures/errors covers both) — closure precondition 7 satisfied.
 
 ## Authored-text proofs
 
-Every `.agent/authored/f041-r6-*` payload copy (block, plan.md, records.diff) is byte-identical,
-read back from the commit that added it, to its source under `.remedy-wt/f041-r6-payloads/` or
-`.remedy-wt/f041-r6/block.md` — see G1 above. `records.diff` applied cleanly with `git apply`
-(real exit 0 on both `--check` and the real apply), and `git diff --name-only` across C1b..C2
-names exactly the three paths its own hunks touch. No other reviewer text was applied this round —
-S1 to S4's production code, its tests, the end-to-end test and the mutation tool are all
-worker-authored per the block's ROLE AND AUTHORITY.
+Every `.agent/authored/f041-r7-*` payload copy (block, plan.md, records.diff, closure_docs.diff) is
+byte-identical, read back from `3f8f01992` (`git show 3f8f01992:<path>`), to its source under
+`.remedy-wt/f041-r7-payloads/` or `.remedy-wt/f041-r7/block.md` — see G1 above, all four
+`match=True`. `records.diff` and `closure_docs.diff` each applied cleanly with `git apply` (real
+exit 0 on both `--check` and the real apply for each). `.agent/plan.md` was rewritten from the
+plan.md payload with `shutil.copyfile`, then verified byte-identical at `bbd5cbc58` against the
+table's hash (see G1). No production file (`packages/`, `apps/`, `tests/`) was touched this round;
+`docs/agents/planner_reviewer_prompt.md` and `docs/roadmap/features/T5_F041.md` changed only through
+`git apply` of the reviewer's `closure_docs.diff`, never retyped.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1a | done | |
-| C1b | done | |
+| C1 | done | |
 | C2 | done | |
+| S | done | both calls answered `None`; tree stayed clean; proceeded to C3 per the block |
 | C3 | done | |
 | C4 | done | |
-| C5 | done | |
-| C6 | done | |
-| C7 | done | |
-| C8 | done | |
 | G1 | done | |
 | G2 | done | |
 | G3 | done | |
-| G4 | done | |
-| G5 | done | |
-| G6 | done | |
+| G4 | done | reported in the final reply only, per the block |
 
 ## Deviations & assumptions
 
-1. No commit was split, reordered or added beyond the block's ordered C1a..C8 sequence; every
-   commit stayed well under the 500-line cap (largest: C4 at 154 insertions in its test file).
-2. The worktree `node_modules`/`dist` divergence noted in External actions is not a deviation from
-   the block's own instruction (it names only "an `os.symlink`... then removed with the worktree",
-   which still holds in full — the worktree, whatever it grew inside it, was removed whole by
-   `git worktree remove --force`); it is recorded for the same transparency reason round 5's
-   handback records its own render-harness `node_modules` gotcha, and because it is new to this
-   round: earlier rounds' mutation tools never started a real UI server inside the disposable
-   worktree, so the auto-build path never fired there before.
-3. No test this round wrote was found wrong; no EXISTING test went red at any point.
-4. The top-of-file comment in `artifactPreview.ts` describing `readmeCockpitHtml`'s old two-pass
-   marker mechanism was rewritten in the same C3 commit to describe the one-pass fix instead (S1
-   itself only names the comment directly above the function). Declared because it is prose the
-   block did not explicitly order changed, though leaving it describing a mechanism the same
-   commit deletes would have been a stale, self-contradicting comment in the file S1 governs.
+1. No commit was split, reordered or added beyond the block's ordered C1, C2, S, C3, C4 sequence;
+   every commit stayed well under the 500-line cap (largest: C1 at 294 insertions).
+2. `vite build` was invoked with the absolute form of `apps/ui/node_modules/.bin/vite` as the
+   subprocess's program argument, with `cwd=apps/ui`, because `subprocess.run` resolves a *relative*
+   program path against the child's `cwd`, not the caller's — the literal relative string
+   `apps/ui/node_modules/.bin/vite` under `cwd=apps/ui` would look for
+   `apps/ui/apps/ui/node_modules/.bin/vite` and fail with `FileNotFoundError`. The command run is
+   the same binary at the same path, with the same `cwd` and arguments the block names; declared for
+   transparency since the exact invocation shape differs from the block's literal string.
+3. No test this round wrote or touched (none were touched — no production or test file changed
+   this round); no EXISTING test went red at any point in G2 or G3.
+4. This round's four `.agent/authored/f041-r7-*` copies added no pytest node, so G2's count held at
+   the reviewer's own `569 passed, 1 skipped`, exactly as the block anticipated ("your count may
+   differ by what the round's copies add" — it did not differ, since these copies are not
+   collected by any of G2's selected paths).
 
 ## Next
 
 1. Phase 1 rule 1: read `.agent/STOP` from disk.
-2. The review of round 6 with the resolution of R-1106.
-3. F041's closure sequence: the one full-suite run, the evidence, the close.
+2. The review of round 7 and of its closure-suite transcript.
+3. The closure's evidence round: the booking of round 7, any repair the suite requires, the
+   evidence bundle and the review package.
+4. The closing round: the ledger rotation, the STATUS line with the README, and the pull request.
 
-Open findings: 1 (R-1106, repaired and awaiting review). Operator questions open: 1.
+Open findings: 0. Operator questions open: 1.

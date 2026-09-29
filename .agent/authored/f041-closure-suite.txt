@@ -1,0 +1,6 @@
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 208.68s (0:03:28) per pytest's own report; 209.50s measured wall-clock around the subprocess call
+Summary line: 20859 passed, 20 skipped, 1 warning in 208.68s (0:03:28)
+Bad node ids (failed plus errors): NONE
+Tree: 57f4ad2b4e19446cca71f4400bc67a4dce0d5602 (F041 R7 C3)
