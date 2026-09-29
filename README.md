@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-114 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+115 of 289 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 38 | 39 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 31 | 36 |
+| 5 | Operator Cockpit | 32 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -599,6 +599,17 @@ only when you confirm it, so its record is the cockpit's own audit line; `remedy
 this on the command line and the Chat tab of a run's evidence panel does it in the browser, and
 each answer says whether it was built from the records alone or written by the summary model,
 which happens only when you switch on the `chat.model_written` setting).
+
+F039 story mode (a finished job can now be told as a short story: its chapters are the phases it
+went through, such as the plan, the build, the review and the finish, and small cards say what
+happened at the moments that mattered, a decision, a failed test or a repair, with the reviewer's
+verdict, who acted and the cost so far, every word taken from Remedy's own fixed wording and never
+from a model; the Story button in the cockpit opens it over the graph, where Play walks the
+timeline one event at a time with a pause before each chapter; the command
+`remedy job story <job id> --export <file>` saves it as one HTML file that plays in any browser
+straight from your disk, with no network and no Remedy, and refuses a story larger than the
+`story.export_max_bytes` setting rather than cutting it; a test opens such a file in headless
+Chrome and passes only when the page makes no request but the file itself).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
