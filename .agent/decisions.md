@@ -25596,3 +25596,44 @@ HOW TO REVERSE: delete `apps/ui/src/api/projectScope.ts`, its test file and
 `tests/ui_contracts/test_project_scope_door.py`, remove the project doors and their import from
 `apps/ui/src/api/remedyApi.ts`, remove `job_project_view` and its tests and the `project` entry
 with its builder from `packages/orchestration/ui_server.py`, and delete this paragraph.
+
+## DECISION F042 D3 — the seam is mounted: `RemedyApp.tsx` reads one address, wraps every face in one project provider, keys the shell by project and job, changes the address only through a switch's `pushState` or a Back step, and opens a project with no job as its own face; the switcher is a native select in the brand rail's kicker, shown only with more than one project (2026-09-29)
+
+CONTEXT: DECISION F042 D2 (5) orders the seam mounted. Measured by the reviewer at `fc744e0e`:
+`RemedyApp.tsx` reads `job` and `token` once, polls the dashboard, and renders `RemedyShell`,
+whose effects are keyed by the job alone; `<main>` is held to four children by a guard; the
+brand rail's kicker reads `CONCEPT 01 OF 10`, where `component_spec.md` puts the project; the
+zoom's deep link writes with `history.replaceState`, which keeps no history entry; nothing in the
+cockpit answers Back.
+
+CHOSEN: (1) THE ADDRESS is `apps/ui/src/api/cockpitAddress.ts`, pure: `addressFromSearch`, the
+three faces `missing`, `empty_project` and `job`, their two sentences, and `shellKeyOf`, which
+changes with the project and the job only. `RemedyApp.tsx` stays the one reader of the page's
+address. (2) THE PROVIDER is `apps/ui/src/components/shell/ProjectProvider.tsx`, one context
+around every face: the project list once per token, the job's own project once per job, the
+active project by `resolveActiveProject`, and `switchTo` through `switchProject` over ONE gate,
+which a new address reached any other way also advances, so a switch in flight never lands on a
+page the reader moved to by Back. (3) A SWITCH writes its address with `pushState`, so Back
+returns to the project left, and a Back or Forward step re-reads the address; either one clears
+the dashboard, the error and the selection before the new address loads, and the shell mounts
+under `shellKeyOf`, so no panel, stream or selection of the old project survives into the new
+one. (4) THE SWITCHER is `apps/ui/src/components/shell/ProjectSwitcher.tsx` in the rail's
+kicker: a native select named "Project" listing every project by slug, a missing folder marked,
+with one project the kicker names it, and with none it keeps what the rail showed. The empty
+project's face shows the same switcher above its sentence. (5) THE PROOF of the behaviour is a
+render harness in a real browser, committed with the round, beside
+`tests/ui_contracts/test_project_switcher_wiring.py` for the wiring and
+`apps/ui/src/api/cockpitAddress.test.ts` for the rules; the assumption log records the kicker and
+the empty face. (6) THE ORDER: T003 follows, with the home grid, the cards, the invite in the
+empty state, deep links across projects and the dashboard's old `project_summary` re-pointed.
+
+ALTERNATIVES: `replaceState` for a switch, as the zoom's deep link uses, rejected because a
+project is a place the reader returns to and Back should reach it; a switcher in the metrics bar,
+rejected because `component_spec.md` fixes that bar at four segments; a page load per switch,
+rejected for the reason DECISION F042 D2 gives; a context value re-read by every panel, rejected
+because keying the shell remounts every panel at once and leaves none to forget.
+
+HOW TO REVERSE: delete `cockpitAddress.ts` and its test, `ProjectProvider.tsx`,
+`ProjectSwitcher.tsx` with its sheet, and `tests/ui_contracts/test_project_switcher_wiring.py`;
+restore `RemedyApp.tsx` and `LeftBrandRail.tsx` from `fc744e0e`; delete the assumption log's
+F042 line and this paragraph.

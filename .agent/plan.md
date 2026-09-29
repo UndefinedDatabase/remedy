@@ -11,18 +11,17 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 2: book round 1, record DECISION F042 D2, and land T002's seam: the
-server's `/api/jobs/<id>/project`, the pure client module
-`apps/ui/src/api/projectScope.ts` with its switch gate, and the project
-doors in `apps/ui/src/api/remedyApi.ts`, against the reviewer's tests.
+ROUND 3: book round 2, record DECISION F042 D3, and mount the seam: the
+address module, the project provider around every face of `RemedyApp.tsx`,
+the shell keyed by project and job, Back and Forward, and the switcher in
+the brand rail's kicker, proved in a real browser.
 
 ## Next Steps
 
-1. Mount the seam: the project provider in `RemedyApp.tsx`, the shell
-   re-keyed by project and job, and the header switcher.
-2. T003: the home grid, the cards, the empty and single-project states,
-   deep links and the end-to-end run.
-3. The closure sequence.
+1. T003: the home grid, the cards, the invite in the empty state, deep
+   links across projects, the dashboard's old project summary re-pointed,
+   and the end-to-end run.
+2. The closure sequence.
 
 ## Risks
 
