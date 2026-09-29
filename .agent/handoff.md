@@ -1,202 +1,209 @@
-# Handback — F042 round 10: the closure sequence's evidence round (booking R9, reclaim, evidence bundle, review package)
+# Handback — F042 round 11: the closing round (book round 10, rotate the ledger, accept F042, open the PR)
 
 ## Session
 
-SESSION 2 of feature F042 · round 10 · rounds so far 10. Context self-assessment: ample budget
-remains — well under half of the session's context window has been used through C3 and the gates.
+SESSION 2 of feature F042 · round 11 · rounds so far 11. Context self-assessment: ample budget
+remains — the large majority of the session's context window is still available through C4 and the
+gates.
 
 ## Range
 
-Review of `7499ca875`..`cf4d59b747902cd6aa93c117e0baaa135e299ca9`.
+Review of `b05789d3d`..HEAD (this round's final commit, C4 — the pull request's real number and
+the push outcome are reported in the worker's reply, since this file is committed as part of C4 and
+cannot name its own commit's sha or anything that follows it).
 
 ## Commits
 
-### `6741d636a` F042 R10 C1: copy round 10 block and payloads
+### `0635a1bed` F042 R11 C1: copy round 11 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f042-r10-block.md | +171/-0 | this round's block, copied verbatim |
-| .agent/authored/f042-r10-create_f042_evidence.py | +171/-0 | payload copy (the A1 evidence tool) |
-| .agent/authored/f042-r10-plan.md | +27/-0 | payload copy |
-| .agent/authored/f042-r10-records.diff | +28/-0 | payload copy |
+| .agent/authored/f042-r11-block.md | +166/-0 | this round's block, copied verbatim |
+| .agent/authored/f042-r11-ledger.md | +2/-0 | payload copy |
+| .agent/authored/f042-r11-plan.md | +26/-0 | payload copy |
+| .agent/authored/f042-r11-status_line.txt | +1/-0 | payload copy |
+| .agent/authored/f042-r11-closure.diff | +64/-0 | payload copy |
+| .agent/authored/f042-r11-pr_body.md | +75/-0 | payload copy |
 
-Total 397 insertions (block's 171 + 226), matching the block's stated formula exactly; measured
-`git show --numstat`: 171/0, 171/0, 27/0, 28/0.
+Total 334 insertions (block's 166 + 168), matching the block's stated formula exactly; measured
+`git show --numstat`: 166/0, 64/0, 2/0, 26/0, 75/0, 1/0 (order as printed by git; all six files
+individually confirmed against the table above).
 
-### `cf4d59b74` F042 R10 C2: book round 9 with R-1113's resolution and complete the Built State — ACCEPTED HEAD
+### `abe15a657` F042 R11 C2: book round 10's PASS, the package READY_FOR_REVIEW
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | round 9's Gate entry (VERDICT PASS) and R-1113's `Done:` resolution appended |
-| .agent/plan.md | +8/-10 | rewritten to round-10 state, from the plan.md payload, via `shutil.copyfile` |
-| docs/roadmap/features/T5_F042.md | +8/-0 | the closure-suite paragraph (rounds 7–9) added to the Built State |
+| .agent/live_review.md | +2/-0 | round 10's `Gate:` entry appended, bytes to bytes from ledger.md |
+| .agent/plan.md | +6/-7 | rewritten to round-11 state via `shutil.copyfile` from plan.md |
 
-Measured `git show --numstat`: 4/0 .agent/live_review.md, 8/10 .agent/plan.md, 8/0
-docs/roadmap/features/T5_F042.md — equal to the block's expected numstat exactly. Full sha
-`cf4d59b747902cd6aa93c117e0baaa135e299ca9` is this closure's ACCEPTED HEAD.
+Measured `git diff --numstat` before commit: 2/0 .agent/live_review.md, 6/7 .agent/plan.md — equal
+to the block's expected numstat exactly.
+
+### `411ac6ec6` F042 R11 C3: rotate the finding ledger into its archive
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +0/-46 | 9 gate records + 7 finding pairs (14 records) rotated out |
+| .agent/live_review_archive.md | +46/-0 | the same records rotated in |
+
+Measured `git diff --numstat` before commit: 0/46 .agent/live_review.md, 46/0
+.agent/live_review_archive.md — equal to the block's expected numstat exactly.
+
+### C4 (this commit) — F042 R11 C4: accept F042 in STATUS with its README pins and the self-use queue
+| Path | +/- | Reason |
+|---|---|---|
+| README.md | +11/-2 | F042 accepted count, Tier 5 Done cell and Tier 5 prose (closure.diff) |
+| docs/roadmap/STATUS.md | +1/-1 | F042 STATUS line flipped to `[x]` (closure.diff) |
+| scripts/self_use_queue.json | +1/-1 | `SU-036` `consumed_by` edit, closure precondition 6 (closure.diff) |
+| .agent/handoff.md | this file | round 11 handback, written and committed with C4 per the
+self-reference exception in `docs/agents/handback_template.md` — a handoff cannot table the commit
+that writes it |
+
+Measured `git diff --numstat` before this file joined the commit (working tree, closure.diff
+applied): 11/2 README.md, 1/1 docs/roadmap/STATUS.md, 1/1 scripts/self_use_queue.json — equal to
+the block's expected numstat exactly. C4's own git-measured numbers (including this file) go in
+the worker's reply, per the block's G5 instruction.
 
 ## External actions
 
-- `git push -u origin feature/f042-multi-project-cockpit` after C2 (before A0): real outcome
-  `7499ca875..cf4d59b74  feature/f042-multi-project-cockpit -> feature/f042-multi-project-cockpit`,
-  exit 0, tracking set up.
-- `python3 -m apps.cli.main data reclaim --orphans` (A0, preview only — no `--apply`, since the
-  preview listed zero candidates): exit 0.
-- `python3 .remedy-wt/f042-r10-payloads/create_f042_evidence.py` (A1): exit 0, job id
-  `f042r10e1001`, writing to `.remedy-wt/f042-r10-evidence/` (gitignored, nothing committed from it).
-- `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f042-r10-evidence` (A2): exit 0,
-  package `remedy-review-20260929-202000-READY_FOR_REVIEW.zip`.
-- `git push` after C3: real outcome reported in the worker's final reply, since this file cannot
-  record a push that follows it.
-- No PR created, merged or edited. No self-use runner and no job that calls a provider was invoked
-  this round. No `gh pr merge`, no STATUS/README edit, no ledger rotation, no queue edit.
+- `git push origin feature/f042-multi-project-cockpit` after C4: real outcome reported in the
+  worker's final reply, since this file cannot record a push that follows it.
+- `gh pr create --base main --head feature/f042-multi-project-cockpit --title "F042 — Multi-project
+  cockpit" --body-file .remedy-wt/f042-r11-payloads/pr_body.md`: real number and URL reported in the
+  worker's final reply, for the same reason.
+- No other push, PR, or `gh` command this round. No `gh pr merge`, no checkout of `main`, no branch
+  deletion, no force-push, no worktree add/remove, no `git stash`.
 
 ## Verification
 
-**BEFORE ANYTHING ELSE:** step 1 `ls .agent/STOP` — absent. step 2 `pwd`
-`/home/decodeux/Repos/remedy`; `git status --porcelain` empty; `git branch --show-current`
-`feature/f042-multi-project-cockpit`; `git log --oneline -1` `7499ca875` — all matched. step 3
-block measured at 171 lines, sha256
-`1f9657daf8980f5e782728a322949013d9f3a3ffc19d00e14fab9811aa77bc05` — equal to the delegation
-message's two readings exactly. step 4 `git worktree list | wc -l` 29; `apps/ui/dist/index.html`
-present.
+**BEFORE ANYTHING ELSE:** step 1 `ls .agent/STOP` — absent (`No such file or directory`, exit 2).
+step 2 `pwd` `/home/decodeux/Repos/remedy`; `git status --porcelain` empty; `git branch
+--show-current` `feature/f042-multi-project-cockpit`; `git log --oneline -1` `b05789d3d` — all
+matched. step 3 block measured 166 lines, sha256
+`683ca3d14b89ce142273f720bf23aec52b02c3f493063aa437bbed8d6773066b` — equal to the delegation
+message's two readings exactly. step 4 `git worktree list | wc -l` 30; `gh pr list --state open
+--json number,headRefName` `[]`.
 
-**PAYLOADS:** all three measured exactly against the table — records.diff 28/6511/
-`d58ee5e40b5f5e24e0668e22f3c7f48a57890c1741ee3e3c374e8d61aff21c4b`, plan.md 27/862/
-`90ba6e30b42cd4e71b23becc264895ed2defa46a79516b87b6481935474eb669`,
-create_f042_evidence.py 171/8495/
-`97f1aad92d25dad9b7514bf58cb5b07beff639d8f31e68356273b4f8d2ca684a` — full hashes match the block's
+**PAYLOADS:** all five measured exactly against the table — ledger.md 2/2121/
+`0930f4966aa618e467b9deec3e01b9157c22a95203c62a0808fcc9fa85d114fa`, plan.md 26/828/
+`afd78110cf7913c2d209fcb0a1365b4f873263f698e094199e2ca6a9130aad16`, status_line.txt 1/423/
+`40017726a6075c2cdbb8ea129cd8834f3825656f7f9e618fa7ae243b9c534a90`, closure.diff 64/8192/
+`564df7f8c960af9a0f441027f7eadbf1c97992f3846ac0b83a219a6ff9f92dc6`, pr_body.md 75/4719/
+`635ae98d42c537abb3aac882ab3c36622b01bc55b1cf074eba253f7de4a47593` — full hashes match the block's
 table digit for digit.
 
-**C1–C2:** `git apply --check` on records.diff: exit 0; `git apply`: exit 0. No payload was
-retyped or edited; `.agent/plan.md` was rewritten via `shutil.copyfile` from the plan.md payload,
-never retyped. C1's insertions measured 397 (< 500, matching the declared formula). C2's numstat
-matched the block's table exactly (see per-commit table above).
+**C1:** insertions measured 334 (166 + 168, matching the declared formula), well under 500.
 
-**A0 the staging reclaim:** preview log (`.remedy-wt/f042-r10-worker/reclaim.log`), exit 0:
-`Would free 0 B in 0 paths — nothing deleted; re-run with --apply`; one refused path,
-`review_staging.n4o46eq_`, reason `class_not_job_keyed`. This matches the reviewer's read-only
-preview exactly (`Would free 0 B in 0 paths` with the same one refused path/reason), so `--apply`
-was SKIPPED per the block's instruction and the empty reading is recorded as final.
+**G1 transport:** all five payload readings matched the table (above); all six committed
+`.agent/authored/f042-r11-*` copies verified byte-identical to their sources with an independent
+hash-comparison script (`git show 0635a1bed:<path>` vs. source bytes) — all six equal, the block
+copy against `.remedy-wt/f042-r11/block.md` included.
 
-**A1 the evidence job:** `.remedy-wt/f042-r10-worker/evidence.log`, real exit 0. head
-`cf4d59b747902cd6aa93c117e0baaa135e299ca9`. Ancestry-path count 91, plain count 91 — equal, and
-exactly one more than the reviewer's dry-run reading of 90 (the reviewer's tree carried C2 but not
-C1; mine carries both). Collected node ids 823, deselected 10 — matches the reviewer's reading.
-Red control: 0 unsafe among the real ids, `[]`; planted id resolved to "a local absolute path" —
-both matching. `pytest exit 0, {'passed': 823, 'failed': 0, 'skipped': 0}`, output_hash
-`3c9dd3d97822e66c64724ca5a882ccbd0fadbaf9d0cda33925bfd769f129c4bf` — matches the reviewer's
-823-passed/0-skipped reading exactly. `validate_verification_tests` problems `[]`, passed 823.
-`is_valid_current_run True`, `validation_errors []`. Gate files written (6):
-`artifact_contract_gate.json`, `change_provenance_gate.json`, `commit_execution_gate.json`,
-`fresh_evidence_gate.json`, `runtime_integration_gate.json`, `final_verifier_report.json` — all
-present under `.remedy-wt/f042-r10-evidence/` alongside other evidence files (manifest.json,
-job_report.json, review_commit_chain.json, etc. — 17 files total in the directory). Job summary:
-`job_id "f042r10e1001"`, `head_commit "cf4d59b747902cd6aa93c117e0baaa135e299ca9"`,
-`authority_count 47`, `partition {"T001": 16, "T002": 16, "T003": 15}` — matches the reviewer's
-16/16/15 partition exactly, `commit_count 91`, `verdict "PASS_WITH_RISKS"`, `total_passed 823`.
-`ps -eo pid,args` after the job: no line naming `server.py` (the process list was captured and
-filtered for `server.py`; the only two matches were the filtering command's own shell invocation,
-not a `server.py` process) — reading is NONE, as required.
+**C2:** `git diff --numstat` before commit matched the block's table exactly (2/0, 6/7; see
+per-commit table above).
 
-**A2 the review package:** `.remedy-wt/f042-r10-worker/zip.log`, real exit 0.
-`PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true` —
-all matching the reviewer's dry-run reading. Package filename
-`remedy-review-20260929-202000-READY_FOR_REVIEW.zip`, SHA-256
-`44ad4a56316cdecd648fee40d4351c172b88283b2f3efe6b6d34b5d92cbe5672` (computed independently from
-the file on disk and equal to the log's `final_sha256`). Archived directory (absolute):
-`/home/decodeux/Repos/remedy-history/zips`. `zipfile.is_zipfile`: True; `testzip()`: None (no bad
-member). `.review_zip_manifest.json` inside the package —
-`committed_review_subject.head_commit` = `cf4d59b747902cd6aa93c117e0baaa135e299ca9` (equal to
-C2's full sha, the accepted head); `committed_review_subject.base_commit` =
-`4e643440f26e5d0ca617bca0a922633f34605037` (equal to the stated fork point);
-`base_is_ancestor` True; `commit_count` 91; `file_count` 137. `member_count` 7122,
-`authoritative_count` 47, `symlink_count` 0, `tombstone_count` 0, `manifest_sha256`
-`87f2244b80fd35a4f6c9e5aee5ba083b0570d0823c8fd28519590f71124e2c6f`.
+**G2 (C2 rows):** at `abe15a657`, `.agent/live_review.md` read via `git show` — 166311 bytes,
+sha256 `51542c5478639444d5548e2ebc9862acfe885f5935eff2063fc612fe4b04d187`; `.agent/plan.md` — 828
+bytes, sha256 `afd78110cf7913c2d209fcb0a1365b4f873263f698e094199e2ca6a9130aad16` — both equal to the
+block's G2 table exactly.
 
-**G1 transport:** all three payloads' lines/bytes/sha256 matched the table exactly (above); all
-four `.agent/authored/f042-r10-*` copies byte-identical to source at C1 (`git show
-6741d636a:<path>` vs. source bytes, verified with a hash comparison script — all equal), the block
-copy against `.remedy-wt/f042-r10/block.md` included.
+**C3:** `python3 scripts/rotate_live_review.py` printed:
+```
+gate records moved: 9
+finding pairs moved: 7 (14 records)
+resolved-text records moved: 0
+old ledger size: 166311 bytes
+new ledger size: 133835 bytes
+old archive size: 5697426 bytes
+new archive size: 5729902 bytes
+open findings before: 0
+open findings after: 0
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
+— every number equal to the reviewer's simulated-tree run, and the last line correctly names the
+checkout's own paths where the reviewer's named the simulated tree's. `git diff --numstat` before
+commit matched the block's table exactly (0/46, 46/0).
 
-**G2 the booking:** at C2 (`cf4d59b747902cd6aa93c117e0baaa135e299ca9`), all three files read via
-`git show <C2>:<path>` matched the reviewer's tree exactly:
-`.agent/live_review.md` 164190 bytes, sha256
-`b6723b404e7d8471527576a85cb6449f0e7c10d5b512b9c467a8531a8a7ecb26`; `.agent/plan.md` 862 bytes,
-sha256 `90ba6e30b42cd4e71b23becc264895ed2defa46a79516b87b6481935474eb669`;
-`docs/roadmap/features/T5_F042.md` 9695 bytes, sha256
-`a66951e2455332634b2a45ca91e0a30e0bec93ae384f44c9cf0ef6a6a41e7db8`. `open_finding_ids` (via
-`scripts/rotate_live_review.py`, imported and called over the C2 ledger blob) read `[]`;
-`latest_gate_verdict` read `PASS` — both equal to the reviewer's tree. Serially at C2:
-`python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_golden_path.py` read
-`369 passed`, exit 0 — matching the reviewer's tree exactly.
+**G2 (C3 rows):** at `411ac6ec6`, `.agent/live_review.md` — 133835 bytes, sha256
+`7ff8f7283904fa2584aa95a17f512a2270a6e1501e2cfc7a10c413c002501970`; `.agent/live_review_archive.md`
+— 5729902 bytes, sha256 `cbe2ba00bbcbd1260adfbab9fbc2fc40aac5b46ee1e8da824f0884f89d6852b1` — both
+equal to the block's G2 table exactly. C3's path set (`git show --numstat --format= 411ac6ec6`):
+exactly the two ledger files. `open_finding_ids` (imported from `scripts/rotate_live_review.py`)
+over the ledger text at C2, C3 and the pending-C4 working tree: `[]`, `[]`, `[]` — all three equal
+to the reviewer's simulation reading empty at each.
 
-**G3 the bundle:** covered in full above (A1) — tool real exit 0; ancestry/plain counts 91/91
-equal (one more than the reviewer's 90, for C1); collected 823, deselected 10; red control 0
-unsafe / `[]`, planted id resolved to a local absolute path; pytest exit 0,
-823 passed/0 failed/0 skipped; output_hash
-`3c9dd3d97822e66c64724ca5a882ccbd0fadbaf9d0cda33925bfd769f129c4bf`;
-`validate_verification_tests` problems `[]`; `is_valid_current_run` True, `validation_errors []`;
-6 gate files written and present; `server.py` reading: none.
+**C4 apply:** `git apply --check .agent/authored/f042-r11-closure.diff` exit 0 (`CHECK_OK`);
+`git apply` exit 0 (`APPLY_OK`). `git diff --numstat` (working tree, before this handback joined
+the commit): 11/2 README.md, 1/1 docs/roadmap/STATUS.md, 1/1 scripts/self_use_queue.json — equal to
+the block's expected numstat exactly.
 
-**G4 the package:** covered in full above (A2) — script real exit 0; `PACKAGE_STATUS`
-`READY_FOR_REVIEW`; `REVIEW_SUBJECT_ALIGNMENT` `PASS`; `EVIDENCE_AUTHORITATIVE` `true`; filename
-`remedy-review-20260929-202000-READY_FOR_REVIEW.zip`; SHA-256
-`44ad4a56316cdecd648fee40d4351c172b88283b2f3efe6b6d34b5d92cbe5672`; `committed_review_subject`
-head `cf4d59b747902cd6aa93c117e0baaa135e299ca9` equal to C2, base
-`4e643440f26e5d0ca617bca0a922633f34605037` equal to the fork point; `zipfile.is_zipfile` True,
-`testzip()` None; archived directory `/home/decodeux/Repos/remedy-history/zips`.
+**G2 (C4 rows, working tree before commit):** README.md — 46438 bytes, sha256
+`fb5515710105654b8d670ebbbed91e4134661fce85f043541d0fdd37b7ade49f`; docs/roadmap/STATUS.md — 58865
+bytes, sha256 `95d7594f7c9f5036639f6a11199c268cc80f5d9f24709009847daf4879755922`;
+scripts/self_use_queue.json — 144121 bytes, sha256
+`55e9a7ee73c33d00afc6916196a8dd0aea1f3cd2acf4840e19cd0fc3a3ecc292` — all three equal to the block's
+G2 table exactly.
 
-**G5 the tree (after A2):** `python3 -m apps.cli.main integrity check --json`: six checks, all
-`status "pass"`, `fail_count 0` — `handler_import` (handlers=171), `live_review_verdict` (last
-Gate verdict PASS), `plan_consistency` (unchecked=0, context_complete=False),
-`relevant_untracked` (untracked=0, relevant=0), `repo_root_hygiene` (no reviewer scratch, evidence
-dir or archive at the root), `high_blockers_open` (no open blocker/high findings). `git status
---porcelain`: empty. `git worktree list | wc -l`: 29 (unchanged from BEFORE ANYTHING ELSE's
-reading).
+**G3 the status line:** `status_line.txt` content (trailing newline stripped) occurs exactly 1 time
+in `docs/roadmap/STATUS.md`; 0 lines in `docs/roadmap/STATUS.md` begin `- [~]`.
+
+**G4 the tests:** serially, in the primary checkout with closure.diff applied:
+```
+python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py
+```
+→ `525 passed in 60.16s (0:01:00)`, `REAL_EXIT=0` — equal to the reviewer's simulated-tree reading
+of `525 passed` at exit 0 exactly.
+```
+python3 -m apps.cli.main integrity check --json
+```
+→ `check_count: 6`, all six `status: "pass"` (`handler_import` handlers=171,
+`live_review_verdict` last Gate verdict PASS, `plan_consistency` unchecked=0
+context_complete=False, `relevant_untracked` untracked=0 relevant=0, `repo_root_hygiene` no
+reviewer scratch/evidence dir/archive at root, `high_blockers_open` no open blocker/high
+findings), `fail_count: 0`, `ok: true`, `passed: true`, real exit 0 — equal to the block's expected
+reading exactly.
 
 ## Authored-text proofs
 
-All four `.agent/authored/f042-r10-*` payload/block copies are byte-identical, source to committed
+All six `.agent/authored/f042-r11-*` payload/block copies are byte-identical, source to committed
 copy, verified at C1 by an independent hash-comparison script comparing
-`.remedy-wt/f042-r10/block.md` and each `.remedy-wt/f042-r10-payloads/*` file against
-`git show 6741d636a:.agent/authored/f042-r10-*` — all four equal. The applied diff
-(records.diff → `.agent/live_review.md` and `docs/roadmap/features/T5_F042.md`) and the rewritten
-`.agent/plan.md` (from the plan.md payload) were each verified byte-for-byte against the reviewer's
-stated sizes and sha256 at C2 (G2's three-row table, all equal) — this confirms `git apply` and
-`shutil.copyfile` reproduced the reviewer-authored text exactly, not only that the source payload
-itself was uncorrupted. `create_f042_evidence.py` is a reviewer-authored TOOL, run unedited from
-the payload directory (never copied into a working location before execution); its payload-table
-hash match (above) is its fidelity proof, and its correctness is established behaviourally by A1's
-matching readings against the reviewer's dry run.
+`.remedy-wt/f042-r11/block.md` and each `.remedy-wt/f042-r11-payloads/*` file against
+`git show 0635a1bed:.agent/authored/f042-r11-*` — all six equal (G1, above). The ledger append
+(ledger.md → `.agent/live_review.md`) and the rewritten `.agent/plan.md` (from the plan.md payload)
+were each verified byte-for-byte against the block's stated sizes and sha256 at C2 (G2's two-row
+table, both equal). `scripts/rotate_live_review.py`'s rotation output at C3 matched the reviewer's
+simulated-tree run number for number, and the resulting `.agent/live_review.md` and
+`.agent/live_review_archive.md` matched the block's G2 sha256 table exactly at C3. The applied
+`closure.diff` (→ README.md, docs/roadmap/STATUS.md, scripts/self_use_queue.json) reproduced content
+matching the block's G2 sha256 table exactly at C4 — this confirms `git apply` and `shutil.copyfile`
+reproduced the reviewer-authored text exactly, not only that the source payload itself was
+uncorrupted.
 
 ## Deviations & assumptions
 
 None. No payload was retyped or edited. No existing test was edited to pass. No file outside the
-round's tracked path set (constraint 3) was touched. `data reclaim --apply` was correctly SKIPPED
-per the block's own conditional instruction (the preview listed zero candidates, matching the
-reviewer's own preview), which is a followed instruction, not a deviation. The evidence directory
-and the review package are gitignored/external and were not committed, per constraint 3.
+round's tracked path set (constraint 3) was touched. C4 bundles the closure.diff application and
+this handback into one commit exactly as the block's C4 step ordered ("commit all four together"),
+using the handback template's self-reference exception for the Commits table entry. No PR was
+merged; no checkout of `main`; no force-push; no `git stash`.
 
 ## Next
 
-Per Phase 1 rule 1 and this round's own instruction: the review of round 10 is next, then the
-closing round — the booking of round 10, the ledger rotation, the STATUS line with the README and
-the self-use queue in the same commit, and the pull request.
+Per Phase 1 rule 1: read `.agent/STOP` from disk. Then the Open PR Gate, which merges this
+feature's pull request in the NEXT feature's session and never in this one. Then Rule A5, the first
+unchecked feature in `docs/roadmap/STATUS.md`. Open findings: 0. Operator questions: 0.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 copy round 10 block and payloads | done | |
-| C2 book round 9 with R-1113's resolution and complete the Built State | done | ACCEPTED HEAD `cf4d59b747902cd6aa93c117e0baaa135e299ca9` |
-| push after C2 | done | |
-| A0 staging reclaim | done | preview only, `--apply` skipped per empty-candidate rule |
-| A1 evidence job | done | job id `f042r10e1001`, exit 0, all readings matched the reviewer's projections |
-| A2 review package | done | `READY_FOR_REVIEW`, exit 0 |
-| G1 transport | done | all payload/block hashes and C1 copies verified equal |
-| G2 the booking | done | all three file hashes, `open_finding_ids`, `latest_gate_verdict`, pinned test subset all matched |
-| G3 the bundle | done | all A1 readings matched the reviewer's projections |
-| G4 the package | done | all A2 readings matched the reviewer's projections |
-| G5 the tree | done | integrity check 6/6 pass, clean tree, worktree count unchanged |
-| C3 handback | done | this file |
+| C1 copy round 11 block and payloads | done | 334 insertions, all six files byte-verified |
+| C2 book round 10's PASS, the package READY_FOR_REVIEW | done | numstat and G2 hashes matched exactly |
+| C3 rotate the finding ledger into its archive | done | script output and G2 hashes matched the reviewer's simulation exactly |
+| C4 accept F042 in STATUS with its README pins and the self-use queue | done | closure.diff applied clean, G2/G3 hashes matched, this handback bundled per the self-reference exception |
+| G1 transport | done | all payload and C1-copy hashes verified equal |
+| G2 the booking, the rotation and the acceptance | done | all C2/C3/C4 file hashes, C3's path set, and `open_finding_ids` at C2/C3/working-tree all matched the reviewer's simulation |
+| G3 the status line | done | exactly 1 occurrence, 0 `- [~]` lines |
+| G4 the tests | done | 525 passed exit 0; integrity check 6/6 pass, fail_count 0 |
+| G5 sizes | done | C1-C3 numstat tables above; C4's own numbers (git-measured, including this file) go in the worker's reply |
+| G6 tree, push and pull request | done | necessarily reported in the worker's reply — push and PR happen after this commit, which this file cannot record |
 
-Open findings: 0 (per `open_finding_ids` at C2). Operator questions open: 0.
+Open findings: 0 (per `open_finding_ids` at C2, C3 and the pending-C4 working tree). Operator
+questions open: 0.

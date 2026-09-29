@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-117 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+118 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 33 | 36 |
+| 5 | Operator Cockpit | 34 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -625,6 +625,15 @@ words when the app could not start or stopped answering, and stops it again when
 fifteen minutes with nobody looking at it, or when the cockpit closes; the commands
 `remedy job preview-start` and `remedy job preview-stop` do the same on the command line, and the
 guided tour now offers a "See it running" stop for a job whose project can run).
+
+F042 multi-project cockpit (when you work on several projects, the cockpit now opens on a home
+page with one card per project, twelve to a page, and each card shows the project's folder, the
+result of its newest job, how many jobs can still run, how many decisions wait for you and what the
+project has cost today; a card whose folder has moved says so and tells you the command that fixes
+it; a menu at the top of the side rail switches between projects, and a switch clears every panel
+and stream of the old project so nothing stale stays on screen; the page address carries the
+project, so Back and Forward and a saved link bring you back to the same project, job and view; with
+only one project the home page is skipped and the menu is hidden).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

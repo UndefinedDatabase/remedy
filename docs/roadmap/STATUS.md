@@ -179,7 +179,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
 - [x] F041 — Artifact preview (T001–T003 complete, R-1105 and R-1106 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f041r8e1001 · package remedy-review-20260929-110032-READY_FOR_REVIEW.zip · SHA-256 069f6b42c571f38b94f1cd4359faf276b2aeec67afcd0155bef1ead648c5a103 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 72bee58a045277901e163fb1e7f25b30421883ee)
-- [~] F042 — Multi-project cockpit
+- [x] F042 — Multi-project cockpit (T001–T003 complete, R-1107 to R-1113 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f042r10e1001 · package remedy-review-20260929-202000-READY_FOR_REVIEW.zip · SHA-256 44ad4a56316cdecd648fee40d4351c172b88283b2f3efe6b6d34b5d92cbe5672 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD cf4d59b747902cd6aa93c117e0baaa135e299ca9)
 
 ## Tier 5 — Self-use sources v2 (operator amendment amend0929-context-hygiene)
 
