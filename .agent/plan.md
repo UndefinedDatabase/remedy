@@ -12,16 +12,18 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 6: book round 5, register R-1106 and record DECISION F041 D6, then
-repair R-1106, give the guided tour its `preview` anchor and "See it
-running" stop on both sides, and prove the preview flow end to end on a
-small fixture app through a real UI server.
+ROUND 7, the closure sequence's first round: book round 6 with R-1106's
+resolution, take the self-use reading, write the Built State and the
+checklist consolidation, and run F041's one full suite on the tree that
+ships.
 
 ## Next Steps
 
-1. The closure sequence: the booking of this round, the one full-suite
-   run, the evidence and the package, the ledger rotation and the close.
+1. The closure's evidence round: the booking of this round, any repair
+   the suite requires, the evidence bundle and the review package.
+2. The closing round: the ledger rotation, the STATUS line with the
+   README, and the pull request.
 
 ## Risks
 
-Open findings: 1 (R-1106, repaired this round, booked at the next).
+Open findings: 0.
