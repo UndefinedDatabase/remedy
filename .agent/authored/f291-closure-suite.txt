@@ -1,18 +1,17 @@
-F291 R3 C7 — the closure's integration gate: one full suite run.
+F291 R4 C6 — the first closure repair round: one full suite run on the repaired tree.
 
 Command: python3 -m pytest -n auto -q
-Real exit code: 1
-Wall time (measured): 193.93 seconds
-Summary line: 1 failed, 20972 passed, 20 skipped, 1 warning in 193.14s (0:03:13)
-Bad node ids (failed plus errors):
-  tests/test_parametrize_ids_stable.py::test_no_parametrize_argument_draws_a_fresh_value_at_collection
-Tree it ran on: fd4d02e3c55edad93768a560ee974a7eede771b3 (C6)
+Real exit code: 0
+Wall time (measured): 214 seconds (pytest's own reading: 207.03s, 0:03:27)
+Summary line: 20976 passed, 20 skipped, 1 warning in 207.03s (0:03:27)
+Bad node ids (failed plus errors): NONE
+Tree it ran on: 22265f346ee4a7d542a07f45f9b61d6b10d742ea (C5)
 
-Failure detail: the failing test scans every tracked test file under tests/ for
-"fresh value" parametrize sites via ast.parse. It raised FileNotFoundError on
-tests/regression/test_runtime_chain_571577_0jkfclu8.py, a path that does not
-exist in this tree's git history — an ephemeral file another test in this xdist
-run wrote into and then removed from tests/regression/ during collection or
-mid-run, racing the scanning test under -n auto. This is a pre-existing full-suite
-node, not a node the round's payloads touch; it was not edited, weakened, skipped
-or marked xfail per this round's constraints.
+Previous bad set, from .agent/authored/f291-closure-suite.txt at 752164eb2 (round 3):
+  tests/test_parametrize_ids_stable.py::test_no_parametrize_argument_draws_a_fresh_value_at_collection
+This round's bad set (NONE) is strictly smaller than round 3's one-node set and holds
+no newly bad node: the repair of Tier 5's reader and the parametrize-id guard's reader
+(R-1114, DECISION F291 D4) removed the only bad node, and no other node turned bad.
+
+pgrep -af server.py afterwards: nothing (only the pgrep invocation itself appears in
+its own process list; no server.py process is running).
