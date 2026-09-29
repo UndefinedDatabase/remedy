@@ -1,0 +1,45 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index fa42ec0db..d20380314 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -25898,3 +25898,30 @@ rejected because it would leave Tier 5 unexercised by the run-level proof.
+ 
+ HOW TO REVERSE: delete the class and its import of `TASK_APPLIED`, the two documentation passages,
+ and this paragraph.
++
++## DECISION F291 D3 — the closure's self-use item SU-037 is landed as its job's own diff with two reviewer tests, because it is T001's first live repair and no test reached the handler it narrowed (2026-09-29)
++
++CONTEXT: Round 2 ran the closure's self-use item `SU-037`, from Tier 4, as job
++`d6d60ea3d586425a`. Its branch `remedy/job-d6d60ea3d586425a` narrows the handler around
++`load_project_constitution` in `apps/cli/commands/brain.py` from `except Exception` with a BLE001
++excuse mark to `except OSError:`, and lowers `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` from
++290 to 289. Measured by the reviewer at `8cd5855d`: `load_project_constitution` in
++`packages/orchestration/project_constitution.py` documents "Never raises" and reads only the
++repository folder; the five tests of `TestConstitutionGuard` in `tests/test_brain_viewer.py` reach
++only the branch for a missing folder, so no test exercises the old handler or the new one; and the
++command table's handler in `apps/cli/grouped.py` turns an error that escapes a command into exit
++code 1 with the error's type and message.
++
++CHOSEN: (1) The job's diff lands byte for byte as the job wrote it. (2) Two tests join
++`TestConstitutionGuard`: a `PermissionError` from the loader still prints the warning, keeps the
++error's own text out of it and writes the viewer; a `RuntimeError` fails the command with exit code
++1 naming that error, prints no warning and writes no viewer. The first fails if the handler is
++narrowed past `OSError`, the second if it goes back to catching everything. (3) `SU-037`'s
++`consumed_by` is set by the closure commit, as precondition 6 orders.
++
++ALTERNATIVES: recording the diff without landing it, rejected because it is T001's first repair and
++the feature's own proof that a Tier 4 job is worth running; landing it without a test, rejected
++because no test reached the handler either way and the narrowing would stand unguarded.
++
++HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and `MAX_EXCUSED`
++to 290, delete the two tests, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 072dd76c6..431282338 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -165,3 +165,5 @@ Gate: F042 R10 — the F042 round 10 entry, the closure sequence's evidence roun
+ Gate: F042 R11 — the F042 round 11 entry, the closing round: the booking of round 10, the ledger's rotation into its archive, F042's acceptance in STATUS with its README counters and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `b05789d3`..`69ceaff7` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `0635a1be` 334, `abe15a65` 8, `411ac6ec` 46 and `69ceaff7` 182; the worker declared no deviation. THE TRANSPORT PROOF: the block and the five payloads, each read from `0635a1be`, equal the reviewer's originals under `.remedy-wt/f042-r11/` and `.remedy-wt/f042-r11-payloads/` byte for byte. THE ACCEPTANCE: at `69ceaff7` F042's STATUS line reads `[x]` with its evidence job, package and SHA-256, the README counts 118 of 291 accepted and Tier 5 at 34 of 36, and `SU-036` in `scripts/self_use_queue.json` is consumed by F042. THE PULL REQUEST: number 298, whose hosted CI run 36612727465 on `69ceaff7` ended `success` in both jobs before the reviewer merged it at the Open PR Gate of F291's first session, as `aa5defde`; all six `integrity check` checks read pass on `aa5defde`. The open set at `69ceaff7` is empty.
+ 
+ Gate: F291 R1 — the F291 round 1 entry, the claim with T001 and T002: F291 claimed, this record re-headed, F042's round 11 booked, DECISION F291 D1, and the self-use generator's Tier 4 and Tier 5 with the generator's half of T003. VERDICT PASS. Re-derived over `aa5defde`..`045de81f` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 8 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `066fdade` 378, `180bd880` 141, `89585893` 399, `edb3f1e8` 109, `fe48ed72` 315, `b4107b97` 376, `508bbb5b` 199 and `045de81f` 183. The worker declared one deviation, which the block allowed for: its own writing of S0 to S6 read 315 insertions and 5 deletions against the reviewer's 249 and 2. THE TRANSPORT PROOF: the block and the four payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f291-r1/` and `.remedy-wt/f291-r1-payloads/` byte for byte, and the five files of C2 and the test file of C4 carry the blobs the reviewer's simulation tree printed. THE CODE matches S0 to S6 and spells no mark; two of its comments cite the block's clause label `S0`, which names nothing a later reader can find, and round 2 drops the label. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `045de81f`, read `668 passed, 1 skipped` at exit 0, the skip the D12 quarantine; `ruff check` passed over the three files; all six `integrity check` checks read pass. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `045de81f`, and all fourteen mutations went red, both controls passing and every restore byte-identical; the worktree was removed and `git worktree list` read 13 lines. The open set at `045de81f` is empty.
++
++Gate: F291 R2 — the F291 round 2 entry, T003's run half, the two sources documented, and the closure sequence's first round: the booking of round 1, DECISION F291 D2, the checklist consolidation, the Built State and the closure's self-use item. VERDICT PASS. Re-derived over `045de81f`..`8cd5855d` by the planner and reviewer of F291's first session from the commits themselves. THE RANGE IS 8 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `13145ec2` 417, `983eafe9` 270, `bfd2bd8f` 53, `33ce3a29` 58, `10352b10` 110, `b5aebe4d` 132, `883aad85` 126 and `8cd5855d` 257; the worker declared no deviation. THE TRANSPORT PROOF: the block and the six payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f291-r2/` and `.remedy-wt/f291-r2-payloads/` byte for byte, and the nine files of the block's G1 table carry at their commits the blobs of the reviewer's simulation tree; the checklist still counts 34 items. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `8cd5855d`, read `685 passed, 1 skipped` at exit 0, the skip the D12 quarantine; all six `integrity check` checks read pass. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `8cd5855d`, and r1, r2 and r3 went red at 1, 1 and 4 failed, both controls passing and every restore byte-identical; the worktree was removed and `git worktree list` read 13 lines. THE SELF-USE ITEM: `SU-037`, from Tier 4 on line 132 of `apps/cli/commands/brain.py`, ran as job `d6d60ea3d586425a` on `claude-cli` with `claude-sonnet-4-6` for builder and reviewer, completed in 2 provider calls measured at $0.6615633, and `describe_self_use_run_defects` answered nothing. Its diff narrows the handler to `OSError` and lowers `MAX_EXCUSED` from 290 to 289, which is sound, because `load_project_constitution` documents that it never raises and reads only the file system; round 3 lands it with two reviewer tests. The open set at `8cd5855d` is empty.
