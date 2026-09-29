@@ -1,93 +1,93 @@
-# Handback — F039, round 10: book round 9's FAIL, repair R-1103, write the Built State, and take the closure suite
+# Handback — F039, round 11: book round 10 with R-1103's resolution, run the closure's self-use item
 
 ## Session
 
-SESSION 2 of feature F039 · round 10 · rounds so far 10. This session ran round 10 only: booking
-round 9's FAIL gate into the ledger with R-1103's registration, repairing R-1103 in the live
-test (`ChromePipe.drain`, called for `IDLE_DRAIN_SECONDS` after the test's last check), writing
-the feature's Built State, the planner prompt's checklist consolidation and the guide's window
-sentence, and taking the feature's one full suite on the tree that ships. Context
-self-assessment: a comfortable margin remained through the whole round — every named file (the
-closure protocol preconditions, the integration gate procedure, R-1103's own registration, the
-live test whole, and round 9's mutation tool) was read before writing anything, the repair's
-first real run passed, the mutation tool's one run over two mutations plus the revert probe
-landed clean on the first try, and the full suite (192s, 20611 passed) needed no repair; the
-work was not near its limit.
+SESSION 2 of feature F039 · round 11 · rounds so far 11. This session ran round 11 only: booking
+round 10's PASS verdict and R-1103's `Done:` resolution into the ledger and the plan, then
+generating and running the closure's self-use item (precondition 6 of
+`docs/roadmap/STATUS_closure_protocol.md`) on the `self_use` role's configured provider, recording
+its readings under `.agent/selfuse_f039/`. Context self-assessment: a comfortable margin remained
+through the whole round — the block, AGENTS.md and the handback template were read whole before
+any edit, every payload was verified before use, the booking diff applied clean on the first try,
+the self-use run completed in under a minute of wall time with no repair needed, and the test
+selection and integrity check both read clean on the first run; the work was not near its limit.
 
-For the operator, in plain words: round 9 is booked FAIL on one finding, R-1103 — the
-zero-network test stopped reading the browser's events right after its last check, so a request
-the page might make once idle was never seen. This round's fix: after that last check, the test
-now keeps reading Chrome's events for two more idle seconds before closing the browser, closing
-the gap the reviewer's probe found. The feature's Built State is now written into its roadmap
-file, the planner prompt's checklist notes this round's one authoring defect, and the story
-guide's own sentence about what the test records now says "while the story plays and for two
-seconds after." The feature's one full suite ran clean: 20611 passed, 20 skipped, 0 failed, 0
-errors.
+For the operator, in plain words: round 10 is booked PASS, and R-1103 (the zero-network test's
+drain window) is now marked resolved in the ledger. The closure's self-use precondition is met:
+the generator picked item `SU-035`, a doc-staleness fix for `docs/guides/story-user-guide-v1.md`
+(the guide backticks the config key `story.html`, which is not a registered config key), the job
+ran to completion on the real `self_use` provider (`claude-cli`, model `claude-sonnet-4-6`) at a
+measured cost of $0.5522286 across 2 provider calls, and its one task passed review
+(`staged_review_passed`). The job was never applied — its branch `remedy/job-7a88d05bed5c40dd` is
+left on disk, untouched, for the reviewer.
 
 ## Range
 
-Review of 2e4a9a65a..fd89095ff (plus C6, this commit, on top)
+Review of 0f07b2f8b..HEAD (plus C4, this commit, on top)
 
 ## Commits
 
-### 88082c85f F039 R10 C1: copy round 10 block and payloads
+### ae1928728 F039 R11 C1: copy round 11 block and payloads into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f039-r10-block.md | +183/-0 | verbatim copy of the block |
-| .agent/authored/f039-r10-closure_docs.diff | +97/-0 | verbatim copy of the closure_docs payload |
-| .agent/authored/f039-r10-plan.md | +31/-0 | verbatim copy of the plan payload |
-| .agent/authored/f039-r10-records.diff | +12/-0 | verbatim copy of the records payload |
+| .agent/authored/f039-r11-block.md | +169/-0 | verbatim copy of the block |
+| .agent/authored/f039-r11-booking.diff | +12/-0 | verbatim copy of the booking payload |
+| .agent/authored/f039-r11-plan.md | +27/-0 | verbatim copy of the plan payload |
+| .agent/authored/f039-r11-selfuse.py | +121/-0 | verbatim copy of the selfuse.py payload |
 
-Measured insertions: 323 (183 + 97 + 31 + 12), matching the block's expectation of "this block's
-line count plus 140" (183 + 140 = 323) exactly.
+Measured insertions: 329 (169 + 12 + 27 + 121), matching the block's expectation of "this block's
+line count plus 160" (169 + 160 = 329) exactly.
 
-### 010004f43 F039 R10 C2: book round 9's FAIL and register R-1103
+### ce717518d F039 R11 C2: book round 10 and resolve R-1103
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4/-0 | F039 R9 gate entry (FAIL) and R-1103's registration |
-| .agent/plan.md | +9/-6 | rewritten to round 10's current step |
+| .agent/live_review.md | +4/-0 | F039 R10 gate entry (PASS) and R-1103's `Done:` resolution |
+| .agent/plan.md | +5/-9 | rewritten to round 11's current step (the evidence round) and next steps |
 
-Measured: 4/0, 9/6 — matching the block's expectation exactly.
+Measured: 4/0, 5/9 — matching the block's expectation exactly. Pushed immediately after this
+commit, per the block's instruction.
 
-### 64cba069a F039 R10 C3: read the browser's events for two seconds after the last check (R-1103)
+### 6fb2b0a0c F039 R11 C3: generate and run the closure's self-use item, record its readings
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-0 | one blank line plus the `Landed: R-1103 — ` line, per S1's own instruction |
-| tests/ui_server/test_story_export_file_live.py | +19/-0 | S1: `IDLE_DRAIN_SECONDS` constant with its R-1103 comment, `ChromePipe.drain`, and the test's own call to it before `finally` |
+| scripts/self_use_queue.json | +8/-0 | appended entry `SU-035` (generator's tier-2 doc-staleness pick) |
+| .agent/selfuse_f039/SU-035.md | +13/-0 | NEW: the job's generated markdown |
+| .agent/selfuse_f039/changed_paths.txt | +1/-0 | NEW: `docs/guides/story-user-guide-v1.md` |
+| .agent/selfuse_f039/entry_and_job_file.txt | +5/-0 | NEW: entry id/title/provenance/consumed_by, job file path |
+| .agent/selfuse_f039/execution_config.txt | +39/-0 | NEW: builder/reviewer provider+model, budgets config |
+| .agent/selfuse_f039/full_transcript.txt | +14/-0 | NEW: job id/title/state, task summary |
+| .agent/selfuse_f039/job_diff.txt | +14/-0 | NEW: `git diff HEAD...remedy/job-<id>` |
+| .agent/selfuse_f039/result_state.txt | +12/-0 | NEW: job state, budgets, budget actuals, task states |
+| .agent/selfuse_f039/run_defects.txt | +1/-0 | NEW: `describe_self_use_run_defects()` output (NONE) |
+| .agent/selfuse_f039/staleness_after.txt | +2/-0 | NEW: staleness catalog re-read from the job branch (NONE) |
+| .agent/selfuse_f039/timing.txt | +3/-0 | NEW: started/finished timestamps, wall seconds |
 
-No insertion count was ordered for either path individually; both are well under the 500-line cap.
+No insertion count was ordered for this commit; measured above (112 total, well under the 500-line
+cap). No file outside `scripts/self_use_queue.json` and `.agent/selfuse_f039/**` was touched, per
+constraint 3.
 
-### a6ab4e84e F039 R10 C4: save the round's mutation tool
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f039-r10-mutations.py | +188/-0 | NEW: mutation tool for m1-m2 plus the one revert probe |
-
-No insertion count was ordered for this commit; measured above (under the 500-line cap).
-
-### fd89095ff F039 R10 C5: write the Built State, the checklist consolidation and the guide's window sentence
-| Path | +/- | Reason |
-|---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +5/-0 | the twenty-sixth checklist consolidation paragraph, naming R-1103 |
-| docs/guides/story-user-guide-v1.md | +2/-2 | reworded sentence: the test records requests while the story plays and for two seconds after |
-| docs/roadmap/features/T5_F039.md | +58/-0 | the Built State section (T001-T003, Not built) |
-
-Measured: 5/0, 2/2, 58/0 — matching the block's expectation exactly.
-
-### (this commit) F039 R10 C6: record the closure suite transcript and rewrite handoff for round 10
+### (this commit) F039 R11 C4: rewrite handoff for round 11
 | Path | Reason |
 |---|---|
-| .agent/authored/f039-closure-suite.txt | NEW: the full suite's command, exit code, wall time, summary line, bad node ids (NONE) and the tree it ran on |
 | .agent/handoff.md | rewritten per the template (self-reference exception, R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f039-r10-mut a6ab4e84e` — created for G3. Outcome:
-  success, `HEAD is now at a6ab4e84e`.
-- `git worktree remove --force .remedy-wt/f039-r10-mut` — outcome: success (no output).
-- `git worktree prune` — outcome: success (no output).
-- `git push origin feature/f039-story-replay-mode` — outcome reported in the reply (per the
-  block, G5's readings, including this one, go in the reply rather than this file).
-- No PR created, no merge, no force-push, no amend (the block forbids all of these this round).
+- `git push -u origin feature/f039-story-replay-mode` (after C2) — outcome:
+  `0f07b2f8b..ce717518d  feature/f039-story-replay-mode -> feature/f039-story-replay-mode`, branch
+  set to track the remote, real exit 0.
+- Inside C3's run (`selfuse.py`, not a command this worker issued directly): `git worktree add
+  --detach .remedy-wt/f039-r11-jobtree remedy/job-7a88d05bed5c40dd` and `git worktree remove
+  --force` of the same, both run and cleaned up by the payload script itself while reading the
+  staleness catalog from the job branch. `git worktree list | wc -l` read 61 both before and after
+  C3, confirming the add/remove cancelled out.
+- The self-use run created branch `remedy/job-7a88d05bed5c40dd` and a job workspace at
+  `.remedy-wt/job-7a88d05bed5c40dd`, both left on disk untouched per constraint 4 (the job is never
+  applied and nothing not created by this worker is deleted). `git branch --list 'remedy/*' | wc
+  -l` read 197 before C3 and 198 after — exactly the one new job branch.
+- No PR created, no merge, no force-push, no amend, no checkout of another branch, no stash — all
+  forbidden by the block and none attempted. The final `gh pr list` reading goes in the reply per
+  the block (G6 cannot appear in this file since C4 cannot contain it).
 
 ## Verification
 
@@ -95,6 +95,7 @@ Measured: 5/0, 2/2, 58/0 — matching the block's expectation exactly.
 ```
 $ ls .agent/STOP
 ls: cannot access '.agent/STOP': No such file or directory
+REAL_EXIT=2
 $ pwd
 /home/decodeux/Repos/remedy
 $ git status --porcelain
@@ -102,70 +103,54 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f039-story-replay-mode
 $ git log --oneline -1
-2e4a9a65a F039 R9 C7: rewrite handoff for round 9
+0f07b2f8b F039 R10 C6: record the closure suite transcript and rewrite handoff for round 10
 ```
-Block bytes: measured line count (newline count) 183 / given 183; measured sha256
-`985528c8b6ae0a98d7a686b9ad261d46891c1e1f699a384c864dd14bb8f817b5` / given the same — MATCH.
-`git worktree list | wc -l` at step 4: 62. `git branch --list 'remedy/*' | wc -l` at step 4: 197.
+Block bytes: measured line count (newline count) 169 / given 169; measured sha256
+`9a4b37e43a0a53623a033db881425ed86a9cb66a35add84426a50885c2d465e0` / given the same — MATCH.
+`git worktree list | wc -l` at step 4: 61. `git branch --list 'remedy/*' | wc -l` at step 4: 197.
 
 ### PAYLOADS table
 | file | lines measured/given | bytes measured/given | sha256 match |
 |---|---|---|---|
-| plan.md | 31/31 | 1098/1098 | match |
-| records.diff | 12/12 | 8405/8405 | match |
-| closure_docs.diff | 97/97 | 7722/7722 | match |
+| plan.md | 27/27 | 899/899 | match |
+| booking.diff | 12/12 | 5844/5844 | match |
+| selfuse.py | 121/121 | 6424/6424 | match |
 
-### G1 TRANSPORT AND RECORDS
-- plan.md: 31 lines, 1098 bytes, sha256 `c1d955a895bbf44cd1eadcf9e62df64dea67075fd237e4bf14d95f34bf550adb` — matches PAYLOADS table.
-- records.diff: 12 lines, 8405 bytes, sha256 `cdcd1da800eb7b49562aa5e7f4918d77320087e2affdce5b47470d78441f4496` — matches PAYLOADS table.
-- closure_docs.diff: 97 lines, 7722 bytes, sha256 `a8498b655dc364a960ddf8613f187fb8a529eb184ea934e72ccfa5db83a831dd` — matches PAYLOADS table.
-- `git show 88082c85f:.agent/authored/f039-r10-block.md` == `.remedy-wt/f039-r10/block.md`: byte-identical (14684 bytes both sides).
-- `git show 88082c85f:.agent/authored/f039-r10-plan.md` == `.remedy-wt/f039-r10-payloads/plan.md`: byte-identical (1098 bytes both sides).
-- `git show 88082c85f:.agent/authored/f039-r10-records.diff` == `.remedy-wt/f039-r10-payloads/records.diff`: byte-identical (8405 bytes both sides).
-- `git show 88082c85f:.agent/authored/f039-r10-closure_docs.diff` == `.remedy-wt/f039-r10-payloads/closure_docs.diff`: byte-identical (7722 bytes both sides).
+### G1 TRANSPORT
+- plan.md: 27 lines, 899 bytes, sha256 `07e203e61c0a43997ef16568598002c71d302667fe8218974093d155c62c91c9` — matches PAYLOADS table.
+- booking.diff: 12 lines, 5844 bytes, sha256 `f6126c3132481ad35e671e61b9c95a3fb6f647f31ef986b80bad3fcd6b28ed5b` — matches PAYLOADS table.
+- selfuse.py: 121 lines, 6424 bytes, sha256 `c000469068a75a2c080ba89e3c522a6cfc4239915197e968bce3b5c88a95ee08` — matches PAYLOADS table.
+- `git show ae1928728:.agent/authored/f039-r11-block.md` == `.remedy-wt/f039-r11/block.md`: byte-identical (12275 bytes both sides).
+- `git show ae1928728:.agent/authored/f039-r11-plan.md` == `.remedy-wt/f039-r11-payloads/plan.md`: byte-identical (899 bytes both sides).
+- `git show ae1928728:.agent/authored/f039-r11-booking.diff` == `.remedy-wt/f039-r11-payloads/booking.diff`: byte-identical (5844 bytes both sides).
+- `git show ae1928728:.agent/authored/f039-r11-selfuse.py` == `.remedy-wt/f039-r11-payloads/selfuse.py`: byte-identical (6424 bytes both sides).
 
-At C2 (`010004f43`):
+### G2 THE BOOKING
+At C2 (`ce717518d`):
 | path | bytes | sha256 | matches table |
 |---|---|---|---|
-| .agent/live_review.md | 363185 | 847d1c490ec3e653852c5440aaae5055fa26d98228a6f06c88f6a0e4220c3bbe | yes |
-| .agent/plan.md | 1098 | c1d955a895bbf44cd1eadcf9e62df64dea67075fd237e4bf14d95f34bf550adb | yes |
+| .agent/live_review.md | 366785 | 2adf0ff4e1b3ca92f2aa653e1324091d2549df5130820166ea8948ec2aa95221 | yes |
+| .agent/plan.md | 899 | 07e203e61c0a43997ef16568598002c71d302667fe8218974093d155c62c91c9 | yes |
 
-At C5 (`fd89095ff`):
-| path | bytes | sha256 | matches table |
-|---|---|---|---|
-| docs/agents/planner_reviewer_prompt.md | 110378 | b1723b14d33e5de6e8e9f97096ea3916d4bd3ef42b31c9f54ee4a5359702f2e9 | yes |
-| docs/guides/story-user-guide-v1.md | 5373 | 076ea0b7887e6a7ad9b2677fd7d4f1d3dff768c38beca9bd16354382f3e383c4 | yes |
-| docs/roadmap/features/T5_F039.md | 9795 | f0f2a3fef2f6372d42c9b6bfbd8d121b0b4d423d1254a3f1b3a51532d4708b1c | yes |
+`open_finding_ids(text)` over the ledger at C2 = `[]`; `latest_gate_verdict(text)` = `PASS` — both
+match the block's stated readings exactly (read via `scripts/rotate_live_review.py` with `scripts`
+on `sys.path`, over `git show ce717518d:.agent/live_review.md`).
 
-`open_finding_ids(text)` over the ledger at C2 = `['R-1103']`; `latest_gate_verdict(text)` = `FAIL`
-— both match the block's stated readings. At C3 (`64cba069a`), the ledger at C2 is a byte-exact
-prefix of the ledger at C3, and what C3 adds is exactly `"\n"` plus one line beginning
-`Landed: R-1103 — ` and ending in `"\n"` — verified by slicing the after-bytes against the
-before-bytes at append time (`after[: len(before)] == before`).
-`live_checklist_items` (`packages/orchestration/block_lint.py`) over the planner prompt: 34 items
-at `2e4a9a65a`, 34 items at C5 (`fd89095ff`).
-
-### G2 THE CODE AND THE TESTS
+### G3 THE TESTS
 ```
-$ python3 -m ruff check tests/ui_server/test_story_export_file_live.py .agent/authored/f039-r10-mutations.py
-All checks passed!
-REAL_EXIT=0
-```
-
-```
-$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/ui_server/test_story_export_file_live.py tests/ui_contracts/test_story_player_contract.py tests/docs tests/orchestration/test_block_lint.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -8; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+$ bash -c 'python3 -m pytest -q -p no:cacheprovider -rs tests/docs tests/orchestration/test_doc_staleness.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/orchestration/test_self_use_runner.py tests/orchestration/test_self_use_findings.py tests/orchestration/test_self_use_job.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_block_lint.py tests/test_agent_tooling.py tests/cli/test_golden_path.py 2>&1 | tail -30; echo "REAL_EXIT=${PIPESTATUS[0]}"'
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-458 passed, 1 skipped in 67.03s (0:01:07)
+641 passed, 1 skipped in 70.94s (0:01:10)
 REAL_EXIT=0
 ```
-Exactly the reviewer's own stated reading of 458 passed, 1 skipped at exit 0; the one skip is the
-D12 quarantine, and it names neither `node_modules`, vite nor Chrome.
+Exactly the reviewer's own stated reading of 641 passed, 1 skipped at exit 0; the one skip is the
+D12 quarantine at `tests/test_agent_tooling.py:43`.
 
 ```
 $ bash -c 'python3 -m apps.cli.main integrity check --json; echo "REAL_EXIT=$?"'
 {"check_count": 6, "checks": [
   {"name": "handler_import", "status": "pass", "message": "handlers=169"},
-  {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict FAIL"},
+  {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict PASS"},
   {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
   {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
   {"name": "repo_root_hygiene", "status": "pass", "message": "no reviewer scratch, evidence dir or archive at the root"},
@@ -173,134 +158,147 @@ $ bash -c 'python3 -m apps.cli.main integrity check --json; echo "REAL_EXIT=$?"'
 ], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 REAL_EXIT=0
 ```
-All six checks pass, `fail_count` 0, exit 0; the verdict check's own message reads FAIL exactly
-as the block predicted (round 9's FAIL, booked in C2, is the last Gate verdict on disk).
+All six checks read `pass`, `fail_count` 0, exit 0; the verdict check's own message reads PASS,
+matching the PASS just booked in C2.
 
+### G4 THE SELF-USE READINGS
 ```
-$ bash -c 'python3 -m apps.cli.main integrity block .remedy-wt/f039-r10/block.md; echo "REAL_EXIT=$?"'
-  [OK] item 1 (size): 183 lines, limit 400
-  [OK] item 3 (cap-bounded replacements): plan.md at 31 lines
-  [OK] item 10 (open set recomputed): the block states no open-findings count
-  [OK] item 24 (gate paths resolve): 0 paths named in the block's commands, every one resolves
-  [OK] item 30 (new ids searched first): the block registers no finding id
-  [OK] item 31 (gates before the text): G1 to G3 before C6
-  [OK] item 37 (no unmeasured runs): no line is a run of one repeated character
-All 7 checkable items pass.
+$ bash -c 'python3 .remedy-wt/f039-r11-payloads/selfuse.py 2>&1 | tee .remedy-wt/f039-r11-worker/selfuse.log; echo "REAL_EXIT=${PIPESTATUS[0]}"'
+generate_and_append_if_empty(): ('SU-035', 'Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md', 'generated (self-use-generator tier 2, doc staleness, doc_config_keys:docs/guides/story-user-guide-v1.md:backticks the config key `story.html`)')
+next_self_use_item(): SU-035 Fix stale documentation: doc_config_keys in docs/guides/story-user-guide-v1.md generated (self-use-generator tier 2, doc staleness, doc_config_keys:docs/guides/story-user-guide-v1.md:backticks the config key `story.html`)
 REAL_EXIT=0
 ```
+The item's id, title and provenance read exactly what the reviewer's own generator run over the
+same booking read: `SU-035`, from Tier 2 (`doc_config_keys`), generated from the claim that
+`docs/guides/story-user-guide-v1.md` backticks the config key `story.html`.
 
-```
-$ git status --porcelain
-(empty, no untracked file)
-```
+Job id `7a88d05bed5c40dd`, state `completed`, stop reason/source both empty, error empty. Task
+`T001`: status `applied_to_job_workspace`, reviewer verdict `pass`, final status
+`staged_review_passed`, repair rounds used 0.
 
-### G3 THE RED PROOFS
-```
-$ bash -c 'git worktree add --detach .remedy-wt/f039-r10-mut a6ab4e84e; echo "REAL_EXIT=$?"'
-Preparing worktree (detached HEAD a6ab4e84e)
-HEAD is now at a6ab4e84e F039 R10 C4: save the round's mutation tool
-REAL_EXIT=0
+Builder and reviewer provider/model, from `.agent/selfuse_f039/execution_config.txt` (never
+`fake`): builder `claude-cli` / model `claude-sonnet-4-6` / effort `medium` (all source `cli`);
+reviewer `claude-cli` / model `claude-sonnet-4-6` / effort `medium` (all source `cli`).
 
-$ bash -c 'python3 -B .agent/authored/f039-r10-mutations.py .remedy-wt/f039-r10-mut; echo "REAL_EXIT=$?"'
-worktree: /home/decodeux/Repos/remedy/.remedy-wt/f039-r10-mut
-node_modules linked: True
-CONTROL FIRST: exit=0 passed=1 failed=0 errors=0 skipped=0
-m1 (storyPlayerMain.tsx fetches an off-machine address 500 ms after load): exit=1 passed=0 failed=1 errors=0 skipped=0 | caught=True restored byte-identical=True
-m2 (storyPlayerMain.tsx sends an XMLHttpRequest to an off-machine address 1500 ms after load): exit=1 passed=0 failed=1 errors=0 skipped=0 | caught=True restored byte-identical=True
-REVERT PROBE (m1 together with IDLE_DRAIN_SECONDS = 0.0 — shows the drain is what catches m1): exit=0 passed=1 failed=0 errors=0 skipped=0 | green=True restored byte-identical=True
-CONTROL LAST: exit=0 passed=1 failed=0 errors=0 skipped=0
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-REAL_EXIT=0
+Budgets: `{"deadline": null, "max_cost_usd": 6.0, "max_provider_calls": 8,
+"max_total_tokens": null, "max_wall_clock_minutes": null, "min_free_disk_bytes": null}`.
+Budget actuals: `{"actual_call_count": 2, "actual_sources": ["pingpong_live"],
+"measured_cost_usd": 0.5522286, "priced_call_count": 2, "provider_call_count": 2,
+"schema_version": "2.0.0", "started_at": "2026-09-29T00:57:46.693243+00:00",
+"total_tokens": 3045, "unmeasured_call_count": 0, "unpriced_call_count": 0}`.
 
-$ bash -c 'git worktree remove --force .remedy-wt/f039-r10-mut; echo "REAL_EXIT=$?"'
-REAL_EXIT=0
-$ bash -c 'git worktree prune; echo "REAL_EXIT=$?"'
-REAL_EXIT=0
-$ git worktree list | wc -l
-62
+`.agent/selfuse_f039/changed_paths.txt` verbatim:
 ```
-Both mutations caught as FAILED (the drained live test now sees the late request and fails on
-the zero-request assertion), both controls (1 passed each) green, every file restored
-byte-identical. The revert probe — m1 together with `IDLE_DRAIN_SECONDS = 0.0` — read GREEN (1
-passed, exit 0) exactly as expected: a zero-second drain never reads the late request, so the
-drain window, not something else, is what m1 and m2 are caught by. Reported as the probe it is,
-never folded into the mutation count or `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY`.
-
-### G4 THE INTEGRATION GATE
-```
-$ python3 <script running apps/ui/node_modules/.bin/vite build with cwd=apps/ui>
-EXIT: 0
-LAST LINE: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-```
-Full output showed `✓ 2104 modules transformed.` and `✓ built in 2.27s`; the chunk-size warning
-is pre-existing and not new to this round.
-```
-$ git status --porcelain
-(empty)
+docs/guides/story-user-guide-v1.md
 ```
 
+`.agent/selfuse_f039/staleness_after.txt` verbatim:
 ```
-$ python3 -m pytest -n auto -q
-REAL_EXIT=0
-WALL_TIME_SECONDS: 192.70 (pytest's own summary: 192.03s / 0:03:12)
-20611 passed, 20 skipped, 1 warning in 192.03s (0:03:12)
+Read from: the job branch remedy/job-7a88d05bed5c40dd
+NONE
 ```
-Bad node ids (failed plus errors): **NONE**. `grep -E '^FAILED|^ERROR'` over the full log matched
-nothing. The transcript is recorded verbatim in `.agent/authored/f039-closure-suite.txt`, naming
-the tree it ran on as `fd89095ff` (C5). `tests/orchestration/test_import_reachability.py` and
-`tests/test_no_orphan_modules.py` hold no bad node (both ran inside the 20611-passed, 0-failed,
-0-error full suite; closure precondition 7 unaffected).
+
+`.agent/selfuse_f039/job_diff.txt` verbatim:
+```
+$ git diff HEAD...remedy/job-7a88d05bed5c40dd  (exit 0)
+diff --git a/docs/guides/story-user-guide-v1.md b/docs/guides/story-user-guide-v1.md
+index 95c778069..4c103e809 100644
+--- a/docs/guides/story-user-guide-v1.md
++++ b/docs/guides/story-user-guide-v1.md
+@@ -44,7 +44,7 @@ or with the environment variables `REMEDY_STORY_STEP_MS` and `REMEDY_STORY_CHAPT
+ remedy job story <job id> --export story.html
+ ```
+
+-This writes `story.html`, one file that holds everything the story needs: the story player, its
++This writes story.html, one file that holds everything the story needs: the story player, its
+ styles, and the job's task list and recorded events. Open the file in any browser, straight from
+ your disk. It makes no network request at all and needs no Remedy, so you can send it to someone
+ by mail or put it anywhere. The file plays the same way as the cockpit's story: the chapter
+```
+
+`.agent/selfuse_f039/run_defects.txt` verbatim:
+```
+NONE
+```
+
+`git worktree list | wc -l` after the run: 61 (unchanged — the script's own jobtree worktree was
+added and removed inside the run). `git branch --list 'remedy/*' | wc -l` after the run: 198 (one
+new branch, `remedy/job-7a88d05bed5c40dd`, left behind per constraint 4; nothing was deleted that
+this worker did not create as scratch).
+
+### G5 SIZES
+```
+$ git show --numstat --format= ae1928728  (C1)
+169	0	.agent/authored/f039-r11-block.md
+12	0	.agent/authored/f039-r11-booking.diff
+27	0	.agent/authored/f039-r11-plan.md
+121	0	.agent/authored/f039-r11-selfuse.py
+```
+Total 329 insertions, matching the block's expectation (169 + 160 = 329) exactly.
+```
+$ git show --numstat --format= ce717518d  (C2)
+4	0	.agent/live_review.md
+5	9	.agent/plan.md
+```
+Matching the block's expectation (4/0, 5/9) exactly.
+```
+$ git show --numstat --format= 6fb2b0a0c  (C3)
+13	0	.agent/selfuse_f039/SU-035.md
+1	0	.agent/selfuse_f039/changed_paths.txt
+5	0	.agent/selfuse_f039/entry_and_job_file.txt
+39	0	.agent/selfuse_f039/execution_config.txt
+14	0	.agent/selfuse_f039/full_transcript.txt
+14	0	.agent/selfuse_f039/job_diff.txt
+12	0	.agent/selfuse_f039/result_state.txt
+1	0	.agent/selfuse_f039/run_defects.txt
+2	0	.agent/selfuse_f039/staleness_after.txt
+3	0	.agent/selfuse_f039/timing.txt
+8	0	scripts/self_use_queue.json
+```
+Total 112 insertions; no insertion count was ordered for C3 individually, and it is well under the
+500-line cap.
 
 ## Authored-text proofs
 
 | payload | committed at | disk-to-disk vs source | result |
 |---|---|---|---|
-| block.md copy | 88082c85f | `.agent/authored/f039-r10-block.md` vs `.remedy-wt/f039-r10/block.md` | byte-identical |
-| plan.md copy | 88082c85f | `.agent/authored/f039-r10-plan.md` vs `.remedy-wt/f039-r10-payloads/plan.md` | byte-identical |
-| records.diff copy | 88082c85f | `.agent/authored/f039-r10-records.diff` vs `.remedy-wt/f039-r10-payloads/records.diff` | byte-identical |
-| closure_docs.diff copy | 88082c85f | `.agent/authored/f039-r10-closure_docs.diff` vs `.remedy-wt/f039-r10-payloads/closure_docs.diff` | byte-identical |
-| records.diff application | 010004f43 | `git apply` of the reviewer's diff, C2's two files' bytes/sha256 vs the G1 table | both match |
-| plan.md rewrite | 010004f43 | `.agent/plan.md` := payload plan.md, sha256 vs the PAYLOADS table | match |
-| closure_docs.diff application | fd89095ff | `git apply` of the reviewer's diff, C5's three files' bytes/sha256 vs the G1 table | all three match |
+| block.md copy | ae1928728 | `.agent/authored/f039-r11-block.md` vs `.remedy-wt/f039-r11/block.md` | byte-identical |
+| plan.md copy | ae1928728 | `.agent/authored/f039-r11-plan.md` vs `.remedy-wt/f039-r11-payloads/plan.md` | byte-identical |
+| booking.diff copy | ae1928728 | `.agent/authored/f039-r11-booking.diff` vs `.remedy-wt/f039-r11-payloads/booking.diff` | byte-identical |
+| selfuse.py copy | ae1928728 | `.agent/authored/f039-r11-selfuse.py` vs `.remedy-wt/f039-r11-payloads/selfuse.py` | byte-identical |
+| booking.diff application | ce717518d | `git apply --check` then `git apply`, both exit 0; C2's two files' bytes/sha256 vs the G2 table | both match |
+| plan.md rewrite | ce717518d | `.agent/plan.md` := payload plan.md via `shutil.copyfile`, bytes/sha256 vs the PAYLOADS/G2 table | match |
+| selfuse.py execution | 6fb2b0a0c | run verbatim, unedited, from `.remedy-wt/f039-r11-payloads/selfuse.py`; no line retyped | N/A (script run, not applied as text) |
 
 ## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
 | C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | |
-| C6 | done | this handback |
-| G1 transport and records | done | |
-| G2 code and tests | done | |
-| G3 red proofs | done | both mutations caught; revert probe read GREEN |
-| G4 integration gate | done | build exit 0; full suite 20611 passed, 0 failed, 0 errors |
-| G5 tree and push | done | reported in the reply |
-| R-1103 | done | repaired in C3, `Landed:` line appended |
+| C2 | done | pushed immediately after |
+| C3 | done | job completed, verdict pass, never applied |
+| C4 | done | this handback |
+| G1 transport | done | |
+| G2 the booking | done | open_finding_ids=[], latest_gate_verdict=PASS |
+| G3 the tests | done | 641 passed, 1 skipped (D12 quarantine); integrity check 6/6 pass |
+| G4 self-use readings | done | SU-035, completed, pass, staged_review_passed, $0.5522286 |
+| G5 sizes | done | C1 329, C2 4/0+5/9, C3 112 |
+| G6 tree and push | done | reported in the reply |
+| R-1103 | done (already) | resolution booked this round via booking.diff |
 
 ## Deviations & assumptions
 
-1. **`Landed:` sentence wording.** The block asks for "one line beginning `Landed: R-1103 — ` saying
-   in one sentence what changed" and names no commit; the sentence written names the class
-   (`ChromePipe.drain`, `IDLE_DRAIN_SECONDS`) and the behavioural effect, not a SHA, matching that
-   instruction.
-2. **Mutation tool's guard scope.** Round 9's tool guarded two files
-   (`tests/ui_server/test_story_export_file_live.py` and
-   `tests/ui_contracts/test_story_player_contract.py`); this round's block names only the live
-   test as G3's guard, so this round's tool guards that one file alone — the second file's
-   contract is untouched by this round's mutations.
-3. No other departure from the block's ordered commit sequence (C1, C2, C3, C4, C5, C6). No
-   commit reached the 500-line cap; none was split.
-4. No test this round wrote was found wrong and corrected before C6 (constraint 4 did not
-   trigger, since the full suite in C6 read clean). No existing test went red before C6.
+None. Every commit ran in the block's ordered sequence (C1, C2, C3, C4); no commit reached the
+500-line cap, so none was split; the tracked path set after C4 matches constraint 3 exactly; the
+self-use job completed rather than blocking or stopping, which the block treats as one of several
+valid outcomes to record, not a deviation; nothing was merged, no PR was created, and no branch or
+worktree that this worker did not itself create as scratch was touched or deleted.
 
 ## Next
 
-Phase 1 rule 1: read `.agent/STOP` from disk before anything else. Then the review of round 10 —
-R-1103's repair, the Built State, the checklist consolidation and the guide's sentence — and of
-its full-suite transcript. Then the closure's evidence round: the booking of round 10 with
-R-1103's resolution, the self-use reading, any repair the suite requires, the evidence bundle and
-the review package. Then the closing round: the ledger rotation, the STATUS flip and the pull
-request. Open-findings count: 1 (R-1103, landed and awaiting review). Operator questions open: 1.
+Phase 1 rule 1: read `.agent/STOP` from disk before anything else. Then the review of round 11 —
+the booking of round 10 and R-1103's resolution — and of the self-use run (item `SU-035`, job
+`7a88d05bed5c40dd`, completed/pass/staged_review_passed, never applied). Then the closure's
+evidence round: the booking of round 11, any finding the self-use run raises, the evidence bundle
+and the review package. Then the closing round: the ledger rotation, the STATUS flip and the pull
+request. Open-findings count: 0. Operator questions open: 1.
