@@ -11,16 +11,16 @@ so a closure's self-use reading is rarely "queue exhausted"
 
 ## Current Step
 
-ROUND 5, the evidence round: book round 4 with R-1114's resolution, bring
-the Built State current, reclaim staging copies, then build the evidence
-bundle and the review package at the accepted head.
+ROUND 6, the closing round: book round 5, rotate the finding ledger, accept
+F291 in STATUS with the README and the self-use queue in the same commit,
+and open the pull request.
 
 ## Next Steps
 
-1. The closing round: book round 5, rotate the ledger, accept F291 in
-   STATUS with the README and the self-use queue in the same commit, and
-   open the pull request.
+1. The Open PR Gate merges this feature's pull request at the start of the
+   next feature's session, never in this one.
+2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-Open findings: 0 once R-1114's resolution is booked.
+Open findings: 0.
