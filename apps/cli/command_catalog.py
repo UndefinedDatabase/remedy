@@ -688,6 +688,34 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show", "job.ownership"),
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job preview-start / preview-stop (F041 T002, DECISION F041 D3) ────
+    CommandEntry(
+        command_id="job.preview-start",
+        group_id="job",
+        subcommand="preview-start",
+        description="Start the project of a job under its mission with the runtime harness, "
+                    "probe it, and answer its link only when the probe passed (F041).",
+        action_class="write_metadata",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=True,
+        related=("job.preview-stop", "runtime.serve"),
+        exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="job.preview-stop",
+        group_id="job",
+        subcommand="preview-stop",
+        description="Stop the preview of a job under its mission with the runtime harness (F041).",
+        action_class="write_metadata",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=True,
+        related=("job.preview-start", "runtime.stop"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # ── job rerun-subtree (F029 T002, DECISION F029 D3) ──────────────────
     CommandEntry(
         command_id="job.rerun-subtree",
