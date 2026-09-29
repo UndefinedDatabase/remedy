@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-116 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+117 of 290 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 32 | 36 |
+| 5 | Operator Cockpit | 33 | 36 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -615,6 +615,16 @@ timeline one event at a time with a pause before each chapter; the command
 straight from your disk, with no network and no Remedy, and refuses a story larger than the
 `story.export_max_bytes` setting rather than cutting it; a test opens such a file in headless
 Chrome and passes only when the page makes no request but the file itself).
+
+F041 artifact preview (a job's results can now be seen in the cockpit without leaving it: the
+Results button opens a panel with the job's README, shown as formatted text that Remedy cleans on
+its own server so that nothing in it can run in your browser, the screenshots the job captured,
+which open large one at a time, and a card that starts the job's project as a live app; the card
+shows a link to the app only after Remedy has checked that the app really answers, says in plain
+words when the app could not start or stopped answering, and stops it again when you ask, after
+fifteen minutes with nobody looking at it, or when the cockpit closes; the commands
+`remedy job preview-start` and `remedy job preview-stop` do the same on the command line, and the
+guided tour now offers a "See it running" stop for a job whose project can run).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
