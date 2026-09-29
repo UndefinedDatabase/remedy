@@ -11,18 +11,16 @@ so a closure's self-use reading is rarely "queue exhausted"
 
 ## Current Step
 
-ROUND 4, the first closure repair round: book round 3, register R-1114,
-record DECISION F291 D4, repair the two readers of `tests/` that a
-vanished temporary module fails, and run the one full suite again on the
-repaired tree.
+ROUND 5, the evidence round: book round 4 with R-1114's resolution, bring
+the Built State current, reclaim staging copies, then build the evidence
+bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The evidence bundle and the review package, once the suite is green.
-2. The closing round: STATUS, README, the ledger's rotation and the pull
-   request.
+1. The closing round: book round 5, rotate the ledger, accept F291 in
+   STATUS with the README and the self-use queue in the same commit, and
+   open the pull request.
 
 ## Risks
 
-Open findings: R-1114, repaired this round. At most two more repair rounds
-remain (amend0917-throughput rule 2).
+Open findings: 0 once R-1114's resolution is booked.
