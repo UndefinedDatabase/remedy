@@ -10,19 +10,15 @@ names (`docs/roadmap/features/T2_F286.md`, DECISION F286 D1).
 
 ## Current Step
 
-ROUND 2, the closure sequence's integration-gate round: book round 1
-with R-1104's resolution, take the self-use reading, write the Built
-State and the checklist consolidation, and run the feature's one full
-suite on the tree that ships.
+ROUND 3, the closure sequence's evidence round: book round 2, then build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The evidence round: the booking of round 2, the evidence bundle and
-   the review package.
-2. The closing round: the booking, the ledger rotation, the next
+1. The closing round: the booking, the ledger rotation, the next
    findings paydown registered, F286 accepted in STATUS with its README
    pins, and the pull request.
 
 ## Risks
 
-Open findings: 0 once round 2's booking lands.
+Open findings: 0.
