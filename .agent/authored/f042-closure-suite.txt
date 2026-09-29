@@ -1,0 +1,32 @@
+F042 R9 C5 — the repaired tree's one full suite
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time: 226 seconds measured wall-clock (pytest's own report: 221.22s
+(0:03:41); measured: start 1790704655, end 1790704881)
+Summary line: 20945 passed, 20 skipped, 1 warning in 221.22s (0:03:41)
+
+FULL list of bad node ids (failed plus errors): NONE
+
+Previous bad set (round 8, `.agent/authored/f042-closure-suite.txt` at
+`2c8f1a5d0`): one node-level failure,
+`tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`
+(291 excused blind handlers, above the frozen 290), registered as R-1113 and
+repaired this round by C3 (narrowing the project card's handler to
+`(OSError, ValueError)` and removing its `noqa` mark).
+
+Shrink reading: the new bad set (NONE) is STRICTLY SMALLER than the previous
+bad set (one node) and holds no newly bad node — the set is empty.
+
+Closure precondition 7 (`tests/orchestration/test_import_reachability.py`,
+`tests/test_no_orphan_modules.py`): both ran as part of this full suite (the
+run reached individual test nodes and reported no collection error of any
+kind); neither file's name appears in any FAILED/ERROR line because the
+transcript holds no FAILED/ERROR line at all. Precondition 7 holds clean on
+this transcript.
+
+Tree it ran on: 3a6495348 (F042 R9 C4, the tip at the time the suite ran; C1
+through C4 are all included).
+
+server.py: no process found after the suite (`ps -eo pid,args | grep
+"[s]erver.py"` empty).

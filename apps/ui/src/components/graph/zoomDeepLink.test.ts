@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GOLDEN_B_MODEL } from "./brainReducer.fixtures";
 import { ZOOM_HOME, zoomGraphOf, zoomTransition, type ZoomState } from "./semanticZoom";
 import { searchWithZoom, zoomLinkEvents, zoomLinkFromSearch } from "./zoomDeepLink";
+import { addressFromSearch } from "../../api/cockpitAddress";
 
 describe("zoomLinkFromSearch", () => {
   it.each([
@@ -67,5 +68,21 @@ describe("a link restores the state it was written from", () => {
     let restored: ZoomState = ZOOM_HOME;
     for (const event of zoomLinkEvents({ focusId: "run:t9:1", tab: "diff" })) restored = zoomTransition(graph, restored, event).state;
     expect(restored).toBe(ZOOM_HOME);
+  });
+});
+
+// F042 T003, DECISION F042 D5: a deep link names the project and the view together, and the
+// zoom's own writer keeps the project, so a link a reader copies restores both exactly.
+describe("a deep link across projects", () => {
+  it("keeps the project when the zoom writes its parameters, and reads both back", () => {
+    const search = searchWithZoom("?token=t&project=delta&job=d1", { level: 3, focusId: "run:t1:2", tab: "diff" });
+    expect(search).toBe("?token=t&project=delta&job=d1&focus=run%3At1%3A2&level=3&tab=diff");
+    expect(addressFromSearch(search)).toEqual({ jobId: "d1", project: "delta", token: "t" });
+    expect(zoomLinkFromSearch(search)).toEqual({ focusId: "run:t1:2", tab: "diff" });
+  });
+
+  it("keeps the project when the zoom returns to the whole graph", () => {
+    expect(searchWithZoom("?token=t&project=delta&job=d1&focus=task%3At1&level=1", { level: 0, focusId: null, tab: null }))
+      .toBe("?token=t&project=delta&job=d1");
   });
 });

@@ -1,0 +1,65 @@
+diff --git a/apps/ui/src/components/graph/zoomDeepLink.test.ts b/apps/ui/src/components/graph/zoomDeepLink.test.ts
+index ece4aad3a..3729b38fc 100644
+--- a/apps/ui/src/components/graph/zoomDeepLink.test.ts
++++ b/apps/ui/src/components/graph/zoomDeepLink.test.ts
+@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
+ import { GOLDEN_B_MODEL } from "./brainReducer.fixtures";
+ import { ZOOM_HOME, zoomGraphOf, zoomTransition, type ZoomState } from "./semanticZoom";
+ import { searchWithZoom, zoomLinkEvents, zoomLinkFromSearch } from "./zoomDeepLink";
++import { addressFromSearch } from "../../api/cockpitAddress";
+ 
+ describe("zoomLinkFromSearch", () => {
+   it.each([
+@@ -69,3 +70,19 @@ describe("a link restores the state it was written from", () => {
+     expect(restored).toBe(ZOOM_HOME);
+   });
+ });
++
++// F042 T003, DECISION F042 D5: a deep link names the project and the view together, and the
++// zoom's own writer keeps the project, so a link a reader copies restores both exactly.
++describe("a deep link across projects", () => {
++  it("keeps the project when the zoom writes its parameters, and reads both back", () => {
++    const search = searchWithZoom("?token=t&project=delta&job=d1", { level: 3, focusId: "run:t1:2", tab: "diff" });
++    expect(search).toBe("?token=t&project=delta&job=d1&focus=run%3At1%3A2&level=3&tab=diff");
++    expect(addressFromSearch(search)).toEqual({ jobId: "d1", project: "delta", token: "t" });
++    expect(zoomLinkFromSearch(search)).toEqual({ focusId: "run:t1:2", tab: "diff" });
++  });
++
++  it("keeps the project when the zoom returns to the whole graph", () => {
++    expect(searchWithZoom("?token=t&project=delta&job=d1&focus=task%3At1&level=1", { level: 0, focusId: null, tab: null }))
++      .toBe("?token=t&project=delta&job=d1");
++  });
++});
+diff --git a/tests/ui_server/test_projects_route.py b/tests/ui_server/test_projects_route.py
+index 9b0f13fdd..37026261d 100644
+--- a/tests/ui_server/test_projects_route.py
++++ b/tests/ui_server/test_projects_route.py
+@@ -123,3 +123,28 @@ class TestProjectRoutes:
+         assert (status, content_type) == (200, "application/json")
+         assert body == job_project_view(self.job)
+         assert (body["scope"], body["project"]["slug"]) == ("project", "alpha")
++
++
++class TestDashboardProjectLine:
++    """DECISION F042 D5: the dashboard's project section reads the job's own `project_id` and
++    counts `scoped_jobs` over it, so the right panel's "Project: N jobs" line and the project's
++    card in the home grid count the same jobs."""
++
++    @pytest.fixture(autouse=True)
++    def _setup(self, tmp_path, monkeypatch):
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
++        self.alpha = register_project_repo("alpha", _git_folder(tmp_path / "alpha"))
++        self.beta = register_project_repo("beta", _git_folder(tmp_path / "beta"))
++        self.jobs = [JobPlan(job_title=f"alpha job {n}", project_id=str(self.alpha.id)) for n in range(2)]
++        for job in self.jobs:
++            save_job_plan(job)
++        save_job_plan(JobPlan(job_title="beta job", project_id=str(self.beta.id)))
++
++    def test_a_job_scoped_by_its_own_field_gets_its_projects_line(self):
++        from packages.orchestration.ui_server import _build_project_summary_section
++
++        section = _build_project_summary_section(self.jobs[0])
++        assert section is not None
++        assert section["project_id"] == str(self.alpha.id)
++        assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 2

@@ -1,0 +1,98 @@
+diff --git a/tests/test_parametrize_ids_stable.py b/tests/test_parametrize_ids_stable.py
+new file mode 100644
+index 000000000..2a0479ec8
+--- /dev/null
++++ b/tests/test_parametrize_ids_stable.py
+@@ -0,0 +1,70 @@
++"""A parametrize id must be the same in every pytest-xdist worker (R-1112).
++
++pytest-xdist imports the test modules once per worker and refuses to run when two
++workers collect different test ids. An argument list that calls a source of fresh
++values at import time, such as `str(uuid4())`, gives each worker its own ids, and
++the whole suite then stops at collection before its first test.
++"""
++
++import ast
++from pathlib import Path
++
++TESTS = Path(__file__).resolve().parent
++FRESH_VALUE_CALLS = frozenset(
++    {
++        "uuid1",
++        "uuid4",
++        "random",
++        "randint",
++        "choice",
++        "token_hex",
++        "token_urlsafe",
++        "urandom",
++        "time",
++        "monotonic",
++        "now",
++        "utcnow",
++    }
++)
++
++
++def _called_name(node: ast.Call) -> str | None:
++    if isinstance(node.func, ast.Name):
++        return node.func.id
++    if isinstance(node.func, ast.Attribute):
++        return node.func.attr
++    return None
++
++
++def fresh_value_parametrize_sites(root: Path) -> list[str]:
++    """Every call to a fresh-value source inside a parametrize call under root."""
++    sites = []
++    for path in sorted(root.rglob("*.py")):
++        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
++        for node in ast.walk(tree):
++            if not (isinstance(node, ast.Call) and _called_name(node) == "parametrize"):
++                continue
++            for inner in ast.walk(node):
++                if inner is not node and isinstance(inner, ast.Call) and _called_name(inner) in FRESH_VALUE_CALLS:
++                    sites.append(f"{path.relative_to(root.parent).as_posix()}:{inner.lineno}: {_called_name(inner)}()")
++    return sites
++
++
++def test_no_parametrize_argument_draws_a_fresh_value_at_collection() -> None:
++    assert fresh_value_parametrize_sites(TESTS) == []
++
++
++def test_the_scan_finds_a_fresh_uuid_in_a_parametrize_argument(tmp_path: Path) -> None:
++    tests = tmp_path / "tests"
++    tests.mkdir()
++    (tests / "test_sample.py").write_text(
++        "import pytest\n"
++        "from uuid import uuid4\n"
++        "\n"
++        "\n"
++        '@pytest.mark.parametrize("name", ["gamma", str(uuid4())])\n'
++        "def test_sample(name):\n"
++        "    assert name\n",
++        encoding="utf-8",
++    )
++    assert fresh_value_parametrize_sites(tests) == ["tests/test_sample.py:5: uuid4()"]
+diff --git a/tests/ui_server/test_projects_route.py b/tests/ui_server/test_projects_route.py
+index 558428356..70ae1b0a3 100644
+--- a/tests/ui_server/test_projects_route.py
++++ b/tests/ui_server/test_projects_route.py
+@@ -15,7 +15,6 @@ import subprocess
+ import threading
+ from datetime import datetime, timezone
+ from http.client import HTTPConnection
+-from uuid import uuid4
+ 
+ import pytest
+ 
+@@ -108,7 +107,8 @@ class TestProjectRoutes:
+         assert body["last_result"]["title"] == "beta job"
+         assert body["jobs"]["total"] == 1
+ 
+-    @pytest.mark.parametrize("name", ["gamma", str(uuid4())])
++    # R-1112: a fixed uuid; a fresh uuid4() here gave each xdist worker its own test id.
++    @pytest.mark.parametrize("name", ["gamma", "3f1c9a52-8d4e-4b7a-9c61-2e5f0d8a7b14"])
+     def test_an_unknown_project_is_404(self, name):
+         status, _, body = self._get(f"/api/projects/{name}/summary?token={{token}}")
+         assert (status, body) == (404, {"error": "project not found"})

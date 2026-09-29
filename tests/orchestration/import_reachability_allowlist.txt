@@ -203,6 +203,7 @@ packages.orchestration.preview_worker
 packages.orchestration.product_smoke
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate
+packages.orchestration.project_cockpit
 packages.orchestration.project_constitution
 packages.orchestration.project_context_coverage
 packages.orchestration.project_registry

@@ -1388,7 +1388,7 @@ class TestCommandChannelDoor:
     # -- F: the route walk, F009's 405 discipline ---------------------------
 
     #: Routes `do_GET` dispatches with a bare `path ==` comparison.
-    LITERAL_GET_ROUTES = frozenset({"/", "/api/state", "/api/layers"})
+    LITERAL_GET_ROUTES = frozenset({"/", "/api/state", "/api/layers", "/api/projects"})
 
     @staticmethod
     def _do_get_route_facts():
@@ -1442,7 +1442,7 @@ class TestCommandChannelDoor:
         above gives: there is no literal to derive them from.
         """
         _, endpoints = self._do_get_route_facts()
-        paths = ["/", "/api/state", "/api/layers", "/assets/index.js"]
+        paths = ["/", "/api/state", "/api/layers", "/api/projects", "/assets/index.js"]
         paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
         paths += [
             f"/api/jobs/{self.job_id}/events-since",
@@ -1454,6 +1454,7 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/task-runs/T001/diff",
             f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
             f"/api/jobs/{self.job_id}/artifacts/file",
+            "/api/projects/any-project/summary",
         ]
         return paths
 

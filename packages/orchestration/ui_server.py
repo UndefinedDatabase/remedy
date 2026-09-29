@@ -1393,25 +1393,31 @@ def _build_story_section() -> dict[str, Any]:
 
 
 def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
-    """Build project-level summary for dashboard. Returns None if no project."""
+    """Build project-level summary for dashboard. Returns None if no project.
+
+    DECISION F042 D5 (2): the project id reads the job's own `project_id` before the
+    legacy `metadata["project_id"]` key, and the linked jobs are `scoped_jobs` over that
+    project (F148's rule), so this line agrees with the project's card in the home grid.
+    """
     try:
         from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_registry import load_project
+        from packages.orchestration.project_scope import ProjectScope, scoped_jobs
         from packages.orchestration.project_summary import (
             build_project_summary,
             detect_patterns,
         )
         from packages.orchestration.timeline import load_run_events
 
-        project_id = job.metadata.get("project_id")
+        project_id = str(getattr(job, "project_id", "") or job.metadata.get("project_id") or "")
         if not project_id:
             return None
 
         from uuid import UUID
         project = load_project(UUID(project_id))
-        all_jobs = list_job_plans()
-        linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
+        linked_jobs, _, _ = scoped_jobs(
+            ProjectScope(project_id=str(project.id), all_projects=False, source="dashboard")
+        )
 
         data_dir = resolve_data_root()
         all_events: dict[str, list[dict]] = {}
@@ -1792,6 +1798,28 @@ def _build_layers_json() -> dict[str, Any]:
     """Build layer definitions — Step 167."""
     from packages.orchestration.ui_view_model import build_layers
     return build_layers()
+
+
+def _build_projects_json() -> dict[str, Any]:
+    """Build the project list (F042 T001, DECISION F042 D1)."""
+    from packages.orchestration.project_cockpit import projects_view
+    return projects_view()
+
+
+def _build_project_summary_json(selector: str) -> tuple[int, dict[str, Any]]:
+    """Build one project's summary card, or 404 for an unknown selector
+    (F042 T001, DECISION F042 D1)."""
+    from packages.orchestration.project_cockpit import find_project, project_summary
+    project = find_project(selector)
+    if project is None:
+        return _safe_error(404, "project not found")
+    return (200, project_summary(project))
+
+
+def _build_job_project_json(job: Any) -> dict[str, Any]:
+    """Build the project one job belongs to (F042 T002, DECISION F042 D2)."""
+    from packages.orchestration.project_cockpit import job_project_view
+    return job_project_view(job)
 
 
 def _build_diagnostics_json(job: Any) -> dict[str, Any]:
@@ -2941,6 +2969,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "tour": _build_tour_json,
                 "artifacts": _build_artifacts_json,
                 "preview": _build_preview_json,
+                "project": _build_job_project_json,
             }
             handler = handlers.get(endpoint)
             if handler:
@@ -2990,6 +3019,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # /api/layers
         if path == "/api/layers":
             self._send_json(200, _build_layers_json())
+            return
+
+        # /api/projects — DECISION F042 D1
+        if path == "/api/projects":
+            self._send_json(200, _build_projects_json())
+            return
+
+        # /api/projects/<uuid-or-slug>/summary — DECISION F042 D1
+        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "projects"
+                and parts[4] == "summary"):
+            self._send_json(*_build_project_summary_json(parts[3]))
             return
 
         # /api/jobs/<job_id>/nodes/<node_id>/detail

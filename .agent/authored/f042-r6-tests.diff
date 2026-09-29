@@ -1,0 +1,161 @@
+diff --git a/tests/ui_server/test_multi_project_live.py b/tests/ui_server/test_multi_project_live.py
+new file mode 100644
+index 000000000..381f9c507
+--- /dev/null
++++ b/tests/ui_server/test_multi_project_live.py
+@@ -0,0 +1,135 @@
++"""F042 T003, DECISION F042 D6 — the multi-project cockpit end to end over the real CLI and the
++real UI server.
++
++Written by the reviewer. Two projects are registered the way an operator registers them, by
++`remedy init` in two git folders; jobs are planned in each by `remedy do`, and one of alpha's is
++run to its end on the fake providers (no network, no model). A real UI server then answers the
++routes the cockpit reads, and every number a card shows is held against what `remedy status`
++prints for the same project, so the grid and the CLI cannot disagree about one project. The
++browser half of the same flow is the round's live render run, committed as its evidence.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import threading
++from http.client import HTTPConnection
++from pathlib import Path
++
++import pytest
++
++from tests.ui_server.server_start import wait_for_server_info
++from tests.ui_server.test_brain_demo_recording_live import CLI, ORDER, _env, _run
++
++TERMINAL = {"completed", "failed", "cancelled"}
++
++
++def _git_folder(path: Path) -> Path:
++    path.mkdir()
++    subprocess.run(["git", "init", "-q", str(path)], check=True, capture_output=True)
++    subprocess.run(
++        ["git", "-C", str(path), "commit", "--allow-empty", "-m", "init", "-q"], check=True, capture_output=True,
++        env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
++             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
++    )
++    return path
++
++
++def _json(result: subprocess.CompletedProcess) -> dict:
++    assert result.returncode == 0, result.stderr
++    return json.loads(result.stdout)
++
++
++@pytest.fixture
++def live(tmp_path, monkeypatch):
++    data_dir = tmp_path / "data"
++    env = _env(data_dir)
++    env.pop("REMEDY_PROJECT", None)
++    folders = {slug: _git_folder(tmp_path / slug) for slug in ("alpha", "beta")}
++    jobs: dict[str, list[str]] = {}
++    for slug, folder in folders.items():
++        assert _run([*CLI, "init"], cwd=folder, env=env).returncode == 0
++        jobs[slug] = []
++        for _ in range(2 if slug == "alpha" else 1):
++            plan = _json(_run([*CLI, "do", ORDER, "--no-llm", "--plan-only", "--json"], cwd=folder, env=env))
++            jobs[slug].append(plan["job_ids"][0])
++    ran = _run([*CLI, "job", "run", jobs["alpha"][0], "--builder-provider", "fake", "--reviewer-provider", "fake",
++                "--json"], cwd=folders["alpha"], env=env)
++    assert ran.returncode == 0, ran.stderr
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
++
++    import secrets
++
++    from packages.orchestration.ui_server import start_ui_server
++
++    info_file = str(tmp_path / "server_info.json")
++    token = secrets.token_urlsafe(16)
++
++    def serve():
++        try:
++            start_ui_server(jobs["alpha"][0], host="127.0.0.1", port=0, token=token, open_browser=False,
++                            info_file=info_file)
++        except (SystemExit, KeyboardInterrupt):
++            pass
++
++    thread = threading.Thread(target=serve, daemon=True)
++    thread.start()
++    port = wait_for_server_info(info_file, thread)["port"]
++
++    def get(path: str):
++        conn = HTTPConnection("127.0.0.1", port, timeout=30)
++        conn.request("GET", f"{path}{'&' if '?' in path else '?'}token={token}")
++        response = conn.getresponse()
++        body = json.loads(response.read())
++        conn.close()
++        return response.status, body
++
++    def status(slug: str) -> dict:
++        return _json(_run([*CLI, "status", "--project", slug, "--json"], cwd=tmp_path, env=env))
++
++    return {"get": get, "status": status, "jobs": jobs, "folders": folders}
++
++
++def test_the_grid_lists_both_projects_the_cli_registered(live):
++    code, view = live["get"]("/api/projects")
++    assert code == 200
++    assert [(p["slug"], p["repo_reachable"]) for p in view["projects"]] == [("alpha", True), ("beta", True)]
++    assert (view["single_project"], view["unscoped_jobs"], view["orphaned_jobs"]) == (False, 0, 0)
++
++
++@pytest.mark.parametrize("slug", ["alpha", "beta"])
++def test_every_card_number_is_the_one_remedy_status_prints(live, slug):
++    code, card = live["get"](f"/api/projects/{slug}/summary")
++    assert code == 200
++    printed = live["status"](slug)
++    states = [entry["state"] for group in printed["jobs"].values() for entry in group]
++    assert card["jobs"] == {"active": sum(1 for s in states if s not in TERMINAL), "total": len(states)}
++    assert card["jobs"]["total"] == len(live["jobs"][slug])
++    assert card["decisions"]["open_count"] == printed["decisions_open"]
++    assert card["last_result"]["job_id"] == live["jobs"][slug][-1]
++
++
++def test_the_run_job_is_finished_and_the_others_are_active(live):
++    _, alpha = live["get"]("/api/projects/alpha/summary")
++    _, beta = live["get"]("/api/projects/beta/summary")
++    assert (alpha["jobs"], beta["jobs"]) == ({"active": 1, "total": 2}, {"active": 1, "total": 1})
++
++
++def test_each_job_names_its_own_project(live):
++    for slug, job_ids in live["jobs"].items():
++        for job_id in job_ids:
++            code, view = live["get"](f"/api/jobs/{job_id}/project")
++            assert code == 200
++            assert (view["scope"], view["project"]["slug"]) == ("project", slug)
++
++
++def test_the_dashboards_project_line_counts_the_cards_jobs(live):
++    for slug, job_ids in live["jobs"].items():
++        _, card = live["get"](f"/api/projects/{slug}/summary")
++        code, dashboard = live["get"](f"/api/jobs/{job_ids[0]}/dashboard")
++        assert code == 200
++        assert dashboard["project_summary"]["project_id"] == card["project_id"]
++        assert dashboard["project_summary"]["job_count"] == card["jobs"]["total"]
+diff --git a/tests/ui_server/test_projects_route.py b/tests/ui_server/test_projects_route.py
+index 37026261d..558428356 100644
+--- a/tests/ui_server/test_projects_route.py
++++ b/tests/ui_server/test_projects_route.py
+@@ -148,3 +148,15 @@ class TestDashboardProjectLine:
+         assert section is not None
+         assert section["project_id"] == str(self.alpha.id)
+         assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 2
++
++    def test_the_jobs_own_project_outranks_the_legacy_key(self):
++        """R-1111: a job whose own field names alpha while its legacy metadata still names beta
++        is alpha's, the order DECISION F042 D5 (2) states."""
++        from packages.orchestration.ui_server import _build_project_summary_section
++
++        job = JobPlan(job_title="moved job", project_id=str(self.alpha.id), metadata={"project_id": str(self.beta.id)})
++        save_job_plan(job)
++        section = _build_project_summary_section(job)
++        assert section is not None
++        assert section["project_id"] == str(self.alpha.id)
++        assert section["job_count"] == project_summary(self.alpha)["jobs"]["total"] == 3

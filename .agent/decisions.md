@@ -25531,3 +25531,275 @@ CHOSEN: The operator's ruling in amendment amend0929b-reclaim-default. (1) `pack
 ALTERNATIVES: keeping `--stale` as a no-op alias, rejected by ruling D-A; keeping a time-to-live on the default, rejected because it delays reclaim.
 
 HOW TO REVERSE: reintroducing a time-to-live is a one-file change in `packages/orchestration/data_reclaim.py` (a `_stale_verdict` call for a terminal job in `_plan_class` and its re-check in `apply_reclaim`, as amend0929's commit `9e4d0a4e` did) plus one config key. The tests in `tests/orchestration/test_data_reclaim.py` under "The restored default" show what to flip: a young finished copy would then be refused by default, and `--stale` would exist again.
+
+## DECISION F042 D1 — the cockpit's project list and per-project card are one composition module over readers that already exist, served by the UI server; decisions are summed per project from each scoped job's own inbox, cost today is the ledger's UTC day in the digest's exactness words, and a moved folder is checked when the list is read (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F042.md` asks for a home grid of project cards, a project
+switcher in the header, and deep links that carry `?project=`, and says project scoping is already
+solved. Measured by the reviewer at `4e643440`: the registry keeps one record per project under
+the data root's `projects/` folder, read without writing by `_list_projects_readonly` and
+`_lookup_by_slug_or_uuid_readonly`; `select_project` resolves a flag, then `REMEDY_PROJECT`, then
+the working folder; `project_scope.scoped_jobs` is the one scoped listing and holds F148's legacy
+rule; `remedy status` counts a project's open decisions by looping `list_decisions` over those
+jobs; `decision_inbox.py` states that it takes no project argument on purpose; the token ledger is
+one database per project and `query_cost` reads a half-open period of it; the digest's cost basis
+speaks the exactness words `actual`, `lower_bound` and `absent` of DECISION F040 D4. The UI server
+is started for one job, reads no `project` parameter and has no project route; the dashboard's
+`project_summary` section predates F148 and reads `job.metadata`; the client has no router, no
+project context, and reads only `job` and `token` from its address; no record carries a moved or
+unreachable state and no fix-it names `remedy project attach`; the design reference has no grid,
+card or switcher spec.
+
+CHOSEN: (1) THE MODULE is `packages/orchestration/project_cockpit.py`, pure composition that
+writes nothing: `projects_view` lists every registered project by slug with its folder checked at
+read time, the resolution precedence's default project, whether exactly one project exists, and
+how many jobs no card can show, counted as unscoped (no project) and orphaned (a project the
+registry does not hold); `project_summary` answers one card. (2) THE CARD counts a project's jobs
+through `scoped_jobs` with F148's rule unchanged: active is every job `job_is_terminal` calls not
+terminal; the last result is the newest scoped job's digest `state` and `headline`; open decisions
+and their peak urgency are summed from each scoped job's own `build_decision_inbox` with
+`decision_urgency`, the same cards `remedy status` counts, so the inbox stays per job and the
+cross-job sum lives here; cost today is `query_cost` over the UTC calendar day of the moment asked,
+`absent` with no ledger, no call or no figure, `lower_bound` when any call was unpriced, else
+`actual`, and the day travels in the answer. (3) A MOVED FOLDER: a project whose recorded folder
+is not a directory reads unreachable with a fix-it naming `remedy project attach --project <slug>
+--repo`, and one with no folder at all says so the same way; the registry itself is not changed.
+(4) THE ROUTES are `/api/projects` and `/api/projects/<uuid-or-slug>/summary`, token-guarded like
+every API route, 404 for a selector that names no single project; the walk of
+`tests/ui_server/test_command_channel.py` gains both. (5) THE DEFAULT PROJECT is
+`select_project(None, <the server's working folder>)`, so the environment variable wins over the
+folder, and none is a null the client resolves in T002 from the job it opened. (6) THE ORDER: this
+round lands (1) to (5) with the reviewer's tests; T002 lands the client context, the loaders
+keyed by project, the switcher and the switch-mid-fetch fixtures; T003 lands the grid, the cards,
+the empty and single-project states, deep links, the dashboard's old `project_summary` re-pointed
+at this module, and the end-to-end run; each with its own DECISION in the round that applies it.
+
+ALTERNATIVES: a project argument for `decision_inbox`, rejected because that module states a
+cross-job inbox needs a scoping rule it does not have, and F148's `scoped_jobs` is that rule
+already; the local calendar day for cost today, rejected because the ledger buckets by UTC day
+and the server's clock zone is not the reader's; a stored unreachable flag on the registry
+record, rejected because the feature file's Do-not-touch names registry mechanics and a flag goes
+stale the moment a folder returns; the digest of every scoped job for the card, rejected because
+the grid polls every card and only the newest job's result is shown.
+
+HOW TO REVERSE: delete `packages/orchestration/project_cockpit.py`, its test files and its
+line in `tests/orchestration/import_reachability_allowlist.txt`, remove both routes and their
+builders from `packages/orchestration/ui_server.py` and the walk entries it added to
+`tests/ui_server/test_command_channel.py`, and delete this paragraph.
+
+## DECISION F042 D2 — the client's project seam is one pure module with its doors in `remedyApi.ts`: it decodes the project envelopes, names their paths, reads and writes `?project=`, picks the active project from the address, then the opened job's own project, then the server's default, and lets a switch apply only while it is the latest; the server gains `/api/jobs/<id>/project` so the cockpit knows which project it opened (2026-09-29)
+
+CONTEXT: DECISION F042 D1 (6) orders T002: the client's project context, the loaders keyed by
+project, the switcher and the switch-mid-fetch fixtures. Measured by the reviewer at `2a678367`:
+the client reads only `job` and `token` from its address in `apps/ui/src/RemedyApp.tsx`, every
+loader in `apps/ui/src/api/remedyApi.ts` is keyed by job, and every door there takes one injected
+fetcher and one decoder and never throws; the zoom's deep link lives in
+`apps/ui/src/components/graph/zoomDeepLink.ts` as `focus`, `level` and `tab`, written with
+`history.replaceState`; nothing tells the client which project the job it opened belongs to, and
+`remedy job list` labels a job `unscoped`, `orphaned` or with its project.
+
+CHOSEN: (1) THE SERVER gains `job_project_view` in `packages/orchestration/project_cockpit.py`
+and the `project` entry of `do_GET`'s endpoint dict: a job's scope, `project`, `unscoped` or
+`orphaned`, with the project's list entry when it has one. (2) THE SEAM is
+`apps/ui/src/api/projectScope.ts`, pure: decoders for the three envelopes that refuse a wrong
+version and read every absent value as its own absence, an unmeasured cost staying null; the
+three paths; `projectFromSearch`; `searchForProjectSwitch`, which drops `job`, `job_id` and the
+zoom's parameters, because they name a job of the project being left, sets `project`, and sets
+`job` when the new project has one; `resolveActiveProject`; `switcherVisible`, true only with
+more than one project; and `createSwitchGate` with `switchProject`, under which only the latest
+switch applies, so an answer for a project the reader left, or left and came back to, is
+dropped. (3) THE DOORS are `loadProjectsView`, `loadProjectSummary` and `loadJobProject` in
+`remedyApi.ts`, shaped like the digest door. (4) THE TESTS are the reviewer's:
+`apps/ui/src/api/projectScope.test.ts` for the rules and the switch fixtures, and
+`tests/ui_contracts/test_project_scope_door.py`, which holds every project interface of the
+client to exactly the keys the server's own dicts carry. (5) THE ORDER: the next round mounts the
+seam: a provider in `RemedyApp.tsx` that re-keys the shell by project and job so no panel keeps
+the old project's state, and the switcher in the header; the round after lands T003.
+
+ALTERNATIVES: a full page load on every switch, rejected because the feature file asks for one
+context flip and names the switch during a fetch as the case to test; keeping the zoom's
+parameters across a switch, rejected because they name a node of the job being left; a
+project argument on the dashboard route, rejected because the dashboard is a job's contract and
+the job's project is a separate, smaller answer.
+
+HOW TO REVERSE: delete `apps/ui/src/api/projectScope.ts`, its test file and
+`tests/ui_contracts/test_project_scope_door.py`, remove the project doors and their import from
+`apps/ui/src/api/remedyApi.ts`, remove `job_project_view` and its tests and the `project` entry
+with its builder from `packages/orchestration/ui_server.py`, and delete this paragraph.
+
+## DECISION F042 D3 — the seam is mounted: `RemedyApp.tsx` reads one address, wraps every face in one project provider, keys the shell by project and job, changes the address only through a switch's `pushState` or a Back step, and opens a project with no job as its own face; the switcher is a native select in the brand rail's kicker, shown only with more than one project (2026-09-29)
+
+CONTEXT: DECISION F042 D2 (5) orders the seam mounted. Measured by the reviewer at `fc744e0e`:
+`RemedyApp.tsx` reads `job` and `token` once, polls the dashboard, and renders `RemedyShell`,
+whose effects are keyed by the job alone; `<main>` is held to four children by a guard; the
+brand rail's kicker reads `CONCEPT 01 OF 10`, where `component_spec.md` puts the project; the
+zoom's deep link writes with `history.replaceState`, which keeps no history entry; nothing in the
+cockpit answers Back.
+
+CHOSEN: (1) THE ADDRESS is `apps/ui/src/api/cockpitAddress.ts`, pure: `addressFromSearch`, the
+three faces `missing`, `empty_project` and `job`, their two sentences, and `shellKeyOf`, which
+changes with the project and the job only. `RemedyApp.tsx` stays the one reader of the page's
+address. (2) THE PROVIDER is `apps/ui/src/components/shell/ProjectProvider.tsx`, one context
+around every face: the project list once per token, the job's own project once per job, the
+active project by `resolveActiveProject`, and `switchTo` through `switchProject` over ONE gate,
+which a new address reached any other way also advances, so a switch in flight never lands on a
+page the reader moved to by Back. (3) A SWITCH writes its address with `pushState`, so Back
+returns to the project left, and a Back or Forward step re-reads the address; either one clears
+the dashboard, the error and the selection before the new address loads, and the shell mounts
+under `shellKeyOf`, so no panel, stream or selection of the old project survives into the new
+one. (4) THE SWITCHER is `apps/ui/src/components/shell/ProjectSwitcher.tsx` in the rail's
+kicker: a native select named "Project" listing every project by slug, a missing folder marked,
+with one project the kicker names it, and with none it keeps what the rail showed. The empty
+project's face shows the same switcher above its sentence. (5) THE PROOF of the behaviour is a
+render harness in a real browser, committed with the round, beside
+`tests/ui_contracts/test_project_switcher_wiring.py` for the wiring and
+`apps/ui/src/api/cockpitAddress.test.ts` for the rules; the assumption log records the kicker and
+the empty face. (6) THE ORDER: T003 follows, with the home grid, the cards, the invite in the
+empty state, deep links across projects and the dashboard's old `project_summary` re-pointed.
+
+ALTERNATIVES: `replaceState` for a switch, as the zoom's deep link uses, rejected because a
+project is a place the reader returns to and Back should reach it; a switcher in the metrics bar,
+rejected because `component_spec.md` fixes that bar at four segments; a page load per switch,
+rejected for the reason DECISION F042 D2 gives; a context value re-read by every panel, rejected
+because keying the shell remounts every panel at once and leaves none to forget.
+
+HOW TO REVERSE: delete `cockpitAddress.ts` and its test, `ProjectProvider.tsx`,
+`ProjectSwitcher.tsx` with its sheet, and `tests/ui_contracts/test_project_switcher_wiring.py`;
+restore `RemedyApp.tsx` and `LeftBrandRail.tsx` from `fc744e0e`; delete the assumption log's
+F042 line and this paragraph.
+
+## DECISION F042 D4 — an address with only a token opens a home grid of project cards drawn from each project's summary, twelve to a page, a card opening its project; one project skips the grid by replacing the address and none invites `remedy init`; the switcher gains "All projects"; and R-1108 and R-1109 are repaired (2026-09-29)
+
+CONTEXT: DECISION F042 D1 (6) orders T003's grid, cards, empty and single-project states, and
+the feature file's Acceptance says a single project skips the grid to the cockpit with the
+switcher hidden, and that cost today carries its basis. Measured by the reviewer at `9d45d749`:
+an address with a token and neither a job nor a project reads `missing`; the provider switches
+only by pushing; `RemedyApp.tsx` hands it an `onSwitched` rebuilt on every render; the design
+reference draws no grid and no card; the digest's cost basis words are `actual`, `lower_bound`
+and `absent`; R-1108 and R-1109 are open against the empty project's page and the gate.
+
+CHOSEN: (1) THE FACE: `cockpitFaceOf` answers `home` for a token with neither a job nor a
+project, and `homeSearch` writes that address from any other, dropping the project and every
+job-scoped parameter. (2) THE RULES are `apps/ui/src/api/homeGrid.ts`, pure: twelve cards to a
+page, clamped; a state's tone; cost today in words, `at least` for a lower bound and `not
+measured` for an absent one, never a zero; and one card from a list entry and its summary,
+drawn as its own absence while the summary is unreadable. (3) THE GRID is
+`apps/ui/src/components/home/HomeGrid.tsx`: a heading, one button per project of the page,
+each reading its summary through the provider's `readSummary`, a pager when there is more than
+one page; a card chosen switches to its project. With exactly one project it enters that
+project ONCE through the provider's `enterProject`, which writes the address with
+`replaceState`, so Back never returns to a grid that would only skip again; with none it
+invites `remedy init`. (4) THE ADDRESS has one writer in `RemedyApp.tsx`, `writeAddress`,
+pushing for a switch and the way home and replacing for the skip, and `onSwitched` and `onHome`
+are stable callbacks, because the grid's skip runs in an effect keyed by `enterProject`. (5)
+"All projects" is a button beside the switcher's select, both in one group. (6) THE REPAIRS:
+R-1108 groups the empty project's page; R-1109 adds the harness check that a switch in flight
+is dropped by Back. (7) THE ORDER: the next round lands deep links across projects with the
+zoom's focus, the dashboard's old project summary re-pointed at this feature's module, a way
+home the rail's hidden copy block no longer hides, and the end-to-end run over a real server.
+
+ALTERNATIVES: loading every project's summary at once, rejected because the grid shows twelve
+and a registry of dozens would ask for all of them; skipping a single project by pushing,
+rejected because Back would land on the grid and skip forward again, a trap; a separate home
+route on the server, rejected because the grid is composed from the list and card routes that
+already exist.
+
+HOW TO REVERSE: delete `homeGrid.ts` and its test and `components/home/`, restore
+`cockpitAddress.ts` and its test, `ProjectProvider.tsx`, `ProjectSwitcher.tsx` with its sheet,
+`RemedyApp.tsx` and `tests/ui_contracts/test_project_switcher_wiring.py` from `9d45d749`, and
+delete this paragraph.
+
+## DECISION F042 D5 — deep links across projects are the address the zoom already writes, now pinned to keep the project; the dashboard's project line reads the job's own project and counts `scoped_jobs`; the dock's Overview opens the home grid at every width that shows the rail; and R-1110 is repaired (2026-09-29)
+
+CONTEXT: DECISION F042 D4 (7) orders deep links across projects with the zoom's focus, the
+dashboard's old project summary re-pointed, a way home the rail's hidden copy block no longer
+hides, and the end-to-end run. Measured by the reviewer at `1d5a64b3`: `searchWithZoom` in
+`apps/ui/src/components/graph/zoomDeepLink.ts` deletes only its own three parameters and keeps
+every other one, so an address carrying `project`, `job` and a focus already restores all three,
+and no test says so; `_build_project_summary_section` in `packages/orchestration/ui_server.py`
+reads `job.metadata["project_id"]`, which a job created since F148 does not carry, and counts the
+registry's `job_ids`, so the right panel's "Project: N jobs" line is absent for such a job; below
+1280 pixels the brand rail hides its copy block and the switcher with it, while `SideIconDock`'s
+seven buttons stay and do nothing on a click; R-1110 is open against the grid's result line.
+
+CHOSEN: (1) DEEP LINKS need no new code: a test pins that the zoom's writer keeps the project
+and that the address and the zoom link both read back from one search. (2) THE DASHBOARD'S
+PROJECT LINE reads `job.project_id` before the legacy metadata key and counts `scoped_jobs` over
+that project with F148's rule, so it agrees with the project's card; its shape is unchanged. (3)
+THE WAY HOME: the dock's first slot, Overview, opens the home grid through the provider's
+`goHome` and says "All projects" in its tooltip; the component spec's seven slots are kept and no
+route is invented. Below 760 pixels the rail itself is hidden, and that width belongs to F201's
+mobile view. (4) R-1110: a result with no state keeps the sheet's transparent border. (5) THE
+ORDER: the next round is the end-to-end run over a real UI server with two registered projects,
+and the closure sequence follows it.
+
+ALTERNATIVES: a new "Projects" slot in the dock, rejected because the component spec fixes seven
+slots and says to invent no route; a home link in the command bar, rejected because the bar is
+the task search and the next action; leaving the dashboard's project line on the registry's job
+list, rejected because the card beside it would count different jobs for the same project.
+
+HOW TO REVERSE: restore `SideIconDock.tsx`, `HomeGrid.tsx` and `_build_project_summary_section`
+from `1d5a64b3`, delete the added cases from `zoomDeepLink.test.ts` and
+`tests/ui_server/test_projects_route.py`, and delete this paragraph.
+
+## DECISION F042 D6 — the end-to-end run is a CI test over the real CLI and the real UI server holding every card number to `remedy status`, beside a live browser run over the same stack committed as the closure's evidence and kept out of CI; the closure sequence starts in the same round with the self-use item, before the one full suite (2026-09-29)
+
+CONTEXT: T5_F042.md's T003 asks for an end-to-end run over two fixture projects: grid numbers
+exact, a switch, every panel re-scoped, the address round-tripping; its Orchestrator brief names
+the stale-bleed fixtures as a switch during a stream, during a fetch and with panels open.
+Measured by the reviewer at `79a2e780`: the UI server builds the cockpit itself when `apps/ui/dist`
+is missing or older than its sources; the one CI test that drives Chrome,
+`tests/ui_server/test_story_export_file_live.py`, is the one R-1107 records as failing on a hosted
+runner at its first command; the render harnesses of rounds 3 to 5 prove the page against a stand-in
+server; every test under `tests/ui_server/` runs in CI's standard stage.
+
+CHOSEN: (1) THE CI TEST is `tests/ui_server/test_multi_project_live.py`: two git folders registered
+by `remedy init`, jobs planned by `remedy do` and one run to its end on the fake providers, a real
+UI server; it holds the list's two projects, every card's job counts and open decisions to what
+`remedy status --project <slug> --json` prints, the newest job as the last result, each job's own
+project over `/api/jobs/<id>/project`, and the dashboard's project line to the card. (2) THE LIVE
+RUN is `f042-r6-live_measure.py` with its driver, committed under `.agent/authored/`: the same kind
+of stack, the cockpit built from the tree's own sources, and headless Chrome at 1440 by 900
+driving the grid, a card, the rail's switcher with the Story panel open, Back and the dock; it
+holds the address, the switcher and the right panel's project line at each step, and that after a
+switch the Story panel is gone and no request names the old job for three seconds, which is the
+switch during a stream and with a panel open. It is the round's evidence, not a CI test, because
+a second Chrome test in CI would meet R-1107's failure before F290 repairs it. (3) R-1111's test
+gives a job two disagreeing project keys. (4) THE CLOSURE SEQUENCE starts in this round, which
+carries no production code: the checklist consolidation, the Built State, and the closure's
+self-use item, generated from the ledger's oldest open Low finding and run on the `self_use` role
+before the one full suite, so a sound diff it makes can still land on the tree the suite proves.
+The next round lands or records that diff and runs the suite; evidence and the closing follow.
+
+ALTERNATIVES: a Chrome test in CI through `ChromePipe`, rejected until R-1107 is repaired; the
+render harnesses alone, rejected because they answer from a stand-in and never meet the real
+envelopes, the real dashboard or the real stream; a separate round for the tests before the
+closure, rejected because it would carry no production code and buy a second boundary for nothing.
+
+HOW TO REVERSE: delete `tests/ui_server/test_multi_project_live.py`, the R-1111 test in
+`tests/ui_server/test_projects_route.py` and the `f042-r6-live_*` copies, and delete this paragraph.
+
+## DECISION F042 D7 — the closure's self-use item SU-036 is landed as its job's own diff with one reviewer assertion added, because it is R-1107's repair and its test named only where Chrome's output went, not what it said (2026-09-29)
+
+CONTEXT: closure precondition 6 ran `SU-036`, generated by Tier 1 from R-1107, as job
+`6dad54d0e18348c4` on the `self_use` role; it completed with one task staged and passing its
+review, and its branch `remedy/job-6dad54d0e18348c4` changes only
+`tests/ui_server/test_story_export_file_live.py`: `CHROME_STARTUP_TIMEOUT = 60.0` for the first
+command, Chrome's standard error kept in a file under the test's temporary folder, a timeout message
+carrying the file's path and its last lines, and `test_chrome_timeout_message_names_log`, whose
+stand-in Chrome prints one line and never answers. R-1107's FIX asks for a test that holds a
+message naming Chrome's own output; the job's test asserts only the log file's path.
+
+CHOSEN: (1) the job's diff is landed as it stands, in this round, before the one full suite, so the
+suite proves the tree that ships; (2) one assertion is added to the job's test, that the message
+carries the stand-in's line `chrome: startup`, under a comment naming R-1107's FIX; (3) the job
+itself is never applied, and its branch stays as the run left it; (4) the red proofs are three
+mutations of the landed helper: the tail left out of the message, the path left out, and Chrome's
+standard error sent back to nowhere.
+
+ALTERNATIVES: recording the diff without landing it, as F039 had to, rejected because this closure
+ran the item before its suite exactly so that a sound diff could land; landing it unchanged,
+rejected because its test would pass for a message that named the file and carried none of it.
+
+HOW TO REVERSE: restore `tests/ui_server/test_story_export_file_live.py` from `19ccafd4` and delete
+this paragraph; R-1107 then stays open for F290.
