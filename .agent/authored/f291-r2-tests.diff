@@ -1,0 +1,126 @@
+diff --git a/tests/orchestration/test_self_use_runner.py b/tests/orchestration/test_self_use_runner.py
+index 8ac6d87b8..e009467bb 100644
+--- a/tests/orchestration/test_self_use_runner.py
++++ b/tests/orchestration/test_self_use_runner.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ import pytest
+ 
+ import packages.orchestration.self_use_runner as self_use_runner
+-from packages.orchestration.pingpong_job import JOB_COMPLETED
++from packages.orchestration.pingpong_job import JOB_COMPLETED, TASK_APPLIED
+ from packages.orchestration.pingpong_provider import FakeProvider
+ from packages.orchestration.role_config import DEFAULT_PROVIDER, RoleConfig
+ from packages.orchestration.self_use_runner import SelfUseRunError, run_next_self_use_item
+@@ -885,3 +885,112 @@ class TestASelfUseRunRepairsCodeNeverBookkeeping:
+         result = self._run(tmp_path, demo_repo, ["README.md"])
+         assert result.state == JOB_COMPLETED
+         assert result.tasks[0].reviewer_verdict == "pass"
++
++
++# ---------------------------------------------------------------------------
++# F291 T003 — the run half: a Tier 4 item runs to the approval gate (DECISION F291 D2)
++# ---------------------------------------------------------------------------
++
++
++class TestAnExcusedHandlerItemRunsToTheApprovalGate:
++    """T5_F291.md T003: on a queue dry for tiers 0 to 3, three consecutive requests give three
++    different items, and the first, a Tier 4 item, runs to the approval gate within the default
++    budget. Tiers 2 and 3 are dried the way the generator's own tests dry them, Tier 1 by an empty
++    ledger and Tier 0 by a missing order, and the source root is a fixture tree, so no item
++    depends on the real repository's marks.
++    """
++
++    def test_three_requests_the_first_run_to_the_approval_gate(
++        self, tmp_path: Path, isolate_data_root, demo_repo, monkeypatch,
++    ):
++        from apps.cli.commands import worker_facade_cmd
++        from apps.cli.commands.worker_facade_cmd import DoctorCoreReport
++        from packages.orchestration import doc_staleness
++        from packages.orchestration.self_use_generator import generate_and_append_if_empty
++
++        empty_report = DoctorCoreReport(
++            ready=True, checks=[], blockers=[], warnings=(), dead_commands=[], disk={},
++        )
++        monkeypatch.setattr(doc_staleness, "run_staleness_checks", lambda *a, **k: ())
++        monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", lambda: empty_report)
++
++        source_root = tmp_path / "src"
++        module = source_root / "packages" / "alpha.py"
++        module.parent.mkdir(parents=True)
++        module.write_text(
++            "def run():\n"
++            "    try:\n"
++            "        return 1\n"
++            "    except Exception:  # noqa: BLE001 — the first reason\n"
++            "        return 0\n"
++            "\n"
++            "\n"
++            "def walk():\n"
++            "    try:\n"
++            "        return 2\n"
++            "    except Exception:  # noqa: BLE001 — the second reason\n"
++            "        return 0\n",
++            encoding="utf-8",
++        )
++        ledger_path = tmp_path / "live_review.md"
++        ledger_path.write_text("", encoding="utf-8")
++        order_path = tmp_path / "no-order.md"
++        queue_path = _write_queue(tmp_path, [])
++
++        # THE RUN: run_job wrapped by a pass-through recorder, never stubbed out.
++        real_run_job = self_use_runner.run_job
++        captured: dict = {}
++
++        def _recording_run_job(job_id, **kwargs):
++            captured.update(kwargs)
++            return real_run_job(job_id, **kwargs)
++
++        monkeypatch.setattr(self_use_runner, "run_job", _recording_run_job)
++
++        entries = []
++        run_entry = run_result = None
++        for i in range(3):
++            entry = generate_and_append_if_empty(
++                queue_path=queue_path, ledger_path=ledger_path, order_path=order_path,
++                source_root=source_root,
++            )
++            assert entry is not None, f"request {i}: the generator offered nothing"
++            entries.append(entry)
++
++            if i == 0:
++                # While it is the one pending item, run it under the DEFAULT budget: no budget,
++                # task cap or repair-round argument is passed.
++                run_entry, _job_file_path, run_result = run_next_self_use_item(
++                    tmp_path / "jobs",
++                    str(demo_repo),
++                    queue_path=queue_path,
++                    builder_provider=_pass_provider(),
++                    reviewer_provider=_pass_provider(),
++                )
++
++            # Consumption is the closure round's own edit (DECISION F257 D2).
++            body = json.loads(queue_path.read_text(encoding="utf-8"))
++            for item in body["items"]:
++                if item["id"] == entry.id:
++                    item["consumed_by"] = "F291-R2-T003-test"
++            queue_path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
++
++        assert [e.title for e in entries] == [
++            "Narrow the excused handler at packages/alpha.py:4",
++            "Narrow the excused handler at packages/alpha.py:11",
++            "Write the first tests for packages/alpha.py",
++        ]
++        assert [e.id for e in entries] == ["SU-001", "SU-002", "SU-003"]
++        assert len({e.provenance for e in entries}) == 3
++
++        assert run_entry is not None and run_entry.id == entries[0].id
++        assert run_result is not None and run_result.state == JOB_COMPLETED
++        # The approval gate: the one task is applied to the job's own workspace, never to the
++        # repository, which only `job apply --approve` would do.
++        assert [task.status for task in run_result.tasks] == [TASK_APPLIED]
++        assert captured["max_tasks"] == 1
++        assert captured["budgets"]["max_cost_usd"] == self_use_runner._MAX_COST_USD
++        assert captured["budgets"]["max_provider_calls"] == self_use_runner._MAX_PROVIDER_CALLS
++        actuals = run_result.budget_actuals
++        calls = actuals["priced_call_count"] + actuals["unpriced_call_count"]
++        assert 0 < calls <= self_use_runner._MAX_PROVIDER_CALLS

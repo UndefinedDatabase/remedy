@@ -1,0 +1,64 @@
+diff --git a/tests/test_brain_viewer.py b/tests/test_brain_viewer.py
+index c2b18d4f7..e165b9033 100644
+--- a/tests/test_brain_viewer.py
++++ b/tests/test_brain_viewer.py
+@@ -549,6 +549,59 @@ class TestConstitutionGuard:
+         capsys.readouterr()
+         assert (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
+ 
++    def test_an_unreadable_repo_warns_and_still_builds(self, tmp_path, monkeypatch, capsys):
++        """F291 SU-037 (DECISION F291 D3): a file-system error while the constitution is read
++        is the one failure the handler catches, and the viewer is still written."""
++        import sys
++
++        from apps.cli.main import main
++        from packages.orchestration import project_constitution
++
++        def _unreadable(repo_root):
++            raise PermissionError("the folder cannot be read")
++
++        monkeypatch.setattr(project_constitution, "load_project_constitution", _unreadable)
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        repo = tmp_path / "repo"
++        repo.mkdir()
++        job = _make_job()
++        job.metadata["target_repo"] = str(repo)
++        save_job_plan(job)
++        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
++        main()
++        err = capsys.readouterr().err
++        assert "Warning: project constitution unavailable for viewer." in err
++        assert "cannot be read" not in err
++        assert (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
++
++    def test_a_defect_in_the_loader_is_not_swallowed(self, tmp_path, monkeypatch, capsys):
++        """F291 SU-037 (DECISION F291 D3): the handler no longer catches everything, so a
++        defect that is not a file-system error fails the command with its own name instead of
++        being turned into the warning."""
++        import sys
++
++        from apps.cli.main import main
++        from packages.orchestration import project_constitution
++
++        def _broken(repo_root):
++            raise RuntimeError("a defect in the loader")
++
++        monkeypatch.setattr(project_constitution, "load_project_constitution", _broken)
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        repo = tmp_path / "repo"
++        repo.mkdir()
++        job = _make_job()
++        job.metadata["target_repo"] = str(repo)
++        save_job_plan(job)
++        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
++        with pytest.raises(SystemExit) as stopped:
++            main()
++        err = capsys.readouterr().err
++        assert stopped.value.code == 1
++        assert "RuntimeError: a defect in the loader" in err
++        assert "Warning: project constitution unavailable for viewer." not in err
++        assert not (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
++
+ 
+ # ---------------------------------------------------------------------------
+ # TestComputePositions

@@ -25803,3 +25803,155 @@ rejected because its test would pass for a message that named the file and carri
 
 HOW TO REVERSE: restore `tests/ui_server/test_story_export_file_live.py` from `19ccafd4` and delete
 this paragraph; R-1107 then stays open for F290.
+
+## DECISION F291 D1 — the self-use generator gains Tier 4, the first BLE001 excuse mark in file order under the ratchet's own roots, keyed by its line's text, as a job that narrows the handler and lowers `MAX_EXCUSED`, and Tier 5, the first module under `packages/` or `apps/cli/` that no test file imports, as a job that writes its first tests; both come after Tier 3 and read files, never history (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F291.md` asks for two more sources behind the four the
+self-use generator has, so that a closure's self-use reading is rarely "queue exhausted".
+Measured by the reviewer at `aa5defde`: `packages/orchestration/self_use_generator.py` tries the
+toolchain order, the ledger, the documentation-staleness catalog and the actionable doctor
+warnings, in that order, and records what each item targets in its provenance, which is how a
+later request knows not to offer it again. `tests/test_ble001_ratchet.py` counts 290 marks over
+66 files under `packages/`, `apps/` and `scripts/`, holds the count equal to `MAX_EXCUSED`, and
+reads a mark as the pattern `#\s*noqa:\s*BLE001\b`, so a line of the generator's own source that
+spelled a mark would raise the count. A sample of every seventh mark blames to at least eight
+different commits. An AST reading of every file under `tests/` finds 15 modules under `packages/`
+and `apps/cli/` that no test file imports, 13 of them under `apps/cli/commands/`, and not one of
+the 15 defines a public top-level function or class; `tests/cli/test_config_cmd.py` and
+`tests/cli/test_init_cmd.py` exist without importing the modules they are named after. A self-use
+run never applies its job's diff, so the mark or module an item names usually survives the
+closure that ran it.
+
+CHOSEN: (1) TIER 4 reads the ratchet's roots with the ratchet's pattern, a test pinning both equal
+to `tests/test_ble001_ratchet.py`, and offers the first mark, in file-path order and then line
+order, that no queue entry targets. "Oldest" is read as first in the file, because the generator
+reads files and never git history. The key is `<path>:<ordinal>:<the stripped line>`, the ordinal
+counting the identical lines of that file up to the mark, so an edit that only moves a mark keeps
+its key and two identical handlers in one file are two items. The job's one task narrows the
+handler, deletes its mark and lowers `MAX_EXCUSED` by one in the same change; its acceptance names
+`ruff check` on the file and the ratchet test. The generator never spells the mark: its text is
+composed from `EXCUSE_MARK_WORDS`, and a test holds that no line of the module matches the
+ratchet's pattern. (2) TIER 5 offers the first module, in path order under `packages/` and then
+`apps/cli/`, that is not a package's `__init__.py`, defines at least one top-level function or
+class, and whose dotted name no `import` statement in any file under `tests/` binds, where `from
+a.b import c` binds both `a.b` and `a.b.c`. The job names the functions and classes to test: the
+public ones, or every one when none is public, because a command module's handlers are private by
+name and are still what the catalog calls. Its test file is named after the module,
+`test_<stem>.py`, new or the existing one of that name. The key is the module's path. (3) BOTH
+TIERS come after Tier 3, Tier 4 before Tier 5; both read files under `default_source_root()`,
+which `generate_self_use_item` and `generate_and_append_if_empty` accept as the keyword
+`source_root`; both screen what they copy with `RETIRED_WORD` as Tier 1 does (R-1015); and both
+raise `SelfUseGenerationError` on a file they cannot read or parse rather than skip it. (4) THE
+GENERATOR'S TESTS point the root at a folder that does not exist by default, as they already point
+the order, the catalog and the doctor away from the machine, and a test of either tier names its
+own tree. (5) THE ORDER: this round lands (1) to (4) with the reviewer's tests and the generator's
+half of T003, three requests on a queue dry for tiers 0 to 3 giving three different items. The
+next round lands the run half of T003, a Tier 4 item run through `run_next_self_use_item` to the
+approval gate under the default budget by a test with stand-in providers, and documents both tiers
+in `docs/system/self-use-track-v1.md` and in the closure protocol's precondition 6. The closure
+sequence follows, and its own self-use run is the live reading of T003's last clause.
+
+ALTERNATIVES: the oldest mark by `git blame`, rejected because it makes a file read depend on a
+history a shallow clone lacks and costs one blame per file per request; a key of path and line
+number, rejected because any edit above a mark moves it and the same mark would be offered again;
+one item per file, rejected because it would leave 224 of the 290 marks unreachable; public names
+only for Tier 5, rejected because it offers none of the 15 modules; a skip rather than an error on
+an unreadable file, rejected because the ratchet fails on the same file and a silent skip would
+hide it.
+
+HOW TO REVERSE: delete the two tiers, their constants, `default_source_root` and the `source_root`
+keyword from `packages/orchestration/self_use_generator.py`, the tests this round added to
+`tests/orchestration/test_self_use_generator.py` and the root line of its autouse fixture, and this
+paragraph.
+
+## DECISION F291 D2 — T003's run half is a runner test in which three requests on a queue dry for tiers 0 to 3 give three different items, the first a Tier 4 item run to the approval gate under the default budget by stand-in providers; the two sources are documented, and the closure sequence starts in the same round with the live self-use run (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T5_F291.md` T003 asks that three consecutive requests on a queue
+exhausted for tiers 0 to 3 produce three different items, that a closure's self-use reading is
+never "exhausted" while any tier has an item, and that the first item runs to the approval gate
+within the default budget. Round 1 landed the generator's half. Measured by the reviewer at
+`045de81f`: `run_next_self_use_item` hands `run_job` a provider-call cap of `_MAX_PROVIDER_CALLS`,
+8, a cost cap of `_MAX_COST_USD`, 6.00, and one task when no argument overrides them;
+`TestThreeConsecutiveItemsOnAnEmptyLedger` in `tests/orchestration/test_self_use_runner.py` is
+F289's proof of the same shape for tiers 2 and 3, run with no repair round; and
+`generate_self_use_item()` over the real queue, ledger and tree answers `SU-037`, from Tier 4, on
+line 132 of `apps/cli/commands/brain.py`, because tiers 0 to 3 have nothing to offer.
+
+CHOSEN: (1) A new class in `tests/orchestration/test_self_use_runner.py` drives three requests
+through `generate_and_append_if_empty` over a fixture source tree holding one module with two
+excused handlers, with tiers 2 and 3 stubbed empty as the generator's own tests stub them, an
+empty ledger and a missing order. The first item is run through `run_next_self_use_item` with
+stand-in providers and no budget, task-cap or repair-round argument; it must reach
+`JOB_COMPLETED` with its one task at `TASK_APPLIED`, applied to the job's own workspace, while
+`run_job` is handed the default caps and the run's calls stay inside the provider-call cap. The
+three items are the two handlers and then the module. (2) The two sources are described in
+`docs/system/self-use-track-v1.md` and in precondition 6 of `docs/roadmap/STATUS_closure_protocol.md`.
+(3) F291's closure sequence starts in this round with the checklist consolidation, the Built State
+and the closure's self-use run; the next round lands or records that run's diff and runs the one
+full suite. (4) The round drops the two citations of the step block's clause label `S0` from the
+generator's comments.
+
+ALTERNATIVES: `repair_rounds=0` as F289's test passes it, rejected because the clause names the
+default budget; a live provider call inside the test, rejected because the suite makes no provider
+call (R-1089) and the closure's own run is that reading; a fixture tree with three handlers,
+rejected because it would leave Tier 5 unexercised by the run-level proof.
+
+HOW TO REVERSE: delete the class and its import of `TASK_APPLIED`, the two documentation passages,
+and this paragraph.
+
+## DECISION F291 D3 — the closure's self-use item SU-037 is landed as its job's own diff with two reviewer tests, because it is T001's first live repair and no test reached the handler it narrowed (2026-09-29)
+
+CONTEXT: Round 2 ran the closure's self-use item `SU-037`, from Tier 4, as job
+`d6d60ea3d586425a`. Its branch `remedy/job-d6d60ea3d586425a` narrows the handler around
+`load_project_constitution` in `apps/cli/commands/brain.py` from `except Exception` with a BLE001
+excuse mark to `except OSError:`, and lowers `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` from
+290 to 289. Measured by the reviewer at `8cd5855d`: `load_project_constitution` in
+`packages/orchestration/project_constitution.py` documents "Never raises" and reads only the
+repository folder; the five tests of `TestConstitutionGuard` in `tests/test_brain_viewer.py` reach
+only the branch for a missing folder, so no test exercises the old handler or the new one; and the
+command table's handler in `apps/cli/grouped.py` turns an error that escapes a command into exit
+code 1 with the error's type and message.
+
+CHOSEN: (1) The job's diff lands byte for byte as the job wrote it. (2) Two tests join
+`TestConstitutionGuard`: a `PermissionError` from the loader still prints the warning, keeps the
+error's own text out of it and writes the viewer; a `RuntimeError` fails the command with exit code
+1 naming that error, prints no warning and writes no viewer. The first fails if the handler is
+narrowed past `OSError`, the second if it goes back to catching everything. (3) `SU-037`'s
+`consumed_by` is set by the closure commit, as precondition 6 orders.
+
+ALTERNATIVES: recording the diff without landing it, rejected because it is T001's first repair and
+the feature's own proof that a Tier 4 job is worth running; landing it without a test, rejected
+because no test reached the handler either way and the narrowing would stand unguarded.
+
+HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and `MAX_EXCUSED`
+to 290, delete the two tests, and delete this paragraph.
+
+## DECISION F291 D4 — a file under `tests/` that vanishes between the listing and the read is skipped by Tier 5 and by the parametrize-id guard, and every other read error still fails (2026-09-29)
+
+CONTEXT: F291's one full suite at `fd4d02e3` failed one node, registered as R-1114: the guard of
+`tests/test_parametrize_ids_stable.py` read a temporary test module that
+`tests/regression/test_resource_safety.py` had just removed from `tests/regression/`. DECISION F291
+D1 (3) ordered both new tiers to raise on a file they cannot read. Measured by the reviewer at
+`752164eb`: `test_resource_safety.py` creates such modules with `tempfile.NamedTemporaryFile` inside
+`tests/regression/`, runs them through `scripts/remedy_pytest_runner.py` and unlinks them; a
+dangling link planted there fails the guard and `TestUntestedModuleTierRealChain`, the second
+through `_bound_test_names`; and nothing in the suite writes temporary modules under `packages/`,
+`apps/` or `scripts/`, the roots Tier 4 reads.
+
+CHOSEN: (1) `_bound_test_names` in `packages/orchestration/self_use_generator.py` skips a test file
+whose read raises `FileNotFoundError` and still raises `SelfUseGenerationError` for any other
+`OSError` and for a decoding error, which narrows D1 (3) for Tier 5's reading of `tests/` alone;
+Tier 4's readers are unchanged. (2) `fresh_value_parametrize_sites` in
+`tests/test_parametrize_ids_stable.py` skips such a file the same way, and the second reader of
+`TestUntestedModuleTierRealChain` reads it as empty. (3) A test per reader plants a dangling link
+and holds that it is skipped, and a directory named like a test file holds that Tier 5 still
+raises.
+
+ALTERNATIVES: moving the temporary modules of `test_resource_safety.py` out of the checkout,
+rejected here because that test runs them through the repository's own runner script and it is a
+resource-safety test this feature does not own; reading only tracked files through `git ls-files`,
+rejected because it makes a file read depend on git and misses a new test file before its first
+commit; skipping every unreadable file, rejected because a real read error would then pass unseen.
+
+HOW TO REVERSE: delete the two `FileNotFoundError` clauses and the second reader's fallback, the
+three tests, and this paragraph.

@@ -1,0 +1,5 @@
+Entry ID: SU-037
+Entry Title: Narrow the excused handler at apps/cli/commands/brain.py:132
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/brain.py:1:except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f291-r2-selfuse/SU-037.md

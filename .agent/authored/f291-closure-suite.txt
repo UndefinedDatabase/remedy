@@ -1,0 +1,17 @@
+F291 R4 C6 — the first closure repair round: one full suite run on the repaired tree.
+
+Command: python3 -m pytest -n auto -q
+Real exit code: 0
+Wall time (measured): 214 seconds (pytest's own reading: 207.03s, 0:03:27)
+Summary line: 20976 passed, 20 skipped, 1 warning in 207.03s (0:03:27)
+Bad node ids (failed plus errors): NONE
+Tree it ran on: 22265f346ee4a7d542a07f45f9b61d6b10d742ea (C5)
+
+Previous bad set, from .agent/authored/f291-closure-suite.txt at 752164eb2 (round 3):
+  tests/test_parametrize_ids_stable.py::test_no_parametrize_argument_draws_a_fresh_value_at_collection
+This round's bad set (NONE) is strictly smaller than round 3's one-node set and holds
+no newly bad node: the repair of Tier 5's reader and the parametrize-id guard's reader
+(R-1114, DECISION F291 D4) removed the only bad node, and no other node turned bad.
+
+pgrep -af server.py afterwards: nothing (only the pgrep invocation itself appears in
+its own process list; no server.py process is running).

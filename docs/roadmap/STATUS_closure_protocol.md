@@ -39,8 +39,10 @@
    the session calls
    `packages.orchestration.self_use_generator.generate_and_append_if_empty`
    FIRST (F258 T001) — its Tier 1 (the oldest open Low/Medium finding in
-   `.agent/live_review.md`) supplies one in practice, since the ledger rarely
-   runs dry. Only once THAT also answers `None` is the track truly
+   `.agent/live_review.md`) supplies one when the ledger has one, and its
+   Tiers 4 and 5 (an excused blind handler the BLE001 ratchet counts, and a
+   module no test file imports; F291, DECISION F291 D1) almost always do when
+   every tier above them is dry. Only once THAT also answers `None` is the track truly
    exhausted, not blocked: record `self-use NONE (queue exhausted)` in the
    handback and close normally, because a genuinely empty queue with no
    eligible source asks the operator to curate more rather than stopping a

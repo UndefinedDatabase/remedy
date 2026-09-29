@@ -401,6 +401,13 @@ end the response with:
   what the page shows; and two promises of a DECISION that no test could see broken (R-1109 and
   R-1111) are item 12's red control, which binds a decision's own sentences as it binds a gate. The
   list stays at 34 items.
+  Consolidated a thirtieth time at F291's closure on 2026-09-29: nothing joined and no two items
+  were merged, because F291 had written no line to `.agent/prose_slips.md` when this pass was made,
+  at its second round: its first round's block was generated from a simulated tree and every worker
+  reading matched it. One lesson that round met is recorded in DECISION F291 D1 rather than here: a
+  module that names a pattern a ratchet counts over its own source must never spell that pattern,
+  which is item 7's reading of the guards that count a string over a whole file. The list stays at
+  34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

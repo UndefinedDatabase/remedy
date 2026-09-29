@@ -16,7 +16,8 @@ human's — or the closure round's own — decision before it is ever run.
 A standing maintenance ORDER is tried first, then the three sources
 ``docs/roadmap/features/T5_F258.md`` T001 named, in that order — completed by
 ``docs/roadmap/features/T5_F289.md`` T001 and T002 (DECISIONS F289 D1 and D2), which built the
-last two as real checks rather than placeholders:
+last two as real checks rather than placeholders — and finally the two sources
+``docs/roadmap/features/T5_F291.md`` T001 and T002 added (DECISION F291 D1):
 
   0. THE TOOLCHAIN REFRESH ORDER (T2_F279 T004, DECISION F279 D7).
      ``docs/orders/toolchain-refresh.md`` is itself a job file, queued VERBATIM,
@@ -42,14 +43,32 @@ last two as real checks rather than placeholders:
      job whose one task quotes the warning's ``detail`` VERBATIM and whose
      acceptance asks that ``doctor core --json`` no longer list it
      (DECISION F289 D1, T5_F289.md T002).
+  4. THE EXCUSED BLIND HANDLERS (T5_F291.md T001, DECISION F291 D1). The first BLE001
+     excuse mark ``tests/test_ble001_ratchet.py`` counts, in file-path then line order,
+     under ``EXCUSED_HANDLER_ROOTS``, that no existing queue entry already targets by its
+     key (``path:ordinal:text`` — the ordinal, not the line, so a mark that only moves
+     keeps its key) and whose line ``RETIRED_WORD`` does not match, rendered as a job
+     whose one task quotes the handler's line VERBATIM and asks that it be narrowed and
+     its mark deleted, lowering ``MAX_EXCUSED`` in the same change.
+  5. THE FIRST UNTESTED MODULE (T5_F291.md T002, DECISION F291 D1). The first module
+     under ``UNTESTED_MODULE_ROOTS``, in that order, that is not a package's
+     ``__init__.py``, defines at least one top-level function or class, and whose dotted
+     name no ``import`` statement under ``tests/`` binds, rendered as a job whose one
+     task names its public top-level names — or all of them when none is public — and
+     asks for a first test file, ``test_<stem>.py``, that imports it.
+
+Tiers 4 and 5 come LAST because they almost always have an item: a BLE001 mark and an
+untested module are both far more plentiful than an open finding, a stale claim or an
+actionable doctor warning, so trying them earlier would starve the other four tiers.
 
 Public API::
 
     SelfUseGenerationError: a source this module needs could not be read
     default_ledger_path() -> Path
-    generate_self_use_item(queue_path=None, ledger_path=None) -> SelfUseQueueEntry | None
+    default_source_root() -> Path
+    generate_self_use_item(queue_path=None, ledger_path=None, *, source_root=None) -> SelfUseQueueEntry | None
     append_generated_item(entry, queue_path=None) -> None
-    generate_and_append_if_empty(queue_path=None, ledger_path=None) -> SelfUseQueueEntry | None
+    generate_and_append_if_empty(queue_path=None, ledger_path=None, *, source_root=None) -> SelfUseQueueEntry | None
 
 Deliberate absences:
   * REMEDY DELIBERATELY DOES NOT SUMMARIZE A FINDING. The rendered job's Task 1
@@ -73,9 +92,14 @@ Deliberate absences:
     :func:`packages.orchestration.pingpong_job.parse_job_file` to verify the
     rendered text — that function persists a job record as a side effect
     (``_persist_job``), which a pure generation step must never trigger.
+  * REMEDY DELIBERATELY DOES NOT ASK GIT HOW OLD A MARK IS. Tier 4's "oldest" excuse
+    mark is the first one in file order, never a ``git blame`` timestamp: this
+    generator reads files, not history, so a shallow clone still works and a request
+    never costs a blame subprocess per file (DECISION F291 D1).
 """
 from __future__ import annotations
 
+import ast
 import json
 import re
 from datetime import date, timedelta
@@ -121,6 +145,45 @@ _DOCTOR_PROVENANCE = "generated (self-use-generator tier 3, doctor core, {key})"
 _DOCTOR_PROVENANCE_RE = re.compile(
     r"^generated \(self-use-generator tier 3, doctor core, (?P<key>.+)\)$"
 )
+
+#: THE PROVENANCE TIER 4 STAMPS ON AN ITEM, and the pattern that reads the targeted
+#: mark's key back out of it (DECISION F291 D1). The generator's own source spells no
+#: BLE001 excuse mark: its text is composed from EXCUSE_MARK_WORDS below, never
+#: written out directly.
+_EXCUSED_PROVENANCE = "generated (self-use-generator tier 4, excused handler, {key})"
+_EXCUSED_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 4, excused handler, (?P<key>.+)\)$"
+)
+
+#: THE PROVENANCE TIER 5 STAMPS ON AN ITEM, and the pattern that reads the targeted
+#: module's path back out of it (DECISION F291 D1).
+_UNTESTED_PROVENANCE = "generated (self-use-generator tier 5, untested module, {path})"
+_UNTESTED_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 5, untested module, (?P<path>.+)\)$"
+)
+
+#: THE ROOTS TIER 4 READS — the same three `tests/test_ble001_ratchet.py` scans, so a
+#: mark that test counts is exactly a mark this tier can offer (DECISION F291 D1).
+EXCUSED_HANDLER_ROOTS = ("packages", "apps", "scripts")
+
+#: THE RATCHET'S OWN PATTERN, read here rather than copied by hand, so the two can
+#: never drift — a test pins them equal.
+EXCUSED_HANDLER_MARK = re.compile(r"#\s*noqa:\s*BLE001\b(?P<rest>.*)")
+
+#: THE WORDS THIS GENERATOR COMPOSES ITS OWN TEXT FROM (DECISION F291 D1): this
+#: module's own source spells the BLE001 excuse mark nowhere, so a job's task text and
+#: its rendered "# <these words>" line are both built from this constant alone.
+EXCUSE_MARK_WORDS = "noqa: BLE001"
+
+#: WHERE THE RATCHET TEST LIVES — a Tier 4 job's acceptance names it, and it is never
+#: spelled a second way.
+RATCHET_TEST_PATH = "tests/test_ble001_ratchet.py"
+
+#: THE ROOTS TIER 5 READS, in the order it tries them (DECISION F291 D1).
+UNTESTED_MODULE_ROOTS = ("packages", "apps/cli")
+
+#: WHERE TIER 5 LOOKS FOR AN IMPORT — every test file below this, under the source root.
+TESTS_ROOT = "tests"
 
 #: THE ORDER TIER. The order file, how often it may be queued, and the provenance
 #: that records the day it was, which is how the next call knows whether it is due.
@@ -210,6 +273,11 @@ def default_order_path() -> Path:
 
 def default_docs_root() -> Path:
     """The repository root the staleness catalog reads documents under, resolved the same way the queue is."""
+    return Path(__file__).resolve().parents[2]
+
+
+def default_source_root() -> Path:
+    """The repository root Tier 4 and Tier 5 read source and test files under."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -540,12 +608,245 @@ def _doctor_warning_tier(queue_path: Path | None) -> SelfUseQueueEntry | None:
     )
 
 
+# ---------------------------------------------------------------------------
+# F291 T001 — Tier 4: the excused blind handlers (DECISION F291 D1).
+# ---------------------------------------------------------------------------
+
+
+def _targeted_excused_keys(queue_path: Path | None) -> frozenset[str]:
+    """Every excused-handler key (``path:ordinal:text``) an existing entry, consumed or not, already targets."""
+    return frozenset(
+        match.group("key")
+        for match in (
+            _EXCUSED_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _excused_handler_marks(root: Path) -> list[tuple[str, int, str, str]]:
+    """Every BLE001 excuse mark under `EXCUSED_HANDLER_ROOTS`, sorted by path then line.
+
+    Each is ``(relative posix path, line number, the stripped line, key)``, the key
+    being ``f"{path}:{ordinal}:{text}"`` where the ordinal counts identical stripped
+    lines earlier in the same file — so an edit that only moves a mark, leaving its
+    text unchanged, keeps its key (DECISION F291 D1).
+    """
+    marks: list[tuple[str, int, str, str]] = []
+    for top in EXCUSED_HANDLER_ROOTS:
+        top_dir = root / top
+        if not top_dir.is_dir():
+            continue
+        for path in sorted(top_dir.rglob("*.py")):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                raise SelfUseGenerationError(f"{path}: unreadable ({exc})") from exc
+            relpath = path.relative_to(root).as_posix()
+            seen: dict[str, int] = {}
+            for number, line in enumerate(text.splitlines(), 1):
+                if not EXCUSED_HANDLER_MARK.search(line):
+                    continue
+                stripped = line.strip()
+                seen[stripped] = seen.get(stripped, 0) + 1
+                key = f"{relpath}:{seen[stripped]}:{stripped}"
+                marks.append((relpath, number, stripped, key))
+    marks.sort(key=lambda mark: (mark[0], mark[1]))
+    return marks
+
+
+def _excused_handler_job_markdown(title: str, path: str, number: int, text: str) -> str:
+    """The Tier 4 job's markdown: narrow the handler and lower `MAX_EXCUSED` in one change."""
+    mark = f"# {EXCUSE_MARK_WORDS}"
+    ratchet = RATCHET_TEST_PATH
+    return (
+        f"# Job: {title}\n"
+        "\n"
+        "## Task 1\n"
+        f"Line {number} of `{path}` excuses a blind exception handler from ruff's BLE001 rule:\n"
+        "\n"
+        f"    {text}\n"
+        "\n"
+        "Narrow this handler to the exception types the code it guards can really raise, and "
+        f"delete its `{mark}` mark. In the same change lower `MAX_EXCUSED` in `{ratchet}` by "
+        "one, because that test holds the number of marks equal to it. Add no mark anywhere "
+        "else, and do not edit any file under `.agent/`.\n"
+        "\n"
+        "Acceptance:\n"
+        f"- The handler at line {number} of `{path}` no longer carries a `{mark}` mark, and "
+        f"`python3 -m ruff check {path}` reports nothing.\n"
+        f"- `python3 -m pytest -q {ratchet}` passes, with `MAX_EXCUSED` one lower than before.\n"
+        "- No file under `.agent/` is changed by this task.\n"
+    )
+
+
+def _excused_handler_tier(queue_path: Path | None, root: Path) -> SelfUseQueueEntry | None:
+    """Tier 4: the first BLE001 excuse mark under `EXCUSED_HANDLER_ROOTS` no queue entry targets.
+
+    Screens with `RETIRED_WORD` exactly as Tier 1 does (R-1015): a mark whose line
+    quotes the retired word is walked past, never offered.
+    """
+    targeted = _targeted_excused_keys(queue_path)
+    for path, number, text, key in _excused_handler_marks(root):
+        if key in targeted or RETIRED_WORD.search(text):
+            continue
+        title = f"Narrow the excused handler at {path}:{number}"
+        return SelfUseQueueEntry(
+            id=_next_queue_id(queue_path),
+            title=title,
+            why=text,
+            job_markdown=_excused_handler_job_markdown(title, path, number, text),
+            consumed_by="",
+            provenance=_EXCUSED_PROVENANCE.format(key=key),
+        )
+    return None
+
+
+# ---------------------------------------------------------------------------
+# F291 T002 — Tier 5: the test-less modules (DECISION F291 D1).
+# ---------------------------------------------------------------------------
+
+
+def _targeted_untested_paths(queue_path: Path | None) -> frozenset[str]:
+    """Every untested-module path an existing entry, consumed or not, already targets."""
+    return frozenset(
+        match.group("path")
+        for match in (
+            _UNTESTED_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _bound_test_names(root: Path) -> frozenset[str]:
+    """Every dotted name an import statement under `root / TESTS_ROOT` binds.
+
+    `import a.b` binds `a.b`; `from a.b import c` at module level (level 0) binds both
+    `a.b` and `a.b.c` — so a module reached through either spelling counts as tested
+    (DECISION F291 D1).
+    """
+    tests_dir = root / TESTS_ROOT
+    if not tests_dir.is_dir():
+        return frozenset()
+    names: set[str] = set()
+    for path in sorted(tests_dir.rglob("*.py")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # R-1114, DECISION F291 D4: a test can write and remove a temporary module
+            # under `tests/` beside this read — gone, not unreadable.
+            continue
+        except (OSError, UnicodeDecodeError) as exc:
+            raise SelfUseGenerationError(f"{path}: unreadable ({exc})") from exc
+        try:
+            tree = ast.parse(text)
+        except SyntaxError as exc:
+            raise SelfUseGenerationError(f"{path}: does not parse ({exc})") from exc
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    names.add(alias.name)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                names.add(node.module)
+                for alias in node.names:
+                    names.add(f"{node.module}.{alias.name}")
+    return frozenset(names)
+
+
+def _public_top_level_names(path: Path) -> list[str]:
+    """The module's public top-level function/class names in source order, or all of them when none is public."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise SelfUseGenerationError(f"{path}: unreadable ({exc})") from exc
+    try:
+        tree = ast.parse(text)
+    except SyntaxError as exc:
+        raise SelfUseGenerationError(f"{path}: does not parse ({exc})") from exc
+    names = [
+        node.name for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    ]
+    public = [name for name in names if not name.startswith("_")]
+    return public or names
+
+
+def _first_untested_module(
+    root: Path, queue_path: Path | None
+) -> tuple[str, str, list[str]] | None:
+    """The first module under `UNTESTED_MODULE_ROOTS` no test binds, with its names to test."""
+    bound = _bound_test_names(root)
+    targeted = _targeted_untested_paths(queue_path)
+    for top in UNTESTED_MODULE_ROOTS:
+        top_dir = root / top
+        if not top_dir.is_dir():
+            continue
+        for path in sorted(top_dir.rglob("*.py")):
+            if path.name == "__init__.py":
+                continue
+            relpath = path.relative_to(root).as_posix()
+            if relpath in targeted or RETIRED_WORD.search(relpath):
+                continue
+            dotted = ".".join(path.relative_to(root).with_suffix("").parts)
+            if dotted in bound:
+                continue
+            names = _public_top_level_names(path)
+            if not names:
+                continue
+            return relpath, dotted, names
+    return None
+
+
+def _untested_module_job_markdown(title: str, relpath: str, dotted: str, names: list[str]) -> str:
+    """The Tier 5 job's markdown: write the module's first tests, naming what to test."""
+    stem = Path(relpath).stem
+    names_text = ", ".join(f"`{name}`" for name in names)
+    return (
+        f"# Job: {title}\n"
+        "\n"
+        "## Task 1\n"
+        f"No file under `tests/` imports `{dotted}`, so nothing tests `{relpath}` directly. "
+        f"The names to test are {names_text}.\n"
+        "\n"
+        "Write its first tests, in a test file named after the module, "
+        f"`test_{stem}.py`, beside the tests of its package — a new file, or the existing "
+        f"file of that name if there is one. The file imports `{dotted}` and holds at least "
+        "one meaningful test for each name above. Change no production code, and do not "
+        "edit any file under `.agent/`.\n"
+        "\n"
+        "Acceptance:\n"
+        f"- A test file under `tests/` imports `{dotted}`, and pytest passes on it.\n"
+        f"- Each of {names_text} is exercised by at least one of the new tests.\n"
+        "- No file under `.agent/` is changed by this task.\n"
+    )
+
+
+def _untested_module_tier(queue_path: Path | None, root: Path) -> SelfUseQueueEntry | None:
+    """Tier 5: the first module under `UNTESTED_MODULE_ROOTS` no test file imports, as a job."""
+    found = _first_untested_module(root, queue_path)
+    if found is None:
+        return None
+    relpath, dotted, names = found
+    title = f"Write the first tests for {relpath}"
+    return SelfUseQueueEntry(
+        id=_next_queue_id(queue_path),
+        title=title,
+        why=f"No file under `tests/` imports `{dotted}`.",
+        job_markdown=_untested_module_job_markdown(title, relpath, dotted, names),
+        consumed_by="",
+        provenance=_UNTESTED_PROVENANCE.format(path=relpath),
+    )
+
+
 def generate_self_use_item(
     queue_path: Path | None = None,
     ledger_path: Path | None = None,
     *,
     order_path: Path | None = None,
     today: date | None = None,
+    source_root: Path | None = None,
 ) -> SelfUseQueueEntry | None:
     """The next item to append, from the first tier that has one, or ``None``.
 
@@ -568,7 +869,17 @@ def generate_self_use_item(
     if doc_result is not None:
         return doc_result
 
-    return _doctor_warning_tier(queue_path)
+    doctor_result = _doctor_warning_tier(queue_path)
+    if doctor_result is not None:
+        return doctor_result
+
+    root = source_root or default_source_root()
+
+    excused_result = _excused_handler_tier(queue_path, root)
+    if excused_result is not None:
+        return excused_result
+
+    return _untested_module_tier(queue_path, root)
 
 
 def append_generated_item(entry: SelfUseQueueEntry, queue_path: Path | None = None) -> None:
@@ -602,6 +913,7 @@ def generate_and_append_if_empty(
     *,
     order_path: Path | None = None,
     today: date | None = None,
+    source_root: Path | None = None,
 ) -> SelfUseQueueEntry | None:
     """The seam a closure round calls: generate and append, but ONLY when empty.
 
@@ -612,7 +924,9 @@ def generate_and_append_if_empty(
     """
     if pending_self_use_items(queue_path):
         return None
-    entry = generate_self_use_item(queue_path, ledger_path, order_path=order_path, today=today)
+    entry = generate_self_use_item(
+        queue_path, ledger_path, order_path=order_path, today=today, source_root=source_root,
+    )
     if entry is None:
         return None
     append_generated_item(entry, queue_path)

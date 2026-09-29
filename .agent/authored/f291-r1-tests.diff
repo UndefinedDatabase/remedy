@@ -1,0 +1,399 @@
+diff --git a/tests/orchestration/test_self_use_generator.py b/tests/orchestration/test_self_use_generator.py
+index 985fc0b64..5abcb40db 100644
+--- a/tests/orchestration/test_self_use_generator.py
++++ b/tests/orchestration/test_self_use_generator.py
+@@ -50,7 +50,9 @@ def _no_standing_order(monkeypatch, tmp_path):
+     pointed at an empty claim tuple and Tier 3 at an empty report for the same reason:
+     `run_staleness_checks()` and `doctor_core_report()` each read the machine's real repository
+     tree and configuration, and a test not ABOUT that tier must not depend on either
+-    (DECISION F289 D1, D2).
++    (DECISION F289 D1, D2). Tiers 4 and 5 read source and test files under a root, so the
++    root is pointed at a folder that does not exist; a test of either tier names its own
++    (DECISION F291 D1).
+     """
+     from apps.cli.commands import worker_facade_cmd
+     from packages.orchestration import doc_staleness, self_use_generator
+@@ -58,6 +60,7 @@ def _no_standing_order(monkeypatch, tmp_path):
+     monkeypatch.setattr(self_use_generator, "default_order_path", lambda: tmp_path / "no-order.md")
+     monkeypatch.setattr(doc_staleness, "run_staleness_checks", lambda *a, **k: ())
+     monkeypatch.setattr(worker_facade_cmd, "doctor_core_report", lambda: _EMPTY_DOCTOR_REPORT)
++    monkeypatch.setattr(self_use_generator, "default_source_root", lambda: tmp_path / "no-source")
+ 
+ _QUEUE_ITEM = {
+     "id": "SU-001",
+@@ -1078,3 +1081,375 @@ class TestDoctorWarningTierRealChain:
+             f"generated (self-use-generator tier 3, doctor core, "
+             f"dead_builtin_model:{model_id})"
+         )
++
++
++# ---------------------------------------------------------------------------
++# F291 T001 — Tier 4: the excused blind handlers (DECISION F291 D1).
++# ---------------------------------------------------------------------------
++
++
++def _write_source(root: Path, relpath: str, text: str | bytes) -> Path:
++    path = root / relpath
++    path.parent.mkdir(parents=True, exist_ok=True)
++    if isinstance(text, bytes):
++        path.write_bytes(text)
++    else:
++        path.write_text(text, encoding="utf-8")
++    return path
++
++
++def _handler_module(*reasons: str, lead: int = 0) -> str:
++    """One `try` block per reason, each ending in an excused handler, after `lead` blank lines.
++
++    With no lead the first handler sits on line 3 and each next one four lines further down.
++    """
++    body = "\n" * lead
++    for reason in reasons:
++        body += f"try:\n    pass\nexcept Exception:  # noqa: BLE001 — {reason}\n    pass\n"
++    return body
++
++
++def _mark(reason: str) -> str:
++    return f"except Exception:  # noqa: BLE001 — {reason}"
++
++
++def _consume(queue_path: Path, entry) -> None:
++    """The closure round's own edit (DECISION F257 D2): mark `entry` consumed."""
++    body = json.loads(queue_path.read_text(encoding="utf-8"))
++    for item in body["items"]:
++        if item["id"] == entry.id:
++            item["consumed_by"] = "F291-test"
++    queue_path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
++
++
++def _drain(tmp_path: Path, source_root: Path, limit: int = 10) -> list:
++    """Generate, append and consume until the generator answers None; every entry, in order."""
++    ledger = _write_ledger(tmp_path, [])
++    queue_path = _write_queue(tmp_path, [])
++    entries = []
++    for _ in range(limit):
++        entry = generate_and_append_if_empty(
++            queue_path=queue_path, ledger_path=ledger, source_root=source_root,
++        )
++        if entry is None:
++            return entries
++        entries.append(entry)
++        _consume(queue_path, entry)
++    raise AssertionError(f"the generator was still answering after {limit} requests")
++
++
++class TestExcusedHandlerTier:
++    """Tier 4, against a FIXTURE source tree — T5_F291.md T001, DECISION F291 D1."""
++
++    def _tree(self, tmp_path: Path) -> Path:
++        root = tmp_path / "src"
++        _write_source(root, "packages/zeta.py", _handler_module("z"))
++        _write_source(root, "apps/alpha.py", _handler_module("a1", "a2"))
++        _write_source(root, "scripts/beta.py", _handler_module("b"))
++        return root
++
++    def test_the_first_mark_in_path_then_line_order_is_offered(self, tmp_path: Path):
++        root = self._tree(tmp_path)
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=root,
++        )
++        assert entry is not None
++        assert entry.id == "SU-001"
++        assert entry.consumed_by == ""
++        assert entry.title == "Narrow the excused handler at apps/alpha.py:3"
++        assert entry.why == _mark("a1")
++        assert entry.provenance == (
++            "generated (self-use-generator tier 4, excused handler, "
++            f"apps/alpha.py:1:{_mark('a1')})"
++        )
++
++    def test_the_job_asks_for_the_narrowing_and_the_ratchet_in_one_change(self, tmp_path: Path):
++        root = self._tree(tmp_path)
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=root,
++        )
++        text = entry.job_markdown
++        assert text.startswith("# Job: Narrow the excused handler at apps/alpha.py:3\n\n## Task 1\n")
++        assert text.count("## Task 1") == 1 and text.count("## ") == 1
++        assert text.count("Acceptance:") == 1
++        task, acceptance = text.split("Acceptance:\n")
++        assert "Line 3 of `apps/alpha.py`" in task
++        assert f"\n    {_mark('a1')}\n" in task
++        assert "lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one" in task
++        assert "do not edit any file under `.agent/`" in task
++        assert "`python3 -m ruff check apps/alpha.py` reports nothing" in acceptance
++        assert "`python3 -m pytest -q tests/test_ble001_ratchet.py` passes" in acceptance
++        assert "- No file under `.agent/` is changed by this task.\n" in acceptance
++
++    def test_a_targeted_mark_is_never_offered_again(self, tmp_path: Path):
++        entries = _drain(tmp_path, self._tree(tmp_path))
++        assert [e.title for e in entries] == [
++            "Narrow the excused handler at apps/alpha.py:3",
++            "Narrow the excused handler at apps/alpha.py:7",
++            "Narrow the excused handler at packages/zeta.py:3",
++            "Narrow the excused handler at scripts/beta.py:3",
++        ]
++        assert [e.id for e in entries] == ["SU-001", "SU-002", "SU-003", "SU-004"]
++        assert len({e.provenance for e in entries}) == 4
++
++    def test_a_moved_mark_keeps_its_key(self, tmp_path: Path):
++        root = self._tree(tmp_path)
++        ledger = _write_ledger(tmp_path, [])
++        queue_path = _write_queue(tmp_path, [])
++        first = generate_and_append_if_empty(queue_path=queue_path, ledger_path=ledger, source_root=root)
++        _consume(queue_path, first)
++
++        # An unrelated edit moves both handlers of the file five lines down.
++        _write_source(root, "apps/alpha.py", _handler_module("a1", "a2", lead=5))
++        second = generate_self_use_item(queue_path=queue_path, ledger_path=ledger, source_root=root)
++
++        assert first.why == _mark("a1")
++        assert second.why == _mark("a2")
++        assert second.title == "Narrow the excused handler at apps/alpha.py:12"
++
++    def test_identical_handlers_in_one_file_are_offered_one_by_one(self, tmp_path: Path):
++        root = tmp_path / "src"
++        _write_source(root, "packages/twin.py", _handler_module("same", "same"))
++        entries = _drain(tmp_path, root)
++        assert [e.title for e in entries] == [
++            "Narrow the excused handler at packages/twin.py:3",
++            "Narrow the excused handler at packages/twin.py:7",
++        ]
++        assert [e.provenance for e in entries] == [
++            f"generated (self-use-generator tier 4, excused handler, packages/twin.py:1:{_mark('same')})",
++            f"generated (self-use-generator tier 4, excused handler, packages/twin.py:2:{_mark('same')})",
++        ]
++
++    def test_only_the_ratchets_roots_are_read(self, tmp_path: Path):
++        root = tmp_path / "src"
++        for relpath in ("tests/test_x.py", "docs/y.py", "tools/z.py", "packages/notes.txt"):
++            _write_source(root, relpath, _handler_module("outside"))
++        assert _drain(tmp_path, root) == []
++
++    def test_a_mark_quoting_a_retired_word_is_walked_past(self, tmp_path: Path):
++        """R-1015: the mark's line lands in a tracked file the retired-word guard reads."""
++        retired = "pro" "motion"
++        root = tmp_path / "src"
++        _write_source(root, "apps/alpha.py", _handler_module(f"a {retired} fallback"))
++        _write_source(root, "packages/zeta.py", _handler_module("z"))
++        entries = _drain(tmp_path, root)
++        assert [e.title for e in entries] == ["Narrow the excused handler at packages/zeta.py:3"]
++
++    def test_an_undecodable_source_file_raises(self, tmp_path: Path):
++        root = tmp_path / "src"
++        _write_source(root, "packages/bad.py", b"x = '\xff\xfe'\n")
++        with pytest.raises(SelfUseGenerationError):
++            generate_self_use_item(
++                queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++                source_root=root,
++            )
++
++    def test_tier_3_wins_over_tier_4(self, tmp_path: Path, monkeypatch):
++        _stub_doctor_report(monkeypatch, [_ACTIONABLE_A])
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=self._tree(tmp_path),
++        )
++        assert entry.provenance.startswith("generated (self-use-generator tier 3")
++
++    def test_tier_4_wins_over_tier_5(self, tmp_path: Path):
++        root = self._tree(tmp_path)
++        _write_source(root, "packages/lonely.py", "def run():\n    return 1\n")
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=root,
++        )
++        assert entry.provenance.startswith("generated (self-use-generator tier 4")
++
++
++class TestExcusedHandlerTierReadsWhatTheRatchetCounts:
++    """The item a tier 4 job clears is always one `MAX_EXCUSED` counted (DECISION F291 D1)."""
++
++    def test_the_roots_and_the_mark_are_the_ratchets(self):
++        from packages.orchestration.self_use_generator import (
++            EXCUSED_HANDLER_MARK,
++            EXCUSED_HANDLER_ROOTS,
++            RATCHET_TEST_PATH,
++        )
++        from tests.test_ble001_ratchet import MARK, SCANNED_ROOTS
++
++        assert EXCUSED_HANDLER_ROOTS == SCANNED_ROOTS
++        assert (EXCUSED_HANDLER_MARK.pattern, EXCUSED_HANDLER_MARK.flags) == (MARK.pattern, MARK.flags)
++        assert (Path(__file__).resolve().parents[2] / RATCHET_TEST_PATH).is_file()
++
++    def test_the_generator_spells_no_mark_of_its_own(self):
++        from packages.orchestration import self_use_generator
++        from packages.orchestration.self_use_generator import EXCUSE_MARK_WORDS
++        from tests.test_ble001_ratchet import MARK
++
++        source = Path(self_use_generator.__file__).read_text(encoding="utf-8")
++        assert [line for line in source.splitlines() if MARK.search(line)] == []
++        assert MARK.search(f"# {EXCUSE_MARK_WORDS} — a reason")
++
++    def test_the_real_tree_offers_the_ratchets_first_mark(self, tmp_path: Path, monkeypatch):
++        from packages.orchestration import self_use_generator
++        from tests.test_ble001_ratchet import _marks
++
++        # Undo the autouse fixture's missing root: this test is ABOUT the real tree.
++        real_root = Path(self_use_generator.__file__).resolve().parents[2]
++        monkeypatch.setattr(self_use_generator, "default_source_root", lambda: real_root)
++
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++        )
++        path, number, _rest = min(_marks(), key=lambda mark: (mark[0], mark[1]))
++        assert entry is not None
++        assert entry.title == f"Narrow the excused handler at {path}:{number}"
++
++
++# ---------------------------------------------------------------------------
++# F291 T002 — Tier 5: the test-less modules (DECISION F291 D1).
++# ---------------------------------------------------------------------------
++
++
++class TestUntestedModuleTier:
++    """Tier 5, against a FIXTURE tree — T5_F291.md T002, DECISION F291 D1."""
++
++    def _tree(self, tmp_path: Path) -> Path:
++        root = tmp_path / "src"
++        _write_source(root, "packages/pkg/__init__.py", "def helper():\n    return 0\n")
++        _write_source(root, "packages/pkg/alpha.py",
++                      "def run():\n    return 1\n\n\ndef _inner():\n    return 2\n\n\nclass Shape:\n    pass\n")
++        _write_source(root, "packages/pkg/beta.py", "def go():\n    return 3\n")
++        _write_source(root, "packages/pkg/empty.py", "VALUE = 1\n")
++        _write_source(root, "apps/cli/commands/gamma_cmd.py", "def _cmd_gamma(args):\n    return None\n")
++        _write_source(root, "apps/ui/delta.py", "def shown():\n    return 4\n")
++        _write_source(root, "tests/test_beta.py", "from packages.pkg import beta\n")
++        return root
++
++    def test_the_first_untested_module_is_offered(self, tmp_path: Path):
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=self._tree(tmp_path),
++        )
++        assert entry is not None
++        assert entry.id == "SU-001"
++        assert entry.consumed_by == ""
++        assert entry.title == "Write the first tests for packages/pkg/alpha.py"
++        assert entry.why == "No file under `tests/` imports `packages.pkg.alpha`."
++        assert entry.provenance == (
++            "generated (self-use-generator tier 5, untested module, packages/pkg/alpha.py)"
++        )
++
++    def test_the_job_names_the_module_its_test_file_and_its_names(self, tmp_path: Path):
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=self._tree(tmp_path),
++        )
++        text = entry.job_markdown
++        assert text.startswith("# Job: Write the first tests for packages/pkg/alpha.py\n\n## Task 1\n")
++        assert text.count("## ") == 1 and text.count("Acceptance:") == 1
++        task, acceptance = text.split("Acceptance:\n")
++        assert "No file under `tests/` imports `packages.pkg.alpha`" in task
++        assert "The names to test are `run`, `Shape`.\n" in task
++        assert "`_inner`" not in text
++        assert "`test_alpha.py`" in task
++        assert "Change no production code" in task
++        assert "do not edit any file under `.agent/`" in task
++        assert "- A test file under `tests/` imports `packages.pkg.alpha`, and pytest passes on it.\n" in acceptance
++        assert "- Each of `run`, `Shape` is exercised by at least one of the new tests.\n" in acceptance
++        assert "- No file under `.agent/` is changed by this task.\n" in acceptance
++
++    @pytest.mark.parametrize("relpath, text", [
++        ("tests/test_a.py", "import packages.pkg.alpha\n"),
++        ("tests/test_a.py", "import packages.pkg.alpha as alpha_module\n"),
++        ("tests/test_a.py", "from packages.pkg import alpha\n"),
++        ("tests/test_a.py", "from packages.pkg.alpha import run\n"),
++        ("tests/deep/er/test_a.py", "def test_it():\n    from packages.pkg import alpha\n"),
++    ], ids=["import", "import-as", "from-package", "from-module", "nested-and-local"])
++    def test_every_import_form_counts(self, tmp_path: Path, relpath: str, text: str):
++        root = self._tree(tmp_path)
++        _write_source(root, relpath, text)
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++            source_root=root,
++        )
++        assert entry.title == "Write the first tests for apps/cli/commands/gamma_cmd.py"
++
++    def test_a_module_with_only_private_names_offers_them(self, tmp_path: Path):
++        entries = _drain(tmp_path, self._tree(tmp_path))
++        gamma = entries[1]
++        assert gamma.title == "Write the first tests for apps/cli/commands/gamma_cmd.py"
++        assert "The names to test are `_cmd_gamma`.\n" in gamma.job_markdown
++        assert "`test_gamma_cmd.py`" in gamma.job_markdown
++
++    def test_never_an_init_a_nameless_module_or_one_outside_the_roots(self, tmp_path: Path):
++        entries = _drain(tmp_path, self._tree(tmp_path))
++        assert [e.provenance for e in entries] == [
++            "generated (self-use-generator tier 5, untested module, packages/pkg/alpha.py)",
++            "generated (self-use-generator tier 5, untested module, apps/cli/commands/gamma_cmd.py)",
++        ]
++
++    def test_an_unparseable_test_file_raises(self, tmp_path: Path):
++        root = self._tree(tmp_path)
++        _write_source(root, "tests/test_broken.py", "def (\n")
++        with pytest.raises(SelfUseGenerationError):
++            generate_self_use_item(
++                queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++                source_root=root,
++            )
++
++
++class TestUntestedModuleTierRealChain:
++    """Tier 5 against the real tree, read back by a second, independent reader."""
++
++    def test_the_real_tree_offers_a_module_no_test_imports(self, tmp_path: Path, monkeypatch):
++        import re
++
++        from packages.orchestration import self_use_generator
++
++        real_root = Path(self_use_generator.__file__).resolve().parents[2]
++        monkeypatch.setattr(self_use_generator, "default_source_root", lambda: real_root)
++        # Tier 4 always has an item on the real tree; with no root to read it answers None.
++        monkeypatch.setattr(self_use_generator, "EXCUSED_HANDLER_ROOTS", ())
++
++        entry = generate_self_use_item(
++            queue_path=_write_queue(tmp_path, []), ledger_path=_write_ledger(tmp_path, []),
++        )
++        assert entry is not None
++        assert entry.provenance.startswith("generated (self-use-generator tier 5, untested module, ")
++        relpath = entry.provenance.rsplit(", ", 1)[1].rstrip(")")
++        assert relpath.startswith(("packages/", "apps/cli/")) and relpath.endswith(".py")
++        assert (real_root / relpath).is_file() and not relpath.endswith("__init__.py")
++
++        dotted = relpath[:-3].replace("/", ".")
++        parent, stem = dotted.rsplit(".", 1)
++        importer = re.compile(
++            rf"^\s*(?:import\s+{re.escape(dotted)}\b|from\s+{re.escape(dotted)}\s+import\b"
++            rf"|from\s+{re.escape(parent)}\s+import\s+.*\b{re.escape(stem)}\b)",
++            re.M,
++        )
++        hits = [
++            path.relative_to(real_root).as_posix()
++            for path in sorted((real_root / "tests").rglob("*.py"))
++            if importer.search(path.read_text(encoding="utf-8"))
++        ]
++        assert hits == []
++
++
++# ---------------------------------------------------------------------------
++# F291 T003 — the requirement, at the generator: three requests, three items.
++# ---------------------------------------------------------------------------
++
++
++class TestThreeRequestsOnAQueueExhaustedForTiersZeroToThree:
++    """T5_F291.md T003: with tiers 0 to 3 dry, three requests give three different items."""
++
++    def test_three_requests_three_items_then_none(self, tmp_path: Path):
++        root = tmp_path / "src"
++        _write_source(root, "packages/alpha.py", _handler_module("a1", "a2") + "\n\ndef run():\n    return 1\n")
++        entries = _drain(tmp_path, root)
++        assert [e.id for e in entries] == ["SU-001", "SU-002", "SU-003"]
++        assert [e.provenance.split(",")[0] for e in entries] == [
++            "generated (self-use-generator tier 4",
++            "generated (self-use-generator tier 4",
++            "generated (self-use-generator tier 5",
++        ]
++        assert len({e.provenance for e in entries}) == 3

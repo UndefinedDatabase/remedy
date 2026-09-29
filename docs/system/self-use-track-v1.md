@@ -17,7 +17,9 @@
 > `packages/orchestration/self_use_findings.py` now reads a run's own
 > `JobPlan` and answers its defects verbatim, for the closing session to
 > register as normal findings (T003); F258's three T-slices are now all
-> built.
+> built. **Update (2026-09-29, F291):** the generator gained two last sources,
+> the excused blind handlers and the modules no test imports, described under
+> "Who runs it, and on what budget".
 
 Remedy is used on Remedy on a schedule that cannot be skipped. This page is
 where to look for the two file formats involved and for the rule that makes the
@@ -112,6 +114,20 @@ once in so many runs, evidence that was never captured, or work that waits on
 the operator or on another feature. A finding held that way stays in the ledger
 for a session to pick up by hand; it is no longer handed to a builder who cannot
 finish it.
+
+When the finding ledger, the documentation-staleness catalog and `remedy doctor
+core` all have nothing to offer, two more sources almost always do (F291,
+DECISION F291 D1). The first is an excused blind exception handler: a line
+carrying the BLE001 excuse mark that `tests/test_ble001_ratchet.py` counts, the
+first in file order that no queue entry already names. Its job narrows that
+handler to the errors it really expects, deletes the mark, and lowers the
+ratchet's `MAX_EXCUSED` by one in the same change. The second is a module under
+`packages/` or `apps/cli/` that no test file imports; its job writes that
+module's first tests, naming the functions and classes to cover. Both come last
+because they would otherwise crowd out the sources above them, and a queue entry
+remembers the handler or the module it names, so neither is offered twice. With
+them, a close reads "queue exhausted" only once every such handler and module
+has been offered.
 
 A self-use run repairs code, never bookkeeping. The job it runs carries a deny
 fence over `.agent/` (`JobFences` on the planned job, set by

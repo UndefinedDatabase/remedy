@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-118 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+119 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 34 | 36 |
+| 5 | Operator Cockpit | 35 | 37 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -634,6 +634,14 @@ it; a menu at the top of the side rail switches between projects, and a switch c
 and stream of the old project so nothing stale stays on screen; the page address carries the
 project, so Back and Forward and a saved link bring you back to the same project, job and view; with
 only one project the home page is skipped and the menu is hidden).
+
+F291 self-use sources v2 (when Remedy builds itself, every finished feature runs one small
+maintenance job on Remedy's own code, and until now that job often had nothing to work on; it now
+has two sources that almost never run dry: an error handler that catches every kind of error where
+a narrower one would do, which the job narrows while it lowers the count a test keeps of such
+handlers, and a part of the code that no test file loads, for which the job writes the first
+tests; the first such job ran at this feature's close, narrowed one handler in the brain viewer
+command, and its change was kept).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

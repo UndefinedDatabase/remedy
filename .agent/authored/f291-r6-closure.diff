@@ -1,0 +1,63 @@
+diff --git a/README.md b/README.md
+index 64b948570..c14e26799 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-118 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++119 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 39 | 40 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 34 | 36 |
++| 5 | Operator Cockpit | 35 | 37 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -635,6 +635,14 @@ and stream of the old project so nothing stale stays on screen; the page address
+ project, so Back and Forward and a saved link bring you back to the same project, job and view; with
+ only one project the home page is skipped and the menu is hidden).
+ 
++F291 self-use sources v2 (when Remedy builds itself, every finished feature runs one small
++maintenance job on Remedy's own code, and until now that job often had nothing to work on; it now
++has two sources that almost never run dry: an error handler that catches every kind of error where
++a narrower one would do, which the job narrows while it lowers the count a test keeps of such
++handlers, and a part of the code that no test file loads, for which the job writes the first
++tests; the first such job ran at this feature's close, narrowed one handler in the brain viewer
++command, and its change was kept).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 017fe1622..a8b9c8c8c 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -183,7 +183,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ ## Tier 5 — Self-use sources v2 (operator amendment amend0929-context-hygiene)
+ 
+-- [~] F291 — Self-use sources v2
++- [x] F291 — Self-use sources v2 (T001–T003 complete, R-1114 resolved; accepted 2026-09-29 · live review PASS — ACCEPTED · Evidence job f291r5e1001 · package remedy-review-20260929-230028-READY_FOR_REVIEW.zip · SHA-256 445966ec71a0b64f30be65c8082e7819f43a060bfdb80a8505ca9aa0dc62ca33 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5f4cebf3751861d03edf470d2ff3c47c13005279)
+ 
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index ed62499b9..628adcee0 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -295,7 +295,7 @@
+       "title": "Narrow the excused handler at apps/cli/commands/brain.py:132",
+       "why": "except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it",
+       "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/brain.py:132\n\n## Task 1\nLine 132 of `apps/cli/commands/brain.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The handler at line 132 of `apps/cli/commands/brain.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/brain.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
+-      "consumed_by": "",
++      "consumed_by": "F291",
+       "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/brain.py:1:except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it)"
+     }
+   ]

@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-d6d60ea3d586425a  (exit 0)
+diff --git a/apps/cli/commands/brain.py b/apps/cli/commands/brain.py
+index f7c3578d9..26b0c44b0 100644
+--- a/apps/cli/commands/brain.py
++++ b/apps/cli/commands/brain.py
+@@ -129,7 +129,7 @@ def _cmd_brain_view(job_id_str: str, *, json_output: bool = False) -> None:
+                 print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
+             else:
+                 constitution = load_project_constitution(repo_path)
+-        except Exception:  # noqa: BLE001 — constitution is optional; warn and continue without it
++        except OSError:
+             print("Warning: project constitution unavailable for viewer.", file=sys.stderr)
+ 
+     graph = build_project_brain(job, events, constitution=constitution)
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 26a842a4a..2d64e4ee8 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 290
++MAX_EXCUSED = 289
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
