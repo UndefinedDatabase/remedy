@@ -852,3 +852,23 @@ def test_the_staging_ttl_config_key_defaults_to_seven_days(monkeypatch):
 
     monkeypatch.delenv("REMEDY_DATA_STAGING_TTL_DAYS", raising=False)
     assert get_config().get("data.staging_ttl_days") == 7
+
+
+def test_the_doctors_preview_total_counts_old_orphans_and_stale_copies_only(root):
+    """`reclaim_preview_bytes` is what `remedy doctor core` weighs: orphans AND stale copies."""
+    from packages.orchestration.data_reclaim import reclaim_preview_bytes
+
+    done = _job(root, RunState.COMPLETED)
+    young_done = _job(root, RunState.COMPLETED)
+    live = _job(root, RunState.RUNNING)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{done}", b"s" * 100), 30)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{young_done}", b"y" * 1000), 1)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{live}", b"r" * 1000), 30)
+    _age_tree(_scratch(root, "job_workspaces", f"staging_{_ORPHAN_ID}", b"o" * 10), 30)
+    (root / "runs" / "r1").mkdir(parents=True)
+    (root / "runs" / "r1" / "result.json").write_bytes(b"d" * 5000)
+    before = _tree(root)
+
+    assert reclaim_preview_bytes(root, stale_ttl_days=7.0) == 110
+    assert reclaim_preview_bytes(root / "absent", stale_ttl_days=7.0) == 0
+    assert _tree(root) == before
