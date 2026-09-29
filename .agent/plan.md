@@ -1,27 +1,25 @@
-# Plan — operator amendment amend0929-context-hygiene
+# Plan — operator amendment amend0929b-reclaim-default
 
-Branch: feature/amend0929-context-hygiene, cut from `main` at `4e643440`
-(the merge commit of pull request 295, F041 Artifact preview).
+Branch: feature/amend0929b-reclaim-default, cut from `main` at `2940ffd8`
+(the merge commit of pull request 296, amend0929-context-hygiene).
 
 ## Goal
 
-Cut the ledger a session reads at start to open findings and the current
-feature's gates, add the red-CI rule to the Open PR Gate, reclaim stale
-staging copies by construction, clean the checkout, answer Q6 and register
-F291 (Self-use sources v2).
+Restore the default of `remedy data reclaim` as it was at `4e643440`:
+finished jobs' staging copies are candidates at any age. Remove `--stale`
+and `data.staging_ttl_days` (DECISION amend0929b D1).
 
 ## Current Step
 
-Part G: gates, the pull request and its merge, then carry `main` into
-`feature/f042-multi-project-cockpit`. Parts A to F are committed: the
-ledger diet, the red-CI rule, `data reclaim --stale` with the doctor
-warning and the closure step, the checkout hygiene, Q6 (D2) and F291.
+Part 1: tests first, then the restore, the doctor warning's two commands
+and the closure step's two commands.
 
 ## Next Steps
 
-1. The next loop session resumes F042 at round 7 on its own branch.
+1. Part 2: check the F042 branch's context file.
+2. Part 3: report the ledger residue, read-only.
+3. Part 4: gates, pull request, merge, carry `main` into the F042 branch.
 
 ## Risks
 
-The F042 branch holds its own ledger records; the carry merge rebuilds the
-ledger from `main` plus the branch's records by digest.
+None known. The restore goes back to a shape that shipped until 2026-09-29.

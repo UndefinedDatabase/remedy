@@ -795,7 +795,7 @@ class TestDoctorCoreReportFunction:
 
 
 class TestDoctorCoreDataReclaimable:
-    """amend0929-context-hygiene C.2: reclaimable staging copies are an advisory, never a blocker.
+    """amend0929 C.2 and amend0929b: reclaimable staging copies are an advisory, never a blocker.
 
     Every test fakes `data_reclaim.reclaim_preview_bytes`, so none of them walks a data root.
     """
@@ -807,10 +807,10 @@ class TestDoctorCoreDataReclaimable:
         import packages.orchestration.data_reclaim as data_reclaim
         from apps.cli.commands.worker_facade_cmd import doctor_core_report
 
-        asked: list[float] = []
+        asked: list[object] = []
 
-        def fake_preview(root, *, stale_ttl_days):
-            asked.append(stale_ttl_days)
+        def fake_preview(root):
+            asked.append(root)
             return preview_bytes
 
         monkeypatch.setattr(budget_guard, "FREE_DISK_PROBE", lambda: 123456789)
@@ -820,15 +820,15 @@ class TestDoctorCoreDataReclaimable:
 
     def test_a_preview_at_the_threshold_warns_with_the_total_and_both_commands(self, monkeypatch):
         monkeypatch.delenv("REMEDY_DATA_RECLAIM_WARN_GB", raising=False)
-        monkeypatch.delenv("REMEDY_DATA_STAGING_TTL_DAYS", raising=False)
         report, hits, asked = self._report(monkeypatch, 6 * self._GIB)
 
-        assert asked == [7.0]
+        assert len(asked) == 1
         assert len(hits) == 1
         assert "6.0 GB" in hits[0].summary
         assert "6.0 GB" in hits[0].detail
-        assert "remedy data reclaim --orphans --stale" in hits[0].detail
-        assert "remedy data reclaim --orphans --stale --apply" in hits[0].detail
+        assert "`remedy data reclaim --orphans`" in hits[0].detail
+        assert "`remedy data reclaim --orphans --apply`" in hits[0].detail
+        assert "--stale" not in hits[0].detail
         # Its repair is not a tracked file, so it is deliberately not a self-use item.
         assert hits[0].repair_path == ""
         assert hits[0].actionable is False

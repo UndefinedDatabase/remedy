@@ -408,35 +408,31 @@ def doctor_core_report() -> DoctorCoreReport:
         _check("disk_floor", False, _safe_err(exc))
 
     # -----------------------------------------------------------------
-    # amend0929-context-hygiene C.2 — reclaimable staging copies: ADVISORY.
+    # amend0929-context-hygiene C.2, amend0929b — reclaimable staging copies: ADVISORY.
     #
-    # The bytes `remedy data reclaim --orphans --stale` would free, against
-    # `data.reclaim_warn_gb`. No repair_path, because the repair deletes scratch
-    # under the data root and edits no tracked file, so this warning is
-    # deliberately NOT a self-use item. A read failure warns about nothing:
-    # the reclaim command itself reports what it cannot read.
+    # The bytes `remedy data reclaim --orphans` would free — finished jobs' copies
+    # and copies no record owns — against `data.reclaim_warn_gb`. No repair_path,
+    # because the repair deletes scratch under the data root and edits no tracked
+    # file, so this warning is deliberately NOT a self-use item. A read failure
+    # warns about nothing: the reclaim command itself reports what it cannot read.
     # -----------------------------------------------------------------
     try:
         from apps.cli.commands.data_cmd import format_data_bytes
         from packages.orchestration.config import get_config as _get_config
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.data_reclaim import reclaim_preview_bytes
-        _cfg = _get_config()
-        reclaimable = reclaim_preview_bytes(
-            resolve_data_root(),
-            stale_ttl_days=float(_cfg.get("data.staging_ttl_days")))
-        warn_bytes = int(_cfg.get("data.reclaim_warn_gb")) * 1024 ** 3
+        reclaimable = reclaim_preview_bytes(resolve_data_root())
+        warn_bytes = int(_get_config().get("data.reclaim_warn_gb")) * 1024 ** 3
     except (OSError, ValueError, TypeError):
         reclaimable, warn_bytes = 0, 1
     if reclaimable >= warn_bytes:
         total = format_data_bytes(reclaimable)
         _warn("data_reclaimable",
-              f"{total} of orphaned and stale staging copies can be freed",
-              f"{total} of staging copies under the data root can be freed: copies no job "
-              f"record owns any more and finished jobs' copies unchanged for "
-              f"data.staging_ttl_days. Preview them with `remedy data reclaim --orphans "
-              f"--stale`, then free them with `remedy data reclaim --orphans --stale "
-              f"--apply`.")
+              f"{total} of finished jobs' and orphaned staging copies can be freed",
+              f"{total} of staging copies under the data root can be freed: copies of "
+              f"finished jobs and copies no job record owns any more. Preview them with "
+              f"`remedy data reclaim --orphans`, then free them with `remedy data reclaim "
+              f"--orphans --apply`.")
 
     # -----------------------------------------------------------------
     # F279 T001 — the environment against the variable registry: ADVISORY.

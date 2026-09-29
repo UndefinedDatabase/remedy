@@ -25521,3 +25521,13 @@ CHOSEN: The operator answers "yes, as recommended". A paydown feature with no op
 ALTERNATIVES: claiming an empty paydown feature anyway, rejected because a closure costs a full test run, an evidence package and several review rounds and would change nothing in the product.
 
 HOW TO REVERSE: delete this paragraph and write the question again; the next session then claims the paydown feature in STATUS order whether or not a finding is open.
+
+## DECISION amend0929b D1 — `remedy data reclaim` frees finished jobs' staging copies by default again, at any age, as it did at `4e643440`; the `--stale` flag and the `data.staging_ttl_days` key are removed; this supersedes DECISION amend0929 D1 (2026-09-29)
+
+CONTEXT: Before operator amendment amend0929-context-hygiene, `remedy data reclaim` without a flag previewed the staging copies of finished jobs at any age, and freed them with `--apply`; `--orphans` added the copies no job record owns. DECISION amend0929 D1 put the finished jobs' copies behind a new `--stale` flag with a seven-day time-to-live. That narrowed the default and delayed every reclaim, which is the opposite of the operator's goal that nothing accumulates.
+
+CHOSEN: The operator's ruling in amendment amend0929b-reclaim-default. (1) `packages/orchestration/data_reclaim.py` and `apps/cli/commands/data_cmd.py` are restored to their state at `4e643440`, the first parent of the merge of pull request 296. The default again makes a finished job's copy (`completed`, `failed` or `cancelled`) a candidate at any age, and a candidate again carries no `reason` key. (2) The `--stale` flag and the `data.staging_ttl_days` key with its environment variable `REMEDY_DATA_STAGING_TTL_DAYS` are removed, with no compatibility shim (ruling D-A, cleanliness over compatibility). (3) `remedy doctor core` keeps its `data_reclaimable` warning; its total is now what `remedy data reclaim --orphans` would free, read through the new `data_reclaim.reclaim_preview_bytes`, and its detail names `remedy data reclaim --orphans` and `remedy data reclaim --orphans --apply`. (4) The closure step runs those same two commands.
+
+ALTERNATIVES: keeping `--stale` as a no-op alias, rejected by ruling D-A; keeping a time-to-live on the default, rejected because it delays reclaim.
+
+HOW TO REVERSE: reintroducing a time-to-live is a one-file change in `packages/orchestration/data_reclaim.py` (a `_stale_verdict` call for a terminal job in `_plan_class` and its re-check in `apply_reclaim`, as amend0929's commit `9e4d0a4e` did) plus one config key. The tests in `tests/orchestration/test_data_reclaim.py` under "The restored default" show what to flip: a young finished copy would then be refused by default, and `--stale` would exist again.

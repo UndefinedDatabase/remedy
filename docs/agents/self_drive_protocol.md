@@ -507,8 +507,8 @@ DECISION amend0921-operator-feedback D1.
 
 Operator amendment amend0929-context-hygiene (2026-09-29) — STAGING COPIES AT
 CLOSURE. In the closure round that builds the evidence bundle, the worker runs
-`remedy data reclaim --orphans --stale` as a preview, then the same command with
-`--apply`, and the handback records the previewed total, the freed total and every
+`remedy data reclaim --orphans` as a preview, then `remedy data reclaim --orphans
+--apply` (commands corrected by operator amendment amend0929b-reclaim-default), and the handback records the previewed total, the freed total and every
 refused path with its reason. When the preview lists no candidate, the worker skips
 the `--apply` and the handback records the empty reading. A staging copy under
 `.data` is derived scratch and never a record, so this step deletes no record; it
