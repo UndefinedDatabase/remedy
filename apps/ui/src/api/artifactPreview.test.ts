@@ -15,6 +15,7 @@ import {
   readmeCockpitHtml,
 } from "./artifactPreview";
 import type { ArtifactsView, ImageArtifact, PreviewState, PreviewView } from "./artifactPreview";
+import { loadArtifactsView, loadPreviewView } from "./remedyApi";
 
 const VALID_ARTIFACTS_PAYLOAD = {
   readme: {
@@ -313,5 +314,55 @@ describe("previewCardView", () => {
       line: "This project has no app to run.", detail: "the job has no project folder to run",
       action: null, actionLabel: "", link: null,
     });
+  });
+});
+
+const DOOR_REQUEST = { jobId: "j1", token: "tok" };
+
+describe("loadArtifactsView", () => {
+  it("asks the artifacts path and decodes the payload", async () => {
+    let askedPath = "";
+    const view = await loadArtifactsView(DOOR_REQUEST, async (path) => {
+      askedPath = path;
+      return VALID_ARTIFACTS_PAYLOAD;
+    });
+    expect(askedPath).toBe(artifactsViewPath(DOOR_REQUEST));
+    expect(view).toEqual(DECODED_ARTIFACTS_VIEW);
+  });
+
+  it("answers null when the fetcher throws", async () => {
+    const view = await loadArtifactsView(DOOR_REQUEST, async () => {
+      throw new Error("offline");
+    });
+    expect(view).toBeNull();
+  });
+
+  it("answers null when the decoder refuses the payload", async () => {
+    const view = await loadArtifactsView(DOOR_REQUEST, async () => ({ nope: true }));
+    expect(view).toBeNull();
+  });
+});
+
+describe("loadPreviewView", () => {
+  it("asks the preview path and decodes the payload", async () => {
+    let askedPath = "";
+    const view = await loadPreviewView(DOOR_REQUEST, async (path) => {
+      askedPath = path;
+      return VALID_PREVIEW_PAYLOAD;
+    });
+    expect(askedPath).toBe(previewViewPath(DOOR_REQUEST));
+    expect(view).toEqual(DECODED_PREVIEW_VIEW);
+  });
+
+  it("answers null when the fetcher throws", async () => {
+    const view = await loadPreviewView(DOOR_REQUEST, async () => {
+      throw new Error("offline");
+    });
+    expect(view).toBeNull();
+  });
+
+  it("answers null when the decoder refuses the payload", async () => {
+    const view = await loadPreviewView(DOOR_REQUEST, async () => ({ nope: true }));
+    expect(view).toBeNull();
   });
 });
