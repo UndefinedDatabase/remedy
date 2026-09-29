@@ -39,6 +39,10 @@ STORY_EXPORT_MAX_BYTES = get_key_spec("story.export_max_bytes").default
 # request the page makes once idle — after every check has already passed — was never collected.
 # Draining for this long with nothing outstanding, directly after the last check, closes the gap.
 IDLE_DRAIN_SECONDS = 2.0
+# R-1107: `Target.createTarget` is the first command the test sends; a slow-starting Chrome on
+# a hosted runner can take longer than the generic 15-second default. This constant names the
+# longer bound used for that first command so the reviewer can judge it independently.
+CHROME_STARTUP_TIMEOUT = 60.0
 
 CHAPTERS_EXPR = (
     'Array.from(document.querySelectorAll(\'[data-ui="story-chapters"] button\'))'
@@ -67,7 +71,7 @@ class ChromePipe:
     the whole transport.
     """
 
-    def __init__(self, chrome: str, profile_dir: Path) -> None:
+    def __init__(self, chrome: str, profile_dir: Path, log_path: Path | None = None) -> None:
         cmd_r, cmd_w = os.pipe()
         reply_r, reply_w = os.pipe()
         script = f'exec "$0" "$@" 3<&{cmd_r} 4>&{reply_w}'
@@ -80,11 +84,13 @@ class ChromePipe:
             "--window-size=1280,800",
             "about:blank",
         ]
+        self._log_path = log_path
+        self._log_file = open(log_path, "wb") if log_path is not None else None  # noqa: SIM115
         self._proc = subprocess.Popen(
             ["bash", "-c", script, chrome, *args],
             pass_fds=(cmd_r, reply_w),
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=self._log_file if self._log_file is not None else subprocess.DEVNULL,
         )
         os.close(cmd_r)
         os.close(reply_w)
@@ -99,7 +105,18 @@ class ChromePipe:
         while b"\0" not in self._buffer:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError("timed out waiting for a reply from Chrome's pipe")
+                msg = "timed out waiting for a reply from Chrome's pipe"
+                if self._log_path is not None:
+                    msg += f"; Chrome log: {self._log_path}"
+                    try:
+                        if self._log_file is not None:
+                            self._log_file.flush()
+                        tail = self._log_path.read_bytes().decode("utf-8", errors="replace").splitlines()[-5:]
+                        if tail:
+                            msg += "\n" + "\n".join(tail)
+                    except OSError:
+                        pass
+                raise TimeoutError(msg)
             ready, _, _ = select.select([self._reply_r], [], [], remaining)
             if not ready:
                 continue
@@ -146,6 +163,8 @@ class ChromePipe:
             self._proc.wait(timeout=10)
         os.close(self._cmd_w)
         os.close(self._reply_r)
+        if self._log_file is not None:
+            self._log_file.close()
 
 
 def _poll(pipe: ChromePipe, expression: str, predicate: Callable[[Any], bool], *, timeout: float = 15.0) -> Any:
@@ -228,10 +247,10 @@ def test_the_exported_demo_story_plays_from_file_with_no_request(
     story_path.write_bytes(data)
     file_url = story_path.resolve().as_uri()
 
-    pipe = ChromePipe(CHROME_BIN, tmp_path / "profile")
+    pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
     events: list[dict[str, Any]] = []
     try:
-        target = pipe.send("Target.createTarget", {"url": "about:blank"})
+        target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
         attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
         pipe.session_id = attach["sessionId"]
         pipe.send("Network.enable")
@@ -298,3 +317,21 @@ def test_the_exported_demo_story_plays_from_file_with_no_request(
     assert log_errors == []
 
     assert story_path.stat().st_size <= STORY_EXPORT_MAX_BYTES
+
+
+def test_chrome_timeout_message_names_log(tmp_path: Path) -> None:
+    """A Chrome that writes to stderr but never answers produces a TimeoutError
+    whose message names the log file (R-1107)."""
+    log_path = tmp_path / "chrome.log"
+    fake_chrome = tmp_path / "fake_chrome"
+    fake_chrome.write_text("#!/bin/sh\nprintf 'chrome: startup\\n' >&2\nsleep 999\n")
+    fake_chrome.chmod(0o755)
+    pipe = ChromePipe(str(fake_chrome), tmp_path / "profile", log_path=log_path)
+    try:
+        with pytest.raises(TimeoutError) as exc:
+            pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=0.5)
+        assert str(log_path) in str(exc.value)
+        # R-1107's FIX: the message carries Chrome's own last lines, not only where they are.
+        assert "chrome: startup" in str(exc.value)
+    finally:
+        pipe.close()
