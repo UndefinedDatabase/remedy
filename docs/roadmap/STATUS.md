@@ -186,6 +186,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 12 — Observability & Operations
 
 - [ ] F200 — Daemon mode (remedy serve)
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F290 — Findings paydown v6
+
+## Tier 12 — Observability & Operations (continued)
+
 - [ ] F201 — Remote access & mobile view
 - [ ] F199 — Self-health & crash reports
 - [ ] F203 — Structured logging & correlation
