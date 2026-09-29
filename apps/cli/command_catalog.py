@@ -2733,6 +2733,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
                    "Also reclaim staging copies no record owns any more, at least a "
                    "day old (default: refuse them)",
                    required=False, is_option=True, is_flag=True),
+            # is_flag again. OFF by default: a finished job's copy may hold work nobody
+            # has applied, so freeing one past data.staging_ttl_days is typed, never implied.
+            ArgDef("--stale",
+                   "Also reclaim finished jobs' staging copies unchanged for "
+                   "data.staging_ttl_days (default: keep them)",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,

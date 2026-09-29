@@ -1,25 +1,27 @@
-# Plan — F041 Artifact preview
+# Plan — operator amendment amend0929-context-hygiene
 
-Branch: feature/f041-artifact-preview, cut from `main` at `45c584e6`,
-the merge commit of pull request 294 (F286 Findings paydown v5).
+Branch: feature/amend0929-context-hygiene, cut from `main` at `4e643440`
+(the merge commit of pull request 295, F041 Artifact preview).
 
 ## Goal
 
-Make a job's results tangible in the cockpit: its README as sanitized
-markdown, its screenshots in a lightbox, and an app card that shows a live
-link only after a probe passes (`docs/roadmap/features/T5_F041.md`,
-DECISION F041 D1).
+Cut the ledger a session reads at start to open findings and the current
+feature's gates, add the red-CI rule to the Open PR Gate, reclaim stale
+staging copies by construction, clean the checkout, answer Q6 and register
+F291 (Self-use sources v2).
 
 ## Current Step
 
-ROUND 9, the closing round: book round 8, rotate the ledger, accept F041
-in STATUS with the README in the same commit, and open the pull request.
+Part G: gates, the pull request and its merge, then carry `main` into
+`feature/f042-multi-project-cockpit`. Parts A to F are committed: the
+ledger diet, the red-CI rule, `data reclaim --stale` with the doctor
+warning and the closure step, the checkout hygiene, Q6 (D2) and F291.
 
 ## Next Steps
 
-1. The next session: the Open PR Gate merges this pull request, then
-   Rule A5 selects the next feature.
+1. The next loop session resumes F042 at round 7 on its own branch.
 
 ## Risks
 
-Open findings: 0.
+The F042 branch holds its own ledger records; the carry merge rebuilds the
+ledger from `main` plus the branch's records by digest.

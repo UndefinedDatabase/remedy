@@ -353,3 +353,151 @@ def test_a_wrapped_line_matching_a_preamble_pattern_does_not_split_its_record(tm
 
     assert ledger.read_bytes() == _ledger_text([OPEN_FINDING, DECISION]).encode("utf-8")
     assert archive.read_bytes() == (rot.ARCHIVE_HEADER + "\n" + wrapped_reg + "\n\n" + wrapped_done + "\n").encode("utf-8")
+
+
+# amend0929-context-hygiene A.2 — resolved finding text leaves the ledger. An id is
+# RESOLVED when it carries a ``Done:`` line in the ledger or the archive and is not
+# open in the ledger; R-0100 is resolved in the archive only, R-0002 by its pair.
+ARCHIVE_WITH_DONE = (
+    rot.ARCHIVE_HEADER
+    + "\n- R-0100 — Low, A FINDING RESOLVED LONG AGO, ARCHIVED WITH ITS PAIR.\n"
+    + "\nDone: R-0100 — RESOLVED at an earlier feature's closure.\n"
+)
+RESOLVED_RECURRENCE = (
+    "Recurrence: R-0100 — the archived defect reappeared once at R5.\n"
+    "Second line of the recurrence paragraph about a resolved id."
+)
+RESOLVED_LANDED = "Landed: R-0100 — the fix for the archived finding landed at 1234abc."
+RESOLVED_RECURRENCE_OF = "RECURRENCE of R-0100 at F900 round 6, measured by the reviewer at 99aa00bb."
+RESOLVED_DECISION = "DECISION F900 D2 — settles R-0100 and R-0002, both resolved, so it moves."
+MIXED_DECISION = "DECISION F900 D3 — names R-0001, still open, next to R-0100 and R-0002, so it stays."
+OPEN_RECURRENCE_OF = "RECURRENCE of R-0001 at F900 round 7, the open id, so it stays."
+TRIAGE_HEADING = (
+    "## Triage 2026-09-06 — routing for synthetic findings\n"
+    "\n"
+    "Heading prose glued to the heading record, naming R-0100 only."
+)
+TRIAGE_PROSE = "R12 a prose record of the triage section without any finding id."
+
+
+def _write_archive(archive: Path, text: str = ARCHIVE_WITH_DONE) -> bytes:
+    archive.write_bytes(text.encode("utf-8"))
+    return archive.read_bytes()
+
+
+@pytest.mark.parametrize("record", [RESOLVED_RECURRENCE, RESOLVED_LANDED, RESOLVED_RECURRENCE_OF])
+def test_resolved_finding_text_moves_verbatim_when_the_done_line_is_in_the_archive(tmp_path: Path, record: str) -> None:
+    ledger, status, archive = _write(tmp_path, _ledger_text([OPEN_FINDING, record, DECISION]))
+    old_archive = _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    assert ledger.read_bytes() == _ledger_text([OPEN_FINDING, DECISION]).encode("utf-8")
+    assert archive.read_bytes() == old_archive + ("\n" + record + "\n").encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        RECURRENCE,
+        LANDED,
+        OPEN_RECURRENCE_OF,
+        "Recurrence: R-0100 — an archived id that was RE-OPENED in the ledger stays.",
+        "Landed: R-0777 — an id with no Done line anywhere stays.",
+    ],
+)
+def test_finding_text_about_an_open_or_unresolved_id_stays(tmp_path: Path, record: str) -> None:
+    records = [OPEN_FINDING, record, DECISION]
+    if "RE-OPENED" in record:
+        records.insert(0, "- R-0100 — Low, RE-OPENED: registered again in the live ledger.")
+    ledger, status, archive = _write(tmp_path, _ledger_text(records))
+    old_archive = _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    assert ledger.read_bytes() == _ledger_text(records).encode("utf-8")
+    assert archive.read_bytes() == old_archive
+
+
+def test_a_decision_moves_only_when_it_names_ids_and_all_are_resolved(tmp_path: Path) -> None:
+    records = [OPEN_FINDING, RESOLVED_REG, RESOLVED_DONE, RESOLVED_DECISION, MIXED_DECISION, DECISION]
+    ledger, status, archive = _write(tmp_path, _ledger_text(records))
+    old_archive = _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    assert ledger.read_bytes() == _ledger_text([OPEN_FINDING, MIXED_DECISION, DECISION]).encode("utf-8")
+    tail = "\n" + "\n\n".join([RESOLVED_REG, RESOLVED_DONE, RESOLVED_DECISION]) + "\n"
+    assert archive.read_bytes() == old_archive + tail.encode("utf-8")
+
+
+def test_a_section_whose_id_bearing_records_all_move_moves_whole(tmp_path: Path) -> None:
+    records = [OPEN_FINDING, DECISION, TRIAGE_HEADING, TRIAGE_PROSE, RESOLVED_RECURRENCE, GATE_OPEN_FEATURE]
+    ledger, status, archive = _write(tmp_path, _ledger_text(records))
+    old_archive = _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    # The open feature's gate follows its own rule and neither blocks nor rides the section.
+    assert ledger.read_bytes() == _ledger_text([OPEN_FINDING, DECISION, GATE_OPEN_FEATURE]).encode("utf-8")
+    tail = "\n" + "\n\n".join([TRIAGE_HEADING, TRIAGE_PROSE, RESOLVED_RECURRENCE]) + "\n"
+    assert archive.read_bytes() == old_archive + tail.encode("utf-8")
+
+
+def test_a_section_with_one_staying_id_bearing_record_keeps_its_heading_and_prose(tmp_path: Path) -> None:
+    records = [OPEN_FINDING, TRIAGE_HEADING, TRIAGE_PROSE, RESOLVED_RECURRENCE, OPEN_RECURRENCE_OF]
+    ledger, status, archive = _write(tmp_path, _ledger_text(records))
+    old_archive = _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    kept = [OPEN_FINDING, TRIAGE_HEADING, TRIAGE_PROSE, OPEN_RECURRENCE_OF]
+    assert ledger.read_bytes() == _ledger_text(kept).encode("utf-8")
+    assert archive.read_bytes() == old_archive + ("\n" + RESOLVED_RECURRENCE + "\n").encode("utf-8")
+
+
+def test_the_title_preamble_steps_and_findings_never_move_even_naming_resolved_ids(tmp_path: Path) -> None:
+    preamble = PREAMBLE.replace(
+        "> Second blockquote line of the preamble.", "> The preamble names R-0100, resolved, and still stays."
+    ).replace("R1 claim the feature", "R1 claim the feature after R-0100")
+    ledger_text = preamble + "\n" + "\n\n".join([OPEN_FINDING, RESOLVED_RECURRENCE])
+    ledger, status, archive = _write(tmp_path, ledger_text)
+    _write_archive(archive)
+
+    assert _run(ledger, status, archive) == 0
+
+    assert ledger.read_bytes() == (preamble + "\n" + OPEN_FINDING).encode("utf-8")
+
+
+def test_the_extended_move_keeps_every_verification(tmp_path: Path, capsys) -> None:
+    records = [
+        OPEN_FINDING,
+        RESOLVED_REG,
+        RESOLVED_DONE,
+        TWICE_REG,
+        TWICE_DONE_1,
+        TWICE_DONE_2,
+        RESOLVED_DECISION,
+        MIXED_DECISION,
+        TRIAGE_HEADING,
+        TRIAGE_PROSE,
+        RESOLVED_LANDED,
+        RESOLVED_RECURRENCE_OF,
+        GATE_FORM_ONE,
+    ]
+    ledger_text = _ledger_text(records)
+    ledger, status, archive = _write(tmp_path, ledger_text)
+    old_archive = _write_archive(archive)
+    before = rot.open_finding_ids(ledger_text)
+
+    result = rot.rotate(ledger_text, STATUS_F900_CLOSED, old_archive.decode("utf-8"))
+    assert _run(ledger, status, archive) == 0
+
+    assert rot.open_finding_ids(ledger.read_bytes().decode("utf-8")) == before == ["R-0001"]
+    assert archive.read_bytes().startswith(old_archive)
+    assert ledger.read_bytes().decode("utf-8") == result.new_ledger
+    # the resolved decision, the heading, its prose, the Landed and the RECURRENCE-of records
+    assert result.text_records_moved == 5
+    new_records, _ = rot.split_records(result.new_ledger)
+    assert [r.body for r in new_records][-4:] == [TWICE_REG, TWICE_DONE_1, TWICE_DONE_2, MIXED_DECISION]
+    assert "resolved-text records moved: 5" in capsys.readouterr().out
