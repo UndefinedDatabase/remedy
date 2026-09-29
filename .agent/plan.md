@@ -12,18 +12,17 @@ DECISION F041 D1).
 
 ## Current Step
 
-ROUND 2: book round 1, register R-1105, record DECISION F041 D2, and land
-the file route for a screenshot's bytes and the whole README with its
-headers, R-1105's repair of the static asset route, and the upper-case
-scheme case of the corpus.
+ROUND 3: book round 2 and R-1105's resolution, record DECISION F041 D3,
+and land the preview record and its state machine, the runner of the
+harness's own verbs, and `remedy job preview-start` and `preview-stop`.
 
 ## Next Steps
 
-1. T002: the preview commands, the intent and its consumer, the
-   probe-gated link and its failure fixtures.
-2. T003: the panel, the lightbox, the idle stop and the end-to-end run.
+1. The door's preview commands, the server-side step acting on their
+   requests, revalidation of a live preview and the idle stop.
+2. T003: the panel, the lightbox and the end-to-end run.
 3. The closure sequence.
 
 ## Risks
 
-Open findings: 1 — R-1105, owned by F041, repaired this round.
+Open findings: 0.
