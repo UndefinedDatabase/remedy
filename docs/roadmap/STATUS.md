@@ -187,7 +187,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F043 — Explanation layer
+- [~] F043 — Explanation layer
 - [ ] F044 — Command palette, keyboard, performance budget
 
 ## Tier 12 — Observability & Operations

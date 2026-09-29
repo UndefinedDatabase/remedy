@@ -1,24 +1,25 @@
-# Context — F291 Self-use sources v2
+# Context — F043 Explanation layer
 
 ## Active Branch
-feature/f291-self-use-sources-v2, cut from `main` at `aa5defde`
-(the merge commit of pull request 298, F042 Multi-project cockpit).
+feature/f043-explanation-layer, cut from `main` at `21bfc188`
+(the merge commit of pull request 299, F291 Self-use sources v2).
 
 ## Scope
-F291 (Tier 5): two more sources for the self-use generator — Tier 4, the
-excused blind handlers the BLE001 ratchet counts, and Tier 5, the production
-modules no test file imports — as `docs/roadmap/features/T5_F291.md` and
-DECISION F291 D1 specify.
+F043 (Tier 5): the explanation layer — one catalog of term explanations,
+one `Term` component with a tooltip on hover and focus, a two-direction
+audit over the rendered surfaces, a first-run tour, and a searchable '?'
+panel, as `docs/roadmap/features/T5_F043.md` and DECISION F043 D1 specify.
 
 ## Do not touch
-Tiers 0 to 3 and their order; the fence over `.agent/` that a self-use run
-carries (DECISION amend0926-decisions-selfuse D4); the ratchet's rule that
-the count may only go down.
+The wording of the definitions the catalog anchors to (quoted, not
+edited); the result tour's stops; the docs site's content.
 
 ## Active assumptions
-- Tier 4 reads exactly what `tests/test_ble001_ratchet.py` counts, and the
-  generator's own source spells no mark (DECISION F291 D1).
-- Tier 5 reads `import` statements under `tests/`, never history or strings.
+- Every catalog entry anchors to a phrase of the file that defines its
+  term, and a test reads that file (DECISION F043 D1 (1)).
+- A term is declared only through `Term`, so its `data-term` attribute is
+  what the audit reads.
+- The tour's palette stop is the '?' panel until F044 builds a palette.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

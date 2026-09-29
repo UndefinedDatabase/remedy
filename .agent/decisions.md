@@ -25955,3 +25955,71 @@ commit; skipping every unreadable file, rejected because a real read error would
 
 HOW TO REVERSE: delete the two `FileNotFoundError` clauses and the second reader's fallback, the
 three tests, and this paragraph.
+
+## DECISION F043 D1 — the explanation layer is one catalog module whose every entry anchors to the file that defines its term, one `Term` component that writes the key into `data-term` and shows a portalled glass tooltip on hover and focus, and an audit that renders the surfaces and reads their terms back in both directions; the first round covers the live-status pill and the phase timeline, and the tour's palette stop waits for the palette (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F043.md` asks for a tooltip catalog as the one source of
+every term's explanation, a component every surface uses with `data-term`, a two-direction audit,
+a six-step first-run tour sharing F036's overlay engine, and a '?' panel. Measured by the reviewer
+at `21bfc188`: no tooltip catalog, `Tooltip` component or `data-term` exists under `apps/ui/src`;
+hover help is native `title` attributes in some fifteen components and two hand-built tooltips,
+the metrics bar's token and cost breakdowns in `TopMetricsBar.tsx`. The result tour of F036
+(`components/tour/TourOverlay.tsx`) has no spotlight of its own — its "Show me" lifts the backdrop,
+which F036 D6 records as the one spotlight the cockpit can point at truthfully — and stores no
+"seen" state. There is no global keyboard handler, no '?' binding and no command palette (F044 is
+unbuilt). The autonomy ladder view, the memory view and the autonomy metrics' explanations the
+feature file names as content sources do not exist. `apps/ui/vitest.config.ts` runs in a node
+environment with no DOM library, and `renderToStaticMarkup` is the one render a unit test reaches
+(`evidenceChatAudit.test.ts`). The shipped `styles/tokens.css` lacks `--remedy-z-tooltip`,
+`--remedy-dur-fast`, `--remedy-ease-standard` and `--remedy-focus`, which the reference's
+`tokens.css` defines. `docs/system/vocabulary.md` is the binding page for the product's words.
+
+CHOSEN: (1) THE CATALOG is `apps/ui/src/api/terminology.ts`: `TERM_CATALOG`, keyed by dotted
+lowercase words (`TERM_KEY_PATTERN`), each entry a `title`, a plain-language `body` of at most
+`TERM_BODY_MAX_CHARS` (240) characters, a `source` naming the file that DEFINES the term, and an
+`anchor`, a phrase that file states. A test reads every source and requires its anchor, with runs
+of white space read as one space, so a definition that is reworded or moved turns the catalog red
+rather than leaving an explanation behind it. This is how the catalog QUOTES a single source
+without copying it: the body is written for a person, and the anchor ties it to the definition.
+`termEntry(key)` answers an own key only. A word whose meaning depends on its context takes one
+key per context. (2) THE TERM is `apps/ui/src/components/term/Term.tsx`: `<Term term="…">` wraps
+the visible word in a span that carries `data-term`, takes keyboard focus and opens its tooltip on
+focus at once and on hover after `TERM_HOVER_DELAY_MS`, 120 ms, the reference's
+`--remedy-dur-fast`; the pointer leaving, the focus leaving and Escape close it. The tooltip is a
+glass tip (`ux_spec.md` §10) portalled into `document.body` at fixed coordinates, below the term,
+held inside the viewport, and above the term when there is no room below, because a glass card's
+`backdrop-filter` confines a fixed descendant and a card's overflow clips an absolute one. A key
+the catalog lacks still renders its `data-term`, so the audit sees it, but offers no focus and no
+tooltip. The four missing tokens are transcribed byte-exact from the reference. (3) THE AUDIT is
+`apps/ui/src/api/terminologyAudit.ts`: `collectDataTerms(markup)` reads the `data-term` values and
+`auditTermUse(used, keys)` answers the terms the catalog lacks (`missing`) and the keys nothing
+renders (`dead`). Its unit test renders every surface that carries a term in each state that shows
+a different term, requires both directions empty, and holds two drift fixtures red: a term
+rendered without an entry, and an entry no surface renders. The end-to-end round reads the same
+attributes from the real shell in a browser. (4) THE FIRST ROUND covers the live-status pill's
+five states and the phase timeline's six labels, whose hover hints move from `PHASE_HINTS` into
+the catalog, anchored to T5_F024.md's definition of each phase, so the map is deleted. The spot
+goldens are the delayed and replay statuses and the finalized phase; the urgency formula's golden
+arrives with the decision inbox's terms. (5) SCOPE: the catalog explains only what exists; the
+ladder, memory and autonomy-metric terms join with the features that build them. The tour's sixth
+stop, the palette, is the '?' panel until F044 builds a palette, which then takes the stop. (6)
+THE ORDER: this round lands (1) to (4) with a render harness in a real browser. The next round
+carries the terms to the remaining surfaces of the shell, the metrics bar, the decision inbox, the
+activity feed and its NowCard, the task list and the graph's scrubbed banner, with the product's
+own words from `docs/system/vocabulary.md`. Then the first-run tour on an overlay card shared with
+the result tour, with skip and never-show kept in local storage; then the '?' panel and the
+end-to-end run over the real shell; then the closure sequence.
+
+ALTERNATIVES: a `title` attribute per surface, rejected because it is neither one source nor
+keyboard reachable nor styled by the reference; catalog bodies copied from their sources verbatim,
+rejected because most definitions are written for developers and the product speaks in plain
+sentences; a Python test parsing the TypeScript catalog, rejected because the catalog's own test
+can read the source files through `node:fs`, as `costMetric.test.ts` already does; an absolutely
+positioned tooltip inside the term, rejected because the glass cards clip it; auditing by a source
+search for `term="…"`, rejected because a key computed at render time escapes it while the
+rendered markup cannot.
+
+HOW TO REVERSE: delete `apps/ui/src/api/terminology.ts`, `terminologyAudit.ts`, their tests,
+`apps/ui/src/components/term/`, the four tokens, the `Term` wrappers in `LiveStatusPill.tsx` and
+`PhaseTimeline.tsx`, restore `PHASE_HINTS` and its `title`, and delete this paragraph and its
+assumption-log line.
