@@ -11,18 +11,19 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 3: book round 2, record DECISION F042 D3, and mount the seam: the
-address module, the project provider around every face of `RemedyApp.tsx`,
-the shell keyed by project and job, Back and Forward, and the switcher in
-the brand rail's kicker, proved in a real browser.
+ROUND 4: book round 3 with R-1108 and R-1109, record DECISION F042 D4,
+and land T003's home grid: the home face, the card rules, the grid with
+its pages, the single-project skip and the empty invite, "All projects",
+and the repairs of R-1108 and R-1109, proved in a real browser.
 
 ## Next Steps
 
-1. T003: the home grid, the cards, the invite in the empty state, deep
-   links across projects, the dashboard's old project summary re-pointed,
-   and the end-to-end run.
+1. Deep links across projects with the zoom's focus, the dashboard's old
+   project summary re-pointed, a way home at every width, and the
+   end-to-end run over a real server.
 2. The closure sequence.
 
 ## Risks
 
-Open findings: 1 (R-1107, owned by F290).
+Open findings: 3 (R-1107 owned by F290; R-1108 and R-1109 owned by F042,
+repaired this round).

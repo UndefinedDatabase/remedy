@@ -25637,3 +25637,44 @@ HOW TO REVERSE: delete `cockpitAddress.ts` and its test, `ProjectProvider.tsx`,
 `ProjectSwitcher.tsx` with its sheet, and `tests/ui_contracts/test_project_switcher_wiring.py`;
 restore `RemedyApp.tsx` and `LeftBrandRail.tsx` from `fc744e0e`; delete the assumption log's
 F042 line and this paragraph.
+
+## DECISION F042 D4 — an address with only a token opens a home grid of project cards drawn from each project's summary, twelve to a page, a card opening its project; one project skips the grid by replacing the address and none invites `remedy init`; the switcher gains "All projects"; and R-1108 and R-1109 are repaired (2026-09-29)
+
+CONTEXT: DECISION F042 D1 (6) orders T003's grid, cards, empty and single-project states, and
+the feature file's Acceptance says a single project skips the grid to the cockpit with the
+switcher hidden, and that cost today carries its basis. Measured by the reviewer at `9d45d749`:
+an address with a token and neither a job nor a project reads `missing`; the provider switches
+only by pushing; `RemedyApp.tsx` hands it an `onSwitched` rebuilt on every render; the design
+reference draws no grid and no card; the digest's cost basis words are `actual`, `lower_bound`
+and `absent`; R-1108 and R-1109 are open against the empty project's page and the gate.
+
+CHOSEN: (1) THE FACE: `cockpitFaceOf` answers `home` for a token with neither a job nor a
+project, and `homeSearch` writes that address from any other, dropping the project and every
+job-scoped parameter. (2) THE RULES are `apps/ui/src/api/homeGrid.ts`, pure: twelve cards to a
+page, clamped; a state's tone; cost today in words, `at least` for a lower bound and `not
+measured` for an absent one, never a zero; and one card from a list entry and its summary,
+drawn as its own absence while the summary is unreadable. (3) THE GRID is
+`apps/ui/src/components/home/HomeGrid.tsx`: a heading, one button per project of the page,
+each reading its summary through the provider's `readSummary`, a pager when there is more than
+one page; a card chosen switches to its project. With exactly one project it enters that
+project ONCE through the provider's `enterProject`, which writes the address with
+`replaceState`, so Back never returns to a grid that would only skip again; with none it
+invites `remedy init`. (4) THE ADDRESS has one writer in `RemedyApp.tsx`, `writeAddress`,
+pushing for a switch and the way home and replacing for the skip, and `onSwitched` and `onHome`
+are stable callbacks, because the grid's skip runs in an effect keyed by `enterProject`. (5)
+"All projects" is a button beside the switcher's select, both in one group. (6) THE REPAIRS:
+R-1108 groups the empty project's page; R-1109 adds the harness check that a switch in flight
+is dropped by Back. (7) THE ORDER: the next round lands deep links across projects with the
+zoom's focus, the dashboard's old project summary re-pointed at this feature's module, a way
+home the rail's hidden copy block no longer hides, and the end-to-end run over a real server.
+
+ALTERNATIVES: loading every project's summary at once, rejected because the grid shows twelve
+and a registry of dozens would ask for all of them; skipping a single project by pushing,
+rejected because Back would land on the grid and skip forward again, a trap; a separate home
+route on the server, rejected because the grid is composed from the list and card routes that
+already exist.
+
+HOW TO REVERSE: delete `homeGrid.ts` and its test and `components/home/`, restore
+`cockpitAddress.ts` and its test, `ProjectProvider.tsx`, `ProjectSwitcher.tsx` with its sheet,
+`RemedyApp.tsx` and `tests/ui_contracts/test_project_switcher_wiring.py` from `9d45d749`, and
+delete this paragraph.
