@@ -11,19 +11,17 @@ cards, a project switcher in the header, and deep links that carry
 
 ## Current Step
 
-ROUND 9, the second closure repair round: book round 8 with R-1112's
-resolution, register R-1113, narrow the project card's handler to the two
-ways reading a run log fails, test both and the error that must pass
-through, and run the feature's full suite again on the repaired tree.
+ROUND 10, the closure's evidence round: book round 9 with R-1113's
+resolution, bring the Built State up to the closure suite, reclaim the
+orphaned staging copies, build the evidence bundle at the accepted head and
+the review package from it.
 
 ## Next Steps
 
-1. The evidence round: book round 9, the reclaim of staging copies, the
-   evidence bundle and the review package.
-2. The closing round: the rotation, the STATUS line, the README and the
-   pull request.
+1. The closing round: book round 10, the ledger rotation, the STATUS line
+   with the README and the self-use queue in the same commit, and the pull
+   request.
 
 ## Risks
 
-Open findings: 1 (R-1113, owned by F042, repaired by this round and
-resolved at its review).
+Open findings: 0.
