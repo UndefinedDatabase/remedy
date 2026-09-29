@@ -106,7 +106,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: completeness & prompt nodes), were registered the same day by the same
 #: amendment under their own Tier 5 heading directly after F285's block; see
 #: T5_F289.md and T5_F288.md.
-TOTAL_FEATURES = 289
+#: One more, F290 (findings paydown v6), was registered on 2026-09-29 by
+#: F286's closure under operator amendment amend0911-feedback rule B and
+#: placed after F200, the fifth unaccepted line below F286, under its own
+#: Tier 2 heading with the Tier 12 list re-opened after it; see T2_F290.md.
+TOTAL_FEATURES = 290
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

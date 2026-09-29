@@ -532,6 +532,12 @@ def _run_c06(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
 # C07 — doc_config_keys
 # ---------------------------------------------------------------------------
 
+# No config key ends in a file extension, so a span whose last segment is one is a file
+# name that begins with a key prefix, not a key (R-1104).
+_FILE_EXTENSIONS = frozenset({
+    "css", "html", "js", "json", "md", "py", "sh", "toml", "ts", "tsx", "txt", "yaml", "yml",
+})
+
 
 def _run_c07(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
     check_id = "doc_config_keys"
@@ -549,6 +555,9 @@ def _run_c07(root: Path, truth: ShippedTruth) -> tuple[StaleClaim, ...]:
                     continue
                 first = span.split(".", 1)[0]
                 if first not in prefixes:
+                    continue
+                last = span.rsplit(".", 1)[-1]
+                if last in _FILE_EXTENSIONS:
                     continue
                 if span in truth.command_ids:
                     continue
@@ -764,7 +773,7 @@ CHECKS: tuple[StalenessCheck, ...] = (
     ),
     StalenessCheck(
         "doc_config_keys", ("README.md", "docs/README.md", "docs/guides/*.md"),
-        "reads every backticked span that is a whole dotted key name whose first segment is a registered key prefix",
+        "reads every backticked span that is a whole dotted key name whose first segment is a registered key prefix and whose last is not a file extension",
         "requires it to be a registered config key, unless it is a shipped command id instead",
         _run_c07,
     ),

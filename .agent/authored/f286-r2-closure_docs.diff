@@ -1,0 +1,33 @@
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 324c1ca46..9a0734668 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -378,6 +378,10 @@ end the response with:
+   browser test ordered to collect the browser's events without reading any after its last check
+   (R-1103), is item 18's reading of an ordered recipe, here the test's own collection, against the
+   property it must establish, here no request at all. The list stays at 34 items.
++  Consolidated a twenty-seventh time at F286's closure on 2026-09-29: nothing joined and no two
++  items were merged, because F286 had written no line to `.agent/prose_slips.md` when this pass
++  was made, at its second round: its first round's block was generated from a simulated tree and
++  every worker reading matched it. The list stays at 34 items.
+   The next consolidation measures against 34.
+   Reverse by deleting this paragraph.
+   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+diff --git a/docs/roadmap/features/T2_F286.md b/docs/roadmap/features/T2_F286.md
+index 70c0d684e..43ca1aa70 100644
+--- a/docs/roadmap/features/T2_F286.md
++++ b/docs/roadmap/features/T2_F286.md
+@@ -50,3 +50,13 @@ The resolutions F285 landed; the record is append-only.
+ At claim, the first round reads the open set with `open_finding_ids` of
+ `scripts/rotate_live_review.py`, writes the slice list into this file and adds one Acceptance line
+ for every id it takes.
++
++## Built State (F286, 2026-09-29)
++- T001 (R-1104), round 1: `_run_c07` in `packages/orchestration/doc_staleness.py` leaves out a
++  backticked span whose last dot-separated segment is a file extension in `_FILE_EXTENSIONS`, so
++  the story guide's `story.html` is no longer reported as an unregistered config key while an
++  unregistered key such as `story.speed` still is; a test over the live truth holds that no
++  registered config key ends in one of those extensions (DECISION F286 D1).
++- The closure's self-use reading, round 2: with R-1104 resolved, the self-use generator and the
++  queue both answered `None` and wrote nothing, so closure precondition 6 reads self-use NONE
++  (queue exhausted).

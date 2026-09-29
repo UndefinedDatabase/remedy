@@ -25363,3 +25363,40 @@ client; Chrome's `--dump-dom` with a network log, rejected because it cannot pre
 the shared `dist`, rejected for the race above.
 
 HOW TO REVERSE: delete the test, the `configResolved` hook, and this paragraph.
+
+## DECISION F286 D1 — the claim writes F286's slice list from the one id it owns, R-1104, and lands its repair in the claiming round; the closure's self-use reading is taken by the generator as usual (2026-09-29)
+
+CONTEXT: `docs/roadmap/features/T2_F286.md` was registered thin by F285's closure and orders its
+first round to read the open set and write one slice per module from every open finding whose
+repair fits one round. DECISIONS F036 D2, F038 D2 and F039 D2 moved it behind three features
+because the open set was empty each time Rule A5 reached it. At `6ba1f4be` the open set, read with
+`open_finding_ids` of `scripts/rotate_live_review.py`, is R-1104 alone, a Low finding F039's round
+11 registered with `Owner: F286`. Measured by the reviewer at `c5eb695b`: `_run_c07` in
+`packages/orchestration/doc_staleness.py` reports one claim over the real tree, that
+`docs/guides/story-user-guide-v1.md` backticks the config key `story.html`, and none of the 96
+registered config keys ends in a segment that is a file extension. With the repair written into a
+scratch tree at `c5eb695b` the real tree reports no claim at all, and the self-use generator, run
+there over a ledger copy in which R-1104 is resolved and a copy of the queue, answers `None`.
+
+CHOSEN: (1) THE SLICE LIST is one slice. T001 repairs R-1104 in
+`packages/orchestration/doc_staleness.py`, and it lands in the claiming round, because its repair
+is the few lines its own FIX names. (2) THE REPAIR: `_run_c07` leaves out a backticked span whose
+last dot-separated segment is in one closed set of file extensions, and the check's catalog text
+says so. A test holds that a guide backticking `story.html` yields no claim while one backticking
+the unregistered `story.speed` still yields one, and a test over the live truth holds that no
+registered config key ends in a member of that set, because the check would never read such a key.
+(3) THE CLOSURE runs the sequence every feature runs: the integration gate, the evidence and the
+package, and the close, which registers the next findings paydown under operator amendment
+amend0911-feedback rule B. Its self-use reading is taken by the generator at the closure like every
+other; the reviewer's probe above predicts none.
+
+ALTERNATIVES: making R-1104 the closure's self-use item, as DECISION F285 D1 did with R-1064,
+rejected because that run existed to resolve R-1008, which no open finding now needs, and a run may
+spend up to six dollars on a repair of a few lines; skipping spans that name a file by a list of
+known file names, rejected because every new guide would need its own entry; applying the same skip
+to the catalog-text check `_run_c12`, rejected because R-1104 names only `_run_c07` and `_run_c12`
+reports nothing over the real tree.
+
+HOW TO REVERSE: restore `packages/orchestration/doc_staleness.py` and
+`tests/orchestration/test_doc_staleness.py` from `6ba1f4be`, delete the slice list from
+`docs/roadmap/features/T2_F286.md`, and delete this paragraph.

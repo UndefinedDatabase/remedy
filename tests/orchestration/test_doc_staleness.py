@@ -364,6 +364,24 @@ class TestC07DocConfigKeys:
         ))
         assert _claims_for(tmp_path, _truth(), "doc_config_keys") == []
 
+    def test_a_backticked_file_name_yields_no_claim_but_an_unregistered_key_still_does(
+        self, tmp_path: Path,
+    ):
+        # R-1104: `story.html` is a file name, not a config key, but `story.speed` still is one.
+        _write(tmp_path, "docs/guides/story.md", (
+            "# Story\n\nThe export writes `story.html`, and the unregistered `story.speed` "
+            "controls its pacing.\n"
+        ))
+        truth = _truth(config_keys=frozenset({"data_dir", "story.step_ms"}))
+        claims = _claims_for(tmp_path, truth, "doc_config_keys")
+        assert [_fields(c) for c in claims] == [
+            (
+                "doc_config_keys", "docs/guides/story.md",
+                "backticks the config key `story.speed`",
+                "`story.speed` is not a registered config key",
+            ),
+        ]
+
 
 # ---------------------------------------------------------------------------
 # C08 — toml_fenced_block_keys
@@ -612,3 +630,13 @@ class TestAgainstTheRealTree:
         labels = [label for label, _ in truth.catalog_texts]
         assert any(label.endswith(" description") for label in labels)
         assert any(label.endswith(" help") for label in labels)
+
+    def test_no_registered_config_key_ends_in_a_file_extension(self):
+        """C07 would never check such a key: it is a file name, not a config key."""
+        from packages.orchestration.doc_staleness import _FILE_EXTENSIONS
+
+        truth = ShippedTruth.live()
+        offenders = [
+            key for key in truth.config_keys if key.rsplit(".", 1)[-1] in _FILE_EXTENSIONS
+        ]
+        assert offenders == []

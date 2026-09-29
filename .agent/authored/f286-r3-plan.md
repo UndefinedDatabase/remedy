@@ -10,13 +10,14 @@ names (`docs/roadmap/features/T2_F286.md`, DECISION F286 D1).
 
 ## Current Step
 
-ROUND 4, the closing round: book round 3, rotate the ledger, register
-F290 — Findings paydown v6, accept F286 in STATUS with its README pins,
-and open the pull request.
+ROUND 3, the closure sequence's evidence round: book round 2, then build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The Open PR Gate of the next feature's session merges the pull request.
+1. The closing round: the booking, the ledger rotation, the next
+   findings paydown registered, F286 accepted in STATUS with its README
+   pins, and the pull request.
 
 ## Risks
 
