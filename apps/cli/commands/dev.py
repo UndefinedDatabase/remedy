@@ -97,7 +97,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         job = JobPlan(job_title="tp-check")
         tp = build_task_progress(job, [])
         status["task_progress_ok"] = tp["version"] == 1
-    except Exception:  # noqa: BLE001 — a task-progress check failure must not block other checks
+    except (ImportError, KeyError, TypeError, AttributeError):
         pass
 
     # Check worker cleanup — availability, not functionality
