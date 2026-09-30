@@ -6,11 +6,14 @@ with numbers that no more can be cut without weakening a test (docs/roadmap/feat
 
 ## Current Step
 Rounds 1 to 3 are booked PASS. Round 4 removes the real 30 s backoff sleep from
-`test_callback_fires_on_retry`. The open-findings count is 2 (`R-1117`, `R-1118`). MEASURED: the
-file's own suite now reads 141 passed with a 0.18s slowest entry (was the retry test's real 30.03s
-in T001's ranking); canary `tests/cli/test_golden_path.py` reads 42 passed; `ruff check` on the
-file is clean; `integrity check` reads `fail_count` 0; both `cmp` proofs (the saved block copy, the
-committed test file against the reviewer's dry-run copy) were silent.
+`test_callback_fires_on_retry`. The open-findings count is 2 (`R-1117`, `R-1118`). MEASURED
+(re-run fresh at the C4 correction commit, all six gates): `git status --porcelain` empty;
+`ruff check` on the file reads `All checks passed!`; the file's own suite now reads **141 passed
+in 0.91s** with a **0.12s** slowest entry (`setup` phase, was the retry test's real 30.03s in
+T001's ranking); canary `tests/cli/test_golden_path.py` reads **42 passed in 10.03s**;
+`integrity check` reads `fail_count` 0; both `cmp` proofs (the saved block copy, the committed
+test file against the reviewer's dry-run copy) were silent, and the test file's `sha256sum`
+still reads `624edf55…8385`, matching the block exactly.
 
 ## Next Steps
 1. T002 — cut from the top of T001's ranking (`.agent/f293_inventory.md` sections 2 and 3): shared
