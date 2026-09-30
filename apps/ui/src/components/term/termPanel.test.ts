@@ -35,6 +35,12 @@ describe("the '?' panel", () => {
     expect(renderPanel()).not.toMatch(/\sdata-term="/);
   });
 
+  it("offers the tour again only when the shell hands it a way to start one", () => {
+    expect(renderPanel()).not.toContain("Take the tour");
+    const offered = renderToStaticMarkup(createElement(TermPanel, { onClose: () => {}, onStartTour: () => {} }));
+    expect(offered).toMatch(/<button type="button" class="[^"]*">Take the tour<\/button>/);
+  });
+
   it("words an empty search plainly", () => {
     expect(termPanelEmptyLine("  zebra ")).toBe("No term matches “zebra”.");
   });
