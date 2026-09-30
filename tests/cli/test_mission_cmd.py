@@ -83,10 +83,15 @@ def project(tmp_path: Path) -> tuple[Path, str]:
 
 
 def _start(data_root: Path, project_id: str, goal: str) -> str:
-    """Start a mission and return its id."""
-    body = json.loads(_run(["mission", "start", goal, "--project", project_id,
-                            "--json"], data_root).stdout)
-    return body["mission"]["id"]
+    """Start a mission and return its id.
+
+    Setup, written in-process like the helpers above (F293 T002, DECISION F293 D10); the
+    `mission start` command itself is run through the CLI by `TestStart`.
+    """
+    from packages.orchestration.mission_state import create_mission
+
+    with _in_data_root(data_root):
+        return str(create_mission(project_id, goal).id)
 
 
 def _link_job(data_root: Path, project_id: str, mission_id: str, *,
