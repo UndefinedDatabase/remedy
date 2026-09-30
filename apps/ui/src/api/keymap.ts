@@ -53,6 +53,10 @@ export const KEYMAP_BINDINGS: readonly KeymapBinding[] = [
   { keys: "Esc", action: "walk-back", label: "Zoom back out" },
 ];
 
+/** DECISION F044 D6: how long "?" must be held, in ms, before the keymap's own cheat overlay
+ *  shows; a press released before then still opens the terms panel. */
+export const KEYMAP_HOLD_MS = 400;
+
 /** True for a content-editable target or one whose upper-cased tag is INPUT, TEXTAREA or
  *  SELECT — so a typed key stays text wherever one could be typed. False for null. */
 export function isTypingTarget(target: KeymapTarget | null): boolean {

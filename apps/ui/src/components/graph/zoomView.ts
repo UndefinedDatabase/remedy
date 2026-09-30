@@ -7,7 +7,6 @@
 import type { BrainLayoutData, BrainLayoutNode } from "./forceBrainTypes";
 import { GLYPHS } from "./renderers/glyphPaths";
 import type { ZoomCrumb, ZoomState } from "./semanticZoom";
-import { isTypingTarget } from "../../api/keymap";
 
 /** graph_spec §10, L1: "siblings dim to 25%". */
 export const ZOOM_DIM_ALPHA = 0.25;
@@ -89,14 +88,4 @@ export function zoomCrumbLabel(crumb: ZoomCrumb, layout: BrainLayoutData): strin
   const node = layout.nodes.find((n) => n.id === crumb.nodeId);
   if (crumb.level === 1) return node?.label || "Task";
   return node ? GLYPHS[node.kind].name : "Run";
-}
-
-/** Whether an Escape keypress should walk the zoom back: not while the key goes to a text
- *  field, by the keymap's own `isTypingTarget` rule (DECISION F044 D5), and not while a dialog
- *  is open, whose own Escape closes it first (GraphLegend.tsx). */
-export function escapeWalksBack(
-  target: { tagName?: string; isContentEditable?: boolean } | null,
-  dialogOpen: boolean,
-): boolean {
-  return !dialogOpen && !isTypingTarget(target);
 }
