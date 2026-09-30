@@ -7,9 +7,9 @@ found unguarded by the feature's acceptance audit (operator amendment amend0930b
 from __future__ import annotations
 
 import ast
+import hashlib
 import re
 import subprocess
-from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -44,16 +44,44 @@ FLOOR = {
 ALLOWED_REMOVALS = {"tests/cli/test_mission_cmd.py": (5, 0)}
 
 #: Where F293 left main, and F293's first commit: while main does not hold that commit, F293 is
-#: open and every assertion that existed where it began must still be there, word for word (R-1123).
+#: open and every function, method and assignment that existed where it began in a module of
+#: `FLOOR` must still be there word for word, or be a reviewed change (R-1123).
 FORK = "8a067a3b93fb3d7080053f9cf742379534bed447"
 F293_FIRST_COMMIT = "6d51c38a920dfaa10d9f3ad138e8c9993987e685"
-#: The assertions F293 changed on purpose, as `ast.unparse` writes them, with how many times.
-ALLOWED_CHANGES = {
-    # The five setup checks of `ALLOWED_REMOVALS` (DECISION F293 D11).
-    "tests/cli/test_mission_cmd.py": {"assert proc.returncode == 0, proc.stderr": 5},
-    # Round 10 added `test_load` to doctor core's exact key list, a stricter check (DECISION F293 D7).
+#: The units F293 changed on purpose: the first 16 hex digits of the sha256 of the text the
+#: reviewer read (as `ast.unparse` writes it), and why. A further change needs a new review here.
+REVIEWED_CHANGES = {
+    "tests/cli/test_mission_cmd.py": {
+        "_make_project": ("853ad7df90af628b", "round 6: setup written in-process (D11)"),
+        "_start": ("856d4264c8563d9a", "round 13: setup mission created in-process (D10)"),
+        "_link_job": ("19624b4d69e31fde", "round 6: setup written in-process (D11)"),
+        "_pending_plan_job": ("dbe51ae27a9c932d", "round 6: setup written in-process (D11)"),
+        "TestContinue._green_job": ("0bbfa02ede11e1f4", "round 6: setup written in-process (D11)"),
+        "_append_trip_entry": ("0b74219dc57308a1", "round 6: setup written in-process (D11)"),
+    },
     "tests/cli/test_worker_facade_cmd.py": {
-        "assert list(result.keys()) == ['ready', 'checks', 'blockers', 'warnings', 'dead_commands', 'disk']": 1},
+        "TestDoctorCoreReportFunction.test_report_as_json_matches_the_commands_own_json_output_in_the_same_run": (
+            "30582ae1b10f778a", "round 10: the exact key list gained `test_load` (D7)"),
+        "TestDoctorCoreReportFunction.test_as_json_key_order": (
+            "ec1b11fc4040cb39", "round 10: the exact key list gained `test_load` (D7)"),
+    },
+    "tests/orchestration/test_job_budgets.py": {
+        "TestOnProviderAttemptCallback.test_callback_fires_on_retry": (
+            "e9c90e73771838c7", "round 4: the real 30-second retry wait is patched out"),
+    },
+    "tests/orchestration/test_job_task_runner.py": {
+        "TestProviderOverrideToFake.test_cli_handler_provider_override": (
+            "9378594c041b797e", "round 3: the paid claude-cli call is faked (R-1119)"),
+        "TestCommandPathExplicitOverrides.test_provider_override_to_fake": (
+            "6a06a59c67bba9d4", "round 3: the paid claude-cli call is faked (R-1119)"),
+    },
+    "tests/runtimes/test_dev_server.py": {
+        "TestReadiness.test_readiness_timeout_stops_the_tree_and_leaves_no_state": (
+            "877302d122811168", "round 11: a failed setup still stops the helper (D8)"),
+    },
+    "tests/test_no_orphan_modules.py": {
+        "ALLOWED_UNWIRED": ("47c40138ffbb1633", "round 12: `scripts/closure_suite_cost.py` joins (D9)"),
+    },
 }
 
 
@@ -118,39 +146,62 @@ def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True, timeout=60)
 
 
-def _checks(source: str) -> Counter:
-    """Every assertion of a module as `ast.unparse` writes it: `assert` statements, and
-    `pytest.raises` / `pytest.warns` calls with their arguments."""
-    found: Counter = Counter()
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Assert) or (
-                isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in ("raises", "warns")):
-            found[ast.unparse(node)] += 1
+def _units(source: str) -> dict[str, str]:
+    """Each function and method by its qualified name, each assignment by its targets, and each
+    other statement outside a function by its own text, mapped to its text as `ast.unparse`
+    writes it. Imports and docstrings are left out; so are comments, which `ast` does not keep."""
+    found: dict[str, str] = {}
+
+    def walk(body, prefix):
+        for node in body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)) or (
+                    isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)):
+                continue
+            text = ast.unparse(node)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                found[prefix + node.name] = text
+            elif isinstance(node, ast.ClassDef):
+                walk(node.body, prefix + node.name + ".")
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                found[prefix + ", ".join(ast.unparse(t) for t in targets)] = text
+            else:
+                found[prefix + text] = text
+
+    walk(ast.parse(source).body, "")
     return found
 
 
-class TestNoAssertionWasWeakened:
-    """Goal & Done, read for content: no assertion that existed where F293 began was changed or
-    gutted, except `ALLOWED_CHANGES` (R-1123). The claim is about F293's own changes, so the check
-    runs while F293 is open, its closure's suite and its pull request included, and says it is
-    skipped once main holds F293 or the checkout has no history back to where F293 began."""
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
-    def test_every_assertion_that_existed_where_f293_began_is_still_there_word_for_word(self):
+
+class TestNoAssertionWasWeakened:
+    """Goal & Done, read for content: no test code that existed where F293 began was changed, so
+    no assertion was emptied, weakened or starved of what it checks, except `REVIEWED_CHANGES`
+    (R-1123). The claim is about F293's own changes, so the check runs while F293 is open, its
+    closure's suite and its pull request included, and says it is skipped once main holds F293
+    or the checkout has no history back to where F293 began."""
+
+    def test_every_unit_that_existed_where_f293_began_is_unchanged_or_reviewed(self):
         if _git("cat-file", "-e", FORK + "^{commit}").returncode != 0:
             pytest.skip("this checkout has no history back to where F293 began")
         if _git("merge-base", "--is-ancestor", F293_FIRST_COMMIT, "origin/main").returncode == 0:
             pytest.skip("main holds F293, so its own changes are history")
         changed = {}
         for path in FLOOR:
-            before = _checks(_git("show", f"{FORK}:{path}").stdout)
-            now = _checks((REPO_ROOT / path).read_text(encoding="utf-8"))
-            gone = (before - now) - Counter(ALLOWED_CHANGES.get(path, {}))
-            if gone:
-                changed[path] = sorted(gone)
+            before = _units(_git("show", f"{FORK}:{path}").stdout)
+            now = _units((REPO_ROOT / path).read_text(encoding="utf-8"))
+            reviewed = REVIEWED_CHANGES.get(path, {})
+            unreviewed = [key for key, text in before.items() if now.get(key) != text
+                          and not (key in now and key in reviewed and _digest(now[key]) == reviewed[key][0])]
+            if unreviewed:
+                changed[path] = unreviewed
         assert changed == {}
 
-    def test_a_gutted_assertion_is_no_longer_the_same_check(self):
-        before = _checks("def test_x():\n    assert value == 3, 'three'\n")
-        after = _checks("def test_x():\n    assert True, 'three'\n")
-        assert before - after == Counter({"assert value == 3, 'three'": 1})
+    def test_a_statement_that_feeds_an_unchanged_assertion_changes_its_function(self):
+        before = _units("def test_x():\n    listing = run()\n    assert 'a' in listing\n")
+        after = _units("def test_x():\n    listing = run()\n    listing += 'a'\n    assert 'a' in listing\n")
+        assert set(before) == set(after) == {"test_x"}
+        assert before["test_x"] != after["test_x"]
