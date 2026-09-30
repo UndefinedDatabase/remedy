@@ -18,6 +18,7 @@ test that really does invoke the linter is marked and isolated.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 
@@ -70,3 +71,75 @@ def check_lint_clean(observed: int) -> BudgetCheck:
             f"(DECISION amend0911-feedback D7)."
         )
     return BudgetCheck(name="lint_errors", ok=ok, observed=observed, detail=detail)
+
+
+#: A built asset's own content-hash segment, vite's naming convention
+#: (`index-BKD2HAVk.js`): stripped so a rebuild whose bytes did not change in a way
+#: that matters — same file, new hash — is never read as a chunk added or removed.
+_CHUNK_HASH_RE = re.compile(r"-(?=[0-9A-Za-z_]*[0-9])[0-9A-Za-z_]{6,10}(?=\.[^.]+$)")
+
+
+def normalize_chunk_name(path: str) -> str:
+    """The stable name a built asset is judged under: its vite content hash stripped."""
+    return _CHUNK_HASH_RE.sub("", path)
+
+
+@dataclass(frozen=True)
+class BundleReport:
+    """One build's own chunk sizes, keyed by `normalize_chunk_name`."""
+
+    chunks: dict[str, int]
+
+    @property
+    def total_bytes(self) -> int:
+        return sum(self.chunks.values())
+
+
+def bundle_report(files: dict[str, int]) -> BundleReport:
+    """Group a raw `{relative path: bytes}` reading (a `dist/` walk) by its
+    normalized chunk name, summing any raw paths that collide after normalization."""
+    chunks: dict[str, int] = {}
+    for path, size in files.items():
+        name = normalize_chunk_name(path)
+        chunks[name] = chunks.get(name, 0) + size
+    return BundleReport(chunks=chunks)
+
+
+#: `apps/ui`'s own baseline, a fresh `vite build` measured at DECISION F044 D7
+#: (2026-09-30), keyed by `normalize_chunk_name`. The cap below is this total plus
+#: 10% (docs/ui/design_reference/acceptance_criteria.md §5); raising it is a decision,
+#: never a silent drift.
+BUNDLE_BASELINE_CHUNKS: dict[str, int] = {
+    "index.html": 414,
+    "assets/index.css": 83758,
+    "assets/diffHighlightGrammars.js": 1695,
+    "assets/index.js": 783940,
+    "story/story-player.css": 11940,
+    "story/story-player.js": 266239,
+}
+
+#: DECISION F044 D7: the cap over the baseline's own total (acceptance_criteria.md §5).
+BUNDLE_SIZE_CAP_FACTOR = 1.10
+
+
+def check_bundle_size(report: BundleReport) -> BudgetCheck:
+    """Judge one build's own `BundleReport` against the baseline plus 10%. A breach
+    names the chunks that grew, largest delta first."""
+    baseline_total = sum(BUNDLE_BASELINE_CHUNKS.values())
+    cap = math.ceil(baseline_total * BUNDLE_SIZE_CAP_FACTOR)
+    ok = report.total_bytes <= cap
+    if ok:
+        detail = f"{report.total_bytes} bytes <= cap {cap} (baseline {baseline_total} + 10%)"
+    else:
+        names = set(report.chunks) | set(BUNDLE_BASELINE_CHUNKS)
+        deltas = sorted(
+            ((name, report.chunks.get(name, 0) - BUNDLE_BASELINE_CHUNKS.get(name, 0)) for name in names),
+            key=lambda pair: pair[1],
+            reverse=True,
+        )
+        grown = ", ".join(f"{name} +{delta}B" for name, delta in deltas if delta > 0)
+        detail = (
+            f"{report.total_bytes} bytes > cap {cap} (baseline {baseline_total} + 10%); "
+            f"grown: {grown or 'no single chunk grew; every chunk shrank or held'}"
+        )
+    return BudgetCheck(name="bundle_size", ok=ok, observed=report.total_bytes, detail=detail)
