@@ -1,0 +1,6 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 188.63s (measured wrapper); pytest's own reported wall time 187.91s (0:03:07)
+summary line: 20984 passed, 20 skipped, 1 warning in 187.91s (0:03:07)
+bad node ids (failed + errors): NONE
+tree it ran on: d6e77ea37 (F043 R7 C6: add the round 7 mutation tool)
