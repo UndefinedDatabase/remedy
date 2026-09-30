@@ -1,4 +1,4 @@
-"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 and D3).
+"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D4).
 
 The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
 by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
@@ -17,6 +17,8 @@ SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 BAR = UI_SRC / "components" / "command" / "CommandBar.tsx"
 SHEET = UI_SRC / "components" / "command" / "PaletteSheet.tsx"
 SEND = UI_SRC / "api" / "paletteSend.ts"
+CHAT_SHEET = UI_SRC / "components" / "command" / "ChatSheet.tsx"
+CHAT_TAB = UI_SRC / "components" / "graph" / "EvidenceChatTab.tsx"
 
 
 def strip_ts_comments(text: str) -> str:
@@ -86,3 +88,25 @@ def test_the_shell_mounts_its_own_add_task_sheet_outside_main():
     shell = code(SHELL)
     assert shell.count("<AddTaskSheet ") == 1
     assert shell.index("<AddTaskSheet ") > shell.index("</main>")
+
+
+def test_the_shell_mounts_the_chat_sheet_outside_main():
+    shell = code(SHELL)
+    assert shell.count("<ChatSheet ") == 1
+    assert shell.index("<ChatSheet ") > shell.index("</main>")
+    assert "onAskChat=" in shell
+
+
+def test_the_chat_sheet_routes_to_the_grounded_chat_and_builds_none_of_its_own():
+    sheet = code(CHAT_SHEET)
+    assert sheet.count("<EvidenceChatTab ") == 1
+    assert "initialQuestion={question}" in sheet
+    assert 'role="dialog"' in sheet
+    for door in ("fetch(", "loadChatTurn(", "sendChatCard("):
+        assert door not in sheet
+
+
+def test_the_chat_tab_asks_the_palettes_question_once():
+    tab = code(CHAT_TAB)
+    assert "initialQuestion?: string" in tab
+    assert tab.count("askedInitial.current = true;") == 1

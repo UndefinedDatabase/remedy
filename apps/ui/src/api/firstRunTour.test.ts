@@ -31,7 +31,7 @@ describe("the first-run tour's steps", () => {
     ]);
   });
 
-  it("words every step exactly as DECISION F043 D4 wrote it and DECISION F044 D2 moved its last", () => {
+  it("words every step exactly as DECISION F043 D4 wrote it, DECISION F044 D2 moved its last and D4 reworded it", () => {
     expect(FIRST_RUN_STEPS).toEqual([
       {
         title: "The graph",
@@ -59,8 +59,8 @@ describe("the first-run tour's steps", () => {
         target: "chat-input-row",
       },
       {
-        title: "Jump to anything",
-        body: "Type here to jump to any task, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
+        title: "Ask or jump to anything",
+        body: "Ask your agent a question here, or jump to any task, run a command, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
         target: "command-bar",
       },
     ]);

@@ -1,8 +1,9 @@
-// F044 T001 — the bar's dropdown sheet, its pure rules (DECISIONS F044 D2 and D3).
+// F044 T001 — the bar's dropdown sheet, its pure rules (DECISIONS F044 D2 to D4).
 import { describe, expect, it } from "vitest";
 import type { JumpTarget } from "./paletteJump";
 import {
   COMMAND_RESULT_LIMIT,
+  PALETTE_ASK_HINT,
   PALETTE_HELP_ROWS,
   PALETTE_RECENTS_KEY,
   PALETTE_RECENT_LIMIT,
@@ -42,7 +43,7 @@ function nonCommand(rows: ReturnType<typeof buildPaletteRows>) {
 
 describe("the sheet's constants", () => {
   it("orders the sections, and bounds projects and recents", () => {
-    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Commands", "Jump", "Projects", "Help"]);
+    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Ask", "Commands", "Jump", "Projects", "Help"]);
     expect(PROJECT_RESULT_LIMIT).toBe(5);
     expect(COMMAND_RESULT_LIMIT).toBe(6);
     expect(PALETTE_RECENT_LIMIT).toBe(5);
@@ -185,6 +186,39 @@ describe("buildPaletteRows, the Commands section (DECISION F044 D3)", () => {
     const rows = buildPaletteRows(input({ query: "t", recents: ["jump:t1"] }));
     expect(rows.filter((row) => row.section !== "Commands").every((row) => row.disabledReason === "")).toBe(true);
     expect(PALETTE_HELP_ROWS.every((row) => row.disabledReason === "")).toBe(true);
+  });
+});
+
+describe("buildPaletteRows, the Ask row (DECISION F044 D4)", () => {
+  it("puts a question first, as a row that hands the folded line to the chat", () => {
+    const rows = buildPaletteRows(input({ query: "  why did   it fail? " }));
+    expect(PALETTE_ASK_HINT).toBe("Ask the chat");
+    expect(rows[0]).toEqual({
+      key: "ask", ref: "ask", section: "Ask", label: "why did it fail?", hint: "Ask the chat",
+      ranges: [], action: { kind: "chat", text: "why did it fail?" }, disabledReason: "",
+    });
+    expect(rows.filter((row) => row.section === "Ask").length).toBe(1);
+  });
+
+  it("puts a question first even when other rows match it", () => {
+    const targets = [...TARGETS, { id: "t9", nodeId: "task:t9", label: "is tests green", kind: "test" }];
+    const rows = buildPaletteRows(input({ query: "is tests green", targets }));
+    expect(rows.map((row) => row.key)).toEqual(["ask", "jump:t9"]);
+  });
+
+  it("is the only row when nothing else matches a line", () => {
+    expect(buildPaletteRows(input({ query: "zzqx" })).map((row) => row.key)).toEqual(["ask"]);
+  });
+
+  it("is not offered for a command, for palette text that matches, for a blank line, or in task mode", () => {
+    expect(buildPaletteRows(input({ query: "pause" })).some((row) => row.key === "ask")).toBe(false);
+    expect(buildPaletteRows(input({ query: "tests" })).some((row) => row.key === "ask")).toBe(false);
+    expect(buildPaletteRows(input({ query: "   " })).some((row) => row.key === "ask")).toBe(false);
+    expect(buildPaletteRows(input({ query: "why?", mode: "task" })).some((row) => row.key === "ask")).toBe(false);
+  });
+
+  it("names nothing when remembered", () => {
+    expect(buildPaletteRows(input({ recents: ["ask"] })).some((row) => row.section === "Recent")).toBe(false);
   });
 });
 
