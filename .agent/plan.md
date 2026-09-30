@@ -10,19 +10,18 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D5).
+DECISIONS F044 D1 to D6).
 
 ## Current Step
 
-ROUND 5: book round 4, record DECISION F044 D5, register F292 for the
-plan view and hunk controls the palette's form entries need, and land
-the keymap module with "?", "/", Ctrl+K or Cmd+K and "g" then "p".
+ROUND 6: book round 5, record DECISION F044 D6, and walk the graph by
+key through the one keymap, with the keymap's overlay on a held "?".
 
 ## Next Steps
 
-1. The graph's keys through the keymap, and the keymap's cheat overlay.
-2. The three budgets in CI with their recorded numbers.
-3. The closure sequence.
+1. The three budgets in CI with their recorded numbers: the bundle
+   cap, the first paint and the frame rate at 200 nodes.
+2. The closure sequence.
 
 ## Risks
 

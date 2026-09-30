@@ -26488,3 +26488,40 @@ HOW TO REVERSE: delete `docs/roadmap/features/T5_F292.md`, its STATUS line, and 
 "Depends on"; restore `TOTAL_FEATURES` and the README counter; delete `keymap.ts` and its test and
 restore `isHelpShortcut`, `escapeWalksBack`, the shell's listener and the bar from `5cbbe6c8`;
 delete this paragraph, its assumption-log line and its operator-questions entry.
+
+## DECISION F044 D6 — the graph's keys run through the one keymap in their own hook, as the picks a pointer's click would make, and Escape's walk back moves there with them; a held "?" shows the keymap's own list, and a tap still opens the terms (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `a3b3bd1a`: `useSemanticZoom.ts` adds its own window listener
+for Escape, guarded by `escapeWalksBack` in `zoomView.ts`, which since D5 only restates the keymap's
+rules for a field and a dialog. The zoom machine of DECISION F023 D2 knows a click, a zoom-in and an
+escape, and its graph lists every node with its kind and parent in the reducer's model order; a
+pointer's click on a node dispatches a click and then selects the node's task, a run opening its own
+detail instead (`ForceBrainGraph.tsx`). The zoom transitions are this feature's do-not-touch.
+`T5_F044.md` asks for "j" and "k" as a sibling walk, Enter to zoom in, Escape as the walk back, and
+a keymap cheat overlay on a held "?"; the '?' key opens the terms panel on its press.
+
+CHOSEN: (1) THE STEPS are `apps/ui/src/components/graph/zoomKeys.ts`: a keymap action becomes a pick
+of a node or the walk back. "j" and "k" step, wrapping, between the tasks at the job and at a task,
+and between the runs of the focused run's own task at a run and its evidence; Enter picks the
+focused task's first run; Escape walks back. The machine is not changed: a pick is dispatched as the
+click a pointer makes. (2) THE LISTENER is `apps/ui/src/components/graph/useZoomKeys.ts`, added once
+beside the zoom, reading the newest graph, state and pick through one ref; the stage's pick selects
+a task's node as a click does. `useSemanticZoom.ts` keeps no key listener, and `escapeWalksBack` is
+deleted, replaced by the keymap. (3) THE HELD "?": a tap opens the terms panel on its release; held
+past `KEYMAP_HOLD_MS`, 400 ms, it shows `components/command/KeymapOverlay.tsx`, the keymap's own
+`KEYMAP_BINDINGS` in a centred glass card, until the release; the window losing focus closes it.
+The hold is `components/shell/useHeldHelpKey.ts`, which owns the timer and the release, because
+`tests/ui_contracts/test_timeline_scrub_wiring.py` keeps every timer out of the shell; the shell's
+listener hands it each "?" the keymap reads as "open-terms". Its timer lives in a ref only
+unmounting clears, so a re-render never drops a hold. (4) THE
+ORDER: the next round builds the three budgets of T003 in CI with their recorded numbers; then the
+closure sequence.
+
+ALTERNATIVES: stepping siblings by screen position, rejected because the layout moves as the graph
+grows while the model's order does not; a second listener in `useSemanticZoom.ts` for the new keys,
+rejected because one listener reads all of the graph's keys; showing the overlay on the key's first
+press, rejected because a quick "?" already means the terms.
+
+HOW TO REVERSE: delete `zoomKeys.ts`, `useZoomKeys.ts`, `KeymapOverlay.tsx` and their test and sheet,
+restore `useSemanticZoom.ts`, `zoomView.ts`, `BrainGraphStage.tsx`, `RemedyShell.tsx` and
+`keymap.ts` from `a3b3bd1a`, and delete this paragraph and its assumption-log line.
