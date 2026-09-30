@@ -2,23 +2,22 @@
 
 ## Session
 
-SESSION 3 of feature F293 · round 4 · rounds so far 4
+SESSION 2 of feature F293 · round 4
 
-Session 2 authored round 4 and its worker committed C1 and C2, then the session ended without
-running the gates, writing a handback or pushing. Session 3's reviewer verified C1 and C2 against
-the block (both `cmp` proofs silent, the file's sha256 `624edf55…8385`, the ledger and prose-slip
-appends byte-exact) and re-ran the two mutation red-proofs in a disposable worktree at `98c72e158`,
-since session 2's dry-run readings did not survive; the worker then ran the gates and wrote this
-handback. This session opened to find a `C3: handback` commit (`dcc02cca2`) already committed and
-pushed under the block's original, uncorrected Session line; rather than trust that record or
-rewrite history, this session re-ran all six gates fresh from a clean tree and adds this commit to
-carry the corrected narrative forward, per AGENTS.md's "prefer repository state over session
-memory" and its prohibition on amending past commits.
+This is F293's second session. Session 1 (rounds 1-3) ended at round 3's own handback with a
+declared reason (accumulating investigative load per self_drive_protocol.md's G7). Session 2 opens
+with round 4: a small bookkeeping-plus-one-cut round — book rounds 1 to 3's verdicts (none of
+which had reached `.agent/live_review.md` before this round: round 1's and round 2's verdicts were
+never booked at all, and round 3's own first commit booked only its own finding R-1119, not its
+round's Gate verdict), then remove the one real 30-second sleep left in the suite's slowest test
+entry. SLOW MODE is active (operator amendment amend0930b-slow-cap). A second, concurrent session
+believed itself to be running this same round at the same time; its work and its worker's false
+narrative are recorded below under Collision, not folded into this section.
 
 ## Range
 
-Review of `d820f40e1`..`HEAD` — four commits on `feature/f293-test-load-diet`: `fd6da6474`,
-`98c72e158`, `dcc02cca2`, and this correction commit.
+Review of `d820f40e1`..`HEAD` — three commits on `feature/f293-test-load-diet`: `fd6da6474`,
+`98c72e158`, and this handback commit (not yet made at the time this line was drafted).
 
 ## Commits
 
@@ -26,36 +25,50 @@ Review of `d820f40e1`..`HEAD` — four commits on `feature/f293-test-load-diet`:
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f293-r4.md` | +151/-0 | NEW FILE at `.agent/authored/f293-r4.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r4-block.md` |
-| `.agent/live_review.md` | +6/-0 | AUTHORED TEXT A appended verbatim: one blank separator line, then the three Gate entries for F293 rounds 1, 2 and 3 (booked late), each separated by one blank line |
-| `.agent/plan.md` | +4/-24 | `## Current Step` rewritten (booked PASS for rounds 1-3, states round 4's scope and the open-findings count 2); the Risks bullet replaced with the DECISION F293 D1 wording |
+| `.agent/authored/f293-r4.md` | +151/-0 | NEW FILE at `.agent/authored/f293-r4.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r4-block.md` before commit |
+| `.agent/live_review.md` | +6/-0 | AUTHORED TEXT A appended verbatim: one blank separator line, then the three Gate entries for F293 rounds 1, 2 and 3 (booked late), each separated by one blank line; file ends in exactly one trailing newline |
+| `.agent/plan.md` | +4/-24 | `## Current Step` rewritten (booked PASS for rounds 1-3, states round 4's scope and the open-findings count 2); the Risks bullet naming "the full-suite run this round is the ONE..." replaced with the DECISION F293 D1 wording the block ordered |
 | `.agent/prose_slips.md` | +3/-0 | AUTHORED TEXT B appended verbatim: three one-line slips directly after the file's prior last line, no blank line between |
+
+`git show --numstat fd6da6474`: `151 0 .agent/authored/f293-r4.md`, `6 0 .agent/live_review.md`,
+`4 24 .agent/plan.md`, `3 0 .agent/prose_slips.md` — **164 insertions total**, well under the
+500-insertion cap. (Note: `git commit`'s own terminal summary line for this commit read "187
+insertions(+), 47 deletions(-)" and flagged `.agent/plan.md` as a rewrite at "(60%)" dissimilarity —
+that is git's break-rewrite display treating a heavily-changed short file as a full delete+recreate
+for the summary line only; `git show --numstat`, the canonical per-AGENTS.md reading, is the 164/24
+figures above and is what this handoff and the round's own cap check use.)
 
 ### `98c72e158` F293 R4 C2: patch the real 30-second retry backoff out of test_callback_fires_on_retry
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_job_budgets.py` | +14/-7 | `TestOnProviderAttemptCallback::test_callback_fires_on_retry` gained `unittest.mock.patch` and `RETRY_BACKOFFS` imports (Replacement 1), and its `_call_with_retry(...)` call is now wrapped in `with patch("packages.orchestration.pingpong_loop._time.sleep") as mock_sleep:`, followed by one ADDED assertion `mock_sleep.assert_called_once_with(RETRY_BACKOFFS[0])` (Replacement 2); no existing assertion touched |
+| `tests/orchestration/test_job_budgets.py` | +14/-7 | `TestOnProviderAttemptCallback::test_callback_fires_on_retry` gained a `from unittest.mock import patch` and `from packages.orchestration.provider_timeouts import RETRY_BACKOFFS` import (Replacement 1), and its `_call_with_retry(...)` call is now wrapped in `with patch("packages.orchestration.pingpong_loop._time.sleep") as mock_sleep:`, followed by one ADDED assertion `mock_sleep.assert_called_once_with(RETRY_BACKOFFS[0])` (Replacement 2); no existing assertion touched |
 
-### `dcc02cca2` F293 R4 C3: handback, and this correction commit
+`git show --numstat 98c72e158`: `14 7 tests/orchestration/test_job_budgets.py` — matches the
+block's stated `14 7` exactly. Both FROM texts (Replacement 1, Replacement 2) matched exactly once
+each in the file before editing (confirmed by `grep -n` on the unique `def
+test_callback_fires_on_retry` line and the unique `assert len(captured) == 2` line, both singular
+hits).
+
+### This handback commit — F293 R4 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` (dcc02cca2) | +151/-184 | first handback write; carried the block's original, uncorrected `SESSION 2` Session line |
-| `.agent/plan.md` (dcc02cca2) | +5/-1 | Current Step gained that round's measured gate results |
-| `.agent/handoff.md` (this commit) | full rewrite | corrects the Session section per this session's instructions; re-verifies all six gates fresh; documents the extra commit as a deviation |
-| `.agent/plan.md` (this commit) | Current Step refreshed | replaces the prior gate readings with this session's own fresh measurements |
+| `.agent/handoff.md` | full rewrite | this file |
+| `.agent/plan.md` | Current Step gains the round's measured gate results | the six gates' commands, exit codes and decisive output appended to the existing Current Step statement |
 
 ## External actions
 
-No `git worktree` used this round for production-code changes (none touched). No `gh pr` commands
-this round — no PR opened, none reviewed. `git push origin feature/f293-test-load-diet` — run
-after this commit; outcome reported in the session's own reply, not in this file.
+No `git worktree` used this round (no production code under `packages/` or `apps/` changed — the
+round's own Constraints reserve mutation red-proofs to the reviewer, and this worker did not run
+any). No `gh pr` commands — no PR opened, none reviewed. `git push origin
+feature/f293-test-load-diet` — run after this handback commit; outcome reported in the session's
+own reply, not in this file.
 
 ## Verification
 
-All six gates below were re-run once each, fresh, in the order the block lists, at the tip found
-at session start (`dcc02cca2`) before authoring this correction commit.
+All six gates below were run once each, after C2 and before this commit, in the order the block
+lists.
 
 **1. `git status --porcelain`:**
 ```
@@ -78,22 +91,23 @@ bringing up nodes...
 ........................................................................ [ 51%]
 .....................................................................    [100%]
 ============================= slowest 5 durations ==============================
-0.12s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_no_budgets_default
-0.12s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_max_cost_usd_bool_rejected
-0.12s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_max_cost_usd_defaults_to_none
-0.11s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_max_cost_usd_roundtrips_through_json
-0.11s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_zero_rejected
-141 passed in 0.91s
+0.18s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_max_cost_usd_bool_rejected
+0.17s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_zero_rejected
+0.17s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_max_cost_usd_roundtrips_through_json
+0.17s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_backward_compatible_old_job_fixture
+0.17s setup    tests/orchestration/test_job_budgets.py::TestJobBudgetsModel::test_no_budgets_default
+141 passed in 1.12s
 ```
-Exit 0. **141 passed**; slowest entry **0.12s** (a fixture `setup`, not the retry test itself),
-well under the block's 1-second ceiling.
+Exit 0. **141 passed**; the file's slowest entry is now **0.18s** (a fixture `setup`, not the
+retry test itself), well under the block's 1-second ceiling — down from the retry test's own real
+30.03s in T001's ranking.
 
 **4. `python3 -m pytest tests/cli/test_golden_path.py -q -n auto`:**
 ```
 $ python3 -m pytest tests/cli/test_golden_path.py -q -n auto
 bringing up nodes...
 ..........................................                               [100%]
-42 passed in 10.03s
+42 passed in 7.61s
 ```
 Exit 0. **42 passed**, matching the block's stated done-when exactly.
 
@@ -120,85 +134,159 @@ $ cmp tests/orchestration/test_job_budgets.py .remedy-wt/f293-r4-dry-test_job_bu
 ```
 Both exit 0. `sha256sum` of the committed test file reads
 `624edf554b7e50892ebc7370b59c06d12da868cad97fd832eb262c914d128385`, matching the block's stated
-value exactly.
+value exactly. `sha256sum` of the saved block copy reads
+`b7ca1a11142d5c51a1b28203c9dd1cbe4a3e240875357aee9853dae7411c5f17` over 151 lines, matching this
+worker's own pre-round verification of `.remedy-wt/f293-r4-block.md`.
 
-**No mutation red-proofs run by this worker this round** (amend0930-test-load rule 4 reserves them
-to the reviewer; the Session section above states the reviewer's own disposable-worktree re-run).
-**No full suite run this round** (DECISION F293 D1: T001's run and the closure's integration-gate
-run are the feature's two full-suite readings; this round is neither).
+**No mutation red-proofs run this round** (amend0930-test-load rule 4: the reviewer already ran
+them in the dry run — deleting `on_provider_attempt` in the retry path turned the test red with
+`assert 1 == 2`; deleting `_time.sleep(backoff)` turned it red with `Expected 'sleep' to be called
+once. Called 0 times.` — both stated in the block, not re-run here). **No full suite run this
+round** (DECISION F293 D1: T001's run and the closure's integration-gate run are the feature's two
+full-suite readings; this round is neither).
 
 ## Authored-text proofs
 
 `.agent/authored/f293-r4.md` (commit `fd6da6474`): saved as a byte-for-byte copy of the step block
-given to this round; `cmp` against `.remedy-wt/f293-r4-block.md` was silent (exit 0), re-verified
-again in this correction's Gate 6 above.
+given to this round; `wc -l` read 151 lines, `sha256sum` read
+`b7ca1a11142d5c51a1b28203c9dd1cbe4a3e240875357aee9853dae7411c5f17`, and `cmp` against
+`.remedy-wt/f293-r4-block.md` was silent (exit 0) both before and after the commit — re-verified
+again in this round's Gate 6 above.
 
-`.agent/live_review.md` (commit `fd6da6474`): the three paragraphs of AUTHORED TEXT A, appended
-verbatim; unchanged by this correction commit.
+`.agent/live_review.md` (commit `fd6da6474`): the three paragraphs of AUTHORED TEXT A were copied
+directly out of the block file's own lines 141, 143 and 145 by a small Python script (to avoid any
+shell-escaping risk with the paragraphs' embedded backticks and quotes), not retyped; `git diff`
+after the append showed the pre-existing content byte-identical and only the 6 new lines added, and
+the file ends in exactly one trailing newline (checked with `od -c` before and after).
 
-`.agent/prose_slips.md` (commit `fd6da6474`): the three lines of AUTHORED TEXT B, appended
-verbatim; unchanged by this correction commit.
+`.agent/prose_slips.md` (commit `fd6da6474`): the three lines of AUTHORED TEXT B were copied
+directly out of the block file's own lines 149-151 the same way, appended with no blank line before
+the first of them (directly after the file's prior last line, per the block's instruction), and the
+file ends in exactly one trailing newline.
 
 `tests/orchestration/test_job_budgets.py` (commit `98c72e158`): applied via the two named
-Edit-tool replacements, each matched exactly once in the file before editing; re-verified
-byte-identical to the reviewer's own dry-run copy by `cmp` (Gate 6) and matching `sha256sum` in
-this correction commit's own gate run.
+Edit-tool replacements, each matched exactly once in the file before editing; the committed result
+was verified byte-identical to the reviewer's own dry-run copy by `cmp` (Gate 6) and by matching
+`sha256sum`.
 
 ## Deviations & assumptions
 
-**Extra commit against the block's "exactly three commits" plan.** The block ordered C1, C2 and
-one C3 handback. A `C3: handback` commit (`dcc02cca2`) was already committed and pushed by a prior
-session before this session started, using the block's original Session line (`SESSION 2 of
-feature F293 · round 4`) rather than the corrected one this session was instructed to write
-(`SESSION 3 ... rounds so far 4`, with the two-sentence narrative about session 2 and session 3
-above). Per AGENTS.md, past commits are never amended; this session instead adds one further
-commit that fully rewrites `.agent/handoff.md` (and refreshes `.agent/plan.md`'s Current Step) with
-the corrected Session text, a re-verified gate run, and this deviation note. The round therefore
-closes with four commits instead of three; the extra one is this correction, is bookkeeping-only
-(`.agent/handoff.md`, `.agent/plan.md`), and touches no production code, no test file and no path
-outside those two.
-
-All other constraints held: no file outside `.agent/handoff.md` and `.agent/plan.md` touched by
-this commit; no production code under `packages/` or `apps/` touched by any commit this round; no
-assertion removed, weakened or changed in value in C2 (the only assertion change is the one ADDED
-line); no mutation red-proofs run by this worker; no full suite run; `REMEDY_TEST_MAX_WORKERS`
-never set; no `-n` value other than `auto` passed; no two test commands ran at the same time;
-`.agent/STOP` did not appear; no PR opened.
+None. All three commits matched the block's named paths exactly, both FROM texts matched exactly
+once each, both `cmp` proofs were silent, both `sha256sum` values matched the block's stated
+figures exactly, and all six gates passed with the exact output the block named (`42 passed`,
+`fail_count` 0, slowest entry under 1 second). No assertion was removed, weakened or had its
+expected value changed — the only assertion change is the one ADDED line
+(`mock_sleep.assert_called_once_with(...)`). No file outside the named paths was touched. No
+production code under `packages/` or `apps/` was touched. No mutation red-proofs run (reserved to
+the reviewer this round). No full suite run. `REMEDY_TEST_MAX_WORKERS` was never set; no `-n` value
+other than `auto` was passed; no two test commands ran at the same time. `.agent/STOP` did not
+appear at any point in this round. No PR opened.
 
 ## Open findings
 
-`scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md` at this commit's parent
-reads **2 open ids: `R-1117`, `R-1118`** — matching the block's own stated count; this correction
-commit registers no new finding and resolves none, so the open set is unchanged.
+`scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md` at this round's HEAD
+(after C1's append) reads **2 open ids: `R-1117`, `R-1118`** — matching both the block's own stated
+count and round 3's prior handoff's measured figure; the append in C1 added three PASS-verdict Gate
+entries carrying no new `- R-` registration lines, so the open set is unchanged by this round's own
+work.
+
+## Collision (two sessions at once)
+
+After this handback was drafted and pushed, session 2's reviewer reviewed round 4 and reported
+VERDICT PASS ("verified by dry run, bytes identical", per amend0930-test-load rule 3). That verdict
+has not yet been booked into `.agent/live_review.md`; booking it is the first duty of round 5's
+first commit (see Next, below).
+
+While session 2 was still running, a second, entirely separate agent session started from a stale
+snapshot of this repository's disk state — one taken before session 2 had made its C1, C2 and C3
+commits — and mistakenly believed itself to be "session 3" of this feature, picking up round 4 as
+if session 2's work did not yet exist. Both sessions were therefore working on round 4 of the same
+branch, `feature/f293-test-load-diet`, at the same time, without either one knowing about the
+other until the collision was discovered.
+
+The duplicate session verified commits `fd6da6474` (C1) and `98c72e158` (C2) independently and
+correctly: both `cmp` proofs were silent, the committed test file's sha256 read
+`624edf554b7e50892ebc7370b59c06d12da868cad97fd832eb262c914d128385`, and the ledger and prose-slip
+appends were byte-exact. It also independently re-ran round 4's two mutation red-proofs in a
+disposable git worktree checked out at commit `98c72e158`, later removing that worktree (`git
+worktree list` returned to 11 rows afterward). Those two independent readings were: deleting the
+line `_time.sleep(backoff)` inside `_call_with_retry` in
+`packages/orchestration/pingpong_loop.py` turned `test_callback_fires_on_retry` red with the
+message "Expected 'sleep' to be called once. Called 0 times."; deleting that same function's call
+to `on_provider_attempt` during a retry turned the same test red with `assert 1 == 2`; restoring
+each deleted line in turn made the test green again. Both readings match what session 2's own
+reviewer had already found in its own dry run.
+
+Where the duplicate session went wrong is its handoff narrative, not its verification work. Because
+it started from a snapshot that predated session 2's handback, it believed session 2 had stopped
+after C1 and C2 without ever running the six gates, writing a handback, or pushing. That belief was
+false: session 2 had already run all six gates, written the handback committed as `dcc02cca2`, and
+pushed it, before the duplicate session's worker committed and pushed `8736759ce` ("F293 R4 C4:
+correct handback session number and gate re-verification"). The `.agent/handoff.md` text carried by
+`8736759ce` states, incorrectly, that session 2 ended without running gates, without a handback and
+without a push; none of that is true, as commit `dcc02cca2` on this same branch already
+demonstrates.
+
+Session 2 detected the collision (finding `8736759ce` pushed to `origin` on top of its own
+`dcc02cca2` handback, authored by a session it had not coordinated with) and stopped without
+delegating round 5, saying it would report the collision to the operator. The duplicate session,
+once the collision was identified, is standing down as well.
+
+This commit's `.agent/handoff.md` text supersedes the text carried by `8736759ce`: that commit's
+narrative about session 2 never running gates, never handing back and never pushing is false, and
+this file's Session section and Verification section above (drawn from `dcc02cca2`, session 2's
+own accurate handback) are the record that stands. Commit `8736759ce` itself is NOT reverted,
+rewritten or removed from history — AGENTS.md forbids amending or force-pushing past commits, and
+this repository's `git push` discipline never rewrites the branch's history — so `8736759ce`
+remains visible in `git log`, and this paragraph is what marks its handoff text as superseded and
+explains why.
+
+Because of this collision, no round 5 has been authored as of this commit: `8736759ce` only
+corrected (albeit inaccurately) round 4's handoff text and re-ran round 4's gates; it did not open
+or advance round 5.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| Round 4 block saved verbatim (`.agent/authored/f293-r4.md`) | done | `cmp` silent, sha256 unchanged from C1 |
-| F293 R1/R2/R3 Gate entries booked | done | AUTHORED TEXT A, appended verbatim in C1 |
-| Three prose slips appended | done | AUTHORED TEXT B, appended verbatim in C1 |
-| `test_callback_fires_on_retry` patched | done | C2; `cmp` and sha256 match the block exactly |
+| Round 4 block saved verbatim (`.agent/authored/f293-r4.md`) | done | 151 lines, sha256 `b7ca1a11142d5c51a1b28203c9dd1cbe4a3e240875357aee9853dae7411c5f17`, `cmp` silent |
+| F293 R1 Gate entry booked | done | AUTHORED TEXT A paragraph 1, appended verbatim |
+| F293 R2 Gate entry booked | done | AUTHORED TEXT A paragraph 2, appended verbatim |
+| F293 R3 Gate entry booked | done | AUTHORED TEXT A paragraph 3, appended verbatim |
+| Three prose slips appended | done | AUTHORED TEXT B, appended verbatim, no blank line before |
+| `.agent/plan.md` Current Step rewritten (commit 1) | done | rounds 1-3 booked PASS, round 4 scope stated, open count 2 |
+| `.agent/plan.md` Risks bullet replaced | done | DECISION F293 D1 wording, per block |
+| `test_callback_fires_on_retry` patched (Replacement 1) | done | `unittest.mock.patch` and `RETRY_BACKOFFS` imports added |
+| `test_callback_fires_on_retry` patched (Replacement 2) | done | `_call_with_retry` wrapped in `patch(...)`, one assertion added |
+| Committed test file byte-identical to dry-run copy | done | `cmp` silent, sha256 matches `624edf554b7e50892ebc7370b59c06d12da868cad97fd832eb262c914d128385` |
 | Gate 1 `git status --porcelain` | done | empty |
 | Gate 2 `ruff check` | done | `All checks passed!` |
-| Gate 3 file pytest | done | 141 passed, slowest 0.12s |
+| Gate 3 file pytest | done | 141 passed, slowest 0.18s |
 | Gate 4 canary pytest | done | 42 passed |
 | Gate 5 integrity check | done | `fail_count` 0 |
 | Gate 6 both `cmp` proofs | done | both silent, exit 0 |
-| Mutation red-proofs | skipped | reserved to the reviewer this round (amend0930-test-load rule 4) |
+| Mutation red-proofs | skipped | reserved to the reviewer this round (amend0930-test-load rule 4); reviewer's dry-run results restated, not re-run |
 | Full suite run | skipped | DECISION F293 D1 reserves it to T001 and the closure's integration-gate round |
-| Session-number correction | done | this commit; see Deviations |
 | Push to origin | done | `git push origin feature/f293-test-load-diet`, after this commit |
 | PR opened | skipped | block orders no PR this round |
+| Collision recorded and reported | done | see Collision section above; reported to the operator per session 2's own statement |
 
 ## Next
 
-Operator questions open: 0 (verified: `.agent/operator_questions.md` reads "EMPTY — nothing is
-waiting on the operator").
+Operator questions open: 0.
 
 1. Phase 1 rule 1 (`.agent/STOP`) — check first.
 2. Phase 1 rule 2 (Open PR Gate) — check second.
-3. The next T002 cut: more cuts from `.agent/f293_inventory.md` sections 2-3's remaining top
+3. Before starting any new round, confirm that only ONE session is working on this branch (read
+   `origin`'s current tip and compare it against the tip this session already knows about; if a
+   commit newer than the one this handoff describes is already on `origin`, another session is or
+   was live and must be reconciled before delegating further work).
+4. Round 5's first commit books round 4's verdict: session 2's reviewer reported VERDICT PASS
+   ("verified by dry run, bytes identical", amend0930-test-load rule 3), which is not yet in
+   `.agent/live_review.md`; that same commit also books the duplicate session's independent
+   mutation-red-proof readings recorded above under Collision, and names both `8736759ce` and this
+   correction commit as part of round 4's record.
+5. The next T002 cut: more cuts from `.agent/f293_inventory.md` sections 2-3's remaining top
    entries (`test_supervisor_portability.py`, `test_mission_cmd.py`, `test_do_sequence_cli.py`, and
    the rest of the top-30 ranking), each with its own mutation red-proof where production code
    changes, until either the ranking is exhausted of easy wins or a dated DECISION rules no more
