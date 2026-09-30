@@ -1,53 +1,55 @@
-# Handoff — F293 Test load diet, round 15
+# Handoff — F293 Test load diet, round 16
 
 ## Session
 
-SESSION 5 of feature F293 · round 15
+SESSION 5 of feature F293 · round 16
 
-Context self-assessment: the reviewer's context is comfortable; this session plans further rounds
-after this one.
+Context self-assessment: the reviewer's context has grown long over six rounds; the session ends
+after this round's review and the repeat audit.
 
 ## Range
 
-Review of `cd189f212`..`HEAD` — two commits on `feature/f293-test-load-diet`: `beed24740`,
-`835b90151`, and this handback commit (not yet made at the time this line was drafted).
+Review of `ea594a6b9`..`HEAD` — two commits on `feature/f293-test-load-diet`: `fcfecaf26`,
+`09c25c650`, and this handback commit (not yet made at the time this line was drafted).
 
 ## Commits
 
-### `beed24740` F293 R15 C1: book round 14 and the repeat audit, resolve R-1121 and R-1122, register R-1123, record DECISION F293 D12
+### `fcfecaf26` F293 R16 C1: book round 15 and the second repeat audit, record DECISION F293 D13, save the round 16 block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f293-r15.md` | +109/-0 | NEW FILE at `.agent/authored/f293-r15.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r15-block.md` before commit (`wc -l` 109, sha256 `ff497f3dba2579fb4d26bb4f95483fcdcbb016a4e0331d88ea2185c544c8a22d`) |
-| `.agent/live_review.md` | +8/-0 | the F293 R14 Gate entry, `Done: R-1121`, `Done: R-1122` and finding `R-1123` appended verbatim (bytes from `.remedy-wt/f293-r15-append-live_review.txt`); pre-commit blob (`git show cd189f212:.agent/live_review.md`) + append bytes verified byte-equal to the new file (`True`) |
-| `.agent/decisions.md` | +12/-0 | DECISION F293 D12 appended verbatim (bytes from `.remedy-wt/f293-r15-append-decisions.txt`); pre-commit blob (`git show cd189f212:.agent/decisions.md`) + append bytes verified byte-equal to the new file (`True`) |
-| `.agent/prose_slips.md` | +1/-0 | one line on xdist workers writing bytecode despite `python3 -B`, appended verbatim (bytes from `.remedy-wt/f293-r15-append-prose_slips.txt`); pre-commit blob + append bytes verified byte-equal to the new file (`True`) |
-| `.agent/plan.md` | +9/-10 | replaced whole-file by `cp` from `.remedy-wt/f293-r15-plan.md`; `cmp` silent |
+| `.agent/authored/f293-r16.md` | +106/-0 | NEW FILE at `.agent/authored/f293-r16.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r16-block.md` before commit (`wc -l` 106, sha256 `c8d4487a2a41fe045fdbeadf0e1f7b9a4f32bb4d85e7001c417c63935a4dc147`) |
+| `.agent/live_review.md` | +2/-0 | the F293 R15 Gate entry (PASS, second repeat audit readings, leaving R-1123 open) appended verbatim (bytes from `.remedy-wt/f293-r16-append-live_review.txt`); pre-commit blob (`git show ea594a6b9:.agent/live_review.md`) + append bytes verified byte-equal to the new file (`True`) |
+| `.agent/decisions.md` | +12/-0 | DECISION F293 D13 appended verbatim (bytes from `.remedy-wt/f293-r16-append-decisions.txt`); pre-commit blob (`git show ea594a6b9:.agent/decisions.md`) + append bytes verified byte-equal to the new file (`True`) |
+| `.agent/plan.md` | +7/-6 | replaced whole-file by `cp` from `.remedy-wt/f293-r16-plan.md`; `cmp` silent |
 
-`git show --numstat beed24740`: `109 0 .agent/authored/f293-r15.md`, `12 0 .agent/decisions.md`,
-`8 0 .agent/live_review.md`, `9 10 .agent/plan.md`, `1 0 .agent/prose_slips.md` — **139 insertions,
-10 deletions total**, well under the 500-insertion cap. All five payloads' numstat matched the
-block's stated `12 0`, `8 0`, `9 10` and `1 0` exactly (the fifth, `.agent/authored/f293-r15.md`,
-is the block copy itself), checked with `git diff --cached --numstat` before the commit; both cells
-compared here against `git show --numstat` cell by cell.
+`git show --numstat fcfecaf26`: `106 0 .agent/authored/f293-r16.md`, `12 0 .agent/decisions.md`,
+`2 0 .agent/live_review.md`, `7 6 .agent/plan.md` — **127 insertions, 6 deletions total**, well
+under the 500-insertion cap. All four payloads' numstat matched the block's stated `12 0`, `2 0`
+and `7 6` exactly (the fourth, `.agent/authored/f293-r16.md`, is the block copy itself), checked
+with `git diff --cached --numstat` before the commit; both cells compared here against `git show
+--numstat` cell by cell.
 
-### `835b90151` F293 R15 C2: every assertion that existed where F293 began stays word for word while F293 is open (R-1123)
+### `09c25c650` F293 R16 C2: every unit that existed where F293 began is unchanged or a reviewed change (R-1123)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/regression/test_f293_acceptance.py` | +59/-0 | replaced whole-file via `cp` of the reviewer's dry-run file `.remedy-wt/f293-r15-dry-test_f293_acceptance.py`; `cmp` silent |
+| `tests/regression/test_f293_acceptance.py` | +82/-31 | replaced whole-file via `cp` of the reviewer's dry-run file `.remedy-wt/f293-r16-dry-test_f293_acceptance.py`; `cmp` silent |
 
-`git show --numstat 835b90151`: `59 0 tests/regression/test_f293_acceptance.py` — matching the
-block's stated numstat exactly (`59 0`); **59 insertions, 0 deletions total**, well under the
-500-insertion cap. Read in full as this commit's self-review: the diff added only the `subprocess`,
-`Counter` and `pytest` imports; `FORK`, `F293_FIRST_COMMIT` and `ALLOWED_CHANGES` after
-`ALLOWED_REMOVALS`; and, after `TestNoAssertionWasLost`, the helpers `_git` and `_checks` and the
-class `TestNoAssertionWasWeakened` (two tests: the word-for-word comparison against the fork point
-`8a067a3b9`, skipped once main holds F293's first commit `6d51c38a9` or the checkout lacks history
-back to the fork; and a unit test that a gutted assertion reads as a different check). No line was
-removed or changed.
+`git show --numstat 09c25c650`: `82 31 tests/regression/test_f293_acceptance.py` — matching the
+block's stated numstat exactly (`82 31`); **82 insertions, 31 deletions total**, well under the
+500-insertion cap. Read in full as this commit's self-review: the diff holds exactly what the block
+named — `hashlib` imported, `Counter` no longer imported; `ALLOWED_CHANGES` and its comment
+replaced by `REVIEWED_CHANGES` and its comment, with the comment above `FORK` reworded to describe
+units rather than assertions; `_checks` replaced by `_units` (walking function/method defs,
+assignments and other top-level statements by qualified name or text, skipping imports and
+docstrings) and a new `_digest` helper (first 16 hex digits of sha256); and
+`TestNoAssertionWasWeakened` given a new docstring with its two tests replaced by
+`test_every_unit_that_existed_where_f293_began_is_unchanged_or_reviewed` and
+`test_a_statement_that_feeds_an_unchanged_assertion_changes_its_function`. Nothing else in the
+diff; the base had not moved.
 
-### This handback commit — F293 R15 C3: handback
+### This handback commit — F293 R16 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -56,11 +58,11 @@ removed or changed.
 ## External actions
 
 `git fetch origin` run while drafting this handback confirmed `origin/feature/f293-test-load-diet`
-equals `cd189f212` — this round's starting `HEAD` — so no peer session pushed ahead during this
+equals `ea594a6b9` — this round's starting `HEAD` — so no peer session pushed ahead during this
 round. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` read `[]` before
 this round's work began, so the Open PR Gate needed no merge; none opened or reviewed this round.
 No `git worktree` used (the block forbids mutation red-proofs this round — the reviewer already ran
-them in the dry run, per DECISION F293 D12's recorded reading). `git push origin
+them in the dry run, per DECISION F293 D13's recorded reading). `git push origin
 feature/f293-test-load-diet` — run after this handback commit; outcome reported in the session's
 own reply, not in this file.
 
@@ -72,9 +74,9 @@ All five gates were run once each, in the order the block lists, after C2 and be
 ```
 $ git status --porcelain
 (empty)
-$ cmp .agent/authored/f293-r15.md /home/decodeux/Repos/remedy/.remedy-wt/f293-r15-block.md
+$ cmp .agent/authored/f293-r16.md /home/decodeux/Repos/remedy/.remedy-wt/f293-r16-block.md
 (silent)
-$ cmp tests/regression/test_f293_acceptance.py /home/decodeux/Repos/remedy/.remedy-wt/f293-r15-dry-test_f293_acceptance.py
+$ cmp tests/regression/test_f293_acceptance.py /home/decodeux/Repos/remedy/.remedy-wt/f293-r16-dry-test_f293_acceptance.py
 (silent)
 ```
 All exit 0.
@@ -91,7 +93,7 @@ bringing up nodes...
 ........................................................................ [ 43%]
 ........................................................................ [ 87%]
 .....................                                                    [100%]
-165 passed in 5.45s
+165 passed in 5.52s
 ```
 Exit 0. **165 passed**, matching the block's stated done-when exactly; no `skipped` in the summary;
 no line containing `process(es) behind`.
@@ -100,7 +102,7 @@ no line containing `process(es) behind`.
 ```
 bringing up nodes...
 ..........................................                               [100%]
-42 passed in 8.41s
+42 passed in 7.63s
 ```
 Exit 0. **42 passed**, matching the block's stated done-when exactly.
 
@@ -112,90 +114,79 @@ Exit 0. `fail_count` **0**, matching the block's stated done-when exactly.
 
 ## Authored-text proofs
 
-`.agent/authored/f293-r15.md` (commit `beed24740`): saved as a byte-for-byte copy of the step
-block given to this round; `wc -l` read 109 lines, `sha256sum` read
-`ff497f3dba2579fb4d26bb4f95483fcdcbb016a4e0331d88ea2185c544c8a22d`, and `cmp` against
-`.remedy-wt/f293-r15-block.md` was silent (exit 0) both before and after the commit — re-verified
+`.agent/authored/f293-r16.md` (commit `fcfecaf26`): saved as a byte-for-byte copy of the step
+block given to this round; `wc -l` read 106 lines, `sha256sum` read
+`c8d4487a2a41fe045fdbeadf0e1f7b9a4f32bb4d85e7001c417c63935a4dc147`, and `cmp` against
+`.remedy-wt/f293-r16-block.md` was silent (exit 0) both before and after the commit — re-verified
 again in this round's Gate 1 above.
 
-`.agent/live_review.md` (commit `beed24740`): the pre-commit blob at `cd189f212` was read with
+`.agent/live_review.md` (commit `fcfecaf26`): the pre-commit blob at `ea594a6b9` was read with
 `git show`, concatenated in Python with the prepared append file's raw bytes
-(`.remedy-wt/f293-r15-append-live_review.txt`, sha256
-`765b192525762b415e89719bcb7b0815b4983f6835b5ab90db65a061e0509906`, matching the block's stated
+(`.remedy-wt/f293-r16-append-live_review.txt`, sha256
+`cc419f4eef7fde72203636dc0b6e3946777610cadb9511e777949dc90d90734e`, matching the block's stated
 digest), and compared for byte equality against the resulting committed file: `True`. No text was
 retyped.
 
-`.agent/decisions.md` (commit `beed24740`): the pre-commit blob at `cd189f212` concatenated with
-the prepared append file's raw bytes (`.remedy-wt/f293-r15-append-decisions.txt`, sha256
-`3bc04504b98ea4fa6e7fbfb630feba797bcf32329b428c6ab5662b3a535fad78`, matching the block's stated
+`.agent/decisions.md` (commit `fcfecaf26`): the pre-commit blob at `ea594a6b9` concatenated with
+the prepared append file's raw bytes (`.remedy-wt/f293-r16-append-decisions.txt`, sha256
+`d3759b5a1d54dc39de6f9a24c10afba591530918bd442633e541eff59548c50d`, matching the block's stated
 digest) compared byte-equal to the committed file: `True`. No text was retyped.
 
-`.agent/prose_slips.md` (commit `beed24740`): the pre-commit blob at `cd189f212` concatenated with
-the prepared append file's raw bytes (`.remedy-wt/f293-r15-append-prose_slips.txt`, sha256
-`1309c6b1fc3b05e85107628498e2fafb78d36e278c00018777560620041d368b`, matching the block's stated
-digest) compared byte-equal to the committed file: `True`. No text was retyped.
-
-`.agent/plan.md` (commit `beed24740`): replaced whole-file via `cp` from `.remedy-wt/f293-r15-plan.md`
-(sha256 `d3255e75dd13b8ef9ea25598354cc0e2c6e0127e160038458cdb9e430cd33af2`, matching the block's
+`.agent/plan.md` (commit `fcfecaf26`): replaced whole-file via `cp` from `.remedy-wt/f293-r16-plan.md`
+(sha256 `be79f55edda932a00eccfe26b630167fbe5797e99d765e98e13dea4ce0fb9a2c`, matching the block's
 stated digest); `cmp` against the source was silent both before and after the commit.
 
-`tests/regression/test_f293_acceptance.py` (commit `835b90151`): replaced whole-file via `cp` from
-the reviewer's dry-run copy `.remedy-wt/f293-r15-dry-test_f293_acceptance.py` (sha256
-`f26a752a748e1a094fa6dd4727e7c44d250621f25d4add1c5ad0c74ae3545885`, matching the block's stated
+`tests/regression/test_f293_acceptance.py` (commit `09c25c650`): replaced whole-file via `cp` from
+the reviewer's dry-run copy `.remedy-wt/f293-r16-dry-test_f293_acceptance.py` (sha256
+`b17b0716392ef1486dc5a8531e35a290a7dcbf1e80950d2c2169ce6d6df3c303`, matching the block's stated
 digest); `cmp` against the source was silent both before the commit and again in this round's
 Gate 1.
 
 ## Deviations & assumptions
 
-None. `git status --porcelain` was empty at session start (clean checkout at `cd189f212`, as
-expected). One `cp` command (replacing `.agent/plan.md` in C1 step 3) was rejected once by the
-session's own approval layer before it ran (a multi-operation command bundled with unrelated
-commands was blocked for approval); the standalone `cp` was then issued alone and it, and every
-other apply step, ran exactly once each and succeeded. Both C1 and C2 matched the block's named
-paths, numstat and diff shape exactly. Both `cmp`-pairs in Gate 1 (block file, dry-run test file)
-were silent. C1's numstat matched the block's stated `12 0`, `8 0`, `9 10` and `1 0` exactly; all
-three append byte-equality proofs read `True`. C2's numstat matched the block's stated `59 0`
-exactly; the file was read in full as its self-review and the diff held only the additions the
-block names, nothing else. `git diff --cached` (or `git diff`) was read before every commit, per
-AGENTS.md's mandatory self-review loop, and showed only the changes the block described in each
-case — no unrelated file, no extra hunk. No assertion was removed or weakened. No file outside the
-paths named per commit was touched. No mutation red-proofs run (reserved to the reviewer this
-round, per amend0930-test-load rule 4; results restated in DECISION F293 D12, not re-run). No full
-suite run. `REMEDY_TEST_MAX_WORKERS` was never set; every test command that ran passed `-n auto`;
-no two test commands ran at the same time; each gate ran exactly once, in order, all five
-completed. No gate reported a process left behind. `.agent/STOP` did not appear at any point in
-this round (checked: absent). No PR opened. No worktree used. `git fetch origin`, checked while
-drafting this handback, confirmed no peer session had pushed past this session's starting `HEAD`
-(`cd189f212`).
+None. `git status --porcelain` was empty at session start (clean checkout at `ea594a6b9`, as
+expected). All four prepared files' digests were verified with `sha256sum` before use and matched
+the block exactly. Both C1 and C2 matched the block's named paths, numstat and diff shape exactly.
+Both `cmp`-pairs in Gate 1 (block file, dry-run test file) were silent. C1's numstat matched the
+block's stated `12 0`, `2 0` and `7 6` exactly; both append byte-equality proofs read `True`. C2's
+numstat matched the block's stated `82 31` exactly; the file was read in full as its self-review
+and the diff held only the changes the block names, nothing else. `git diff --cached` (or `git
+diff`) was read before every commit, per AGENTS.md's mandatory self-review loop, and showed only
+the changes the block described in each case — no unrelated file, no extra hunk. No assertion was
+removed or weakened. No file outside the paths named per commit was touched. No mutation red-proofs
+run (reserved to the reviewer this round, per amend0930-test-load rule 4; results restated in
+DECISION F293 D13, not re-run). No full suite run. `REMEDY_TEST_MAX_WORKERS` was never set; every
+test command that ran passed `-n auto`; no two test commands ran at the same time; each gate ran
+exactly once, in order, all five completed. No gate reported a process left behind. `.agent/STOP`
+did not appear at any point in this round (checked: absent). No PR opened. No worktree used. `git
+fetch origin`, checked while drafting this handback, confirmed no peer session had pushed past this
+session's starting `HEAD` (`ea594a6b9`).
 
 ## Open findings
 
 `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
 over `.agent/live_review.md` at this round's HEAD (after C1's append) reads **2 open ids:
 `['R-1117', 'R-1123']`** — matching the block's own stated ids exactly. `R-1117` is owned by the
-rolling paydown; `R-1121` and `R-1122` are resolved by this round's C1 append; `R-1123` was
-registered this round by C1 and repaired by C2's test file, pending review and a repeat of the
-acceptance audit for "without losing a single assertion" before it is marked resolved.
+rolling paydown; `R-1123` is repaired by this round's C2 (the units comparison, closing the gap the
+second repeat audit found — a statement feeding an unchanged assertion), pending the next round's
+repeat of the acceptance audit and the Built State record before it is marked resolved.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| Round 14 verdict booked (Gate entry appended) | done | appended verbatim to `.agent/live_review.md`, byte-equality proof `True` |
-| `R-1121` resolved | done | part of the same `.agent/live_review.md` append, byte-equality proof `True` |
-| `R-1122` resolved | done | part of the same `.agent/live_review.md` append, byte-equality proof `True` |
-| `R-1123` registered | done | part of the same `.agent/live_review.md` append, byte-equality proof `True` |
-| DECISION F293 D12 recorded | done | appended verbatim to `.agent/decisions.md`, byte-equality proof `True` |
-| Prose slip recorded | done | appended verbatim to `.agent/prose_slips.md`, byte-equality proof `True` |
-| Round 15 block saved verbatim (`.agent/authored/f293-r15.md`) | done | 109 lines, sha256 `ff497f3dba2579fb4d26bb4f95483fcdcbb016a4e0331d88ea2185c544c8a22d`, `cmp` silent |
+| Round 15 verdict booked (Gate entry appended) | done | appended verbatim to `.agent/live_review.md`, byte-equality proof `True` |
+| Second repeat audit readings recorded (leaving R-1123 open) | done | part of the same `.agent/live_review.md` append, byte-equality proof `True` |
+| DECISION F293 D13 recorded | done | appended verbatim to `.agent/decisions.md`, byte-equality proof `True` |
+| Round 16 block saved verbatim (`.agent/authored/f293-r16.md`) | done | 106 lines, sha256 `c8d4487a2a41fe045fdbeadf0e1f7b9a4f32bb4d85e7001c417c63935a4dc147`, `cmp` silent |
 | `.agent/plan.md` replaced | done | whole-file `cp`, `cmp` silent |
-| R-1123 repair: `tests/regression/test_f293_acceptance.py` | done | whole-file `cp` of reviewer's dry-run file, `cmp` silent, numstat `59 0`, read in full as self-review |
+| R-1123 repair: `tests/regression/test_f293_acceptance.py` (units, not assertions) | done | whole-file `cp` of reviewer's dry-run file, `cmp` silent, numstat `82 31`, read in full as self-review |
 | Gate 1 `git status --porcelain` + two `cmp` proofs | done | empty status, both `cmp` silent |
 | Gate 2 `ruff check` | done | `All checks passed!` |
 | Gate 3 thirteen-file selection pytest | done | 165 passed, no skipped, no process(es)-behind line |
 | Gate 4 golden-path canary pytest | done | 42 passed |
 | Gate 5 integrity check | done | `fail_count` 0 |
-| Mutation red-proofs | skipped | reserved to the reviewer this round (amend0930-test-load rule 4); reviewer's dry-run results restated in DECISION F293 D12, not re-run |
+| Mutation red-proofs | skipped | reserved to the reviewer this round (amend0930-test-load rule 4); reviewer's dry-run results restated in DECISION F293 D13, not re-run |
 | Full suite run | skipped | not ordered this round |
 | Push to origin | done | `git push origin feature/f293-test-load-diet`, after this commit |
 | PR opened | skipped | block orders no PR this round |
@@ -207,6 +198,6 @@ Operator questions open: 0
 1. Phase 1 rule 1 (`.agent/STOP`) — check first.
 2. Phase 1 rule 2 (Open PR Gate) — check second.
 3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Repeat the acceptance audit for "without losing a single assertion".
-5. Book round 15's verdict, resolve `R-1123`, and record the hardening stage in the feature file's
-   Built State.
+4. Book round 16's verdict and the repeat audit's reading in the next round's first commit.
+5. Record the hardening stage in the feature file's Built State and resolve or carry R-1123.
+6. The closure sequence.
