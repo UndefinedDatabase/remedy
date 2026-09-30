@@ -1,7 +1,7 @@
 // T5_F044 T001, DECISION F044 D1 — the palette's node jump: its targets are the dashboard's task
-// list, the rows `handleJump` already reads, each matched over its label, its id and its kind
-// through the fuzzy rule, and a jump selects the target's node through the shell's own
-// `onSelectNode`, the route a pointer's pick takes.
+// list, the rows the shell's retired `handleJump` searched (DECISION F044 D2), each matched over
+// its label, its id and its kind through the fuzzy rule, and a jump selects the target's node
+// through the shell's own `onSelectNode`, the route a pointer's pick takes.
 import type { FuzzyMatch } from "./fuzzyMatch";
 import { fuzzyMatch } from "./fuzzyMatch";
 import type { RemedyDashboard } from "./types";

@@ -120,7 +120,7 @@ export function brainTaskCount(layout: BrainLayoutData): number {
 /** The layout's own `task:`-prefixed node id for a shell selection id, or
  *  `null` when there is none. The shell's selection id is a bare task id when
  *  the old canvas set it and a dashboard `nodeId` when jump-to set it
- *  (RemedyShell.tsx `handleJump`), so both are tried against every task. */
+ *  (the palette's jump, `paletteJump.ts`), so both are tried against every task. */
 export function selectedBrainNodeId(tasks: readonly RemedyTaskItem[], selectedNodeId: string | null): string | null {
   if (selectedNodeId === null) return null;
   const task = tasks.find((t) => t.id === selectedNodeId || t.nodeId === selectedNodeId);
