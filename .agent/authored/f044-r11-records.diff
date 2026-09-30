@@ -1,0 +1,69 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index a68806d54..399198de3 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26615,3 +26615,54 @@ measured maxima, and this stage's own budget did not move.
+ ALTERNATIVES: leaving `## Q12`'s 1.32 s or `tests/orchestration/test_ci_stages.py`'s own 24.40 s as the doc's cited number, rejected because both describe a selection the stage no longer makes (four and five paths respectively, not seven) and a doc whose Source column points at evidence for a different selection is worse than one that admits it has none; citing `44.2s` from DECISION F044 D10 as the doc's number, rejected because it is a single reading from a disposable worktree, not the three-sample-in-the-primary-checkout rigor every other row in the same table already carries, and reusing it here would launder a lighter-weight reading into the table's own convention; re-running all five stages' three-sample measurements to refresh the whole table at once, rejected as scope beyond what drifted — `fast`, `standard`, `ui` and `smoke` did not change, and re-measuring a settled number is `## Q10`'s and `## Q11`'s own "not measured" rule applied to this round.
+ 
+ HOW TO REVERSE: delete `## Q14` from `.agent/f083_inventory.md`; restore `tests/orchestration/test_ci_stages.py`'s `MEASURED_MAX_WALL_S["budgets"]` to `24.40` and its comment to the F273-only wording; restore `docs/system/ci-self-check-v1.md`'s `budgets` row to `1.32` / `` `## Q12`, three samples `` and "four named paths", and the measured-maxima sum to `1353.07 s, about 22.6 minutes`; delete this paragraph.
++
++## DECISION F044 D12 — T003's "numbers recorded per run (trend visible)" DESIGN line is discharged as out of this feature's built scope; ACCEPTANCE's own "CI budgets red/green with numbers" is met by each `BudgetCheck.detail` (2026-09-30)
++
++CONTEXT, read at closure rather than caught earlier. `docs/roadmap/features/T5_F044.md`'s Design
++section, under "Budgets in CI", reads "numbers recorded per run (trend visible), breach output
++names the biggest deltas". Its Acceptance line, the binding contract, reads only "CI budgets
++red/green with numbers; a seeded bundle bloat fixture names the culprit chunk." No DECISION across
++F044's ten rounds names either clause; a grep of `.agent/decisions.md` and `.agent/live_review.md`
++for "recorded-numbers", "trend visible" and "numbers artifact" at `393d558b6` returns nothing, so
++this is the first time either clause was read against what shipped. MEASURED: `check_bundle_size`,
++`check_first_paint` and `check_frame_pipeline` each build a `BudgetCheck` whose `.detail` names the
++observed reading and, on a breach, the overage or the grown chunks — `check_bundle_size`'s own
++docstring already promises "a breach names the chunks that grew, largest delta first." Every one of
++the three live tests reads `assert check.ok, check.detail`, so a RED run's own pytest failure
++carries the numbers into whatever log retains that run — the local terminal, or, hosted, the
++GitHub Actions run's own retained log. A GREEN run computes the same `.detail` string and discards
++it; nothing in this repository persists it anywhere a later run could diff against. Searching
++`packages/orchestration/ci_run.py` and `apps/cli/commands/ci_cmd.py` (the whole `remedy ci`
++seam) finds no per-check reporting at all — `summarize_ci_results` prints one line PER STAGE
++(pass/fail/skip/duration), never per budget check — and no file under `.data`, `docs/` or
++`packages/` accumulates a budget reading across runs.
++
++CHOSEN: ACCEPTANCE's own wording — "CI budgets red/green with numbers" — is read as "a breach
++names its own numbers," which is what `check_bundle_size`'s docstring already promised before this
++round existed and what all three checks now do; this is MET, not aspirational, and needs no new
++code. The Design section's stronger "trend visible" is discharged as OUT OF THIS FEATURE'S BUILT
++SCOPE: no DECISION ever specified a storage format, an owner, a reader or a retention period for
++such a trend, and CI's own hosted-workflow log retention already gives an operator who wants to
++compare two runs' numbers a place to look — GitHub Actions keeps every run's own log, and a RED
++run's `.detail` string is IN that log by construction. A dedicated persistence artifact (a JSONL
++history file, a dashboard, a badge) would be new product surface invented at closure with no
++consumer named anywhere in this feature's file, which is exactly the shape
++`docs/agents/planner_reviewer_prompt.md` §4 item 7 asks a reviewer to name as a DECISION rather
++than build silently.
++
++ALTERNATIVES: building a trend-storage artifact now (e.g. `packages/orchestration/ci_budgets.py`
++appending each run's three readings to a committed or `.data`-scoped JSONL file), REJECTED: no
++Acceptance line, DECISION or Do-not-touch clause names a reader for it, a closure round is the
++wrong time to invent one, and DECISION F033 D3 sets the precedent for discharging a Design-only
++promise as vacuous when the codebase it would apply to was never built for it. Printing every
++`BudgetCheck.detail` unconditionally (pass or fail) from each live test via `print()`, REJECTED as
++a half-measure: pytest's own captured stdout on a PASSING run is discarded by default
++(`-q`, no `-s`, no `-rA`) exactly like the return value is now, so the print would add a line of
++code without adding a single byte of persistence — the real gap is STORAGE across runs, not stdout
++verbosity within one. Registering this as an open finding for a future feature to build, REJECTED:
++nothing in T5_F044.md's Acceptance or Do-not-touch sections obligates a trend artifact, so there is
++no unmet contract to carry forward — a finding records a contract this feature broke, not a
++Design-section wish nobody asked to keep.
++
++HOW TO REVERSE: delete this paragraph; if a trend-storage artifact is wanted, it is a new feature's
++scope, not a reopening of F044.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a79186f7a..258876516 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -182,3 +182,5 @@ Landed: R-1116 — the two DECISION F044 D7 comments in packages/orchestration/c
+ Gate: F044 R8 — the F044 round 8 entry, T003's second CI performance budget: the booking of round 7 (C3), finding R-1116's fix landed at `f48e97be9` with its own `Landed:` note (C5), and the first-paint budget's five tests (C6). VERDICT PASS. Re-derived over `c65583711`..`4b34a5a0e` by the planner and reviewer of F044's fourth session from the commits themselves, session 3 having ended at the handoff without booking it (amend0827-process-diet rule 1). THE RANGE IS 7 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `19fd5e885` 245, `b5d46a8c3` 321, `7ced11128` 32, `f48e97be9` 22, `1a033191a` 1, `119364b48` 94 and `4b34a5a0e` 238; the worker declared one deviation, the fresh mutation worktree's `control-before` failing on the pre-existing R7 live bundle-size test for want of a `node_modules` symlink its own block did not carry, fixed with the same symlink-then-unlink technique R7's own block had named. THE TRANSPORT: this session re-ran the round's own transport proof independently rather than trusting the handback's readings — `git diff --stat c65583711..4b34a5a0e` names exactly the twelve paths the handback's own commit table names, nothing else. THE CODE: read in full, bottom-up, by this session's reviewer: `packages/orchestration/ci_budgets.py`'s `FIRST_PAINT_BUDGET_MS` and `check_first_paint`, and the two `D7`→`D8` comment fixes. THE TESTS: the round's selection, re-run by this session's reviewer in the primary checkout at `4b34a5a0e`, read `22 passed` at exit 0 for `tests/orchestration/test_ci_budgets.py` and `12 passed` at exit 0 for `tests/orchestration/test_ci_stages.py tests/orchestration/test_ci_stage_coverage.py`, both matching the handback exactly; `ruff check` on both touched files read `All checks passed!`; all six `integrity check` checks read pass; the canary read `42 passed` at exit 0. THE RED PROOFS: this session's reviewer built its own disposable worktree at `4b34a5a0e` (`git worktree list` 11 before), symlinked `apps/ui/node_modules` to the primary's (the same fix the handback's own Deviations section names), ran `.agent/authored/f044-r8-mutations.py` against it, and read `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` at exit 0 — all four mutations red, both controls green, every restore byte-identical — then unlinked the symlink and removed and pruned the worktree (`git worktree list` 11 after). The open set at `4b34a5a0e` is empty.
+ 
+ Gate: F044 R9 — the F044 round 9 entry, T003's THIRD and last CI performance budget: the booking of round 8 (C3), DECISION F044 D10, the new committed frame-pipeline harness (`apps/ui/perf/`), `FRAME_PIPELINE_P95_BUDGET_MS`/`check_frame_pipeline` (C4), and the frame-pipeline p95 budget's five tests (C6). VERDICT PASS. Re-derived over `4b34a5a0e`..`1318d15ca` by the planner and reviewer of F044's fourth session from the commits themselves. THE RANGE IS 7 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `0211bed76` 274, `8619df23c` 467, `8334f12e7` 35, `701bedc90` 27, `bc0838c98` 97, `a3182c31f` 134 and `1318d15ca` 228; the worker declared two deviations, an own-caught wrong commit subject on C6 (fixed with `git commit --amend -m` before any push, tree unchanged) and using Python's `os.symlink`/`os.unlink` in place of the `ln` binary for the G4 worktree's `apps/ui/node_modules` link, the same technique named a different way. THE TRANSPORT: all seven payloads (records.diff, code.diff, harness.diff, tests.diff, plan.md, mutations.py, block.md) were authored by this session's reviewer in a disposable simulation worktree, exported to `.remedy-wt/f044-r9-payloads/`, and are byte-identical (`cmp`) to the copies the worker saved under `.agent/authored/f044-r9-*`; the reviewer independently re-generated the same code, harness and tests diffs by editing the same files in that simulation worktree and comparing `git diff` output. THE CODE: read in full, bottom-up, by this session's reviewer: `packages/orchestration/ci_budgets.py`'s widened `BudgetCheck.observed` and its new `FRAME_PIPELINE_P95_BUDGET_MS`/`check_frame_pipeline`, and all three new `apps/ui/perf/` files. THE TESTS: the round's selection, re-run by this session's reviewer in the primary checkout at `1318d15ca`, read `27 passed` at exit 0 for `tests/orchestration/test_ci_budgets.py` (both live Chrome tests ran, `google-chrome` on PATH) and `12 passed` at exit 0 for `tests/orchestration/test_ci_stages.py tests/orchestration/test_ci_stage_coverage.py`, both matching the handback exactly; `ruff check` on both touched Python files read `All checks passed!`; all six `integrity check` checks read pass; the canary read `42 passed` at exit 0. THE RED PROOFS: this session's reviewer built its own disposable worktree at `1318d15ca` (`git worktree list` 11 before), symlinked `apps/ui/node_modules` to the primary's, ran `.agent/authored/f044-r9-mutations.py` against it, and read `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` at exit 0 — all four mutations red, both controls green, every restore byte-identical — then unlinked the symlink and removed and pruned the worktree (`git worktree list` 11 after). The open set at `1318d15ca` is empty.
++
++Gate: F044 R10 — the F044 round 10 entry, a documentation-and-data-accuracy round: the booking of round 9, DECISION F044 D11, `.agent/f083_inventory.md` `## Q14` (a fresh three-sample measurement of the `budgets` CI stage's real, current seven-path selection, 28.08s/27.59s/27.82s in the primary checkout), and the sync of `docs/system/ci-self-check-v1.md` and `tests/orchestration/test_ci_stages.py`'s `MEASURED_MAX_WALL_S` to that reading. VERDICT PASS. Re-derived over `1318d15ca`..`393d558b6` by the planner and reviewer of F044's fourth session from the commits themselves. THE RANGE IS 6 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `486b2a120` 208, `a949b9dd1` 191, `65bf83969` 75, `fa0303843` 63, `f5dfae868` 16 and `393d558b6` 221; the worker declared no deviation of substance. THE TRANSPORT: all four payloads (records.diff, inventory.diff, docs_and_test.diff, plan.md) and block.md were authored by this session's reviewer in a disposable simulation worktree and are byte-identical (`cmp`) to the copies the worker saved under `.agent/authored/f044-r10-*`. THE CODE: `packages/orchestration/ci_stages.py` was NOT touched at any commit, confirmed by `git diff --name-only`; `timeout_sec=300` for the `budgets` stage is unchanged. THE TESTS: the round's selection, re-run by this session's reviewer in the primary checkout at `393d558b6`, read `12 passed` at exit 0 for `tests/orchestration/test_ci_stages.py tests/orchestration/test_ci_stage_coverage.py` and `327 passed` at exit 0 for `tests/docs/`, both matching the handback exactly; `ruff check tests/orchestration/test_ci_stages.py` read `All checks passed!`; all six `integrity check` checks read pass; the canary read `42 passed` at exit 0. NO DISPOSABLE WORKTREE WAS USED, per the block's own Constraints — no production code changed, and the existing `test_each_budget_is_the_documented_multiple_of_the_measured_maximum` already exercises the changed `MEASURED_MAX_WALL_S["budgets"]` value directly; `git worktree list` read 11 before and after, untouched. THE ARITHMETIC: `.agent/decisions.md` 2583473→2588283 (+4810, DECISION D11 alone) and `.agent/live_review.md` 145031→147804 (+2773, the Gate: F044 R9 paragraph alone), both confirmed by this session's reviewer independently, matching the worker's own readings exactly. The open set at `393d558b6` is empty.
