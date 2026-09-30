@@ -105,7 +105,7 @@ def bundle_report(files: dict[str, int]) -> BundleReport:
     return BundleReport(chunks=chunks)
 
 
-#: `apps/ui`'s own baseline, a fresh `vite build` measured at DECISION F044 D7
+#: `apps/ui`'s own baseline, a fresh `vite build` measured at DECISION F044 D8
 #: (2026-09-30), keyed by `normalize_chunk_name`. The cap below is this total plus
 #: 10% (docs/ui/design_reference/acceptance_criteria.md §5); raising it is a decision,
 #: never a silent drift.
@@ -118,7 +118,7 @@ BUNDLE_BASELINE_CHUNKS: dict[str, int] = {
     "story/story-player.js": 266239,
 }
 
-#: DECISION F044 D7: the cap over the baseline's own total (acceptance_criteria.md §5).
+#: DECISION F044 D8: the cap over the baseline's own total (acceptance_criteria.md §5).
 BUNDLE_SIZE_CAP_FACTOR = 1.10
 
 
@@ -143,3 +143,21 @@ def check_bundle_size(report: BundleReport) -> BudgetCheck:
             f"grown: {grown or 'no single chunk grew; every chunk shrank or held'}"
         )
     return BudgetCheck(name="bundle_size", ok=ok, observed=report.total_bytes, detail=detail)
+
+
+#: DECISION F044 D9: the budget `docs/ui/design_reference/acceptance_criteria.md` §5 fixes —
+#: "First paint < 1.5s (built bundle, cold)" — in milliseconds, the unit Chrome's own paint
+#: timing entries report in.
+FIRST_PAINT_BUDGET_MS = 1500
+
+
+def check_first_paint(observed_ms: int) -> BudgetCheck:
+    """Judge one build's own first-contentful-paint reading, in milliseconds, against the
+    budget. A breach names both the reading and the overage."""
+    ok = observed_ms <= FIRST_PAINT_BUDGET_MS
+    if ok:
+        detail = f"{observed_ms}ms <= budget {FIRST_PAINT_BUDGET_MS}ms"
+    else:
+        over = observed_ms - FIRST_PAINT_BUDGET_MS
+        detail = f"{observed_ms}ms > budget {FIRST_PAINT_BUDGET_MS}ms (over by {over}ms)"
+    return BudgetCheck(name="first_paint", ok=ok, observed=observed_ms, detail=detail)
