@@ -75,3 +75,23 @@ class TestDeadCommandIds:
         handlers = {"ghost.vanish": _fn("dead_handler")}
         assert dead_command_ids(catalog, handlers, root=root_a) == ["ghost.vanish"]
         assert dead_command_ids(catalog, handlers, root=root_b) == []
+
+    def test_a_repeated_question_reads_no_search_text_again(self, tmp_path):
+        # DECISION F293 D4: the answer for one command depends on the root's files and the words
+        # searched for, so asking again about the same root reads none of its texts.
+        import packages.orchestration.dead_command_check as mod
+
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "scripts").mkdir()
+        (tmp_path / "tests" / "test_x.py").write_text("live_handler()\n", encoding="utf-8")
+        catalog = [("do.run", "do", "run"), ("ghost.vanish", "ghost", "vanish")]
+        handlers = {"do.run": _fn("live_handler"), "ghost.vanish": _fn("dead_handler")}
+        assert dead_command_ids(catalog, handlers, root=tmp_path) == ["ghost.vanish"]
+
+        class _Unreadable(list):
+            def __iter__(self):
+                raise AssertionError("the search texts were read again")
+
+        texts, pairs = mod._SCAN_CACHE[tmp_path]
+        mod._SCAN_CACHE[tmp_path] = (_Unreadable(texts), pairs)
+        assert dead_command_ids(catalog, handlers, root=tmp_path) == ["ghost.vanish"]

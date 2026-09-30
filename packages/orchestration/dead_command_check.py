@@ -103,6 +103,29 @@ def _scan_search_root(root: Path) -> tuple[list[str], set[tuple[str, str]]]:
     return result
 
 
+_MATCH_CACHE: dict[tuple[Path, str, frozenset[str]], bool] = {}
+
+
+def _mentioned(root: Path, texts: list[str], kind: str, words: frozenset[str]) -> bool:
+    """Whether any search text under ``root`` mentions one of ``words``, cached per root.
+
+    ``kind`` ``"text"`` is a plain substring test and ``"name"`` a whole-word test. The answer
+    depends only on the root's files, which ``_scan_search_root`` reads once per process, and on
+    the words, so the same question is answered once per process (DECISION F293 D4). A command a
+    test plants has words of its own and is therefore still searched for.
+    """
+    key = (root, kind, words)
+    hit = _MATCH_CACHE.get(key)
+    if hit is None:
+        if kind == "text":
+            hit = any(w in t for t in texts for w in words)
+        else:
+            patterns = [re.compile(r"\b" + re.escape(n) + r"\b") for n in words]
+            hit = any(p.search(t) for t in texts for p in patterns)
+        _MATCH_CACHE[key] = hit
+    return hit
+
+
 def dead_command_ids(
     catalog: Iterable[tuple[str, str, str]],
     handlers: dict[str, Callable[..., object]],
@@ -122,10 +145,9 @@ def dead_command_ids(
         if (group_id, subcommand) in pairs:
             continue
         spaced = f"{group_id} {subcommand}"
-        if any(spaced in t or command_id in t for t in texts):
+        if _mentioned(root, texts, "text", frozenset((spaced, command_id))):
             continue
-        patterns = [re.compile(r"\b" + re.escape(n) + r"\b") for n in _handler_names(handlers[command_id])]
-        if any(p.search(t) for t in texts for p in patterns):
+        if _mentioned(root, texts, "name", _handler_names(handlers[command_id])):
             continue
         dead.append(command_id)
     return sorted(dead)
