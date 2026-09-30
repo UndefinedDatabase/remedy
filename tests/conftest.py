@@ -6,6 +6,8 @@ don't need @pytest.mark decorators for category classification.
 
 import pytest
 
+from tests import load_governor
+
 
 @pytest.fixture(autouse=True)
 def _review_packages_stay_out_of_the_operator_archive():
@@ -111,11 +113,37 @@ def pytest_configure(config):
         root = resolve_data_root()
         reset_config()
         config._remedy_data_root_guard = (root, _data_root_fingerprint(root))
+        # amend0930-test-load: the controller lowers its own priority (workers and child
+        # processes inherit it) and notes the start of the run record. The record path is read
+        # first and then blanked, so a pytest run started BY a test records nothing (C3).
+        load_governor.lower_priority()
+        config._remedy_load_log = (load_governor.load_log_path(), load_governor.note_start())
+        os.environ["REMEDY_TEST_LOAD_LOG"] = ""
     os.environ.pop("REMEDY_DATA_DIR", None)
+
+
+def pytest_xdist_auto_num_workers(config):
+    """``-n auto`` and ``-n logical`` mean "up to REMEDY_TEST_MAX_WORKERS" (amend0930-test-load)."""
+    return load_governor.auto_worker_count()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config):
+    """Reduce an explicit ``-n N`` above the cap; runs before pytest-xdist turns the number into workers."""
+    asked = getattr(config.option, "numprocesses", None)
+    allowed = load_governor.clamped_worker_count(asked)
+    if allowed != asked:
+        config.option.numprocesses = allowed
+        print(load_governor.cap_notice(asked, allowed))
+    return None
 
 
 def pytest_sessionfinish(session, exitstatus):
     """Fail the run when the configured data root changed while it ran (R-0803)."""
+    load = getattr(session.config, "_remedy_load_log", None)
+    if load is not None:
+        load[1]["collected"] = getattr(session, "testscollected", 0)
+        load[1]["exit_status"] = int(exitstatus)
     recorded = getattr(session.config, "_remedy_data_root_guard", None)
     if recorded is None:
         return
@@ -131,6 +159,20 @@ def pytest_sessionfinish(session, exitstatus):
         reporter.write_line(
             f"R-0803: the test run changed the configured data root {root} "
             f"({len(changed)} entries), first: {changed[:10]}", red=True)
+
+
+def pytest_unconfigure(config):
+    """Append ONE line to the run record; xdist workers have exited, so their CPU time counts."""
+    load = getattr(config, "_remedy_load_log", None)
+    if load is None or load[0] is None:
+        return
+    path, start = load
+    workers = getattr(config.option, "numprocesses", None)
+    record = load_governor.build_record(
+        start, start.get("collected", 0), start.get("exit_status", -1),
+        workers if isinstance(workers, int) and workers > 0 else 1,
+        "pytest " + " ".join(config.invocation_params.args))
+    load_governor.append_record(path, record)
 
 
 @pytest.fixture(autouse=True)
