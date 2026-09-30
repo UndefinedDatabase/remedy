@@ -1,0 +1,53 @@
+diff --git a/tests/test_brain_viewer.py b/tests/test_brain_viewer.py
+index e165b9033..8825fdfd8 100644
+--- a/tests/test_brain_viewer.py
++++ b/tests/test_brain_viewer.py
+@@ -602,6 +602,48 @@ class TestConstitutionGuard:
+         assert "Warning: project constitution unavailable for viewer." not in err
+         assert not (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
+ 
++    def test_the_viewer_helper_builds_without_an_unreadable_constitution(self, tmp_path, monkeypatch):
++        """F043 SU-038 (DECISION F043 D6): `_prepare_viewer`, which `brain open` and the other
++        viewer commands share, treats a file-system error while the constitution is read as no
++        constitution and still writes the viewer."""
++        from apps.cli.commands.brain import _prepare_viewer
++        from packages.orchestration import project_constitution
++
++        def _unreadable(repo_root):
++            raise PermissionError("the folder cannot be read")
++
++        monkeypatch.setattr(project_constitution, "load_project_constitution", _unreadable)
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        repo = tmp_path / "repo"
++        repo.mkdir()
++        job = _make_job()
++        job.metadata["target_repo"] = str(repo)
++        save_job_plan(job)
++        index_path, _job, _data, _graph = _prepare_viewer(str(job.job_id))
++        assert index_path == tmp_path / "viewers" / str(job.job_id) / "index.html"
++        assert index_path.exists()
++
++    def test_the_viewer_helper_lets_a_loader_defect_through(self, tmp_path, monkeypatch):
++        """F043 SU-038 (DECISION F043 D6): the helper's handler no longer catches everything, so a
++        defect that is not a file-system error reaches the caller under its own name and no viewer
++        is written."""
++        from apps.cli.commands.brain import _prepare_viewer
++        from packages.orchestration import project_constitution
++
++        def _broken(repo_root):
++            raise RuntimeError("a defect in the loader")
++
++        monkeypatch.setattr(project_constitution, "load_project_constitution", _broken)
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
++        repo = tmp_path / "repo"
++        repo.mkdir()
++        job = _make_job()
++        job.metadata["target_repo"] = str(repo)
++        save_job_plan(job)
++        with pytest.raises(RuntimeError, match="a defect in the loader"):
++            _prepare_viewer(str(job.job_id))
++        assert not (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
++
+ 
+ # ---------------------------------------------------------------------------
+ # TestComputePositions
