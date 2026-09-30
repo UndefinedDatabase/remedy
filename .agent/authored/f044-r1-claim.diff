@@ -1,0 +1,157 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index e2b017d82..14381ef19 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26218,3 +26218,84 @@ handler.
+ 
+ HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and 289 in the
+ ratchet, delete the two tests, and delete this paragraph.
++
++## DECISION F044 D1 — the palette is the command bar's dropdown over four pure rules: a fuzzy match, a command list held to the write door's exposed set, a routing rule that is the chat's own parse, and a jump over the dashboard's tasks; commands whose arguments the palette cannot ask for open the surface that owns them, and the first round lands the four rules (2026-09-30)
++
++CONTEXT: `docs/roadmap/features/T5_F044.md` asks for a palette over the command catalog with
++schema-driven arguments and a fuzzy node jump, fused with the chat entry as the omni-bar of
++`ux_design.png`, a documented question-versus-command routing rule, one keymap module, and three
++performance budgets enforced in CI. Measured by the reviewer at `33f66862`: `CommandBar.tsx` is a
++plain input whose Enter calls the shell's `handleJump`, a substring match over the dashboard's
++task labels; there is no dropdown, no fuzzy match anywhere under `apps/ui/src`, and no command
++execution in the bar. The write door's exposed set is `UI_EXPOSED_COMMANDS` in
++`apps/cli/command_catalog.py`; the door knows no command's argument schema
++(`_handle_command_submission` in `packages/orchestration/ui_server.py` says so), no read route
++lists commands, and the cockpit has one send module per command it already offers. No cockpit
++surface sends `job.stop`, `patch.approve-hunks` or the six `job.plan-*` edits, and the dashboard
++carries neither the plan's version nor a change's hunk ids that those edits need. The chat's
++question-versus-action rule already exists as `parse_chat_intent` in
++`packages/orchestration/chat_intent.py` (DECISION F038 D6). There is no keymap module: `git grep`
++at `33f66862` finds eleven source files under `apps/ui/src` that each add their own `keydown`
++listener, and two of them carry their own
++typing-target check (`isHelpShortcut` in `api/termSearch.ts` and `escapeWalksBack` in
++`graph/zoomView.ts`). CI measures no bundle size, no first paint and no frame rate;
++`brainPerfFixture.ts` holds the 200-node fixture, and `acceptance_criteria.md` §5 states the
++budgets. The design reference specifies the bar (`ux_spec.md` §9, `component_spec.md`'s
++CommandBar: a dropdown glass sheet, the combobox pattern, `handleJump` kept) and names no keymap,
++no cheat overlay and no Cmd+K.
++
++CHOSEN: (1) THE COMMAND LIST is `apps/ui/src/api/paletteCommands.ts`: `PALETTE_COMMANDS`, one
++entry per command of the door's exposed set less `PALETTE_CONTINUATION_COMMANDS`, the two steps
++that only continue the add-task sheet's conversation. Each entry has a plain title, a `flow` and
++the arguments the palette itself asks for, in the door's own names, each a task chosen through the
++node search or a typed line. A "send" entry is sent by the palette once its arguments are in; a
++"surface" entry opens the part of the cockpit that already owns its conversation (the decision
++inbox, a task's edit form, the add-task sheet), named by that region's `data-ui`; a "form" entry,
++the six plan edits and the hunk approval, whose arguments are structured, gets its flow in its own
++round. A contract test reads the list beside the Python set, the chat's titles and the chat's
++required arguments, so the door gaining or losing a command, or the chat renaming one, turns it
++red: one source without a new read route. (2) THE FUZZY RULE is `apps/ui/src/api/fuzzyMatch.ts`:
++a contiguous hit of the whole query outranks every scattered hit, a hit that begins a word
++outranks one inside a word, case is ignored, and the match answers the ranges a row highlights.
++Every section of the palette ranks through it. (3) THE ROUTING RULE is
++`apps/ui/src/api/paletteRouting.ts`, and it is the chat's parse read in the chat's order, so the
++bar and the chat never disagree about one line. Its tie-break, verbatim: a leading "please " is
++dropped first; then a line ending in "?" or opening with a question word is a question for the
++chat, even when a verb follows ("stop?", "can you stop"); only then is the first word read as a
++verb, and a word is whole only when no letter or digit follows it. A question goes to the chat
++with the text prefilled, a leading verb to its command, and anything else is palette text.
++`paletteRouting.goldens.json` holds the fixtures, the ambiguous ones included, and both the
++vitest and the Python test read them, the second through `parse_chat_intent` itself. (4) THE JUMP
++is `apps/ui/src/api/paletteJump.ts`: its targets are the dashboard's task list, the rows
++`handleJump` already reads, each matched over its label, its id and its kind, and a jump selects
++the target's node through the shell's own `onSelectNode`, the route a pointer's pick takes. (5)
++THE BAR stays `CommandBar.tsx` and grows the reference's dropdown sheet on the combobox pattern,
++with the sections Commands, Jump, Projects and Help, highlighted matches and recent items; the
++bar's text and the chat's are one line, and the chat is routed to, never rebuilt. A command the
++job's state refuses is listed disabled with the reason in the door's own refusal words, and the
++door still validates every send. (6) THE KEYMAP is one pure module that maps a key, its target
++and the cockpit's state to an action, and the shell's '?' listener and the zoom's Escape listener
++move onto it in the keymap round, with their wiring guards pinning the same property on the new
++site; the keymap, its cheat overlay on a held '?' and the bar's shortcut each get an
++assumption-log row in the round that renders them. THE BUDGETS are tests under
++`tests/ui_contracts/`, so the CI `ui` stage runs them through the one entrypoint, `remedy ci run`,
++and the workflow names no new step; each records its number in one artifact, and a breach names
++its biggest source. The tour's sixth stop moves from the '?' panel to the bar in the bar's round.
++(7) THE ORDER: this round lands (1) to (4) with the reviewer's tests. The next round builds the
++bar's dropdown sheet with a render harness in a real browser; then the commands' execution, their
++argument flows, the disabled states and the route to the chat; then the form entries' structured
++flows; then the keymap and its cheat overlay; then the three budgets in CI with their artifact;
++then the closure sequence.
++
++ALTERNATIVES: a read route serving the command list from the server, rejected because the door
++deliberately knows no argument schema and the set is fixed per build, so a parity test keeps one
++source without a new route; a fuzzy-search library, rejected because `acceptance_criteria.md` §5
++allows no new dependency; a routing rule written afresh for the bar, rejected because two rules
++would route the same line two ways; a jump over the graph's own model, rejected because that
++model and the zoom state live inside `BrainGraphStage.tsx` and the zoom transitions are this
++feature's do-not-touch; sending the form commands from free text, rejected because a structured
++argument typed as a line is a guess, not an argument flow.
++
++HOW TO REVERSE: delete `apps/ui/src/api/fuzzyMatch.ts`, `paletteCommands.ts`,
++`paletteRouting.ts`, `paletteRouting.goldens.json`, `paletteJump.ts`, their tests and
++`tests/ui_contracts/test_palette_contract.py`, and delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 6bdac4ba6..731b73065 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,26 +1,27 @@
+-# Live Review — F043 Explanation layer
+-
+-> Round-by-round review record, re-headed at the F043 claim per
+-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F291, whose STATUS
+-> line went `[x]` at `88ac7036` and whose pull request 299 merged into `main` at the reviewer's
+-> Open PR Gate under docs/agents/self_drive_protocol.md, as `21bfc188`, after both jobs of hosted
+-> CI run 36631820899 on `88ac7036`, Python 3.10 and 3.12, ended `success`. `88ac7036` is the
+-> second parent of `21bfc188`, and the two trees are identical. F291's round 6, its closing
++# Live Review — F044 Command palette, keyboard, performance budget
++
++> Round-by-round review record, re-headed at the F044 claim per
++> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F043, whose STATUS
++> line went `[x]` at `d00a13f0` and whose pull request 300 merged into `main` at the reviewer's
++> Open PR Gate under docs/agents/self_drive_protocol.md, as `33f66862`, after both jobs of hosted
++> CI run 36657033773 on `d00a13f0`, Python 3.10 and 3.12, ended `success`. `d00a13f0` is the
++> second parent of `33f66862`, and the two trees are identical. F043's round 9, its closing
+ > round, was reviewed after its own handback, so its gate entry is appended at the end of this
+-> record by F043's claim. Only the heading, this paragraph and the Steps section below are
++> record by F044's claim. Only the heading, this paragraph and the Steps section below are
+ > rewritten; everything from the Findings heading to the end of the file as it stood at
+-> `21bfc188` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+-> series across the re-head. The open set at `21bfc188`, computed with `open_finding_ids` from
++> `33f66862` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
++> series across the re-head. The open set at `33f66862`, computed with `open_finding_ids` from
+ > `scripts/rotate_live_review.py`, is `[]`.
+ 
+ ## Steps
+ 
+-THE ORDER BELOW IS DECISION F043 D1 (6). The first round claims F043, re-heads this record, books
+-F291's round 6 and lands the explanation catalog, the term component and the term audit over the
+-live-status pill and the phase timeline, proved in a real browser by a render harness. The next
+-round carries the terms to the remaining surfaces of the shell; then the first-run tour on an
+-overlay card shared with the result tour; then the '?' panel and the end-to-end run over the real
+-shell; then the closure sequence. Every round's handback states the open set by distinct id.
++THE ORDER BELOW IS DECISION F044 D1 (7). The first round claims F044, re-heads this record, books
++F043's round 9 and lands the palette's four pure rules against the reviewer's tests: the fuzzy
++match, the command list held to the write door's exposed set, the bar's routing rule held to the
++chat's parse, and the node jump. The next round builds the bar's dropdown sheet; then the
++commands' execution and argument flows; then the form entries' structured flows; then the keymap
++and its cheat overlay; then the three budgets in CI; then the closure sequence. Every round's
++handback states the open set by distinct id.
+ 
+ ## Findings
+ DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
+@@ -158,3 +159,5 @@ Gate: F043 R6 — the F043 round 6 entry, the closure sequence's first round: th
+ Gate: F043 R7 — the F043 round 7 entry, the closure's integration gate: the booking of round 6, DECISION F043 D6, the landing of the self-use item SU-038 with two reviewer tests, the Built State's self-use paragraph, and the feature's one full suite. VERDICT PASS. Re-derived over `6b2c3e8c`..`0e132923` by the planner and reviewer of F043's first session from the commits themselves. THE RANGE IS 7 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `a358edc7` 366, `ba7df3e0` 32, `ea86dd6b` 2, `10af5531` 42, `d64531c4` 8, `d6e77ea3` 140 and `0e132923` 162; the worker declared no deviation. THE TRANSPORT PROOF: the block and the five payloads, each read from `a358edc7`, equal the reviewer's originals under `.remedy-wt/f043-r7/` and `.remedy-wt/f043-r7-payloads/` byte for byte, the seven files of the block's G1 table carry at their commits the blobs of the reviewer's simulation tree, and the landed `selfuse.diff` equals the job branch's own diff. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `0e132923`, read `805 passed, 1 skipped` at exit 0; all six `integrity check` checks read pass. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `d6e77ea3`, and m1, the landed handler catching `Exception` again, and m2, the handler catching `ValueError`, each went red at 1 failed, both controls passing and every restore byte-identical; the worktree was removed and `git worktree list` read 11 lines. THE SUITE: `python3 -m pytest -n auto -q` at `d6e77ea3` read `20984 passed, 20 skipped` at exit 0 in 188 seconds, no bad node, so closure precondition 2 holds on the tree that ships. The open set at `0e132923` is empty.
+ 
+ Gate: F043 R8 — the F043 round 8 entry, the closure sequence's evidence round: the booking of round 7, the Built State's closure-suite paragraph, the staging reclaim, the evidence bundle and the review package. VERDICT PASS. Re-derived over `0e132923`..`37f9b67a` by the planner and reviewer of F043's second session: the range, the transport, the package's hash and manifest and the integrity check are the reviewer's own readings, and the bundle's test counts are the worker's, equal to the readings the round 8 block stated from the first session's dry run of the same tool, with the ancestry counts one higher for the round's first commit, as that block predicted. THE RANGE IS 3 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `86cefdc5` 381, `79137914` 11 and `37f9b67a` 178; the worker declared no deviation. THE TRANSPORT PROOF: the block and the three payloads, each read from `86cefdc5`, equal the reviewer's originals under `.remedy-wt/f043-r8/` and `.remedy-wt/f043-r8-payloads/` byte for byte, and the ledger, the plan and the feature file carry at `79137914` the sha256 values the block's G2 table states. THE RECLAIM: `data reclaim --orphans` read `Would free 0 B in 0 paths` with one refused path, `review_staging.n4o46eq_`, `class_not_job_keyed`, the block's stated preview, so `--apply` was rightly skipped. THE BUNDLE: evidence job `f043r8e1001` at the accepted head `79137914` against the fork point `21bfc188`, ancestry and plain counts equal at 58, 748 node ids with 2 deselected and none unsafe, pytest `748 passed` at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260930-033441-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer recomputed as `a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1`, `testzip()` None, and whose `.review_zip_manifest.json` names base `21bfc1881b81902b267171d0486d82d1ed89fe25`, head `79137914f113d510ecdef140dfecc8b0e49a76e3`, 58 commits and `READY_FOR_REVIEW`. All six `integrity check` checks read pass at `37f9b67a`. The open set at `37f9b67a` is empty.
++
++Gate: F043 R9 — the F043 round 9 entry, the closure sequence's closing round: the booking of round 8, the ledger's rotation, the acceptance of F043 in STATUS with its README pins and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `37f9b67a`..`d00a13f0` by the planner and reviewer of F044's first session from the commits themselves, after pull request 300 had merged. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `b779fcc7` 374, `2f6228ad` 8, `7ee37545` 16 and `d00a13f0` 157; the worker declared no deviation. THE TRANSPORT PROOF: the block copy `.agent/authored/f043-r9-block.md` reads sha256 `7fbc565e445b9660d20398cb68abedcbeed43b388f421f980d6d6fec2118f38e`, the digest the delegation named, the five payload copies equal the reviewer's originals under `.remedy-wt/f043-r9-payloads/` byte for byte, and `README.md`, `docs/roadmap/STATUS.md` and `scripts/self_use_queue.json` at `d00a13f0` read the three sha256 values the block's G2 table ordered, beginning `aa2d7bb0`, `475a838e` and `05edcc9b`. THE ROTATION moved 6 gate records and one resolved finding pair into the archive, and the open set read `[]` before and after it. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `33f66862`, the merge commit whose tree equals that of `d00a13f0`, read `552 passed` at exit 0; all six `integrity check` checks read pass. Hosted CI run 36657033773 on `d00a13f0` ended `success` on both jobs. The open set at `d00a13f0` is empty.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index fc92b684d..8ca36f86d 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -188,7 +188,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+ - [x] F043 — Explanation layer (T001–T003 complete, R-1115 resolved; accepted 2026-09-30 · live review PASS — ACCEPTED · Evidence job f043r8e1001 · package remedy-review-20260930-033441-READY_FOR_REVIEW.zip · SHA-256 a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 79137914f113d510ecdef140dfecc8b0e49a76e3)
+-- [ ] F044 — Command palette, keyboard, performance budget
++- [~] F044 — Command palette, keyboard, performance budget
+ 
+ ## Tier 12 — Observability & Operations
+ 
