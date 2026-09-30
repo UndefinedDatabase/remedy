@@ -29,6 +29,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import errno
+import functools
 import hashlib
 import json
 import math
@@ -4090,11 +4091,20 @@ _SAFE_KEY_RE = None
 
 
 def _is_safe_key(key: Any, *, allow_dots: bool = True) -> bool:
+    if not isinstance(key, str):
+        return False
+    return _is_safe_str_key(key, allow_dots)
+
+
+@functools.lru_cache(maxsize=4096)
+def _is_safe_str_key(key: str, allow_dots: bool) -> bool:
+    """The answer depends on the key and ``allow_dots`` alone, so it is cached per pair
+    (DECISION F293 D5): every input snapshot carries the same config and environment key names."""
     global _SAFE_KEY_RE
     if _SAFE_KEY_RE is None:
         import re
         _SAFE_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
-    if not isinstance(key, str) or not key or len(key) > _S.MAX_ID_LEN:
+    if not key or len(key) > _S.MAX_ID_LEN:
         return False
     if not allow_dots and "." in key:
         return False
