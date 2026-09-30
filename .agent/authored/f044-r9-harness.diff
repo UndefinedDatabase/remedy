@@ -1,0 +1,115 @@
+diff --git a/apps/ui/perf/index.html b/apps/ui/perf/index.html
+new file mode 100644
+index 000000000..993788335
+--- /dev/null
++++ b/apps/ui/perf/index.html
+@@ -0,0 +1,14 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="UTF-8" />
++    <title>brain-frame-budget-harness</title>
++    <style>
++      html, body, #root { margin: 0; padding: 0; width: 1280px; height: 800px; background: #0b1020; }
++    </style>
++  </head>
++  <body>
++    <div id="root"></div>
++    <script type="module" src="/main.tsx"></script>
++  </body>
++</html>
+diff --git a/apps/ui/perf/main.tsx b/apps/ui/perf/main.tsx
+new file mode 100644
+index 000000000..930c1810e
+--- /dev/null
++++ b/apps/ui/perf/main.tsx
+@@ -0,0 +1,60 @@
++import { createRoot } from "react-dom/client";
++import { useMemo, useState } from "react";
++import "../src/styles/globals.css";
++import { ForceBrainGraph } from "../src/components/graph/ForceBrainGraph";
++import { buildBrainLayout } from "../src/components/graph/buildForceBrainModel";
++import {
++  BRAIN_PERF_STAGE1_NODES,
++  BRAIN_PERF_STAGE6_NODES,
++  brainPerfModel,
++} from "../src/components/graph/brainPerfFixture";
++import { ZOOM_HOME } from "../src/components/graph/semanticZoom";
++import { zoomEmphasis } from "../src/components/graph/zoomView";
++
++// F044 T003's frame-pipeline trace stage mounts this harness and measures it over CDP
++// (`tests/orchestration/test_ci_budgets.py`'s
++// `test_this_repositorys_shell_sustains_60fps_at_200_nodes`), never a JS-side
++// `requestAnimationFrame` timer: headless Chrome paces `requestAnimationFrame` at a fixed 60 Hz
++// regardless of the real work a frame costs, so a timer read from inside the page can only show
++// whether a frame was scheduled, never whether it was actually delivered on time (DECISION
++// F044 D10). This harness therefore does nothing but mount the real graph, at the same root
++// zoom level `BrainGraphStage.tsx` opens on, over the committed fixture (DECISION F019 D6), and
++// let it settle; every number this stage reports comes from Chrome's own compositor, read from
++// outside the page.
++//
++// No vetoes exist in this static fixture, so `vetoFaded`/`vetoHover` are the same empty values
++// `BrainGraphStage.tsx` would compute for a dashboard with none; `onZoomEvent` is a no-op
++// because this harness never dispatches a zoom interaction of its own.
++//
++// `../src/styles/globals.css` is imported for the same reason `apps/ui/src/main.tsx` imports it:
++// the node painter's `resolvedPalette` reads design tokens through `getComputedStyle` on
++// `document.documentElement` (`tokens_rules.md`, "a 2D canvas cannot read var()"), and without
++// this stylesheet every token resolves to an empty string, which crashes `CanvasGradient.
++// addColorStop` on the first paint — measured directly, by this round's reviewer, from a version
++// of this harness that omitted the import.
++
++function Harness() {
++  const params = new URLSearchParams(window.location.search);
++  const n = params.get("n") === String(BRAIN_PERF_STAGE6_NODES) ? BRAIN_PERF_STAGE6_NODES : BRAIN_PERF_STAGE1_NODES;
++  const [selectedId, setSelectedId] = useState<string | null>(null);
++  const layout = useMemo(() => buildBrainLayout(brainPerfModel(n)), [n]);
++  const emphasis = useMemo(() => zoomEmphasis(layout, ZOOM_HOME), [layout]);
++
++  return (
++    <div style={{ width: 1280, height: 800, position: "fixed", top: 0, left: 0 }}>
++      <ForceBrainGraph
++        layout={layout}
++        selectedId={selectedId}
++        onSelectNode={setSelectedId}
++        zoom={ZOOM_HOME}
++        emphasis={emphasis}
++        onZoomEvent={() => {}}
++        vetoFaded={new Set()}
++        vetoHover={new Map()}
++      />
++    </div>
++  );
++}
++
++const container = document.getElementById("root")!;
++createRoot(container).render(<Harness />);
+diff --git a/apps/ui/perf/vite.config.mjs b/apps/ui/perf/vite.config.mjs
+new file mode 100644
+index 000000000..9060ecdf0
+--- /dev/null
++++ b/apps/ui/perf/vite.config.mjs
+@@ -0,0 +1,23 @@
++import { defineConfig } from "vite";
++import react from "@vitejs/plugin-react";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
++
++// F044 T003's frame-pipeline trace stage builds this harness fresh into a scratch `outDir`
++// (never the shared `apps/ui/dist`, DECISION F039 D9); it is never part of the shipped app's
++// own build, whose `rollupOptions.input` in `apps/ui/vite.config.ts` names only the root
++// `index.html` one directory up. This harness is only ever built, never served by `vite dev`,
++// so it declares no `server.fs.allow` of its own.
++const harnessDir = path.dirname(fileURLToPath(import.meta.url));
++
++export default defineConfig({
++  root: harnessDir,
++  base: "/",
++  plugins: [react()],
++  build: {
++    sourcemap: false,
++    rollupOptions: {
++      input: path.join(harnessDir, "index.html"),
++    },
++  },
++});

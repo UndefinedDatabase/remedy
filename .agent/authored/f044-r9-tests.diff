@@ -1,0 +1,160 @@
+diff --git a/tests/orchestration/test_ci_budgets.py b/tests/orchestration/test_ci_budgets.py
+index 25c66eac7..fd4cc2fe0 100644
+--- a/tests/orchestration/test_ci_budgets.py
++++ b/tests/orchestration/test_ci_budgets.py
+@@ -26,10 +26,12 @@ from packages.orchestration.ci_budgets import (
+     BUNDLE_BASELINE_CHUNKS,
+     BUNDLE_SIZE_CAP_FACTOR,
+     FIRST_PAINT_BUDGET_MS,
++    FRAME_PIPELINE_P95_BUDGET_MS,
+     BudgetCheck,
+     bundle_report,
+     check_bundle_size,
+     check_first_paint,
++    check_frame_pipeline,
+     check_lint_clean,
+     normalize_chunk_name,
+     parse_ruff_error_count,
+@@ -38,6 +40,11 @@ from tests.ui_server.test_story_export_file_live import CHROME_BIN, CHROME_START
+
+ REPO_ROOT = Path(__file__).resolve().parents[2]
+
++#: How long the live frame-pipeline test traces after navigating, covering the 200-node
++#: fixture's mount-and-settle window (DECISION F044 D10 measured this at ~2.2-2.3s across three
++#: runs; this is roughly double that, for CI-machine slack).
++FRAME_TRACE_WINDOW_SECONDS = 4.0
++
+
+ def test_no_lint_ceiling_or_baseline_survives():
+     """DECISION amend0911-feedback D7: zero findings, no number to ratchet."""
+@@ -261,3 +268,130 @@ def test_this_repositorys_shell_paints_within_its_budget(tmp_path):
+
+     check = check_first_paint(round(paint_ms))
+     assert check.ok, check.detail
++
++
++def test_frame_pipeline_within_budget_is_ok():
++    check = check_frame_pipeline(12.5)
++    assert check.ok is True
++    assert check.observed == 12.5
++    assert check.name == "frame_pipeline_p95"
++    assert "12.5ms" in check.detail
++
++
++def test_frame_pipeline_over_budget_names_the_overage():
++    check = check_frame_pipeline(FRAME_PIPELINE_P95_BUDGET_MS + 16.0)
++    assert check.ok is False
++    assert "over by 16.0ms" in check.detail
++
++
++def test_frame_pipeline_at_exactly_the_budget_is_ok():
++    check = check_frame_pipeline(FRAME_PIPELINE_P95_BUDGET_MS)
++    assert check.ok is True
++
++
++def test_frame_pipeline_budget_is_seventeen_ms():
++    assert FRAME_PIPELINE_P95_BUDGET_MS == 17.0
++
++
++def _p95_presented_frame_interval_ms(pipe: ChromePipe) -> float:
++    """The p95 gap between consecutive REAL, presented compositor frames, in milliseconds,
++    read from Chrome's own `PipelineReporter` trace events (never a JS-side
++    `requestAnimationFrame` timer: headless Chrome paces `requestAnimationFrame` at a fixed
++    60 Hz regardless of the real work a frame costs, so an interval read from JS can only show
++    whether a frame was SCHEDULED, never whether it was DELIVERED on time — DECISION F044 D10).
++
++    `PipelineReporter` is an ASYNC trace event: Chrome emits a `ph="b"` (begin) entry and a
++    matching `ph="e"` (end) entry per pipeline ATTEMPT, and only the begin entry carries the
++    `frame_reporter` argument naming the attempt's outcome. An attempt is a REAL delivered frame
++    only when its `state` reads `STATE_PRESENTED_ALL`; roughly half of this fixture's attempts
++    read `STATE_PRESENTED_PARTIAL` instead (a real but partial compositor update, measured by
++    this round's reviewer, not a dropped frame), and counting every attempt as one frame reads
++    the pipeline queue's depth, not the display's own frame rate.
++    """
++    events: list[dict] = []
++    for message in pipe.events:
++        if message.get("method") == "Tracing.dataCollected":
++            events.extend(message.get("params", {}).get("value", []))
++    presented_ts = sorted(
++        e["ts"]
++        for e in events
++        if e.get("name") == "PipelineReporter"
++        and e.get("ph") == "b"
++        and e.get("args", {}).get("frame_reporter", {}).get("state") == "STATE_PRESENTED_ALL"
++    )
++    if len(presented_ts) < 2:
++        raise AssertionError(
++            f"only {len(presented_ts)} presented PipelineReporter event(s) captured; need at "
++            "least 2 to read an interval"
++        )
++    deltas_ms = sorted((presented_ts[i + 1] - presented_ts[i]) / 1000.0 for i in range(len(presented_ts) - 1))
++    return deltas_ms[int(len(deltas_ms) * 0.95)]
++
++
++@pytest.mark.subprocess
++def test_this_repositorys_shell_sustains_60fps_at_200_nodes(tmp_path):
++    """The live check: a fresh `vite build` of the committed frame-pipeline harness
++    (`apps/ui/perf/`), which mounts the real `ForceBrainGraph` over the committed 200-node
++    fixture (`apps/ui/src/components/graph/brainPerfFixture.ts`, DECISION F019 D6) exactly as
++    `BrainGraphStage.tsx` does at its root zoom level, served over real HTTP, traced across its
++    own mount-and-settle window with Chrome's `Tracing` domain via the same
++    `--remote-debugging-pipe` transport `tests/ui_server/test_story_export_file_live.py`'s
++    `ChromePipe` already proves."""
++    if CHROME_BIN is None:
++        pytest.skip("neither google-chrome nor chromium is on the path")
++    outdir = tmp_path / "dist"
++    done = subprocess.run(
++        [
++            "node_modules/.bin/vite", "build",
++            "--config", "perf/vite.config.mjs",
++            "--outDir", str(outdir),
++            "--emptyOutDir",
++        ],
++        cwd=str(REPO_ROOT / "apps" / "ui"),
++        capture_output=True,
++        text=True,
++        timeout=120,
++        check=False,
++    )
++    assert done.returncode == 0, done.stdout + done.stderr
++
++    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(outdir))
++    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
++    thread = threading.Thread(target=server.serve_forever, daemon=True)
++    thread.start()
++    port = server.server_address[1]
++    try:
++        pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
++        try:
++            target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
++            attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
++            pipe.session_id = attach["sessionId"]
++            pipe.send("Page.enable")
++            pipe.send("Runtime.enable")
++            pipe.send(
++                "Tracing.start",
++                {
++                    "categories": (
++                        "disabled-by-default-devtools.timeline,devtools.timeline,"
++                        "blink.user_timing,disabled-by-default-devtools.timeline.frame"
++                    ),
++                },
++            )
++            pipe.send("Page.navigate", {"url": f"http://127.0.0.1:{port}/index.html?n=200"})
++            time.sleep(FRAME_TRACE_WINDOW_SECONDS)
++            pipe.send("Tracing.end")
++            deadline = time.monotonic() + 15.0
++            complete = False
++            while time.monotonic() < deadline and not complete:
++                pipe.drain(1.0)
++                complete = any(e.get("method") == "Tracing.tracingComplete" for e in pipe.events)
++            assert complete, "Tracing.tracingComplete never arrived"
++            p95_ms = _p95_presented_frame_interval_ms(pipe)
++        finally:
++            pipe.close()
++    finally:
++        server.shutdown()
++        thread.join(timeout=5)
++
++    check = check_frame_pipeline(round(p95_ms, 3))
++    assert check.ok, check.detail

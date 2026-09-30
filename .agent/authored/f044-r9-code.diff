@@ -1,0 +1,42 @@
+diff --git a/packages/orchestration/ci_budgets.py b/packages/orchestration/ci_budgets.py
+index fc905d786..6401dcb68 100644
+--- a/packages/orchestration/ci_budgets.py
++++ b/packages/orchestration/ci_budgets.py
+@@ -35,7 +35,10 @@ class BudgetCheck:
+
+     name: str
+     ok: bool
+-    observed: int
++    #: `int` for a byte or millisecond count; `float` for a percentile reading close enough to
++    #: its own budget (DECISION F044 D10's frame-pipeline p95) that rounding to a whole
++    #: millisecond could flip the verdict.
++    observed: int | float
+     detail: str
+
+
+@@ -161,3 +164,25 @@ def check_first_paint(observed_ms: int) -> BudgetCheck:
+         over = observed_ms - FIRST_PAINT_BUDGET_MS
+         detail = f"{observed_ms}ms > budget {FIRST_PAINT_BUDGET_MS}ms (over by {over}ms)"
+     return BudgetCheck(name="first_paint", ok=ok, observed=observed_ms, detail=detail)
++
++
++#: DECISION F044 D10: the budget `docs/ui/design_reference/acceptance_criteria.md` §5 fixes —
++#: "60fps p95 at 200 nodes (Stage-1+)" — as the p95 gap, in milliseconds, between consecutive
++#: real compositor frame deliveries (Chrome's own `PipelineReporter` trace events) across the
++#: 200-node fixture's mount-and-settle window. One vsync tick is 16.6667ms; the extra third of
++#: a millisecond of slack matches DECISION F019 D6's own `STAGE1_P95_BUDGET_MS` choice, made for
++#: the same reason (a real reading lands on a vsync tick, so the two failure shapes are "at one
++#: tick" and "at two or more", never something in between).
++FRAME_PIPELINE_P95_BUDGET_MS = 17.0
++
++
++def check_frame_pipeline(observed_p95_ms: float) -> BudgetCheck:
++    """Judge one build's own p95 frame-pipeline interval, in milliseconds, against the 60fps
++    budget. A breach names both the reading and the overage."""
++    ok = observed_p95_ms <= FRAME_PIPELINE_P95_BUDGET_MS
++    if ok:
++        detail = f"{observed_p95_ms}ms <= budget {FRAME_PIPELINE_P95_BUDGET_MS}ms"
++    else:
++        over = observed_p95_ms - FRAME_PIPELINE_P95_BUDGET_MS
++        detail = f"{observed_p95_ms}ms > budget {FRAME_PIPELINE_P95_BUDGET_MS}ms (over by {over}ms)"
++    return BudgetCheck(name="frame_pipeline_p95", ok=ok, observed=observed_p95_ms, detail=detail)
