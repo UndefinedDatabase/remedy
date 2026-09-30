@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-2e0772c99fcd47fc  (exit 0)
+diff --git a/apps/cli/commands/dev.py b/apps/cli/commands/dev.py
+index 51af520c2..83f8b8417 100644
+--- a/apps/cli/commands/dev.py
++++ b/apps/cli/commands/dev.py
+@@ -97,7 +97,7 @@ def _dev_status(*, json_output: bool = False) -> None:
+         job = JobPlan(job_title="tp-check")
+         tp = build_task_progress(job, [])
+         status["task_progress_ok"] = tp["version"] == 1
+-    except Exception:  # noqa: BLE001 — a task-progress check failure must not block other checks
++    except (ImportError, KeyError, TypeError, AttributeError):
+         pass
+ 
+     # Check worker cleanup — availability, not functionality
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index dd3090668..28f399fec 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 288
++MAX_EXCUSED = 287
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
