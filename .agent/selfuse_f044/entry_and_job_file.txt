@@ -1,0 +1,5 @@
+Entry ID: SU-039
+Entry Title: Narrow the excused handler at apps/cli/commands/dev.py:90
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/dev.py:1:except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f044-r11-selfuse/SU-039.md
