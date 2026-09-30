@@ -26,9 +26,10 @@ import { SparkGlyph, ArrowSendGlyph } from "../icons/RemedyGlyphs";
 import { PaletteSheet, PaletteStatus, paletteOptionId } from "./PaletteSheet";
 import styles from "./CommandBar.module.css";
 
-/** The bar's own placeholder outside a flow — the constant DECISION F044 D3 pins the placeholder
- *  guard on, because while a flow is open the placeholder is the asked argument's prompt instead. */
-export const BAR_PLACEHOLDER = 'Jump to anything (e.g., "error handling")';
+/** The bar's own placeholder outside a flow — the constant DECISION F044 D4 reworded, pinned by
+ *  the placeholder guard, because while a flow is open the placeholder is the asked argument's
+ *  prompt instead. */
+export const BAR_PLACEHOLDER = 'Ask your agent or jump to anything (e.g., "improve error handling")';
 
 export function CommandBar({
   nextAction,
@@ -44,6 +45,7 @@ export function CommandBar({
   onOpenTerms,
   onStartTour,
   onOpenSurface,
+  onAskChat,
 }: {
   nextAction: RemedyNextAction;
   targets: readonly JumpTarget[];
@@ -58,6 +60,7 @@ export function CommandBar({
   onOpenTerms: () => void;
   onStartTour: () => void;
   onOpenSurface: (surface: string, taskNodeId: string) => void;
+  onAskChat: (text: string) => void;
 }) {
   // THE STORAGE EDGE, bound here because this is the edge — the file's only `window.localStorage`,
   // built once per mount the way RemedyShell.tsx binds its own digest port.
@@ -142,6 +145,17 @@ export function CommandBar({
 
   function chooseRow(row: PaletteRow) {
     if (row.disabledReason !== "") return;
+
+    if (row.action.kind === "chat") {
+      // THE ASK ROW (DECISION F044 D4 (1)): routed straight to the chat, outside any flow, never
+      // remembered.
+      setOutcome(null);
+      setQuery("");
+      setOpen(false);
+      setActiveIndex(-1);
+      onAskChat(row.action.text);
+      return;
+    }
 
     if (flow !== null) {
       if (row.action.kind === "jump") {

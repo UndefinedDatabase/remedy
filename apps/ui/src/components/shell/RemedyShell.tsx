@@ -18,12 +18,14 @@ import { DiffView } from "../diff/DiffView";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
+import { ChatSheet } from "../command/ChatSheet";
 import { jumpTargetsOf } from "../../api/paletteJump";
 import { paletteCommandFactsOf, paletteCommandReasons } from "../../api/paletteCommandState";
 import { AddTaskSheet } from "../panels/AddTaskSheet";
 import { useProjectContext } from "./ProjectProvider";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
 import { shellSelectionIdOf } from "../graph/brainView";
+import type { EvidenceTab } from "../graph/semanticZoom";
 import { brainLedgerPrefix } from "../graph/brainLedger";
 import { useBrainLedger } from "../graph/useBrainLedger";
 import { RightLivePanel } from "../panels/RightLivePanel";
@@ -294,6 +296,23 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // otherwise reach into.
   const [addTaskOpen, setAddTaskOpen] = useState(false);
 
+  // THE CHAT SHEET'S OWN ASK (DECISION F044 D4 (2)): `null` while closed; otherwise the text the
+  // bar's Ask row handed it and a key one higher than the last, so a repeated question still
+  // mounts a fresh sheet that asks it.
+  const [chatAsk, setChatAsk] = useState<{ key: number; text: string } | null>(null);
+
+  // DECISION F044 D4 (4): the chat sheet's own evidence-item handler. A diff item opens the
+  // diff panel at the chat's own scope, exactly as the detail popover's does; a prompt item
+  // opens the focused task's detail, and opens nothing at the whole project's scope, where no
+  // task is named for it to open.
+  function handleChatEvidenceTab(tab: EvidenceTab) {
+    if (tab === "diff") {
+      setOpenDiffTaskId(focusedTaskId);
+    } else if (tab === "prompt" && focusedTaskId !== "") {
+      onSelectNode(shellSelectionIdOf(dashboard.tasks, focusedTaskId));
+    }
+  }
+
   // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet" and
   // "task-edit-form" are surfaces this shell already owns a way to open; every other surface is a
   // card already on the page, found by its own `data-ui` marker, scrolled into view and focused.
@@ -352,6 +371,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             onOpenTerms={() => setTermsOpen(true)}
             onStartTour={() => setTourRelaunch((count) => count + 1)}
             onOpenSurface={handleOpenSurface}
+            onAskChat={(text) => setChatAsk((previous) => ({ key: (previous?.key ?? 0) + 1, text }))}
           />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
@@ -391,6 +411,13 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {addTaskOpen && (
         <AddTaskSheet target={{ jobId: dashboard.jobId, serverToken }} tasks={dashboard.tasks}
           onClose={() => setAddTaskOpen(false)} />
+      )}
+      {/* THE CHAT SHEET (DECISION F044 D4 (2)), mounted directly after the add-task sheet for
+          the same reason it is a sibling outside <main>. */}
+      {chatAsk !== null && (
+        <ChatSheet key={chatAsk.key} jobId={dashboard.jobId} serverToken={serverToken}
+          taskId={focusedTaskId} question={chatAsk.text} onClose={() => setChatAsk(null)}
+          onOpenTab={handleChatEvidenceTab} />
       )}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (

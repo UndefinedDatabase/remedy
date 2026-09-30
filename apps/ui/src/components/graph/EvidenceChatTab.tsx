@@ -15,7 +15,7 @@
 // IT READS ONLY THROUGH `loadChatTurn` AND SENDS ONLY THROUGH `sendChatCard`: no `fetch(`
 // appears anywhere in this file, exactly as `DiffTab` and `OwnershipTab` in
 // `EvidencePanel.tsx` read only through their own doors.
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadChatTurn } from "../../api/remedyApi";
 import {
   chatEvidenceTab, chatEvidenceTabLabel, chatGeneratorLine, chatScopeLabel, chatSentenceMark,
@@ -134,21 +134,26 @@ interface ChatTurnRecord {
 }
 
 /** The tab itself: the log of turns above the form that asks the next one (F038 T003). It
- *  reads only through `loadChatTurn` and sends only through `sendChatCard`. */
-export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
+ *  reads only through `loadChatTurn` and sends only through `sendChatCard`. DECISION F044 D4
+ *  gives it two entry points beyond the evidence panel's own mount: `initialQuestion`, asked
+ *  once as the tab mounts, and a task of "" for which it asks about the whole project alone. */
+export function EvidenceChatTab({ jobId, token, taskId, onTab, initialQuestion }: {
   jobId: string;
   token: string;
   taskId: string;
   onTab: (tab: EvidenceTab) => void;
+  initialQuestion?: string;
 }) {
-  const [wholeProject, setWholeProject] = useState(false);
+  const projectOnly = taskId === "";
+  const [wholeProject, setWholeProject] = useState(projectOnly);
   const [text, setText] = useState("");
   const [turns, setTurns] = useState<ChatTurnRecord[]>([]);
   const nextKey = useRef(0);
+  const askedInitial = useRef(false);
   const target: DecisionSendTarget = { jobId, serverToken: token };
 
-  const ask = async () => {
-    const question = text.trim();
+  const ask = useCallback(async (line: string) => {
+    const question = line.trim();
     if (question === "") return;
     const key = String(nextKey.current);
     nextKey.current += 1;
@@ -157,7 +162,14 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
     const scopeTaskId = wholeProject ? "" : taskId;
     const view = await loadChatTurn({ jobId, token, text: question, taskId: scopeTaskId });
     setTurns((sofar) => sofar.map((turn) => (turn.key === key ? { ...turn, view } : turn)));
-  };
+  }, [jobId, token, taskId, wholeProject]);
+
+  useEffect(() => {
+    if (!askedInitial.current && initialQuestion !== undefined && initialQuestion.trim() !== "") {
+      askedInitial.current = true;
+      void ask(initialQuestion);
+    }
+  }, [ask, initialQuestion]);
 
   const confirm = async (key: string, card: ChatCardView) => {
     setTurns((sofar) => sofar.map((turn) => (turn.key === key ? { ...turn, sending: true } : turn)));
@@ -186,14 +198,16 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
         />
       ))}
       <div className={styles.form}>
-        <label className={styles.wholeProjectLabel}>
-          <input
-            type="checkbox"
-            checked={wholeProject}
-            onChange={(event) => setWholeProject(event.target.checked)}
-          />
-          Ask about the whole project
-        </label>
+        {!projectOnly && (
+          <label className={styles.wholeProjectLabel}>
+            <input
+              type="checkbox"
+              checked={wholeProject}
+              onChange={(event) => setWholeProject(event.target.checked)}
+            />
+            Ask about the whole project
+          </label>
+        )}
         <input
           className={styles.input}
           type="text"
@@ -202,10 +216,10 @@ export function EvidenceChatTab({ jobId, token, taskId, onTab }: {
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") void ask();
+            if (event.key === "Enter") void ask(text);
           }}
         />
-        <button type="button" className={styles.ask} onClick={() => void ask()}>
+        <button type="button" className={styles.ask} onClick={() => void ask(text)}>
           Ask
         </button>
       </div>
