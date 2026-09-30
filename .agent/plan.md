@@ -5,14 +5,16 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Round 1: claim F293, re-head the ledger, book F044 R15's PASS_WITH_RISKS verdict, and run T001 —
-one full-suite measurement run with collection timed separately, ranked into
-`.agent/f293_inventory.md`.
+Round 1 is done: claimed F293, re-headed the ledger, booked F044 R15's PASS_WITH_RISKS verdict,
+and ran T001 — one full-suite measurement run (21082 passed, 20 skipped, 355.02s wall / 1246.09
+CPU seconds per the test load record) ranked into `.agent/f293_inventory.md`. Next round is T002.
 
 ## Next Steps
-1. T002 — cut from the top of T001's ranking: shared setup per module, in-process CLI calls where
-   the child process isn't the point, merged parametrisations; every changed test keeps a
-   mutation red-proof.
+1. T002 — cut from the top of T001's ranking (`.agent/f293_inventory.md` sections 2 and 3): shared
+   setup per module, in-process CLI calls where the child process isn't the point, merged
+   parametrisations; every changed test keeps a mutation red-proof. Target: the test load record's
+   `cpu_seconds` at least 40% below 1246.09 (T001's own reading), or a dated DECISION with numbers
+   showing no more can be cut.
 2. T003 — each closure's suite transcript records CPU seconds; a closure costing >10% more than the
    previous feature's registers a finding owned by the rolling paydown; a run leaving a process
    behind fails.
