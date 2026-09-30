@@ -26716,3 +26716,33 @@ CHOSEN: `docs/roadmap/features/T2_F293.md` in the shape of `T2_F290.md`; a new h
 ALTERNATIVES: appending "(continued)" to the re-opened heading, REJECTED because that heading already ends in "continued)" and doubling it would break the ledger's own repeated-heading convention.
 
 HOW TO REVERSE: delete the feature file, the new heading and line, and put the three totals back to 292, 292 and 40.
+
+## DECISION amend0930b D1 — SLOW MODE is reinstated as a hardening stage before every feature closure, with a repair loop (2026-09-30)
+
+CONTEXT: The operator's own instruction called SLOW MODE was withdrawn by amend0930-test-load rule (2). He wants it back: more test-and-repair loops per feature, at a slower pace. Its old wording ordered "broad validation" passes; the full suite already runs once per feature (21.5 CPU minutes measured on 2026-09-30) and hosted CI runs it again, so repeating the same tests on the same bytes finds nothing new.
+
+CHOSEN: SLOW MODE is defined in `docs/agents/self_drive_protocol.md` (paragraph amend0930b-slow-cap) as an acceptance audit before the closure sequence: for every Acceptance and Goal & Done statement, a test that turns red under one mutation of the production code, at least one proof through the command line or the cockpit, up to three repair rounds, and a record in the feature file's Built State. `docs/roadmap/STATUS_closure_protocol.md` precondition 8 pins the record. The mode is on only when the prompt carries `SLOW MODE is active`. This supersedes the SLOW MODE clause of DECISION amend0930 D2; that decision's rule against any other test pass stays.
+
+ALTERNATIVES: restoring the old "broad validation" pass, REJECTED because it repeats identical bytes; a second full-suite run per feature, REJECTED for the same reason.
+
+HOW TO REVERSE: delete the paragraph amend0930b-slow-cap and closure precondition 8, restore the sentence in the amend0930-test-load paragraph, and delete D1 to D3.
+
+## DECISION amend0930b D2 — A STOP authored by remedy-weekly-cap is the loop runner's pause, not the operator waiting (2026-09-30)
+
+CONTEXT: The loop runner now obeys a weekly usage cap and writes `.agent/STOP` with `author: remedy-weekly-cap` when it is reached during a session. Sessions read any STOP as a stop request and their handoffs tended to say that something waits for the operator, which would make the runner end the loop for good.
+
+CHOSEN: Guardrail G6 and rule (6) of the amend0930b-slow-cap paragraph tell the session to hand off as for any STOP and to say that the loop paused at the weekly cap and resumes by itself. The runner removes only a stop file with that author line; a stop file written by the operator is never removed.
+
+ALTERNATIVES: a separate signal file, REJECTED because every session already honours `.agent/STOP` under G6 and a new file would need every skill taught.
+
+HOW TO REVERSE: delete rule (6) and the G6 sentence, and remove the watcher from the runner in the operator's second repository.
+
+## DECISION amend0930b D3 — `test_a_real_run_asking_for_auto_gets_the_cap` asserts the smaller of the cap and the CPU count (2026-09-30)
+
+CONTEXT: The test sets a cap of 2 and asserted that the child run used exactly 2 workers. With `-n auto` on a machine with one CPU, xdist correctly starts 1 worker, so the test failed there; the orchestrator saw it fail on a one-CPU machine.
+
+CHOSEN: The assertion reads `min(2, os.cpu_count() or 1)`. No red-proof is possible on the 24-thread development machine, where the old and the new assertion both hold; the change is justified by reading the governor, which never raises a count above what `auto` returns.
+
+ALTERNATIVES: skipping the test on one-CPU machines, REJECTED because the behaviour under test (the cap applies to `auto`) still holds there.
+
+HOW TO REVERSE: put `== 2` back in that assertion.
