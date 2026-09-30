@@ -26158,3 +26158,39 @@ single-binding guard.
 HOW TO REVERSE: restore `TourOverlay.tsx` and its contract test from `32854ea0`, delete
 `TourFrame.tsx`, `FirstRunTour.tsx`, `firstRunTour.ts` and their tests, the spot rules, the two
 `data-ui` names, the shell's relaunch state and mount, the panel's tour button, and this paragraph.
+
+## DECISION F043 D5 — T003's end-to-end run is a browser test in the suite over a real demo job and the cockpit built into the test's own folder, served with the job's real dashboard by the UI server's own builders; it reads the audit's first direction on the real page with a red control, the tour's once-per-browser record, a tooltip, the '?' panel and the relaunch; the explanation layer gets a user guide (2026-09-30)
+
+CONTEXT: T5_F043.md's Acceptance asks for the audit "green on the real shell", and T003 ends with
+the end-to-end. Measured by the reviewer at `0196da46`: the UI server serves the shared
+`apps/ui/dist` and rebuilds it when a source file is newer, with no way to point it at another
+build, and `test_story_export_file_live.py` builds into its own temporary folder because a
+parallel worker's build can empty the shared one (DECISION F039 D9); that file's `ChromePipe`
+drives Chrome over its own pipe with nothing but the standard library, and its demo job runs on the
+fake providers in seconds. The cockpit reads its job and token from the address and degrades
+gracefully when a door answers an error. No single state of one job shows every catalog term. Every
+earlier cockpit feature with a user-facing surface has a guide under `docs/guides/`.
+
+CHOSEN: (1) `tests/ui_server/test_explanation_layer_live.py` runs the demo job, builds the cockpit
+into the module's own folder, and serves it from a small server in the test process whose three
+job routes — `dashboard`, `brain-view-model` and `decisions` — answer with the UI server's own
+builders over the job's real record, every other route answering 404. Chrome runs in a fresh
+profile. The test holds that the tour opens by itself at step 1 with nothing stored; that every
+`data-term` on the page is a catalog key, the catalog read from its one source file, and that the
+finished job's core terms are all there with one live-status term; that a term planted on the page
+without an entry is caught by the same reading, the direction's red control; that Skip stores
+`seen` and a reload opens no tour; that resting the pointer on a term opens its tooltip; that "?"
+opens the Terms panel with every catalog key and Escape closes it; and that the panel's "Take the
+tour" starts it again. The audit's second direction, a key no surface renders, stays the unit
+audit's, because it needs every state and a single job shows one. (2)
+`docs/guides/explanation-layer-user-guide-v1.md` explains the explained words, the Terms list, the
+welcome tour and how to see it again, in plain sentences, registered in `docs/README.md`'s quick-find
+table and guide list. (3) THE ORDER: the closure sequence follows, its first round running the
+closure's self-use item and consolidating the checklist.
+
+ALTERNATIVES: driving the real UI server's own page, rejected because it serves and may rebuild the
+shared `dist` a parallel worker can be rebuilding; a Node driver, rejected for the reason F039 D9
+records; asserting the second direction on the real page, rejected because no single job state
+renders every term.
+
+HOW TO REVERSE: delete the test file, the guide and its two index rows, and this paragraph.
