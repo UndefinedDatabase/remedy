@@ -1,185 +1,141 @@
-# Handoff — F293 Test load diet, round 2
+# Handoff — F293 Test load diet, round 3
 
 ## Session
 
-SESSION 1 of feature F293 · round 2 · rounds so far 2
+SESSION 1 of feature F293 · round 3 · rounds so far 3
 
-This session continues from round 1's own session (context remained comfortable throughout
-round 2; no `.agent/prose_slips.md` line was written). Round 2 wrote DECISION F293 D1 (resolving
-the tension between round 1's own claim text and T002's Acceptance line — see below) and DECISION
-F293 D2 (the caching design), implemented the fix, proved it with two new tests and two mutation
-red-proofs in a disposable worktree, and measured its effect with targeted (not full-suite) runs.
+This session continues from round 2's own session (context remained comfortable through round 2;
+no `.agent/prose_slips.md` line was written there). Round 3 was reviewer-authored in full (the
+finding text, the fix design, the exact payload shape) and delegated as one worker round; it
+required one substantive deviation from the authored block (below) discovered by reading the
+production provider code directly rather than trusting the block's own proposed payload shape.
+Self-assessment: three rounds of this feature have now each required deep reading of adjacent
+production modules beyond what the round's own bundle named up front (round 2's cache module,
+round 3's reviewer structured-output schema) — this is the kind of accumulating investigative load
+self_drive_protocol.md's G7 names as a legitimate reason to end a session even short of the 6-8
+round target. This handoff ends the session here rather than continuing into a 4th round.
 
 ## Range
 
-Review of `fb565b944`..`HEAD` — five commits on `feature/f293-test-load-diet`: `5a311394b`,
-`1130c3194`, `494713d33`, `acdb3b35b`, and this handback commit (not yet made at the time this
-line was drafted).
+Review of `1d0c46984`..`HEAD` — three commits on `feature/f293-test-load-diet`: `c953b9b8a`,
+`0f6804827`, and this handback commit (not yet made at the time this line was drafted).
 
 ## Commits
 
-### `5a311394b` F293 R2 C1: DECISION F293 D1 (the full-suite-run tension) and D2 (the caching design)
+### `c953b9b8a` F293 R3 C1: register and resolve R-1119 (real paid claude-cli calls in two tests)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +22/-0 | two new DECISION entries appended verbatim, per the round block's exact text |
+| `.agent/live_review.md` | +4/-0 | R-1119 finding (registration paragraph + `Done:` paragraph) appended verbatim, one blank line after the prior last line (`Gate: F044 R15`), per the round's exact authored text |
+| `.agent/plan.md` | +14/-14 | Current Step rewritten for round 3's result (full rewrite of the section per plan.md's own "rewrite, do not append" rule) |
 
-`git show --numstat 5a311394b`: 22 `.agent/decisions.md` — **22 insertions total**.
+`git show --numstat c953b9b8a`: `4 0 .agent/live_review.md`, `14 14 .agent/plan.md` — **18
+insertions total**, well under the 500-line cap.
 
-### `1130c3194` F293 R2 C2: cache dead_command_ids' file scan per search root (DECISION F293 D2)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/dead_command_check.py` | +34/-10 | split the file-scan out of `dead_command_ids` into a new `_scan_search_root`, cached module-level in `_SCAN_CACHE` keyed by resolved `root`; `dead_command_ids` itself now reads `texts, pairs = _scan_search_root(root)` instead of re-scanning inline |
-
-`git show --numstat 1130c3194`: 34/10 `packages/orchestration/dead_command_check.py` — **44
-lines changed total**. `git diff` confirmed only this one span changed — the module docstring,
-`_REPO_ROOT`, `_SEARCH_DIRS`, `_handler_names`, `_iter_search_files`, `_adjacent_string_pairs`,
-and the rest of `dead_command_ids` from `dead: list[str] = []` onward are byte-identical to
-before.
-
-### `494713d33` F293 R2 C3: two new tests proving the per-root cache (DECISION F293 D2)
+### `0f6804827` F293 R3 C2: mock the claude-cli subprocess seam in two provider-override tests
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_dead_command_check.py` | +35/-0 | `test_the_file_scan_is_not_repeated_for_the_same_root` (call-count assertion via a counting wrapper on `_iter_search_files`) and `test_two_different_roots_never_share_a_cache_entry` (correctness assertion: same command_id dead under one root, alive under another) appended to `TestDeadCommandIds` |
+| `tests/orchestration/test_job_task_runner.py` | +53/-2 | new module-level helper `_install_fake_claude_cli(monkeypatch)` (after `_make_args`, line ~1234); both target tests gained a `monkeypatch` fixture parameter and a call to the helper as their first body line |
 
-`git show --numstat 494713d33`: 35 `tests/orchestration/test_dead_command_check.py` — **35
-insertions total**.
+`git show --numstat 0f6804827`: `53 2 tests/orchestration/test_job_task_runner.py` — **53
+insertions total**. `git diff` confirmed only the new helper function and the two tests' own
+signature/first-line changed; no assertion in either test was touched.
 
-### `acdb3b35b` F293 R2 C4: mutation red-proofs for the dead_command_ids cache
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f293-r2-mutations.txt` | +152/-0 (new file) | transcript of both mutations run in the disposable worktree `.remedy-wt/f293-r2-mut`, per G5 |
-
-`git show --numstat acdb3b35b`: 152 `.agent/authored/f293-r2-mutations.txt` — **152 insertions
-total**.
-
-### This handback commit — F293 R2 C5: targeted verification and handback
+### This handback commit — F293 R3 C3: verify the fix and handback
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +17/-3 | Current Step rewritten for round 2's result; Next Steps kept |
+| `.agent/plan.md` | full rewrite | Current Step gains the round's measured verification result (timing, ps-proof) |
 | `.agent/handoff.md` | full rewrite | this file |
 
 ## External actions
 
-`git worktree add .remedy-wt/f293-r2-mut HEAD` (commit 4) and `git worktree remove
-.remedy-wt/f293-r2-mut` + `git worktree prune` (commit 4, same step, as its last action) — `git
-worktree list` before and after both showed the same 11 entries (primary checkout + 10
-pre-existing, unrelated `.remedy-wt/job-*` worktrees belonging to other running sessions on this
-shared machine; untouched). `git push origin feature/f293-test-load-diet` — run after this
-handback commit; outcome reported in the session's reply, not in this file. No PR created this
-round — the worker does not create PRs; that is the reviewer's action after reading the diff. No
-`gh pr` commands.
+No `git worktree` used this round (no production code changed, so no mutation red-proof was
+owed — AGENTS.md reserves those for production code, and this round's own Constraints said so
+explicitly). `git worktree list` read 11 entries before and after this round, untouched (primary
+checkout + 10 pre-existing `.remedy-wt/job-*` worktrees belonging to other running sessions on this
+shared machine). One scratch file was written and removed within commit 3's own verification step:
+`.remedy-wt/ps_proof_r1119.py` (the ps-polling script, item 2 below) — written, run, then deleted
+before this handback commit; `git status --porcelain` was empty both before writing it and after
+deleting it, and it was never staged. `git push origin feature/f293-test-load-diet` — run after
+this handback commit; outcome reported in the session's own reply, not in this file. No PR created
+this round — the worker does not create PRs. No `gh pr` commands.
 
 ## Verification
 
 **Open PR Gate / state probe, before any work:**
 ```
-$ cat .agent/STOP
-cat: .agent/STOP: No such file or directory
 $ git branch --show-current
 feature/f293-test-load-diet
-$ git status --porcelain
+$ ls .agent/STOP
+ls: cannot access '.agent/STOP': No such file or directory
+$ git status --short
 (empty)
 ```
 
-**Two new tests, commit 3:**
+**`git grep` confirming the finding's own literal claim (before commit 1):**
 ```
-$ python3 -m pytest tests/orchestration/test_dead_command_check.py -v
-tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_a_command_referenced_nowhere_is_dead PASSED [ 20%]
-tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_an_argv_list_pair_counts_as_a_reference PASSED [ 40%]
-tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_real_catalog_has_no_dead_commands PASSED [ 60%]
-tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root PASSED [ 80%]
-tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry PASSED [100%]
-5 passed in 2.81s
+$ git grep -n 'builder_provider="claude-cli"\|reviewer_provider="claude-cli"' tests/
 ```
+Confirmed: exactly `tests/orchestration/test_job_task_runner.py:2187-2188` and `:2538-2539` among
+all hits carry this pattern with no adjacent fake/mock in the same test (every other hit, in
+`test_provider_evidence_integration.py` and `test_stream_evidence_integration.py`, is backed by a
+fake `claude` binary on PATH or is a bare string passed to a dataclass constructor).
 
-**Ruff, production code and test file (commits 2, 3, and re-checked at commit 5):**
+**Ruff, test file (commit 2, re-checked at commit 3):**
 ```
-$ python3 -m ruff check packages/orchestration/dead_command_check.py tests/orchestration/test_dead_command_check.py
+$ python3 -m ruff check tests/orchestration/test_job_task_runner.py
 All checks passed!
 ```
 
-**Mutation A — disable the cache (commit 4, full transcript in `.agent/authored/f293-r2-mutations.txt`):**
+**Both fixed tests, new timing:**
 ```
-$ python3 -m pytest tests/orchestration/test_dead_command_check.py -v
-... 4 PASSED ...
-    monkeypatch.setattr(mod, "_iter_search_files", counting_iter)
-    dead_command_ids(catalog, handlers, root=tmp_path)
-    dead_command_ids(catalog, handlers, root=tmp_path)
->   assert calls["n"] == 1
-E   assert 2 == 1
-tests/orchestration/test_dead_command_check.py:62: AssertionError
-FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root
-1 failed, 4 passed in 2.56s
+$ python3 -m pytest "tests/orchestration/test_job_task_runner.py::TestProviderOverrideToFake::test_cli_handler_provider_override" "tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_provider_override_to_fake" -v --durations=0
+tests/orchestration/test_job_task_runner.py::TestProviderOverrideToFake::test_cli_handler_provider_override PASSED [ 50%]
+tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_provider_override_to_fake PASSED [100%]
+0.56s call     tests/orchestration/test_job_task_runner.py::TestProviderOverrideToFake::test_cli_handler_provider_override
+0.52s call     tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_provider_override_to_fake
+2 passed in 1.51s
 ```
-Exactly the predicted split: only `test_the_file_scan_is_not_repeated_for_the_same_root` goes red, the other 4 stay green.
+Down from T001's 19.66s and 12.77s — both now under 0.6s.
 
-**Mutation B — break per-root keying (commit 4):**
+**ps-proof, same method the reviewer used to find the defect (background subprocess, `ps -ef`
+polled across the whole run):**
 ```
-$ python3 -m pytest tests/orchestration/test_dead_command_check.py -v
-FAILED ...test_an_argv_list_pair_counts_as_a_reference
-FAILED ...test_the_real_catalog_has_no_dead_commands
-FAILED ...test_the_file_scan_is_not_repeated_for_the_same_root
-FAILED ...test_two_different_roots_never_share_a_cache_entry
-4 failed, 1 passed in 0.27s
+before claude -p pids: {'1203804'}
+new claude -p pids seen during run: set()
+test exit code: 0
+. [100%]
+1 passed in 0.75s
 ```
-**Deviation from the block's predicted SCOPE (not its predicted mechanism), declared explicitly:**
-the block predicted only the target test would fail, with the other 4 staying green. The
-whole-file run instead shows 4 of 5 failing. Cause, established by re-running the target test
-alone:
-```
-$ python3 -m pytest tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry -v
->   assert dead_command_ids(catalog, handlers, root=root_b) == []
-E   AssertionError: assert ['ghost.vanish'] == []
-1 failed in 0.21s
-```
-In isolation, exactly 1 failed — matching the prediction precisely. `_SCAN_CACHE` is a
-module-level dict living for the whole pytest process; with a fixed key instead of `root`,
-whichever test runs FIRST in the file seeds the one cache slot, and every later test's own
-`root=` argument is ignored, reading that first test's stale scan back. This is not a defect in
-the production fix or the new tests — it is a stronger demonstration of exactly the defect the
-mutation introduces (the fix keys by `root`; this mutation breaks that), surfacing through more
-call sites than the one test written to target it directly. Full transcript and explanation:
-`.agent/authored/f293-r2-mutations.txt`.
+Pid `1203804` pre-existed (another session's real `claude -p` call on this shared machine, running
+before this test even started) and is exactly the kind of unrelated hit the round's own
+instructions said not to count. Zero NEW `claude -p` pids appeared during the test's run, polled at
+0.1s/0.3s/0.5s/0.8s/1.2s intervals across the whole 0.75s duration.
 
-**File restored after each mutation, confirmed empty diff both times** (`git checkout --
-packages/orchestration/dead_command_check.py` in the worktree; `git diff` empty).
+**Whole file:**
+```
+$ grep -c 'def test_' tests/orchestration/test_job_task_runner.py
+214
+$ python3 -m pytest tests/orchestration/test_job_task_runner.py -q --durations=0
+214 passed in 37.05s
+```
+214 passed matches the file's own `def test_` count exactly (same count the reviewer already
+verified at round-3 authoring time). T001's own reading for this file was **89.92s**, but that
+figure is the SUM of individual duration-lines under `-n auto` parallelism (a CPU-share
+approximation, per `.agent/plan.md`'s own Risks note), not a serial wall-clock run; this round's
+**37.05s** is a serial, non-parallel wall-clock run of the same file, so the two numbers are not on
+the same basis and are not directly subtracted. What IS directly comparable and real: the two
+target tests alone dropped from a summed 32.43s (19.66+12.77, T001's own duration-lines) to a
+summed 1.08s (0.56+0.52) just now, in the same serial mode — a same-basis **~97% drop** for the
+two tests this round targeted.
 
-**`git worktree list` before creating `.remedy-wt/f293-r2-mut` and after removing it — identical
-11 entries both times** (primary checkout + 10 unrelated `.remedy-wt/job-*` worktrees).
-
-**Targeted: `tests/cli/test_worker_facade_cmd.py`:**
+**Ruff clean (re-checked):**
 ```
-$ python3 -m pytest tests/cli/test_worker_facade_cmd.py -q --durations=0
-...
-(126 durations < 0.005s hidden.  Use -vv to show these durations.)
-56 passed in 22.41s
+$ python3 -m ruff check tests/orchestration/test_job_task_runner.py
+All checks passed!
 ```
-Summed duration-lines (same parse method T001 used): **22.26s over 42 duration-lines**, against
-T001's own reading of **125.54s over 40 duration-lines** — a **82.3% reduction**
-((125.54-22.26)/125.54).
-
-**Targeted: the other 4 T001-named files:**
-```
-$ python3 -m pytest tests/orchestration/test_dead_command_check.py tests/orchestration/test_disk_floor.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_runner.py -q --durations=0
-...
-(439 durations < 0.005s hidden.  Use -vv to show these durations.)
-170 passed in 15.82s
-```
-Summed duration-lines: **15.19s over 71 duration-lines**, against T001's combined reading of
-**33.53s** (2.95 + 16.07 + 6.24 + 8.27) — a **54.7% reduction** ((33.53-15.19)/33.53).
-
-**`tests/cli/` (whole directory), fully green:**
-```
-$ python3 -m pytest tests/cli/ -q
-...
-2254 passed in 402.55s (0:06:42)
-```
-No failures, no new skips.
 
 **Integrity check:**
 ```
@@ -198,74 +154,106 @@ $ python3 -m apps.cli.main integrity check --json
 ```
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 ..........................................                               [100%]
-42 passed in 44.63s
+42 passed in 50.39s
 ```
 
-**No full suite run this round** (DECISION F293 D1: the closure's integration-gate run supplies
-T002's "after" reading; no `REMEDY_TEST_MAX_WORKERS` set, no custom `-n` passed at any point).
+**No full suite run this round** (amend0917-throughput: exactly one full suite per feature; T001
+already spent it; this is a test-only fix, not the closure's integration-gate round).
 
 ## Authored-text proofs
 
-The two DECISION entries in commit 1 were authored inline in this round's own task block, applied
-by exact text append (`Edit`, matching the file's established one-blank-line spacing between
-entries, confirmed by reading the tail of `.agent/decisions.md` before appending and re-reading
-the resulting `git diff` afterward — one hunk, 22 insertions, no deletions, no trailing
-whitespace). The production-code span in commit 2 and the two test methods in commit 3 were also
-applied by exact text match against the block's own verbatim FROM/TO text and verbatim test code,
-confirmed by `git diff` showing only the ordered span changed in each case. `.agent/authored/f293-r2-mutations.txt`
-(commit 4) is this round's own measured transcript, not text applied to a target — its proof is
-the pytest output it quotes, reproduced above.
+The R-1119 finding text (commit 1) was applied by exact text append (`.agent/live_review.md` grew
+by exactly the appended bytes, one blank line before the new paragraph, confirmed by reading the
+tail before and after and by the file ending in exactly one trailing newline both times). The
+helper function and the two test edits (commit 2) follow the block's own named shape and location
+(after `_make_args`, both tests gaining `monkeypatch` and a first-line call) but the FAKE PAYLOAD
+BODY itself was NOT applied verbatim from the block — see Deviations below, this is the round's one
+declared departure.
 
 ## Deviations & assumptions
 
-1. **Mutation B's failure scope** (see Verification section above, in full): the block predicted
-   1 failed / 4 passed for the whole-file run; the actual whole-file run showed 4 failed / 1
-   passed, because `_SCAN_CACHE` is a process-global singleton and pytest runs the whole file in
-   one process — a fixed cache key lets the FIRST test's scan leak into every later test's result,
-   not only the one test written to target the property directly. Confirmed by running the target
-   test alone, which reproduced the predicted 1-failed/4-passed shape exactly. This is a stronger
-   proof of the same defect, not a different one, and not a defect in the shipped fix (which keys
-   by `root`, not a fixed string). Declared here per the instruction to record any departure from
-   a block's predicted outcome even when the underlying mechanism is understood and correct.
+1. **The block's proposed reviewer payload shape does not match this codebase's default reviewer
+   path, and was corrected before running anything, per the round's own Constraints** ("if the fake
+   response shape does not satisfy `ClaudeCliProvider.build()`/`.review()`'s parsing... read the
+   actual parsing code... to find the real expected shape, adjust the fake payload to match it
+   honestly, and declare the adjustment"). MEASURED by reading `packages/orchestration/
+   pingpong_provider.py` and `packages/orchestration/structured_outputs.py` directly:
+   `reviewer_structured_enabled()` returns True unless the environment variable
+   `REMEDY_REVIEWER_FREETEXT` is set, which no fixture or test in this file sets, so
+   `ClaudeCliProvider.review()`'s default path is `_call_reviewer_structured`, which sends
+   `--json-schema` and parses the top-level `structured_output` object from the raw envelope
+   (`packages/orchestration/token_actuals.py::parse_cli_envelope`) — NOT the legacy free-text
+   `result` field the block's own payload proposed (`json.dumps({"verdict": ...})` inside
+   `"result"`). The schema behind `structured_output`, `ReviewVerdict`
+   (`packages/orchestration/schemas/models.py`), forbids extra fields (`ConfigDict(extra="forbid")`)
+   and requires exactly `schema_v: "rv1"`, `verdict`, `findings`, `confidence`, `summary`. The
+   shipped fake therefore builds two different envelope shapes: the builder role keeps a `"result"`
+   free-text field (builder's own call path, `_call`/`_build_impl`, never sends `--json-schema` and
+   parses `result` unconditionally — confirmed by reading `build_claude_cli_args` and `_call`), and
+   the reviewer role gets a top-level `"structured_output"` object as described. This was VERIFIED,
+   not assumed: both fixed tests passed on the first run after this correction (see Verification
+   above), and the `--version` probe and builder-role path both still use the fixture's originally
+   proposed shape unchanged. No test assertion was touched to make this work — only the fake's own
+   internals.
 
-No other deviations. Constraints honoured: only the six named paths were touched
-(`.agent/decisions.md`, `packages/orchestration/dead_command_check.py`,
-`tests/orchestration/test_dead_command_check.py`, `.agent/authored/f293-r2-mutations.txt`,
-`.agent/plan.md`, `.agent/handoff.md`); no existing test's assertion was weakened, deleted, or had
-its expected value changed — `tests/cli/test_worker_facade_cmd.py` and every other touched-area
-file passed unchanged; no full suite run; every commit stayed under the 500-insertion cap (22, 44,
-35, 152 changed lines respectively); every commit stayed on `feature/f293-test-load-diet`; no PR
-opened; `.agent/STOP` did not appear at any point in this round.
+No other deviations. Constraints honoured: only the four named paths were touched
+(`.agent/live_review.md`, `.agent/plan.md`, `tests/orchestration/test_job_task_runner.py`,
+`.agent/handoff.md`); no production code under `packages/` or `apps/` touched; no assertion in
+either fixed test was weakened, deleted, or had its expected value changed (`git diff` confirms —
+every `assert` line in both tests is byte-identical to before); every commit stayed under the
+500-insertion cap (18, 53 changed/inserted lines respectively); no `REMEDY_TEST_MAX_WORKERS` set,
+no custom `-n` passed at any point; no PR opened; `.agent/STOP` did not appear at any point in this
+round.
 
 ## Open findings
 
-**8 open**, unchanged by this round (this round resolved nothing against the ledger and registered
-nothing new): `R-0413`, `R-0441`, `R-0471`, `R-0533`, `R-0632`, `R-0672`, `R-1117` (Medium, owned by
-F290), `R-1118` (owned by F293 itself, unchanged from round 1's negative-result reading).
+**MEASURED, not assumed, per this round's own instruction to state the mechanical count precisely**
+("every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line"): running the repository's own
+canonical function, `scripts.rotate_live_review.open_finding_ids`, against `.agent/live_review.md`
+at this round's HEAD reads **2 open ids: `R-1117`, `R-1118`**. `R-1119` (this round's own finding)
+nets to zero at every point after commit 1, since its registration and its `Done:` line landed in
+the same commit.
+
+**This does NOT match round 2's handback or this file's own re-head header** (both state 8 open
+ids: `R-0413`, `R-0441`, `R-0471`, `R-0533`, `R-0632`, `R-0672`, `R-1117`, `R-1118`). Measured
+cause: the six extra ids each appear in the CURRENT `.agent/live_review.md` only as a
+`Recurrence: R-xxxx — ...` paragraph (their ORIGINAL `- R-xxxx — ` registration paragraphs were
+already moved to `.agent/live_review_archive.md` when each was first resolved, confirmed by `grep`
+— e.g. `Done: R-0413` at `.agent/live_review_archive.md:2552`), and the canonical function's own
+regex, `^- (R-\d{4}) — `, does not match a line beginning `Recurrence:`. I ran the function fresh,
+against the file as it stands right now, rather than trusting either the header's carried-forward
+claim or round 2's restatement of it — this is a genuine discrepancy in how this repository's own
+ledger arithmetic is carried across a re-head, and it is exactly the class of defect this same
+ledger has registered against itself before (`R-0632`, `R-0441`, both visible a few lines above
+R-1119 in the current file). I have NOT resolved it: it is outside this round's four-path scope and
+outside this round's ordered work, so I am reporting the measurement plainly rather than picking
+whichever number looked expected.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| DECISION F293 D1 (full-suite-run tension) | done | written verbatim in commit 1 |
-| DECISION F293 D2 (caching design) | done | written verbatim in commit 1 |
-| Cache implementation (`_SCAN_CACHE` / `_scan_search_root`) | done | commit 2; `git diff` confirmed only the ordered span changed |
-| Ruff clean (production + test file) | done | `All checks passed!`, re-checked at commit 5 |
-| Two new tests passing | done | 5 passed (3 pre-existing + 2 new), commit 3 |
-| Mutation A: target red, others green | done | 1 failed / 4 passed, exact predicted split |
-| Mutation B: target red, others green | PARTIAL, deviation declared | target test failed as predicted; 3 further tests also failed in the whole-file run due to process-global cache pollution under a fixed key — confirmed this is the mutation's own broader effect, not a flaw in the fix or the tests; isolated run of the target test alone matched the prediction exactly |
-| Targeted `test_worker_facade_cmd.py` improvement measured | done | 125.54s -> 22.26s, -82.3% |
-| Targeted four-file improvement measured | done | 33.53s -> 15.19s, -54.7% |
-| `tests/cli/` green | done | 2254 passed, 0 failed |
+| R-1119 registered verbatim | done | commit 1, one blank line before, file ends in one trailing newline |
+| `.agent/plan.md` Current Step advanced (commit 1) | done | rewritten, kept under 50 lines |
+| R-1119 resolved (`Done:` paragraph, same round) | done | commit 1, same commit as registration |
+| Fix implemented in both tests | done | commit 2; `_install_fake_claude_cli` helper + `monkeypatch` param + one call line in each test; no assertion touched |
+| Ruff clean | done | `All checks passed!`, re-checked at commit 3 |
+| Both tests pass with new timing | done | 0.56s / 0.52s, down from 19.66s / 12.77s |
+| ps-proof of no real subprocess | done | zero new `claude -p` pids across the whole 0.75s run, polled 5 times |
+| Whole-file green | done | 214 passed, matches `def test_` count exactly |
 | Canary green | done | 42 passed |
-| Integrity check green | done | fail_count: 0 |
-| `.agent/plan.md` updated | done | Current Step rewritten, kept under 50 lines |
+| Integrity check green | done | `fail_count: 0` |
+| `.agent/plan.md` updated (commit 3) | done | measured result (timing, ps-proof) added to Current Step |
+| Deviation declared (payload shape) | done | see Deviations section; verified by both tests passing, not assumed |
 
 ## Next
 
 T002 continued: more cuts from `.agent/f293_inventory.md` sections 2-3's remaining top entries
-(`test_job_task_runner.py`, `test_supervisor_portability.py`, `test_mission_cmd.py`,
-`test_do_sequence_cli.py`, and the rest of the top-30 ranking), each with its own mutation
-red-proof, until either the ranking is exhausted of easy wins or a dated DECISION rules no more
-can be cut without weakening a test. The 40%-of-1246.09 Acceptance check itself is read at the
-closure sequence's integration-gate run, per DECISION F293 D1 — not inside any T002 round.
+(`test_supervisor_portability.py`, `test_mission_cmd.py`, `test_do_sequence_cli.py`, and the rest of
+the top-30 ranking), each with its own mutation red-proof where production code changes, until
+either the ranking is exhausted of easy wins or a dated DECISION rules no more can be cut without
+weakening a test. The 40%-of-1246.09 Acceptance check itself is read at the closure sequence's
+integration-gate round, per DECISION F293 D1 — not inside any T002 round. The open-findings
+discrepancy above (2 vs. 8) is unresolved and worth a session's first action to rule on — either by
+DECISION explaining why `Recurrence:` paragraphs count as open despite the function's own regex, or
+by correcting the header's carried claim — before the next round states an open count of its own.

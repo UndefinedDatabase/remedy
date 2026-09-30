@@ -11,9 +11,14 @@ test_job_task_runner.py` (`TestProviderOverrideToFake::test_cli_handler_provider
 call to the installed `claude` CLI via `COMMAND_HANDLERS["job.run"]` with no fake installed — the
 two single slowest tests in the suite (19.66s/12.77s, T001). Fixed by monkeypatching
 `packages/orchestration/pingpong_provider.py`'s `_guarded_cli_run` seam in both tests, returning a
-canned JSON response discriminated by "Reviewer" in the prompt text; both roles and the
-`--version` probe covered. No production code touched. Confirmed by the same `ps -ef` polling
-method that found the defect: zero real `claude` processes spawn now.
+canned JSON response discriminated by "Reviewer" in the prompt text. One deviation from the
+authored block: the reviewer role's default path is native structured output
+(`reviewer_structured_enabled()` is True by default), which needs a top-level `structured_output`
+object matching the `ReviewVerdict` schema, not a JSON string in `result` — read from
+`packages/orchestration/pingpong_provider.py` directly and used instead. No production code
+touched. MEASURED: both tests
+now 0.56s/0.52s (was 19.66s/12.77s); a `ps -ef`-polling background run of the first test, same
+method that found the defect, shows zero new `claude -p` pids for the run's whole duration.
 
 Round 2 (prior) cut T002's first item: `dead_command_ids` cached its per-root file scan
 (`_SCAN_CACHE`, DECISION F293 D2) — `tests/cli/test_worker_facade_cmd.py` 125.54s -> 22.26s
