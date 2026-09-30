@@ -1,0 +1,259 @@
+diff --git a/tests/ui_server/test_explanation_layer_live.py b/tests/ui_server/test_explanation_layer_live.py
+new file mode 100644
+index 000000000..1aa3cc355
+--- /dev/null
++++ b/tests/ui_server/test_explanation_layer_live.py
+@@ -0,0 +1,253 @@
++"""F043 T003, DECISION F043 D5 — the explanation layer, end to end over the real shell.
++
++The demo job runs on the fake providers exactly as ``test_story_export_file_live.py`` runs it,
++the cockpit is built into this module's own temporary folder (never the shared ``apps/ui/dist``,
++which a parallel worker's own build could empty out, DECISION F039 D9), and a small server in this
++process serves that build and answers the job's ``dashboard``, ``brain-view-model`` and
++``decisions`` routes with the UI server's own builders over the job's real record; every other
++route answers 404, which the shell already reads as an unavailable door. Headless Chrome is driven
++over ``--remote-debugging-pipe`` with the story test's own ``ChromePipe``, in a profile that has
++never seen the cockpit, so the first-run tour opens by itself.
++
++What it proves on the real page: every ``data-term`` the shell renders is a catalog key, and a
++term the catalog lacks is caught by the same reading (the audit's first direction, red control
++included — the second direction, dead keys, is the unit audit's, because no single state of one
++job shows every term); a term's tooltip reads its catalog entry; the tour opens once, Skip records
++it, a reload leaves it closed, and the Terms panel starts it again; "?" opens the Terms panel.
++"""
++from __future__ import annotations
++
++import json
++import re
++import threading
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++from pathlib import Path
++from typing import Any
++from urllib.parse import urlparse
++
++import pytest
++
++from tests.ui_server.test_brain_demo_recording_live import CLI, ORDER, _env, _git_repo, _run
++from tests.ui_server.test_story_export_file_live import (
++    CHROME_BIN,
++    CHROME_STARTUP_TIMEOUT,
++    VITE_BIN,
++    ChromePipe,
++    _dispatch_key,
++    _poll,
++)
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++TERMINOLOGY = REPO_ROOT / "apps" / "ui" / "src" / "api" / "terminology.ts"
++CATALOG_KEY = re.compile(r'^  "([a-z0-9_.]+)": \{$', re.MULTILINE)
++
++# The terms a finished demo job's page must show whatever else it shows: the timeline's six
++# phases, the metrics bar's six plain tiles and the headings of the cards a finished job always
++# has. The live-status pill shows one `status.` term, which one depending on the stream: this
++# server answers no stream, so the pill says so.
++CORE_TERMS = {
++    "phase.job", "phase.planning", "phase.build", "phase.test", "phase.review", "phase.finalized",
++    "metric.open", "metric.planned", "metric.done", "metric.progress", "metric.tests", "metric.proof",
++    "panel.agent_now", "panel.activity", "panel.tasks",
++}
++
++TERMS_EXPR = "Array.from(document.querySelectorAll('[data-term]')).map((e) => e.getAttribute('data-term'))"
++TOUR_LABEL_EXPR = (
++    "(() => { const c = document.querySelector('[data-ui=\"first-run-tour\"]');"
++    " return c ? c.querySelector('p').textContent : null; })()"
++)
++SEEN_EXPR = "window.localStorage.getItem('remedy:first-run-tour')"
++SHELL_EXPR = "document.querySelector('[data-ui=\"remedy-visual-v2\"]') !== null"
++PANEL_ROWS_EXPR = (
++    "(() => { const p = document.querySelector('[data-ui=\"term-panel\"]');"
++    " return p ? Array.from(p.querySelectorAll('[data-term-entry]')).map((e) => e.getAttribute('data-term-entry')) : null; })()"
++)
++TIP_EXPR = (
++    "(() => { const t = document.querySelector('[data-ui=\"term-tip\"]');"
++    " return t ? [t.getAttribute('data-term-tip'), t.textContent] : null; })()"
++)
++
++
++def catalog_keys() -> set[str]:
++    """Every key of the explanation catalog, read from its one source file."""
++    return set(CATALOG_KEY.findall(TERMINOLOGY.read_text(encoding="utf-8")))
++
++
++def click_button(scope: str, text: str) -> str:
++    """An expression clicking the button inside ``scope`` whose text is ``text``."""
++    return (
++        f"(() => {{ const b = Array.from(document.querySelectorAll('{scope} button'))"
++        f".find((e) => e.textContent === {json.dumps(text)}); if (b) b.click(); return b !== undefined; }})()"
++    )
++
++
++@pytest.fixture(scope="module")
++def cockpit_dist(tmp_path_factory: pytest.TempPathFactory) -> Path:
++    """Once per module: the cockpit built into ITS OWN temporary folder."""
++    if not VITE_BIN.is_file():
++        pytest.skip(f"{VITE_BIN} is not built; run `cd apps/ui && npm install`")
++    import subprocess
++
++    out_dir = tmp_path_factory.mktemp("cockpit-build") / "dist"
++    proc = subprocess.run(
++        [str(VITE_BIN), "build", "--outDir", str(out_dir), "--emptyOutDir"],
++        cwd=str(REPO_ROOT / "apps" / "ui"), capture_output=True, text=True, timeout=300,
++    )
++    assert proc.returncode == 0, proc.stdout + proc.stderr
++    assert (out_dir / "index.html").is_file()
++    return out_dir
++
++
++def serve_cockpit(dist: Path) -> ThreadingHTTPServer:
++    """The build's files, and the job's three routes from the UI server's own builders."""
++    from packages.orchestration.pingpong_job import load_job_plan
++    from packages.orchestration.ui_server import (
++        _build_brain_view_model_json,
++        _build_dashboard,
++        _build_decisions_json,
++    )
++
++    builders = {
++        "dashboard": _build_dashboard,
++        "brain-view-model": _build_brain_view_model_json,
++        "decisions": _build_decisions_json,
++    }
++
++    class Handler(BaseHTTPRequestHandler):
++        def log_message(self, *args: Any) -> None:  # the test reads Chrome's log, not this one
++            return
++
++        def _send(self, status: int, body: bytes, kind: str) -> None:
++            self.send_response(status)
++            self.send_header("Content-Type", kind)
++            self.send_header("Content-Length", str(len(body)))
++            self.end_headers()
++            self.wfile.write(body)
++
++        def do_GET(self) -> None:  # noqa: N802 — the standard library's name
++            path = urlparse(self.path).path
++            parts = path.split("/")
++            if len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs" and parts[4] in builders:
++                job = load_job_plan(parts[3])
++                if job is None:
++                    self._send(404, b"{}", "application/json")
++                    return
++                body = json.dumps(builders[parts[4]](job)).encode("utf-8")
++                self._send(200, body, "application/json")
++                return
++            if path.startswith("/api/"):
++                self._send(404, b"{}", "application/json")
++                return
++            target = dist / ("index.html" if path == "/" else path.lstrip("/"))
++            if target.resolve().is_relative_to(dist.resolve()) and target.is_file():
++                kind = {
++                    ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
++                    ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2",
++                }.get(target.suffix, "application/octet-stream")
++                self._send(200, target.read_bytes(), kind)
++                return
++            self._send(404, b"not found", "text/plain")
++
++    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
++    threading.Thread(target=server.serve_forever, daemon=True).start()
++    return server
++
++
++def test_the_explanation_layer_works_on_the_real_shell(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cockpit_dist: Path,
++) -> None:
++    if CHROME_BIN is None:
++        pytest.skip("neither google-chrome nor chromium is on the path")
++
++    data_dir = tmp_path / "data"
++    env = _env(data_dir)
++    repo = _git_repo(tmp_path)
++    assert _run([*CLI, "init"], cwd=repo, env=env).returncode == 0
++    plan = _run([*CLI, "do", ORDER, "--no-llm", "--plan-only", "--json"], cwd=repo, env=env)
++    assert plan.returncode == 0, plan.stderr
++    job_id = json.loads(plan.stdout)["job_ids"][0]
++    run = _run(
++        [*CLI, "job", "run", job_id, "--builder-provider", "fake", "--reviewer-provider", "fake", "--json"],
++        cwd=repo, env=env,
++    )
++    assert run.returncode == 0, run.stderr
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++
++    keys = catalog_keys()
++    assert CORE_TERMS <= keys
++    server = serve_cockpit(cockpit_dist)
++    url = f"http://127.0.0.1:{server.server_address[1]}/?job={job_id}&token=e2e"
++    pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
++    events: list[dict[str, Any]] = []
++    try:
++        target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
++        attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
++        pipe.session_id = attach["sessionId"]
++        pipe.send("Page.enable")
++        pipe.send("Runtime.enable")
++        pipe.send("Log.enable")
++        pipe.send("Page.navigate", {"url": url})
++
++        # THE TOUR opens by itself in a browser that has never seen it.
++        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: v == "Step 1 of 6", timeout=30.0) == "Step 1 of 6"
++        assert _poll(pipe, SEEN_EXPR, lambda v: v is None) is None
++
++        # THE AUDIT's first direction on the real page: every rendered term is a catalog key, and
++        # the finished job's core terms are all there.
++        rendered = set(_poll(pipe, TERMS_EXPR, lambda v: isinstance(v, list) and CORE_TERMS <= set(v)))
++        assert rendered - keys == set()
++        assert [term for term in rendered if term.startswith("status.")] != []
++        # Its red control: a term the catalog lacks is caught by the same reading.
++        pipe.send("Runtime.evaluate", {"expression": (
++            "(() => { const s = document.createElement('span'); s.setAttribute('data-term', 'fixture.unlisted');"
++            " s.id = 'drift-fixture'; document.body.appendChild(s); return true; })()"
++        )})
++        drifted = set(_poll(pipe, TERMS_EXPR, lambda v: "fixture.unlisted" in v))
++        assert drifted - keys == {"fixture.unlisted"}
++        pipe.send("Runtime.evaluate", {"expression": "document.getElementById('drift-fixture').remove()"})
++
++        # Skip records the tour as seen, and a reload leaves it closed.
++        assert _poll(pipe, click_button('[data-ui="first-run-tour"]', "Skip tour"), lambda v: v is True)
++        assert _poll(pipe, SEEN_EXPR, lambda v: v == "seen") == "seen"
++        pipe.send("Page.reload")
++        assert _poll(pipe, SHELL_EXPR, lambda v: v is True, timeout=30.0)
++        pipe.drain(1.5)
++        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: True) is None
++
++        # A term's tooltip reads its catalog entry when the pointer rests on it.
++        box = _poll(pipe, (
++            "(() => { const e = document.querySelector('[data-term=\"phase.job\"]');"
++            " const b = e.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()"
++        ), lambda v: isinstance(v, list))
++        pipe.send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": box[0], "y": box[1]})
++        tip = _poll(pipe, TIP_EXPR, lambda v: v is not None)
++        assert tip[0] == "phase.job"
++        assert tip[1].startswith("Job")
++        pipe.send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": 5, "y": 5})
++
++        # "?" opens the Terms panel with every entry; Escape closes it.
++        _dispatch_key(pipe, key="?", code="Slash", virtual_key_code=191, text="?")
++        rows = _poll(pipe, PANEL_ROWS_EXPR, lambda v: isinstance(v, list))
++        assert set(rows) == keys
++        _dispatch_key(pipe, key="Escape", code="Escape", virtual_key_code=27)
++        assert _poll(pipe, PANEL_ROWS_EXPR, lambda v: v is None) is None
++
++        # The Terms panel starts the tour again.
++        assert _poll(pipe, click_button('[data-ui="right-live-panel"]', "Terms"), lambda v: v is True)
++        assert _poll(pipe, click_button('[data-ui="term-panel"]', "Take the tour"), lambda v: v is True)
++        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: v == "Step 1 of 6") == "Step 1 of 6"
++    finally:
++        events = list(pipe.events)
++        pipe.close()
++        server.shutdown()
++
++    exceptions = [e for e in events if e.get("method") == "Runtime.exceptionThrown"]
++    assert exceptions == []
++    # The 404s of the doors this server leaves unanswered are the network's, and expected.
++    log_errors = [
++        e for e in events
++        if e.get("method") == "Log.entryAdded"
++        and e.get("params", {}).get("entry", {}).get("level") == "error"
++        and e.get("params", {}).get("entry", {}).get("source") != "network"
++    ]
++    assert log_errors == []
