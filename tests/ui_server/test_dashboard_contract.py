@@ -663,9 +663,12 @@ class TestVisualProductContract:
     def test_no_cli_language_in_command_bar(self):
         """Command bar placeholder must be human-friendly, not a CLI command."""
         src = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text()
-        # The literal placeholder text must not be a CLI command.
-        placeholder = re.search(r"placeholder=(?:'([^']*)'|\"([^\"]*)\")", src)
+        # The literal placeholder text must not be a CLI command. Since DECISION F044 D3 the bar's
+        # own placeholder is the constant `BAR_PLACEHOLDER`, because an argument flow shows its
+        # argument's prompt in its place; the constant holds the literal text this guard reads.
+        placeholder = re.search(r"BAR_PLACEHOLDER = (?:'([^']*)'|\"([^\"]*)\")", src)
         assert placeholder, "CommandBar must have a placeholder"
+        assert "placeholder={" in src and "BAR_PLACEHOLDER}" in src
         ptext = (placeholder.group(1) or placeholder.group(2)).lower()
         assert "remedy " not in ptext
         # New design pack: human-friendly jump-to placeholder.

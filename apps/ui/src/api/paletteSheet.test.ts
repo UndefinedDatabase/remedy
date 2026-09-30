@@ -1,7 +1,8 @@
-// F044 T001 — the bar's dropdown sheet, its pure rules (DECISION F044 D2).
+// F044 T001 — the bar's dropdown sheet, its pure rules (DECISIONS F044 D2 and D3).
 import { describe, expect, it } from "vitest";
 import type { JumpTarget } from "./paletteJump";
 import {
+  COMMAND_RESULT_LIMIT,
   PALETTE_HELP_ROWS,
   PALETTE_RECENTS_KEY,
   PALETTE_RECENT_LIMIT,
@@ -28,13 +29,22 @@ const PROJECTS = [
 ];
 
 function input(over: Partial<PaletteInput>): PaletteInput {
-  return { query: "", targets: TARGETS, projects: PROJECTS, activeSlug: "remedy", recents: [], ...over };
+  return {
+    query: "", targets: TARGETS, projects: PROJECTS, activeSlug: "remedy", recents: [],
+    commandReasons: {}, focusedTaskId: "", mode: "all", ...over,
+  };
+}
+
+/** The rows outside the Commands section, which the D2 cases below were written over. */
+function nonCommand(rows: ReturnType<typeof buildPaletteRows>) {
+  return rows.filter((row) => row.section !== "Commands");
 }
 
 describe("the sheet's constants", () => {
   it("orders the sections, and bounds projects and recents", () => {
-    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Jump", "Projects", "Help"]);
+    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Commands", "Jump", "Projects", "Help"]);
     expect(PROJECT_RESULT_LIMIT).toBe(5);
+    expect(COMMAND_RESULT_LIMIT).toBe(6);
     expect(PALETTE_RECENT_LIMIT).toBe(5);
     expect(PALETTE_RECENTS_KEY).toBe("remedy:palette-recent");
   });
@@ -80,7 +90,7 @@ describe("buildPaletteRows for a blank query", () => {
 
 describe("buildPaletteRows for a query", () => {
   it("ranks each section by the fuzzy rule and highlights what matched", () => {
-    const rows = buildPaletteRows(input({ query: "s" }));
+    const rows = nonCommand(buildPaletteRows(input({ query: "s" })));
     expect(rows.map((row) => [row.key, row.ranges])).toEqual([
       ["jump:t2", []],
       ["jump:t1", []],
@@ -88,18 +98,18 @@ describe("buildPaletteRows for a query", () => {
       ["project:docs", [[5, 6]]],
       ["help:terms", [[0, 1]]],
     ]);
-    expect(buildPaletteRows(input({ query: "hand" })).map((row) => [row.key, row.ranges])).toEqual([
+    expect(nonCommand(buildPaletteRows(input({ query: "hand" }))).map((row) => [row.key, row.ranges])).toEqual([
       ["jump:t1", [[10, 14]]],
     ]);
   });
 
   it("highlights nothing on a jump row whose id or kind matched rather than its label", () => {
-    const rows = buildPaletteRows(input({ query: "t1" }));
+    const rows = nonCommand(buildPaletteRows(input({ query: "t1" })));
     expect(rows.map((row) => [row.key, row.ranges])).toEqual([["jump:t1", []]]);
   });
 
   it("lists no recent row once there is a query", () => {
-    const rows = buildPaletteRows(input({ query: "tour", recents: ["help:tour"] }));
+    const rows = nonCommand(buildPaletteRows(input({ query: "tour", recents: ["help:tour"] })));
     expect(rows.map((row) => row.key)).toEqual(["help:tour"]);
   });
 
@@ -109,6 +119,72 @@ describe("buildPaletteRows for a query", () => {
     expect(rows.filter((row) => row.section === "Projects").map((row) => row.key)).toEqual([
       "project:p1", "project:p2", "project:p3", "project:p4", "project:p5",
     ]);
+  });
+});
+
+describe("buildPaletteRows, the Commands section (DECISION F044 D3)", () => {
+  it("lists no command for a blank query", () => {
+    expect(buildPaletteRows(input({})).filter((row) => row.section === "Commands")).toEqual([]);
+  });
+
+  it("ranks the commands by their titles, first in the list, each enabled without a reason", () => {
+    const rows = buildPaletteRows(input({ query: "pause" }));
+    expect(rows[0]).toEqual({
+      key: "command:job.pause", ref: "command:job.pause", section: "Commands", label: "Pause the job", hint: "",
+      ranges: [[0, 5]], action: { kind: "command", command: "job.pause" }, disabledReason: "",
+    });
+  });
+
+  it("puts the command the routing rule names first, with no range when its title does not match", () => {
+    const rows = buildPaletteRows(input({ query: "cancel" }));
+    expect(rows[0].key).toBe("command:job.stop");
+    expect(rows[0].ranges).toEqual([]);
+    expect(rows.filter((row) => row.key === "command:job.stop").length).toBe(1);
+  });
+
+  it("routes a note to the focused task's builder", () => {
+    expect(buildPaletteRows(input({ query: "note hurry", focusedTaskId: "t1" }))[0].key).toBe("command:job.steer");
+    expect(buildPaletteRows(input({ query: "note hurry" }))[0].key).toBe("command:chat.send");
+  });
+
+  it("shows a refused command's reason as its hint and marks it disabled", () => {
+    const rows = buildPaletteRows(input({ query: "pause", commandReasons: { "job.pause": "The job is already paused." } }));
+    expect([rows[0].key, rows[0].hint, rows[0].disabledReason]).toEqual([
+      "command:job.pause", "The job is already paused.", "The job is already paused.",
+    ]);
+  });
+
+  it("reads a reason from an own key only", () => {
+    const inherited = Object.create({ "job.pause": "inherited" }) as Record<string, string>;
+    expect(buildPaletteRows(input({ query: "pause", commandReasons: inherited }))[0].disabledReason).toBe("");
+  });
+
+  it("stops at the command limit", () => {
+    const commands = buildPaletteRows(input({ query: "e" })).filter((row) => row.section === "Commands");
+    expect(commands.length).toBe(6);
+  });
+
+  it("remembers a command and shows it under Recent with its current reason", () => {
+    const rows = buildPaletteRows(input({
+      recents: ["command:job.stop", "command:job.nope"], commandReasons: { "job.stop": "Ended." },
+    }));
+    expect(rows[0]).toEqual({
+      key: "recent:command:job.stop", ref: "command:job.stop", section: "Recent", label: "Stop the job", hint: "Ended.",
+      ranges: [], action: { kind: "command", command: "job.stop" }, disabledReason: "Ended.",
+    });
+    expect(rows.filter((row) => row.section === "Recent").length).toBe(1);
+  });
+
+  it("lists only the Jump rows in task mode", () => {
+    const rows = buildPaletteRows(input({ mode: "task", recents: ["help:tour"] }));
+    expect(rows.map((row) => row.key)).toEqual(["jump:t1", "jump:t2"]);
+    expect(buildPaletteRows(input({ mode: "task", query: "tests" })).map((row) => row.key)).toEqual(["jump:t2"]);
+  });
+
+  it("gives every other row no reason", () => {
+    const rows = buildPaletteRows(input({ query: "t", recents: ["jump:t1"] }));
+    expect(rows.filter((row) => row.section !== "Commands").every((row) => row.disabledReason === "")).toBe(true);
+    expect(PALETTE_HELP_ROWS.every((row) => row.disabledReason === "")).toBe(true);
   });
 });
 

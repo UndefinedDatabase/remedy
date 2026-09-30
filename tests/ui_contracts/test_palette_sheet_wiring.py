@@ -1,4 +1,4 @@
-"""Wiring guard: the command bar is the palette's combobox (DECISION F044 D2).
+"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 and D3).
 
 The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
 by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
@@ -16,6 +16,7 @@ UI_SRC = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "src"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 BAR = UI_SRC / "components" / "command" / "CommandBar.tsx"
 SHEET = UI_SRC / "components" / "command" / "PaletteSheet.tsx"
+SEND = UI_SRC / "api" / "paletteSend.ts"
 
 
 def strip_ts_comments(text: str) -> str:
@@ -66,3 +67,22 @@ def test_the_sheet_is_portalled_into_the_body():
     assert "document.body" in sheet
     assert 'role="listbox"' in sheet
     assert 'role="option"' in sheet
+
+
+def test_the_bar_reaches_the_door_only_through_the_palette_sender():
+    bar = code(BAR)
+    assert bar.count("sendPaletteCommand(") == 1
+    assert "fetch(" not in bar
+
+
+def test_the_palette_sender_opens_no_socket_of_its_own():
+    send = code(SEND)
+    assert "fetch(" not in send
+    assert "sendChatCard(" in send
+    assert "sendRerunSubtree(" in send
+
+
+def test_the_shell_mounts_its_own_add_task_sheet_outside_main():
+    shell = code(SHELL)
+    assert shell.count("<AddTaskSheet ") == 1
+    assert shell.index("<AddTaskSheet ") > shell.index("</main>")
