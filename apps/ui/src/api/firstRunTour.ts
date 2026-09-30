@@ -37,8 +37,8 @@ export const FIRST_RUN_STEPS: readonly FirstRunStep[] = [
     target: "chat-input-row",
   },
   {
-    title: "Jump to anything",
-    body: "Type here to jump to any task, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
+    title: "Ask or jump to anything",
+    body: "Ask your agent a question here, or jump to any task, run a command, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
     target: "command-bar",
   },
 ];

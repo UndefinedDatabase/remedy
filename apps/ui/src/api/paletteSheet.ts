@@ -1,10 +1,11 @@
-// T5_F044 T001, DECISIONS F044 D2 and D3 — the bar's dropdown sheet, its pure rules: the rows of
-// its five sections (Recent, Commands, Jump, Projects, Help), ranked and highlighted by the fuzzy
-// rule, the browser-remembered refs a chosen row leaves behind, the active-row cursor's
+// T5_F044 T001, DECISIONS F044 D2 to D4 — the bar's dropdown sheet, its pure rules: the rows of
+// its six sections (Recent, Ask, Commands, Jump, Projects, Help), ranked and highlighted by the
+// fuzzy rule, the browser-remembered refs a chosen row leaves behind, the active-row cursor's
 // wrap-around, and the label cut into highlighted pieces the sheet renders. THE COMMANDS SECTION
 // (D3 (1)) leads with the row `routeBarText` names, when one is named, then the fuzzy-ranked
 // titles of `PALETTE_COMMANDS`, cut at `COMMAND_RESULT_LIMIT`; every row but a refused command's
-// carries "" as its `disabledReason`.
+// carries "" as its `disabledReason`. THE ASK ROW (D4 (1)) hands a question, or a line every
+// other section left unmatched, to the chat.
 import type { FuzzyRange } from "./fuzzyMatch";
 import { rankFuzzy } from "./fuzzyMatch";
 import type { JumpTarget } from "./paletteJump";
@@ -13,10 +14,10 @@ import type { PaletteCommand } from "./paletteCommands";
 import { PALETTE_COMMANDS, paletteCommandOf } from "./paletteCommands";
 import { routeBarText } from "./paletteRouting";
 
-/** The sheet's five sections, in the order a row's section always renders under. */
-export type PaletteSection = "Recent" | "Commands" | "Jump" | "Projects" | "Help";
+/** The sheet's six sections, in the order a row's section always renders under. */
+export type PaletteSection = "Recent" | "Ask" | "Commands" | "Jump" | "Projects" | "Help";
 
-export const PALETTE_SECTION_ORDER: readonly PaletteSection[] = ["Recent", "Commands", "Jump", "Projects", "Help"];
+export const PALETTE_SECTION_ORDER: readonly PaletteSection[] = ["Recent", "Ask", "Commands", "Jump", "Projects", "Help"];
 
 /** All rows (`"all"`), or the Jump rows alone while an argument flow asks for a task
  *  (`"task"`) — `CommandBar.tsx` drives the mode, `buildPaletteRows` only reads it. */
@@ -28,7 +29,8 @@ export type PaletteAction =
   | { readonly kind: "project"; readonly slug: string }
   | { readonly kind: "terms" }
   | { readonly kind: "tour" }
-  | { readonly kind: "command"; readonly command: string };
+  | { readonly kind: "command"; readonly command: string }
+  | { readonly kind: "chat"; readonly text: string };
 
 /** One row of the sheet. `ref` is what a browser remembers when the row is chosen — the same
  *  string as `key` for every row except a Recent one, whose `key` carries the `recent:` prefix
@@ -46,6 +48,9 @@ export interface PaletteRow {
 }
 
 export const COMMAND_RESULT_LIMIT = 6;
+
+/** The Ask row's fixed hint (DECISION F044 D4 (1)). */
+export const PALETTE_ASK_HINT = "Ask the chat";
 
 /** A project the bar can switch to. */
 export interface PaletteProject {
@@ -195,8 +200,25 @@ function buildCommandRows(
   });
 }
 
+/** THE ASK ROW (DECISION F044 D4 (1)): the query, its white space folded to single spaces and its
+ *  ends trimmed, handed to the chat. Never remembered — its `ref` names nothing `refRow` resolves. */
+export function askRow(query: string): PaletteRow {
+  const text = query.replace(/\s+/g, " ").trim();
+  return {
+    key: "ask",
+    ref: "ask",
+    section: "Ask",
+    label: text,
+    hint: PALETTE_ASK_HINT,
+    ranges: [],
+    action: { kind: "chat", text },
+    disabledReason: "",
+  };
+}
+
 /** The sheet's whole row list for one query: in "task" mode, the Jump rows alone; otherwise
- *  Recent (blank query only), then Commands, then Jump, then Projects, then Help. */
+ *  Recent (blank query only), then the Ask row when the routing rule reads a question or no other
+ *  row matched, then Commands, then Jump, then Projects, then Help. */
 export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
   const isBlank = input.query.trim() === "";
 
@@ -258,7 +280,16 @@ export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
     }
   }
 
-  return [...recentRows, ...commandRows, ...jumpRows, ...projectRows, ...helpRows];
+  const builtRows = [...recentRows, ...commandRows, ...jumpRows, ...projectRows, ...helpRows];
+
+  if (!isBlank) {
+    const route = routeBarText(input.query, input.focusedTaskId);
+    if (route.kind === "chat" || builtRows.length === 0) {
+      return [askRow(input.query), ...builtRows];
+    }
+  }
+
+  return builtRows;
 }
 
 /** The chosen ref first, then the others without it, cut at `PALETTE_RECENT_LIMIT`. */
