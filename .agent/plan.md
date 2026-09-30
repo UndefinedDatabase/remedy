@@ -5,18 +5,18 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 4, round 8. Round 7 is booked PASS. Round 8 caches `_is_safe_key` in
-`packages/orchestration/run_manifest.py` per string key and use (DECISION F293 D5): the reviewer's
-dry run read `tests/orchestration/test_job_task_runner.py` at 70.59 CPU seconds before and 54.17
+Session 4, round 9. Round 8 is booked PASS. Round 9 makes `tests/conftest.py` read Remedy's own
+checkout identity once per test process, at session start (DECISION F293 D6): the reviewer's dry
+run read `tests/orchestration/test_job_task_runner.py` at 55.23 CPU seconds before and 12.66
 after, serial runs in one disposable worktree. The open-findings count is 2 (`R-1117`, `R-1118`).
 
 ## Next Steps
-1. T002 — more cuts, ranked by the CPU work they remove rather than by wall time: why the job
-   runner tests cost more in a worktree than in the primary checkout (their git child processes),
-   the mission tests' `mission start` setup calls, source scanners that parse the same files in
-   many tests, the two whole-repository collection runs of the CI stage tests; every changed test
-   keeps a mutation red-proof. Target: the test load record's `cpu_seconds` at least 40% below
-   1246.09 (T001's own reading), or a dated DECISION with numbers showing no more can be cut.
+1. T002 — more cuts, ranked by the CPU work they remove rather than by wall time: the mission
+   tests' `mission start` setup calls, source scanners that parse the same files in many tests,
+   the two whole-repository collection runs of the CI stage tests, the per-command `git config`
+   helper lookup inside `_git_bytes`; every changed test keeps a mutation red-proof. Target: the
+   test load record's `cpu_seconds` at least 40% below 1246.09 (T001's own reading), or a dated
+   DECISION with numbers showing no more can be cut.
 2. T003 — each closure's suite transcript records CPU seconds; a closure costing >10% more than the
    previous feature's registers a finding owned by the rolling paydown; a run leaving a process
    behind fails.
