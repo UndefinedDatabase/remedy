@@ -30,9 +30,12 @@ def test_the_shell_mounts_the_panel_once_outside_main():
 
 
 def test_the_question_mark_opens_it_through_the_one_rule():
+    # Since DECISION F044 D5 the one rule is the keymap's: the shell asks `keymapAction` once, and
+    # the '?' panel opens on its "open-terms" action; `isHelpShortcut` is gone.
     code = strip_ts_comments(SHELL.read_text())
-    assert code.count("isHelpShortcut(") == 1
-    assert "if (isHelpShortcut(event.key, target)) {" in code
+    assert code.count("keymapAction(") == 1
+    assert "isHelpShortcut" not in code
+    assert 'if (result.action === "open-terms") {' in code
     assert 'window.addEventListener("keydown", onKey);' in code
     assert 'window.removeEventListener("keydown", onKey);' in code
 

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { TERM_CATALOG } from "./terminology";
 import type { TermEntry } from "./terminology";
-import { TERM_PLACES, isHelpShortcut, searchTermEntries, termPlace } from "./termSearch";
+import { TERM_PLACES, searchTermEntries, termPlace } from "./termSearch";
 
 function entry(title: string, body: string): TermEntry {
   return { title, body, source: "docs/x.md", anchor: "x" };
@@ -57,26 +57,5 @@ describe("termPlace", () => {
     expect(termPlace("fixture.x")).toBe("");
     expect(termPlace("toString.x")).toBe("");
     expect(Object.keys(TERM_PLACES).sort()).toEqual(["agent", "graph", "metric", "panel", "phase", "status", "task"]);
-  });
-});
-
-describe("isHelpShortcut", () => {
-  it("opens on a question mark from the page or an ordinary element", () => {
-    expect(isHelpShortcut("?", null)).toBe(true);
-    expect(isHelpShortcut("?", { tagName: "DIV", isContentEditable: false })).toBe(true);
-    expect(isHelpShortcut("?", { tagName: "button" })).toBe(true);
-  });
-
-  it("does not open while the person types into a field", () => {
-    expect(isHelpShortcut("?", { tagName: "INPUT" })).toBe(false);
-    expect(isHelpShortcut("?", { tagName: "textarea" })).toBe(false);
-    expect(isHelpShortcut("?", { tagName: "SELECT" })).toBe(false);
-    expect(isHelpShortcut("?", { tagName: "DIV", isContentEditable: true })).toBe(false);
-  });
-
-  it("opens on no other key", () => {
-    expect(isHelpShortcut("/", null)).toBe(false);
-    expect(isHelpShortcut("h", null)).toBe(false);
-    expect(isHelpShortcut("Escape", null)).toBe(false);
   });
 });

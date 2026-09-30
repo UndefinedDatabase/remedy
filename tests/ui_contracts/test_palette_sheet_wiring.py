@@ -1,4 +1,4 @@
-"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D4).
+"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D5).
 
 The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
 by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
@@ -110,3 +110,14 @@ def test_the_chat_tab_asks_the_palettes_question_once():
     tab = code(CHAT_TAB)
     assert "initialQuestion?: string" in tab
     assert tab.count("askedInitial.current = true;") == 1
+
+
+def test_the_keymap_puts_the_focus_in_the_bar_and_goes_to_the_projects():
+    shell = code(SHELL)
+    assert shell.count('window.addEventListener("keydown", onKey);') == 1
+    assert "setBarFocusRequest((count) => count + 1);" in shell
+    assert "focusRequest={barFocusRequest}" in shell
+    assert "goHome();" in shell
+    bar = code(BAR)
+    assert "if (focusRequest > 0) inputRef.current?.focus();" in bar
+    assert "ref={inputRef}" in bar
