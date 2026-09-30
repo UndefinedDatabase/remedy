@@ -809,7 +809,10 @@ class TestOnProviderAttemptCallback:
         assert captured[0].provider == "test-provider"
 
     def test_callback_fires_on_retry(self):
+        from unittest.mock import patch
+
         from packages.orchestration.pingpong_loop import _call_with_retry
+        from packages.orchestration.provider_timeouts import RETRY_BACKOFFS
         result = self._make_result()
         call_count = 0
 
@@ -821,13 +824,17 @@ class TestOnProviderAttemptCallback:
             return self._make_output()
 
         captured = []
-        _call_with_retry(
-            call_fn,
-            result=result,
-            role="builder",
-            provider="test-provider",
-            on_provider_attempt=lambda a: captured.append(a),
-        )
+        # The retry's backoff is a real sleep of RETRY_BACKOFFS[0] seconds (30); patch the
+        # seam the sibling retry tests patch, and prove the one wait still happens.
+        with patch("packages.orchestration.pingpong_loop._time.sleep") as mock_sleep:
+            _call_with_retry(
+                call_fn,
+                result=result,
+                role="builder",
+                provider="test-provider",
+                on_provider_attempt=lambda a: captured.append(a),
+            )
+        mock_sleep.assert_called_once_with(RETRY_BACKOFFS[0])
         assert len(captured) == 2
         assert not captured[0].is_retry
         assert captured[1].is_retry
