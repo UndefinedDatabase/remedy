@@ -26525,3 +26525,13 @@ press, rejected because a quick "?" already means the terms.
 HOW TO REVERSE: delete `zoomKeys.ts`, `useZoomKeys.ts`, `KeymapOverlay.tsx` and their test and sheet,
 restore `useSemanticZoom.ts`, `zoomView.ts`, `BrainGraphStage.tsx`, `RemedyShell.tsx` and
 `keymap.ts` from `a3b3bd1a`, and delete this paragraph and its assumption-log line.
+
+## DECISION F044 D7 — the operator answers Q1 "Perfect": F292 stays registered directly after the command palette, and the palette opens its plan-view and approve/reject screens once F292 lands (2026-09-30)
+
+CONTEXT: Operator question Q1 in `.agent/operator_questions.md`, written at F044 round 5 on 2026-09-30, reported that seven write-door commands stay visible but disabled in the palette until a stored-plan view and approve/reject controls in the change viewer exist, and recommended keeping the new roadmap item for those screens registered directly after the command palette. The operator's answer arrived via remedy-answer.
+
+CHOSEN: The operator answers "Perfect", confirming the recommendation as written. F292 stays registered directly after the command palette, and the palette opens those screens once F292 lands. The Q1 entry is deleted, and `.agent/operator_questions.md` reads EMPTY.
+
+ALTERNATIVES: none weighed here; the operator confirmed the recommendation already recorded at DECISION F044 D5.
+
+HOW TO REVERSE: delete this paragraph and write the question again; the next session then re-decides F292's placement.
