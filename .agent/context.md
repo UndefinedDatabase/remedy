@@ -1,25 +1,26 @@
-# Context — F043 Explanation layer
+# Context — F044 Command palette, keyboard, performance budget
 
 ## Active Branch
-feature/f043-explanation-layer, cut from `main` at `21bfc188`
-(the merge commit of pull request 299, F291 Self-use sources v2).
+feature/f044-command-palette, cut from `main` at `33f66862`
+(the merge commit of pull request 300, F043 Explanation layer).
 
 ## Scope
-F043 (Tier 5): the explanation layer — one catalog of term explanations,
-one `Term` component with a tooltip on hover and focus, a two-direction
-audit over the rendered surfaces, a first-run tour, and a searchable '?'
-panel, as `docs/roadmap/features/T5_F043.md` and DECISION F043 D1 specify.
+F044 (Tier 5): the command palette fused with the command bar, a fuzzy
+node jump, the question-versus-command routing rule, one keymap module
+with its cheat overlay, and the bundle, first paint and frame-rate
+budgets in CI, as `docs/roadmap/features/T5_F044.md` and DECISION F044
+D1 specify.
 
 ## Do not touch
-The wording of the definitions the catalog anchors to (quoted, not
-edited); the result tour's stops; the docs site's content.
+The chat's internals (routed to, not built), the zoom transitions, and
+the CI entrypoint's architecture.
 
 ## Active assumptions
-- Every catalog entry anchors to a phrase of the file that defines its
-  term, and a test reads that file (DECISION F043 D1 (1)).
-- A term is declared only through `Term`, so its `data-term` attribute is
-  what the audit reads.
-- The tour's palette stop is the '?' panel until F044 builds a palette.
+- The write door's exposed set is the one source of the palette's
+  commands, held there by a contract test (DECISION F044 D1 (1)).
+- The bar's routing rule is the chat's own parse, held there by shared
+  goldens (DECISION F044 D1 (3)).
+- The tour's palette stop is the '?' panel until the bar's round.
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and

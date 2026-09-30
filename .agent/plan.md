@@ -1,27 +1,34 @@
-# Plan — F043 Explanation layer
+# Plan — F044 Command palette, keyboard, performance budget
 
-Branch: feature/f043-explanation-layer, cut from `main` at `21bfc188`,
-the merge commit of pull request 299 (F291 Self-use sources v2).
+Branch: feature/f044-command-palette, cut from `main` at `33f66862`,
+the merge commit of pull request 300 (F043 Explanation layer).
 
 ## Goal
 
-Nothing in the cockpit is jargon without a hand to hold: one catalog
-explains every term, one component shows it on hover and focus, an audit
-proves no term lacks an entry and no entry is dead, a first-run tour
-introduces the shell, and '?' opens the catalog as a searchable panel
-(`docs/roadmap/features/T5_F043.md`, DECISIONS F043 D1 to D6).
+One bar reaches everything: the command bar grows a palette over the
+write door's commands, a fuzzy jump to any task, the projects and the
+help, with a routing rule that sends questions to the chat; one keymap
+drives the cockpit from the keyboard; and CI enforces the bundle, first
+paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
+DECISION F044 D1).
 
 ## Current Step
 
-ROUND 9, the closing round: book round 8, rotate the finding ledger,
-accept F043 in STATUS with the README and the self-use queue in the same
-commit, and open the pull request.
+ROUND 1: claim F044, re-head the live review record, book F043's round
+9, record DECISION F044 D1, and land the palette's four pure rules (the
+fuzzy match, the command list, the routing rule and the node jump)
+against the reviewer's tests.
 
 ## Next Steps
 
-1. The Open PR Gate merges this feature's pull request at the start of the
-   next feature's session, never in this one.
-2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
+1. The bar's dropdown sheet: sections, highlighted matches, recent
+   items, the jump, projects and help rows, and the tour's palette stop.
+2. The commands' execution: argument flows, surfaces, disabled states
+   with their reasons, and the route to the chat.
+3. The form entries' structured flows: the plan edits and the hunks.
+4. The keymap module and its cheat overlay.
+5. The three budgets in CI with their recorded numbers.
+6. The closure sequence.
 
 ## Risks
 

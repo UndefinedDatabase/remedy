@@ -26218,3 +26218,84 @@ handler.
 
 HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and 289 in the
 ratchet, delete the two tests, and delete this paragraph.
+
+## DECISION F044 D1 — the palette is the command bar's dropdown over four pure rules: a fuzzy match, a command list held to the write door's exposed set, a routing rule that is the chat's own parse, and a jump over the dashboard's tasks; commands whose arguments the palette cannot ask for open the surface that owns them, and the first round lands the four rules (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F044.md` asks for a palette over the command catalog with
+schema-driven arguments and a fuzzy node jump, fused with the chat entry as the omni-bar of
+`ux_design.png`, a documented question-versus-command routing rule, one keymap module, and three
+performance budgets enforced in CI. Measured by the reviewer at `33f66862`: `CommandBar.tsx` is a
+plain input whose Enter calls the shell's `handleJump`, a substring match over the dashboard's
+task labels; there is no dropdown, no fuzzy match anywhere under `apps/ui/src`, and no command
+execution in the bar. The write door's exposed set is `UI_EXPOSED_COMMANDS` in
+`apps/cli/command_catalog.py`; the door knows no command's argument schema
+(`_handle_command_submission` in `packages/orchestration/ui_server.py` says so), no read route
+lists commands, and the cockpit has one send module per command it already offers. No cockpit
+surface sends `job.stop`, `patch.approve-hunks` or the six `job.plan-*` edits, and the dashboard
+carries neither the plan's version nor a change's hunk ids that those edits need. The chat's
+question-versus-action rule already exists as `parse_chat_intent` in
+`packages/orchestration/chat_intent.py` (DECISION F038 D6). There is no keymap module: `git grep`
+at `33f66862` finds eleven source files under `apps/ui/src` that each add their own `keydown`
+listener, and two of them carry their own
+typing-target check (`isHelpShortcut` in `api/termSearch.ts` and `escapeWalksBack` in
+`graph/zoomView.ts`). CI measures no bundle size, no first paint and no frame rate;
+`brainPerfFixture.ts` holds the 200-node fixture, and `acceptance_criteria.md` §5 states the
+budgets. The design reference specifies the bar (`ux_spec.md` §9, `component_spec.md`'s
+CommandBar: a dropdown glass sheet, the combobox pattern, `handleJump` kept) and names no keymap,
+no cheat overlay and no Cmd+K.
+
+CHOSEN: (1) THE COMMAND LIST is `apps/ui/src/api/paletteCommands.ts`: `PALETTE_COMMANDS`, one
+entry per command of the door's exposed set less `PALETTE_CONTINUATION_COMMANDS`, the two steps
+that only continue the add-task sheet's conversation. Each entry has a plain title, a `flow` and
+the arguments the palette itself asks for, in the door's own names, each a task chosen through the
+node search or a typed line. A "send" entry is sent by the palette once its arguments are in; a
+"surface" entry opens the part of the cockpit that already owns its conversation (the decision
+inbox, a task's edit form, the add-task sheet), named by that region's `data-ui`; a "form" entry,
+the six plan edits and the hunk approval, whose arguments are structured, gets its flow in its own
+round. A contract test reads the list beside the Python set, the chat's titles and the chat's
+required arguments, so the door gaining or losing a command, or the chat renaming one, turns it
+red: one source without a new read route. (2) THE FUZZY RULE is `apps/ui/src/api/fuzzyMatch.ts`:
+a contiguous hit of the whole query outranks every scattered hit, a hit that begins a word
+outranks one inside a word, case is ignored, and the match answers the ranges a row highlights.
+Every section of the palette ranks through it. (3) THE ROUTING RULE is
+`apps/ui/src/api/paletteRouting.ts`, and it is the chat's parse read in the chat's order, so the
+bar and the chat never disagree about one line. Its tie-break, verbatim: a leading "please " is
+dropped first; then a line ending in "?" or opening with a question word is a question for the
+chat, even when a verb follows ("stop?", "can you stop"); only then is the first word read as a
+verb, and a word is whole only when no letter or digit follows it. A question goes to the chat
+with the text prefilled, a leading verb to its command, and anything else is palette text.
+`paletteRouting.goldens.json` holds the fixtures, the ambiguous ones included, and both the
+vitest and the Python test read them, the second through `parse_chat_intent` itself. (4) THE JUMP
+is `apps/ui/src/api/paletteJump.ts`: its targets are the dashboard's task list, the rows
+`handleJump` already reads, each matched over its label, its id and its kind, and a jump selects
+the target's node through the shell's own `onSelectNode`, the route a pointer's pick takes. (5)
+THE BAR stays `CommandBar.tsx` and grows the reference's dropdown sheet on the combobox pattern,
+with the sections Commands, Jump, Projects and Help, highlighted matches and recent items; the
+bar's text and the chat's are one line, and the chat is routed to, never rebuilt. A command the
+job's state refuses is listed disabled with the reason in the door's own refusal words, and the
+door still validates every send. (6) THE KEYMAP is one pure module that maps a key, its target
+and the cockpit's state to an action, and the shell's '?' listener and the zoom's Escape listener
+move onto it in the keymap round, with their wiring guards pinning the same property on the new
+site; the keymap, its cheat overlay on a held '?' and the bar's shortcut each get an
+assumption-log row in the round that renders them. THE BUDGETS are tests under
+`tests/ui_contracts/`, so the CI `ui` stage runs them through the one entrypoint, `remedy ci run`,
+and the workflow names no new step; each records its number in one artifact, and a breach names
+its biggest source. The tour's sixth stop moves from the '?' panel to the bar in the bar's round.
+(7) THE ORDER: this round lands (1) to (4) with the reviewer's tests. The next round builds the
+bar's dropdown sheet with a render harness in a real browser; then the commands' execution, their
+argument flows, the disabled states and the route to the chat; then the form entries' structured
+flows; then the keymap and its cheat overlay; then the three budgets in CI with their artifact;
+then the closure sequence.
+
+ALTERNATIVES: a read route serving the command list from the server, rejected because the door
+deliberately knows no argument schema and the set is fixed per build, so a parity test keeps one
+source without a new route; a fuzzy-search library, rejected because `acceptance_criteria.md` §5
+allows no new dependency; a routing rule written afresh for the bar, rejected because two rules
+would route the same line two ways; a jump over the graph's own model, rejected because that
+model and the zoom state live inside `BrainGraphStage.tsx` and the zoom transitions are this
+feature's do-not-touch; sending the form commands from free text, rejected because a structured
+argument typed as a line is a guess, not an argument flow.
+
+HOW TO REVERSE: delete `apps/ui/src/api/fuzzyMatch.ts`, `paletteCommands.ts`,
+`paletteRouting.ts`, `paletteRouting.goldens.json`, `paletteJump.ts`, their tests and
+`tests/ui_contracts/test_palette_contract.py`, and delete this paragraph.
