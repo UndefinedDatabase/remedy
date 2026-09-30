@@ -28,4 +28,4 @@
    - a reproducible branch-only failure coupled to feature code =
      BLOCKER: STOP, hand back — the fix is its own reviewer-gated round.
 4. **Verdict & budget.** Only the reviewer issues the gate verdict. Wall
-   clock over ~5 min ⇒ note for a perf pass.
+   clock over ~25 min at the default worker cap ⇒ note for a perf pass.

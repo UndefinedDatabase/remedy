@@ -516,6 +516,39 @@ is what keeps the copies of jobs that ended without an apply from piling up
 between closures. `docs/roadmap/STATUS_closure_protocol.md` step 1 carries the
 same step. Reverse by deleting this paragraph and that one.
 
+Operator amendment amend0930-test-load (2026-09-30) — TEST LOAD IS CAPPED, AND NO TEST
+RUN IS REPEATED ON BYTES THAT HAVE NOT CHANGED. The operator's machine ran hot for
+months whenever tests ran, and he pays for that electricity. These rules apply to
+every feature from this date and override any conflicting habit in a step block, a
+handoff, a skill or a session's own notes. (1) THE WORKER CAP. `tests/conftest.py`
+limits every pytest run to `REMEDY_TEST_MAX_WORKERS` parallel workers (default 6) and
+runs it at a lower CPU priority; `apps/ui/vitest.config.ts` applies the same limit to
+the UI tests. The command `python3 -m pytest -n auto -q` keeps its spelling everywhere
+and now means "up to the cap". No block, worker or reviewer sets that variable, passes
+a larger `-n`, or starts two test runs at the same time. The full suite therefore
+takes longer than it did; the budget note in `docs/agents/integration_gate.md` says
+how long. (2) NO TEST PASS OUTSIDE A ROUND'S OWN VERIFICATION. No session runs a
+warm-up pass, a "broad validation" pass or any other test selection that the round's
+verification rule does not name, neither before a feature claim nor after a merge. Any
+standing instruction to the contrary, including the one sessions have called SLOW
+MODE, is withdrawn. (3) ONE RUN PER TREE. A test selection and its mutation red-proofs
+are run once for each distinct set of bytes. When the reviewer has proved a round in a
+dry run and every file the worker then committed is byte-identical to the dry run's
+copy, on the same base commit, the dry run's readings ARE the reviewer's verification:
+the reviewer still reads the committed diff bottom-up, compares the bytes, and re-runs
+nothing. The verdict entry then says "verified by dry run, bytes identical" and names
+the compared commit. When any file differs, or no dry run exists, the reviewer re-runs
+the round's selection and the mutations as before. (4) MUTATIONS ONCE. Mutation
+red-proofs stay mandatory for production code and are run by the reviewer only; the
+worker no longer runs them as well. (5) THE WORKER'S ONE RUN. The worker still runs
+the round's selection exactly once, in the primary checkout, after its last code
+commit; that run is what proves the primary checkout's environment. (6) UNCHANGED: one
+full suite per feature (amend0917-throughput), the closure protocol and its evidence
+package, guardrails G1 to G8, and the rule that a red-proof must be red before and
+green after. Reason: measured on 2026-09-30, a round's selection ran three times and
+its mutations twice on identical bytes, and the full suite started 24 workers at once.
+Reverse by deleting this paragraph and DECISION amend0930 D1 to D3.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into

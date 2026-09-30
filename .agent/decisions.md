@@ -26666,3 +26666,43 @@ Design-section wish nobody asked to keep.
 
 HOW TO REVERSE: delete this paragraph; if a trend-storage artifact is wanted, it is a new feature's
 scope, not a reopening of F044.
+
+## DECISION amend0930 D1 — Every pytest and vitest run of this repository is capped at six parallel workers and runs at a lower CPU priority; the cap lives in `tests/conftest.py`, not in a wrapper script (2026-09-30)
+
+CONTEXT: The operator's machine has 24 CPU threads and one large graphics card, and for months it ran very hot whenever tests ran; the operator read about 740 watts at the wall and ordered the test load cut massively. The last full suite (F044 round 13) ran 21,078 tests in 213 seconds with `python3 -m pytest -n auto -q`, which starts 24 workers, so about 85 CPU minutes of work arrived in one burst. `apps/ui/vitest.config.ts` set no worker limit either. `scripts/remedy_pytest.sh` limits nothing, and almost every run in the loop starts pytest directly, so a limit placed in that script would miss most runs. Honest limit: fewer workers lower the heat at any one moment but not the electricity used, because the same work only takes longer; electricity falls only when less work is done, which is what D2 and D3 and the registered feature F293 are for.
+
+CHOSEN: `tests/load_governor.py` holds the logic and `tests/conftest.py` wires it, because every pytest run loads that conftest however it is started. `REMEDY_TEST_MAX_WORKERS` (unset or not a number means 6, 0 means no cap) turns `-n auto` and `-n logical` into the smaller of the cap and the CPU count and reduces an explicit `-n N` above the cap to the cap with one printed line; a run without `-n` stays serial. The controlling process lowers itself to niceness 10 (`REMEDY_TEST_NICE`, 0 leaves it alone), never raises priority and ignores an OSError; workers and child processes inherit it. `apps/ui/vitest.config.ts` reads the same variable. A second part writes one JSON line per run (time, command, collected count, exit status, wall seconds, CPU seconds, workers) to `REMEDY_TEST_LOAD_LOG`, or to `~/.remedy-loop/test_load.jsonl` when that folder exists, and blanks the variable so a pytest run started by a test records nothing. Both new variables and the log path are registered env-only keys (`tests.max_workers`, `tests.nice`, `tests.load_log`).
+
+ALTERNATIVES: a cap only in `scripts/remedy_pytest.sh`, REJECTED because most runs bypass it. Editing `pyproject.toml` `addopts` to a fixed `-n 6`, REJECTED because it cannot express "up to the cap" for `-n auto` and would change the spelling of the command every document uses. Setting `nice` from the wrapper only, REJECTED for the same bypass reason.
+
+HOW TO REVERSE: delete the hooks and the `load_governor` import from `tests/conftest.py`, delete `tests/load_governor.py`, its test file and the vitest contract, drop the three registry keys and regenerate `docs/guides/environment.md`, and restore the two-line `vitest.config.ts`.
+
+## DECISION amend0930 D2 — No test pass runs outside a round's own verification; the standing instruction called SLOW MODE is withdrawn (2026-09-30)
+
+CONTEXT: A loop session on 2026-09-30 wrote that it "owes the operator's standing SLOW MODE instruction: run the repo's pytest wrappers for a broad validation pass" before claiming a feature. That instruction is not in the repository. It was found in two places outside it: `~/Repos/system/bin/remedy-loop-runner`, in the text appended to the loop prompt when slow mode is on ("After a feature reaches closure and before claiming or starting any next feature, run the repository's pytest-based broad validation through the Remedy wrappers ... catching errors early."), and in the auto-memory note `f044_command_palette_state.md`, which carried it forward as an owed pass. Both add a broad test pass per feature, the opposite of what the operator now wants.
+
+CHOSEN: rule 2 of the amendment paragraph in `docs/agents/self_drive_protocol.md` withdraws it for every session; the runner's slow-mode sentences and the memory note's paragraph were replaced by the one withdrawal sentence (the runner change is committed locally in `~/Repos/system` and not pushed). The old texts are in the handback so the change can be undone.
+
+ALTERNATIVES: leaving the runner as it was and relying on the protocol rule alone, REJECTED because the runner re-injects the instruction into every slow-mode loop prompt, and a session obeys the newest instruction it reads.
+
+HOW TO REVERSE: `git revert` the local commit in `~/Repos/system`, restore the memory paragraph from the handback, and delete rule 2 from the protocol paragraph.
+
+## DECISION amend0930 D3 — One run per tree: a round's selection and its mutation red-proofs run once for each distinct set of bytes, and mutations are run by the reviewer only (2026-09-30)
+
+CONTEXT: Measured on 2026-09-30, a round's test selection of 500 to 2,300 tests ran up to three times per round (the reviewer's dry run, the worker, the reviewer again) and mutation red-proofs ran twice (worker, then reviewer), always on identical bytes.
+
+CHOSEN: rules 3 to 5 of the amendment paragraph. When the reviewer proved a round in a dry run and every file the worker committed is byte-identical to that copy on the same base commit, the dry run's readings are the verification: the reviewer reads the diff bottom-up, compares bytes and re-runs nothing, and the verdict says "verified by dry run, bytes identical" naming the compared commit. Otherwise the reviewer re-runs as before. Mutations stay mandatory for production code but only the reviewer runs them. The worker still runs the selection once, after its last code commit, in the primary checkout, because that run proves that checkout's environment. `.claude/commands/build-remedy-self.md` carries the matching clause.
+
+ALTERNATIVES: dropping the worker's run too, REJECTED because the dry run happens in a scratch tree, not in the primary checkout. Dropping the reviewer's re-run in every case, REJECTED because a differing byte means the dry run proved a different tree.
+
+HOW TO REVERSE: delete rules 3 to 5 and the clause in `build-remedy-self.md`.
+
+## DECISION amend0930 D4 — Headless Chrome keeps its arguments: no graphics-card use was measured, so `--disable-gpu` is not added (2026-09-30)
+
+CONTEXT: `ChromePipe` in `tests/ui_server/test_story_export_file_live.py` starts headless Chrome without `--disable-gpu`, and nobody knew whether that draws power on the graphics card (an RTX 5090). Measured with `nvidia-smi` sampling once per second: 15 idle seconds, then a run of `tests/ui_server/test_story_export_file_live.py`, `tests/ui_server/test_explanation_layer_live.py` and `tests/orchestration/test_ci_budgets.py` (30 passed in 30.7 seconds). Average draw idle 25.7 W (15 samples, the card was holding an Ollama model), average during the run 28.1 W (31 samples, highest 56.1 W), a difference of 2.4 W, far below the 20 W threshold. The compute-application list read in the middle of the run held only two Ollama servers and the Luna voice process, no Chrome. Limit of this reading: that list shows compute applications, not every graphics context, so the watts are the deciding number.
+
+CHOSEN: change nothing; no contract test for `--disable-gpu`.
+
+ALTERNATIVES: adding `--disable-gpu` anyway, REJECTED because the frame-budget tests measure real compositor frames and the flag could change what they measure, for no measured saving.
+
+HOW TO REVERSE: nothing to reverse. If a later reading shows Chrome on the card, add the flag to that argument list and a contract that every `--headless=new` in tests is accompanied by it.
