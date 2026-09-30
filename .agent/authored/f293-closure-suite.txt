@@ -1,11 +1,11 @@
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 356.73s (measured wrapper); pytest's own reported wall time 356.07s (0:05:56)
-summary line: 21124 passed, 20 skipped, 1 warning in 356.07s (0:05:56)
+real exit code: 0
+wall time: 277.46s (measured wrapper); pytest's own reported wall time 276.82s (0:04:36)
+summary line: 21125 passed, 20 skipped, 1 warning in 276.82s (0:04:36)
 bad node ids (failed + errors): NONE
-leftover processes: remedy tests: the run left 1 process(es) behind, now ended (F293 T003): pid 2644213: sleep 999
-tree it ran on: 150493fa0 (F293 R20 C1: book round 19, save the round 20 block)
+leftover processes: NONE
+tree it ran on: f74f8d3a1 (F293 R21 C2: closing the browser pipe ends every process the browser started (R-1124))
 cost command: python3 scripts/closure_suite_cost.py --feature F293 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
-Test load: 944.99 CPU seconds, 356.09 wall seconds, 21144 tests collected, exit status 1, recorded 2026-09-30T22:24:06Z
+Test load: 940.64 CPU seconds, 276.83 wall seconds, 21145 tests collected, exit status 0, recorded 2026-09-30T22:38:22Z
 No earlier closure transcript carries a Test load line, so there is nothing to compare this closure with.
