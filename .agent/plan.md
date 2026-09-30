@@ -13,15 +13,15 @@ introduces the shell, and '?' opens the catalog as a searchable panel
 
 ## Current Step
 
-ROUND 7, the closure's integration gate: book round 6, record DECISION
-F043 D6, land the self-use item SU-038 with two reviewer tests, record it
-in the Built State, and run the feature's one full suite.
+ROUND 8, the closure sequence's evidence round: book round 7, complete
+the Built State with the closure suite, reclaim staging copies, and build
+the evidence bundle and the review package at the accepted head.
 
 ## Next Steps
 
-1. The closure suite's repair, when its transcript names a bad node.
-2. The evidence bundle and the review package.
-3. The ledger's rotation, STATUS, the README and the pull request.
+1. The closing round: the booking of round 8, the ledger's rotation,
+   the STATUS line with the README and the self-use queue in one commit,
+   and the pull request.
 
 ## Risks
 
