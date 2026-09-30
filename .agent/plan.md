@@ -5,17 +5,16 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 5, round 14: the first repair round of the amend0930b-slow-cap hardening stage. Round 13
-is booked PASS. The acceptance audit (`.agent/f293_acceptance_audit.md`) found two gaps,
-registered as `R-1121` (T001's inventory unguarded) and `R-1122` (no guard that no assertion was
-lost); one test file repairs both (DECISION F293 D11). They are resolved only after review and a
-repeat of the audit for those two statements. The open-findings count is 3 (`R-1117`, `R-1121`,
-`R-1122`).
+Session 5, round 15: the second repair round of the amend0930b-slow-cap hardening stage. Round 14
+is booked PASS, `R-1121` and `R-1122` are resolved, and the repeat audit's one gap is registered
+as `R-1123` (the no-assertion-lost guard counts assertions and does not read them). This round
+repairs it: while F293 is open, every assertion that existed where F293 began must still be there
+word for word (DECISION F293 D12). The open-findings count is 2 (`R-1117`, `R-1123`).
 
 ## Next Steps
-1. Repeat the acceptance audit for the two statements that had gaps, by a fresh auditor.
+1. Repeat the acceptance audit for "without losing a single assertion", by a fresh auditor.
 2. Record the stage in the feature file's Built State (statements audited, proven at once, gaps
-   found, repaired, remaining), resolve `R-1121` and `R-1122`.
+   found, repaired, remaining) and resolve `R-1123`.
 3. The closure sequence, whose integration-gate run supplies T002's after reading and the first
    `Test load:` line from `scripts/closure_suite_cost.py`; below 40 percent, the closure's
    DECISION states the remaining cost with D10's numbers.
@@ -28,5 +27,5 @@ repeat of the audit for those two statements. The open-findings count is 3 (`R-1
 - T001's run and the closure's integration-gate run are the feature's two full-suite readings
   (DECISION F293 D1); no round in between runs the full suite. The leftover-process check first
   meets the whole suite there; T001's run left no process behind.
-- A round's selection includes the repository-wide guards over every root it adds a handler, a
-  variable read or a module to (`R-1120`).
+- Mutation runs under `-n auto` set `PYTHONDONTWRITEBYTECODE=1`: `-B` does not reach the xdist
+  workers, and a same-size mutation restored within a second is otherwise read back stale.
