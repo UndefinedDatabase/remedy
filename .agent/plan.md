@@ -6,7 +6,11 @@ with numbers that no more can be cut without weakening a test (docs/roadmap/feat
 
 ## Current Step
 Rounds 1 to 3 are booked PASS. Round 4 removes the real 30 s backoff sleep from
-`test_callback_fires_on_retry`. The open-findings count is 2 (`R-1117`, `R-1118`).
+`test_callback_fires_on_retry`. The open-findings count is 2 (`R-1117`, `R-1118`). MEASURED: the
+file's own suite now reads 141 passed with a 0.18s slowest entry (was the retry test's real 30.03s
+in T001's ranking); canary `tests/cli/test_golden_path.py` reads 42 passed; `ruff check` on the
+file is clean; `integrity check` reads `fail_count` 0; both `cmp` proofs (the saved block copy, the
+committed test file against the reviewer's dry-run copy) were silent.
 
 ## Next Steps
 1. T002 — cut from the top of T001's ranking (`.agent/f293_inventory.md` sections 2 and 3): shared
