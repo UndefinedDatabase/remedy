@@ -156,6 +156,98 @@ class TestRunRecord:
         assert len(log.read_text(encoding="utf-8").splitlines()) == 2
 
 
+SLEEPER = [sys.executable, "-c", "import sys, time; time.sleep(120)"]
+STRIPPED_ENV = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+LEAKING_TEST = '''
+import subprocess, sys
+from pathlib import Path
+
+
+def test_it_starts_a_process_and_never_stops_it(tmp_path):
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], cwd=tmp_path,
+                            env={{"PATH": "/usr/bin:/bin"}}, start_new_session=True)
+    Path({pid_file!r}).write_text(str(proc.pid), encoding="utf-8")
+'''
+
+
+def _stop(proc):
+    proc.kill()
+    proc.wait(timeout=10)
+
+
+class TestNoProcessLeftBehind:
+    """F293 T003 (R-1118): a test run that leaves a process behind fails, and the process is ended."""
+
+    def test_a_process_carrying_the_mark_is_found_and_ended(self):
+        mark = load_governor.new_run_mark()
+        proc = subprocess.Popen(SLEEPER, env={**os.environ, load_governor.RUN_MARK_VARIABLE: mark})
+        try:
+            found = load_governor.leftover_processes(mark, [])
+            assert [p.pid for p in found] == [proc.pid]
+            ended = load_governor.end_processes(found, grace=0.2)
+            assert len(ended) == 1 and ended[0].startswith(f"pid {proc.pid}: ")
+            assert proc.wait(timeout=10) is not None
+        finally:
+            _stop(proc)
+
+    def test_a_process_with_a_stripped_environment_is_found_by_its_folder(self, tmp_path):
+        proc = subprocess.Popen(SLEEPER, cwd=tmp_path, env=STRIPPED_ENV, start_new_session=True)
+        try:
+            found = load_governor.leftover_processes(load_governor.new_run_mark(), [tmp_path])
+            assert [p.pid for p in found] == [proc.pid]
+        finally:
+            _stop(proc)
+
+    def test_an_argument_counts_inside_the_folder_and_not_in_a_sibling_with_a_longer_name(self, tmp_path):
+        run, sibling = tmp_path / "run", tmp_path / "run2"
+        run.mkdir()
+        sibling.mkdir()
+        proc = subprocess.Popen([*SLEEPER, str(sibling / "x")], cwd="/", env=STRIPPED_ENV)
+        try:
+            mark = load_governor.new_run_mark()
+            assert load_governor.leftover_processes(mark, [run]) == []
+            assert [p.pid for p in load_governor.leftover_processes(mark, [sibling])] == [proc.pid]
+        finally:
+            _stop(proc)
+
+    def test_this_process_and_its_parents_never_count(self):
+        import psutil
+
+        me = psutil.Process()
+        found = {p.pid for p in load_governor.leftover_processes(
+            load_governor.new_run_mark(), [Path(me.exe()).parent])}
+        assert me.pid not in found
+        assert not found & {parent.pid for parent in me.parents()}
+
+    def test_a_process_that_exits_within_the_grace_is_not_reported(self):
+        import psutil
+
+        proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.3)"])
+        try:
+            assert load_governor.end_processes([psutil.Process(proc.pid)], grace=10) == []
+        finally:
+            _stop(proc)
+
+    def test_a_run_that_leaves_a_process_behind_fails_and_the_process_is_ended(self, tmp_path):
+        import psutil
+
+        pid_file = tmp_path / "pid"
+        test_file = tmp_path / "leak" / "test_leak.py"
+        test_file.parent.mkdir()
+        test_file.write_text(LEAKING_TEST.format(pid_file=str(pid_file)), encoding="utf-8")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("REMEDY_TEST_")}
+        env["REMEDY_TEST_LOAD_LOG"] = ""
+        done = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "tests.conftest",
+             "-n", "0", "--basetemp", str(tmp_path / "base"), str(test_file)],
+            cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=300)
+        pid = int(pid_file.read_text(encoding="utf-8"))
+        assert done.returncode == 1, done.stdout + done.stderr
+        assert "1 passed" in done.stdout
+        assert f"the run left 1 process(es) behind, now ended (F293 T003): pid {pid}: " in done.stdout
+        assert not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+
+
 class TestOneCheckoutIdentityPerProcess:
     """DECISION F293 D6: ``tests/conftest.py`` reads Remedy's own checkout identity once per process."""
 

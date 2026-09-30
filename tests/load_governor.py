@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -132,3 +133,78 @@ def append_record(path: Path, record: dict, limit: int = LOAD_LOG_LIMIT_BYTES) -
         return True
     except OSError:
         return False
+
+
+# F293 T003: a test run that leaves a process behind fails (R-1118). The run's controller puts a
+# mark into its own environment before any worker starts, so every process the run starts carries
+# it unless something strips the environment; the runtime server's child spawn does exactly that,
+# so a process is also the run's when its working folder or an argument lies in the run's
+# temporary folder. The name does not start with ``REMEDY_``, because every run's input snapshot
+# records each ``REMEDY_`` variable and a mark that changes per run must not reach it.
+
+#: The environment variable that carries the run's mark.
+RUN_MARK_VARIABLE = "PYTEST_REMEDY_RUN_MARK"
+#: Seconds a process found at the end of a run gets to finish exiting before it counts as left.
+LEFTOVER_GRACE_SECONDS = 3.0
+
+
+def new_run_mark() -> str:
+    return uuid.uuid4().hex
+
+
+def _inside(text: str, folders: list[str]) -> bool:
+    return any(text == folder or folder + os.sep in text for folder in folders)
+
+
+def leftover_processes(mark: str, folders) -> list:
+    """This user's processes, other than this one and its parents, that belong to the run.
+
+    A process belongs to the run when its environment carries ``mark``, or when its working
+    folder or one of its arguments lies inside one of ``folders``. A zombie has already ended.
+    """
+    import psutil
+
+    folder_texts = [str(folder) for folder in folders if folder]
+    me = psutil.Process()
+    skip = {me.pid, *(parent.pid for parent in me.parents())}
+    uid = os.getuid()
+    found = []
+    for proc in psutil.process_iter(["pid", "uids", "status", "cmdline", "cwd", "environ"], ad_value=None):
+        info = proc.info
+        if info["pid"] in skip or info["uids"] is None or info["uids"].real != uid:
+            continue
+        if info["status"] == psutil.STATUS_ZOMBIE:
+            continue
+        marked = (info["environ"] or {}).get(RUN_MARK_VARIABLE) == mark
+        placed = bool(folder_texts) and (
+            _inside(info["cwd"] or "", folder_texts)
+            or any(_inside(arg, folder_texts) for arg in info["cmdline"] or ()))
+        if marked or placed:
+            found.append(proc)
+    return found
+
+
+def end_processes(procs, grace: float = LEFTOVER_GRACE_SECONDS) -> list[str]:
+    """Give ``procs`` ``grace`` seconds to exit, then end the rest; describe each one ended."""
+    import psutil
+
+    _gone, alive = psutil.wait_procs(procs, timeout=grace)
+    ended = []
+    for proc in alive:
+        try:
+            ended.append(f"pid {proc.pid}: {' '.join(proc.cmdline())[:LOAD_LOG_COMMAND_CHARS]}")
+            proc.terminate()
+        except psutil.Error:
+            continue
+    _gone, stubborn = psutil.wait_procs(alive, timeout=grace)
+    for proc in stubborn:
+        try:
+            proc.kill()
+        except psutil.Error:
+            continue
+    return ended
+
+
+def leftover_notice(ended: list[str]) -> str:
+    return (f"remedy tests: the run left {len(ended)} process(es) behind, now ended "
+            f"(F293 T003): " + "; ".join(ended))
