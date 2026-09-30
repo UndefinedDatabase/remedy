@@ -10,19 +10,22 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D6).
+DECISIONS F044 D1 to D8).
 
 ## Current Step
 
-ROUND 6: book round 5, record DECISION F044 D6, and walk the graph by
-key through the one keymap, with the keymap's overlay on a held "?".
+ROUND 7: book round 6, record DECISION F044 D8, and enforce the
+bundle-size budget (baseline plus 10%) in the `budgets` CI stage.
 
 ## Next Steps
 
-1. The three budgets in CI with their recorded numbers: the bundle
-   cap, the first paint and the frame rate at 200 nodes.
-2. The closure sequence.
+1. The first-paint budget (< 1.5s, built bundle, cold) in CI.
+2. The 60fps p95 budget at 200 nodes (trace-metric measured) in CI,
+   and the `budgets` stage's wall-clock re-measurement the Chrome
+   harness earns.
+3. `docs/system/ci-self-check-v1.md`'s stage and budget tables, then
+   the closure sequence.
 
 ## Risks
 
-Open findings: 0. Operator questions open: 1.
+Open findings: 0. Operator questions open: 0.
