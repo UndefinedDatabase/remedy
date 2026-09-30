@@ -16,6 +16,7 @@ import json
 import os
 import select
 import shutil
+import signal
 import subprocess
 import time
 from collections.abc import Callable
@@ -91,6 +92,7 @@ class ChromePipe:
             pass_fds=(cmd_r, reply_w),
             stdout=subprocess.DEVNULL,
             stderr=self._log_file if self._log_file is not None else subprocess.DEVNULL,
+            start_new_session=True,
         )
         os.close(cmd_r)
         os.close(reply_w)
@@ -155,16 +157,24 @@ class ChromePipe:
             self.events.append(message)
 
     def close(self) -> None:
-        self._proc.terminate()
+        # R-1124: Chrome runs in a session of its own, and closing ends its whole process group,
+        # so a process Chrome started does not outlive the pipe.
+        self._signal_group(signal.SIGTERM)
         try:
             self._proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            self._proc.kill()
+            self._signal_group(signal.SIGKILL)
             self._proc.wait(timeout=10)
         os.close(self._cmd_w)
         os.close(self._reply_r)
         if self._log_file is not None:
             self._log_file.close()
+
+    def _signal_group(self, sig: signal.Signals) -> None:
+        try:
+            os.killpg(self._proc.pid, sig)
+        except ProcessLookupError:
+            pass
 
 
 def _poll(pipe: ChromePipe, expression: str, predicate: Callable[[Any], bool], *, timeout: float = 15.0) -> Any:
@@ -335,3 +345,41 @@ def test_chrome_timeout_message_names_log(tmp_path: Path) -> None:
         assert "chrome: startup" in str(exc.value)
     finally:
         pipe.close()
+
+
+def _has_ended(pid: int, timeout: float = 5.0) -> bool:
+    """True once ``pid`` is gone or a zombie, polled until ``timeout``."""
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        except (FileNotFoundError, ProcessLookupError):
+            return True
+        if state == "Z":
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
+def test_closing_the_pipe_ends_every_process_chrome_started(tmp_path: Path) -> None:
+    """R-1124: a process the browser starts does not outlive the pipe. F293's closure suite found
+    the `sleep` of the fake browser above still running after its test had closed the pipe, because
+    closing ended only the process the pipe started, and the run's leftover check failed the run."""
+    child_pid_file = tmp_path / "child.pid"
+    fake_chrome = tmp_path / "fake_chrome"
+    fake_chrome.write_text(f"#!/bin/sh\nsleep 999 &\necho $! > '{child_pid_file}'\nwait\n")
+    fake_chrome.chmod(0o755)
+    pipe = ChromePipe(str(fake_chrome), tmp_path / "profile")
+    try:
+        deadline = time.monotonic() + 10
+        while not child_pid_file.exists() or not child_pid_file.read_text().strip():
+            assert time.monotonic() < deadline, "the fake browser never started its child"
+            time.sleep(0.05)
+        child = int(child_pid_file.read_text())
+    finally:
+        pipe.close()
+    ended = _has_ended(child)
+    if not ended:
+        os.kill(child, signal.SIGKILL)
+    assert ended, f"the fake browser's child {child} outlived the pipe"
