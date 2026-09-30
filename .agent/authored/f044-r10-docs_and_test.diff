@@ -1,0 +1,52 @@
+diff --git a/docs/system/ci-self-check-v1.md b/docs/system/ci-self-check-v1.md
+index 9b3a208e9..d750553e7 100644
+--- a/docs/system/ci-self-check-v1.md
++++ b/docs/system/ci-self-check-v1.md
+@@ -30,7 +30,7 @@ In the order CI runs them, taken from `CI_STAGES`.
+ | `standard` | `(integration or subprocess) and not real_ollama` | Integration and subprocess tests on the fake provider. The determinism suite lives here rather than in a stage of its own (DECISION F083 D4), and so does the TypeScript compile check, which carries the `integration` marker. |
+ | `ui` | `ui_contract and not real_ollama` | Python-verifiable frontend and UI contracts. No test in this selection shells out to the node toolchain. |
+ | `smoke` | `smoke and not real_ollama` | Smoke contracts for the scripts and the infrastructure. |
+-| `budgets` | `not real_ollama` over four named paths | Repository ceilings: the guard suites that assert what this repository may not exceed. This is the one stage that selects BY PATH; its marker expression only excludes the live provider. |
++| `budgets` | `not real_ollama` over seven named paths | Repository ceilings: the guard suites that assert what this repository may not exceed. This is the one stage that selects BY PATH; its marker expression only excludes the live provider. |
+ | `excluded` | `real_ollama` | Live-provider tests. CI never runs them; they are listed so the coverage claim stays honest. |
+ 
+ Remedy deliberately does NOT store a collected test COUNT per stage. A count is
+@@ -58,14 +58,14 @@ factor 2 and the 300-second rounding are not folklore: they are pinned by
+ | standard | 935.14 | `## Q11`, three samples | 2100 |
+ | ui | 8.09 | `## Q10`, three samples | 300 |
+ | smoke | 11.07 | `## Q10`, three samples | 300 |
+-| budgets | 1.32 | `## Q12`, three samples | 300 |
++| budgets | 28.08 | `## Q14`, three samples | 300 |
+ | excluded | not run — `runs_in_ci` is False | `## Q10` | 0 |
+ 
+ Two figures follow from that table. The five CI budgets sum to 3900 s, i.e. 65
+ minutes, which is why the hosted job caps at `timeout-minutes: 90`: the job cap
+ sits ABOVE the sum of the stage budgets, so a slow stage dies at ITS OWN budget
+ and names itself in the summary instead of the job being killed first and naming
+-no stage at all. And the five measured maxima sum to 1353.07 s, about 22.6
++no stage at all. And the five measured maxima sum to 1379.83 s, about 23.0
+ minutes, which is what a green serial run actually costs on the machine the
+ samples came from.
+ 
+diff --git a/tests/orchestration/test_ci_stages.py b/tests/orchestration/test_ci_stages.py
+index 1a8084769..01aaeb299 100644
+--- a/tests/orchestration/test_ci_stages.py
++++ b/tests/orchestration/test_ci_stages.py
+@@ -95,11 +95,13 @@ def test_unknown_stage_name_raises_naming_every_known_stage():
+ #: The slowest wall second each stage was MEASURED at, three samples per stage:
+ #: `.agent/f083_inventory.md` `## Q10` for `fast`, `ui` and `smoke`, `## Q11` for
+ #: `standard`, whose three uncapped samples span 916.36 s to 935.14 s. `budgets`
+-#: was re-measured when F273 T015 (b) added its corpus-coverage guard, which
+-#: collects the whole suite once: three samples 23.36 s, 24.40 s, 23.24 s
+-#: (2026-09-19, 24-thread i9-13900), up from `## Q12`'s 1.25 s to 1.32 s.
++#: was first measured at `## Q12` over four paths (1.32 s), re-measured when
++#: F273 T015 (b) added a corpus-coverage guard (24.40 s), and re-measured again
++#: at `## Q14` (F044 R10) against its CURRENT seven-path selection, after F044
++#: T003 added three live budget checks: three samples 28.08 s, 27.59 s, 27.82 s
++#: (2026-09-30, 24-thread i9-13900).
+ MEASURED_MAX_WALL_S = {
+-    "fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07, "budgets": 24.40}
++    "fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07, "budgets": 28.08}
+ 
+ #: The budget rule: twice the measured maximum, rounded UP to a whole multiple of
+ #: this many seconds. Doubling absorbs a slow machine; the rounding keeps the

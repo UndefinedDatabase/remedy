@@ -1,0 +1,68 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 3df667805..a68806d54 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26565,3 +26565,53 @@ CHOSEN: (1) `apps/ui/perf/` (`index.html`, `main.tsx`, `vite.config.mjs`) is a C
+ ALTERNATIVES: reusing F019 R6's own RAF-timestamp technique unchanged, rejected for the reason CONTEXT states at length — it is blind to real render cost by construction, and this round's own reproduction shows it was ALSO measuring a crashed, unpainted canvas; a raw population of `RunTask` trace-event durations (Chrome's per-main-thread-task events), rejected because roughly 600-3800 of them fire per few seconds regardless of rendering, the overwhelming majority sub-millisecond scheduler housekeeping unrelated to a frame, so a percentile over the whole population is dominated by noise (measured: p95 0.05-0.16 ms, p50 under 0.02 ms, useless as a frame-cost signal) and only the MAX (once 56 ms) hints at real cost, which is a different statistic than the Acceptance line asks for; counting every `PipelineReporter` attempt (both `ph` phases, every `state`) as one frame, rejected because it reads the pipeline queue's depth (measured ~129 "fps") rather than the display's actual delivery rate, and would pass a genuinely janky build that queues many aborted or partial attempts per real frame; `DrawFrame` trace events, rejected because they fired only 0-2 times across every window this round traced, evidently unreliable under `--headless=new`'s compositor in this environment. HOW THE 500-NODE SIZE IS HANDLED: `acceptance_criteria.md`'s own Edge Cases line reserves 500 nodes for "the zoom feature's bar", so this round's CI test names only `n=200`; the harness accepts `?n=500` (matching the fixture's own `BRAIN_PERF_STAGE6_NODES`) for a future round or a manual reading, never gated here.
+ 
+ HOW TO REVERSE: delete `apps/ui/perf/`, `FRAME_PIPELINE_P95_BUDGET_MS` and `check_frame_pipeline` from `packages/orchestration/ci_budgets.py`, their five tests and the `FRAME_TRACE_WINDOW_SECONDS` constant from `tests/orchestration/test_ci_budgets.py`, and revert `BudgetCheck.observed` to `int`; delete this paragraph. No assumption-log row was added, since this round changes no visual surface a dashboard or a shell renders.
++
++## DECISION F044 D11 — `docs/system/ci-self-check-v1.md`'s `budgets` row is re-measured against its CURRENT seven-path selection and synced to the doc and to `tests/orchestration/test_ci_stages.py`; the `budgets` stage's `timeout_sec=300` is UNCHANGED (2026-09-30)
++
++CONTEXT: T003's last item, per `.agent/plan.md`'s own Next Steps, is
++`docs/system/ci-self-check-v1.md`'s stage and budget tables, closing the gap
++DECISION F044 D8's ALTERNATIVES paragraph named and deferred: "correcting
++`docs/system/ci-self-check-v1.md` inside this round, rejected because two of its
++three stale numbers... only settle once the trace harness lands." The trace
++harness landed at F044 R9. Reading the doc against the tree at `1318d15ca`
++found it stale in two places, one older than F044: (1) the stage table's
++`budgets` row still reads "four named paths", the count from F083's original
++build; `packages/orchestration/ci_stages.py`'s `CI_STAGES` has carried SEVEN
++paths in that stage since F273 T015 (b) added a corpus-coverage guard, and the
++doc was never updated then either. (2) the runtime-budget table's `budgets` row
++still cites `## Q12`'s 1.32 s, a reading `tests/orchestration/test_ci_stages.py`
++itself stopped trusting when F273 re-measured at 24.40 s (recorded only as a
++comment in that file, never synced to this doc or to
++`.agent/f083_inventory.md`), and BOTH of those are now stale again after F044
++R9 added three more live budget checks to the same stage's test file. THE
++CORRECTION ALSO NAMES ITS OWN CAUSE: F044 R9's own DECISION D10 cites a single
++ad-hoc 44.2 s wall-clock reading for this stage, taken inside a disposable `git
++worktree` rather than the primary checkout, as the evidence that no
++`timeout_sec` change was needed; the conclusion was right, but a single
++worktree reading is not the three-sample-in-the-primary-checkout rigor
++`.agent/f083_inventory.md`'s own convention requires, and D10's own text is not
++rewritten to fix it (R-0417, R-0525) — this DECISION supersedes it by dating.
++
++CHOSEN: `.agent/f083_inventory.md` gains `## Q14`, three fresh samples of the
++`budgets` stage's CURRENT seven-path selection, taken in the PRIMARY checkout:
++28.08 s, 27.59 s, 27.82 s, MEASURED MAXIMUM 28.08 s. Applying the same rule the
++other four stages already use, `ceil(2 * 28.08 / 300) * 300 = 300`, so
++`packages/orchestration/ci_stages.py`'s `timeout_sec=300` for the `budgets`
++stage is UNCHANGED — confirmed against the real, current selection rather than
++a four-path subset of it. `tests/orchestration/test_ci_stages.py`'s own
++`MEASURED_MAX_WALL_S["budgets"]` moves from `24.40` to `28.08`, with its comment
++rewritten to name all three readings in sequence (`## Q12`'s four-path 1.32 s,
++F273 T015 (b)'s 24.40 s, this round's seven-path 28.08 s) so a future reader
++does not have to reconstruct the history from git blame.
++`docs/system/ci-self-check-v1.md` gets two edits: the stage table's `budgets`
++row reads "seven named paths", and the runtime-budget table's `budgets` row
++reads `28.08` sourced to `## Q14`; the two figures the doc DERIVES from the
++whole table — the measured-maxima sum and its minute conversion — are
++recomputed by hand from the six numbers as published (1379.83 s, about 23.0
++minutes) rather than left at the old sum. The `budgets` COLUMN of the budget
++sum (3900 s, 65 minutes) is untouched, because that sum is of BUDGETS, not
++measured maxima, and this stage's own budget did not move.
++
++ALTERNATIVES: leaving `## Q12`'s 1.32 s or `tests/orchestration/test_ci_stages.py`'s own 24.40 s as the doc's cited number, rejected because both describe a selection the stage no longer makes (four and five paths respectively, not seven) and a doc whose Source column points at evidence for a different selection is worse than one that admits it has none; citing `44.2s` from DECISION F044 D10 as the doc's number, rejected because it is a single reading from a disposable worktree, not the three-sample-in-the-primary-checkout rigor every other row in the same table already carries, and reusing it here would launder a lighter-weight reading into the table's own convention; re-running all five stages' three-sample measurements to refresh the whole table at once, rejected as scope beyond what drifted — `fast`, `standard`, `ui` and `smoke` did not change, and re-measuring a settled number is `## Q10`'s and `## Q11`'s own "not measured" rule applied to this round.
++
++HOW TO REVERSE: delete `## Q14` from `.agent/f083_inventory.md`; restore `tests/orchestration/test_ci_stages.py`'s `MEASURED_MAX_WALL_S["budgets"]` to `24.40` and its comment to the F273-only wording; restore `docs/system/ci-self-check-v1.md`'s `budgets` row to `1.32` / `` `## Q12`, three samples `` and "four named paths", and the measured-maxima sum to `1353.07 s, about 22.6 minutes`; delete this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 3234111af..a79186f7a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -180,3 +180,5 @@ Gate: F044 R7 — the F044 round 7 entry, T003's first CI performance budget: th
+ Landed: R-1116 — the two DECISION F044 D7 comments in packages/orchestration/ci_budgets.py became DECISION F044 D8 at f48e97be9.
+ 
+ Gate: F044 R8 — the F044 round 8 entry, T003's second CI performance budget: the booking of round 7 (C3), finding R-1116's fix landed at `f48e97be9` with its own `Landed:` note (C5), and the first-paint budget's five tests (C6). VERDICT PASS. Re-derived over `c65583711`..`4b34a5a0e` by the planner and reviewer of F044's fourth session from the commits themselves, session 3 having ended at the handoff without booking it (amend0827-process-diet rule 1). THE RANGE IS 7 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `19fd5e885` 245, `b5d46a8c3` 321, `7ced11128` 32, `f48e97be9` 22, `1a033191a` 1, `119364b48` 94 and `4b34a5a0e` 238; the worker declared one deviation, the fresh mutation worktree's `control-before` failing on the pre-existing R7 live bundle-size test for want of a `node_modules` symlink its own block did not carry, fixed with the same symlink-then-unlink technique R7's own block had named. THE TRANSPORT: this session re-ran the round's own transport proof independently rather than trusting the handback's readings — `git diff --stat c65583711..4b34a5a0e` names exactly the twelve paths the handback's own commit table names, nothing else. THE CODE: read in full, bottom-up, by this session's reviewer: `packages/orchestration/ci_budgets.py`'s `FIRST_PAINT_BUDGET_MS` and `check_first_paint`, and the two `D7`→`D8` comment fixes. THE TESTS: the round's selection, re-run by this session's reviewer in the primary checkout at `4b34a5a0e`, read `22 passed` at exit 0 for `tests/orchestration/test_ci_budgets.py` and `12 passed` at exit 0 for `tests/orchestration/test_ci_stages.py tests/orchestration/test_ci_stage_coverage.py`, both matching the handback exactly; `ruff check` on both touched files read `All checks passed!`; all six `integrity check` checks read pass; the canary read `42 passed` at exit 0. THE RED PROOFS: this session's reviewer built its own disposable worktree at `4b34a5a0e` (`git worktree list` 11 before), symlinked `apps/ui/node_modules` to the primary's (the same fix the handback's own Deviations section names), ran `.agent/authored/f044-r8-mutations.py` against it, and read `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` at exit 0 — all four mutations red, both controls green, every restore byte-identical — then unlinked the symlink and removed and pruned the worktree (`git worktree list` 11 after). The open set at `4b34a5a0e` is empty.
++
++Gate: F044 R9 — the F044 round 9 entry, T003's THIRD and last CI performance budget: the booking of round 8 (C3), DECISION F044 D10, the new committed frame-pipeline harness (`apps/ui/perf/`), `FRAME_PIPELINE_P95_BUDGET_MS`/`check_frame_pipeline` (C4), and the frame-pipeline p95 budget's five tests (C6). VERDICT PASS. Re-derived over `4b34a5a0e`..`1318d15ca` by the planner and reviewer of F044's fourth session from the commits themselves. THE RANGE IS 7 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `0211bed76` 274, `8619df23c` 467, `8334f12e7` 35, `701bedc90` 27, `bc0838c98` 97, `a3182c31f` 134 and `1318d15ca` 228; the worker declared two deviations, an own-caught wrong commit subject on C6 (fixed with `git commit --amend -m` before any push, tree unchanged) and using Python's `os.symlink`/`os.unlink` in place of the `ln` binary for the G4 worktree's `apps/ui/node_modules` link, the same technique named a different way. THE TRANSPORT: all seven payloads (records.diff, code.diff, harness.diff, tests.diff, plan.md, mutations.py, block.md) were authored by this session's reviewer in a disposable simulation worktree, exported to `.remedy-wt/f044-r9-payloads/`, and are byte-identical (`cmp`) to the copies the worker saved under `.agent/authored/f044-r9-*`; the reviewer independently re-generated the same code, harness and tests diffs by editing the same files in that simulation worktree and comparing `git diff` output. THE CODE: read in full, bottom-up, by this session's reviewer: `packages/orchestration/ci_budgets.py`'s widened `BudgetCheck.observed` and its new `FRAME_PIPELINE_P95_BUDGET_MS`/`check_frame_pipeline`, and all three new `apps/ui/perf/` files. THE TESTS: the round's selection, re-run by this session's reviewer in the primary checkout at `1318d15ca`, read `27 passed` at exit 0 for `tests/orchestration/test_ci_budgets.py` (both live Chrome tests ran, `google-chrome` on PATH) and `12 passed` at exit 0 for `tests/orchestration/test_ci_stages.py tests/orchestration/test_ci_stage_coverage.py`, both matching the handback exactly; `ruff check` on both touched Python files read `All checks passed!`; all six `integrity check` checks read pass; the canary read `42 passed` at exit 0. THE RED PROOFS: this session's reviewer built its own disposable worktree at `1318d15ca` (`git worktree list` 11 before), symlinked `apps/ui/node_modules` to the primary's, ran `.agent/authored/f044-r9-mutations.py` against it, and read `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True` at exit 0 — all four mutations red, both controls green, every restore byte-identical — then unlinked the symlink and removed and pruned the worktree (`git worktree list` 11 after). The open set at `1318d15ca` is empty.
