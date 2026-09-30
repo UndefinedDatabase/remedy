@@ -1,6 +1,6 @@
-// F044 T002 — the cockpit's one keymap (DECISION F044 D5).
+// F044 T002 — the cockpit's one keymap (DECISIONS F044 D5 and D6).
 import { describe, expect, it } from "vitest";
-import { KEYMAP_BINDINGS, isTypingTarget, keymapAction } from "./keymap";
+import { KEYMAP_BINDINGS, KEYMAP_HOLD_MS, isTypingTarget, keymapAction } from "./keymap";
 import type { KeymapPress, KeymapTarget } from "./keymap";
 
 function press(key: string, mods: Partial<Omit<KeymapPress, "key">> = {}): KeymapPress {
@@ -27,6 +27,12 @@ describe("KEYMAP_BINDINGS", () => {
       { keys: "Enter", action: "zoom-in", label: "Zoom into the chosen node" },
       { keys: "Esc", action: "walk-back", label: "Zoom back out" },
     ]);
+  });
+});
+
+describe("KEYMAP_HOLD_MS", () => {
+  it("is how long a held ? waits before the shortcuts show", () => {
+    expect(KEYMAP_HOLD_MS).toBe(400);
   });
 });
 

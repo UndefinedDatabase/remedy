@@ -1,4 +1,4 @@
-"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D5).
+"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D6).
 
 The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
 by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
@@ -19,6 +19,9 @@ SHEET = UI_SRC / "components" / "command" / "PaletteSheet.tsx"
 SEND = UI_SRC / "api" / "paletteSend.ts"
 CHAT_SHEET = UI_SRC / "components" / "command" / "ChatSheet.tsx"
 CHAT_TAB = UI_SRC / "components" / "graph" / "EvidenceChatTab.tsx"
+STAGE = UI_SRC / "components" / "graph" / "BrainGraphStage.tsx"
+OVERLAY = UI_SRC / "components" / "command" / "KeymapOverlay.tsx"
+HOLD = UI_SRC / "components" / "shell" / "useHeldHelpKey.ts"
 
 
 def strip_ts_comments(text: str) -> str:
@@ -121,3 +124,22 @@ def test_the_keymap_puts_the_focus_in_the_bar_and_goes_to_the_projects():
     bar = code(BAR)
     assert "if (focusRequest > 0) inputRef.current?.focus();" in bar
     assert "ref={inputRef}" in bar
+
+
+def test_a_held_question_mark_shows_the_keymap_overlay_outside_main():
+    shell = code(SHELL)
+    assert "pressHelp(event.repeat);" in shell
+    assert "useHeldHelpKey(() => setTermsOpen(true))" in shell
+    hold = code(HOLD)
+    assert "}, KEYMAP_HOLD_MS);" in hold
+    assert hold.count('window.addEventListener("keyup", onKeyUp);') == 1
+    assert shell.count("<KeymapOverlay />") == 1
+    assert shell.index("<KeymapOverlay />") > shell.index("</main>")
+    overlay = code(OVERLAY)
+    assert "KEYMAP_BINDINGS.map(" in overlay
+
+
+def test_the_stage_reads_the_graphs_keys_after_its_zoom():
+    stage = code(STAGE)
+    assert stage.count("useZoomKeys(zoomGraph, zoom.state, zoom.dispatch, (nodeId) => {") == 1
+    assert stage.index("const zoom = useSemanticZoom(zoomGraph);") < stage.index("useZoomKeys(")
