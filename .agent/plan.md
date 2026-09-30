@@ -5,22 +5,20 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 6, round 22: the closure's decision round. Round 21 is booked PASS and R-1124 resolved:
-the closure suite on the tree that ships read exit 0, no process left behind, and 940.64 CPU
-seconds, 24.5 percent below T001's 1,246.09. The 40 percent target is missed, so F293 closes at
-this scope and the rest of T002 is registered as F294, "Test load diet, part two", directly after
-F293 (DECISION F293 D15), with an operator question recording the reversible ruling. R-1125 (the
-README's Tier 5 row) is registered for the rolling paydown. The open-findings count is 2
-(`R-1117`, `R-1125`, both owned by F290).
+Session 6, round 23: the closure's evidence round (STATUS_closure_protocol.md algorithm steps 1
+and 2). Round 22 is booked PASS: F293 closes at a 24.5 percent cut and the rest of T002 is F294
+(DECISION F293 D15). This round's first commit is the accepted head; the worker then previews the
+staging-copy reclaim, builds the evidence job `f293r23e1001` from the fork point `8a067a3b9`, and
+builds the review package from the clean, pushed tree. The open-findings count is 2 (`R-1117`,
+`R-1125`, both owned by F290).
 
 ## Next Steps
-1. The evidence bundle and the review zip (closure algorithm steps 1 and 2), with the staging-copy
-   reclaim.
-2. The ledger rotation, `SU-040`'s `consumed_by`, the STATUS flip with the README sync, and the pull
-   request.
+1. The closing round: book round 23, rotate the ledger, set `SU-040`'s `consumed_by` to F293, flip
+   F293's STATUS line to `[x]` with the package readings and sync the README in the same commit,
+   and open the pull request.
 
 ## Risks
-- The evidence bundle's verification records never carry a full-suite node list; they carry the
-  scoped selections of the closing rounds (STATUS_closure_protocol.md pitfall (d)).
-- `base_commit` is the fork point `8a067a3b9`; the branch merged nothing from main, so the
-  ancestry-path and plain counts must agree (pitfall (e)).
+- The evidence run is serial (`pytest -v` without `-n`) over 1,195 node ids; it takes a few
+  minutes.
+- A package that does not read `READY_FOR_REVIEW` is a closure blocker; the worker reports the raw
+  error and hands back.
