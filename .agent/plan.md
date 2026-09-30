@@ -5,9 +5,23 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Round 1 is done: claimed F293, re-headed the ledger, booked F044 R15's PASS_WITH_RISKS verdict,
-and ran T001 — one full-suite measurement run (21082 passed, 20 skipped, 355.02s wall / 1246.09
-CPU seconds per the test load record) ranked into `.agent/f293_inventory.md`. Next round is T002.
+Round 2 is done, T002's first cut: `dead_command_ids` (`packages/orchestration/dead_command_check.py`)
+cached its per-root file scan (module-level `_SCAN_CACHE`, DECISION F293 D2), which T001 ranked as
+the #1 CPU-cost driver — every call re-read and re-AST-parsed the whole `tests/`/`scripts/` tree,
+~2.4s regardless of call count in the same process. Two new tests prove the cache mechanically
+(call-count, per-root isolation); both mutation red-proofs (disable cache, break per-root keying)
+confirmed in a disposable worktree, see `.agent/authored/f293-r2-mutations.txt`.
+
+Targeted measurements (not full-suite — DECISION F293 D1 defers the 40%-of-1246.09 Acceptance
+check to the closure's own integration-gate run):
+- `tests/cli/test_worker_facade_cmd.py`: T001 125.54s/40 lines -> now 22.26s/42 lines, -82.3%.
+- The other 4 T001-named files (`test_disk_floor.py`, `test_self_use_generator.py`,
+  `test_self_use_runner.py`, `test_dead_command_check.py`): T001 33.53s summed -> now 15.19s, -54.7%.
+- `tests/cli/` (whole dir): 2254 passed, fully green, no failures, no new skips.
+
+Next round is T002 continued: more cuts from `.agent/f293_inventory.md` sections 2-3's remaining
+top entries (`test_job_task_runner.py`, `test_supervisor_portability.py`, `test_mission_cmd.py`,
+`test_do_sequence_cli.py`, etc.), or a DECISION ruling no more can be cut without weakening a test.
 
 ## Next Steps
 1. T002 — cut from the top of T001's ranking (`.agent/f293_inventory.md` sections 2 and 3): shared
