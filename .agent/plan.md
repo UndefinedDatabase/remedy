@@ -14,27 +14,25 @@ DECISIONS F044 D1 to D12).
 
 ## Current Step
 
-ROUND 11, the closure sequence's first round: book round 10, record
-DECISION F044 D12 (discharging T003's Design-only "trend visible" line
-as out of scope; Acceptance's own "numbers" clause is already met), the
-feature file's Built State for T001 through T003, the checklist
-consolidation pass (nothing to add — no F044 round left a
-`.agent/prose_slips.md` entry), and the closure's self-use item: run to
-its approval gate, its findings registered if any.
+ROUND 12, the closure sequence's second round: book round 11, register
+`R-1117` (the self-use item's own reviewer approving a task that
+changed nothing — the safety net that caught it, `describe_self_use_
+run_defects`, working as designed), owned by F290, and add the
+self-use item's own paragraph to the feature file's Built State.
+Nothing from the self-use item's job branch is applied — its diff was
+empty.
 
 ## Next Steps
 
-1. Land the self-use item's own diff, with reviewer-authored tests, and
-   its own Built State paragraph (mirroring F043's R6→R7 split).
-2. The integration gate: the feature's one full suite run
+1. The integration gate: the feature's one full suite run
    (`python3 -m pytest -n auto -q`, worker, primary checkout),
    committed as `.agent/authored/f044-closure-suite.txt`.
-3. The evidence bundle and the review zip package.
-4. Runtime actuals, the STATUS line, the ledger rotation, the README
-   sync, the closure commit and the pull request.
+2. The evidence bundle and the review zip package.
+3. Runtime actuals, the STATUS line, the ledger rotation, the README
+   sync, the closure commit (which sets `scripts/self_use_queue.json`'s
+   `SU-039.consumed_by` to `F044`) and the pull request.
 
 ## Risks
 
-Open findings: 0 (pending the self-use item's own defects, if any,
-registered this round).
+Open findings: 1 (`R-1117`, Medium, owned by F290).
 Operator questions open: 0.
