@@ -26401,3 +26401,44 @@ tasks card's button from outside, rejected as a reach into another component's s
 HOW TO REVERSE: delete `paletteCommandState.ts`, `paletteArgs.ts`, `paletteSend.ts` and their tests,
 restore `paletteSheet.ts`, `PaletteSheet.tsx`, its sheet, `CommandBar.tsx`, `CommandBar.module.css`
 and `RemedyShell.tsx` from `587bdb18`, and delete this paragraph and its assumption-log line.
+
+## DECISION F044 D4 — a question typed in the bar is routed to the grounded chat of F038 in a sheet of its own, asked at once, about the focused task or else the whole project; the bar takes the reference's placeholder; the chat tab gains the two entry points the route needs and nothing else (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `a706a070`: the grounded chat of DECISION F038 D12 is
+`components/graph/EvidenceChatTab.tsx`, rendered only in the evidence panel of a zoomed-in node; it
+reads through `loadChatTurn` and sends through `sendChatCard`, asks about its task or, with a box
+ticked, the whole project (a chat read with no task is the project's scope), and has no way to be
+handed a question. Its evidence items' buttons switch the evidence panel's tab, whichever item they
+belong to. The routing rule of D1 (3) already reads a line as a question; since D3 the bar has no
+row to route it to, so D3 (6) moved the route here, with `ux_spec.md` §9's placeholder "Ask your
+agent or jump to anything (e.g., "improve error handling")", which promises it. Every sheet of the
+cockpit is a dialog outside `<main>`, closed by Escape, on `--remedy-z-overlay`.
+
+CHOSEN: (1) THE ASK ROW, a section of its own before the commands, hands the line, its white space
+folded, to the chat: it comes first when the routing rule reads the line as a question, and it is
+the only row when nothing else matches a line that is not blank, which is the feature file's
+"otherwise → chat with the text prefilled" for a line the palette cannot place. It is never
+remembered. (2) THE CHAT SHEET is `components/command/ChatSheet.tsx`: a glass dialog anchored right
+on the overlay layer, closed by Escape or its Close button, which mounts `EvidenceChatTab` as it is,
+handed the question and the focused task — no task when none is focused. The shell mounts it keyed
+by each new question, so every question opens a fresh sheet that asks it. (3) THE CHAT TAB gains two
+optional entry points and no other change: `initialQuestion`, asked once as the tab mounts, and a
+task of "", for which it asks about the whole project and offers no choice of scope. The evidence
+panel mounts it exactly as before. (4) AN EVIDENCE ITEM's button in the sheet opens the diff panel of
+the chat's scope — the focused task's, or the whole job's with no task — and a prompt item opens the
+focused task's detail; at the whole project's scope a prompt item names no task the cockpit can
+open, so its button does nothing there, the same absence the evidence panel has for any item but its
+own run's. (5) THE BAR takes the reference's placeholder, and the tour's last stop says that a
+question can be asked there. (6) THE ORDER: the next round gives the form entries their structured
+flows; then the keymap and its cheat overlay; then the three budgets in CI; then the closure
+sequence.
+
+ALTERNATIVES: zooming the graph to a node's evidence panel and switching it to the chat, rejected
+because the zoom state lives inside the graph stage and the zoom transitions are this feature's
+do-not-touch; a chat surface written for the palette, rejected because the chat is routed to, not
+rebuilt; sending a question to the steering composer, rejected because a note to the builder is not
+a question to the chat.
+
+HOW TO REVERSE: delete `ChatSheet.tsx` and its sheet, the Ask row from `paletteSheet.ts`, the two
+entry points from `EvidenceChatTab.tsx`, and the shell's chat mount; restore the bar's placeholder
+and the tour's last stop from `a706a070`; delete this paragraph and its assumption-log line.
