@@ -1,230 +1,203 @@
-# Handoff — F293 Test load diet, round 23
+# Handoff — F293 Test load diet, round 24
 
 ## Session
 
-SESSION 6 of feature F293 · round 23
+SESSION 6 of feature F293 · round 24
 
-Context self-assessment: the reviewer's context is comfortable; the session continues.
+Context self-assessment: the reviewer's context is comfortable; the session ends here because F293
+is closed and the next feature starts in a fresh session.
 
 ## Range
 
-Review of `785cfe70e`..`HEAD` — one commit on `feature/f293-test-load-diet`: `b59d42cc9`, and this
-handback commit (not yet made at the time this line was drafted).
+Review of `0a8575af2`..`HEAD` — two commits on `feature/f293-test-load-diet`: `d6c0b43ec`,
+`9ec135745`, and this handback commit (not yet made at the time this line was drafted).
 
 ## Commits
 
-### `b59d42cc9` F293 R23 C1: book round 22, save the round 23 block and the evidence script
+### `d6c0b43ec` F293 R24 C1: book round 23, save the round 24 block, STATUS line and PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f293-r23.md` | +122/-0 | NEW FILE at `.agent/authored/f293-r23.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r23-block.md` before commit (`wc -l` 122, sha256 `bc425c1ff7b1c8e7fe8940fa334234d00e78259ef2ca2e5d6339c6de40e6f07e`) |
-| `.agent/authored/f293-r23-create_f293_evidence.py` | +163/-0 | NEW FILE at `.agent/authored/f293-r23-create_f293_evidence.py`; byte-for-byte copy of the round's evidence script, `cmp`-verified against `.remedy-wt/f293-r23-create_f293_evidence.py` before commit (`wc -l` 163, sha256 `b1abcc1160c2f8e6975fa63fd1e367ab1b813596078da820c4e73cf643f7e9f6`) |
-| `.agent/live_review.md` | +2/-0 | the F293 R22 Gate entry (VERDICT PASS) appended verbatim (bytes from `.remedy-wt/f293-r23-append-live_review.txt`); pre-commit blob (`git show 785cfe70e:.agent/live_review.md`) + append bytes verified byte-equal to the new file (`True`) |
-| `.agent/plan.md` | +13/-15 | replaced whole-file by `cp` from `.remedy-wt/f293-r23-plan.md`; `cmp` silent |
+| `.agent/authored/f293-r24.md` | +105/-0 | NEW FILE at `.agent/authored/f293-r24.md`; byte-for-byte copy of this round's step block, `cmp`-verified against `.remedy-wt/f293-r24-block.md` before commit (`wc -l` 105, sha256 `898705dcc3a141ea1acea95b5a01a5c6f593a1d5eff818ce021a9aacc3d34490`) |
+| `.agent/authored/f293-r24-status_line.txt` | +1/-0 | NEW FILE at `.agent/authored/f293-r24-status_line.txt`; byte-for-byte copy of the reviewer-authored STATUS line, `cmp`-verified against `.remedy-wt/f293-r24-status_line.txt` before commit (`wc -l` 1, sha256 `d5e63729adbbd69cbf385ac473bdeb3a46a596ac3406552ae26bd69f09318146`) |
+| `.agent/authored/f293-r24-pr_body.md` | +117/-0 | NEW FILE at `.agent/authored/f293-r24-pr_body.md`; byte-for-byte copy of the reviewer-authored PR body, `cmp`-verified against `.remedy-wt/f293-r24-pr_body.md` before commit (`wc -l` 117, sha256 `2133313bfef804ccad4759a83214153e68b9f8d5e85033ec4b6101c38ca41f56`) |
+| `.agent/live_review.md` | +2/-0 | the F293 R23 Gate entry appended verbatim (bytes from `.remedy-wt/f293-r24-append-live_review.txt`); pre-commit blob (199636 bytes) + append bytes (1559 bytes) verified byte-equal to the new file (201195 bytes, sha256 `ee827a75d432c6e8e55f74c8910a2a4276e6ceee1c690ad3cad4e39a7df3d8c6`, `True`) |
+| `.agent/plan.md` | +9/-13 | replaced whole-file by `cp` from `.remedy-wt/f293-r24-plan.md`; `cmp` silent |
 
-`git diff --cached --numstat` before the commit read `163 0 .agent/authored/f293-r23-create_f293_evidence.py`,
-`122 0 .agent/authored/f293-r23.md`, `2 0 .agent/live_review.md`, `13 15 .agent/plan.md` — matching
-the block's stated `2 0` and `13 15` exactly (the two new files carry no stated numstat in the
-block beyond their own `wc -l`). `git show --numstat b59d42cc9` after the commit read the same four
-lines. This commit is the closure's ACCEPTED HEAD: `b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e`.
+`git diff --cached --numstat` before the commit read `117 0 .agent/authored/f293-r24-pr_body.md`,
+`1 0 .agent/authored/f293-r24-status_line.txt`, `105 0 .agent/authored/f293-r24.md`,
+`2 0 .agent/live_review.md`, `9 13 .agent/plan.md` — matching the block's stated `2 0` and `9 13`
+exactly. `git show --numstat d6c0b43ec` after the commit read the same five lines.
 
-### This handback commit — F293 R23 C2: handback with the evidence and package readings
+### `9ec135745` F293 R24 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | full rewrite | this file, per `docs/agents/handback_template.md` |
+| `.agent/live_review.md` | +0/-58 | `python3 scripts/rotate_live_review.py` moved 15 gate records and 7 finding pairs (14 records) into the archive, 0 resolved-text records; new size 148948 bytes, sha256 `b44e467495c9798cdcd59052014f7db3b60f0b40642c4a0d05a39e4e814cc3e1` |
+| `.agent/live_review_archive.md` | +58/-0 | same rotation, appended; new size 5842596 bytes, sha256 `d70a0ef8770fa44d7b943d11190daccbc973be5999d866345ce5ed2d72c5154e` |
+
+`git diff --cached --numstat` before the commit read `0 58 .agent/live_review.md`,
+`58 0 .agent/live_review_archive.md` — matching the block's stated `0 58`/`58 0` exactly. Open
+findings before/after the rotation both read 2, unchanged.
+
+### This handback commit — F293 R24 C3: accept F293 in STATUS with its README sync and the self-use queue
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | F293's line flips `[~]` to `[x]` with the closure fields, whole-file `cp` from `.remedy-wt/f293-r24-sim-STATUS.md`; `cmp` silent |
+| `README.md` | +14/-3 | overall count to 122 of 294, Tier 2 row to 40 of 42, F293's paragraph added after F286's in the Tier 2 list; whole-file `cp` from `.remedy-wt/f293-r24-sim-README.md`; `cmp` silent |
+| `scripts/self_use_queue.json` | +1/-1 | `SU-040`'s `consumed_by` set to `F293`; whole-file `cp` from `.remedy-wt/f293-r24-sim-self_use_queue.json`; `cmp` silent |
+| `.agent/handoff.md` | full rewrite | this file, per `docs/agents/handback_template.md`; A4 — the LAST commit on the branch |
+
+`git diff --numstat` before staging read `14 3 README.md`, `1 1 docs/roadmap/STATUS.md`,
+`1 1 scripts/self_use_queue.json` — matching the block's stated `1 1`/`14 3`/`1 1` exactly.
 
 ## External actions
 
-`git push origin feature/f293-test-load-diet` after C1 — outcome `785cfe70e..b59d42cc9
-feature/f293-test-load-diet -> feature/f293-test-load-diet`, exit 0. `git fetch origin` run before
-writing this handback confirmed `origin/feature/f293-test-load-diet` equals `b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e`
-— this round's accepted head — so no peer session pushed ahead during this round. `gh pr list
---state open --json number,headRefName,baseRefName,isDraft` read `[]` both at round start and again
-before this handback, so the Open PR Gate needed no merge; none opened or reviewed this round. No
-`git worktree` added or removed this session (`git worktree list` read 11 entries before and after:
-the primary checkout plus 10 job worktrees pre-existing from other sessions). `git push origin
-feature/f293-test-load-diet` after this handback commit — outcome reported in the session's own
-reply, not in this file.
+No push or `gh` command ran between C1, C2 and this handback commit — the block orders a single
+push and PR creation after all three commits. `git fetch origin`, checked before this handback,
+read `origin/feature/f293-test-load-diet` at `0a8575af2b3c6ad5b6dd1ee83c0e9dd7b3326a74` — the
+previous round's accepted head — confirming no peer session pushed ahead during this round. No
+`git worktree` added or removed this round (work happened entirely in the primary checkout, no
+worktree command run). `.agent/STOP` checked absent before A0-equivalent work began and again
+before this handback. `git push origin feature/f293-test-load-diet` after this commit, then
+`gh pr create ... --body-file .remedy-wt/f293-r24-pr_body.md`, then `gh pr list --state open
+--json number,headRefName,baseRefName,isDraft` — outcomes reported in the session's own reply, not
+in this file (they have not happened yet at the time this handback is written).
 
 ## Verification
 
-All actions and gates were run once each, in the block's order, after C1 and before C2.
+All gates were run once each, in the block's order, after C3's three files were staged and before
+this handback was written.
 
-**A0 — staging reclaim preview, `python3 -m apps.cli.main data reclaim --orphans`:**
+**C2 — `python3 scripts/rotate_live_review.py`:**
 ```
-Data root: /home/decodeux/Repos/remedy/.data
-  Reclaimable: nothing
-  Refused (kept, with the reason):
-    review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only  1.5 MB
-  Would free 0 B in 0 paths — nothing deleted; re-run with --apply
+gate records moved: 15
+finding pairs moved: 7 (14 records)
+resolved-text records moved: 0
+old ledger size: 201195 bytes
+new ledger size: 148948 bytes
+old archive size: 5790349 bytes
+new archive size: 5842596 bytes
+open findings before: 2
+open findings after: 2
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
 ```
-Exit 0. The preview listed no candidate, so `--apply` was SKIPPED per the block's rule. The one
-refused path and its reason are recorded above in full.
+Exit 0. Matches the block's stated reading (§C2) exactly in every field.
 
-**A1 — `ls -la apps/ui/node_modules`:** a real directory (209 entries, `drwxrwxr-x`), not a symlink
-(`os.path.islink` False, `os.path.isdir` True). Exit 0.
-
-**A1 — `python3 .agent/authored/f293-r23-create_f293_evidence.py .remedy-wt/f293-r23-evidence`**,
-output captured to `.remedy-wt/f293-r23-worker/evidence.log`:
-```
-head b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e
-ancestry-path count 81
-plain count 81
-collected node ids 1195, deselected 12
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 1192, 'failed': 0, 'skipped': 3}, output_hash 5be299d3aa8b12f9814f933013a00312bb2841a4ef6af90b87bc9b04d931f235
-validate_verification_tests problems [] passed 1192
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-```
-Exit 0. Both ancestry counts equal (81 and 81); 1195 node ids with 12 deselected, matching
-`len(node_ids)`; zero unsafe node ids; the planted red-control id read `a local absolute path`;
-pytest exit 0; `validate_verification_tests` problem list empty; `is_valid_current_run` True with no
-validation error. Evidence job id `f293r23e1001`, step range `T001-T004`, feature `f293`, run id
-`vr-1201`, base `8a067a3b93fb3d7080053f9cf742379534bed447` (the fork point). Never edited by hand.
-
-**A2 — `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f293-r23-evidence`** (no
-`REMEDY_REVIEW_DIR` set), output captured to `.remedy-wt/f293-r23-worker/zip.log`:
-```
-{"member_count": 7464, "authoritative_count": 31, "symlink_count": 0, "tombstone_count": 0, "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20261001-005405-READY_FOR_REVIEW.zip", "final_sha256": "2c72c60f7058a7c2d9d7a0ad72a161115c282162a7ebc994bd7f0118ea704fb6", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "348b79185372fde58c828418cc6c5d3b618644652664235754050b501d236eae"}
-PACKAGE_STATUS=READY_FOR_REVIEW
-REVIEW_SUBJECT_ALIGNMENT=PASS
-EVIDENCE_AUTHORITATIVE=true
-ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261001-005405-READY_FOR_REVIEW.zip
-```
-Exit 0. `PACKAGE_STATUS` reads `READY_FOR_REVIEW`. Package filename
-`remedy-review-20261001-005405-READY_FOR_REVIEW.zip`, SHA-256
-`2c72c60f7058a7c2d9d7a0ad72a161115c282162a7ebc994bd7f0118ea704fb6` (as printed by the tool itself;
-the file lives outside the allowed working directory so a second independent hash could not be
-computed in this session). Inside the package, `.review_zip_manifest.json`'s
-`committed_review_subject` read `base_commit` `8a067a3b93fb3d7080053f9cf742379534bed447` (the fork
-point) and `head_commit` `b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e` (C1's full sha) —
-`base_is_ancestor` true. `zipfile.is_zipfile(path)` read `True`, `ZipFile.testzip()` read `None`.
-Archived directory: `/home/decodeux/Repos/remedy-history/zips` (absolute; not `NOT ARCHIVED`).
-
-**Gate 1 (after C1) — `git status --porcelain`, `cmp` x2, integrity, open-finding-ids:**
+**Gate 1 — `git status --porcelain` (only the three C3 content files modified before this commit) and three `cmp` checks:**
 ```
 $ git status --porcelain
-(empty)
-$ cmp .agent/authored/f293-r23.md .remedy-wt/f293-r23-block.md
+ M README.md
+ M docs/roadmap/STATUS.md
+ M scripts/self_use_queue.json
+$ cmp docs/roadmap/STATUS.md .remedy-wt/f293-r24-sim-STATUS.md
 (silent)
-$ cmp .agent/authored/f293-r23-create_f293_evidence.py .remedy-wt/f293-r23-create_f293_evidence.py
+$ cmp README.md .remedy-wt/f293-r24-sim-README.md
 (silent)
-$ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, ..., "fail_count": 0, "ok": true, "passed": true, ...}
-$ python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
+$ cmp scripts/self_use_queue.json .remedy-wt/f293-r24-sim-self_use_queue.json
+(silent)
+```
+Exit 0 for all. (C1 and C2's own `cmp` checks are recorded under their commit rows above; all were
+silent.)
+
+**Gate 2 — STATUS line occurrence check:**
+```
+$ python3 -c "line = open('.remedy-wt/f293-r24-status_line.txt','rb').read().rstrip(b'\n').decode(); status = open('docs/roadmap/STATUS.md', encoding='utf-8').read(); print('occurs', status.count(line)); print('starts with - [~]', line.startswith('- [~]'))"
+occurs 1
+starts with - [~] False
+```
+Exit 0. The line occurs exactly once and does not begin `- [~]`, matching the block's done-when.
+
+**Gate 3 — `python3 -m pytest -q -n auto tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py`:**
+```
+552 passed in 9.20s
+```
+Exit 0. **552 passed**, matching the block's stated done-when exactly; no line contained
+`process(es) behind`.
+
+**Gate 4 — `python3 -m apps.cli.main integrity check --json`:**
+```
+{"check_count": 6, "checks": [{"message": "handlers=171", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+```
+Exit 0. Six checks `pass`, `fail_count` 0.
+
+**Gate 5 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:**
+```
 ['R-1117', 'R-1125']
 ```
-All exit 0. `fail_count` 0; open set `['R-1117', 'R-1125']` matching the block's stated done-when
-exactly.
+Exit 0. Matches the block's stated `['R-1117', 'R-1125']` exactly.
 
-**Gate 2 (A1's readings)** — see the A1 transcript above; all fields matched the block's stated
-expectations exactly.
-
-**Gate 3 (A2's readings)** — see the A2 transcript above; all fields matched the block's stated
-expectations exactly.
-
-**Gate 4 (after A2) — integrity, `git status --porcelain`, `git worktree list | wc -l`:**
-```
-$ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [{"name": "handler_import", "status": "pass"}, {"name": "live_review_verdict", "status": "pass"}, {"name": "plan_consistency", "status": "pass"}, {"name": "relevant_untracked", "status": "pass"}, {"name": "repo_root_hygiene", "status": "pass"}, {"name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true}
-$ git status --porcelain
-(empty)
-$ git worktree list | wc -l
-11
-```
-Exit 0 for all three. Six checks `pass`, `fail_count` 0; status empty; 11 worktrees (primary plus
-10 pre-existing job worktrees from other sessions, none added or removed this round).
-
-**Gate 5 — `python3 -m pytest tests/cli/test_golden_path.py -q -n auto`:**
-```
-42 passed in 7.69s
-```
-Exit 0. **42 passed**, matching the block's stated done-when exactly. This was the round's only
-pytest invocation besides the evidence script's own two internal pytest runs (`--collect-only` and
-the real run); no two test commands ran at the same time.
+This was the round's only pytest invocation; no two test commands ran at the same time; no mutation
+ran; no full suite ran; `REMEDY_TEST_MAX_WORKERS` was never set.
 
 ## Authored-text proofs
 
-`.agent/authored/f293-r23.md` (commit `b59d42cc9`): saved as a byte-for-byte copy of the step block
-given to this round; `wc -l` read 122 lines, `sha256sum` read
-`bc425c1ff7b1c8e7fe8940fa334234d00e78259ef2ca2e5d6339c6de40e6f07e`, and `cmp` against
-`.remedy-wt/f293-r23-block.md` was silent (exit 0) both before the commit and again in this round's
-Gate 1.
+`.agent/authored/f293-r24.md` (commit `d6c0b43ec`): saved as a byte-for-byte copy of the step block
+given to this round; `wc -l` read 105 lines, `sha256sum` read
+`898705dcc3a141ea1acea95b5a01a5c6f593a1d5eff818ce021a9aacc3d34490`, and `cmp` against
+`.remedy-wt/f293-r24-block.md` was silent (exit 0) before the commit.
 
-`.agent/authored/f293-r23-create_f293_evidence.py` (commit `b59d42cc9`): saved as a byte-for-byte
-copy of the round's evidence script; `wc -l` read 163 lines, `sha256sum` read
-`b1abcc1160c2f8e6975fa63fd1e367ab1b813596078da820c4e73cf643f7e9f6`, and `cmp` against
-`.remedy-wt/f293-r23-create_f293_evidence.py` was silent (exit 0) both before the commit and again
-in this round's Gate 1.
+`.agent/authored/f293-r24-status_line.txt` (commit `d6c0b43ec`): saved as a byte-for-byte copy of
+the reviewer-authored STATUS line; `wc -l` read 1 line, `sha256sum` read
+`d5e63729adbbd69cbf385ac473bdeb3a46a596ac3406552ae26bd69f09318146`, and `cmp` against
+`.remedy-wt/f293-r24-status_line.txt` was silent.
 
-`.agent/live_review.md` (commit `b59d42cc9`): the pre-commit blob at `785cfe70e` was read with `git
-show`, concatenated in Python with the prepared append file's raw bytes
-(`.remedy-wt/f293-r23-append-live_review.txt`, sha256
-`68487bd1a819cdbc8610dfd5d895138c95dfceeb702632d26a30514bacecbbce`, matching the block's stated
-digest), and compared for byte equality against the resulting committed file: `True`. No text was
-retyped.
+`.agent/authored/f293-r24-pr_body.md` (commit `d6c0b43ec`): saved as a byte-for-byte copy of the
+reviewer-authored PR body; `wc -l` read 117 lines, `sha256sum` read
+`2133313bfef804ccad4759a83214153e68b9f8d5e85033ec4b6101c38ca41f56`, and `cmp` against
+`.remedy-wt/f293-r24-pr_body.md` was silent.
 
-`.agent/plan.md` (commit `b59d42cc9`): replaced whole-file via `cp` from `.remedy-wt/f293-r23-plan.md`
-(sha256 `f455d2840b22bfcc89526f62a4f98c8405e6c1fb7350f2bebb2b2f151e985542`, matching the block's
-stated digest); `cmp` against the source was silent both before the commit and again in this round's
-Gate 1.
+`.agent/live_review.md` (commit `d6c0b43ec`): the pre-commit blob (199636 bytes) was read, the
+prepared append file's raw bytes (`.remedy-wt/f293-r24-append-live_review.txt`, sha256
+`a94ed93ac858bda17e2f5af45bfd44ace4f89a29e700f47c2362c10ad667491f`, matching the block's stated
+digest, 1559 bytes) were appended without retyping, and the result compared byte-equal to the
+resulting file (201195 bytes, sha256 `ee827a75d432c6e8e55f74c8910a2a4276e6ceee1c690ad3cad4e39a7df3d8c6`,
+matching the block's stated digest exactly): `True`.
+
+`.agent/plan.md` (commit `d6c0b43ec`): replaced whole-file via `cp` from `.remedy-wt/f293-r24-plan.md`
+(sha256 `fbdc4cc85a6487c1424febebae405ebf0a415ef9ececfd51f456a21af5acefaa`, matching the block's
+stated digest); `cmp` against the source was silent.
+
+`docs/roadmap/STATUS.md` (this handback commit): the applied line (`.agent/authored/f293-r24-status_line.txt`
+without its trailing newline) occurs exactly once in the file — verified in Gate 2 above, count 1 —
+and the whole-file `cp` from `.remedy-wt/f293-r24-sim-STATUS.md` was `cmp`-silent.
+
+`README.md` (this handback commit): whole-file `cp` from `.remedy-wt/f293-r24-sim-README.md`
+(sha256 `7fa5c768c6724e3700b6bbf6759df90c997ff234bc5085f2d24c79e4332af75f`, matching the block's
+stated digest); `cmp` silent.
+
+`scripts/self_use_queue.json` (this handback commit): whole-file `cp` from
+`.remedy-wt/f293-r24-sim-self_use_queue.json` (sha256
+`e64eaad3184d7329de2e07deea4897d68c55f0cf696dd61f6b81ab0a18f41eee`, matching the block's stated
+digest); `cmp` silent.
 
 ## Deviations & assumptions
 
-None. All four prepared companion files' digests (`f293-r23-append-live_review.txt`,
-`f293-r23-plan.md`, `f293-r23-create_f293_evidence.py`) were verified with `sha256sum` before use
-and matched the block exactly, as did the block's own digest
-(`bc425c1ff7b1c8e7fe8940fa334234d00e78259ef2ca2e5d6339c6de40e6f07e`, 122 lines). The one commit
-(C1) matched the block's named paths and numstat exactly — no unrelated file, no extra hunk.
-`git diff --cached` was read before the commit, per AGENTS.md's mandatory self-review loop. No
-mutation red-proof ran, no full suite ran, `REMEDY_TEST_MAX_WORKERS` was never set, and no two test
-commands ran at the same time — the evidence script's two internal pytest runs and the golden-path
-canary each ran alone, in sequence. `.agent/STOP` did not appear at any point in this round
-(checked: absent, both before A0 and before this handback). `git fetch origin`, checked before this
-handback, confirmed no peer session had pushed past this round's accepted head (`b59d42cc9`). No
-worktree was created or removed; all work happened in the primary checkout, as ordered. The
-package's SHA-256 is reported from the build tool's own printed reading only — the archived zip
-lives under `/home/decodeux/Repos/remedy-history/zips`, outside this session's allowed working
-directory, so a second independent `sha256sum` over the file itself could not be run; this is
-recorded here as a deviation from "verify every prepared file's digest before use" in the sense
-that the PACKAGE (an output, not a prepared input) could not be independently re-hashed, though the
-manifest's own `final_sha256` field agrees with the printed value.
-
-## Item-status table
-
-| Item | Status | Reason |
-|---|---|---|
-| Round 22 verdict booked (Gate entry appended, VERDICT PASS) | done | appended verbatim to `.agent/live_review.md`, byte-equality proof `True` |
-| Round 23 block saved verbatim (`.agent/authored/f293-r23.md`) | done | 122 lines, sha256 `bc425c1ff7b1c8e7fe8940fa334234d00e78259ef2ca2e5d6339c6de40e6f07e`, `cmp` silent |
-| Evidence script saved verbatim (`.agent/authored/f293-r23-create_f293_evidence.py`) | done | 163 lines, sha256 `b1abcc1160c2f8e6975fa63fd1e367ab1b813596078da820c4e73cf643f7e9f6`, `cmp` silent |
-| `.agent/plan.md` replaced | done | whole-file `cp`, `cmp` silent |
-| C1 committed as the ACCEPTED HEAD | done | `b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e` |
-| Push after C1 | done | `785cfe70e..b59d42cc9`, exit 0 |
-| Gate 1 (`git status`, two `cmp`, integrity, open-finding-ids) | done | status empty, both `cmp` silent, `fail_count` 0, `['R-1117', 'R-1125']` |
-| A0 staging reclaim preview | done | `Would free 0 B in 0 paths`, one refused path (`review_staging.n4o46eq_`, `class_not_job_keyed`); `--apply` skipped per the empty reading |
-| A1 node_modules check | done | real directory, not a symlink |
-| A1 evidence job (`f293r23e1001`) | done | exit 0; both ancestry counts 81; 1195 node ids/12 deselected; 0 unsafe ids; pytest exit 0 (1192 passed); empty validation problems; `is_valid_current_run` True |
-| Gate 2 (A1 readings) | done | all fields matched the block's stated expectations |
-| A2 review package | done | `PACKAGE_STATUS=READY_FOR_REVIEW`; filename `remedy-review-20261001-005405-READY_FOR_REVIEW.zip`; SHA-256 `2c72c60f7058a7c2d9d7a0ad72a161115c282162a7ebc994bd7f0118ea704fb6`; manifest base/head match; `is_zipfile` True, `testzip` None; archived at `/home/decodeux/Repos/remedy-history/zips` |
-| Gate 3 (A2 readings) | done | all fields matched the block's stated expectations |
-| Gate 4 (integrity, status, worktree count) | done | six checks pass, `fail_count` 0, status empty, 11 worktrees unchanged |
-| Gate 5 golden-path canary pytest | done | `42 passed` |
-| Mutation red-proofs | skipped | none ordered this round; constraints forbid mutation |
-| Full suite | skipped | none ordered this round; constraints forbid it |
-| Push after C2 | pending | `git push origin feature/f293-test-load-diet`, after this commit |
-| PR opened | skipped | block orders no PR this round |
-| STATUS/README/ledger rotation | skipped | block orders none this round; deferred to the closing round |
+None. All seven prepared companion files' digests (`f293-r24-append-live_review.txt`,
+`f293-r24-plan.md`, `f293-r24-status_line.txt`, `f293-r24-pr_body.md`, `f293-r24-sim-STATUS.md`,
+`f293-r24-sim-README.md`, `f293-r24-sim-self_use_queue.json`) were verified with `sha256sum` before
+use and matched the block exactly, as did the block's own digest
+(`898705dcc3a141ea1acea95b5a01a5c6f593a1d5eff818ce021a9aacc3d34490`, 105 lines). The three commits
+(C1, C2, this C3/handback) matched the block's named paths and numstat exactly — no unrelated file,
+no extra hunk. `git diff --cached` (and `git diff` before staging) was read before each commit, per
+AGENTS.md's mandatory self-review loop. No mutation red-proof ran, no full suite ran,
+`REMEDY_TEST_MAX_WORKERS` was never set, and no two test commands ran at the same time. `.agent/STOP`
+did not appear at any point in this round. `git fetch origin`, checked before this handback,
+confirmed no peer session had pushed past this round's starting head (`0a8575af2`). No worktree was
+created or removed; all work happened in the primary checkout, as ordered. R-1117 and R-1125 stay
+open, both already owned by F290, so nothing is re-assigned this round (the block's own statement);
+F293 is not a paydown feature, so no paydown feature is registered.
 
 ## Next
 
 Operator questions open: 1
 
 1. Phase 1 rule 1 (`.agent/STOP`) — check first.
-2. Phase 1 rule 2 (Open PR Gate) — check second.
-3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. The closing round: book round 23, rotate the ledger, `SU-040`'s `consumed_by`, the STATUS flip
-   with the README sync, and the pull request.
+2. Phase 1 rule 2 (Open PR Gate) — F293's pull request merges in the NEXT session, never in this
+   one.
+3. Book round 24's verdict in the next feature's first commit.
+4. Rule A5 proposes the next feature, F294, Test load diet part two.
+
+Open findings: 2 (`R-1117` Medium, `R-1125` Low, both owned by F290). No pull request number is
+named here: it does not exist at the time this handoff is written.

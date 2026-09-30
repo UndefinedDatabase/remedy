@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-121 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+122 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 39 | 42 |
+| 2 | Minimal Self-Build Runtime | 40 | 42 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 37 | 37 |
@@ -259,7 +259,18 @@ F286 findings paydown v5 (the one review finding that was open when it began
 was repaired with evidence, and none was added: the check that compares the
 settings names written in the guides with the settings Remedy really has no
 longer mistakes a file name such as story.html for a setting, while it still
-reports a setting name that does not exist).
+reports a setting name that does not exist),
+F293 test load diet (a full run of all tests now uses about a quarter less
+processor time than before, about 941 processor seconds instead of 1,246, and
+takes about four and a half minutes instead of six, with every earlier check
+kept: a few slow lookups the tests repeated thousands of times are now done
+once, and some test setup no longer starts a separate program; a test run now
+fails when it leaves a program running behind it, names that program and ends
+it; the full test run at the end of each feature records its processor time
+and is compared with the one before; and `remedy doctor core` says in one
+sentence how many test runs and processor minutes the last day cost. The
+larger cut that remains, in the many small git programs a job starts, is the
+next item).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
