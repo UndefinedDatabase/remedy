@@ -26114,3 +26114,47 @@ on "?" inside a field, rejected because it would swallow a typed question mark.
 HOW TO REVERSE: restore the tile's tooltip and `tabIndex` from `03f77c7f`, delete `detail`, the two
 entries, `termSearch.ts`, `TermPanel.tsx` with its sheet and tests, the shell's listener and mount,
 the Terms button and the wiring test, rename `task.blocked` back, and delete this paragraph.
+
+## DECISION F043 D4 — the first-run tour is six steps on `TourFrame`, the overlay engine the result tour now renders through too; each step spots its region with a ring of the backdrop's tint, the card docks at the lower left, the tour opens by itself once per browser and any exit records it seen, and the Terms panel starts it again (2026-09-30)
+
+CONTEXT: T5_F043.md T003 asks for a six-step first-run tour (graph, timeline, feed and NowCard,
+inbox, chat, palette) with a prominent skip, never-show persisted, re-launchable from '?', on the
+spotlight mechanics of the result tour — "one overlay engine, reuse" — and its Acceptance asks for
+an import proof. Measured by the reviewer at `32854ea0`: F036's `TourOverlay.tsx` builds its own
+backdrop, card and portal inline and has no spotlight, since DECISION F036 D6 lifts the whole
+backdrop on "Show me"; `tests/ui_contracts/test_tour_overlay_contract.py` pins that markup in
+`TourOverlay.tsx`. `tests/ui_contracts/test_digest_mount.py` holds `window.localStorage` to
+exactly one occurrence in `RemedyShell.tsx`, the digest's. No command palette exists. The steering
+note's field and the Terms button carry no `data-ui` name. A render at 1280 by 800 pixels, where
+the shell hides the left rail's copy, shows the graph and the timeline as wide as the page.
+
+CHOSEN: (1) `components/tour/TourFrame.tsx` is the shared engine: the portal into
+`document.body`, the dialog named by its label, its close button, and the dim — the whole-page
+backdrop, or, given a `spot`, the same tint drawn as a ring around that box (`TOUR_SPOT_PAD_PX`
+beyond it) so the region stays bright and usable, with the card docked at the lower left as a shown
+result-tour stop already docks. `TourOverlay.tsx` renders through it with its own names, its stops
+untouched, and the contract test follows the markup to the frame and adds the import proof for both
+tours. (2) `api/firstRunTour.ts` holds the six steps, each naming its region by `data-ui`, the
+sixth pointing at the Terms button in place of the palette until F044 builds one (D1 (5)); the
+storage key `remedy:first-run-tour` with the one value `seen`; and `firstRunTourDue` and
+`markFirstRunTourSeen`, which treat a missing or throwing storage as one that holds and keeps
+nothing. (3) `components/tour/FirstRunTour.tsx` spots each step's region, measured before paint
+and again on resize, scrolled into view when it can be; a region the page does not show is not
+spotted. Skip tour, Finish, Close and Escape all end it, and every end records it seen, which is the
+never-show T5_F043.md asks for: the tour opens by itself once per browser. Its `FirstRunTourMount`
+binds `window.localStorage`, so the shell keeps its one binding and hands the mount only a relaunch
+count, which the Terms panel's new "Take the tour" button raises. (4) The steering note's row and
+the Terms button gain the `data-ui` names the steps point at. (5) R-1115 is repaired in the same
+round: `.tipDetail` is a block. (6) THE ORDER: the end-to-end run over the real shell follows, with
+the audit read from the real page, then the closure sequence.
+
+ALTERNATIVES: a second overlay beside the result tour's, rejected because T5_F043.md orders one
+engine; a card placed beside each region, rejected because the regions span the page at common
+widths and the docked card is the one place the result tour already uses; a skip that is not
+recorded, rejected because a tour that returns on every visit until "never show" is found is the
+nuisance the flag exists to end; binding the storage in the shell, rejected by the digest's
+single-binding guard.
+
+HOW TO REVERSE: restore `TourOverlay.tsx` and its contract test from `32854ea0`, delete
+`TourFrame.tsx`, `FirstRunTour.tsx`, `firstRunTour.ts` and their tests, the spot rules, the two
+`data-ui` names, the shell's relaunch state and mount, the panel's tour button, and this paragraph.
