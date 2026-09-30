@@ -1,0 +1,218 @@
+diff --git a/apps/ui/src/api/firstRunTour.test.ts b/apps/ui/src/api/firstRunTour.test.ts
+new file mode 100644
+index 000000000..8917e5185
+--- /dev/null
++++ b/apps/ui/src/api/firstRunTour.test.ts
+@@ -0,0 +1,99 @@
++// F043 T003 — the first-run tour's content and its one stored fact (DECISION F043 D4).
++import { describe, expect, it } from "vitest";
++import {
++  FIRST_RUN_STEPS,
++  FIRST_RUN_TOUR_KEY,
++  FIRST_RUN_TOUR_SEEN,
++  firstRunStepLabel,
++  firstRunTourDue,
++  markFirstRunTourSeen,
++} from "./firstRunTour";
++import type { FirstRunTourStorage } from "./firstRunTour";
++
++function memory(initial: Record<string, string> = {}): FirstRunTourStorage & { data: Record<string, string> } {
++  const data = { ...initial };
++  return {
++    data,
++    getItem: (key: string) => (Object.prototype.hasOwnProperty.call(data, key) ? data[key] : null),
++    setItem: (key: string, value: string) => { data[key] = value; },
++  };
++}
++
++const broken: FirstRunTourStorage = {
++  getItem: () => { throw new Error("storage is off"); },
++  setItem: () => { throw new Error("storage is off"); },
++};
++
++describe("the first-run tour's steps", () => {
++  it("walks the graph, the timeline, the feed, the inbox, the note and the Terms button, in that order", () => {
++    expect(FIRST_RUN_STEPS.map((step) => step.target)).toEqual([
++      "brain-graph-stage", "phase-timeline", "right-live-panel", "decision-inbox-card", "chat-input-row", "terms-button",
++    ]);
++  });
++
++  it("words every step exactly as DECISION F043 D4 wrote it", () => {
++    expect(FIRST_RUN_STEPS).toEqual([
++      {
++        title: "The graph",
++        body: "Every task of this job is a dot joined to the job at the centre. A dot changes colour as its task is planned, runs, and passes or fails. Choose one to see what it did.",
++        target: "brain-graph-stage",
++      },
++      {
++        title: "The timeline",
++        body: "The job's phases, from its first event to the end. Drag along it to see the job as it stood earlier; LIVE brings you back.",
++        target: "phase-timeline",
++      },
++      {
++        title: "What is happening now",
++        body: "The newest real action of the job's agents, and below it every event in plain words.",
++        target: "right-live-panel",
++      },
++      {
++        title: "Decisions",
++        body: "Questions Remedy cannot answer for itself wait here for you, the most urgent first.",
++        target: "decision-inbox-card",
++      },
++      {
++        title: "A note for the job",
++        body: "Write a note here and the builder reads it at its next round.",
++        target: "chat-input-row",
++      },
++      {
++        title: "Every word explained",
++        body: "Hover an underlined word to see what it means, or press ? for the list of every term. You can start this tour again from there.",
++        target: "terms-button",
++      },
++    ]);
++  });
++
++  it("counts its steps for the card", () => {
++    expect(firstRunStepLabel(FIRST_RUN_STEPS.length, 0)).toBe("Step 1 of 6");
++    expect(firstRunStepLabel(6, 5)).toBe("Step 6 of 6");
++  });
++});
++
++describe("whether the tour opens by itself", () => {
++  it("opens for a browser with no record of it, and never again once it was seen", () => {
++    const storage = memory();
++    expect(firstRunTourDue(storage)).toBe(true);
++    markFirstRunTourSeen(storage);
++    expect(storage.data).toEqual({ [FIRST_RUN_TOUR_KEY]: FIRST_RUN_TOUR_SEEN });
++    expect(firstRunTourDue(storage)).toBe(false);
++  });
++
++  it("stays closed for any stored value, since the key only ever records that it was seen", () => {
++    expect(firstRunTourDue(memory({ [FIRST_RUN_TOUR_KEY]: "anything" }))).toBe(false);
++  });
++
++  it("stays closed without a storage or with one that throws, and writing to either throws nothing", () => {
++    expect(firstRunTourDue(null)).toBe(false);
++    expect(firstRunTourDue(broken)).toBe(false);
++    expect(() => markFirstRunTourSeen(null)).not.toThrow();
++    expect(() => markFirstRunTourSeen(broken)).not.toThrow();
++  });
++
++  it("keeps its record under one key and one value", () => {
++    expect(FIRST_RUN_TOUR_KEY).toBe("remedy:first-run-tour");
++    expect(FIRST_RUN_TOUR_SEEN).toBe("seen");
++  });
++});
+diff --git a/apps/ui/src/components/term/termPanel.test.ts b/apps/ui/src/components/term/termPanel.test.ts
+index 0c425e4b1..d1669cd4b 100644
+--- a/apps/ui/src/components/term/termPanel.test.ts
++++ b/apps/ui/src/components/term/termPanel.test.ts
+@@ -35,6 +35,12 @@ describe("the '?' panel", () => {
+     expect(renderPanel()).not.toMatch(/\sdata-term="/);
+   });
+ 
++  it("offers the tour again only when the shell hands it a way to start one", () => {
++    expect(renderPanel()).not.toContain("Take the tour");
++    const offered = renderToStaticMarkup(createElement(TermPanel, { onClose: () => {}, onStartTour: () => {} }));
++    expect(offered).toMatch(/<button type="button" class="[^"]*">Take the tour<\/button>/);
++  });
++
+   it("words an empty search plainly", () => {
+     expect(termPanelEmptyLine("  zebra ")).toBe("No term matches “zebra”.");
+   });
+diff --git a/tests/ui_contracts/test_term_panel_wiring.py b/tests/ui_contracts/test_term_panel_wiring.py
+index 534f191c4..9a4915e48 100644
+--- a/tests/ui_contracts/test_term_panel_wiring.py
++++ b/tests/ui_contracts/test_term_panel_wiring.py
+@@ -25,7 +25,8 @@ def test_the_shell_mounts_the_panel_once_outside_main():
+     code = strip_ts_comments(SHELL.read_text())
+     assert code.count("<TermPanel ") == 1
+     assert code.index("<TermPanel ") > code.index("</main>")
+-    assert "{termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} />)}" in code
++    assert ("{termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} onStartTour={() => "
++            "{ setTermsOpen(false); setTourRelaunch((count) => count + 1); }} />)}") in code
+ 
+ 
+ def test_the_question_mark_opens_it_through_the_one_rule():
+@@ -36,9 +37,19 @@ def test_the_question_mark_opens_it_through_the_one_rule():
+     assert 'window.removeEventListener("keydown", onKey);' in code
+ 
+ 
++def test_the_shell_mounts_the_first_run_tour_once_outside_main():
++    # DECISION F043 D4: the tour's own mount binds its storage, so the shell keeps its one
++    # `window.localStorage` (test_digest_mount.py) and hands the mount only the relaunch count.
++    code = strip_ts_comments(SHELL.read_text())
++    assert code.count("<FirstRunTourMount ") == 1
++    assert code.index("<FirstRunTourMount ") > code.index("</main>")
++    assert "<FirstRunTourMount relaunch={tourRelaunch} />" in code
++    assert code.count("window.localStorage") == 1
++
++
+ def test_the_right_panel_offers_the_terms_button():
+     shell = strip_ts_comments(SHELL.read_text())
+     assert "onOpenTerms={() => setTermsOpen(true)}" in _line(shell, "<RightLivePanel")
+     panel = strip_ts_comments(PANEL.read_text())
+     assert "onOpenTerms?: () => void" in panel
+-    assert 'onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>' in panel
++    assert 'data-ui="terms-button" onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>' in panel
+diff --git a/tests/ui_contracts/test_tour_overlay_contract.py b/tests/ui_contracts/test_tour_overlay_contract.py
+index 4b7292fc8..e21906c6e 100644
+--- a/tests/ui_contracts/test_tour_overlay_contract.py
++++ b/tests/ui_contracts/test_tour_overlay_contract.py
+@@ -17,6 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
+ OVERLAY = UI_SRC / "components" / "tour" / "TourOverlay.tsx"
+ OVERLAY_CSS = UI_SRC / "components" / "tour" / "TourOverlay.module.css"
++FRAME = UI_SRC / "components" / "tour" / "TourFrame.tsx"
++FIRST_RUN = UI_SRC / "components" / "tour" / "FirstRunTour.tsx"
+ SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+ PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
+ 
+@@ -26,13 +28,30 @@ def _source(path: Path) -> str:
+ 
+ 
+ def test_the_overlay_is_a_dialog_portaled_to_the_document_body():
++    # DECISION F043 D4: the dialog, its backdrop and the portal are TourFrame's, the overlay
++    # engine this tour shares with the first-run tour; the result tour names its own.
++    frame = _source(FRAME)
++    assert 'role="dialog"' in frame
++    assert "aria-label={label}" in frame
++    assert "data-ui={ui.card}" in frame
++    assert "data-ui={ui.backdrop}" in frame
++    assert "createPortal(" in frame
++    assert "document.body," in frame
+     source = _source(OVERLAY)
+-    assert 'role="dialog"' in source
+-    assert 'aria-label="Guided tour"' in source
+-    assert 'data-ui="tour-overlay"' in source
+-    assert 'data-ui="tour-backdrop"' in source
+-    assert "createPortal(" in source
+-    assert "document.body," in source
++    assert 'label="Guided tour"' in source
++    assert 'ui={{ card: "tour-overlay", backdrop: "tour-backdrop" }}' in source
++    assert "createPortal(" not in source
++
++
++def test_both_tours_render_through_the_one_frame():
++    # T5_F043.md Acceptance: "Overlay engine shared (import proof)".
++    for path in (OVERLAY, FIRST_RUN):
++        source = _source(path)
++        assert 'import { TourFrame } from "./TourFrame";' in source, path.name
++        assert "<TourFrame " in source, path.name
++    first_run = _source(FIRST_RUN)
++    assert 'ui={{ card: "first-run-tour", backdrop: "first-run-backdrop" }}' in first_run
++    assert "useMemo(() => window.localStorage, [])" in first_run
+ 
+ 
+ def test_the_overlay_reads_only_through_the_door_and_drops_a_stale_answer():
+@@ -55,8 +74,9 @@ def test_the_css_module_names_the_overlay_z_index_and_the_backdrop_tint():
+ 
+ 
+ def test_the_card_carries_data_shown_and_docks_over_the_left_rail_while_shown():
+-    source = _source(OVERLAY)
++    source = _source(FRAME)
+     assert "data-shown=" in source
++    assert "data-spot=" in source
+ 
+     css = OVERLAY_CSS.read_text(encoding="utf-8")
+     assert '.card[data-shown="true"]' in css
