@@ -1,31 +1,26 @@
-# Plan — F044 Command palette, keyboard, performance budget
+# Plan — no feature claimed
 
-Branch: feature/f044-command-palette, cut from `main` at `33f66862`,
-the merge commit of pull request 300 (F043 Explanation layer).
+Branch: `feature/f044-post-merge-stop-handoff`, cut from `main` at
+`53690a5cd`, the merge commit of pull request 301 (F044 Command palette,
+keyboard, performance budget).
 
 ## Goal
 
-One bar reaches everything: the command bar grows a palette over the
-write door's commands, a fuzzy jump to any task, the projects and the
-help, with a routing rule that sends questions to the chat; one keymap
-drives the cockpit from the keyboard; and CI enforces the bundle, first
-paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D12).
+None. F044 is closed and merged. `.agent/STOP` ended this session before any
+feature was claimed.
 
 ## Current Step
 
-ROUND 15, the closing round: book round 14, close `R-1116` with a
-`Done:` line, rotate the finding ledger, accept F044 in STATUS with the
-README and the self-use queue in the same commit, and open the pull
-request.
+Session ended at guardrail G6 (`.agent/STOP` present). This branch carries
+only the session's handoff; no production code changed.
 
 ## Next Steps
 
-1. The Open PR Gate merges this feature's pull request at the start of
-   the next feature's session, never in this one.
-2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
+1. Re-read `.agent/STOP` from disk at the start of the next session.
+2. If cleared: the Open PR Gate merges this branch's pull request first.
+3. Then Rule A5: claim **F292 — Plan view and hunk decisions in the
+   cockpit**, the first unchecked line in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-Open findings: 1 (`R-1117`, Medium, owned by F290; carried, not this
-feature's to resolve).
+Open findings: 1 (`R-1117`, Medium, owned by F290; carried).
