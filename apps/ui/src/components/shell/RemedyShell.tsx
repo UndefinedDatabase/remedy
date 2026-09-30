@@ -33,6 +33,7 @@ import { TourOverlay } from "../tour/TourOverlay";
 import { StoryPanel } from "../story/StoryPanel";
 import { ArtifactsPanel } from "../artifacts/ArtifactsPanel";
 import { TermPanel } from "../term/TermPanel";
+import { FirstRunTourMount } from "../tour/FirstRunTour";
 import { isHelpShortcut } from "../../api/termSearch";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
@@ -222,6 +223,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed; a window-level key listener
   // opens it on "?" unless the key press came from a field, where a question mark is text.
   const [termsOpen, setTermsOpen] = useState(false);
+  // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
+  // tour" raises, the only fact the tour's own mount needs from this shell.
+  const [tourRelaunch, setTourRelaunch] = useState(0);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -356,7 +360,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {resultsOpen && (<ArtifactsPanel jobId={dashboard.jobId} serverToken={serverToken} onClose={() => setResultsOpen(false)} />)}
       {/* THE '?' PANEL (DECISION F043 D3), a sibling directly after the results panel for the
           reason every overlay above is a sibling outside <main>. */}
-      {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} />)}
+      {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} onStartTour={() => { setTermsOpen(false); setTourRelaunch((count) => count + 1); }} />)}
+      {/* THE FIRST-RUN TOUR (F043 T003, DECISION F043 D4), a sibling directly after the '?'
+          panel for the reason every overlay above is a sibling outside <main>. */}
+      <FirstRunTourMount relaunch={tourRelaunch} />
     </div>
   );
 }

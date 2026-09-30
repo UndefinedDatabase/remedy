@@ -47,7 +47,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       {onOpenResults && (<button type="button" className={styles.advancedToggle} onClick={onOpenResults}>Results</button>)}
       {/* The '?' panel's entry point (F043 T003, DECISION F043 D3), beside Results in the same
           quiet style; the shell owns whether the panel is open. */}
-      {onOpenTerms && (<button type="button" className={styles.advancedToggle} onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>)}
+      {onOpenTerms && (<button type="button" className={styles.advancedToggle} data-ui="terms-button" onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>)}
       <button
         type="button"
         className={styles.advancedToggle}

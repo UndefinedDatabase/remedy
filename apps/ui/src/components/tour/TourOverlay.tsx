@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import type { TourAnchor, TourStop, TourView } from "../../api/resultTour";
 import {
   tourAnchorLabel,
@@ -11,6 +10,7 @@ import {
   tourStepLabel,
 } from "../../api/resultTour";
 import { loadTourView } from "../../api/remedyApi";
+import { TourFrame } from "./TourFrame";
 import styles from "./TourOverlay.module.css";
 
 /** What the overlay says while the view is in flight. */
@@ -23,10 +23,8 @@ const TOUR_LOADING_LINE = "Reading the tour…";
  * lifts the backdrop, so the place the stop names is the one thing left undimmed; stepping to
  * another stop dims the page again.
  *
- * PORTALED TO `document.body`, for the reason `AddTaskSheet.tsx`'s own portal comment records
- * (R-1079): an ancestor's `backdrop-filter` confines a `position: fixed` descendant to its own
- * box, and this overlay is meant to cover the whole viewport regardless of where the shell
- * mounts it.
+ * The backdrop, the card and the portal are `TourFrame`'s, the overlay engine this tour shares
+ * with the first-run tour (DECISION F043 D4).
  */
 export function TourOverlay({ jobId, serverToken, onClose, onShowAnchor }: {
   jobId: string;
@@ -83,35 +81,27 @@ export function TourOverlay({ jobId, serverToken, onClose, onShowAnchor }: {
   // names is the one thing left undimmed.
   const backdropVisible = !(panelState.kind === "stops" && shown);
 
-  return createPortal(
-    <>
-      {backdropVisible && <div className={styles.backdrop} data-ui="tour-backdrop" />}
-      <section role="dialog" aria-label="Guided tour" className={styles.card} data-ui="tour-overlay"
-               data-shown={backdropVisible ? "false" : "true"}>
-        <header className={styles.header}>
-          <h2>Guided tour</h2>
-          <button type="button" className={styles.close} onClick={onClose}>Close tour</button>
-        </header>
-        {panelState.kind === "loading" && (
-          <p className={styles.quiet} data-ui="tour-loading">{TOUR_LOADING_LINE}</p>
-        )}
-        {(panelState.kind === "unreadable" || panelState.kind === "empty") && (
-          <p className={styles.quiet} data-ui="tour-message">{panelState.line}</p>
-        )}
-        {panelState.kind === "stops" && (
-          <TourStopBody
-            stops={stops}
-            current={at}
-            generator={generator}
-            neighbours={neighbours}
-            onPrevious={() => stepTo(neighbours.previous)}
-            onNext={() => stepTo(neighbours.next)}
-            onShowMe={handleShowMe}
-          />
-        )}
-      </section>
-    </>,
-    document.body,
+  return (
+    <TourFrame label="Guided tour" ui={{ card: "tour-overlay", backdrop: "tour-backdrop" }}
+      shown={!backdropVisible} closeLabel="Close tour" onClose={onClose}>
+      {panelState.kind === "loading" && (
+        <p className={styles.quiet} data-ui="tour-loading">{TOUR_LOADING_LINE}</p>
+      )}
+      {(panelState.kind === "unreadable" || panelState.kind === "empty") && (
+        <p className={styles.quiet} data-ui="tour-message">{panelState.line}</p>
+      )}
+      {panelState.kind === "stops" && (
+        <TourStopBody
+          stops={stops}
+          current={at}
+          generator={generator}
+          neighbours={neighbours}
+          onPrevious={() => stepTo(neighbours.previous)}
+          onNext={() => stepTo(neighbours.next)}
+          onShowMe={handleShowMe}
+        />
+      )}
+    </TourFrame>
   );
 }
 

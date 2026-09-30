@@ -48,7 +48,7 @@ export function ChatInput({ disabled, reason, onSend, placeholder, hint }: {
   };
 
   return (
-    <div className={styles.chatInputRow}>
+    <div className={styles.chatInputRow} data-ui="chat-input-row">
       <input
         className={styles.chatInput}
         type="text"

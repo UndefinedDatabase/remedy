@@ -15,7 +15,10 @@ export function termPanelEmptyLine(query: string): string {
   return `No term matches “${query.trim()}”.`;
 }
 
-export function TermPanel({ onClose }: { onClose: () => void }) {
+/** The panel's optional re-launch of the first-run tour (DECISION F043 D4): the shell hands
+ *  this only when it can relaunch the tour, since a term panel opened from elsewhere carries
+ *  no such capability. */
+export function TermPanel({ onClose, onStartTour }: { onClose: () => void; onStartTour?: () => void }) {
   const [query, setQuery] = useState("");
   const rows = searchTermEntries(TERM_CATALOG, query);
 
@@ -35,6 +38,9 @@ export function TermPanel({ onClose }: { onClose: () => void }) {
         <button type="button" className={styles.close} onClick={onClose}>Close terms</button>
       </header>
       <p className={styles.quiet}>What the cockpit's words mean. Press ? anywhere to open this list.</p>
+      {onStartTour && (
+        <button type="button" className={styles.tour} onClick={onStartTour}>Take the tour</button>
+      )}
       <input
         type="search"
         className={styles.search}
