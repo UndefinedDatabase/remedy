@@ -14,7 +14,13 @@
    by reading that transcript. A red transcript is handled by the repair and
    follow-up rules of operator amendment amend0917-throughput (2026-09-17,
    docs/agents/self_drive_protocol.md) before this precondition holds. The
-   reviewer never re-runs the suite here.
+   reviewer never re-runs the suite here. The transcript also carries the two
+   lines that `scripts/closure_suite_cost.py` prints for that run (F293 T003,
+   DECISION F293 D9; the command is in docs/agents/integration_gate.md step 1):
+   the run's CPU seconds from the test load record, and the comparison with the
+   previous closure. When the script exits 1, this closure's suite cost more
+   than 10 percent above the previous feature's, and the closure registers a
+   finding owned by the rolling findings paydown before this precondition holds.
 3. `remedy integrity check --json` → PASS; no relevant untracked files.
 4. Feature file's Built State section is current.
 5. Working tree clean, branch pushed, worker idle.

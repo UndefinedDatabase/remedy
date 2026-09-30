@@ -13,6 +13,11 @@
    empty list is evidence that this run failed nothing, never proof that the
    branch introduces no failure, and the gate entry says "this run". A node
    a later run finds red is attributed by step 3 like any other.
+   Then, once, `python3 scripts/closure_suite_cost.py --feature F<id> --record
+   ~/.remedy-loop/test_load.jsonl` (or the file `REMEDY_TEST_LOAD_LOG` names).
+   Both lines it prints and its exit code go into the transcript. Exit 1 owes a
+   finding (STATUS_closure_protocol.md precondition 2); exit 2 means the record
+   holds no line for the run, so the worker stops and reports (F293 T003).
 2. **No base run (amend0917-throughput, 2026-09-17).** The base is main
    at the merge base, and the hosted CI record of that commit is the only
    base evidence; no base worktree, base run or compare step exists. Every
