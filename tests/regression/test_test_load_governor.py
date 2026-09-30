@@ -154,3 +154,15 @@ class TestRunRecord:
         assert load_governor.append_record(log, {"n": 1})
         assert load_governor.append_record(log, {"n": 2})
         assert len(log.read_text(encoding="utf-8").splitlines()) == 2
+
+
+class TestOneCheckoutIdentityPerProcess:
+    """DECISION F293 D6: ``tests/conftest.py`` reads Remedy's own checkout identity once per process."""
+
+    def test_every_reading_in_a_process_is_the_one_taken_at_session_start(self):
+        from packages.orchestration import run_manifest
+
+        first = run_manifest.remedy_worktree_identity()
+        assert run_manifest.remedy_worktree_identity() is first
+        assert first.status in (run_manifest.GIT_OK, run_manifest.GIT_INCOMPLETE,
+                                run_manifest.GIT_UNAVAILABLE)

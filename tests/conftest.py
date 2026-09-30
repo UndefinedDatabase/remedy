@@ -66,6 +66,26 @@ def _isolated_data_root(tmp_path_factory):
     os.environ.pop("REMEDY_DATA_DIR", None)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _one_remedy_checkout_identity_per_process():
+    """Read Remedy's own checkout identity once per test process (DECISION F293 D6).
+
+    Every run's input snapshot records ``remedy_worktree_identity()``, the git content identity
+    of this checkout, and each reading starts several git processes over the whole checkout. No
+    test may change this checkout, so the value read here, at session start and before any test
+    can patch git, is the real one. Three test files already froze it per test against the
+    neighbour race of R-0645 and R-0950, which this removes for every test. A test that sets its
+    own value with ``monkeypatch`` still wins inside that test.
+    """
+    from packages.orchestration import run_manifest
+
+    real = run_manifest.remedy_worktree_identity
+    frozen = real()
+    run_manifest.remedy_worktree_identity = lambda: frozen
+    yield
+    run_manifest.remedy_worktree_identity = real
+
+
 #: How deep the data-root guard reads: the root's own children and theirs (R-1004).
 DATA_ROOT_GUARD_DEPTH = 2
 
