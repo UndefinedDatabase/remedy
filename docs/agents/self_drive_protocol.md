@@ -174,6 +174,10 @@ session reads at start holds only open findings and the current feature's gates.
   at the verdict of every round that used one (finding R-0940).
 - **G6 STOP file.** If `.agent/STOP` appears at any point, finish the
   current commit if one is half-written, then hand off and end.
+  A STOP whose author line reads remedy-weekly-cap is the loop runner's
+  own pause at the weekly usage cap (operator amendment
+  amend0930b-slow-cap, rule 6): hand off the same way and do not
+  describe it as the operator waiting.
 - **G7 Session limits.** The session states its round cap and wall-clock
   cap up front and honours them. A session that ends at its limit with a
   written handoff is a SUCCESS, not a failure.
@@ -530,8 +534,9 @@ takes longer than it did; the budget note in `docs/agents/integration_gate.md` s
 how long. (2) NO TEST PASS OUTSIDE A ROUND'S OWN VERIFICATION. No session runs a
 warm-up pass, a "broad validation" pass or any other test selection that the round's
 verification rule does not name, neither before a feature claim nor after a merge. Any
-standing instruction to the contrary, including the one sessions have called SLOW
-MODE, is withdrawn. (3) ONE RUN PER TREE. A test selection and its mutation red-proofs
+standing instruction to the contrary is withdrawn. SLOW MODE is the one exception;
+operator amendment amend0930b-slow-cap below defines it.
+(3) ONE RUN PER TREE. A test selection and its mutation red-proofs
 are run once for each distinct set of bytes. When the reviewer has proved a round in a
 dry run and every file the worker then committed is byte-identical to the dry run's
 copy, on the same base commit, the dry run's readings ARE the reviewer's verification:
@@ -548,6 +553,51 @@ package, guardrails G1 to G8, and the rule that a red-proof must be red before a
 green after. Reason: measured on 2026-09-30, a round's selection ran three times and
 its mutations twice on identical bytes, and the full suite started 24 workers at once.
 Reverse by deleting this paragraph and DECISION amend0930 D1 to D3.
+
+Operator amendment amend0930b-slow-cap (2026-09-30) — SLOW MODE IS THE HARDENING STAGE,
+AND A STOP FROM THE WEEKLY CAP IS NOT THE OPERATOR WAITING. The operator withdrew the
+withdrawal of SLOW MODE: he wants more test-and-repair loops per feature and accepts a
+slower pace for it. (1) WHEN IT APPLIES. SLOW MODE is on when the session's prompt
+carries the line `SLOW MODE is active`; the loop runner adds that line and the operator
+switches it with `remedy-slow`. When the line is absent, rules (2) to (5) do not apply.
+(2) THE HARDENING STAGE. In SLOW MODE every feature gets one hardening stage after its
+last building round and before its closure sequence's first round. It applies to every
+feature whose integration-gate round has not run yet. The reviewer delegates an
+ACCEPTANCE AUDIT to a fresh worker subagent that is given only the feature file and the
+repository: no step block, no handoff, no verdict of an earlier round. For every
+statement under the feature file's Acceptance heading and its Goal & Done heading, the
+auditor names the test that would fail if that statement stopped being true, and proves
+it by one mutation of the production code in a disposable worktree (G5): the test must
+turn red under the mutation and green without it. At least one proof per feature must
+reach the feature the way a user does, through the command line or the cockpit in a
+headless browser, not only through a unit test. A statement with no such test, a test
+that stays green under its mutation, and a statement the product does not meet are GAPS.
+The audit's mutations are the one exception to rule (4) of amend0930-test-load, which
+otherwise reserves mutations to the reviewer; the reviewer reads the auditor's list and
+re-runs only the proofs it doubts. (3) REPAIR UNTIL CLEAN. Every gap becomes a finding
+owned by this feature and is repaired in a normal reviewed round with its red-proof;
+then the audit is repeated for the statements that had gaps. At most three such repair
+rounds. What is still open after the third keeps its finding with an owner
+(amend0911-feedback rule A), and the feature closes PASS_WITH_RISKS naming it. (4) THE
+RECORD. The feature file's Built State gains one plain paragraph: how many statements
+were audited, how many had a proving test at once, how many gaps were found, how many
+were repaired, and which remain. `docs/roadmap/STATUS_closure_protocol.md` carries the
+matching precondition. (5) WHAT STAYS. The full suite still runs exactly once per
+feature, in the integration-gate round, after the hardening stage. The stage is rounds
+with their own verification, so rule (2) of amend0930-test-load does not forbid it, and
+its rule (3), one run per tree, holds inside it. SLOW MODE orders no other extra test
+pass. (6) A STOP FROM THE WEEKLY CAP. The loop runner obeys a weekly usage cap the
+operator sets with `remedy-weekly-cap`. When the cap is reached during a session, the
+runner writes `.agent/STOP` with the line `author: remedy-weekly-cap`. Treat it exactly
+like any STOP under G6: finish the commit in hand, write the handoff and end. The
+handoff says that the loop paused at the weekly usage cap and resumes by itself after
+the reset, and it does NOT say that anything waits for the operator, because nothing
+does; the runner removes that file itself. Reason: repeating the same tests on the same
+code, which the first SLOW MODE asked for, finds nothing the one full suite and hosted
+CI do not find, while an acceptance line that no test guards is exactly the defect a
+closure cannot see. Reverse by deleting this paragraph, restoring the sentence that this
+amendment replaced in the amend0930-test-load paragraph, and deleting DECISION
+amend0930b D1 to D3.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
