@@ -1231,6 +1231,55 @@ def _make_args(**kwargs):
     return ns
 
 
+def _install_fake_claude_cli(monkeypatch) -> None:
+    """Replace ClaudeCliProvider's one subprocess spawn point with an instant, offline fake.
+
+    `packages.orchestration.pingpong_provider._guarded_cli_run` is documented as "the seam
+    the tests mock instead of the stdlib" — this is that seam, used here (rather than
+    `_pass_provider()`) because these two tests exercise the real CLI dispatch
+    (`COMMAND_HANDLERS["job.run"]`), which resolves a `builder_provider="claude-cli"` string
+    into a REAL `ClaudeCliProvider` internally; there is no argument on this call path to
+    inject a `FakeProvider` object directly the way `run_job(builder_provider=...)` allows.
+    Without this, the test spends a real, paid call to the installed `claude` CLI binary
+    (R-1119). Covers both roles (discriminated by "Reviewer" in the prompt text, matching how
+    `packages/orchestration/pingpong_loop.py`'s reviewer prompt is composed) and the
+    `--version` probe `ClaudeCliProvider._resolve_version` also routes through the same seam.
+
+    The reviewer role's response is shaped for the NATIVE structured-output path
+    (`packages.orchestration.structured_outputs.reviewer_structured_enabled()` defaults True
+    — no test here sets `REMEDY_REVIEWER_FREETEXT`), which reads a top-level
+    `structured_output` object matching `ReviewVerdict` (`schema_v`, `verdict`, `findings`,
+    `confidence`, `summary`, no extra keys — the model forbids them), NOT a JSON-encoded
+    string in `result` the way the legacy free-text reviewer path would.
+    """
+    import subprocess
+
+    import packages.orchestration.pingpong_provider as provider_mod
+
+    def _fake_guarded_cli_run(cmd, timeout_sec, cwd):
+        if "--version" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, "1.0.0-fake\n", "")
+        prompt = cmd[2] if len(cmd) > 2 else ""
+        is_reviewer = "Reviewer" in prompt
+        payload = {
+            "type": "result", "is_error": False,
+            "session_id": "sess-fake-r1119", "total_cost_usd": 0.0, "num_turns": 1,
+            "duration_ms": 1,
+            "usage": {"input_tokens": 1, "cache_creation_input_tokens": 0,
+                      "cache_read_input_tokens": 0, "output_tokens": 1},
+        }
+        if is_reviewer:
+            payload["structured_output"] = {
+                "schema_v": "rv1", "verdict": "pass", "findings": [],
+                "confidence": "high", "summary": "ok",
+            }
+        else:
+            payload["result"] = "Builder made changes\n- docs/README.md updated"
+        return subprocess.CompletedProcess(cmd, 0, json.dumps(payload) + "\n", "")
+
+    monkeypatch.setattr(provider_mod, "_guarded_cli_run", _fake_guarded_cli_run)
+
+
 class TestCliHandlerRepairRounds:
     def test_omitted_gives_default(self, isolate_data_root, demo_repo, capsys):
         """CLI handler with no --repair-rounds uses default 2."""
@@ -2176,11 +2225,12 @@ class TestProviderOverrideToFake:
         assert result2.execution_config.reviewer_source == "cli"
 
     def test_cli_handler_provider_override(
-        self, isolate_data_root, demo_repo, capsys
+        self, isolate_data_root, demo_repo, capsys, monkeypatch
     ):
         """Handler-level: explicit --builder-provider fake overrides persisted."""
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
+        _install_fake_claude_cli(monkeypatch)
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id,
@@ -2527,11 +2577,12 @@ class TestCommandPathFullConfigContinuation:
 
 class TestCommandPathExplicitOverrides:
     def test_provider_override_to_fake(
-        self, isolate_data_root, demo_repo, capsys
+        self, isolate_data_root, demo_repo, capsys, monkeypatch
     ):
         """Persisted claude-cli overridden by explicit --builder-provider fake."""
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
+        _install_fake_claude_cli(monkeypatch)
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id,
