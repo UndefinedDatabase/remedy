@@ -18,6 +18,8 @@ import { DiffView } from "../diff/DiffView";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
+import { jumpTargetsOf } from "../../api/paletteJump";
+import { useProjectContext } from "./ProjectProvider";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
 import { shellSelectionIdOf } from "../graph/brainView";
 import { brainLedgerPrefix } from "../graph/brainLedger";
@@ -268,12 +270,16 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     }
   }
 
-  // Jump-to: case-insensitive match over real task labels; focus the first match's node.
-  const handleJump = (query: string) => {
-    const q = query.toLowerCase();
-    const match = dashboard.tasks.find(t => t.label.toLowerCase().includes(q));
-    if (match) onSelectNode(match.nodeId);
-  };
+  // THE PALETTE'S OWN INPUTS (T5_F044 T001, DECISION F044 D2): its jump targets, built from this
+  // dashboard's own tasks the same way every jump has always been ranked, and the project
+  // context's own list restated as the palette's `{ slug, name }` shape — none while the context
+  // has not loaded a view yet.
+  const jumpTargets = useMemo(() => jumpTargetsOf(dashboard), [dashboard]);
+  const projectContext = useProjectContext();
+  const paletteProjects = useMemo(
+    () => (projectContext.view ? projectContext.view.projects.map((p) => ({ slug: p.slug, name: p.name })) : []),
+    [projectContext.view],
+  );
   return (
     <div className={styles.viewport}>
       <DegradedBanner apiHealth={dashboard.apiHealth} />
@@ -299,7 +305,16 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
               dashboard.live.running,
             )}
           />
-          <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+          <CommandBar
+            nextAction={dashboard.nextAction}
+            targets={jumpTargets}
+            projects={paletteProjects}
+            activeSlug={projectContext.active?.slug ?? ""}
+            onJump={onSelectNode}
+            onSwitchProject={projectContext.switchTo}
+            onOpenTerms={() => setTermsOpen(true)}
+            onStartTour={() => setTourRelaunch((count) => count + 1)}
+          />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
