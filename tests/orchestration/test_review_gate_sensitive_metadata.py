@@ -70,3 +70,25 @@ def test_clean_metadata_still_passes():
                                         "issues": []}
     g["runtime_integration_gate.json"]["checks"][0]["source_file"] = "scripts/app.py"
     assert _brm.evaluate_ready_gate_matrix(lambda n: g.get(n))["ok"] is True
+
+
+def test_each_distinct_text_is_scanned_once(monkeypatch):
+    # DECISION F293 D3: the verdict on a string depends on the string alone, so the scan reuses
+    # the first answer for a text it meets again instead of running every scanner a second time.
+    from packages.orchestration import run_manifest
+
+    calls = []
+    real = run_manifest._contains_secret
+
+    def counting(value):
+        calls.append(value)
+        return real(value)
+
+    monkeypatch.setattr(run_manifest, "_contains_secret", counting)
+    clean = "an ordinary field text only this test uses"
+    secret = "aws_secret_access_key=AKIAF293D3THISTESTONLY"
+    assert _brm._unsafe_text(clean) is None
+    assert _brm._unsafe_text(clean) is None
+    assert _brm._unsafe_text(secret) == "a secret"
+    assert _brm._unsafe_text(secret) == "a secret"
+    assert calls == [clean, secret]

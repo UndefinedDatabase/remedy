@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import os
@@ -1773,8 +1774,12 @@ def _check_fields(gate: dict, name: str, spec) -> list[str]:
     return problems
 
 
+@functools.lru_cache(maxsize=4096)
 def _unsafe_text(s: str) -> str | None:
-    """Return a reason if a string carries a secret, a local absolute path or a control character."""
+    """Return a reason if a string carries a secret, a local absolute path or a control character.
+
+    The answer depends on the string alone, so it is cached per string (DECISION F293 D3): one gate
+    matrix evaluation meets the same field texts again and again."""
     from packages.orchestration.run_manifest import _contains_local_path, _contains_secret
     if _contains_secret(s):
         return "a secret"
