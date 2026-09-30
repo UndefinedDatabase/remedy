@@ -1,27 +1,39 @@
-// T5_F044 T001, DECISION F044 D2 — the bar's dropdown sheet, its pure rules: the rows of its
-// four sections (Recent, Jump, Projects, Help), ranked and highlighted by the fuzzy rule, the
-// browser-remembered refs a chosen row leaves behind, the active-row cursor's wrap-around, and
-// the label cut into highlighted pieces the sheet renders.
+// T5_F044 T001, DECISIONS F044 D2 and D3 — the bar's dropdown sheet, its pure rules: the rows of
+// its five sections (Recent, Commands, Jump, Projects, Help), ranked and highlighted by the fuzzy
+// rule, the browser-remembered refs a chosen row leaves behind, the active-row cursor's
+// wrap-around, and the label cut into highlighted pieces the sheet renders. THE COMMANDS SECTION
+// (D3 (1)) leads with the row `routeBarText` names, when one is named, then the fuzzy-ranked
+// titles of `PALETTE_COMMANDS`, cut at `COMMAND_RESULT_LIMIT`; every row but a refused command's
+// carries "" as its `disabledReason`.
 import type { FuzzyRange } from "./fuzzyMatch";
 import { rankFuzzy } from "./fuzzyMatch";
 import type { JumpTarget } from "./paletteJump";
 import { JUMP_RESULT_LIMIT, rankJumpTargets } from "./paletteJump";
+import type { PaletteCommand } from "./paletteCommands";
+import { PALETTE_COMMANDS, paletteCommandOf } from "./paletteCommands";
+import { routeBarText } from "./paletteRouting";
 
-/** The sheet's four sections, in the order a row's section always renders under. */
-export type PaletteSection = "Recent" | "Jump" | "Projects" | "Help";
+/** The sheet's five sections, in the order a row's section always renders under. */
+export type PaletteSection = "Recent" | "Commands" | "Jump" | "Projects" | "Help";
 
-export const PALETTE_SECTION_ORDER: readonly PaletteSection[] = ["Recent", "Jump", "Projects", "Help"];
+export const PALETTE_SECTION_ORDER: readonly PaletteSection[] = ["Recent", "Commands", "Jump", "Projects", "Help"];
+
+/** All rows (`"all"`), or the Jump rows alone while an argument flow asks for a task
+ *  (`"task"`) — `CommandBar.tsx` drives the mode, `buildPaletteRows` only reads it. */
+export type PaletteMode = "all" | "task";
 
 /** What choosing a row does. */
 export type PaletteAction =
   | { readonly kind: "jump"; readonly nodeId: string }
   | { readonly kind: "project"; readonly slug: string }
   | { readonly kind: "terms" }
-  | { readonly kind: "tour" };
+  | { readonly kind: "tour" }
+  | { readonly kind: "command"; readonly command: string };
 
 /** One row of the sheet. `ref` is what a browser remembers when the row is chosen — the same
  *  string as `key` for every row except a Recent one, whose `key` carries the `recent:` prefix
- *  its `ref` does not. */
+ *  its `ref` does not. `disabledReason` is "" for every row but a refused command's, where it
+ *  doubles as the row's `hint`. */
 export interface PaletteRow {
   readonly key: string;
   readonly ref: string;
@@ -30,7 +42,10 @@ export interface PaletteRow {
   readonly hint: string;
   readonly ranges: readonly FuzzyRange[];
   readonly action: PaletteAction;
+  readonly disabledReason: string;
 }
+
+export const COMMAND_RESULT_LIMIT = 6;
 
 /** A project the bar can switch to. */
 export interface PaletteProject {
@@ -45,6 +60,9 @@ export interface PaletteInput {
   readonly projects: readonly PaletteProject[];
   readonly activeSlug: string;
   readonly recents: readonly string[];
+  readonly commandReasons: Readonly<Record<string, string>>;
+  readonly focusedTaskId: string;
+  readonly mode: PaletteMode;
 }
 
 export const PROJECT_RESULT_LIMIT = 5;
@@ -73,6 +91,7 @@ export const PALETTE_HELP_ROWS: readonly PaletteRow[] = [
     hint: "?",
     ranges: [],
     action: { kind: "terms" },
+    disabledReason: "",
   },
   {
     key: "help:tour",
@@ -82,6 +101,7 @@ export const PALETTE_HELP_ROWS: readonly PaletteRow[] = [
     hint: "Help",
     ranges: [],
     action: { kind: "tour" },
+    disabledReason: "",
   },
 ];
 
@@ -92,33 +112,93 @@ function switchableProjects(projects: readonly PaletteProject[], activeSlug: str
   return projects.filter((project) => project.slug !== activeSlug);
 }
 
-/** The row a remembered ref names, resolved against the CURRENT targets and switchable
- *  projects — not only the rows a limited section currently lists — or `null` when the ref
- *  names nothing anymore (a deleted task, or a project that is no longer switchable). */
+/** A command's OWN key of `commandReasons` — never an inherited one, so a `Record` built over a
+ *  prototype (as a test's own probe does) never leaks a reason a command was not actually given. */
+function ownCommandReason(commandReasons: Readonly<Record<string, string>>, command: string): string {
+  return Object.prototype.hasOwnProperty.call(commandReasons, command) ? commandReasons[command] : "";
+}
+
+/** The row a remembered ref names, resolved against the CURRENT targets, switchable projects and
+ *  command reasons — not only the rows a limited section currently lists — or `null` when the ref
+ *  names nothing anymore (a deleted task, a project that is no longer switchable, or a command
+ *  that is no longer listed). */
 function refRow(
   ref: string,
   targets: readonly JumpTarget[],
   switchable: readonly PaletteProject[],
-): { label: string; hint: string; action: PaletteAction } | null {
+  commandReasons: Readonly<Record<string, string>>,
+): { label: string; hint: string; action: PaletteAction; disabledReason: string } | null {
   if (ref.startsWith("jump:")) {
     const id = ref.slice("jump:".length);
     const target = targets.find((t) => t.id === id);
-    return target ? { label: target.label, hint: target.kind, action: { kind: "jump", nodeId: target.nodeId } } : null;
+    return target
+      ? { label: target.label, hint: target.kind, action: { kind: "jump", nodeId: target.nodeId }, disabledReason: "" }
+      : null;
   }
   if (ref.startsWith("project:")) {
     const slug = ref.slice("project:".length);
     const project = switchable.find((p) => p.slug === slug);
-    return project ? { label: project.name, hint: project.slug, action: { kind: "project", slug: project.slug } } : null;
+    return project
+      ? { label: project.name, hint: project.slug, action: { kind: "project", slug: project.slug }, disabledReason: "" }
+      : null;
+  }
+  if (ref.startsWith("command:")) {
+    const command = ref.slice("command:".length);
+    const found = paletteCommandOf(command);
+    if (found === null) return null;
+    const reason = ownCommandReason(commandReasons, command);
+    return { label: found.title, hint: reason, action: { kind: "command", command }, disabledReason: reason };
   }
   const help = PALETTE_HELP_ROWS.find((row) => row.ref === ref);
-  return help ? { label: help.label, hint: help.hint, action: help.action } : null;
+  return help ? { label: help.label, hint: help.hint, action: help.action, disabledReason: "" } : null;
 }
 
-/** The sheet's whole row list for one query: Recent (blank query only), then Jump, then
- *  Projects, then Help. */
+/** THE COMMANDS SECTION (DECISION F044 D3 (1)): "" for a blank query; otherwise the routed
+ *  command first (its ranked row when the fuzzy rule also matched it, else one with no range),
+ *  never twice, then the rest of the fuzzy-ranked titles, the whole cut at `COMMAND_RESULT_LIMIT`. */
+function buildCommandRows(
+  query: string,
+  commandReasons: Readonly<Record<string, string>>,
+  focusedTaskId: string,
+): PaletteRow[] {
+  if (query.trim() === "") return [];
+
+  const ranked = rankFuzzy(PALETTE_COMMANDS, query, (entry) => entry.title);
+  const route = routeBarText(query, focusedTaskId);
+  const routedCommand = route.kind === "command" ? route.command : null;
+
+  const ordered: { entry: PaletteCommand; ranges: readonly FuzzyRange[] }[] = [];
+  if (routedCommand !== null) {
+    const hit = ranked.find(({ item }) => item.command === routedCommand);
+    const found = hit ? hit.item : paletteCommandOf(routedCommand);
+    if (found !== null) {
+      ordered.push({ entry: found, ranges: hit ? hit.match.ranges : [] });
+    }
+  }
+  for (const { item, match } of ranked) {
+    if (item.command === routedCommand) continue;
+    ordered.push({ entry: item, ranges: match.ranges });
+  }
+
+  return ordered.slice(0, COMMAND_RESULT_LIMIT).map(({ entry, ranges }) => {
+    const reason = ownCommandReason(commandReasons, entry.command);
+    return {
+      key: `command:${entry.command}`,
+      ref: `command:${entry.command}`,
+      section: "Commands",
+      label: entry.title,
+      hint: reason,
+      ranges,
+      action: { kind: "command", command: entry.command },
+      disabledReason: reason,
+    };
+  });
+}
+
+/** The sheet's whole row list for one query: in "task" mode, the Jump rows alone; otherwise
+ *  Recent (blank query only), then Commands, then Jump, then Projects, then Help. */
 export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
   const isBlank = input.query.trim() === "";
-  const switchable = switchableProjects(input.projects, input.activeSlug);
 
   const jumpHits = rankJumpTargets(input.targets, input.query, JUMP_RESULT_LIMIT);
   const jumpRows: PaletteRow[] = jumpHits.map((hit) => ({
@@ -129,7 +209,15 @@ export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
     hint: hit.target.kind,
     ranges: hit.field === "label" ? hit.match.ranges : [],
     action: { kind: "jump", nodeId: hit.target.nodeId },
+    disabledReason: "",
   }));
+
+  if (input.mode === "task") {
+    return jumpRows;
+  }
+
+  const switchable = switchableProjects(input.projects, input.activeSlug);
+  const commandRows = buildCommandRows(input.query, input.commandReasons, input.focusedTaskId);
 
   const projectRows: PaletteRow[] = rankFuzzy(switchable, input.query, (project) => project.name)
     .slice(0, PROJECT_RESULT_LIMIT)
@@ -141,6 +229,7 @@ export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
       hint: item.slug,
       ranges: match.ranges,
       action: { kind: "project", slug: item.slug },
+      disabledReason: "",
     }));
 
   const helpRows: PaletteRow[] = isBlank
@@ -153,7 +242,7 @@ export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
   const recentRows: PaletteRow[] = [];
   if (isBlank) {
     for (const ref of input.recents) {
-      const resolved = refRow(ref, input.targets, switchable);
+      const resolved = refRow(ref, input.targets, switchable, input.commandReasons);
       if (resolved !== null) {
         recentRows.push({
           key: `recent:${ref}`,
@@ -163,12 +252,13 @@ export function buildPaletteRows(input: PaletteInput): PaletteRow[] {
           hint: resolved.hint,
           ranges: [],
           action: resolved.action,
+          disabledReason: resolved.disabledReason,
         });
       }
     }
   }
 
-  return [...recentRows, ...jumpRows, ...projectRows, ...helpRows];
+  return [...recentRows, ...commandRows, ...jumpRows, ...projectRows, ...helpRows];
 }
 
 /** The chosen ref first, then the others without it, cut at `PALETTE_RECENT_LIMIT`. */
