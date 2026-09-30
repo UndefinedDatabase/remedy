@@ -179,7 +179,7 @@ def _prepare_viewer(job_id_str: str, *, json_output: bool = False):
             repo_path = Path(target_repo_str)
             if repo_path.exists() and repo_path.is_dir():
                 constitution = load_project_constitution(repo_path)
-        except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
+        except OSError:
             pass
 
     graph = build_project_brain(job, events, constitution=constitution)
