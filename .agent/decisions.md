@@ -26299,3 +26299,54 @@ argument typed as a line is a guess, not an argument flow.
 HOW TO REVERSE: delete `apps/ui/src/api/fuzzyMatch.ts`, `paletteCommands.ts`,
 `paletteRouting.ts`, `paletteRouting.goldens.json`, `paletteJump.ts`, their tests and
 `tests/ui_contracts/test_palette_contract.py`, and delete this paragraph.
+
+## DECISION F044 D2 — the bar's dropdown sheet lists Recent, Jump, Projects and Help rows ranked by the fuzzy rule, in a portalled glass listbox the bar drives as a combobox; the palette's jump replaces the shell's `handleJump`, which is deleted; the Commands section joins with its execution in the next round; the tour's sixth stop moves to the bar (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `d31a78c7`: `CommandBar.tsx` is a plain input whose Enter calls
+the shell's `handleJump`, a substring match that selects the first task whose label holds the
+text. The bar is a glass card whose sheet carries a `backdrop-filter`, and `tokens.css` names
+`--remedy-z-popover` (40) as the layer of the "command dropdown". The project context of DECISION
+F042 D3 (`useProjectContext`) holds the project list, the open project and a gated `switchTo`. The
+guards that read the bar require `onJump` and a placeholder holding "jump to", forbid a write verb
+in the bar's file, and keep the copy button of the next safe command; `test_digest_mount.py` holds
+the shell to one `window.localStorage` binding. The first-run tour's sixth stop points at the Terms
+button until the palette exists (DECISION F043 D1 (5)).
+
+CHOSEN: (1) THE SHEET'S RULES are `apps/ui/src/api/paletteSheet.ts`: `buildPaletteRows` lists, in
+the sections Recent, Jump, Projects and Help, the ranked jumps of D1 (4), the other projects when
+there are at least two, ranked by the fuzzy rule over their names, and two help rows, "Show every
+term" and "Take the tour"; for a blank query the remembered rows come first. A row names what it
+reaches by a `ref`, which is what a browser remembers, newest first and at most five, under
+`remedy:palette-recent`; a stored value that is not an array of strings, or a storage that throws,
+reads as none. `movePaletteCursor` moves the active row with wrap-around, and `highlightPieces` cuts
+a label at its matched ranges. (2) THE SHEET is `components/command/PaletteSheet.tsx`, a listbox of
+option rows grouped under their section headings, the matched letters marked, portalled into the
+page body at fixed coordinates under the bar and as wide as it, because the bar's `backdrop-filter`
+would confine a fixed descendant. A row's mousedown is cancelled so a click chooses it without
+blurring the bar. Its look is `ux_spec.md` §9's: a glass sheet of radius 14 on the popover layer,
+rows of 13px, the active row tinted. (3) THE BAR is the combobox: focus or typing opens the sheet,
+the arrow keys move the active row, Enter chooses it (the first row when none is active), Escape
+closes the sheet and keeps the focus, and choosing jumps, switches project, opens the Terms panel
+or starts the tour, then remembers the row and empties the bar. The bar binds its storage edge
+itself, as the tour's mount does. Its placeholder and its copy button stay as they are until the
+route to the chat lands, because "Ask your agent" would promise a route this round does not build.
+(4) REPLACING IS DELETING: the shell's `handleJump` is deleted, because the palette's jump searches
+the same task rows by a rule that ranks and highlights, and two jumps in one bar would disagree;
+`onJump` now receives the shell's own `onSelectNode`. (5) THE TOUR's sixth stop moves to the bar,
+titled "Jump to anything". (6) D1 (7) IS AMENDED: the Commands section joins in the next round with
+the commands' execution, because a listed command that does nothing when chosen would show a
+control that is not there. (7) THE ORDER: the next round lists the commands, sends them with their
+argument flows, disables a command the job's state refuses with the door's own reason, routes a
+question to the chat and gives the bar the reference's placeholder; then the form entries'
+structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
+closure sequence.
+
+ALTERNATIVES: a sheet positioned inside the bar, rejected because the glass card confines it;
+keeping `handleJump` beside the palette, rejected by AGENTS.md's "replacing is deleting"; the recent
+rows kept by the shell, rejected because the shell's one storage binding is the digest's; the
+Commands section listed inert this round, rejected because a row must do what it shows.
+
+HOW TO REVERSE: delete `apps/ui/src/api/paletteSheet.ts`, its test, `PaletteSheet.tsx` and its
+sheet and `tests/ui_contracts/test_palette_sheet_wiring.py`, restore `CommandBar.tsx`, the shell's
+`handleJump` and the tour's sixth stop from `d31a78c7`, and delete this paragraph and its
+assumption-log line.
