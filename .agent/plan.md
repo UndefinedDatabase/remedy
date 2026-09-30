@@ -1,26 +1,15 @@
-# Plan — no feature claimed
-
-Branch: `feature/f044-post-merge-stop-handoff`, cut from `main` at
-`53690a5cd`, the merge commit of pull request 301 (F044 Command palette,
-keyboard, performance budget).
+# Plan — amend0930-test-load (operator amendment, 2026-09-30)
 
 ## Goal
-
-None. F044 is closed and merged. `.agent/STOP` ended this session before any
-feature was claimed.
+Cap the test load (worker cap, priority, run record), stop repeated runs, register the test diet feature F293.
+Branch: feature/amend0930-test-load. Not a loop feature; decisions are `DECISION amend0930 D<n>`.
 
 ## Current Step
-
-Session ended at guardrail G6 (`.agent/STOP` present). This branch carries
-only the session's handoff; no production code changed.
+All parts built and verified (targeted pass green, full suite green under the cap: 21,082 passed in 448.7 s, 1,288 CPU s). PR open; waiting for hosted checks, then merge.
 
 ## Next Steps
-
-1. Re-read `.agent/STOP` from disk at the start of the next session.
-2. If cleared: the Open PR Gate merges this branch's pull request first.
-3. Then Rule A5: claim **F292 — Plan view and hunk decisions in the
-   cockpit**, the first unchecked line in `docs/roadmap/STATUS.md`.
+- G4/G6: confirm no open PR, restore the original branch state
+- H: handback to ~/.remedy-loop/amend0930-test-load.handback.md
 
 ## Risks
-
-Open findings: 1 (`R-1117`, Medium, owned by F290; carried).
+- Full suite under the cap takes longer; budget figures move to ~25 min.

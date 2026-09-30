@@ -470,6 +470,42 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=0,
         env_only=True,
     ),
+    # amend0930-test-load: read by tests/load_governor.py through tests/conftest.py and by
+    # apps/ui/vitest.config.ts, so every pytest and vitest run is capped however it is started.
+    ConfigKeySpec(
+        key="tests.max_workers",
+        env_var="REMEDY_TEST_MAX_WORKERS",
+        description=(
+            "Most parallel workers one pytest or vitest run may start; -n auto means up to this "
+            "many, 0 lifts the cap (env-only)"
+        ),
+        value_type=int,
+        default=6,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.nice",
+        env_var="REMEDY_TEST_NICE",
+        description=(
+            "Niceness a pytest run lowers itself to so the machine stays usable; 0 leaves the "
+            "priority alone (env-only)"
+        ),
+        value_type=int,
+        default=10,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="tests.load_log",
+        env_var="REMEDY_TEST_LOAD_LOG",
+        description=(
+            "File that receives one JSON line per pytest run with its wall and CPU seconds; "
+            "empty writes nothing, unset uses ~/.remedy-loop/test_load.jsonl when that folder "
+            "exists (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
     ConfigKeySpec(
         key="review.package_dir",
         env_var="REMEDY_REVIEW_DIR",

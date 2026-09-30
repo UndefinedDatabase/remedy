@@ -1273,8 +1273,9 @@ end the response with:
      amend0917-throughput, 2026-09-17, in docs/agents/self_drive_protocol.md,
      which also carries the repair and follow-up rules). Procedure:
      docs/agents/integration_gate.md.
-  4. Full runs use `pytest -n auto` (pytest-xdist). Runtime budget: if the
-     full suite exceeds ~5 min wall clock, schedule a perf pass (e.g.
+  4. Full runs use `pytest -n auto` (capped by tests/conftest.py,
+     amend0930-test-load) (pytest-xdist). Runtime budget: if the
+     full suite exceeds ~25 min wall clock, schedule a perf pass (e.g.
      deselect via `slow`/`integration` markers, split, or parallelize
      further).
   5. **Docs-round gate (PH v3, operator ruling 2026-07-28):** any
