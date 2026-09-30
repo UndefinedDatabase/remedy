@@ -57,7 +57,7 @@ class TestWorkerCap:
         log = tmp_path / "load.jsonl"
         done = _child_run(["-n", "auto"], {"REMEDY_TEST_MAX_WORKERS": "2", "REMEDY_TEST_LOAD_LOG": str(log)})
         assert done.returncode == 0, done.stdout + done.stderr
-        assert json.loads(log.read_text(encoding="utf-8"))["workers"] == 2
+        assert json.loads(log.read_text(encoding="utf-8"))["workers"] == min(2, os.cpu_count() or 1)
 
     def test_a_real_run_within_the_cap_prints_no_reduction_line(self):
         done = _child_run(["-n", "2"], {"REMEDY_TEST_MAX_WORKERS": "3", "REMEDY_TEST_LOAD_LOG": ""})
