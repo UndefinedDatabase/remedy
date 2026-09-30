@@ -62,6 +62,11 @@
    in production imports — is named in its feature file. AGENTS.md's
    Scope Control rule "Replacing is deleting" binds this closure; it is
    cited here, not restated.
+8. IN SLOW MODE ONLY, THE HARDENING STAGE HAS RUN (operator amendment
+   amend0930b-slow-cap). The feature file's Built State carries the stage's
+   record: statements audited, gaps found, gaps repaired, gaps remaining
+   with their findings. When the session's prompt does not carry the line
+   SLOW MODE is active, this precondition holds trivially.
 
 ## Algorithm
 1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
