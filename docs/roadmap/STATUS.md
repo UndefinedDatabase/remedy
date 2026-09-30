@@ -192,7 +192,8 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Test load (operator amendment amend0930-test-load)
 
-- [ ] F293 — Test load diet
+- [x] F293 — Test load diet (T001, T003 and T004 complete, T002 at a 24.5 percent cut with the rest split to F294; R-1125 open — owned by F290; accepted 2026-10-01 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f293r23e1001 · package remedy-review-20261001-005405-READY_FOR_REVIEW.zip · SHA-256 2c72c60f7058a7c2d9d7a0ad72a161115c282162a7ebc994bd7f0118ea704fb6 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e)
+- [ ] F294 — Test load diet, part two
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 

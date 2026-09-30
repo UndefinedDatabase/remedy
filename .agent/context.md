@@ -1,40 +1,35 @@
-# Context — F044 Command palette, keyboard, performance budget
+# Context — F293 Test load diet
 
 ## Active Branch
-feature/f044-command-palette, cut from `main` at `33f66862`
-(the merge commit of pull request 300, F043 Explanation layer).
+feature/f293-test-load-diet, cut from `main` at `8a067a3b9`
+(the merge commit of pull request 304, amend0930b-slow-cap).
 
 ## Scope
-F044 (Tier 5): the command palette fused with the command bar, a fuzzy
-node jump, the question-versus-command routing rule, one keymap module
-with its cheat overlay, and the bundle, first paint and frame-rate
-budgets in CI, as `docs/roadmap/features/T5_F044.md` and DECISION F044
-D1 specify.
+F293 (Tier 2, registered thin by operator amendment amend0930-test-load): cut the CPU cost of the
+full suite and round test selections by at least 40%, per `docs/roadmap/features/T2_F293.md` and
+DECISION amend0930 D5. No behavioural feature surface; every assertion the suite makes today still
+holds after this feature.
 
 ## Do not touch
-The chat's internals (routed to, not built), the zoom transitions, and
-the CI entrypoint's architecture.
+No assertion is weakened or deleted to gain time (feature file, "Do not touch"). The rule of one
+full suite per feature (amend0917-throughput). The worker cap and its record
+(`tests/load_governor.py`, `tests/conftest.py`).
 
 ## Active assumptions
-- The write door's exposed set is the one source of the palette's
-  commands, held there by a contract test (DECISION F044 D1 (1)).
-- The bar's routing rule is the chat's own parse, held there by shared
-  goldens (DECISION F044 D1 (3)).
-- The palette's seven form entries stay disabled until F292 builds the
-  plan view and the hunk controls they open (DECISION F044 D5).
-- One keymap module decides every shortcut; a press from a field is text
-  (DECISION F044 D5).
+- The full suite's CPU seconds baseline is 1,288 CPU seconds / 448.7s wall, measured under the
+  6-worker cap on 2026-09-30 (feature file, "Baseline"); T002's 40% target is computed against
+  that figure unless this round's own T001 run reads a materially different number, in which case
+  the round states which baseline it used and why.
+- R-1118 (a leaked test process, owned by this feature) is read against T001's own "processes alive
+  after the run" reading before it is marked resolved or carried.
 
 ## Constraints
-- Every pytest run in a round is targeted and serial; the resource and
-  pytest budgets of `tests/regression/test_resource_safety.py` apply.
+- Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets
+  apply to anything other than this round's own explicitly-authorized full-suite measurement.
 - A round touching `docs/roadmap/**` also gates `tests/docs/`.
-- Destructive verification runs only inside a disposable git worktree under
-  `.remedy-wt/`, never in the primary checkout.
-- Per operator amendment amend0917-throughput (2026-09-17): the full pytest
-  suite runs exactly once per feature, in the closure sequence's
-  integration-gate round.
+- Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
+  larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
+- Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
 
 ## Steps
-The item-status table for each round lives in that round's handback,
-`.agent/handoff.md`.
+The item-status table for each round lives in that round's handback, `.agent/handoff.md`.

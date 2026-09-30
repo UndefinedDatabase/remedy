@@ -7,7 +7,7 @@ No provider execution. No auto-approval. No secret storage.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -119,6 +119,7 @@ class DoctorCoreReport:
     warnings: tuple[DoctorWarning, ...]
     dead_commands: list[str]
     disk: dict[str, Any]
+    test_load: dict[str, Any] = field(default_factory=dict)
 
     def as_json(self) -> dict[str, Any]:
         return {
@@ -128,11 +129,62 @@ class DoctorCoreReport:
             "warnings": [warning.as_json() for warning in self.warnings],
             "dead_commands": self.dead_commands,
             "disk": self.disk,
+            "test_load": self.test_load,
         }
 
     def actionable_warnings(self) -> tuple[DoctorWarning, ...]:
         """The actionable warnings, in report order."""
         return tuple(warning for warning in self.warnings if warning.actionable)
+
+
+_NO_TEST_LOAD_RECORD = ("No test load record was found on this machine, so the test cost of the "
+                        "last 24 hours is unknown.")
+_UNREADABLE_TEST_LOAD_RECORD = ("The test load record could not be read, so the test cost of the "
+                                "last 24 hours is unknown.")
+
+
+def last_day_test_load(environ=None, home: Path | None = None, now=None) -> dict[str, Any]:
+    """F293 T004: the last 24 hours of the test load record, as counts and one plain sentence.
+
+    The record is the file ``tests/load_governor.py`` appends one line to after every pytest run
+    of this repository: ``REMEDY_TEST_LOAD_LOG`` when it is set (set but empty means there is no
+    record), otherwise ``~/.remedy-loop/test_load.jsonl`` when that folder exists. A line that
+    does not parse, or carries no readable time, is skipped rather than trusted.
+    """
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    from packages.orchestration.config import env_value
+
+    raw = env_value("REMEDY_TEST_LOAD_LOG", environ)
+    if raw is None:
+        folder = (home or Path.home()) / ".remedy-loop"
+        path = folder / "test_load.jsonl" if folder.is_dir() else None
+    else:
+        path = Path(raw.strip()) if raw.strip() else None
+    absent = {"record": False, "runs": 0, "cpu_minutes": 0.0, "sentence": _NO_TEST_LOAD_RECORD}
+    if path is None or not path.is_file():
+        return absent
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return {**absent, "sentence": _UNREADABLE_TEST_LOAD_RECORD}
+    since = (now or datetime.now(timezone.utc)) - timedelta(hours=24)
+    runs, cpu_seconds = 0, 0.0
+    for line in lines:
+        try:
+            row = json.loads(line)
+            when = datetime.strptime(row["utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            cpu = float(row["cpu_seconds"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if when >= since:
+            runs += 1
+            cpu_seconds += cpu
+    cpu_minutes = round(cpu_seconds / 60, 1)
+    noun = "test run" if runs == 1 else "test runs"
+    return {"record": True, "runs": runs, "cpu_minutes": cpu_minutes,
+            "sentence": f"{runs} {noun} used {cpu_minutes:.1f} CPU minutes in the last 24 hours."}
 
 
 def doctor_core_report() -> DoctorCoreReport:
@@ -474,6 +526,13 @@ def doctor_core_report() -> DoctorCoreReport:
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
+    # F293 T004: information only — never a check, a warning or a blocker.
+    try:
+        test_load = last_day_test_load()
+    except (OSError, RuntimeError):  # a folder that cannot be read, or no home folder (R-1120)
+        test_load = {"record": False, "runs": 0, "cpu_minutes": 0.0,
+                     "sentence": _UNREADABLE_TEST_LOAD_RECORD}
+
     return DoctorCoreReport(
         ready=ready,
         checks=checks,
@@ -481,6 +540,7 @@ def doctor_core_report() -> DoctorCoreReport:
         warnings=tuple(warnings),
         dead_commands=dead_commands,
         disk=disk,
+        test_load=test_load,
     )
 
 
@@ -521,6 +581,8 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         print(f"    {disk['free_bytes']} bytes free · floor: "
               f"{disk['floor_bytes']} bytes · floor met: "
               f"{'yes' if disk['floor_met'] else 'NO'}")
+    print("  test load:")
+    print(f"    {result['test_load']['sentence']}")
     print("  dead commands:")
     if dead_commands:
         for cid in dead_commands:

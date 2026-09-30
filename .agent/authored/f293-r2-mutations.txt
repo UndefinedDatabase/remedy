@@ -1,0 +1,152 @@
+# F293 R2 C4 — mutation red-proofs for the dead_command_ids cache
+
+Worktree: `.remedy-wt/f293-r2-mut`, created at `HEAD` (`494713d33`, commit 3's tip), removed
+as the last action. `git worktree list` before creation and after removal both show the same
+11 entries (the primary checkout plus 10 pre-existing, unrelated `.remedy-wt/job-*` worktrees
+belonging to other running sessions on this machine — untouched throughout).
+
+Each mutation was applied to
+`.remedy-wt/f293-r2-mut/packages/orchestration/dead_command_check.py` alone, tested, then
+restored with `git checkout --` before the next mutation; `git diff` read empty after each
+restore.
+
+## Mutation A — disable the cache
+
+Change:
+```
+-    cached = _SCAN_CACHE.get(root)
+-    if cached is not None:
+-        return cached
++    cached = None
+```
+(the function always rescans; the cache is written but never read)
+
+Command: `python3 -m pytest tests/orchestration/test_dead_command_check.py -v`
+
+Result: 1 failed, 4 passed — exactly the predicted split.
+
+```
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_a_command_referenced_nowhere_is_dead PASSED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_an_argv_list_pair_counts_as_a_reference PASSED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_real_catalog_has_no_dead_commands PASSED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry PASSED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root FAILED
+
+    monkeypatch.setattr(mod, "_iter_search_files", counting_iter)
+    dead_command_ids(catalog, handlers, root=tmp_path)
+    dead_command_ids(catalog, handlers, root=tmp_path)
+>   assert calls["n"] == 1
+E   assert 2 == 1
+
+tests/orchestration/test_dead_command_check.py:62: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root
+========================= 1 failed, 4 passed in 2.56s ==========================
+```
+
+`test_the_file_scan_is_not_repeated_for_the_same_root` goes RED (call count reads 2, not 1,
+because the scan is no longer cached). The other 4 tests — the 3 pre-existing plus
+`test_two_different_roots_never_share_a_cache_entry` — stay GREEN: this mutation only defeats
+reuse, not the correctness of a single scan, so every test whose assertions only depend on a
+scan happening at all (rather than happening exactly once) is unaffected.
+
+File restored: `git checkout -- packages/orchestration/dead_command_check.py`; `git diff`
+empty.
+
+## Mutation B — break per-root keying
+
+Change: both `_SCAN_CACHE` accesses use a fixed string key instead of `root`:
+```
+-    cached = _SCAN_CACHE.get(root)
++    cached = _SCAN_CACHE.get("_only")
+...
+-    _SCAN_CACHE[root] = result
++    _SCAN_CACHE["_only"] = result
+```
+
+Command (whole file, as ordered): `python3 -m pytest tests/orchestration/test_dead_command_check.py -v`
+
+Result, whole file: 4 failed, 1 passed — broader than the block's predicted "1 failed, 4
+passed" split. Declared here as a deviation from the predicted SCOPE, not the predicted
+MECHANISM: the target test does go red as ordered, but so do three others.
+
+```
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_a_command_referenced_nowhere_is_dead PASSED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_an_argv_list_pair_counts_as_a_reference FAILED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_real_catalog_has_no_dead_commands FAILED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root FAILED
+tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry FAILED
+
+    assert dead_command_ids(catalog, handlers, root=root_a) == ["ghost.vanish"]
+>   assert dead_command_ids(catalog, handlers, root=root_b) == []
+E   AssertionError: assert ['ghost.vanish'] == []
+E
+E     Left contains one more item: 'ghost.vanish'
+E
+E     Full diff:
+E     - []
+E     + [
+E     +     'ghost.vanish',
+E     + ]
+
+tests/orchestration/test_dead_command_check.py:77: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_an_argv_list_pair_counts_as_a_reference
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_real_catalog_has_no_dead_commands
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_the_file_scan_is_not_repeated_for_the_same_root
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry
+========================= 4 failed, 1 passed in 0.27s ===========================
+```
+
+WHY the scope is broader than predicted: `_SCAN_CACHE` is a module-level dict that persists
+for the life of the whole pytest process (not per-test). With a single fixed key, whichever
+test runs FIRST within the file populates `_SCAN_CACHE["_only"]` with its own tmp_path's scan,
+and every later test in the same process — regardless of its OWN `root=` argument — reads that
+same stale entry back, because the key no longer varies with `root`. Declaration order in this
+file runs `test_a_command_referenced_nowhere_is_dead` first, which seeds the cache; every
+subsequent call in the process (three more tests) then reads that first test's stale scan
+instead of its own tmp_path's real content, which is why the failure count is 4 rather than 1.
+This is not a defect in the production caching design under test (the fix keys by `root`, not
+by a fixed string — that is exactly what this mutation breaks) or in the two new tests; it is a
+stronger demonstration of the same defect the mutation introduces, surfacing through more call
+sites than the single test written to target it directly.
+
+Confirmation run, the target test in isolation (no cross-test pollution possible with one test
+selected):
+
+Command: `python3 -m pytest tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry -v`
+
+```
+    assert dead_command_ids(catalog, handlers, root=root_a) == ["ghost.vanish"]
+>   assert dead_command_ids(catalog, handlers, root=root_b) == []
+E   AssertionError: assert ['ghost.vanish'] == []
+E
+E     Left contains one more item: 'ghost.vanish'
+E
+E     Full diff:
+E     - []
+E     + [
+E     +     'ghost.vanish',
+E     + ]
+
+tests/orchestration/test_dead_command_check.py:77: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_dead_command_check.py::TestDeadCommandIds::test_two_different_roots_never_share_a_cache_entry
+============================== 1 failed in 0.21s ===============================
+```
+
+Isolated, exactly 1 failed, matching the block's prediction precisely: root_b's call wrongly
+reuses root_a's cached scan, so `ghost.vanish` reads dead under root_b too (`== []` reads
+`['ghost.vanish']` instead). The broader whole-file count is a property of pytest's
+single-process execution model interacting with a module-global cache keyed the wrong way, not
+a different underlying failure mode.
+
+File restored: `git checkout -- packages/orchestration/dead_command_check.py`; `git diff`
+empty. Sanity re-run after restore, whole file: `5 passed in 2.45s`.
+
+## Worktree teardown
+
+`git worktree remove .remedy-wt/f293-r2-mut`, `git worktree prune`. `git worktree list`
+before and after both list the same 11 entries (primary checkout + 10 unrelated
+`.remedy-wt/job-*` worktrees from other running sessions), confirming clean removal with no
+side effects on other work.

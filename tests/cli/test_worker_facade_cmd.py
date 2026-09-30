@@ -705,7 +705,7 @@ class TestDoctorCoreReportFunction:
         _cmd_doctor_core(_ns(json=True))
         command_json = json.loads(capsys.readouterr().out)
 
-        for key in ("ready", "checks", "blockers", "warnings", "dead_commands", "disk"):
+        for key in ("ready", "checks", "blockers", "warnings", "dead_commands", "disk", "test_load"):
             assert report_json[key] == command_json[key], key
 
     def test_as_json_key_order(self, monkeypatch):
@@ -714,7 +714,7 @@ class TestDoctorCoreReportFunction:
         self._fixed_disk(monkeypatch)
         result = doctor_core_report().as_json()
         assert list(result.keys()) == [
-            "ready", "checks", "blockers", "warnings", "dead_commands", "disk",
+            "ready", "checks", "blockers", "warnings", "dead_commands", "disk", "test_load",
         ]
 
     def test_every_warnings_as_json_key_list_is_exactly_three_keys(self, monkeypatch):
@@ -882,6 +882,90 @@ class TestShippedDefaultsAreNotOnTheShippedDeadList:
         dead = dead_model_ids()
         assert resolve_model_alias("claude-flagship") not in dead
         assert resolve_model_alias("claude-workhorse") not in dead
+
+
+class TestDoctorCoreTestLoad:
+    """F293 T004: one plain sentence on the last 24 hours of the test load record."""
+
+    @staticmethod
+    def _utc(hours_ago):
+        from datetime import datetime, timedelta, timezone
+
+        return (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _record(self, tmp_path, monkeypatch):
+        log = tmp_path / "test_load.jsonl"
+        rows = [{"utc": self._utc(1), "cpu_seconds": 60.0, "wall_seconds": 600.0},
+                {"utc": self._utc(5), "cpu_seconds": 30.0, "wall_seconds": 300.0},
+                {"utc": self._utc(30), "cpu_seconds": 600.0, "wall_seconds": 60.0}]
+        log.write_text("".join(json.dumps(r) + "\n" for r in rows) + "not json\n", encoding="utf-8")
+        monkeypatch.setenv("REMEDY_TEST_LOAD_LOG", str(log))
+
+    def test_json_counts_the_cpu_of_the_last_24_hours_only(self, tmp_path, monkeypatch):
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        self._record(tmp_path, monkeypatch)
+        assert doctor_core_report().as_json()["test_load"] == {
+            "record": True, "runs": 2, "cpu_minutes": 1.5,
+            "sentence": "2 test runs used 1.5 CPU minutes in the last 24 hours.",
+        }
+
+    def test_text_mode_prints_the_sentence_before_the_dead_commands(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+
+        self._record(tmp_path, monkeypatch)
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert ("  test load:\n    2 test runs used 1.5 CPU minutes in the last 24 hours.\n"
+                "  dead commands:\n") in out
+
+    def test_an_absent_record_is_said_plainly_and_changes_nothing_else(self, tmp_path, monkeypatch):
+        import packages.orchestration.budget_guard as budget_guard
+        from apps.cli.commands.worker_facade_cmd import doctor_core_report
+
+        monkeypatch.setattr(budget_guard, "FREE_DISK_PROBE", lambda: 123456789)
+        monkeypatch.setenv("REMEDY_TEST_LOAD_LOG", "")
+        absent = doctor_core_report().as_json()
+        assert absent["test_load"] == {
+            "record": False, "runs": 0, "cpu_minutes": 0.0,
+            "sentence": ("No test load record was found on this machine, so the test cost of the "
+                         "last 24 hours is unknown."),
+        }
+        self._record(tmp_path, monkeypatch)
+        present = doctor_core_report().as_json()
+        for key in ("ready", "checks", "blockers", "warnings"):
+            assert present[key] == absent[key], key
+
+    @pytest.mark.parametrize("error", [PermissionError("no entry"), RuntimeError("no home folder")])
+    def test_a_record_that_cannot_be_read_is_unknown_and_changes_nothing_else(self, monkeypatch, error):
+        import apps.cli.commands.worker_facade_cmd as facade
+        import packages.orchestration.budget_guard as budget_guard
+
+        monkeypatch.setattr(budget_guard, "FREE_DISK_PROBE", lambda: 123456789)
+        monkeypatch.setenv("REMEDY_TEST_LOAD_LOG", "")
+        absent = facade.doctor_core_report().as_json()
+
+        def unreadable(*args, **kwargs):
+            raise error
+
+        monkeypatch.setattr(facade, "last_day_test_load", unreadable)
+        failed = facade.doctor_core_report().as_json()
+        assert failed["test_load"] == {
+            "record": False, "runs": 0, "cpu_minutes": 0.0,
+            "sentence": ("The test load record could not be read, so the test cost of the "
+                         "last 24 hours is unknown."),
+        }
+        for key in ("ready", "checks", "blockers", "warnings"):
+            assert failed[key] == absent[key], key
+
+    def test_the_default_record_lives_in_the_home_folder(self, tmp_path):
+        from apps.cli.commands.worker_facade_cmd import last_day_test_load
+
+        (tmp_path / ".remedy-loop").mkdir()
+        (tmp_path / ".remedy-loop" / "test_load.jsonl").write_text(
+            json.dumps({"utc": self._utc(2), "cpu_seconds": 120.0}) + "\n", encoding="utf-8")
+        assert last_day_test_load(environ={}, home=tmp_path)["runs"] == 1
+        assert last_day_test_load(environ={}, home=tmp_path / "elsewhere")["record"] is False
 
 
 class TestCollectHandlers:

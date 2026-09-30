@@ -66,6 +66,26 @@ def _isolated_data_root(tmp_path_factory):
     os.environ.pop("REMEDY_DATA_DIR", None)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _one_remedy_checkout_identity_per_process():
+    """Read Remedy's own checkout identity once per test process (DECISION F293 D6).
+
+    Every run's input snapshot records ``remedy_worktree_identity()``, the git content identity
+    of this checkout, and each reading starts several git processes over the whole checkout. No
+    test may change this checkout, so the value read here, at session start and before any test
+    can patch git, is the real one. Three test files already froze it per test against the
+    neighbour race of R-0645 and R-0950, which this removes for every test. A test that sets its
+    own value with ``monkeypatch`` still wins inside that test.
+    """
+    from packages.orchestration import run_manifest
+
+    real = run_manifest.remedy_worktree_identity
+    frozen = real()
+    run_manifest.remedy_worktree_identity = lambda: frozen
+    yield
+    run_manifest.remedy_worktree_identity = real
+
+
 #: How deep the data-root guard reads: the root's own children and theirs (R-1004).
 DATA_ROOT_GUARD_DEPTH = 2
 
@@ -119,6 +139,9 @@ def pytest_configure(config):
         load_governor.lower_priority()
         config._remedy_load_log = (load_governor.load_log_path(), load_governor.note_start())
         os.environ["REMEDY_TEST_LOAD_LOG"] = ""
+        # F293 T003: every process this run starts inherits the mark, workers included.
+        config._remedy_run_mark = load_governor.new_run_mark()
+        os.environ[load_governor.RUN_MARK_VARIABLE] = config._remedy_run_mark
     os.environ.pop("REMEDY_DATA_DIR", None)
 
 
@@ -138,8 +161,24 @@ def pytest_cmdline_main(config):
     return None
 
 
+@pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
-    """Fail the run when the configured data root changed while it ran (R-0803)."""
+    """Fail the run when it left a process behind (F293 T003) or changed the data root (R-0803).
+
+    ``trylast`` puts this after pytest-xdist's own hook, which shuts the workers down, so a worker
+    is never counted as left behind.
+    """
+    mark = getattr(session.config, "_remedy_run_mark", None)
+    if mark is not None:
+        factory = getattr(session.config, "_tmp_path_factory", None)
+        folders = [factory.getbasetemp()] if factory is not None else []
+        ended = load_governor.end_processes(load_governor.leftover_processes(mark, folders))
+        if ended:
+            session.exitstatus = pytest.ExitCode.TESTS_FAILED
+            exitstatus = session.exitstatus
+            reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+            if reporter is not None:
+                reporter.write_line(load_governor.leftover_notice(ended), red=True)
     load = getattr(session.config, "_remedy_load_log", None)
     if load is not None:
         load[1]["collected"] = getattr(session, "testscollected", 0)

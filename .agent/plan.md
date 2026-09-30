@@ -1,15 +1,20 @@
-# Plan — amend0930-test-load (operator amendment, 2026-09-30)
+# Plan — F293 Test load diet
 
 ## Goal
-Cap the test load (worker cap, priority, run record), stop repeated runs, register the test diet feature F293.
-Branch: feature/amend0930-test-load. Not a loop feature; decisions are `DECISION amend0930 D<n>`.
+Cut the full suite's and round selections' CPU cost by at least 40% from T001's baseline, or rule
+with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-All parts built and verified (targeted pass green, full suite green under the cap: 21,082 passed in 448.7 s, 1,288 CPU s). PR open; waiting for hosted checks, then merge.
+Session 6, round 24: the closing round. Round 23 is booked PASS: the evidence job `f293r23e1001`
+and the package `remedy-review-20261001-005405-READY_FOR_REVIEW.zip` cover the accepted head
+`b59d42cc9`. This round rotates the ledger, flips F293's STATUS line to `[x]` with the README's
+counts and Tier 2 paragraph and `SU-040`'s `consumed_by` in the same commit, and opens the pull
+request. F293 closes at a 24.5 percent cut; the rest of T002 is F294 (DECISION F293 D15). The
+open-findings count is 2 (`R-1117`, `R-1125`, both owned by F290).
 
 ## Next Steps
-- G4/G6: confirm no open PR, restore the original branch state
-- H: handback to ~/.remedy-loop/amend0930-test-load.handback.md
+1. The next session merges F293's pull request at the Open PR Gate, then claims the next feature by
+   Rule A5, which is F294.
 
 ## Risks
-- Full suite under the cap takes longer; budget figures move to ~25 min.
+- None open for F293; operator question Q2 records the split and stands until the operator answers.

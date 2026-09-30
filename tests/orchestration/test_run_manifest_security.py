@@ -214,3 +214,31 @@ class TestSecretDetectorFailsClosed:
     def test_an_ordinary_value_is_still_clear(self):
         from packages.orchestration import run_manifest as rm
         assert rm._contains_secret("an ordinary value") is False
+
+
+class TestSafeKeyAnswersPerKeyAndUse:
+    """DECISION F293 D5: `_is_safe_key` answers one key once per process, and apart for each use."""
+
+    def test_the_detectors_run_once_per_key(self, monkeypatch):
+        from packages.orchestration import run_manifest as rm
+
+        calls = []
+        real = rm._contains_secret
+
+        def counting(value):
+            calls.append(value)
+            return real(value)
+
+        monkeypatch.setattr(rm, "_contains_secret", counting)
+        key = "f293_d5_a_key_only_this_test_uses"
+        assert rm._is_safe_key(key) is True
+        assert rm._is_safe_key(key) is True
+        assert calls == [key]
+
+    def test_a_dotted_key_is_answered_apart_for_each_use(self):
+        from packages.orchestration import run_manifest as rm
+
+        key = "REMEDY_F293.D5_ONLY_THIS_TEST"
+        assert rm._is_safe_key(key) is True
+        assert rm._is_safe_key(key, allow_dots=False) is False
+        assert rm._is_safe_key(key) is True

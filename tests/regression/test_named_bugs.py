@@ -534,6 +534,50 @@ class TestDevStatusCommandSchema:
             data = json.loads(mock_print.call_args[0][0])
             assert data["task_progress_ok"] is True
 
+    @pytest.mark.parametrize("error", [ImportError, KeyError, TypeError, AttributeError])
+    def test_a_failed_task_progress_check_does_not_block_the_others(
+        self, error, monkeypatch, capsys
+    ):
+        """F293 SU-040 (DECISION F293 D14): each error the task-progress probe can meet reads as
+        a failed check, and the command still reports every other check."""
+        import sys
+
+        from apps.cli.main import main
+        from packages.orchestration import ui_view_model
+
+        def _failing(job, events):
+            raise error("the task-progress probe failed")
+
+        monkeypatch.setattr(ui_view_model, "build_task_progress", _failing)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        main()
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is True
+        assert data["task_progress_ok"] is False
+        assert data["ui_contract_ok"] is True
+
+    def test_a_defect_in_the_task_progress_probe_is_not_swallowed(self, monkeypatch, capsys):
+        """F293 SU-040 (DECISION F293 D14): the handler no longer catches everything, so a
+        defect of another kind fails the command with its own name instead of reading as a
+        failed check."""
+        import sys
+
+        from apps.cli.main import main
+        from packages.orchestration import ui_view_model
+
+        def _broken(job, events):
+            raise RuntimeError("a defect in the task-progress probe")
+
+        monkeypatch.setattr(ui_view_model, "build_task_progress", _broken)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        with pytest.raises(SystemExit) as stopped:
+            main()
+        data = json.loads(capsys.readouterr().out)
+        assert stopped.value.code == 1
+        assert data["ok"] is False
+        assert data["message"] == "RuntimeError: a defect in the task-progress probe"
+        assert "task_progress_ok" not in data
+
     def test_dev_status_human_output(self):
         from apps.cli.commands.dev import _dev_status
         with patch("builtins.print") as mock_print:
