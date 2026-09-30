@@ -1,0 +1,226 @@
+diff --git a/.agent/context.md b/.agent/context.md
+index 7ed77c4dc..f3a379cc5 100644
+--- a/.agent/context.md
++++ b/.agent/context.md
+@@ -20,7 +20,10 @@ the CI entrypoint's architecture.
+   commands, held there by a contract test (DECISION F044 D1 (1)).
+ - The bar's routing rule is the chat's own parse, held there by shared
+   goldens (DECISION F044 D1 (3)).
+-- The tour's palette stop is the '?' panel until the bar's round.
++- The palette's seven form entries stay disabled until F292 builds the
++  plan view and the hunk controls they open (DECISION F044 D5).
++- One keymap module decides every shortcut; a press from a field is text
++  (DECISION F044 D5).
+ 
+ ## Constraints
+ - Every pytest run in a round is targeted and serial; the resource and
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 348d0646b..28ec57aed 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26442,3 +26442,49 @@ a question to the chat.
+ HOW TO REVERSE: delete `ChatSheet.tsx` and its sheet, the Ask row from `paletteSheet.ts`, the two
+ entry points from `EvidenceChatTab.tsx`, and the shell's chat mount; restore the bar's placeholder
+ and the tour's last stop from `a706a070`; delete this paragraph and its assumption-log line.
++
++## DECISION F044 D5 — the seven form entries open surfaces that do not exist yet, so their plan view and hunk controls are registered as F292 directly after F044 and the palette keeps them disabled until F292 lands; the keymap is one pure module, and this round moves the '?' key onto it and adds "/", Ctrl+K or Cmd+K and "g" then "p" (2026-09-30)
++
++CONTEXT: Measured by the reviewer at `5cbbe6c8`, with a research agent's map read back against the
++sources: the six plan edits of DECISION F015 D3 need `expected_version`, the plan's version, and are
++open only while the plan waits for approval before its job starts (`edit_window_refusal` in
++`packages/orchestration/plan_editing.py`); no read route serves the version, the approval state or a
++planned task's dependencies, so a browser cannot name the version an edit was made against, and
++`remedy job plan-show --json` is the only reader. F015's file leaves its edits to "the plan view, a
++later feature", and none is registered. `patch.approve-hunks` needs a task run and hunk ids, which
++the diff envelope carries, but no screen offers hunk controls: F033 left them to the command line.
++F240's file, power keyboard, relies on hunk controls in the diff. There is no keymap module: the
++shell's '?' listener calls `isHelpShortcut` in `api/termSearch.ts`, and `escapeWalksBack` in
++`graph/zoomView.ts` keeps its own copy of the check for a field.
++
++CHOSEN: (1) F292, "Plan view and hunk decisions in the cockpit", is registered thin, directly after
++F044 under F044's Tier 5 heading so Rule A5 takes it next, with the plan read, the plan view with
++its six edits and the diff view's hunk controls, and with the palette's seven form entries turned
++into surface entries as its last slice; F240 gains F292 in its "Depends on" line. F044's acceptance
++line "Every exposed command executable from the palette with correct argument flows" is met for the
++seven by F292, which opens the surfaces the palette routes to; until then they stay listed and
++disabled with their reason. This is a reversible ruling on scope and order, entered in
++`.agent/operator_questions.md` and executed now. (2) THE KEYMAP is `apps/ui/src/api/keymap.ts`: the
++documented bindings in one list (`KEYMAP_BINDINGS`), which the cheat overlay will render; one rule
++for a press from a field, `isTypingTarget`, which `escapeWalksBack` now calls; and `keymapAction`,
++which maps a press, its target, a waiting "g" and whether a dialog is open to an action. Ctrl+K or
++Cmd+K opens the bar from anywhere, a field included; any other press from a field is text; "/"
++opens the bar, "?" the terms, "g" then "p" the projects, "j" and "k" walk the siblings, Enter zooms
++in only from the page itself, and Escape walks back unless a dialog is open. (3) THE SHELL listens
++once, through `keymapAction`: "?" opens the terms panel as before, "/" and the chord put the focus
++in the bar, which opens its sheet, and "g" then "p" goes to the projects' home. `isHelpShortcut` is
++deleted, replaced by the keymap. The graph's keys are wired into the graph in the next round. (4)
++THE ORDER: the next round wires "j", "k", Enter and Escape into the graph through the keymap, with
++the zoom's own Escape listener moving onto it, and adds the keymap's cheat overlay on a held '?';
++then the three budgets in CI; then the closure sequence.
++
++ALTERNATIVES: building the plan editor and hunk controls inside the palette, rejected because
++merging, splitting or reordering tasks from a single line is not an honest argument flow and the
++plan read is server work of its own; probing the version with a wrong one and reading it back from
++the 409, rejected because a lucky guess applies the edit; leaving the seven to F044's closure as a
++known gap, rejected because a gap without an owner is the kind the roadmap's rules forbid.
++
++HOW TO REVERSE: delete `docs/roadmap/features/T5_F292.md`, its STATUS line, and F292 from F240's
++"Depends on"; restore `TOTAL_FEATURES` and the README counter; delete `keymap.ts` and its test and
++restore `isHelpShortcut`, `escapeWalksBack`, the shell's listener and the bar from `5cbbe6c8`;
++delete this paragraph, its assumption-log line and its operator-questions entry.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 2f73b3da9..ca8260b75 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -167,3 +167,5 @@ Gate: F044 R1 — the F044 round 1 entry, the claim with the palette's pure rule
+ Gate: F044 R2 — the F044 round 2 entry, the bar's dropdown sheet: the booking of round 1, DECISION F044 D2 with its assumption-log row, the Recent, Jump, Projects and Help rows in a portalled listbox the bar drives as a combobox, the deletion of the shell's `handleJump`, and the tour's last stop on the bar. VERDICT PASS. Re-derived over `d31a78c7`..`587bdb18` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 10 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `f9770718` 413, `d121f0fb` 385, `49081ce6` 308, `9e421767` 186, `a1a8ae0b` 66, `36992a63` 242, `a10172fd` 317, `9b1085b2` 267, `4a71d891` 254 and `587bdb18` 190. The worker declared two assumptions, the listbox's label and the blur radius the block left open. THE TRANSPORT PROOF: the block copy and the eight payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r2/` and `.remedy-wt/f044-r2-payloads/` byte for byte, and the seven files the block's G2 table names read its sha256 values at `a1a8ae0b` and `9b1085b2`. THE CODE: read in full by the reviewer; one comment the round added to `RemedyShell.tsx` says the jump targets are ranked "the same way every jump has always been ranked", which is false, since the deleted `handleJump` took the first label holding the text, and the next round's block orders it corrected. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `587bdb18`, read `1697 passed, 5 skipped` at exit 0, the explanation layer's browser run among them; eslint exit 0; ruff clean; all six `integrity check` checks read pass; the render harness, re-run by the reviewer at `587bdb18`, read `RENDER: 11 of 11 checks pass`, and its screenshot shows the sheet open under the bar with the matched letters marked. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `587bdb18`, turned all fourteen mutations red with every control passing and every restore byte-identical; the handback counts them as thirteen, a slip of its prose. The open set at `587bdb18` is empty.
+ 
+ Gate: F044 R3 — the F044 round 3 entry, the palette's commands: the booking of round 2, DECISION F044 D3 with its assumption-log row, the Commands section, the reason a command is refused, the argument flow in the bar, the send through the chat's card sender, and the surfaces the shell opens. VERDICT PASS. Re-derived over `587bdb18`..`a706a070` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 10 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `8e1d08fc` 414, `495d6c63` 264, `bbb63ce1` 473, `1037c408` 359, `91e14f1e` 61, `38a66a23` 297, `9777ed53` 305, `45c6b34d` 361, `2a721ac9` 288 and `a706a070` 180. The worker declared one deviation: its own render run found its first C4 closing the sheet before a command's task argument could show, and it moved its branch back to C3 with `git reset --soft`, recommitted C4 with the repair and C5 and C6 unchanged, all before the push; the reviewer read the pushed branch as a fast-forward from `587bdb18`, so no published commit was rewritten. THE TRANSPORT PROOF: the block copy and the eight payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r3/` and `.remedy-wt/f044-r3-payloads/` byte for byte, and the ten files the block's G2 table names read its sha256 values at `91e14f1e` and `45c6b34d`. THE CODE: read in full by the reviewer. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `a706a070`, read `1700 passed, 5 skipped` at exit 0; eslint exit 0; ruff clean; all six `integrity check` checks read pass; the render harness, re-run by the reviewer at `a706a070`, read `RENDER: 12 of 12 checks pass`. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `a706a070`, turned all sixteen mutations red with every control passing and every restore byte-identical; the tool prints its fourth mutation without its label, a slip of its prose. The open set at `a706a070` is empty.
++
++Gate: F044 R4 — the F044 round 4 entry, the route of a question to the chat: the booking of round 3, DECISION F044 D4 with its assumption-log row, the Ask row, the chat sheet that asks the question at once, the chat tab's two entry points and the reference's placeholder. VERDICT PASS. Re-derived over `a706a070`..`5cbbe6c8` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 10 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `4bb95fc1` 359, `4615b1cb` 254, `9712b2ba` 133, `a71115a9` 311, `eaee3162` 52, `474a24a7` 43, `52c61c4c` 147, `05773ef0` 64, `f8479678` 230 and `5cbbe6c8` 165; the worker declared no deviation. THE TRANSPORT PROOF: the block copy and the eight payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r4/` and `.remedy-wt/f044-r4-payloads/` byte for byte, and the seven files the block's G2 table names read its sha256 values at `eaee3162` and `05773ef0`. THE CODE: read in full by the reviewer. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `5cbbe6c8`, read `1703 passed, 5 skipped` at exit 0, the explanation layer's browser run among them; eslint exit 0; ruff clean; all six `integrity check` checks read pass; the render harness, re-run by the reviewer at `5cbbe6c8`, read `RENDER: 9 of 9 checks pass`. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `5cbbe6c8`, turned all ten mutations red with every control passing and every restore byte-identical. The open set at `5cbbe6c8` is empty.
+diff --git a/.agent/operator_questions.md b/.agent/operator_questions.md
+index 4b71ec46a..7e8d0a03c 100644
+--- a/.agent/operator_questions.md
++++ b/.agent/operator_questions.md
+@@ -7,4 +7,22 @@
+ > Soft cap five; entries leave only by the operator's answer, recorded as a dated
+ > DECISION by the operator's next amendment, which deletes the entry.
+ 
+-EMPTY
++### Q1 — New feature for plan editing (2026-09-30, F044, round 5)
++
++**What needs deciding.** The command palette can reach every command the cockpit's write channel
++accepts except seven: the six ways to edit a plan while it waits for approval, and approving or
++rejecting single parts of a change. Those seven need screens the cockpit does not have: a view of
++the stored plan that shows which version of it you are editing, and approve and reject controls in
++the change viewer. I registered a new roadmap item for those screens and placed it directly after
++the command palette, so it is built next.
++
++**Why it matters.** Until those screens exist, the seven stay visible in the palette but disabled,
++with a sentence saying why. Building them inside the palette instead would make merging, splitting
++or reordering planned tasks awkward, and it would still need a new way for the page to read the
++plan from the server.
++
++**My recommendation.** Keep the new item where it is, directly after the command palette, and let
++the palette open those screens once they exist.
++
++**What happens if you say nothing.** The recommendation is already executed and stands until you
++say otherwise.
+diff --git a/README.md b/README.md
+index 7f336a76a..e94d1589b 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-120 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++120 of 292 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 8ca36f86d..e325db63c 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -189,6 +189,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ 
+ - [x] F043 — Explanation layer (T001–T003 complete, R-1115 resolved; accepted 2026-09-30 · live review PASS — ACCEPTED · Evidence job f043r8e1001 · package remedy-review-20260930-033441-READY_FOR_REVIEW.zip · SHA-256 a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 79137914f113d510ecdef140dfecc8b0e49a76e3)
+ - [~] F044 — Command palette, keyboard, performance budget
++- [ ] F292 — Plan view and hunk decisions in the cockpit
+ 
+ ## Tier 12 — Observability & Operations
+ 
+diff --git a/docs/roadmap/features/T16_F240.md b/docs/roadmap/features/T16_F240.md
+index f61ed3a47..d8426ef98 100644
+--- a/docs/roadmap/features/T16_F240.md
++++ b/docs/roadmap/features/T16_F240.md
+@@ -1,5 +1,5 @@
+ # T16_F240 — Power keyboard & vim navigation
+-**Tier 16 · Depends on: F044, F009 catalog, F023 · Blocks/used by: power-user retention**
++**Tier 16 · Depends on: F044, F292, F009 catalog, F023 · Blocks/used by: power-user retention**
+ 
+ > **CANONICAL DESIGN REFERENCE:** This feature MUST follow the canonical Remedy
+ > UI design reference in `docs/ui/design_reference/`. `ux_design.png` is the
+diff --git a/docs/roadmap/features/T5_F292.md b/docs/roadmap/features/T5_F292.md
+new file mode 100644
+index 000000000..ce4f01230
+--- /dev/null
++++ b/docs/roadmap/features/T5_F292.md
+@@ -0,0 +1,54 @@
++# T5_F292 — Plan view and hunk decisions in the cockpit
++**Tier 5 · Depends on: F015, F033, F037, F044 · Blocks/used by: F240; the palette's form entries**
++
++> Registered 2026-09-30 by DECISION F044 D5, which placed it directly after F044.
++> REGISTERED THIN: nothing in this file has been implemented.
++
++> **CANONICAL DESIGN REFERENCE:** This feature MUST follow the canonical Remedy
++> UI design reference in `docs/ui/design_reference/`. `ux_design.png` is the
++> visual authority; the written specs, tokens, component rules, graph rules and
++> motion rules in that folder are binding for this feature. Builders must not
++> invent a new visual language; any visual deviation must be documented in the
++> assumption_log with a technical reason. All UI work uses the shared design
++> tokens (`--remedy-*`) and component rules from the design reference.
++
++## Goal & Done
++The cockpit can do the seven writes the write door already accepts but no screen offers: the six
++edits of a plan that waits for approval (DECISION F015 D3) and the approval or rejection of a
++change's hunks (F033). DONE when a plan view shows the stored plan with its version, its approval
++state and, for each planned task, its dependencies and acceptance criteria, and offers each of the
++six edits against the version it shows, with a version conflict told in plain words; when the diff
++view lets a person approve a hunk or reject it with a reason; and when the command palette's seven
++form entries open these surfaces instead of standing disabled.
++
++## Why this exists
++F015 left its edits to "the plan view, a later feature", and no feature was registered for it. F033
++left hunk decisions to the command line. F044 made every write the door accepts reachable from the
++palette, and measured at `5cbbe6c8` what these seven need: the browser can read no plan version, no
++approval state and no dependency of a planned task, because no read route serves them, so a plan
++edit cannot name the version it was made against; and although the diff envelope already carries
++each hunk's id and its task run, no screen shows hunk controls. A palette is the wrong place to
++merge, split or reorder planned tasks, so the palette opens these surfaces rather than holding them.
++
++## Task slicing
++- T001 — the plan read: one builder in `packages/orchestration/plan_editing.py` shared by
++  `remedy job plan-show --json` and a dashboard section, serving the version, the approval, whether
++  the plan is open for editing and why not, and each planned task with its entry id, dependencies
++  and acceptance; the plan view that renders it.
++- T002 — the six edits in the plan view, each sent with the version shown, a version conflict and a
++  refused edit told in plain words, and the view read again after each accepted edit.
++- T003 — hunk controls in the diff view: approve, reject with a reason, the job's own scope sent
++  without a task run; the palette's seven form entries become surface entries opening these views;
++  an end-to-end run.
++
++## Acceptance
++- The plan view's version, approval and tasks equal `remedy job plan-show --json` for the same job.
++- Each of the six edits reaches the door with the version shown and is refused with a plain reason
++  when the plan moved on.
++- A hunk approved or rejected in the diff view lands in the hunk decision record exactly as
++  `remedy patch approve-hunks` would record it.
++- The palette lists no form entry disabled.
++
++## Do not touch
++The write door's argument checks and refusal codes; the plan's own validation; the diff view's
++reading of the envelope.
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index fc16226bd..4efafcdc4 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -73,3 +73,4 @@ Column rules:
+ | 2026-09-30 | F044 | `CommandBar.tsx`, `PaletteSheet.tsx` and `PaletteSheet.module.css` under `components/command/`, `RemedyShell.tsx` | `ux_spec.md` §9: typing shows live jump matches (existing `handleJump` logic) in a dropdown glass sheet (radius 14, items 13px, arrow keys and Enter navigable); `component_spec.md` "CommandBar" keeps `handleJump` and names the combobox pattern; the reference draws no section headings, no recent rows, no project rows and no help rows. | The sheet ranks with the palette's fuzzy rule in place of `handleJump`'s substring match, which is deleted; it groups its rows under Recent, Jump, Projects and Help headings, marks the matched letters in bold `--remedy-blue-strong` on no background, tints the active row in `--remedy-blue-50`, and fades in over `--remedy-dur-base`. | `handleJump` selected the first label holding the text and could neither rank nor highlight, so keeping it beside the palette would give one bar two jumps that disagree; the sections and the recent rows are `T5_F044.md`'s own; the sheet is portalled into the page body because the bar's `backdrop-filter` confines a fixed descendant. | DECISION F044 D2 |
+ | 2026-09-30 | F044 | `CommandBar.tsx`, `CommandBar.module.css`, `PaletteSheet.tsx` and `PaletteSheet.module.css` under `components/command/`, `RemedyShell.tsx` | `ux_spec.md` §8: a disabled control at 45% opacity with a not-allowed cursor and an honest tooltip; §9 draws the bar with no chip, no argument prompt and no outcome line; `component_spec.md` "CommandBar" names a disabled-send state. | A refused command row at 45% opacity with a not-allowed cursor, its reason as its hint and its tooltip; while a command asks for its arguments, a `--remedy-blue-50` chip in `--remedy-blue-strong` naming it before the input and the argument's prompt as the placeholder; the outcome of a send in a glass line under the bar, in the chat outcome line's green, orange and red; the add-task sheet mounted by the shell as well as by the tasks card. | The feature file asks for refused commands shown disabled with their reason and for argument flows in the bar, and the reference draws neither; the tones are the ones the chat's own outcome line already wears, and the shell mounts the sheet because its open state belongs to the tasks card. | DECISION F044 D3 |
+ | 2026-09-30 | F044 | `ChatSheet.tsx` and `ChatSheet.module.css` under `components/command/`, `EvidenceChatTab.tsx`, `CommandBar.tsx`, `RemedyShell.tsx` | `ux_spec.md` §9: the bar's placeholder "Ask your agent or jump to anything" and its dropdown of jump matches; the reference draws the grounded chat only as the evidence panel's tab and places no chat anywhere else. | A question typed in the bar is listed as an "Ask the chat" row, and choosing it opens a right-anchored glass sheet on `--remedy-z-overlay`, the learning overlay's surface at 520px, holding the evidence panel's own chat tab, which asks the question at once about the focused task or, with none, about the whole project. | The chat renders only inside a zoomed-in node's evidence panel, and the zoom transitions are this feature's do-not-touch, so the question needs a surface of its own; the sheet reuses the chat rather than rebuilding it. | DECISION F044 D4 |
++| 2026-09-30 | F044 | `api/keymap.ts`, `RemedyShell.tsx`, `CommandBar.tsx` | The reference names no keymap, no keyboard route into the command bar and no chord; `ux_spec.md` §9 says only that the bar's dropdown is navigable with the arrow keys and Enter. | One keymap: "/" and Ctrl+K or Cmd+K put the focus in the bar, which opens its sheet; "?" opens the terms; "g" then "p" goes to the projects; "j" and "k" walk the graph's siblings, Enter zooms in and Escape zooms back out; a press from a field is text except the chord. | `T5_F044.md` names these keys and asks for one keymap module scoped so inputs never lose their keys; Ctrl+K and Cmd+K are the chord a field never types. | DECISION F044 D5 |
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 3ce039563..a1806151a 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -110,7 +110,7 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
+ #: F286's closure under operator amendment amend0911-feedback rule B and
+ #: placed after F200, the fifth unaccepted line below F286, under its own
+ #: Tier 2 heading with the Tier 12 list re-opened after it; see T2_F290.md.
+-TOTAL_FEATURES = 291
++TOTAL_FEATURES = 292
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [
