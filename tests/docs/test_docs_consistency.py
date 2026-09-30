@@ -113,7 +113,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F293 (test load diet), was registered on 2026-09-30 by operator
 #: amendment amend0930-test-load as the first unaccepted line of the ledger, under
 #: its own Tier 2 heading with the Tier 5 list re-opened after it; see T2_F293.md.
-TOTAL_FEATURES = 293
+#: One more, F294 (test load diet, part two), was registered on 2026-10-01 by F293's
+#: closure as the rest of F293's T002, directly after F293 under the same Tier 2
+#: heading (amend0906-split-placement); see T2_F294.md.
+TOTAL_FEATURES = 294
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
