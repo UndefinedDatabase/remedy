@@ -5,7 +5,7 @@
 // dropdown sheet with the keyboard exactly as a combobox must, and, while a chosen command's flow
 // is open, asks its arguments one at a time in place of a search query, sends the completed flow
 // or opens the surface it names, and shows the outcome through `PaletteStatus`.
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { RemedyNextAction } from "../../api/types";
 import type { JumpTarget } from "../../api/paletteJump";
@@ -46,6 +46,7 @@ export function CommandBar({
   onStartTour,
   onOpenSurface,
   onAskChat,
+  focusRequest,
 }: {
   nextAction: RemedyNextAction;
   targets: readonly JumpTarget[];
@@ -61,6 +62,7 @@ export function CommandBar({
   onStartTour: () => void;
   onOpenSurface: (surface: string, taskNodeId: string) => void;
   onAskChat: (text: string) => void;
+  focusRequest: number;
 }) {
   // THE STORAGE EDGE, bound here because this is the edge — the file's only `window.localStorage`,
   // built once per mount the way RemedyShell.tsx binds its own digest port.
@@ -71,7 +73,14 @@ export function CommandBar({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const sectionRef = useRef<HTMLElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
+
+  // DECISION F044 D5: the keymap's "open-bar" action raises this count once per press; the bar
+  // answers by focusing its own input, wherever the press came from.
+  useEffect(() => {
+    if (focusRequest > 0) inputRef.current?.focus();
+  }, [focusRequest]);
 
   // THE ARGUMENT FLOW (DECISION F044 D3 (3)): `null` outside a command, else the command's own
   // walk through its arguments; and the outcome of the flow's own send or surface, shown by
@@ -232,6 +241,7 @@ export function CommandBar({
         <span className={styles.chip} data-ui="palette-chip">{flow.entry.title}</span>
       )}
       <input
+        ref={inputRef}
         aria-label="Jump to a task or file"
         role="combobox"
         aria-expanded={shown}

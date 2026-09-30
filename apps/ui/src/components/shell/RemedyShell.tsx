@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import { buildDiffFileSummaries } from "../../api/diffViewModel";
@@ -40,7 +40,7 @@ import { StoryPanel } from "../story/StoryPanel";
 import { ArtifactsPanel } from "../artifacts/ArtifactsPanel";
 import { TermPanel } from "../term/TermPanel";
 import { FirstRunTourMount } from "../tour/FirstRunTour";
-import { isHelpShortcut } from "../../api/termSearch";
+import { keymapAction } from "../../api/keymap";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -226,23 +226,41 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // state this shell needs to own beyond whether it is open.
   const [resultsOpen, setResultsOpen] = useState(false);
 
-  // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed; a window-level key listener
-  // opens it on "?" unless the key press came from a field, where a question mark is text.
+  // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed.
   const [termsOpen, setTermsOpen] = useState(false);
   // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
   // tour" raises, the only fact the tour's own mount needs from this shell.
   const [tourRelaunch, setTourRelaunch] = useState(0);
+  // THE PROJECT CONTEXT, read here rather than beside the palette's own inputs further down:
+  // the one window key listener directly below needs `goHome` for its "go-projects" action.
+  const projectContext = useProjectContext();
+  const { goHome } = projectContext;
+  // T5_F044 T002, DECISION F044 D5: THE ONE WINDOW KEY LISTENER. Every key press this shell
+  // reacts to is read through the keymap, never through a rule of this file's own.
+  // `barFocusRequest` is raised once per press the keymap answers "open-bar" for; `pendingG`
+  // holds the "g" wait a "g then p" chord needs across presses.
+  const [barFocusRequest, setBarFocusRequest] = useState(0);
+  const pendingG = useRef(false);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (isHelpShortcut(event.key, target)) {
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null;
+      const result = keymapAction(event, target, pendingG.current, dialogOpen);
+      pendingG.current = result.pendingG;
+      if (result.action === "open-terms") {
         event.preventDefault();
         setTermsOpen(true);
+      } else if (result.action === "open-bar") {
+        event.preventDefault();
+        setBarFocusRequest((count) => count + 1);
+      } else if (result.action === "go-projects") {
+        event.preventDefault();
+        goHome();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
-  }, []);
+  }, [goHome]);
 
   // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
   // path it named; once that diff's envelope has arrived, this effect finds the path's row key
@@ -279,7 +297,6 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // restated as the palette's `{ slug, name }` shape — none while the context has not loaded a
   // view yet.
   const jumpTargets = useMemo(() => jumpTargetsOf(dashboard), [dashboard]);
-  const projectContext = useProjectContext();
   const paletteProjects = useMemo(
     () => (projectContext.view ? projectContext.view.projects.map((p) => ({ slug: p.slug, name: p.name })) : []),
     [projectContext.view],
@@ -372,6 +389,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             onStartTour={() => setTourRelaunch((count) => count + 1)}
             onOpenSurface={handleOpenSurface}
             onAskChat={(text) => setChatAsk((previous) => ({ key: (previous?.key ?? 0) + 1, text }))}
+            focusRequest={barFocusRequest}
           />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
