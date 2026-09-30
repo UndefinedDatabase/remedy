@@ -26350,3 +26350,54 @@ HOW TO REVERSE: delete `apps/ui/src/api/paletteSheet.ts`, its test, `PaletteShee
 sheet and `tests/ui_contracts/test_palette_sheet_wiring.py`, restore `CommandBar.tsx`, the shell's
 `handleJump` and the tour's sixth stop from `d31a78c7`, and delete this paragraph and its
 assumption-log line.
+
+## DECISION F044 D3 — the palette lists and runs the write door's commands: a Commands section led by the command the routing rule names, each command disabled with a plain reason while the job's state refuses it, its arguments asked one at a time in the bar, a send through the chat's own card sender (a rerun through its own), and a surface opened by the shell; the route to the chat and the reference's placeholder move to the next round (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `587bdb18`: `chatTurn.ts`'s `sendChatCard` sends any command
+with its arguments to the write door, in the words of a command ("Sent: ...", "The job refused it
+in its current state, so nothing was done."), and is what the grounded chat's cards send through;
+`rerunSend.ts`'s `sendRerunSubtree` alone reads a rerun's answer (a cost to confirm, or the
+prepared command) back through `rerunView.ts`. `pauseView.ts`'s `jobPauseAction` names the job's
+own pause action, `steeringSend.ts`'s `steeringIsOpen` whether its stage has ended, and
+`PauseControl.tsx` sends `job.unpause` for both a resume and a take-back. The add-task sheet is
+portalled and opened only by the tasks card's own state; a task's edit form opens inside its
+detail popover. The grounded chat takes a question with no task, as the project's scope, but it is
+rendered only in the evidence panel of a zoomed-in node, so routing a question to it needs a
+surface this round does not build. `ux_spec.md` §8 disables a control at 45% opacity with a
+not-allowed cursor and an honest tooltip.
+
+CHOSEN: (1) THE COMMANDS SECTION leads the sheet for a query that is not blank: the command
+`routeBarText` names comes first, then the commands whose titles the fuzzy rule matches, at most
+six, and a chosen command is remembered like any other row. (2) AVAILABILITY is
+`apps/ui/src/api/paletteCommandState.ts`: a command is refused, first reason winning, when the page
+has no write token, when it is a form entry, when the job has ended, and by its own state — a pause
+only while the job's action is to pause, a resume only while it is parked or a pause is on its way,
+the decision's answer only while a decision is open. A refused row shows its reason as its hint and
+its tooltip, at the reference's 45% opacity, and choosing it does nothing; the door still validates
+every send. (3) THE ARGUMENTS are asked in the bar by `apps/ui/src/api/paletteArgs.ts`: a chip names
+the command, the placeholder is the argument's prompt, a task is answered from the Jump rows alone
+and a line is typed; a required line cannot be left blank, an optional one left blank is not sent,
+and Escape, or Backspace in an empty bar, cancels the command. (4) THE SEND is
+`apps/ui/src/api/paletteSend.ts`: a complete "send" command goes through `sendChatCard`, so the
+palette and the chat send the same way in the same words, and a rerun through `sendRerunSubtree`,
+whose answer becomes its sentence — the prepared rerun with its command, a rerun whose cost needs
+confirming with "Confirm it from the run's detail.", because the palette asks no confirmation. The
+outcome is a status line under the bar in the chat outcome line's tones. (5) THE SURFACES open
+through the shell: the add-task sheet, which the shell now mounts itself beside the tasks card's
+own, a task's detail, where its edit form lives, and the decision inbox, scrolled into view with
+the focus on its first control. (6) D2 (6) and D1 (7) ARE AMENDED: the route of a question to the
+chat and the reference's placeholder, which promises that route, move to the next round, which
+builds the surface the chat needs outside the evidence panel. (7) THE ORDER: the next round routes
+a question to the chat and gives the bar the reference's placeholder; then the form entries'
+structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
+closure sequence.
+
+ALTERNATIVES: one sender per command, each with its own words, rejected because the chat already
+sends the same commands through one sender in one vocabulary; sending a rerun through the card
+sender too, rejected because its answer would be lost; hiding a refused command, rejected because
+the feature file asks for it disabled with its reason; opening the add-task sheet by clicking the
+tasks card's button from outside, rejected as a reach into another component's state.
+
+HOW TO REVERSE: delete `paletteCommandState.ts`, `paletteArgs.ts`, `paletteSend.ts` and their tests,
+restore `paletteSheet.ts`, `PaletteSheet.tsx`, its sheet, `CommandBar.tsx`, `CommandBar.module.css`
+and `RemedyShell.tsx` from `587bdb18`, and delete this paragraph and its assumption-log line.

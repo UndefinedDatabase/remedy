@@ -10,20 +10,19 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 and D2).
+DECISIONS F044 D1 to D3).
 
 ## Current Step
 
-ROUND 2: book round 1, record DECISION F044 D2, and build the bar's
-dropdown sheet: the Recent, Jump, Projects and Help rows, the combobox,
-the deletion of the shell's `handleJump`, and the tour's sixth stop on
-the bar, proved in a real browser by a render harness.
+ROUND 3: book round 2, record DECISION F044 D3, and run the write
+door's commands from the palette: the Commands section, the reasons a
+command is refused, the argument flow in the bar, the send with its
+outcome line, and the surfaces the shell opens.
 
 ## Next Steps
 
-1. The commands: the Commands section, their execution and argument
-   flows, the disabled states with their reasons, the route to the
-   chat, and the reference's placeholder.
+1. The route of a question to the chat, and the reference's
+   placeholder.
 2. The form entries' structured flows: the plan edits and the hunks.
 3. The keymap module and its cheat overlay.
 4. The three budgets in CI with their recorded numbers.
