@@ -13,15 +13,15 @@ introduces the shell, and '?' opens the catalog as a searchable panel
 
 ## Current Step
 
-ROUND 8, the closure sequence's evidence round: book round 7, complete
-the Built State with the closure suite, reclaim staging copies, and build
-the evidence bundle and the review package at the accepted head.
+ROUND 9, the closing round: book round 8, rotate the finding ledger,
+accept F043 in STATUS with the README and the self-use queue in the same
+commit, and open the pull request.
 
 ## Next Steps
 
-1. The closing round: the booking of round 8, the ledger's rotation,
-   the STATUS line with the README and the self-use queue in one commit,
-   and the pull request.
+1. The Open PR Gate merges this feature's pull request at the start of the
+   next feature's session, never in this one.
+2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
