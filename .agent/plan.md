@@ -5,28 +5,8 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Round 3 found and resolved R-1119 in the same round: two tests in `tests/orchestration/
-test_job_task_runner.py` (`TestProviderOverrideToFake::test_cli_handler_provider_override`,
-`TestCommandPathExplicitOverrides::test_provider_override_to_fake`) made a real, paid subprocess
-call to the installed `claude` CLI via `COMMAND_HANDLERS["job.run"]` with no fake installed — the
-two single slowest tests in the suite (19.66s/12.77s, T001). Fixed by monkeypatching
-`packages/orchestration/pingpong_provider.py`'s `_guarded_cli_run` seam in both tests, returning a
-canned JSON response discriminated by "Reviewer" in the prompt text. One deviation from the
-authored block: the reviewer role's default path is native structured output
-(`reviewer_structured_enabled()` is True by default), which needs a top-level `structured_output`
-object matching the `ReviewVerdict` schema, not a JSON string in `result` — read from
-`packages/orchestration/pingpong_provider.py` directly and used instead. No production code
-touched. MEASURED: both tests
-now 0.56s/0.52s (was 19.66s/12.77s); a `ps -ef`-polling background run of the first test, same
-method that found the defect, shows zero new `claude -p` pids for the run's whole duration.
-
-Round 2 (prior) cut T002's first item: `dead_command_ids` cached its per-root file scan
-(`_SCAN_CACHE`, DECISION F293 D2) — `tests/cli/test_worker_facade_cmd.py` 125.54s -> 22.26s
-(-82.3%); four other T001-named files 33.53s -> 15.19s (-54.7%); `tests/cli/` fully green.
-
-Next round is T002 continued: more cuts from `.agent/f293_inventory.md` sections 2-3's remaining
-top entries (`test_supervisor_portability.py`, `test_mission_cmd.py`, `test_do_sequence_cli.py`,
-etc.), or a DECISION ruling no more can be cut without weakening a test.
+Rounds 1 to 3 are booked PASS. Round 4 removes the real 30 s backoff sleep from
+`test_callback_fires_on_retry`. The open-findings count is 2 (`R-1117`, `R-1118`).
 
 ## Next Steps
 1. T002 — cut from the top of T001's ranking (`.agent/f293_inventory.md` sections 2 and 3): shared
@@ -43,5 +23,5 @@ etc.), or a DECISION ruling no more can be cut without weakening a test.
 ## Risks
 - "CPU share per test file" in T001 is approximated from wall-clock durations under `-n auto`
   parallelism, not true per-process CPU time; the inventory states this plainly.
-- The full-suite run this round is the ONE amend0917-throughput permits this feature; no round
-  after this one may run it again.
+- T001's run and the closure's integration-gate run are the feature's two full-suite readings
+  (DECISION F293 D1); no round in between runs the full suite.
