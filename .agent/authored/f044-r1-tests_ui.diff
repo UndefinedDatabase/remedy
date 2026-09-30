@@ -1,0 +1,425 @@
+diff --git a/apps/ui/src/api/fuzzyMatch.test.ts b/apps/ui/src/api/fuzzyMatch.test.ts
+new file mode 100644
+index 000000000..49941fb34
+--- /dev/null
++++ b/apps/ui/src/api/fuzzyMatch.test.ts
+@@ -0,0 +1,108 @@
++// F044 T001 — the palette's fuzzy rule (DECISION F044 D1). Every expected score below is computed
++// by hand from the rule the module states, never read back from the module.
++import { describe, expect, it } from "vitest";
++import {
++  FUZZY_SUBSEQUENCE_CAP,
++  FUZZY_SUBSTRING_BASE,
++  FUZZY_WORD_START_BONUS,
++  fuzzyMatch,
++  rankFuzzy,
++} from "./fuzzyMatch";
++
++describe("fuzzyMatch constants", () => {
++  it("are the three numbers the rule names", () => {
++    expect([FUZZY_SUBSTRING_BASE, FUZZY_WORD_START_BONUS, FUZZY_SUBSEQUENCE_CAP]).toEqual([1000, 500, 499]);
++  });
++});
++
++describe("fuzzyMatch, a contiguous hit", () => {
++  it("matches everything with score 0 and no range for an empty or blank query", () => {
++    expect(fuzzyMatch("", "anything")).toEqual({ score: 0, ranges: [] });
++    expect(fuzzyMatch("   ", "")).toEqual({ score: 0, ranges: [] });
++  });
++
++  it("scores a hit at the start of the text as base plus the word bonus", () => {
++    expect(fuzzyMatch("err", "Error handling")).toEqual({ score: 1500, ranges: [[0, 3]] });
++  });
++
++  it("takes the first occurrence that begins a word over an earlier one inside a word", () => {
++    expect(fuzzyMatch("err", "terror error")).toEqual({ score: 1493, ranges: [[7, 10]] });
++  });
++
++  it("takes the first occurrence, less its position, when none begins a word", () => {
++    expect(fuzzyMatch("rro", "terror")).toEqual({ score: 998, ranges: [[2, 5]] });
++  });
++
++  it("ignores case on both sides", () => {
++    expect(fuzzyMatch("ERR", "error")).toEqual({ score: 1500, ranges: [[0, 3]] });
++  });
++
++  it("reads the query's white space runs as one space and trims its ends", () => {
++    expect(fuzzyMatch("  error   handling ", "Fix error handling")).toEqual({ score: 1496, ranges: [[4, 18]] });
++  });
++
++  it("counts a character after punctuation as the start of a word, and one after a digit not", () => {
++    expect(fuzzyMatch("han", "error-handling")).toEqual({ score: 1494, ranges: [[6, 9]] });
++    expect(fuzzyMatch("2b", "t12b")).toEqual({ score: 998, ranges: [[2, 4]] });
++  });
++
++  it("caps the position it subtracts, so a late contiguous hit still outranks any scattered one", () => {
++    const match = fuzzyMatch("z", `${"a".repeat(600)}z`);
++    expect(match).toEqual({ score: 501, ranges: [[600, 601]] });
++  });
++
++  it("keeps a range over the text as given when a character's lower case is longer", () => {
++    expect(fuzzyMatch("x", "İx")).toEqual({ score: 999, ranges: [[1, 2]] });
++  });
++});
++
++describe("fuzzyMatch, a scattered hit", () => {
++  it("scores each character 1, plus 3 at a word start, plus 2 right after the previous hit", () => {
++    expect(fuzzyMatch("eh", "error handling")).toEqual({ score: 8, ranges: [[0, 1], [6, 7]] });
++    expect(fuzzyMatch("erh", "error handling")).toEqual({ score: 11, ranges: [[0, 2], [6, 7]] });
++  });
++
++  it("drops the query's spaces when no contiguous hit exists", () => {
++    expect(fuzzyMatch("e h", "error handling")).toEqual({ score: 8, ranges: [[0, 1], [6, 7]] });
++  });
++
++  it("answers null when a character is missing or out of order", () => {
++    expect(fuzzyMatch("xyz", "error")).toBeNull();
++    expect(fuzzyMatch("he", "eh")).toBeNull();
++  });
++
++  it("caps the sum", () => {
++    const match = fuzzyMatch("a".repeat(150), "a ".repeat(200));
++    expect(match?.score).toBe(499);
++    expect(match?.ranges.length).toBe(150);
++  });
++});
++
++describe("rankFuzzy", () => {
++  it("drops non-matches and lists the rest by score", () => {
++    const ranked = rankFuzzy(["error handling", "terror", "handle errors", "xyz"], "err", (text) => text);
++    expect(ranked.map((row) => [row.item, row.match.score])).toEqual([
++      ["error handling", 1500],
++      ["handle errors", 1493],
++      ["terror", 999],
++    ]);
++  });
++
++  it("breaks a tie by the shorter text, then the text by code unit, then the order given", () => {
++    const items = [
++      { id: 0, text: "b x" },
++      { id: 1, text: "a x" },
++      { id: 2, text: "cc x" },
++      { id: 3, text: "a x" },
++      { id: 4, text: "B x" },
++    ];
++    const ranked = rankFuzzy(items, "x", (item) => item.text);
++    expect(ranked.map((row) => row.item.id)).toEqual([4, 1, 3, 0, 2]);
++  });
++
++  it("keeps every item for an empty query, ordered by the same tie-breaks", () => {
++    const ranked = rankFuzzy(["ccc", "ab", "a", "bb", "b"], "", (text) => text);
++    expect(ranked.map((row) => row.item)).toEqual(["a", "b", "ab", "bb", "ccc"]);
++    expect(ranked.every((row) => row.match.score === 0 && row.match.ranges.length === 0)).toBe(true);
++  });
++});
+diff --git a/apps/ui/src/api/paletteCommands.test.ts b/apps/ui/src/api/paletteCommands.test.ts
+new file mode 100644
+index 000000000..c40a1da43
+--- /dev/null
++++ b/apps/ui/src/api/paletteCommands.test.ts
+@@ -0,0 +1,82 @@
++// F044 T001 — the palette's command list (DECISION F044 D1). The whole list is pinned literally;
++// `tests/ui_contracts/test_palette_contract.py` pins it against the write door's exposed set and
++// the chat's titles and arguments.
++import { describe, expect, it } from "vitest";
++import { PALETTE_COMMANDS, PALETTE_CONTINUATION_COMMANDS, paletteCommandOf } from "./paletteCommands";
++
++const TASK = { name: "task_id", kind: "task", required: true, prompt: "Which task?" };
++
++describe("PALETTE_COMMANDS", () => {
++  it("lists every entry exactly as DECISION F044 D1's first round wrote it", () => {
++    expect(PALETTE_COMMANDS).toEqual([
++      { command: "job.stop", title: "Stop the job", flow: "send", surface: "",
++        args: [{ name: "reason", kind: "text", required: false, prompt: "Why stop? (optional)" }] },
++      { command: "job.pause", title: "Pause the job", flow: "send", surface: "", args: [] },
++      { command: "job.unpause", title: "Resume the job", flow: "send", surface: "", args: [] },
++      { command: "decision.resolve", title: "Answer the decision", flow: "surface", surface: "decision-inbox-card", args: [] },
++      { command: "patch.approve-hunks", title: "Approve or reject the hunks of a change", flow: "form", surface: "", args: [] },
++      { command: "chat.send", title: "Send a message to the job", flow: "send", surface: "",
++        args: [{ name: "message", kind: "text", required: true, prompt: "Your message to the job" }] },
++      { command: "job.plan-edit-task", title: "Edit a planned task", flow: "form", surface: "", args: [] },
++      { command: "job.plan-delete-task", title: "Delete a planned task", flow: "form", surface: "", args: [] },
++      { command: "job.plan-reorder", title: "Reorder the plan", flow: "form", surface: "", args: [] },
++      { command: "job.plan-merge-tasks", title: "Merge planned tasks", flow: "form", surface: "", args: [] },
++      { command: "job.plan-split-task", title: "Split a planned task", flow: "form", surface: "", args: [] },
++      { command: "job.plan-edit-acceptance", title: "Edit a planned task's acceptance", flow: "form", surface: "", args: [] },
++      { command: "job.edit-task", title: "Edit a task", flow: "surface", surface: "task-edit-form", args: [TASK] },
++      { command: "job.veto-task", title: "Veto the task", flow: "send", surface: "",
++        args: [TASK, { name: "reason", kind: "text", required: true, prompt: "Why veto it?" }] },
++      { command: "job.steer", title: "Send a note to the task's builder", flow: "send", surface: "",
++        args: [TASK, { name: "message", kind: "text", required: true, prompt: "Your note to its builder" }] },
++      { command: "job.inject", title: "Add a task to the plan", flow: "surface", surface: "add-task-sheet", args: [] },
++      { command: "job.rerun-subtree", title: "Rerun the task and the tasks after it", flow: "send", surface: "", args: [TASK] },
++      { command: "job.preview-start", title: "Start the app preview", flow: "send", surface: "", args: [] },
++      { command: "job.preview-stop", title: "Stop the app preview", flow: "send", surface: "", args: [] },
++    ]);
++  });
++
++  it("names a surface for, and only for, a surface entry", () => {
++    for (const entry of PALETTE_COMMANDS) {
++      expect(entry.surface !== "", entry.command).toBe(entry.flow === "surface");
++    }
++  });
++
++  it("asks nothing for a form entry, whose structured arguments come in their own round", () => {
++    for (const entry of PALETTE_COMMANDS.filter((row) => row.flow === "form")) {
++      expect(entry.args, entry.command).toEqual([]);
++    }
++  });
++
++  it("holds no command, title or argument name twice", () => {
++    const commands = PALETTE_COMMANDS.map((entry) => entry.command);
++    const titles = PALETTE_COMMANDS.map((entry) => entry.title);
++    expect(new Set(commands).size).toBe(commands.length);
++    expect(new Set(titles).size).toBe(titles.length);
++    for (const entry of PALETTE_COMMANDS) {
++      const names = entry.args.map((arg) => arg.name);
++      expect(new Set(names).size, entry.command).toBe(names.length);
++    }
++  });
++});
++
++describe("PALETTE_CONTINUATION_COMMANDS", () => {
++  it("is the add-task sheet's two continuation steps, none of them listed", () => {
++    expect(PALETTE_CONTINUATION_COMMANDS).toEqual(["job.inject-confirm", "job.inject-answer"]);
++    for (const command of PALETTE_CONTINUATION_COMMANDS) {
++      expect(paletteCommandOf(command)).toBeNull();
++    }
++  });
++});
++
++describe("paletteCommandOf", () => {
++  it("answers the entry of a listed command", () => {
++    expect(paletteCommandOf("job.pause")).toBe(PALETTE_COMMANDS[1]);
++    expect(paletteCommandOf("job.preview-stop")?.title).toBe("Stop the app preview");
++  });
++
++  it("answers null for anything else, a prototype member included", () => {
++    expect(paletteCommandOf("")).toBeNull();
++    expect(paletteCommandOf("job.delete")).toBeNull();
++    expect(paletteCommandOf("toString")).toBeNull();
++  });
++});
+diff --git a/apps/ui/src/api/paletteJump.test.ts b/apps/ui/src/api/paletteJump.test.ts
+new file mode 100644
+index 000000000..d4b2acd74
+--- /dev/null
++++ b/apps/ui/src/api/paletteJump.test.ts
+@@ -0,0 +1,73 @@
++// F044 T001 — the palette's node jump (DECISION F044 D1). Expected scores are the fuzzy rule's,
++// computed by hand.
++import { describe, expect, it } from "vitest";
++import type { RemedyTaskItem } from "./types";
++import { JUMP_RESULT_LIMIT, jumpTargetsOf, rankJumpTargets } from "./paletteJump";
++import type { JumpTarget } from "./paletteJump";
++
++function task(id: string, label: string, kind: RemedyTaskItem["kind"]): RemedyTaskItem {
++  return { id, label, state: "pending", kind, checked: false, muted: false, nodeId: `task:${id}` };
++}
++
++const TARGETS: JumpTarget[] = [
++  { id: "t1", nodeId: "task:t1", label: "Fix error handling", kind: "task" },
++  { id: "t2", nodeId: "task:t2", label: "Write tests", kind: "test" },
++  { id: "review-7", nodeId: "task:review-7", label: "Check the diff", kind: "review" },
++  { id: "t4", nodeId: "task:t4", label: "Errata", kind: "task" },
++];
++
++describe("jumpTargetsOf", () => {
++  it("answers one target per task, in the dashboard's order, with the task's own node id", () => {
++    const tasks = [task("t2", "Write tests", "test"), task("t1", "Fix error handling", "task")];
++    expect(jumpTargetsOf({ tasks })).toEqual([
++      { id: "t2", nodeId: "task:t2", label: "Write tests", kind: "test" },
++      { id: "t1", nodeId: "task:t1", label: "Fix error handling", kind: "task" },
++    ]);
++  });
++});
++
++describe("rankJumpTargets", () => {
++  it("lists label matches best first and drops the rest", () => {
++    const hits = rankJumpTargets(TARGETS, "err", 10);
++    expect(hits.map((hit) => [hit.target.id, hit.field, hit.match.score])).toEqual([
++      ["t4", "label", 1500],
++      ["t1", "label", 1496],
++    ]);
++    expect(hits[1].match.ranges).toEqual([[4, 7]]);
++  });
++
++  it("matches the id, the id winning a tie with the kind", () => {
++    const hits = rankJumpTargets(TARGETS, "review", 10);
++    expect(hits.map((hit) => [hit.target.id, hit.field, hit.match.score, hit.match.ranges])).toEqual([
++      ["review-7", "id", 1500, [[0, 6]]],
++    ]);
++  });
++
++  it("matches the kind when it scores higher than the label", () => {
++    const hits = rankJumpTargets(TARGETS, "test", 10);
++    expect(hits.map((hit) => [hit.target.id, hit.field, hit.match.score])).toEqual([["t2", "kind", 1500]]);
++  });
++
++  it("breaks a score tie by the shorter label, and cuts at the limit after sorting", () => {
++    expect(rankJumpTargets(TARGETS, "t", 10).map((hit) => [hit.target.id, hit.field, hit.match.score])).toEqual([
++      ["t4", "id", 1500],
++      ["t2", "id", 1500],
++      ["t1", "id", 1500],
++      ["review-7", "label", 1494],
++    ]);
++    expect(rankJumpTargets(TARGETS, "t", 1).map((hit) => hit.target.id)).toEqual(["t4"]);
++  });
++
++  it("lists the first targets in their own order for an empty or blank query", () => {
++    for (const query of ["", "   "]) {
++      expect(rankJumpTargets(TARGETS, query, 2)).toEqual([
++        { target: TARGETS[0], field: "label", match: { score: 0, ranges: [] } },
++        { target: TARGETS[1], field: "label", match: { score: 0, ranges: [] } },
++      ]);
++    }
++  });
++
++  it("lists at most JUMP_RESULT_LIMIT rows in the palette", () => {
++    expect(JUMP_RESULT_LIMIT).toBe(8);
++  });
++});
+diff --git a/apps/ui/src/api/paletteRouting.goldens.json b/apps/ui/src/api/paletteRouting.goldens.json
+new file mode 100644
+index 000000000..5a3562487
+--- /dev/null
++++ b/apps/ui/src/api/paletteRouting.goldens.json
+@@ -0,0 +1,37 @@
++[
++  {"text": "stop", "focused": "", "route": "command", "command": "job.stop"},
++  {"text": "Stop the job now", "focused": "", "route": "command", "command": "job.stop"},
++  {"text": "please stop", "focused": "", "route": "command", "command": "job.stop"},
++  {"text": "cancel", "focused": "", "route": "command", "command": "job.stop"},
++  {"text": "abort everything", "focused": "", "route": "command", "command": "job.stop"},
++  {"text": "stop?", "focused": "", "route": "chat", "command": ""},
++  {"text": "can you stop the job", "focused": "", "route": "chat", "command": ""},
++  {"text": "what does pause do", "focused": "", "route": "chat", "command": ""},
++  {"text": "why did the build fail?", "focused": "", "route": "chat", "command": ""},
++  {"text": "is", "focused": "", "route": "chat", "command": ""},
++  {"text": "island map", "focused": "", "route": "palette", "command": ""},
++  {"text": "pause", "focused": "", "route": "command", "command": "job.pause"},
++  {"text": "Please  Pause", "focused": "", "route": "command", "command": "job.pause"},
++  {"text": "resume", "focused": "", "route": "command", "command": "job.unpause"},
++  {"text": "unpause", "focused": "", "route": "command", "command": "job.unpause"},
++  {"text": "continue", "focused": "", "route": "command", "command": "job.unpause"},
++  {"text": "note: use the cache", "focused": "", "route": "command", "command": "chat.send"},
++  {"text": "note: use the cache", "focused": "t2", "route": "command", "command": "job.steer"},
++  {"text": "tell it to hurry", "focused": "t1", "route": "command", "command": "job.steer"},
++  {"text": "tell the builder to hurry", "focused": "", "route": "command", "command": "chat.send"},
++  {"text": "steer left", "focused": "", "route": "command", "command": "chat.send"},
++  {"text": "veto because it is wrong", "focused": "t3", "route": "command", "command": "job.veto-task"},
++  {"text": "skip", "focused": "", "route": "command", "command": "job.veto-task"},
++  {"text": "drop it", "focused": "", "route": "command", "command": "job.veto-task"},
++  {"text": "rerun", "focused": "t1", "route": "command", "command": "job.rerun-subtree"},
++  {"text": "retry", "focused": "", "route": "command", "command": "job.rerun-subtree"},
++  {"text": "run again", "focused": "", "route": "command", "command": "job.rerun-subtree"},
++  {"text": "retry?", "focused": "", "route": "chat", "command": ""},
++  {"text": "error handling", "focused": "", "route": "palette", "command": ""},
++  {"text": "stopwatch", "focused": "", "route": "palette", "command": ""},
++  {"text": "noteé the cache", "focused": "", "route": "palette", "command": ""},
++  {"text": "running again", "focused": "", "route": "palette", "command": ""},
++  {"text": "please", "focused": "", "route": "palette", "command": ""},
++  {"text": "", "focused": "", "route": "none", "command": ""},
++  {"text": "   ", "focused": "", "route": "none", "command": ""}
++]
+diff --git a/apps/ui/src/api/paletteRouting.test.ts b/apps/ui/src/api/paletteRouting.test.ts
+new file mode 100644
+index 000000000..2ace63de7
+--- /dev/null
++++ b/apps/ui/src/api/paletteRouting.test.ts
+@@ -0,0 +1,95 @@
++// F044 T001 — the bar's routing rule (DECISION F044 D1). The fixtures live in
++// `paletteRouting.goldens.json`, which `tests/ui_contracts/test_palette_contract.py` also reads and
++// runs through the chat's own parse, so the two languages are held to the same lines.
++import { describe, expect, it } from "vitest";
++import { PALETTE_COMMANDS } from "./paletteCommands";
++import {
++  BAR_LEADING_VERBS,
++  BAR_NOTE_OPENERS,
++  BAR_QUESTION_WORDS,
++  routeBarText,
++} from "./paletteRouting";
++
++// There is no `@types/node` in this workspace, so the node built-ins arrive through a dynamic
++// import whose specifier is a variable, as `costMetric.test.ts` reads its source.
++const FS_MODULE = "node:fs";
++const URL_MODULE = "node:url";
++type FsModule = { readFileSync: (path: string, encoding: string) => string };
++type UrlModule = { fileURLToPath: (url: URL) => string };
++
++interface RoutingGolden {
++  text: string;
++  focused: string;
++  route: "none" | "chat" | "command" | "palette";
++  command: string;
++}
++
++async function goldens(): Promise<RoutingGolden[]> {
++  const fs = (await import(FS_MODULE)) as FsModule;
++  const url = (await import(URL_MODULE)) as UrlModule;
++  const path = url.fileURLToPath(new URL("./paletteRouting.goldens.json", import.meta.url));
++  return JSON.parse(fs.readFileSync(path, "utf8")) as RoutingGolden[];
++}
++
++describe("routeBarText over the goldens", () => {
++  it("routes every golden line to its golden route", async () => {
++    const rows = await goldens();
++    expect(rows.length).toBeGreaterThan(0);
++    for (const row of rows) {
++      const want = row.route === "command" ? { kind: "command", command: row.command } : { kind: row.route };
++      expect(routeBarText(row.text, row.focused), JSON.stringify(row.text)).toEqual(want);
++    }
++  });
++
++  it("holds a command golden for every leading verb, every note opener and 'run again'", async () => {
++    const lines = (await goldens())
++      .filter((row) => row.route === "command")
++      .map((row) => row.text.replace(/\s+/g, " ").trim().toLowerCase());
++    for (const opener of [...Object.keys(BAR_LEADING_VERBS), ...BAR_NOTE_OPENERS, "run again"]) {
++      expect(lines.some((line) => line === opener || line.startsWith(`${opener} `) || line.startsWith(`${opener}:`)), opener).toBe(true);
++    }
++  });
++
++  it("holds a golden for each tie-break: a question over a verb, and a verb only as a whole word", async () => {
++    const byText = new Map((await goldens()).map((row) => [`${row.text}|${row.focused}`, row.route]));
++    expect(byText.get("stop?|")).toBe("chat");
++    expect(byText.get("can you stop the job|")).toBe("chat");
++    expect(byText.get("stopwatch|")).toBe("palette");
++    expect(byText.get("island map|")).toBe("palette");
++  });
++});
++
++describe("the routing tables", () => {
++  it("are the chat's words, in the chat's order", () => {
++    expect(BAR_QUESTION_WORDS).toEqual([
++      "what", "why", "how", "when", "where", "which", "who", "did", "does", "do",
++      "is", "are", "was", "were", "can", "could", "has", "have",
++    ]);
++    expect(BAR_NOTE_OPENERS).toEqual(["tell the builder", "tell it", "note", "steer"]);
++    expect(BAR_LEADING_VERBS).toEqual({
++      stop: "job.stop", cancel: "job.stop", abort: "job.stop",
++      pause: "job.pause",
++      resume: "job.unpause", unpause: "job.unpause", continue: "job.unpause",
++      veto: "job.veto-task", skip: "job.veto-task", drop: "job.veto-task",
++      rerun: "job.rerun-subtree", retry: "job.rerun-subtree",
++    });
++  });
++
++  it("never route to a command the palette cannot send itself", () => {
++    const sendable = new Set(PALETTE_COMMANDS.filter((entry) => entry.flow === "send").map((entry) => entry.command));
++    for (const command of [...Object.values(BAR_LEADING_VERBS), "job.steer", "chat.send"]) {
++      expect(sendable.has(command), command).toBe(true);
++    }
++  });
++});
++
++describe("routeBarText on its own", () => {
++  it("reads only the table's own words, never a prototype member", () => {
++    expect(routeBarText("toString", "")).toEqual({ kind: "palette" });
++    expect(routeBarText("constructor now", "")).toEqual({ kind: "palette" });
++  });
++
++  it("reads a question mark at the end after trimming", () => {
++    expect(routeBarText("pause ?  ", "")).toEqual({ kind: "chat" });
++  });
++});
