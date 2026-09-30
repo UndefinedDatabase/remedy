@@ -10,23 +10,24 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D10).
+DECISIONS F044 D1 to D11).
 
 ## Current Step
 
-ROUND 9: book round 8, record DECISION F044 D10, and enforce the last
-of T003's three CI budgets — 60fps p95 at 200 nodes — over a new
-committed harness, `apps/ui/perf/`, measured with Chrome's own
-`PipelineReporter` trace events rather than a JS-side
-`requestAnimationFrame` timer. The `budgets` CI stage's wall-clock,
-re-measured with this test included, reads 44.2s against its existing
-300s timeout, so the timeout is unchanged.
+ROUND 10: book round 9, record DECISION F044 D11, and sync
+`docs/system/ci-self-check-v1.md`'s stage and budget tables to the
+`budgets` stage's real, current seven-path selection — a fresh
+three-sample measurement (`.agent/f083_inventory.md` `## Q14`) confirms
+the stage's `timeout_sec=300` is still correct, so
+`packages/orchestration/ci_stages.py` is unchanged.
 
 ## Next Steps
 
-1. `docs/system/ci-self-check-v1.md`'s stage and budget tables (all
-   three budgets now land: bundle size, first paint, frame-pipeline
-   p95), then the closure sequence.
+1. The closure sequence (docs/roadmap/STATUS_closure_protocol.md): the
+   checklist's consolidation, the feature file's Built State, the
+   self-use item, the integration gate's one full suite run, the
+   evidence bundle and review package, the ledger rotation, and the
+   STATUS flip with the pull request.
 
 ## Risks
 
