@@ -1,7 +1,7 @@
 # Plan — amend0930-test-load (operator amendment, 2026-09-30)
 
 ## Goal
-Cap the test load (worker cap, priority, run record), stop repeated runs, register the test diet feature.
+Cap the test load (worker cap, priority, run record), stop repeated runs, register the test diet feature F293.
 Branch: feature/amend0930-test-load. Not a loop feature; decisions are `DECISION amend0930 D<n>`.
 
 ## Current Step
