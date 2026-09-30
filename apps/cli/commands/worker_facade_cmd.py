@@ -529,7 +529,7 @@ def doctor_core_report() -> DoctorCoreReport:
     # F293 T004: information only — never a check, a warning or a blocker.
     try:
         test_load = last_day_test_load()
-    except Exception:  # noqa: BLE001 — an unreadable record is reported as unknown, never as a failure
+    except (OSError, RuntimeError):  # a folder that cannot be read, or no home folder (R-1120)
         test_load = {"record": False, "runs": 0, "cpu_minutes": 0.0,
                      "sentence": _UNREADABLE_TEST_LOAD_RECORD}
 

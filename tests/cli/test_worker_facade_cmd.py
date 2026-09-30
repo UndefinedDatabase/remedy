@@ -936,6 +936,28 @@ class TestDoctorCoreTestLoad:
         for key in ("ready", "checks", "blockers", "warnings"):
             assert present[key] == absent[key], key
 
+    @pytest.mark.parametrize("error", [PermissionError("no entry"), RuntimeError("no home folder")])
+    def test_a_record_that_cannot_be_read_is_unknown_and_changes_nothing_else(self, monkeypatch, error):
+        import apps.cli.commands.worker_facade_cmd as facade
+        import packages.orchestration.budget_guard as budget_guard
+
+        monkeypatch.setattr(budget_guard, "FREE_DISK_PROBE", lambda: 123456789)
+        monkeypatch.setenv("REMEDY_TEST_LOAD_LOG", "")
+        absent = facade.doctor_core_report().as_json()
+
+        def unreadable(*args, **kwargs):
+            raise error
+
+        monkeypatch.setattr(facade, "last_day_test_load", unreadable)
+        failed = facade.doctor_core_report().as_json()
+        assert failed["test_load"] == {
+            "record": False, "runs": 0, "cpu_minutes": 0.0,
+            "sentence": ("The test load record could not be read, so the test cost of the "
+                         "last 24 hours is unknown."),
+        }
+        for key in ("ready", "checks", "blockers", "warnings"):
+            assert failed[key] == absent[key], key
+
     def test_the_default_record_lives_in_the_home_folder(self, tmp_path):
         from apps.cli.commands.worker_facade_cmd import last_day_test_load
 
