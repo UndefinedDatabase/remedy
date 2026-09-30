@@ -23,6 +23,7 @@ import { zoomCrumbLabel, zoomEmphasis } from "./zoomView";
 import { pauseBanner } from "../../api/pauseView";
 import { taskSpecVersions } from "../../api/taskSpecView";
 import type { TimelineScrub } from "../timeline/useTimelineScrub";
+import { Term } from "../term/Term";
 import styles from "./BrainGraphStage.module.css";
 
 // A stable identity for "no prompt trace yet" (DECISION F288 D5): reused
@@ -170,7 +171,7 @@ export function BrainGraphStage({
       )}
       {scrub.state.mode === "scrubbed" && (
         <div className={styles.scrubBanner} role="status" data-ui="scrub-banner">
-          <span className={styles.scrubBadge}>SCRUBBED</span>
+          <span className={styles.scrubBadge}><Term term="graph.scrubbed">SCRUBBED</Term></span>
           <span>{scrub.view.readout} · live updates wait behind LIVE</span>
           <button type="button" className={styles.scrubLive} onClick={scrub.goLive}>Back to LIVE</button>
         </div>

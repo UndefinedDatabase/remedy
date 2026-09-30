@@ -408,6 +408,12 @@ end the response with:
   module that names a pattern a ratchet counts over its own source must never spell that pattern,
   which is item 7's reading of the guards that count a string over a whole file. The list stays at
   34 items.
+  Consolidated a thirty-first time at F043's closure on 2026-09-30: nothing joined and no two items
+  were merged, because F043 wrote no line to `.agent/prose_slips.md`. Its one authoring defect was
+  registered as a finding, R-1115, because it left a style wrong on disk: a render harness that read a
+  tooltip's text and test id and never the box of the detail its own round had styled is item 18's
+  reading of an ordered recipe, here the harness's checks, against the property it must establish,
+  here what a person sees. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-119 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+120 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 35 | 37 |
+| 5 | Operator Cockpit | 36 | 37 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -642,6 +642,16 @@ a narrower one would do, which the job narrows while it lowers the count a test 
 handlers, and a part of the code that no test file loads, for which the job writes the first
 tests; the first such job ran at this feature's close, narrowed one handler in the brain viewer
 command, and its change was kept).
+
+F043 explanation layer (the cockpit now explains its own words: every status, phase, metric and
+badge that carries one of Remedy's own terms is underlined with dots, and pointing at it, or moving
+to it with the keyboard, opens a short explanation in plain words, and for the token and cost
+figures also the live breakdown behind the number; every explanation lives in one catalog, which
+names the file where each term is defined, and a test fails when the page shows a term the catalog
+lacks or the catalog keeps an entry that nothing shows; the question mark key or the Terms button
+opens the whole catalog as a list you can search; and a six-step tour introduces the cockpit's main
+areas the first time you open it, can be skipped at any step, does not open by itself again once
+ended, and can be started again from the Terms panel).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

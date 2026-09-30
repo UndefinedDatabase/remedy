@@ -25955,3 +25955,266 @@ commit; skipping every unreadable file, rejected because a real read error would
 
 HOW TO REVERSE: delete the two `FileNotFoundError` clauses and the second reader's fallback, the
 three tests, and this paragraph.
+
+## DECISION F043 D1 — the explanation layer is one catalog module whose every entry anchors to the file that defines its term, one `Term` component that writes the key into `data-term` and shows a portalled glass tooltip on hover and focus, and an audit that renders the surfaces and reads their terms back in both directions; the first round covers the live-status pill and the phase timeline, and the tour's palette stop waits for the palette (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F043.md` asks for a tooltip catalog as the one source of
+every term's explanation, a component every surface uses with `data-term`, a two-direction audit,
+a six-step first-run tour sharing F036's overlay engine, and a '?' panel. Measured by the reviewer
+at `21bfc188`: no tooltip catalog, `Tooltip` component or `data-term` exists under `apps/ui/src`;
+hover help is native `title` attributes in some fifteen components and two hand-built tooltips,
+the metrics bar's token and cost breakdowns in `TopMetricsBar.tsx`. The result tour of F036
+(`components/tour/TourOverlay.tsx`) has no spotlight of its own — its "Show me" lifts the backdrop,
+which F036 D6 records as the one spotlight the cockpit can point at truthfully — and stores no
+"seen" state. There is no global keyboard handler, no '?' binding and no command palette (F044 is
+unbuilt). The autonomy ladder view, the memory view and the autonomy metrics' explanations the
+feature file names as content sources do not exist. `apps/ui/vitest.config.ts` runs in a node
+environment with no DOM library, and `renderToStaticMarkup` is the one render a unit test reaches
+(`evidenceChatAudit.test.ts`). The shipped `styles/tokens.css` lacks `--remedy-z-tooltip`,
+`--remedy-dur-fast`, `--remedy-ease-standard` and `--remedy-focus`, which the reference's
+`tokens.css` defines. `docs/system/vocabulary.md` is the binding page for the product's words.
+
+CHOSEN: (1) THE CATALOG is `apps/ui/src/api/terminology.ts`: `TERM_CATALOG`, keyed by dotted
+lowercase words (`TERM_KEY_PATTERN`), each entry a `title`, a plain-language `body` of at most
+`TERM_BODY_MAX_CHARS` (240) characters, a `source` naming the file that DEFINES the term, and an
+`anchor`, a phrase that file states. A test reads every source and requires its anchor, with runs
+of white space read as one space, so a definition that is reworded or moved turns the catalog red
+rather than leaving an explanation behind it. This is how the catalog QUOTES a single source
+without copying it: the body is written for a person, and the anchor ties it to the definition.
+`termEntry(key)` answers an own key only. A word whose meaning depends on its context takes one
+key per context. (2) THE TERM is `apps/ui/src/components/term/Term.tsx`: `<Term term="…">` wraps
+the visible word in a span that carries `data-term`, takes keyboard focus and opens its tooltip on
+focus at once and on hover after `TERM_HOVER_DELAY_MS`, 120 ms, the reference's
+`--remedy-dur-fast`; the pointer leaving, the focus leaving and Escape close it. The tooltip is a
+glass tip (`ux_spec.md` §10) portalled into `document.body` at fixed coordinates, below the term,
+held inside the viewport, and above the term when there is no room below, because a glass card's
+`backdrop-filter` confines a fixed descendant and a card's overflow clips an absolute one. A key
+the catalog lacks still renders its `data-term`, so the audit sees it, but offers no focus and no
+tooltip. The four missing tokens are transcribed byte-exact from the reference. (3) THE AUDIT is
+`apps/ui/src/api/terminologyAudit.ts`: `collectDataTerms(markup)` reads the `data-term` values and
+`auditTermUse(used, keys)` answers the terms the catalog lacks (`missing`) and the keys nothing
+renders (`dead`). Its unit test renders every surface that carries a term in each state that shows
+a different term, requires both directions empty, and holds two drift fixtures red: a term
+rendered without an entry, and an entry no surface renders. The end-to-end round reads the same
+attributes from the real shell in a browser. (4) THE FIRST ROUND covers the live-status pill's
+five states and the phase timeline's six labels, whose hover hints move from `PHASE_HINTS` into
+the catalog, anchored to T5_F024.md's definition of each phase, so the map is deleted. The spot
+goldens are the delayed and replay statuses and the finalized phase; the urgency formula's golden
+arrives with the decision inbox's terms. (5) SCOPE: the catalog explains only what exists; the
+ladder, memory and autonomy-metric terms join with the features that build them. The tour's sixth
+stop, the palette, is the '?' panel until F044 builds a palette, which then takes the stop. (6)
+THE ORDER: this round lands (1) to (4) with a render harness in a real browser. The next round
+carries the terms to the remaining surfaces of the shell, the metrics bar, the decision inbox, the
+activity feed and its NowCard, the task list and the graph's scrubbed banner, with the product's
+own words from `docs/system/vocabulary.md`. Then the first-run tour on an overlay card shared with
+the result tour, with skip and never-show kept in local storage; then the '?' panel and the
+end-to-end run over the real shell; then the closure sequence.
+
+ALTERNATIVES: a `title` attribute per surface, rejected because it is neither one source nor
+keyboard reachable nor styled by the reference; catalog bodies copied from their sources verbatim,
+rejected because most definitions are written for developers and the product speaks in plain
+sentences; a Python test parsing the TypeScript catalog, rejected because the catalog's own test
+can read the source files through `node:fs`, as `costMetric.test.ts` already does; an absolutely
+positioned tooltip inside the term, rejected because the glass cards clip it; auditing by a source
+search for `term="…"`, rejected because a key computed at render time escapes it while the
+rendered markup cannot.
+
+HOW TO REVERSE: delete `apps/ui/src/api/terminology.ts`, `terminologyAudit.ts`, their tests,
+`apps/ui/src/components/term/`, the four tokens, the `Term` wrappers in `LiveStatusPill.tsx` and
+`PhaseTimeline.tsx`, restore `PHASE_HINTS` and its `title`, and delete this paragraph and its
+assumption-log line.
+
+## DECISION F043 D2 — the terms reach the right panel's cards, the six plain metrics and the graph's SCRUBBED badge; a term inside a button takes no focus; two descendant rules of the panel's sheet are narrowed to direct children; the token and cost tiles move onto the term's tooltip with their breakdown in the next round (2026-09-30)
+
+CONTEXT: DECISION F043 D1 (6) orders this round to carry the terms to the remaining surfaces of the
+shell. Measured by the reviewer at `15331eb0`: the right panel (`RightLivePanel.tsx`) renders under
+`renderToStaticMarkup` in the node test environment with a dashboard built on
+`normalizeApiFailure`, so the audit can render the real panel rather than its cards one by one;
+`BrainGraphStage.tsx` cannot even be imported there, because the force-graph library reads `window`
+as it loads. The task list's rows are `<button>` elements, so a focusable term inside one would be
+an interactive element inside another. The metrics bar's token and cost tiles already open a
+breakdown tooltip on the whole tile, placed below it, where a term's tooltip on the label would
+open on top of it. A render of the first version of this round in headless Chrome showed two defects
+no unit test could see: `.cardHeader span` in `RightLivePanel.module.css` gave every heading's term
+the header's 12px muted count style, and `.liveSmall span` painted the NowCard's Live word as a
+second green dot.
+
+CHOSEN: (1) THE TERMS, each anchored as D1 (1) orders: the six plain metrics' labels,
+`metric.open` (the open human decisions, which is what the tile counts), `metric.planned`,
+`metric.done`, `metric.progress`, `metric.tests` and `metric.proof`, anchored to
+`packages/orchestration/ui_server.py`; the task list's state words, `task.done`,
+`task.in_progress`, `blocked.task`, `task.planned` and `task.partially_applied`, anchored to the
+state reading in `apps/ui/src/api/remedyApi.ts` and the apply fold in
+`packages/orchestration/proof_chain.py`, chosen in the same order `stateText` reads so the
+explanation always matches the word; the headings of the Tasks card (`panel.tasks`, anchored to the
+vocabulary page's Task), the decision inbox (`panel.decisions`, anchored to the urgency formula in
+`apps/ui/src/api/decisionOrder.ts`, whose entry is the urgency golden T5_F043.md names), the
+activity feed (`panel.activity`) and the NowCard (`panel.agent_now`); the NowCard's Live badge
+(`agent.live`); and the stage's SCRUBBED badge (`graph.scrubbed`). (2) `Term` takes
+`insideControl`: such a term takes no focus and opens on hover only, and the '?' panel lists every
+term for the keyboard. (3) `.cardHeader span` and `.liveSmall span` become `.cardHeader > span` and
+`.liveSmall > span:first-child`, which select exactly the elements they selected before the terms
+existed. (4) THE AUDIT renders the real right panel, the metrics bar and the earlier surfaces;
+`graph.scrubbed` is the one browser-only term, held by the audit to a literal use in the stage's
+source and shown by the round's render harness, which mounts the real stage scrubbed. (5) THE TOKEN
+AND COST TILES keep their breakdown this round, and the next round moves both onto the term's
+tooltip, the breakdown shown under the catalog's explanation, with the estimate basis as the basis
+golden, together with the '?' panel. The first-run tour on an overlay card shared with the result
+tour follows, then the end-to-end run over the real shell, then the closure sequence.
+
+ALTERNATIVES: a focusable term inside the row buttons, rejected because nested interactive content
+is invalid and costs a second tab stop per row; extracting the SCRUBBED banner into its own module
+so a node test can render it, rejected because `test_timeline_scrub_wiring.py` pins the banner
+inside the stage and the harness already renders the real stage; a term on the token and cost
+labels beside their breakdown, rejected because two tooltips would open on one hover.
+
+HOW TO REVERSE: delete this round's catalog entries and their `Term` wrappers in `TopMetricsBar.tsx`,
+`TaskChecklistCard.tsx`, `DecisionInboxCard.tsx`, `ActivityFeedCard.tsx`, `AgentNowCard.tsx` and
+`BrainGraphStage.tsx`, the `insideControl` prop, the two narrowed selectors, this round's tests, and
+this paragraph.
+
+## DECISION F043 D3 — the token and cost tiles show their breakdown in the label's term, whose tooltip gains a live `detail` under the catalog's explanation, and the tile's own tooltip is deleted; the '?' key and a Terms button open a searchable panel of every entry, placed by its key's first word; `blocked.task` becomes `task.blocked` (2026-09-30)
+
+CONTEXT: DECISION F043 D2 (5) moves the token and cost tiles onto the term's tooltip in this
+round, together with the '?' panel. Measured by the reviewer at `03f77c7f`: `TopMetricsBar.tsx`
+opens a hand-built tooltip on the whole tile, which is focusable for that alone, and
+`tests/ui_contracts/test_design_drift.py` pins that tile's `tabIndex` as the keyboard route to the
+token breakdown, while `tests/ui_contracts/test_cost_metric_render.py` pins the breakdowns' two
+test ids. The shell has no global key handler, and every overlay it owns is a sibling after
+`</main>` that closes on Escape. A first render of the panel showed two entries titled Done with
+nothing to tell them apart, the metrics tile's and a task's.
+
+CHOSEN: (1) `Term` takes an optional `detail`: live figures rendered in the tooltip under the
+catalog's explanation, so the explanation stays the catalog's alone and the figures stay the
+surface's. (2) THE TILES: `metric.tokens` (anchored to T5_F022.md's statement that the token usage
+is an estimate) and `metric.cost` (anchored to its basis rule, the basis golden T5_F043.md names)
+join the catalog; every tile's label is a term, and the token and cost tiles pass their breakdown,
+under the same two test ids, as the term's `detail`. The tile's own tooltip, its hover and focus
+handlers, its `tabIndex` and its `.tooltip` rule are deleted, because the term replaced them
+(AGENTS.md, replacing is deleting); the design-drift pin follows the keyboard route to the term.
+(3) THE PANEL: `apps/ui/src/api/termSearch.ts` keeps the entries whose title or body holds every
+word of the query, sorted by title then key, and opens on "?" unless the key press comes from a
+field, where a question mark is text; `components/term/TermPanel.tsx` is a right-anchored glass
+sheet in the learning overlay's style, named Terms, with a search field that takes focus and a list
+of every entry's title, place and body. Its rows carry `data-term-entry` and never `data-term`,
+because a panel that lists every key by construction would make the audit's dead-key direction
+pass for keys no surface renders. The shell listens for the key and mounts the panel after the
+results panel; the right panel gains a Terms button beside Results. (4) THE PLACE: `TERM_PLACES`
+names where each family of keys is shown, by the key's first word, and a test holds that every
+catalog key has one; to keep the first word the place, the blocked task's key becomes
+`task.blocked`, the keyed variant T5_F043.md's edge case asks for, written family first. (5) THE
+ORDER: the first-run tour follows, on an overlay card shared with the result tour, then the
+end-to-end run over the real shell, then the closure sequence.
+
+ALTERNATIVES: a term on the tile's label beside the tile's own tooltip, rejected because one hover
+would open two; a `place` field on every catalog entry, rejected because the key already carries
+the family; `data-term` on the panel's rows, rejected for the audit reason above; opening the panel
+on "?" inside a field, rejected because it would swallow a typed question mark.
+
+HOW TO REVERSE: restore the tile's tooltip and `tabIndex` from `03f77c7f`, delete `detail`, the two
+entries, `termSearch.ts`, `TermPanel.tsx` with its sheet and tests, the shell's listener and mount,
+the Terms button and the wiring test, rename `task.blocked` back, and delete this paragraph.
+
+## DECISION F043 D4 — the first-run tour is six steps on `TourFrame`, the overlay engine the result tour now renders through too; each step spots its region with a ring of the backdrop's tint, the card docks at the lower left, the tour opens by itself once per browser and any exit records it seen, and the Terms panel starts it again (2026-09-30)
+
+CONTEXT: T5_F043.md T003 asks for a six-step first-run tour (graph, timeline, feed and NowCard,
+inbox, chat, palette) with a prominent skip, never-show persisted, re-launchable from '?', on the
+spotlight mechanics of the result tour — "one overlay engine, reuse" — and its Acceptance asks for
+an import proof. Measured by the reviewer at `32854ea0`: F036's `TourOverlay.tsx` builds its own
+backdrop, card and portal inline and has no spotlight, since DECISION F036 D6 lifts the whole
+backdrop on "Show me"; `tests/ui_contracts/test_tour_overlay_contract.py` pins that markup in
+`TourOverlay.tsx`. `tests/ui_contracts/test_digest_mount.py` holds `window.localStorage` to
+exactly one occurrence in `RemedyShell.tsx`, the digest's. No command palette exists. The steering
+note's field and the Terms button carry no `data-ui` name. A render at 1280 by 800 pixels, where
+the shell hides the left rail's copy, shows the graph and the timeline as wide as the page.
+
+CHOSEN: (1) `components/tour/TourFrame.tsx` is the shared engine: the portal into
+`document.body`, the dialog named by its label, its close button, and the dim — the whole-page
+backdrop, or, given a `spot`, the same tint drawn as a ring around that box (`TOUR_SPOT_PAD_PX`
+beyond it) so the region stays bright and usable, with the card docked at the lower left as a shown
+result-tour stop already docks. `TourOverlay.tsx` renders through it with its own names, its stops
+untouched, and the contract test follows the markup to the frame and adds the import proof for both
+tours. (2) `api/firstRunTour.ts` holds the six steps, each naming its region by `data-ui`, the
+sixth pointing at the Terms button in place of the palette until F044 builds one (D1 (5)); the
+storage key `remedy:first-run-tour` with the one value `seen`; and `firstRunTourDue` and
+`markFirstRunTourSeen`, which treat a missing or throwing storage as one that holds and keeps
+nothing. (3) `components/tour/FirstRunTour.tsx` spots each step's region, measured before paint
+and again on resize, scrolled into view when it can be; a region the page does not show is not
+spotted. Skip tour, Finish, Close and Escape all end it, and every end records it seen, which is the
+never-show T5_F043.md asks for: the tour opens by itself once per browser. Its `FirstRunTourMount`
+binds `window.localStorage`, so the shell keeps its one binding and hands the mount only a relaunch
+count, which the Terms panel's new "Take the tour" button raises. (4) The steering note's row and
+the Terms button gain the `data-ui` names the steps point at. (5) R-1115 is repaired in the same
+round: `.tipDetail` is a block. (6) THE ORDER: the end-to-end run over the real shell follows, with
+the audit read from the real page, then the closure sequence.
+
+ALTERNATIVES: a second overlay beside the result tour's, rejected because T5_F043.md orders one
+engine; a card placed beside each region, rejected because the regions span the page at common
+widths and the docked card is the one place the result tour already uses; a skip that is not
+recorded, rejected because a tour that returns on every visit until "never show" is found is the
+nuisance the flag exists to end; binding the storage in the shell, rejected by the digest's
+single-binding guard.
+
+HOW TO REVERSE: restore `TourOverlay.tsx` and its contract test from `32854ea0`, delete
+`TourFrame.tsx`, `FirstRunTour.tsx`, `firstRunTour.ts` and their tests, the spot rules, the two
+`data-ui` names, the shell's relaunch state and mount, the panel's tour button, and this paragraph.
+
+## DECISION F043 D5 — T003's end-to-end run is a browser test in the suite over a real demo job and the cockpit built into the test's own folder, served with the job's real dashboard by the UI server's own builders; it reads the audit's first direction on the real page with a red control, the tour's once-per-browser record, a tooltip, the '?' panel and the relaunch; the explanation layer gets a user guide (2026-09-30)
+
+CONTEXT: T5_F043.md's Acceptance asks for the audit "green on the real shell", and T003 ends with
+the end-to-end. Measured by the reviewer at `0196da46`: the UI server serves the shared
+`apps/ui/dist` and rebuilds it when a source file is newer, with no way to point it at another
+build, and `test_story_export_file_live.py` builds into its own temporary folder because a
+parallel worker's build can empty the shared one (DECISION F039 D9); that file's `ChromePipe`
+drives Chrome over its own pipe with nothing but the standard library, and its demo job runs on the
+fake providers in seconds. The cockpit reads its job and token from the address and degrades
+gracefully when a door answers an error. No single state of one job shows every catalog term. Every
+earlier cockpit feature with a user-facing surface has a guide under `docs/guides/`.
+
+CHOSEN: (1) `tests/ui_server/test_explanation_layer_live.py` runs the demo job, builds the cockpit
+into the module's own folder, and serves it from a small server in the test process whose three
+job routes — `dashboard`, `brain-view-model` and `decisions` — answer with the UI server's own
+builders over the job's real record, every other route answering 404. Chrome runs in a fresh
+profile. The test holds that the tour opens by itself at step 1 with nothing stored; that every
+`data-term` on the page is a catalog key, the catalog read from its one source file, and that the
+finished job's core terms are all there with one live-status term; that a term planted on the page
+without an entry is caught by the same reading, the direction's red control; that Skip stores
+`seen` and a reload opens no tour; that resting the pointer on a term opens its tooltip; that "?"
+opens the Terms panel with every catalog key and Escape closes it; and that the panel's "Take the
+tour" starts it again. The audit's second direction, a key no surface renders, stays the unit
+audit's, because it needs every state and a single job shows one. (2)
+`docs/guides/explanation-layer-user-guide-v1.md` explains the explained words, the Terms list, the
+welcome tour and how to see it again, in plain sentences, registered in `docs/README.md`'s quick-find
+table and guide list. (3) THE ORDER: the closure sequence follows, its first round running the
+closure's self-use item and consolidating the checklist.
+
+ALTERNATIVES: driving the real UI server's own page, rejected because it serves and may rebuild the
+shared `dist` a parallel worker can be rebuilding; a Node driver, rejected for the reason F039 D9
+records; asserting the second direction on the real page, rejected because no single job state
+renders every term.
+
+HOW TO REVERSE: delete the test file, the guide and its two index rows, and this paragraph.
+
+## DECISION F043 D6 — the closure's self-use item SU-038 is landed as its job's own diff with two reviewer tests, because no test reached the handler it narrows (2026-09-30)
+
+CONTEXT: F043's closure self-use item, `SU-038`, generated by Tier 4 from the excused blind
+handler on line 182 of `apps/cli/commands/brain.py`, ran as job `d1a4eea4787f420c` on the
+`self_use` role and reached the approval gate with its one task passed. Its diff narrows the
+handler around `load_project_constitution` in `_prepare_viewer`, the helper `brain open` and the
+other viewer commands share, from `Exception` to `OSError`, and lowers `MAX_EXCUSED` in
+`tests/test_ble001_ratchet.py` from 289 to 288. Measured by the reviewer at `6b2c3e8c`:
+`load_project_constitution` reads files and parses nothing it could fail on beyond the file
+system, as DECISION F291 D3 recorded for the same loader, and no test calls `_prepare_viewer` with
+a loader that fails; the two tests F291 added reach the other handler, in `brain view`.
+
+CHOSEN: land the job's own diff unchanged, with two reviewer tests in
+`tests/test_brain_viewer.py`'s `TestConstitutionGuard`: a loader that raises `PermissionError`
+leaves the helper writing the viewer, and a loader that raises `RuntimeError` reaches the caller
+with no viewer written. `SU-038`'s `consumed_by` is set to F043 in the closure commit.
+
+ALTERNATIVES: declining the diff, rejected because it is correct and a ratchet that falls is the
+point of the item; landing it without tests, rejected because nothing would then hold the narrowed
+handler.
+
+HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and 289 in the
+ratchet, delete the two tests, and delete this paragraph.

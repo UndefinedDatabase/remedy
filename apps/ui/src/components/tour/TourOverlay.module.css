@@ -35,7 +35,8 @@
 /* While a stop is shown (DECISION F036 D7 (2), R-1088), the card leaves the centre for the
    lower left of the left rail — the place "Show me" opens is undimmed, not covered by the
    card that pointed at it — and returns to the centre rule above when stepping dims again. */
-.card[data-shown="true"] {
+.card[data-shown="true"],
+.card[data-spot="true"] {
   top: auto;
   left: 16px;
   bottom: 16px;
@@ -46,6 +47,17 @@
 /* The docked card is the left rail's width, too narrow for Previous, Next and "Show me" in
    one row, so the row wraps instead of a label (R-1090). */
 .card[data-shown="true"] .actions { flex-wrap: wrap; }
+.card[data-spot="true"] .actions { flex-wrap: wrap; }
+
+/* DECISION F043 D4: the spotlight ring a step's region wears while the rest of the page dims
+   around it, drawn with the same tint the whole-page backdrop above uses. */
+.spot {
+  position: fixed;
+  z-index: calc(var(--remedy-z-overlay) - 1);
+  border-radius: var(--remedy-radius-lg);
+  box-shadow: 0 0 0 2px var(--remedy-focus), 0 0 0 100vmax color-mix(in srgb, var(--remedy-ink-strong) 45%, transparent);
+  pointer-events: none;
+}
 
 .header { display: flex; align-items: center; justify-content: space-between; }
 .header h2 {

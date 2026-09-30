@@ -1,10 +1,11 @@
-import { useState } from "react";
+import type { ReactNode } from "react";
 import type { RemedyMetric } from "../../api/types";
 import { formatTokenCount } from "../../api/costMetric";
 import {
   ClipboardGlyph, CalendarGlyph, TaskDoneGlyph, ChartGlyph, TokenGlyph,
   FlaskGlyph, ShieldCheckGlyph, CoinGlyph,
 } from "../icons/RemedyGlyphs";
+import { Term } from "../term/Term";
 import styles from "./TopMetricsBar.module.css";
 
 const iconByKey: Record<string, typeof ClipboardGlyph> = {
@@ -51,6 +52,47 @@ export const ESTIMATE_PHRASE = ", estimated";
 
 const EM_DASH = "—";
 
+/** Anchors every tile's label to the catalog (DECISIONS F043 D1 to D3). The token and cost
+ *  tiles' own breakdown now renders as the term's `detail`, under the catalog's explanation,
+ *  in place of the tile's own tooltip. */
+const METRIC_TERMS: Readonly<Record<string, string>> = {
+  open: "metric.open",
+  planned: "metric.planned",
+  done: "metric.done",
+  progress: "metric.progress",
+  tests: "metric.tests",
+  proof: "metric.proof",
+  tokens: "metric.tokens",
+  cost: "metric.cost",
+};
+
+/** DECISION F043 D3 (2): the token and cost tiles' breakdown, carried as the label's term's
+ *  `detail` under the same two test ids the tile's own tooltip used to open. `undefined` for a
+ *  tile with neither. */
+function metricDetail(m: RemedyMetric): ReactNode {
+  if (m.cost) {
+    return (
+      <span className={styles.tooltipRows} data-testid="cost-tooltip">
+        {m.cost.tooltip.map(line => (
+          <span key={line} className={styles.costTooltipRow}>{line}</span>
+        ))}
+      </span>
+    );
+  }
+  if (m.tooltip) {
+    return (
+      <span className={styles.tooltipRows} data-testid="token-tooltip">
+        {Object.entries(m.tooltip).map(([role, count]) => (
+          <span key={role} className={styles.tooltipRow}>
+            <span>{role}</span><span>{formatTokenCount(count)}</span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+  return undefined;
+}
+
 /** Main value text (without suffix). Unknown / em-dash safe. */
 function mainValue(m: RemedyMetric): string {
   // The cost view has already decided its own text, its own honest em dash
@@ -64,8 +106,6 @@ function mainValue(m: RemedyMetric): string {
 }
 
 export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
-  const [tooltipKey, setTooltipKey] = useState<string | null>(null);
-
   return (
     <section className={`${styles.bar} remedy-glass-card`} aria-label="Project metrics" data-ui="top-metrics-bar">
       {metrics.map(m => {
@@ -75,7 +115,6 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
         const showSuffix = main !== EM_DASH && m.key !== "progress" && Boolean(m.suffix);
         const ariaValue = `${main}${showSuffix ? m.suffix : ""}`;
         const progressWidth = typeof m.value === "number" ? Math.max(0, Math.min(m.value, 100)) : 0;
-        const hasTooltip = Boolean(m.tooltip) || Boolean(m.cost);
         const costPhrase = m.cost
           ? `${m.cost.estimated ? ESTIMATE_PHRASE : ""}${costLevelPhrase[m.cost.level || ""] || ""}`
           : "";
@@ -87,11 +126,6 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
           <article
             key={m.key}
             className={styles.metric}
-            tabIndex={hasTooltip ? 0 : undefined}
-            onMouseEnter={() => hasTooltip && setTooltipKey(m.key)}
-            onMouseLeave={() => setTooltipKey(null)}
-            onFocus={() => hasTooltip && setTooltipKey(m.key)}
-            onBlur={() => setTooltipKey(null)}
             aria-label={`${m.label}: ${ariaValue}${costPhrase}`}
           >
             <div className={styles.iconBox}><Icon style={{ width: 16, height: 16 }} /></div>
@@ -100,7 +134,7 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
                 {m.key === "tests" && (
                   <span className={`${styles.stateDot} ${stateDotClass[m.state || "none"]}`} aria-hidden="true" />
                 )}
-                {m.label}
+                {METRIC_TERMS[m.key] ? <Term term={METRIC_TERMS[m.key]} detail={metricDetail(m)}>{m.label}</Term> : m.label}
               </div>
               <div className={styles.value}>
                 {m.cost?.estimated && <span className={styles.estimateMark}>{ESTIMATE_MARK}</span>}
@@ -122,23 +156,6 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
                   renders the field and composes nothing (DECISION F022 D8). */}
               {m.costFinalNote && <div className={styles.estimated}>{m.costFinalNote}</div>}
             </div>
-            {tooltipKey === m.key && m.tooltip && (
-              <div className={styles.tooltip} role="tooltip" data-testid="token-tooltip">
-                {Object.entries(m.tooltip).map(([role, count]) => (
-                  <div key={role} className={styles.tooltipRow}>
-                    <span>{role}</span>
-                    <span>{formatTokenCount(count)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {tooltipKey === m.key && m.cost && (
-              <div className={styles.tooltip} role="tooltip" data-testid="cost-tooltip">
-                {m.cost.tooltip.map(line => (
-                  <div key={line} className={styles.costTooltipRow}>{line}</div>
-                ))}
-              </div>
-            )}
           </article>
         );
       })}

@@ -14,7 +14,7 @@ import { PauseControl } from "./PauseControl";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, onOpenStory, onOpenResults, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; onOpenResults?: () => void; focusedTaskId?: string }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, onOpenStory, onOpenResults, onOpenTerms, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; onOpenResults?: () => void; onOpenTerms?: () => void; focusedTaskId?: string }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -45,6 +45,9 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       {/* The results panel's entry point (F041 T003, DECISION F041 D5), beside Story in the
           same quiet style; the shell owns whether the panel is open. */}
       {onOpenResults && (<button type="button" className={styles.advancedToggle} onClick={onOpenResults}>Results</button>)}
+      {/* The '?' panel's entry point (F043 T003, DECISION F043 D3), beside Results in the same
+          quiet style; the shell owns whether the panel is open. */}
+      {onOpenTerms && (<button type="button" className={styles.advancedToggle} data-ui="terms-button" onClick={onOpenTerms} aria-keyshortcuts="?">Terms</button>)}
       <button
         type="button"
         className={styles.advancedToggle}

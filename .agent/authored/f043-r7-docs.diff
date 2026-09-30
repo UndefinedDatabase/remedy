@@ -1,0 +1,18 @@
+diff --git a/docs/roadmap/features/T5_F043.md b/docs/roadmap/features/T5_F043.md
+index 0ca4fbef9..f0a2a866e 100644
+--- a/docs/roadmap/features/T5_F043.md
++++ b/docs/roadmap/features/T5_F043.md
+@@ -126,5 +126,13 @@ every term on the real page is in the catalog, that a planted unknown term is ca
+ the tooltip's and the panel's behaviour (D5). `docs/guides/explanation-layer-user-guide-v1.md`
+ explains all of it for a user.
+ 
++**The closure's self-use item.** `SU-038`, the first item Tier 4 offered on the real tree at
++`2660444a`, ran as job `d1a4eea4787f420c` on the `self_use` role, `claude-cli` with
++`claude-sonnet-4-6` for builder and reviewer, in two provider calls measured at $0.57, and reached
++the approval gate with its one task passed. Its diff narrows the handler around
++`load_project_constitution` in `_prepare_viewer` of `apps/cli/commands/brain.py` to `OSError` and
++lowers `MAX_EXCUSED` to 288; it is landed with two tests in `tests/test_brain_viewer.py` (DECISION
++F043 D6).
++
+ **Findings.** R-1115, a tooltip detail that rendered inline so its separator never showed, was raised
+ at round 3's gate and repaired in round 4.

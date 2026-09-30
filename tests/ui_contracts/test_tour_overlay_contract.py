@@ -17,6 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 OVERLAY = UI_SRC / "components" / "tour" / "TourOverlay.tsx"
 OVERLAY_CSS = UI_SRC / "components" / "tour" / "TourOverlay.module.css"
+FRAME = UI_SRC / "components" / "tour" / "TourFrame.tsx"
+FIRST_RUN = UI_SRC / "components" / "tour" / "FirstRunTour.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
 PANEL = UI_SRC / "components" / "panels" / "RightLivePanel.tsx"
 
@@ -26,13 +28,30 @@ def _source(path: Path) -> str:
 
 
 def test_the_overlay_is_a_dialog_portaled_to_the_document_body():
+    # DECISION F043 D4: the dialog, its backdrop and the portal are TourFrame's, the overlay
+    # engine this tour shares with the first-run tour; the result tour names its own.
+    frame = _source(FRAME)
+    assert 'role="dialog"' in frame
+    assert "aria-label={label}" in frame
+    assert "data-ui={ui.card}" in frame
+    assert "data-ui={ui.backdrop}" in frame
+    assert "createPortal(" in frame
+    assert "document.body," in frame
     source = _source(OVERLAY)
-    assert 'role="dialog"' in source
-    assert 'aria-label="Guided tour"' in source
-    assert 'data-ui="tour-overlay"' in source
-    assert 'data-ui="tour-backdrop"' in source
-    assert "createPortal(" in source
-    assert "document.body," in source
+    assert 'label="Guided tour"' in source
+    assert 'ui={{ card: "tour-overlay", backdrop: "tour-backdrop" }}' in source
+    assert "createPortal(" not in source
+
+
+def test_both_tours_render_through_the_one_frame():
+    # T5_F043.md Acceptance: "Overlay engine shared (import proof)".
+    for path in (OVERLAY, FIRST_RUN):
+        source = _source(path)
+        assert 'import { TourFrame } from "./TourFrame";' in source, path.name
+        assert "<TourFrame " in source, path.name
+    first_run = _source(FIRST_RUN)
+    assert 'ui={{ card: "first-run-tour", backdrop: "first-run-backdrop" }}' in first_run
+    assert "useMemo(() => window.localStorage, [])" in first_run
 
 
 def test_the_overlay_reads_only_through_the_door_and_drops_a_stale_answer():
@@ -55,8 +74,9 @@ def test_the_css_module_names_the_overlay_z_index_and_the_backdrop_tint():
 
 
 def test_the_card_carries_data_shown_and_docks_over_the_left_rail_while_shown():
-    source = _source(OVERLAY)
+    source = _source(FRAME)
     assert "data-shown=" in source
+    assert "data-spot=" in source
 
     css = OVERLAY_CSS.read_text(encoding="utf-8")
     assert '.card[data-shown="true"]' in css

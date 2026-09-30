@@ -1,0 +1,64 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 4a3a04da3..64cf9bd18 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26114,3 +26114,47 @@ on "?" inside a field, rejected because it would swallow a typed question mark.
+ HOW TO REVERSE: restore the tile's tooltip and `tabIndex` from `03f77c7f`, delete `detail`, the two
+ entries, `termSearch.ts`, `TermPanel.tsx` with its sheet and tests, the shell's listener and mount,
+ the Terms button and the wiring test, rename `task.blocked` back, and delete this paragraph.
++
++## DECISION F043 D4 — the first-run tour is six steps on `TourFrame`, the overlay engine the result tour now renders through too; each step spots its region with a ring of the backdrop's tint, the card docks at the lower left, the tour opens by itself once per browser and any exit records it seen, and the Terms panel starts it again (2026-09-30)
++
++CONTEXT: T5_F043.md T003 asks for a six-step first-run tour (graph, timeline, feed and NowCard,
++inbox, chat, palette) with a prominent skip, never-show persisted, re-launchable from '?', on the
++spotlight mechanics of the result tour — "one overlay engine, reuse" — and its Acceptance asks for
++an import proof. Measured by the reviewer at `32854ea0`: F036's `TourOverlay.tsx` builds its own
++backdrop, card and portal inline and has no spotlight, since DECISION F036 D6 lifts the whole
++backdrop on "Show me"; `tests/ui_contracts/test_tour_overlay_contract.py` pins that markup in
++`TourOverlay.tsx`. `tests/ui_contracts/test_digest_mount.py` holds `window.localStorage` to
++exactly one occurrence in `RemedyShell.tsx`, the digest's. No command palette exists. The steering
++note's field and the Terms button carry no `data-ui` name. A render at 1280 by 800 pixels, where
++the shell hides the left rail's copy, shows the graph and the timeline as wide as the page.
++
++CHOSEN: (1) `components/tour/TourFrame.tsx` is the shared engine: the portal into
++`document.body`, the dialog named by its label, its close button, and the dim — the whole-page
++backdrop, or, given a `spot`, the same tint drawn as a ring around that box (`TOUR_SPOT_PAD_PX`
++beyond it) so the region stays bright and usable, with the card docked at the lower left as a shown
++result-tour stop already docks. `TourOverlay.tsx` renders through it with its own names, its stops
++untouched, and the contract test follows the markup to the frame and adds the import proof for both
++tours. (2) `api/firstRunTour.ts` holds the six steps, each naming its region by `data-ui`, the
++sixth pointing at the Terms button in place of the palette until F044 builds one (D1 (5)); the
++storage key `remedy:first-run-tour` with the one value `seen`; and `firstRunTourDue` and
++`markFirstRunTourSeen`, which treat a missing or throwing storage as one that holds and keeps
++nothing. (3) `components/tour/FirstRunTour.tsx` spots each step's region, measured before paint
++and again on resize, scrolled into view when it can be; a region the page does not show is not
++spotted. Skip tour, Finish, Close and Escape all end it, and every end records it seen, which is the
++never-show T5_F043.md asks for: the tour opens by itself once per browser. Its `FirstRunTourMount`
++binds `window.localStorage`, so the shell keeps its one binding and hands the mount only a relaunch
++count, which the Terms panel's new "Take the tour" button raises. (4) The steering note's row and
++the Terms button gain the `data-ui` names the steps point at. (5) R-1115 is repaired in the same
++round: `.tipDetail` is a block. (6) THE ORDER: the end-to-end run over the real shell follows, with
++the audit read from the real page, then the closure sequence.
++
++ALTERNATIVES: a second overlay beside the result tour's, rejected because T5_F043.md orders one
++engine; a card placed beside each region, rejected because the regions span the page at common
++widths and the docked card is the one place the result tour already uses; a skip that is not
++recorded, rejected because a tour that returns on every visit until "never show" is found is the
++nuisance the flag exists to end; binding the storage in the shell, rejected by the digest's
++single-binding guard.
++
++HOW TO REVERSE: restore `TourOverlay.tsx` and its contract test from `32854ea0`, delete
++`TourFrame.tsx`, `FirstRunTour.tsx`, `firstRunTour.ts` and their tests, the spot rules, the two
++`data-ui` names, the shell's relaunch state and mount, the panel's tour button, and this paragraph.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5aaecad69..6546c9460 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -158,3 +158,7 @@ Gate: F291 R6 — the F291 round 6 entry, the closure sequence's closing round:
+ Gate: F043 R1 — the F043 round 1 entry, the claim with T001 and T002 over the first surfaces: F043 claimed, this record re-headed, F291's round 6 booked, DECISION F043 D1 with its assumption-log line, and the explanation catalog, the term component and the term audit over the live-status pill and the phase timeline. VERDICT PASS. Re-derived over `21bfc188`..`15331eb0` by the planner and reviewer of F043's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `7f394cec` 421, `a05c05a0` 151, `41eadb6f` 373, `7e5d3a97` 458, `2c18dff4` 124, `68f90978` 331, `17452f34` 355, `4e5c5e96` 221 and `15331eb0` 208; the worker declared two readings of the block's wording, the prose of the comment above the four tokens and the hover timer's effect, both inside the specification. THE TRANSPORT PROOF: the block and the nine payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f043-r1/` and `.remedy-wt/f043-r1-payloads/` byte for byte, and the six files of C2 and the three test files of C4 carry the blobs of the reviewer's simulation tree. THE CODE matches S1 to S7. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `15331eb0`, read `1746 passed, 5 skipped` at exit 0; all six `integrity check` checks read pass. THE RENDER: the harness, re-run by the reviewer in the primary checkout, read `RENDER: 7 of 7 checks pass`. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `4e5c5e96`, and all twelve mutations went red, both controls passing before and after and every restore byte-identical; the worktree was removed and `git worktree list` read 11 lines. The open set at `15331eb0` is empty.
+ 
+ Gate: F043 R2 — the F043 round 2 entry, the terms of the right panel, the plain metrics and the SCRUBBED badge: the booking of round 1, DECISION F043 D2, the catalog's entries for the right panel's cards, the six plain metrics and the stage's badge, a term inside a button that takes no focus, and two descendant rules of the panel's sheet narrowed. VERDICT PASS. Re-derived over `15331eb0`..`03f77c7f` by the planner and reviewer of F043's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `8b01e230` 337, `74840dff` 452, `25641ea4` 287, `2ddf5f46` 225, `fe53bf82` 59, `d7f2a8f7` 158, `2ae44422` 275, `632e648b` 187 and `03f77c7f` 141; the worker declared its comments' wrapping, which moved three of C3's per-file counts by one line against the reviewer's own version, and its reading of S9's one-line comments as one line above each selector; both are inside the specification. THE TRANSPORT PROOF: the block and the eight payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f043-r2/` and `.remedy-wt/f043-r2-payloads/` byte for byte, and the three files of C2 and the two test files of C4 carry the blobs of the reviewer's simulation tree. THE CODE matches S1 to S9. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `03f77c7f`, read `1746 passed, 5 skipped` at exit 0; all six `integrity check` checks read pass. THE RENDER: the harness, re-run by the reviewer in the primary checkout, read `RENDER: 9 of 9 checks pass`. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `632e648b`, and all ten mutations went red, both controls passing before and after and every restore byte-identical; the worktree was removed and `git worktree list` read 11 lines. The open set at `03f77c7f` is empty.
++
++Gate: F043 R3 — the F043 round 3 entry, the token and cost tiles onto the term and the '?' panel: the booking of round 2, DECISION F043 D3, the tiles' breakdown in their labels' terms with the tile's own tooltip deleted, and the searchable Terms panel opened by the question mark. VERDICT PASS. Re-derived over `03f77c7f`..`32854ea0` by the planner and reviewer of F043's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `d3ae55e2` 370, `3716cc94` 422, `346572b3` 265, `5ab836eb` 225, `88fd5ee7` 52, `eada59e8` 268, `d24ef3ae` 211, `71ec3fef` 246 and `32854ea0` 181; the worker declared its comments' and blank lines' layout, which moved six of C3's per-file counts against the reviewer's own version. THE TRANSPORT PROOF: the block and the eight payloads, each read from the commit that added its copy, equal the reviewer's originals under `.remedy-wt/f043-r3/` and `.remedy-wt/f043-r3-payloads/` byte for byte, and the three files of C2 and the six test files of C4 carry the blobs of the reviewer's simulation tree. THE CODE matches S1 to S8 except one clause of S2, registered below as R-1115. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `32854ea0`, read `1749 passed, 5 skipped` at exit 0; all six `integrity check` checks read pass. THE RENDER: the harness, re-run by the reviewer in the primary checkout, read `RENDER: 10 of 10 checks pass`. THE RED PROOFS: the reviewer ran the worker's tool in a disposable worktree at `71ec3fef`, and all eleven mutations went red, every control passing before and after and every restore byte-identical; the worktree was removed and `git worktree list` read 11 lines. The open set at `32854ea0` is empty; after the registration below it is `['R-1115']`.
++
++- R-1115 — Low, THE TERM TOOLTIP'S LIVE DETAIL RENDERS INLINE, SO THE GAP AND THE RULE ABOVE A TILE'S BREAKDOWN DO NOT SHOW. Raised by the reviewer at the F043 R3 gate from a render of the open Tokens tooltip in the primary checkout at `32854ea0`. S2 of the R3 block ordered `.tipDetail` as a block with a 6px top margin, 6px top padding and a 1px top rule; the landed rule in `apps/ui/src/components/term/Term.module.css` carries the three spacing declarations and no `display: block`, so the `<span>` stays inline, its top margin has no effect, its rule does not draw above the block rows inside it, and the breakdown runs straight on under the explanation. The handback did not declare it. No gate saw it, because the round's harness read the tooltip's text and its test id and never the detail's box, which is the reviewer's own blind spot; the content, the test ids and the keyboard route are right. THE OPEN SET WAS SEARCHED FOR THE DEFECT BEFORE THIS ID WAS MINTED (checklist item 30) and holds no finding. THE FIX, which F043's round 4 lands: `display: block` on `.tipDetail`, with a harness check that reads the detail's computed display, its top rule and its gap below the explanation, and a mutation that removes the declaration. OPEN.

@@ -4,6 +4,7 @@ import { selectChecklistRows } from "../../cockpitLogic";
 import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { AddTaskSheet } from "./AddTaskSheet";
+import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
 /** DECISION F028 D7 (1) — the row's own title, honest either way: disabled
@@ -30,6 +31,16 @@ function stateText(task: RemedyTaskItem): string {
   return "Planned";
 }
 
+// DECISION F043 D2 (1): the same conditions, in the same order, as stateText — so the
+// explanation a row's state word opens always matches the word it explains.
+function stateTerm(task: RemedyTaskItem): string {
+  if (task.applyStatus === "partial") return "task.partially_applied";
+  if (task.state === "done") return "task.done";
+  if (task.state === "current") return "task.in_progress";
+  if (task.state === "blocked") return "task.blocked";
+  return "task.planned";
+}
+
 function outcomeHint(task: RemedyTaskItem): string | null {
   if (task.outcomeSummary) return task.outcomeSummary;
   if (task.testStatus === "fail") return "Tests failing";
@@ -50,7 +61,7 @@ export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
     return (
       <section className={`${styles.card} ${styles.tasksCard} remedy-checklist`} data-ui="task-checklist-card">
         <header className={styles.cardHeader}>
-          <h2>Tasks</h2>
+          <h2><Term term="panel.tasks">Tasks</Term></h2>
           <span>No tasks yet</span>
         </header>
         <div className={styles.taskList}>
@@ -63,7 +74,7 @@ export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
   return (
     <section className={`${styles.card} ${styles.tasksCard} remedy-checklist`} data-ui="task-checklist-card">
       <header className={styles.cardHeader}>
-        <h2>Tasks</h2>
+        <h2><Term term="panel.tasks">Tasks</Term></h2>
         <span>{completed} of {total} completed</span>
       </header>
       <div className={styles.taskList}>
@@ -79,7 +90,7 @@ export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
                 {hint && <span className={styles.taskHint}>{hint}</span>}
               </span>
               {chip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{chip}</span>}
-              <span className={styles.taskState}>{stateText(row)}</span>
+              <span className={styles.taskState}><Term term={stateTerm(row)} insideControl>{stateText(row)}</Term></span>
             </button>
           );
         })}
