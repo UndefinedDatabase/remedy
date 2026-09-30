@@ -795,3 +795,66 @@ measures the `ui` stage as a whole — only
 selected tests are `not-measured` this round. And nothing here measures test
 ORDER under a randomising plugin; the observed order is the file's declaration
 order in this repository as it stands at 4b52f300.
+
+## Q14 — The three-sample cost of the `budgets` STAGE as it stands today, measured at F044 R10
+
+WHAT WAS MEASURED, and why it supersedes both earlier readings. `## Q12` timed
+FOUR paths, before `CI_STAGES`'s own `budgets` stage existed. F273 T015 (b) added
+a corpus-coverage guard (`tests/orchestration/test_ci_stage_coverage.py`) and
+re-measured at 24.40 s max, recorded only as a comment in
+`tests/orchestration/test_ci_stages.py`, never in this file. F044 T003 then added
+three more live budget checks to `tests/orchestration/test_ci_budgets.py` (the
+bundle-size, first-paint and frame-pipeline-p95 tests, DECISIONS F044 D8, D9 and
+D10) without a fresh three-sample reading of its own — F044 R9's own DECISION D10
+cites a single ad-hoc 44.2 s reading, taken inside a disposable `git worktree`
+rather than the primary checkout and never repeated, which this section corrects
+by dating rather than by rewriting D10's own text (R-0417, R-0525). The stage's
+CURRENT `test_paths`, seven entries, all named in `CI_STAGES` in
+`packages/orchestration/ci_stages.py`:
+
+    ['/usr/bin/python3', '-m', 'pytest', '-m', 'not real_ollama', '-q', 'tests/orchestration/test_scratch_file_guard.py', 'tests/test_no_interactive_guard.py', 'tests/test_test_categories.py', 'tests/orchestration/test_ci_budgets.py', 'tests/test_subprocess_timeouts.py', 'tests/test_no_orphan_modules.py', 'tests/orchestration/test_ci_stage_coverage.py']
+
+Every sample is its own `subprocess.run` from the repository root
+`/home/decodeux/Repos/remedy`, in the PRIMARY checkout (never a worktree, whose
+filesystem and cache characteristics differ from the checkout CI actually runs),
+with `capture_output=True`; the exit code is the one THAT process returned
+(R-0438) and the wall second is `time.monotonic()` around that one call. No
+sample was averaged with another and no sample was dropped.
+
+PRECISION CONVENTION, the same one `## Q11` and `## Q12` state and binding here
+too (R-0476): every wall second is published at exactly two decimals, and every
+derived value — min, max, max−min — is computed from the numbers AS PUBLISHED in
+the table.
+
+| Sample | Round taken | Wall s | Exit | pytest's own final summary line |
+|---|---|---|---|---|
+| 1 of 3 | R10 | 28.08 | 0 | `65 passed in 27.62s` |
+| 2 of 3 | R10 | 27.59 | 0 | `65 passed in 27.34s` |
+| 3 of 3 | R10 | 27.82 | 0 | `65 passed in 27.55s` |
+
+SPREAD, under the convention above: min 27.59, max 28.08, max−min 0.49. All three
+ended at exit 0 and all three report the same `65 passed`, so the readings time
+the same selection and not three different ones. The MEASURED MAXIMUM is 28.08 s.
+
+DERIVED BUDGET, computed by the SAME rule the other stages already use —
+`ceil(BUDGET_HEADROOM_FACTOR * measured_max / BUDGET_ROUNDING_S) *
+BUDGET_ROUNDING_S` with the factor 2 and the rounding 300, both pinned in
+`tests/orchestration/test_ci_stages.py`: `ceil(2 * 28.08 / 300) * 300 =
+ceil(0.1872) * 300 = 1 * 300 = 300`. The `budgets` stage's `timeout_sec=300`
+therefore does NOT change — the same rounding floor `## Q12` already landed on,
+now confirmed against the stage's real, current selection rather than a subset
+of it.
+
+CONTEXT, measured this round and not recalled. `os.cpu_count()` reports 24,
+which EQUALS the figure recorded in `## Q10`, `## Q11` and `## Q12`. Neither the
+machine nor the stage's marker expression moved since; only the PATH LIST grew,
+from four entries to seven.
+
+WHAT THIS SECTION DID NOT MEASURE, said rather than left blank. The other four
+CI stages were NOT re-run at R10: each already carries three samples in `## Q10`
+or `## Q11`, and re-running them would re-measure a settled number. This section
+also does not explain the gap between its own 28.08 s maximum and DECISION F044
+D10's single 44.2 s reading beyond naming the worktree-versus-primary-checkout
+difference above; both readings agree on the only fact that matters to the
+budget rule, which is that the maximum stays far under the 150 s a 300-second
+budget's own doubling rule would tolerate.

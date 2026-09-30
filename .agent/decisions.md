@@ -26218,3 +26218,451 @@ handler.
 
 HOW TO REVERSE: restore the handler and its mark in `apps/cli/commands/brain.py` and 289 in the
 ratchet, delete the two tests, and delete this paragraph.
+
+## DECISION F044 D1 — the palette is the command bar's dropdown over four pure rules: a fuzzy match, a command list held to the write door's exposed set, a routing rule that is the chat's own parse, and a jump over the dashboard's tasks; commands whose arguments the palette cannot ask for open the surface that owns them, and the first round lands the four rules (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F044.md` asks for a palette over the command catalog with
+schema-driven arguments and a fuzzy node jump, fused with the chat entry as the omni-bar of
+`ux_design.png`, a documented question-versus-command routing rule, one keymap module, and three
+performance budgets enforced in CI. Measured by the reviewer at `33f66862`: `CommandBar.tsx` is a
+plain input whose Enter calls the shell's `handleJump`, a substring match over the dashboard's
+task labels; there is no dropdown, no fuzzy match anywhere under `apps/ui/src`, and no command
+execution in the bar. The write door's exposed set is `UI_EXPOSED_COMMANDS` in
+`apps/cli/command_catalog.py`; the door knows no command's argument schema
+(`_handle_command_submission` in `packages/orchestration/ui_server.py` says so), no read route
+lists commands, and the cockpit has one send module per command it already offers. No cockpit
+surface sends `job.stop`, `patch.approve-hunks` or the six `job.plan-*` edits, and the dashboard
+carries neither the plan's version nor a change's hunk ids that those edits need. The chat's
+question-versus-action rule already exists as `parse_chat_intent` in
+`packages/orchestration/chat_intent.py` (DECISION F038 D6). There is no keymap module: `git grep`
+at `33f66862` finds eleven source files under `apps/ui/src` that each add their own `keydown`
+listener, and two of them carry their own
+typing-target check (`isHelpShortcut` in `api/termSearch.ts` and `escapeWalksBack` in
+`graph/zoomView.ts`). CI measures no bundle size, no first paint and no frame rate;
+`brainPerfFixture.ts` holds the 200-node fixture, and `acceptance_criteria.md` §5 states the
+budgets. The design reference specifies the bar (`ux_spec.md` §9, `component_spec.md`'s
+CommandBar: a dropdown glass sheet, the combobox pattern, `handleJump` kept) and names no keymap,
+no cheat overlay and no Cmd+K.
+
+CHOSEN: (1) THE COMMAND LIST is `apps/ui/src/api/paletteCommands.ts`: `PALETTE_COMMANDS`, one
+entry per command of the door's exposed set less `PALETTE_CONTINUATION_COMMANDS`, the two steps
+that only continue the add-task sheet's conversation. Each entry has a plain title, a `flow` and
+the arguments the palette itself asks for, in the door's own names, each a task chosen through the
+node search or a typed line. A "send" entry is sent by the palette once its arguments are in; a
+"surface" entry opens the part of the cockpit that already owns its conversation (the decision
+inbox, a task's edit form, the add-task sheet), named by that region's `data-ui`; a "form" entry,
+the six plan edits and the hunk approval, whose arguments are structured, gets its flow in its own
+round. A contract test reads the list beside the Python set, the chat's titles and the chat's
+required arguments, so the door gaining or losing a command, or the chat renaming one, turns it
+red: one source without a new read route. (2) THE FUZZY RULE is `apps/ui/src/api/fuzzyMatch.ts`:
+a contiguous hit of the whole query outranks every scattered hit, a hit that begins a word
+outranks one inside a word, case is ignored, and the match answers the ranges a row highlights.
+Every section of the palette ranks through it. (3) THE ROUTING RULE is
+`apps/ui/src/api/paletteRouting.ts`, and it is the chat's parse read in the chat's order, so the
+bar and the chat never disagree about one line. Its tie-break, verbatim: a leading "please " is
+dropped first; then a line ending in "?" or opening with a question word is a question for the
+chat, even when a verb follows ("stop?", "can you stop"); only then is the first word read as a
+verb, and a word is whole only when no letter or digit follows it. A question goes to the chat
+with the text prefilled, a leading verb to its command, and anything else is palette text.
+`paletteRouting.goldens.json` holds the fixtures, the ambiguous ones included, and both the
+vitest and the Python test read them, the second through `parse_chat_intent` itself. (4) THE JUMP
+is `apps/ui/src/api/paletteJump.ts`: its targets are the dashboard's task list, the rows
+`handleJump` already reads, each matched over its label, its id and its kind, and a jump selects
+the target's node through the shell's own `onSelectNode`, the route a pointer's pick takes. (5)
+THE BAR stays `CommandBar.tsx` and grows the reference's dropdown sheet on the combobox pattern,
+with the sections Commands, Jump, Projects and Help, highlighted matches and recent items; the
+bar's text and the chat's are one line, and the chat is routed to, never rebuilt. A command the
+job's state refuses is listed disabled with the reason in the door's own refusal words, and the
+door still validates every send. (6) THE KEYMAP is one pure module that maps a key, its target
+and the cockpit's state to an action, and the shell's '?' listener and the zoom's Escape listener
+move onto it in the keymap round, with their wiring guards pinning the same property on the new
+site; the keymap, its cheat overlay on a held '?' and the bar's shortcut each get an
+assumption-log row in the round that renders them. THE BUDGETS are tests under
+`tests/ui_contracts/`, so the CI `ui` stage runs them through the one entrypoint, `remedy ci run`,
+and the workflow names no new step; each records its number in one artifact, and a breach names
+its biggest source. The tour's sixth stop moves from the '?' panel to the bar in the bar's round.
+(7) THE ORDER: this round lands (1) to (4) with the reviewer's tests. The next round builds the
+bar's dropdown sheet with a render harness in a real browser; then the commands' execution, their
+argument flows, the disabled states and the route to the chat; then the form entries' structured
+flows; then the keymap and its cheat overlay; then the three budgets in CI with their artifact;
+then the closure sequence.
+
+ALTERNATIVES: a read route serving the command list from the server, rejected because the door
+deliberately knows no argument schema and the set is fixed per build, so a parity test keeps one
+source without a new route; a fuzzy-search library, rejected because `acceptance_criteria.md` §5
+allows no new dependency; a routing rule written afresh for the bar, rejected because two rules
+would route the same line two ways; a jump over the graph's own model, rejected because that
+model and the zoom state live inside `BrainGraphStage.tsx` and the zoom transitions are this
+feature's do-not-touch; sending the form commands from free text, rejected because a structured
+argument typed as a line is a guess, not an argument flow.
+
+HOW TO REVERSE: delete `apps/ui/src/api/fuzzyMatch.ts`, `paletteCommands.ts`,
+`paletteRouting.ts`, `paletteRouting.goldens.json`, `paletteJump.ts`, their tests and
+`tests/ui_contracts/test_palette_contract.py`, and delete this paragraph.
+
+## DECISION F044 D2 — the bar's dropdown sheet lists Recent, Jump, Projects and Help rows ranked by the fuzzy rule, in a portalled glass listbox the bar drives as a combobox; the palette's jump replaces the shell's `handleJump`, which is deleted; the Commands section joins with its execution in the next round; the tour's sixth stop moves to the bar (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `d31a78c7`: `CommandBar.tsx` is a plain input whose Enter calls
+the shell's `handleJump`, a substring match that selects the first task whose label holds the
+text. The bar is a glass card whose sheet carries a `backdrop-filter`, and `tokens.css` names
+`--remedy-z-popover` (40) as the layer of the "command dropdown". The project context of DECISION
+F042 D3 (`useProjectContext`) holds the project list, the open project and a gated `switchTo`. The
+guards that read the bar require `onJump` and a placeholder holding "jump to", forbid a write verb
+in the bar's file, and keep the copy button of the next safe command; `test_digest_mount.py` holds
+the shell to one `window.localStorage` binding. The first-run tour's sixth stop points at the Terms
+button until the palette exists (DECISION F043 D1 (5)).
+
+CHOSEN: (1) THE SHEET'S RULES are `apps/ui/src/api/paletteSheet.ts`: `buildPaletteRows` lists, in
+the sections Recent, Jump, Projects and Help, the ranked jumps of D1 (4), the other projects when
+there are at least two, ranked by the fuzzy rule over their names, and two help rows, "Show every
+term" and "Take the tour"; for a blank query the remembered rows come first. A row names what it
+reaches by a `ref`, which is what a browser remembers, newest first and at most five, under
+`remedy:palette-recent`; a stored value that is not an array of strings, or a storage that throws,
+reads as none. `movePaletteCursor` moves the active row with wrap-around, and `highlightPieces` cuts
+a label at its matched ranges. (2) THE SHEET is `components/command/PaletteSheet.tsx`, a listbox of
+option rows grouped under their section headings, the matched letters marked, portalled into the
+page body at fixed coordinates under the bar and as wide as it, because the bar's `backdrop-filter`
+would confine a fixed descendant. A row's mousedown is cancelled so a click chooses it without
+blurring the bar. Its look is `ux_spec.md` §9's: a glass sheet of radius 14 on the popover layer,
+rows of 13px, the active row tinted. (3) THE BAR is the combobox: focus or typing opens the sheet,
+the arrow keys move the active row, Enter chooses it (the first row when none is active), Escape
+closes the sheet and keeps the focus, and choosing jumps, switches project, opens the Terms panel
+or starts the tour, then remembers the row and empties the bar. The bar binds its storage edge
+itself, as the tour's mount does. Its placeholder and its copy button stay as they are until the
+route to the chat lands, because "Ask your agent" would promise a route this round does not build.
+(4) REPLACING IS DELETING: the shell's `handleJump` is deleted, because the palette's jump searches
+the same task rows by a rule that ranks and highlights, and two jumps in one bar would disagree;
+`onJump` now receives the shell's own `onSelectNode`. (5) THE TOUR's sixth stop moves to the bar,
+titled "Jump to anything". (6) D1 (7) IS AMENDED: the Commands section joins in the next round with
+the commands' execution, because a listed command that does nothing when chosen would show a
+control that is not there. (7) THE ORDER: the next round lists the commands, sends them with their
+argument flows, disables a command the job's state refuses with the door's own reason, routes a
+question to the chat and gives the bar the reference's placeholder; then the form entries'
+structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
+closure sequence.
+
+ALTERNATIVES: a sheet positioned inside the bar, rejected because the glass card confines it;
+keeping `handleJump` beside the palette, rejected by AGENTS.md's "replacing is deleting"; the recent
+rows kept by the shell, rejected because the shell's one storage binding is the digest's; the
+Commands section listed inert this round, rejected because a row must do what it shows.
+
+HOW TO REVERSE: delete `apps/ui/src/api/paletteSheet.ts`, its test, `PaletteSheet.tsx` and its
+sheet and `tests/ui_contracts/test_palette_sheet_wiring.py`, restore `CommandBar.tsx`, the shell's
+`handleJump` and the tour's sixth stop from `d31a78c7`, and delete this paragraph and its
+assumption-log line.
+
+## DECISION F044 D3 — the palette lists and runs the write door's commands: a Commands section led by the command the routing rule names, each command disabled with a plain reason while the job's state refuses it, its arguments asked one at a time in the bar, a send through the chat's own card sender (a rerun through its own), and a surface opened by the shell; the route to the chat and the reference's placeholder move to the next round (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `587bdb18`: `chatTurn.ts`'s `sendChatCard` sends any command
+with its arguments to the write door, in the words of a command ("Sent: ...", "The job refused it
+in its current state, so nothing was done."), and is what the grounded chat's cards send through;
+`rerunSend.ts`'s `sendRerunSubtree` alone reads a rerun's answer (a cost to confirm, or the
+prepared command) back through `rerunView.ts`. `pauseView.ts`'s `jobPauseAction` names the job's
+own pause action, `steeringSend.ts`'s `steeringIsOpen` whether its stage has ended, and
+`PauseControl.tsx` sends `job.unpause` for both a resume and a take-back. The add-task sheet is
+portalled and opened only by the tasks card's own state; a task's edit form opens inside its
+detail popover. The grounded chat takes a question with no task, as the project's scope, but it is
+rendered only in the evidence panel of a zoomed-in node, so routing a question to it needs a
+surface this round does not build. `ux_spec.md` §8 disables a control at 45% opacity with a
+not-allowed cursor and an honest tooltip.
+
+CHOSEN: (1) THE COMMANDS SECTION leads the sheet for a query that is not blank: the command
+`routeBarText` names comes first, then the commands whose titles the fuzzy rule matches, at most
+six, and a chosen command is remembered like any other row. (2) AVAILABILITY is
+`apps/ui/src/api/paletteCommandState.ts`: a command is refused, first reason winning, when the page
+has no write token, when it is a form entry, when the job has ended, and by its own state — a pause
+only while the job's action is to pause, a resume only while it is parked or a pause is on its way,
+the decision's answer only while a decision is open. A refused row shows its reason as its hint and
+its tooltip, at the reference's 45% opacity, and choosing it does nothing; the door still validates
+every send. (3) THE ARGUMENTS are asked in the bar by `apps/ui/src/api/paletteArgs.ts`: a chip names
+the command, the placeholder is the argument's prompt, a task is answered from the Jump rows alone
+and a line is typed; a required line cannot be left blank, an optional one left blank is not sent,
+and Escape, or Backspace in an empty bar, cancels the command. (4) THE SEND is
+`apps/ui/src/api/paletteSend.ts`: a complete "send" command goes through `sendChatCard`, so the
+palette and the chat send the same way in the same words, and a rerun through `sendRerunSubtree`,
+whose answer becomes its sentence — the prepared rerun with its command, a rerun whose cost needs
+confirming with "Confirm it from the run's detail.", because the palette asks no confirmation. The
+outcome is a status line under the bar in the chat outcome line's tones. (5) THE SURFACES open
+through the shell: the add-task sheet, which the shell now mounts itself beside the tasks card's
+own, a task's detail, where its edit form lives, and the decision inbox, scrolled into view with
+the focus on its first control. (6) D2 (6) and D1 (7) ARE AMENDED: the route of a question to the
+chat and the reference's placeholder, which promises that route, move to the next round, which
+builds the surface the chat needs outside the evidence panel. (7) THE ORDER: the next round routes
+a question to the chat and gives the bar the reference's placeholder; then the form entries'
+structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
+closure sequence.
+
+ALTERNATIVES: one sender per command, each with its own words, rejected because the chat already
+sends the same commands through one sender in one vocabulary; sending a rerun through the card
+sender too, rejected because its answer would be lost; hiding a refused command, rejected because
+the feature file asks for it disabled with its reason; opening the add-task sheet by clicking the
+tasks card's button from outside, rejected as a reach into another component's state.
+
+HOW TO REVERSE: delete `paletteCommandState.ts`, `paletteArgs.ts`, `paletteSend.ts` and their tests,
+restore `paletteSheet.ts`, `PaletteSheet.tsx`, its sheet, `CommandBar.tsx`, `CommandBar.module.css`
+and `RemedyShell.tsx` from `587bdb18`, and delete this paragraph and its assumption-log line.
+
+## DECISION F044 D4 — a question typed in the bar is routed to the grounded chat of F038 in a sheet of its own, asked at once, about the focused task or else the whole project; the bar takes the reference's placeholder; the chat tab gains the two entry points the route needs and nothing else (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `a706a070`: the grounded chat of DECISION F038 D12 is
+`components/graph/EvidenceChatTab.tsx`, rendered only in the evidence panel of a zoomed-in node; it
+reads through `loadChatTurn` and sends through `sendChatCard`, asks about its task or, with a box
+ticked, the whole project (a chat read with no task is the project's scope), and has no way to be
+handed a question. Its evidence items' buttons switch the evidence panel's tab, whichever item they
+belong to. The routing rule of D1 (3) already reads a line as a question; since D3 the bar has no
+row to route it to, so D3 (6) moved the route here, with `ux_spec.md` §9's placeholder "Ask your
+agent or jump to anything (e.g., "improve error handling")", which promises it. Every sheet of the
+cockpit is a dialog outside `<main>`, closed by Escape, on `--remedy-z-overlay`.
+
+CHOSEN: (1) THE ASK ROW, a section of its own before the commands, hands the line, its white space
+folded, to the chat: it comes first when the routing rule reads the line as a question, and it is
+the only row when nothing else matches a line that is not blank, which is the feature file's
+"otherwise → chat with the text prefilled" for a line the palette cannot place. It is never
+remembered. (2) THE CHAT SHEET is `components/command/ChatSheet.tsx`: a glass dialog anchored right
+on the overlay layer, closed by Escape or its Close button, which mounts `EvidenceChatTab` as it is,
+handed the question and the focused task — no task when none is focused. The shell mounts it keyed
+by each new question, so every question opens a fresh sheet that asks it. (3) THE CHAT TAB gains two
+optional entry points and no other change: `initialQuestion`, asked once as the tab mounts, and a
+task of "", for which it asks about the whole project and offers no choice of scope. The evidence
+panel mounts it exactly as before. (4) AN EVIDENCE ITEM's button in the sheet opens the diff panel of
+the chat's scope — the focused task's, or the whole job's with no task — and a prompt item opens the
+focused task's detail; at the whole project's scope a prompt item names no task the cockpit can
+open, so its button does nothing there, the same absence the evidence panel has for any item but its
+own run's. (5) THE BAR takes the reference's placeholder, and the tour's last stop says that a
+question can be asked there. (6) THE ORDER: the next round gives the form entries their structured
+flows; then the keymap and its cheat overlay; then the three budgets in CI; then the closure
+sequence.
+
+ALTERNATIVES: zooming the graph to a node's evidence panel and switching it to the chat, rejected
+because the zoom state lives inside the graph stage and the zoom transitions are this feature's
+do-not-touch; a chat surface written for the palette, rejected because the chat is routed to, not
+rebuilt; sending a question to the steering composer, rejected because a note to the builder is not
+a question to the chat.
+
+HOW TO REVERSE: delete `ChatSheet.tsx` and its sheet, the Ask row from `paletteSheet.ts`, the two
+entry points from `EvidenceChatTab.tsx`, and the shell's chat mount; restore the bar's placeholder
+and the tour's last stop from `a706a070`; delete this paragraph and its assumption-log line.
+
+## DECISION F044 D5 — the seven form entries open surfaces that do not exist yet, so their plan view and hunk controls are registered as F292 directly after F044 and the palette keeps them disabled until F292 lands; the keymap is one pure module, and this round moves the '?' key onto it and adds "/", Ctrl+K or Cmd+K and "g" then "p" (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `5cbbe6c8`, with a research agent's map read back against the
+sources: the six plan edits of DECISION F015 D3 need `expected_version`, the plan's version, and are
+open only while the plan waits for approval before its job starts (`edit_window_refusal` in
+`packages/orchestration/plan_editing.py`); no read route serves the version, the approval state or a
+planned task's dependencies, so a browser cannot name the version an edit was made against, and
+`remedy job plan-show --json` is the only reader. F015's file leaves its edits to "the plan view, a
+later feature", and none is registered. `patch.approve-hunks` needs a task run and hunk ids, which
+the diff envelope carries, but no screen offers hunk controls: F033 left them to the command line.
+F240's file, power keyboard, relies on hunk controls in the diff. There is no keymap module: the
+shell's '?' listener calls `isHelpShortcut` in `api/termSearch.ts`, and `escapeWalksBack` in
+`graph/zoomView.ts` keeps its own copy of the check for a field.
+
+CHOSEN: (1) F292, "Plan view and hunk decisions in the cockpit", is registered thin, directly after
+F044 under F044's Tier 5 heading so Rule A5 takes it next, with the plan read, the plan view with
+its six edits and the diff view's hunk controls, and with the palette's seven form entries turned
+into surface entries as its last slice; F240 gains F292 in its "Depends on" line. F044's acceptance
+line "Every exposed command executable from the palette with correct argument flows" is met for the
+seven by F292, which opens the surfaces the palette routes to; until then they stay listed and
+disabled with their reason. This is a reversible ruling on scope and order, entered in
+`.agent/operator_questions.md` and executed now. (2) THE KEYMAP is `apps/ui/src/api/keymap.ts`: the
+documented bindings in one list (`KEYMAP_BINDINGS`), which the cheat overlay will render; one rule
+for a press from a field, `isTypingTarget`, which `escapeWalksBack` now calls; and `keymapAction`,
+which maps a press, its target, a waiting "g" and whether a dialog is open to an action. Ctrl+K or
+Cmd+K opens the bar from anywhere, a field included; any other press from a field is text; "/"
+opens the bar, "?" the terms, "g" then "p" the projects, "j" and "k" walk the siblings, Enter zooms
+in only from the page itself, and Escape walks back unless a dialog is open. (3) THE SHELL listens
+once, through `keymapAction`: "?" opens the terms panel as before, "/" and the chord put the focus
+in the bar, which opens its sheet, and "g" then "p" goes to the projects' home. `isHelpShortcut` is
+deleted, replaced by the keymap. The graph's keys are wired into the graph in the next round. (4)
+THE ORDER: the next round wires "j", "k", Enter and Escape into the graph through the keymap, with
+the zoom's own Escape listener moving onto it, and adds the keymap's cheat overlay on a held '?';
+then the three budgets in CI; then the closure sequence.
+
+ALTERNATIVES: building the plan editor and hunk controls inside the palette, rejected because
+merging, splitting or reordering tasks from a single line is not an honest argument flow and the
+plan read is server work of its own; probing the version with a wrong one and reading it back from
+the 409, rejected because a lucky guess applies the edit; leaving the seven to F044's closure as a
+known gap, rejected because a gap without an owner is the kind the roadmap's rules forbid.
+
+HOW TO REVERSE: delete `docs/roadmap/features/T5_F292.md`, its STATUS line, and F292 from F240's
+"Depends on"; restore `TOTAL_FEATURES` and the README counter; delete `keymap.ts` and its test and
+restore `isHelpShortcut`, `escapeWalksBack`, the shell's listener and the bar from `5cbbe6c8`;
+delete this paragraph, its assumption-log line and its operator-questions entry.
+
+## DECISION F044 D6 — the graph's keys run through the one keymap in their own hook, as the picks a pointer's click would make, and Escape's walk back moves there with them; a held "?" shows the keymap's own list, and a tap still opens the terms (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `a3b3bd1a`: `useSemanticZoom.ts` adds its own window listener
+for Escape, guarded by `escapeWalksBack` in `zoomView.ts`, which since D5 only restates the keymap's
+rules for a field and a dialog. The zoom machine of DECISION F023 D2 knows a click, a zoom-in and an
+escape, and its graph lists every node with its kind and parent in the reducer's model order; a
+pointer's click on a node dispatches a click and then selects the node's task, a run opening its own
+detail instead (`ForceBrainGraph.tsx`). The zoom transitions are this feature's do-not-touch.
+`T5_F044.md` asks for "j" and "k" as a sibling walk, Enter to zoom in, Escape as the walk back, and
+a keymap cheat overlay on a held "?"; the '?' key opens the terms panel on its press.
+
+CHOSEN: (1) THE STEPS are `apps/ui/src/components/graph/zoomKeys.ts`: a keymap action becomes a pick
+of a node or the walk back. "j" and "k" step, wrapping, between the tasks at the job and at a task,
+and between the runs of the focused run's own task at a run and its evidence; Enter picks the
+focused task's first run; Escape walks back. The machine is not changed: a pick is dispatched as the
+click a pointer makes. (2) THE LISTENER is `apps/ui/src/components/graph/useZoomKeys.ts`, added once
+beside the zoom, reading the newest graph, state and pick through one ref; the stage's pick selects
+a task's node as a click does. `useSemanticZoom.ts` keeps no key listener, and `escapeWalksBack` is
+deleted, replaced by the keymap. (3) THE HELD "?": a tap opens the terms panel on its release; held
+past `KEYMAP_HOLD_MS`, 400 ms, it shows `components/command/KeymapOverlay.tsx`, the keymap's own
+`KEYMAP_BINDINGS` in a centred glass card, until the release; the window losing focus closes it.
+The hold is `components/shell/useHeldHelpKey.ts`, which owns the timer and the release, because
+`tests/ui_contracts/test_timeline_scrub_wiring.py` keeps every timer out of the shell; the shell's
+listener hands it each "?" the keymap reads as "open-terms". Its timer lives in a ref only
+unmounting clears, so a re-render never drops a hold. (4) THE
+ORDER: the next round builds the three budgets of T003 in CI with their recorded numbers; then the
+closure sequence.
+
+ALTERNATIVES: stepping siblings by screen position, rejected because the layout moves as the graph
+grows while the model's order does not; a second listener in `useSemanticZoom.ts` for the new keys,
+rejected because one listener reads all of the graph's keys; showing the overlay on the key's first
+press, rejected because a quick "?" already means the terms.
+
+HOW TO REVERSE: delete `zoomKeys.ts`, `useZoomKeys.ts`, `KeymapOverlay.tsx` and their test and sheet,
+restore `useSemanticZoom.ts`, `zoomView.ts`, `BrainGraphStage.tsx`, `RemedyShell.tsx` and
+`keymap.ts` from `a3b3bd1a`, and delete this paragraph and its assumption-log line.
+
+## DECISION F044 D7 — the operator answers Q1 "Perfect": F292 stays registered directly after the command palette, and the palette opens its plan-view and approve/reject screens once F292 lands (2026-09-30)
+
+CONTEXT: Operator question Q1 in `.agent/operator_questions.md`, written at F044 round 5 on 2026-09-30, reported that seven write-door commands stay visible but disabled in the palette until a stored-plan view and approve/reject controls in the change viewer exist, and recommended keeping the new roadmap item for those screens registered directly after the command palette. The operator's answer arrived via remedy-answer.
+
+CHOSEN: The operator answers "Perfect", confirming the recommendation as written. F292 stays registered directly after the command palette, and the palette opens those screens once F292 lands. The Q1 entry is deleted, and `.agent/operator_questions.md` reads EMPTY.
+
+ALTERNATIVES: none weighed here; the operator confirmed the recommendation already recorded at DECISION F044 D5.
+
+HOW TO REVERSE: delete this paragraph and write the question again; the next session then re-decides F292's placement.
+
+## DECISION F044 D8 — T003's bundle-size budget lands first: `apps/ui`'s own baseline plus 10%, keyed by each built asset's stable name with vite's own content hash stripped, its breach naming every chunk that grew; the first-paint and 60fps budgets, and the pre-existing drift in `docs/system/ci-self-check-v1.md`, move to the rounds that add the Chrome trace harness (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F044.md` T003 asks for three budgets — first paint < 1.5s, 60fps p95 at 200 nodes and a bundle-size cap — each recorded with numbers and each breach naming its regression source; `docs/ui/design_reference/acceptance_criteria.md` §5 fixes the bundle rule as "size-limit cap set at current build +10%". `packages/orchestration/ci_budgets.py` already holds the pattern this budget follows: a pure judging function fed an observation, unit-tested without a subprocess, with exactly one `@pytest.mark.subprocess` test that takes the real reading; `tests/orchestration/test_ci_budgets.py` is already one of the seven `test_paths` of the `budgets` CI stage (`packages/orchestration/ci_stages.py`), so this round adds no stage and registers no new path. A fresh `vite build --outDir <tmp> --emptyOutDir` of `apps/ui`, run by the reviewer at this decision's own commit range and never into the shared `apps/ui/dist` (DECISION F039 D9), produced six files: `index.html` 414 bytes, `assets/index-CtYeOS0T.css` 83758 bytes, `assets/diffHighlightGrammars-o9XqnLhb.js` 1695 bytes, `assets/index-BKD2HAVk.js` 783940 bytes, `story/story-player.css` 11940 bytes and `story/story-player.js` 266239 bytes (the story player is `apps/ui/vite.config.ts`'s own `closeBundle` hook, DECISION F039 D9, so it always joins the same `vite build`) — 1147986 bytes total. Vite names every hashed chunk `<name>-<hash>.<ext>`, and the hash changes on every incidental rebuild whose bytes did not change in a way that matters, so a baseline keyed by the raw filename would misread every such rebuild as a chunk born at its full size.
+
+CHOSEN: `packages/orchestration/ci_budgets.py` gains `normalize_chunk_name` (strips a vite content-hash segment — a run of 6 to 10 letters, digits or underscores, containing at least one digit, directly before the extension, which is what tells it apart from a real word like "story-player"), `BundleReport` (one build's own chunk sizes keyed by that normalized name, with a `total_bytes` sum), `bundle_report` (groups a raw `{path: bytes}` reading into one), `BUNDLE_BASELINE_CHUNKS` (the six bytes above, keyed by their normalized names) and `BUNDLE_SIZE_CAP_FACTOR = 1.10`, and `check_bundle_size`, which judges a `BundleReport` against `math.ceil(1147986 * 1.10)` = 1262785 bytes and, on a breach, names every chunk whose bytes grew against the baseline, largest delta first. `tests/orchestration/test_ci_budgets.py` gains the pure unit tests (including a seeded bloat fixture naming the chunk that grew, and the exact rounded-cap boundary) and one live `@pytest.mark.subprocess` test that builds `apps/ui` fresh into a `tmp_path` and judges the real reading — the same live-check shape `test_this_repository_has_no_ruff_findings` already uses. The first-paint and 60fps-at-200-nodes budgets need a headless-Chrome trace harness that does not exist yet (F019's own rAF/CDP tooling was never promoted past `.agent/authored/` scratch); they, and the `budgets` CI stage's `MEASURED_MAX_WALL_S` re-measurement the resulting heavier wall-clock will actually deserve, are the next two rounds' work. `docs/system/ci-self-check-v1.md`'s stage and budget tables are already stale before this round (the `budgets` stage's seven paths read as "four" there, and its measured max reads 1.32s against the 24.40s `tests/orchestration/test_ci_stages.py` has held since F273 T015); this round leaves that page untouched and folds its correction into the round that finishes T003's CI wiring, so the doc is fixed once against the finished picture rather than three times against each budget in turn.
+
+ALTERNATIVES: a bundle-size gate over the total bytes alone, with no per-chunk breakdown, rejected because T5_F044.md's Design section and its Acceptance line both ask a breach to name the chunk that grew, not just the total; correcting `docs/system/ci-self-check-v1.md` inside this round, rejected because two of its three stale numbers (the `budgets` stage's own wall-clock and its CI-workflow narrative) only settle once the trace harness lands, and a doc fixed in three passes drifts between them the way it already has once.
+
+HOW TO REVERSE: delete `normalize_chunk_name`, `BundleReport`, `bundle_report`, `BUNDLE_BASELINE_CHUNKS`, `BUNDLE_SIZE_CAP_FACTOR` and `check_bundle_size` from `packages/orchestration/ci_budgets.py` and their tests from `tests/orchestration/test_ci_budgets.py`; delete this paragraph. No assumption-log row was added, since this round changes no visual surface.
+
+## DECISION F044 D9 — T003's second CI budget lands: first paint < 1.5s (built bundle, cold), measured as Chrome's own `first-contentful-paint` timing entry over a real HTTP-served, freshly built `apps/ui`, reusing the `--remote-debugging-pipe` transport `tests/ui_server/test_story_export_file_live.py`'s `ChromePipe` already proves; the 60fps budget and the CI-self-check doc fix stay the next round's work (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F044.md` T003 and `docs/ui/design_reference/acceptance_criteria.md` §5 fix the number — "First paint < 1.5s (built bundle, cold)" — without fixing a measurement method. DECISION F044 D8 (F044 R7) named the gap: "The first-paint and 60fps-at-200-nodes budgets need a headless-Chrome trace harness that does not exist yet (F019's own rAF/CDP tooling was never promoted past `.agent/authored/` scratch)." The reviewer's own search of the tree at `c65583711` found no promoted module doing this: the only real, tracked CDP-driving code is `ChromePipe` in `tests/ui_server/test_story_export_file_live.py`, built for F039's zero-network proof over a `file://` URL and never reading a paint timing entry; the per-round `f044-r{N}-render_*` harnesses under `.agent/authored/` build their OWN scratch vite app rather than `apps/ui/dist` and wait with a fixed 2.5-second sleep rather than reading any load or paint event. Neither is a promoted, reusable first-paint tool. The reviewer prototyped the design directly — a scratch script under `.remedy-wt/`, deleted before this decision was written, never committed — against the repository's already-built `apps/ui/dist`: `ChromePipe` launched against Python's own `http.server.ThreadingHTTPServer` serving that build, `Page.navigate` to it, and a poll of `Runtime.evaluate("JSON.stringify(performance.getEntriesByType('paint'))")` for the `first-contentful-paint` entry returned `92` milliseconds on the first try — well inside the 1500ms budget and proof the mechanism reads a real number rather than a placeholder.
+
+CHOSEN: `packages/orchestration/ci_budgets.py` gains `FIRST_PAINT_BUDGET_MS = 1500` and `check_first_paint`, judging one observed millisecond reading against it in the same pure-function-plus-`BudgetCheck` shape `check_bundle_size` and `check_lint_clean` already use. `tests/orchestration/test_ci_budgets.py` gains four pure unit tests (within-budget, over-budget naming its overage, the exact-boundary case, and the constant's own value) and one live `@pytest.mark.subprocess` test, `test_this_repositorys_shell_paints_within_its_budget`, that builds `apps/ui` fresh with `vite build` into `tmp_path` (never the shared `apps/ui/dist`, DECISION F039 D9), serves it with `http.server.ThreadingHTTPServer` on an OS-assigned loopback port, imports `ChromePipe`, `CHROME_BIN` and `CHROME_STARTUP_TIMEOUT` directly from `tests/ui_server/test_story_export_file_live.py` (a cross-test-file import that module's own suite already makes of its sibling), navigates to the served `index.html`, and polls the paint-entries expression until a `first-contentful-paint` entry appears. No new dependency: `ChromePipe`'s pipe transport and Python's own `http.server` are the whole mechanism, matching this repository's Node-20-carries-no-websocket-client reasoning that justified `ChromePipe` in the first place.
+
+ALTERNATIVES: a new CDP class duplicating `ChromePipe`, rejected because the existing one is already proven (F039's live suite) and importing it costs one line, while a second implementation would be two places for the same pipe-protocol bug to hide; measuring over `file://` as `ChromePipe`'s existing caller does, rejected because "built bundle, cold" in the Acceptance line means a served load, and a served page's paint timeline can differ from a file load's (no network stack, no CORS, no cache headers); a fixed sleep as the per-round render harness's `drive.mjs` does, rejected because a sleep proves nothing about WHEN paint happened, only that it happened before the sleep ended, which is exactly the gap DECISION F044 D8 named this round to close.
+
+HOW TO REVERSE: delete `FIRST_PAINT_BUDGET_MS` and `check_first_paint` from `packages/orchestration/ci_budgets.py` and their five tests from `tests/orchestration/test_ci_budgets.py`; delete this paragraph. No assumption-log row was added, since this round changes no visual surface.
+
+## DECISION F044 D10 — T003's THIRD and last CI budget lands: 60fps p95 at 200 nodes, measured as the p95 gap between consecutive REAL, presented compositor frames (Chrome's own `PipelineReporter` trace events, filtered to `STATE_PRESENTED_ALL`) across the fixture's mount-and-settle window, over a committed frame-pipeline harness at `apps/ui/perf/`; the `budgets` stage's wall-clock re-measures at 44.2s, well inside its existing 300s timeout, so that timeout is unchanged (2026-09-30)
+
+CONTEXT: `docs/roadmap/features/T5_F044.md` T003 and `docs/ui/design_reference/acceptance_criteria.md` §5 fix the number — "60fps p95 at 200 nodes (Stage-1+)" — and DECISION F019 D6 measured it once already, at F019 R6, over its own scratch harness (`.agent/authored/f019-r6-perf-*`, never promoted), reading "481 frames, 60 frames per second on average, a median frame of 16.7 ms and a 95th-percentile frame of at most 16.8 ms" from a JS-side `requestAnimationFrame` timestamp loop, and NAMED ITS OWN GAP: "headless Google Chrome on this machine paces `requestAnimationFrame` at 60 Hz, so a frame-rate reading there shows whether a frame was dropped and not how much time a frame had left", leaving "the headroom question left open" for this feature's trace stage. This round closes that gap, and along the way found two more: FIRST, promoting F019's scratch harness UNCHANGED does not work — `ForceBrainGraph`'s own prop signature grew `zoom`, `emphasis`, `onZoomEvent`, `vetoFaded` and `vetoHover` after F019 R6 (F023's semantic zoom, F027's task veto), all required, and F019's harness passed none of them; `vite build` does not type-check (esbuild strips types without checking them), so this compiles silently and only fails at runtime. SECOND, and worse: even with every prop supplied, the harness crashed on its first paint with `SyntaxError: Failed to execute 'addColorStop' on 'CanvasGradient': The value provided ('') could not be parsed as a color` — measured directly by this round's reviewer via `Runtime.exceptionThrown`, over `Runtime.enable`, in a scratch prototype under `.remedy-wt/` (deleted before this decision was written, never committed) — because `ForceBrainGraph`'s `resolvedPalette` reads design tokens through `getComputedStyle` on `document.documentElement` (`tokens_rules.md`: "a 2D canvas cannot read var()"), and a bare harness page never loaded the stylesheet those tokens are declared in, so every token read back as an empty string. F019's OWN measurement, and any run of its unpromoted harness since, therefore measured a canvas that never successfully painted a single node — trivially "60fps", because nothing was being drawn. Importing `apps/ui/src/styles/globals.css` (the same import `apps/ui/src/main.tsx` makes) fixed it: `document.getElementById('root').innerHTML.length` went from `0` to `439`, no more exceptions, and the CSS bundle grew from 0.58 kB to 4.38 kB (the token declarations landing). THIRD, once the harness actually painted, `PipelineReporter` (the compositor's own per-attempted-frame trace event, category `disabled-by-default-devtools.timeline.frame`) turned out to be an ASYNC event: Chrome emits a `ph="b"`/`ph="e"` pair per pipeline ATTEMPT, the `frame_reporter` argument naming the attempt's outcome sits only on the `"b"` entry, and — measured over three repeated 4-second traces at `n=200` — roughly 515-533 attempts occur in that window but only 273-290 of them read `state: "STATE_PRESENTED_ALL"` (most of the rest read `STATE_PRESENTED_PARTIAL`, a real but partial compositor update, not a drop); counting every attempt as one frame reads ~129 "fps", which is the pipeline queue's depth, not the display's frame rate. Filtered to `STATE_PRESENTED_ALL` begin-events only, three repeated measurements read implied rates of 67.5-68.6 fps and p95 intervals of exactly 16.67 ms each time (one vsync tick), with an isolated single 33.33 ms gap in two of the three runs (a real but singular missed tick, not a sustained one) — a stable, reproducible, genuinely different result from F019 D6's own reading of the same node count.
+
+CHOSEN: (1) `apps/ui/perf/` (`index.html`, `main.tsx`, `vite.config.mjs`) is a COMMITTED, PERMANENT harness — never a `.agent/authored/` scratch file — that mounts the real `ForceBrainGraph` at the root zoom level (`ZOOM_HOME`, `zoomEmphasis(layout, ZOOM_HOME)`, no vetoes) over the committed 200/500-node fixture (`brainPerfFixture.ts`, DECISION F019 D6), importing `../src/styles/globals.css` so its tokens resolve. It sits outside `apps/ui/src` (`tsconfig.json`'s `include: ["src"]` and `eslint.config.js`'s `files: ["src/**/*.{ts,tsx}"]` both skip it, so it is neither type-checked nor linted by the app's own gates) and outside the shipped app's own build (`apps/ui/vite.config.ts`'s `rollupOptions.input` names only the root `index.html`); it is built with its OWN `vite.config.mjs`, always via CLI `--outDir`/`--emptyOutDir` into a scratch directory, never into the shared `apps/ui/dist` (DECISION F039 D9). (2) `packages/orchestration/ci_budgets.py` gains `FRAME_PIPELINE_P95_BUDGET_MS = 17.0` (the same value DECISION F019 D6's own `STAGE1_P95_BUDGET_MS` chose, for the same reason: a real reading lands on a vsync tick, so the two failure shapes are "one tick" and "two or more", never something between) and `check_frame_pipeline`, in the same pure-function-plus-`BudgetCheck` shape `check_bundle_size` and `check_first_paint` already use; `BudgetCheck.observed` widens from `int` to `int | float`, because a percentile this close to its own budget loses the information a verdict needs if rounded to a whole millisecond. (3) `tests/orchestration/test_ci_budgets.py` gains four pure unit tests and one live `@pytest.mark.subprocess` test, `test_this_repositorys_shell_sustains_60fps_at_200_nodes`, that builds `apps/ui/perf/` fresh into `tmp_path`, serves it with `http.server.ThreadingHTTPServer`, opens `Tracing.start` (categories `disabled-by-default-devtools.timeline`, `devtools.timeline`, `blink.user_timing`, `disabled-by-default-devtools.timeline.frame`) BEFORE `Page.navigate`, traces for `FRAME_TRACE_WINDOW_SECONDS = 4.0` (roughly double the ~2.2-2.3s mount-and-settle span this round measured three times), ends tracing, drains for `Tracing.tracingComplete`, and reads the p95 gap between consecutive `STATE_PRESENTED_ALL` `PipelineReporter` begin-events. (4) THE STAGE WALL-CLOCK: this round's reviewer measured the `budgets` stage's full `test_paths` set with the new test included, in the sim worktree, at `44.22s` real time — well inside the existing `timeout_sec=300` in `packages/orchestration/ci_stages.py`, so that file is UNCHANGED this round; the plan's "wall-clock re-measurement" item is satisfied by this reading, not by a timeout edit.
+
+ALTERNATIVES: reusing F019 R6's own RAF-timestamp technique unchanged, rejected for the reason CONTEXT states at length — it is blind to real render cost by construction, and this round's own reproduction shows it was ALSO measuring a crashed, unpainted canvas; a raw population of `RunTask` trace-event durations (Chrome's per-main-thread-task events), rejected because roughly 600-3800 of them fire per few seconds regardless of rendering, the overwhelming majority sub-millisecond scheduler housekeeping unrelated to a frame, so a percentile over the whole population is dominated by noise (measured: p95 0.05-0.16 ms, p50 under 0.02 ms, useless as a frame-cost signal) and only the MAX (once 56 ms) hints at real cost, which is a different statistic than the Acceptance line asks for; counting every `PipelineReporter` attempt (both `ph` phases, every `state`) as one frame, rejected because it reads the pipeline queue's depth (measured ~129 "fps") rather than the display's actual delivery rate, and would pass a genuinely janky build that queues many aborted or partial attempts per real frame; `DrawFrame` trace events, rejected because they fired only 0-2 times across every window this round traced, evidently unreliable under `--headless=new`'s compositor in this environment. HOW THE 500-NODE SIZE IS HANDLED: `acceptance_criteria.md`'s own Edge Cases line reserves 500 nodes for "the zoom feature's bar", so this round's CI test names only `n=200`; the harness accepts `?n=500` (matching the fixture's own `BRAIN_PERF_STAGE6_NODES`) for a future round or a manual reading, never gated here.
+
+HOW TO REVERSE: delete `apps/ui/perf/`, `FRAME_PIPELINE_P95_BUDGET_MS` and `check_frame_pipeline` from `packages/orchestration/ci_budgets.py`, their five tests and the `FRAME_TRACE_WINDOW_SECONDS` constant from `tests/orchestration/test_ci_budgets.py`, and revert `BudgetCheck.observed` to `int`; delete this paragraph. No assumption-log row was added, since this round changes no visual surface a dashboard or a shell renders.
+
+## DECISION F044 D11 — `docs/system/ci-self-check-v1.md`'s `budgets` row is re-measured against its CURRENT seven-path selection and synced to the doc and to `tests/orchestration/test_ci_stages.py`; the `budgets` stage's `timeout_sec=300` is UNCHANGED (2026-09-30)
+
+CONTEXT: T003's last item, per `.agent/plan.md`'s own Next Steps, is
+`docs/system/ci-self-check-v1.md`'s stage and budget tables, closing the gap
+DECISION F044 D8's ALTERNATIVES paragraph named and deferred: "correcting
+`docs/system/ci-self-check-v1.md` inside this round, rejected because two of its
+three stale numbers... only settle once the trace harness lands." The trace
+harness landed at F044 R9. Reading the doc against the tree at `1318d15ca`
+found it stale in two places, one older than F044: (1) the stage table's
+`budgets` row still reads "four named paths", the count from F083's original
+build; `packages/orchestration/ci_stages.py`'s `CI_STAGES` has carried SEVEN
+paths in that stage since F273 T015 (b) added a corpus-coverage guard, and the
+doc was never updated then either. (2) the runtime-budget table's `budgets` row
+still cites `## Q12`'s 1.32 s, a reading `tests/orchestration/test_ci_stages.py`
+itself stopped trusting when F273 re-measured at 24.40 s (recorded only as a
+comment in that file, never synced to this doc or to
+`.agent/f083_inventory.md`), and BOTH of those are now stale again after F044
+R9 added three more live budget checks to the same stage's test file. THE
+CORRECTION ALSO NAMES ITS OWN CAUSE: F044 R9's own DECISION D10 cites a single
+ad-hoc 44.2 s wall-clock reading for this stage, taken inside a disposable `git
+worktree` rather than the primary checkout, as the evidence that no
+`timeout_sec` change was needed; the conclusion was right, but a single
+worktree reading is not the three-sample-in-the-primary-checkout rigor
+`.agent/f083_inventory.md`'s own convention requires, and D10's own text is not
+rewritten to fix it (R-0417, R-0525) — this DECISION supersedes it by dating.
+
+CHOSEN: `.agent/f083_inventory.md` gains `## Q14`, three fresh samples of the
+`budgets` stage's CURRENT seven-path selection, taken in the PRIMARY checkout:
+28.08 s, 27.59 s, 27.82 s, MEASURED MAXIMUM 28.08 s. Applying the same rule the
+other four stages already use, `ceil(2 * 28.08 / 300) * 300 = 300`, so
+`packages/orchestration/ci_stages.py`'s `timeout_sec=300` for the `budgets`
+stage is UNCHANGED — confirmed against the real, current selection rather than
+a four-path subset of it. `tests/orchestration/test_ci_stages.py`'s own
+`MEASURED_MAX_WALL_S["budgets"]` moves from `24.40` to `28.08`, with its comment
+rewritten to name all three readings in sequence (`## Q12`'s four-path 1.32 s,
+F273 T015 (b)'s 24.40 s, this round's seven-path 28.08 s) so a future reader
+does not have to reconstruct the history from git blame.
+`docs/system/ci-self-check-v1.md` gets two edits: the stage table's `budgets`
+row reads "seven named paths", and the runtime-budget table's `budgets` row
+reads `28.08` sourced to `## Q14`; the two figures the doc DERIVES from the
+whole table — the measured-maxima sum and its minute conversion — are
+recomputed by hand from the six numbers as published (1379.83 s, about 23.0
+minutes) rather than left at the old sum. The `budgets` COLUMN of the budget
+sum (3900 s, 65 minutes) is untouched, because that sum is of BUDGETS, not
+measured maxima, and this stage's own budget did not move.
+
+ALTERNATIVES: leaving `## Q12`'s 1.32 s or `tests/orchestration/test_ci_stages.py`'s own 24.40 s as the doc's cited number, rejected because both describe a selection the stage no longer makes (four and five paths respectively, not seven) and a doc whose Source column points at evidence for a different selection is worse than one that admits it has none; citing `44.2s` from DECISION F044 D10 as the doc's number, rejected because it is a single reading from a disposable worktree, not the three-sample-in-the-primary-checkout rigor every other row in the same table already carries, and reusing it here would launder a lighter-weight reading into the table's own convention; re-running all five stages' three-sample measurements to refresh the whole table at once, rejected as scope beyond what drifted — `fast`, `standard`, `ui` and `smoke` did not change, and re-measuring a settled number is `## Q10`'s and `## Q11`'s own "not measured" rule applied to this round.
+
+HOW TO REVERSE: delete `## Q14` from `.agent/f083_inventory.md`; restore `tests/orchestration/test_ci_stages.py`'s `MEASURED_MAX_WALL_S["budgets"]` to `24.40` and its comment to the F273-only wording; restore `docs/system/ci-self-check-v1.md`'s `budgets` row to `1.32` / `` `## Q12`, three samples `` and "four named paths", and the measured-maxima sum to `1353.07 s, about 22.6 minutes`; delete this paragraph.
+
+## DECISION F044 D12 — T003's "numbers recorded per run (trend visible)" DESIGN line is discharged as out of this feature's built scope; ACCEPTANCE's own "CI budgets red/green with numbers" is met by each `BudgetCheck.detail` (2026-09-30)
+
+CONTEXT, read at closure rather than caught earlier. `docs/roadmap/features/T5_F044.md`'s Design
+section, under "Budgets in CI", reads "numbers recorded per run (trend visible), breach output
+names the biggest deltas". Its Acceptance line, the binding contract, reads only "CI budgets
+red/green with numbers; a seeded bundle bloat fixture names the culprit chunk." No DECISION across
+F044's ten rounds names either clause; a grep of `.agent/decisions.md` and `.agent/live_review.md`
+for "recorded-numbers", "trend visible" and "numbers artifact" at `393d558b6` returns nothing, so
+this is the first time either clause was read against what shipped. MEASURED: `check_bundle_size`,
+`check_first_paint` and `check_frame_pipeline` each build a `BudgetCheck` whose `.detail` names the
+observed reading and, on a breach, the overage or the grown chunks — `check_bundle_size`'s own
+docstring already promises "a breach names the chunks that grew, largest delta first." Every one of
+the three live tests reads `assert check.ok, check.detail`, so a RED run's own pytest failure
+carries the numbers into whatever log retains that run — the local terminal, or, hosted, the
+GitHub Actions run's own retained log. A GREEN run computes the same `.detail` string and discards
+it; nothing in this repository persists it anywhere a later run could diff against. Searching
+`packages/orchestration/ci_run.py` and `apps/cli/commands/ci_cmd.py` (the whole `remedy ci`
+seam) finds no per-check reporting at all — `summarize_ci_results` prints one line PER STAGE
+(pass/fail/skip/duration), never per budget check — and no file under `.data`, `docs/` or
+`packages/` accumulates a budget reading across runs.
+
+CHOSEN: ACCEPTANCE's own wording — "CI budgets red/green with numbers" — is read as "a breach
+names its own numbers," which is what `check_bundle_size`'s docstring already promised before this
+round existed and what all three checks now do; this is MET, not aspirational, and needs no new
+code. The Design section's stronger "trend visible" is discharged as OUT OF THIS FEATURE'S BUILT
+SCOPE: no DECISION ever specified a storage format, an owner, a reader or a retention period for
+such a trend, and CI's own hosted-workflow log retention already gives an operator who wants to
+compare two runs' numbers a place to look — GitHub Actions keeps every run's own log, and a RED
+run's `.detail` string is IN that log by construction. A dedicated persistence artifact (a JSONL
+history file, a dashboard, a badge) would be new product surface invented at closure with no
+consumer named anywhere in this feature's file, which is exactly the shape
+`docs/agents/planner_reviewer_prompt.md` §4 item 7 asks a reviewer to name as a DECISION rather
+than build silently.
+
+ALTERNATIVES: building a trend-storage artifact now (e.g. `packages/orchestration/ci_budgets.py`
+appending each run's three readings to a committed or `.data`-scoped JSONL file), REJECTED: no
+Acceptance line, DECISION or Do-not-touch clause names a reader for it, a closure round is the
+wrong time to invent one, and DECISION F033 D3 sets the precedent for discharging a Design-only
+promise as vacuous when the codebase it would apply to was never built for it. Printing every
+`BudgetCheck.detail` unconditionally (pass or fail) from each live test via `print()`, REJECTED as
+a half-measure: pytest's own captured stdout on a PASSING run is discarded by default
+(`-q`, no `-s`, no `-rA`) exactly like the return value is now, so the print would add a line of
+code without adding a single byte of persistence — the real gap is STORAGE across runs, not stdout
+verbosity within one. Registering this as an open finding for a future feature to build, REJECTED:
+nothing in T5_F044.md's Acceptance or Do-not-touch sections obligates a trend artifact, so there is
+no unmet contract to carry forward — a finding records a contract this feature broke, not a
+Design-section wish nobody asked to keep.
+
+HOW TO REVERSE: delete this paragraph; if a trend-storage artifact is wanted, it is a new feature's
+scope, not a reopening of F044.

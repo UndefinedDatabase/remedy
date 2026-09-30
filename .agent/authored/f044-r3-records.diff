@@ -1,0 +1,78 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index e8c21c473..03130862f 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26350,3 +26350,54 @@ HOW TO REVERSE: delete `apps/ui/src/api/paletteSheet.ts`, its test, `PaletteShee
+ sheet and `tests/ui_contracts/test_palette_sheet_wiring.py`, restore `CommandBar.tsx`, the shell's
+ `handleJump` and the tour's sixth stop from `d31a78c7`, and delete this paragraph and its
+ assumption-log line.
++
++## DECISION F044 D3 — the palette lists and runs the write door's commands: a Commands section led by the command the routing rule names, each command disabled with a plain reason while the job's state refuses it, its arguments asked one at a time in the bar, a send through the chat's own card sender (a rerun through its own), and a surface opened by the shell; the route to the chat and the reference's placeholder move to the next round (2026-09-30)
++
++CONTEXT: Measured by the reviewer at `587bdb18`: `chatTurn.ts`'s `sendChatCard` sends any command
++with its arguments to the write door, in the words of a command ("Sent: ...", "The job refused it
++in its current state, so nothing was done."), and is what the grounded chat's cards send through;
++`rerunSend.ts`'s `sendRerunSubtree` alone reads a rerun's answer (a cost to confirm, or the
++prepared command) back through `rerunView.ts`. `pauseView.ts`'s `jobPauseAction` names the job's
++own pause action, `steeringSend.ts`'s `steeringIsOpen` whether its stage has ended, and
++`PauseControl.tsx` sends `job.unpause` for both a resume and a take-back. The add-task sheet is
++portalled and opened only by the tasks card's own state; a task's edit form opens inside its
++detail popover. The grounded chat takes a question with no task, as the project's scope, but it is
++rendered only in the evidence panel of a zoomed-in node, so routing a question to it needs a
++surface this round does not build. `ux_spec.md` §8 disables a control at 45% opacity with a
++not-allowed cursor and an honest tooltip.
++
++CHOSEN: (1) THE COMMANDS SECTION leads the sheet for a query that is not blank: the command
++`routeBarText` names comes first, then the commands whose titles the fuzzy rule matches, at most
++six, and a chosen command is remembered like any other row. (2) AVAILABILITY is
++`apps/ui/src/api/paletteCommandState.ts`: a command is refused, first reason winning, when the page
++has no write token, when it is a form entry, when the job has ended, and by its own state — a pause
++only while the job's action is to pause, a resume only while it is parked or a pause is on its way,
++the decision's answer only while a decision is open. A refused row shows its reason as its hint and
++its tooltip, at the reference's 45% opacity, and choosing it does nothing; the door still validates
++every send. (3) THE ARGUMENTS are asked in the bar by `apps/ui/src/api/paletteArgs.ts`: a chip names
++the command, the placeholder is the argument's prompt, a task is answered from the Jump rows alone
++and a line is typed; a required line cannot be left blank, an optional one left blank is not sent,
++and Escape, or Backspace in an empty bar, cancels the command. (4) THE SEND is
++`apps/ui/src/api/paletteSend.ts`: a complete "send" command goes through `sendChatCard`, so the
++palette and the chat send the same way in the same words, and a rerun through `sendRerunSubtree`,
++whose answer becomes its sentence — the prepared rerun with its command, a rerun whose cost needs
++confirming with "Confirm it from the run's detail.", because the palette asks no confirmation. The
++outcome is a status line under the bar in the chat outcome line's tones. (5) THE SURFACES open
++through the shell: the add-task sheet, which the shell now mounts itself beside the tasks card's
++own, a task's detail, where its edit form lives, and the decision inbox, scrolled into view with
++the focus on its first control. (6) D2 (6) and D1 (7) ARE AMENDED: the route of a question to the
++chat and the reference's placeholder, which promises that route, move to the next round, which
++builds the surface the chat needs outside the evidence panel. (7) THE ORDER: the next round routes
++a question to the chat and gives the bar the reference's placeholder; then the form entries'
++structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
++closure sequence.
++
++ALTERNATIVES: one sender per command, each with its own words, rejected because the chat already
++sends the same commands through one sender in one vocabulary; sending a rerun through the card
++sender too, rejected because its answer would be lost; hiding a refused command, rejected because
++the feature file asks for it disabled with its reason; opening the add-task sheet by clicking the
++tasks card's button from outside, rejected as a reach into another component's state.
++
++HOW TO REVERSE: delete `paletteCommandState.ts`, `paletteArgs.ts`, `paletteSend.ts` and their tests,
++restore `paletteSheet.ts`, `PaletteSheet.tsx`, its sheet, `CommandBar.tsx`, `CommandBar.module.css`
++and `RemedyShell.tsx` from `587bdb18`, and delete this paragraph and its assumption-log line.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 2970583e0..53338a002 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -163,3 +163,5 @@ Gate: F043 R8 — the F043 round 8 entry, the closure sequence's evidence round:
+ Gate: F043 R9 — the F043 round 9 entry, the closure sequence's closing round: the booking of round 8, the ledger's rotation, the acceptance of F043 in STATUS with its README pins and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `37f9b67a`..`d00a13f0` by the planner and reviewer of F044's first session from the commits themselves, after pull request 300 had merged. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `b779fcc7` 374, `2f6228ad` 8, `7ee37545` 16 and `d00a13f0` 157; the worker declared no deviation. THE TRANSPORT PROOF: the block copy `.agent/authored/f043-r9-block.md` reads sha256 `7fbc565e445b9660d20398cb68abedcbeed43b388f421f980d6d6fec2118f38e`, the digest the delegation named, the five payload copies equal the reviewer's originals under `.remedy-wt/f043-r9-payloads/` byte for byte, and `README.md`, `docs/roadmap/STATUS.md` and `scripts/self_use_queue.json` at `d00a13f0` read the three sha256 values the block's G2 table ordered, beginning `aa2d7bb0`, `475a838e` and `05edcc9b`. THE ROTATION moved 6 gate records and one resolved finding pair into the archive, and the open set read `[]` before and after it. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `33f66862`, the merge commit whose tree equals that of `d00a13f0`, read `552 passed` at exit 0; all six `integrity check` checks read pass. Hosted CI run 36657033773 on `d00a13f0` ended `success` on both jobs. The open set at `d00a13f0` is empty.
+ 
+ Gate: F044 R1 — the F044 round 1 entry, the claim with the palette's pure rules: F044 claimed, this record re-headed, F043's round 9 booked, DECISION F044 D1, and the fuzzy match, the command list, the routing rule and the node jump against the reviewer's tests. VERDICT PASS. Re-derived over `33f66862`..`d31a78c7` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `c10d1cef` 414, `72d85221` 350, `b9fb512e` 425, `1e15218b` 138, `ce5b50ed` 483, `b26cf7fd` 395, `7fa18582` 187, `d6e670b4` 280 and `d31a78c7` 132; the worker declared one deviation, a trial application of the two test diffs to its working tree before C3, reverted before any commit and absent from every commit. THE TRANSPORT PROOF: the block copy and the five payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r1/` and `.remedy-wt/f044-r1-payloads/` byte for byte, and the eleven files the block's G2 table names read its sha256 values at `1e15218b`, `b26cf7fd` and `7fa18582`. THE CODE: the four modules of D1 (1) to (4), read in full by the reviewer. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `d31a78c7`, read `1725 passed, 5 skipped` at exit 0, its skips the four D3 quarantine nodes and the D12 quarantine; eslint over the four modules exit 0; ruff clean; all six `integrity check` checks read pass. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `d31a78c7`, turned all fifteen mutations red with both controls passing and every restore byte-identical, and the reviewer read each mutation as a real behaviour change. The open set at `d31a78c7` is empty.
++
++Gate: F044 R2 — the F044 round 2 entry, the bar's dropdown sheet: the booking of round 1, DECISION F044 D2 with its assumption-log row, the Recent, Jump, Projects and Help rows in a portalled listbox the bar drives as a combobox, the deletion of the shell's `handleJump`, and the tour's last stop on the bar. VERDICT PASS. Re-derived over `d31a78c7`..`587bdb18` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 10 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `f9770718` 413, `d121f0fb` 385, `49081ce6` 308, `9e421767` 186, `a1a8ae0b` 66, `36992a63` 242, `a10172fd` 317, `9b1085b2` 267, `4a71d891` 254 and `587bdb18` 190. The worker declared two assumptions, the listbox's label and the blur radius the block left open. THE TRANSPORT PROOF: the block copy and the eight payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r2/` and `.remedy-wt/f044-r2-payloads/` byte for byte, and the seven files the block's G2 table names read its sha256 values at `a1a8ae0b` and `9b1085b2`. THE CODE: read in full by the reviewer; one comment the round added to `RemedyShell.tsx` says the jump targets are ranked "the same way every jump has always been ranked", which is false, since the deleted `handleJump` took the first label holding the text, and the next round's block orders it corrected. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `587bdb18`, read `1697 passed, 5 skipped` at exit 0, the explanation layer's browser run among them; eslint exit 0; ruff clean; all six `integrity check` checks read pass; the render harness, re-run by the reviewer at `587bdb18`, read `RENDER: 11 of 11 checks pass`, and its screenshot shows the sheet open under the bar with the matched letters marked. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `587bdb18`, turned all fourteen mutations red with every control passing and every restore byte-identical; the handback counts them as thirteen, a slip of its prose. The open set at `587bdb18` is empty.
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index e2d40edfd..d95636f3d 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -71,3 +71,4 @@ Column rules:
+ | 2026-09-29 | F042 | `ProjectSwitcher.tsx`, `ProjectSwitcher.module.css`, `LeftBrandRail.tsx`, `RemedyApp.tsx` | `component_spec.md` gives the brand rail a JobHeader slot whose kicker is the project, and draws no switcher, no list of projects and no page for a project without a job. | With more than one project the kicker is a labelled native select of every project by slug, a project whose folder is gone marked "(folder missing)"; with one project the kicker names it; with none the rail keeps its earlier kicker. A project with no job opens a centred page with the same select above the line "This project has no jobs yet." | T5_F042.md orders a keyboard-friendly switcher in the header, and the kicker is the one place the reference already gives the project; a native select is reached and driven by the keyboard with nothing added. Below 1280 pixels wide the rail hides its copy block, and the switcher with it, until T003's home grid gives every width a way between projects. | DECISION F042 D3 |
+ | 2026-09-30 | F043 | `Term.tsx` and `Term.module.css` under `components/term/`, `LiveStatusPill.tsx`, `PhaseTimeline.tsx`, `styles/tokens.css` | `ux_spec.md` §10 shows the metrics bar's tooltips "on hover as glass tip" and §7 puts the dock's tooltips on its right side; `motion_spec.md` gives hovers `--remedy-dur-fast`; no file of the reference places a tooltip anywhere else or gives it a delay. | A term's tooltip is the same glass tip, opened on hover after 120 ms and at once on keyboard focus, placed below the term and moved to stay inside the viewport, above the term when there is no room below, with the term's title in bold over its explanation; the term itself wears a dotted underline and a focus ring in `--remedy-focus`. | The tooltip is portalled into the page body because a glass card's `backdrop-filter` confines a fixed descendant and a card's overflow clips an absolute one; a dotted underline is the usual sign that a word explains itself, and the delay is the reference's own hover duration. | DECISION F043 D1 |
+ | 2026-09-30 | F044 | `CommandBar.tsx`, `PaletteSheet.tsx` and `PaletteSheet.module.css` under `components/command/`, `RemedyShell.tsx` | `ux_spec.md` §9: typing shows live jump matches (existing `handleJump` logic) in a dropdown glass sheet (radius 14, items 13px, arrow keys and Enter navigable); `component_spec.md` "CommandBar" keeps `handleJump` and names the combobox pattern; the reference draws no section headings, no recent rows, no project rows and no help rows. | The sheet ranks with the palette's fuzzy rule in place of `handleJump`'s substring match, which is deleted; it groups its rows under Recent, Jump, Projects and Help headings, marks the matched letters in bold `--remedy-blue-strong` on no background, tints the active row in `--remedy-blue-50`, and fades in over `--remedy-dur-base`. | `handleJump` selected the first label holding the text and could neither rank nor highlight, so keeping it beside the palette would give one bar two jumps that disagree; the sections and the recent rows are `T5_F044.md`'s own; the sheet is portalled into the page body because the bar's `backdrop-filter` confines a fixed descendant. | DECISION F044 D2 |
++| 2026-09-30 | F044 | `CommandBar.tsx`, `CommandBar.module.css`, `PaletteSheet.tsx` and `PaletteSheet.module.css` under `components/command/`, `RemedyShell.tsx` | `ux_spec.md` §8: a disabled control at 45% opacity with a not-allowed cursor and an honest tooltip; §9 draws the bar with no chip, no argument prompt and no outcome line; `component_spec.md` "CommandBar" names a disabled-send state. | A refused command row at 45% opacity with a not-allowed cursor, its reason as its hint and its tooltip; while a command asks for its arguments, a `--remedy-blue-50` chip in `--remedy-blue-strong` naming it before the input and the argument's prompt as the placeholder; the outcome of a send in a glass line under the bar, in the chat outcome line's green, orange and red; the add-task sheet mounted by the shell as well as by the tasks card. | The feature file asks for refused commands shown disabled with their reason and for argument flows in the bar, and the reference draws neither; the tones are the ones the chat's own outcome line already wears, and the shell mounts the sheet because its open state belongs to the tasks card. | DECISION F044 D3 |

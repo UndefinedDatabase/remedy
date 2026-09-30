@@ -1,0 +1,6 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 214.01s (measured wrapper); pytest's own reported wall time 213.30s (0:03:33)
+summary line: 21058 passed, 20 skipped, 1 warning in 213.30s (0:03:33)
+bad node ids (failed + errors): NONE
+tree it ran on: b9696db78 (F044 R13 C3: book round 12 (Gate: F044 R12, R-1117 carried) and rewrite plan.md for round 13)

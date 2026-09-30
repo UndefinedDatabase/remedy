@@ -1,0 +1,202 @@
+diff --git a/apps/ui/src/api/keymap.test.ts b/apps/ui/src/api/keymap.test.ts
+index a6a7bfb57..dee940752 100644
+--- a/apps/ui/src/api/keymap.test.ts
++++ b/apps/ui/src/api/keymap.test.ts
+@@ -1,6 +1,6 @@
+-// F044 T002 — the cockpit's one keymap (DECISION F044 D5).
++// F044 T002 — the cockpit's one keymap (DECISIONS F044 D5 and D6).
+ import { describe, expect, it } from "vitest";
+-import { KEYMAP_BINDINGS, isTypingTarget, keymapAction } from "./keymap";
++import { KEYMAP_BINDINGS, KEYMAP_HOLD_MS, isTypingTarget, keymapAction } from "./keymap";
+ import type { KeymapPress, KeymapTarget } from "./keymap";
+ 
+ function press(key: string, mods: Partial<Omit<KeymapPress, "key">> = {}): KeymapPress {
+@@ -30,6 +30,12 @@ describe("KEYMAP_BINDINGS", () => {
+   });
+ });
+ 
++describe("KEYMAP_HOLD_MS", () => {
++  it("is how long a held ? waits before the shortcuts show", () => {
++    expect(KEYMAP_HOLD_MS).toBe(400);
++  });
++});
++
+ describe("isTypingTarget", () => {
+   it("reads a field, of any case, and anything content-editable, as text", () => {
+     expect(isTypingTarget({ tagName: "INPUT" })).toBe(true);
+diff --git a/apps/ui/src/components/graph/zoomKeys.test.ts b/apps/ui/src/components/graph/zoomKeys.test.ts
+new file mode 100644
+index 000000000..759ba896e
+--- /dev/null
++++ b/apps/ui/src/components/graph/zoomKeys.test.ts
+@@ -0,0 +1,76 @@
++// F044 T002 — the graph's keys (DECISION F044 D6): which node a key picks, or whether it walks back.
++import { describe, expect, it } from "vitest";
++import { zoomGraphOf } from "./semanticZoom";
++import type { NodeKind } from "./brainOntology";
++import type { ZoomState } from "./semanticZoom";
++import { zoomKeyStep } from "./zoomKeys";
++
++function node(id: string, kind: NodeKind, parentId?: string) {
++  return { id, kind, parentId };
++}
++
++// Runs of task a sit on both sides of task b, so a sibling walk must follow the parent, not the
++// order of the map alone.
++const GRAPH = zoomGraphOf([
++  node("core", "job_core"),
++  node("task:a", "task", "core"),
++  node("run:a:1", "builder_run", "task:a"),
++  node("task:b", "task", "core"),
++  node("run:a:2", "review_run", "task:a"),
++  node("run:b:1", "builder_run", "task:b"),
++  node("task:c", "task", "core"),
++]);
++
++const HOME: ZoomState = { level: 0, focusId: null, tab: null };
++const at = (level: 0 | 1 | 2 | 3, focusId: string): ZoomState => ({ level, focusId, tab: level === 3 ? "diff" : null });
++
++describe("zoomKeyStep, walking the siblings", () => {
++  it("enters the tasks from the job at the first going forward and the last going back", () => {
++    expect(zoomKeyStep(GRAPH, HOME, "next-sibling")).toEqual({ kind: "pick", nodeId: "task:a" });
++    expect(zoomKeyStep(GRAPH, HOME, "previous-sibling")).toEqual({ kind: "pick", nodeId: "task:c" });
++  });
++
++  it("steps between tasks in the graph's order and wraps at either end", () => {
++    expect(zoomKeyStep(GRAPH, at(1, "task:b"), "next-sibling")).toEqual({ kind: "pick", nodeId: "task:c" });
++    expect(zoomKeyStep(GRAPH, at(1, "task:b"), "previous-sibling")).toEqual({ kind: "pick", nodeId: "task:a" });
++    expect(zoomKeyStep(GRAPH, at(1, "task:c"), "next-sibling")).toEqual({ kind: "pick", nodeId: "task:a" });
++    expect(zoomKeyStep(GRAPH, at(1, "task:a"), "previous-sibling")).toEqual({ kind: "pick", nodeId: "task:c" });
++  });
++
++  it("starts from the first task when the focus is not among the tasks", () => {
++    expect(zoomKeyStep(GRAPH, at(1, "task:gone"), "next-sibling")).toEqual({ kind: "pick", nodeId: "task:a" });
++  });
++
++  it("steps between the runs of the focused run's own task, at a run and at its evidence", () => {
++    expect(zoomKeyStep(GRAPH, at(2, "run:a:1"), "next-sibling")).toEqual({ kind: "pick", nodeId: "run:a:2" });
++    expect(zoomKeyStep(GRAPH, at(2, "run:a:2"), "next-sibling")).toEqual({ kind: "pick", nodeId: "run:a:1" });
++    expect(zoomKeyStep(GRAPH, at(3, "run:a:1"), "previous-sibling")).toEqual({ kind: "pick", nodeId: "run:a:2" });
++    expect(zoomKeyStep(GRAPH, at(2, "run:b:1"), "next-sibling")).toEqual({ kind: "pick", nodeId: "run:b:1" });
++  });
++
++  it("picks nothing where there is nothing to walk", () => {
++    expect(zoomKeyStep(zoomGraphOf([]), HOME, "next-sibling")).toBeNull();
++    expect(zoomKeyStep(GRAPH, at(2, "run:gone:1"), "next-sibling")).toBeNull();
++  });
++});
++
++describe("zoomKeyStep, zooming in and walking back", () => {
++  it("zooms from a task into its first run, and nowhere else", () => {
++    expect(zoomKeyStep(GRAPH, at(1, "task:a"), "zoom-in")).toEqual({ kind: "pick", nodeId: "run:a:1" });
++    expect(zoomKeyStep(GRAPH, at(1, "task:c"), "zoom-in")).toBeNull();
++    expect(zoomKeyStep(GRAPH, HOME, "zoom-in")).toBeNull();
++    expect(zoomKeyStep(GRAPH, at(2, "run:a:1"), "zoom-in")).toBeNull();
++  });
++
++  it("walks back from every level", () => {
++    for (const state of [HOME, at(1, "task:a"), at(2, "run:a:1"), at(3, "run:a:1")]) {
++      expect(zoomKeyStep(GRAPH, state, "walk-back")).toEqual({ kind: "walk-back" });
++    }
++  });
++
++  it("asks nothing of the zoom for the bar, the terms or the projects", () => {
++    for (const action of ["open-bar", "open-terms", "go-projects"] as const) {
++      expect(zoomKeyStep(GRAPH, at(1, "task:a"), action)).toBeNull();
++    }
++  });
++});
+diff --git a/apps/ui/src/components/graph/zoomView.test.ts b/apps/ui/src/components/graph/zoomView.test.ts
+index bb3a55c3d..834e8a811 100644
+--- a/apps/ui/src/components/graph/zoomView.test.ts
++++ b/apps/ui/src/components/graph/zoomView.test.ts
+@@ -3,7 +3,7 @@ import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceB
+ import { ZOOM_HOME, type ZoomState } from "./semanticZoom";
+ import {
+   ZOOM_CAMERA_MS, ZOOM_DIM_ALPHA, ZOOM_HOME_CAMERA, ZOOM_RUN_CAMERA, ZOOM_TASK_CAMERA,
+-  escapeWalksBack, focusTaskIdOf, zoomCamera, zoomCrumbLabel, zoomEmphasis,
++  focusTaskIdOf, zoomCamera, zoomCrumbLabel, zoomEmphasis,
+ } from "./zoomView";
+ import { ZOOM_IN_ABOVE, ZOOM_OUT_BELOW } from "./zoomWheel";
+ 
+@@ -123,17 +123,3 @@ describe("zoomCrumbLabel", () => {
+     expect(zoomCrumbLabel({ level: 2, nodeId: "run:gone:1", current: true }, LAYOUT)).toBe("Run");
+   });
+ });
+-
+-describe("escapeWalksBack", () => {
+-  it("walks back from the page and from buttons", () => {
+-    expect(escapeWalksBack(null, false)).toBe(true);
+-    expect(escapeWalksBack({ tagName: "BODY" }, false)).toBe(true);
+-    expect(escapeWalksBack({ tagName: "button" }, false)).toBe(true);
+-  });
+-
+-  it("leaves Escape to text fields and to an open dialog", () => {
+-    for (const tagName of ["INPUT", "textarea", "SELECT"]) expect(escapeWalksBack({ tagName }, false)).toBe(false);
+-    expect(escapeWalksBack({ tagName: "DIV", isContentEditable: true }, false)).toBe(false);
+-    expect(escapeWalksBack({ tagName: "BODY" }, true)).toBe(false);
+-  });
+-});
+diff --git a/tests/ui_contracts/test_palette_sheet_wiring.py b/tests/ui_contracts/test_palette_sheet_wiring.py
+index 393f21882..8287ba04d 100644
+--- a/tests/ui_contracts/test_palette_sheet_wiring.py
++++ b/tests/ui_contracts/test_palette_sheet_wiring.py
+@@ -1,4 +1,4 @@
+-"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D5).
++"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D6).
+ 
+ The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
+ by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
+@@ -19,6 +19,9 @@ SHEET = UI_SRC / "components" / "command" / "PaletteSheet.tsx"
+ SEND = UI_SRC / "api" / "paletteSend.ts"
+ CHAT_SHEET = UI_SRC / "components" / "command" / "ChatSheet.tsx"
+ CHAT_TAB = UI_SRC / "components" / "graph" / "EvidenceChatTab.tsx"
++STAGE = UI_SRC / "components" / "graph" / "BrainGraphStage.tsx"
++OVERLAY = UI_SRC / "components" / "command" / "KeymapOverlay.tsx"
++HOLD = UI_SRC / "components" / "shell" / "useHeldHelpKey.ts"
+ 
+ 
+ def strip_ts_comments(text: str) -> str:
+@@ -121,3 +124,22 @@ def test_the_keymap_puts_the_focus_in_the_bar_and_goes_to_the_projects():
+     bar = code(BAR)
+     assert "if (focusRequest > 0) inputRef.current?.focus();" in bar
+     assert "ref={inputRef}" in bar
++
++
++def test_a_held_question_mark_shows_the_keymap_overlay_outside_main():
++    shell = code(SHELL)
++    assert "pressHelp(event.repeat);" in shell
++    assert "useHeldHelpKey(() => setTermsOpen(true))" in shell
++    hold = code(HOLD)
++    assert "}, KEYMAP_HOLD_MS);" in hold
++    assert hold.count('window.addEventListener("keyup", onKeyUp);') == 1
++    assert shell.count("<KeymapOverlay />") == 1
++    assert shell.index("<KeymapOverlay />") > shell.index("</main>")
++    overlay = code(OVERLAY)
++    assert "KEYMAP_BINDINGS.map(" in overlay
++
++
++def test_the_stage_reads_the_graphs_keys_after_its_zoom():
++    stage = code(STAGE)
++    assert stage.count("useZoomKeys(zoomGraph, zoom.state, zoom.dispatch, (nodeId) => {") == 1
++    assert stage.index("const zoom = useSemanticZoom(zoomGraph);") < stage.index("useZoomKeys(")
+diff --git a/tests/ui_contracts/test_semantic_zoom_wiring.py b/tests/ui_contracts/test_semantic_zoom_wiring.py
+index a0dacfb8e..e825ee3da 100644
+--- a/tests/ui_contracts/test_semantic_zoom_wiring.py
++++ b/tests/ui_contracts/test_semantic_zoom_wiring.py
+@@ -84,8 +84,14 @@ def test_the_branch_glow_is_painted_in_the_in_progress_token():
+ 
+ 
+ def test_escape_and_reconcile_live_in_the_hook():
++    # Since DECISION F044 D6 Escape's walk back is the graph's keys' own, read through the one
++    # keymap in `useZoomKeys.ts`; this hook keeps the reconcile and adds no key listener.
+     src = _src(HOOK)
+-    assert "escapeWalksBack(target, document.querySelector('[role=\"dialog\"]') !== null)" in src
++    assert "keydown" not in src
++    keys = _src(GRAPH / "useZoomKeys.ts")
++    assert "zoomKeyStep(latest.current.graph, latest.current.state, action)" in keys
++    assert 'dispatch({ type: "escape" });' in keys
++    assert keys.count('window.addEventListener("keydown", onKey);') == 1
+     effect = src[src.index('dispatch({ type: "reconcile" });'):]
+     assert effect.index("}, [graph, dispatch]);") < 60
+ 

@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-120 of 291 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+121 of 292 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 39 | 40 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 36 | 37 |
+| 5 | Operator Cockpit | 37 | 37 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -652,6 +652,18 @@ lacks or the catalog keeps an entry that nothing shows; the question mark key or
 opens the whole catalog as a list you can search; and a six-step tour introduces the cockpit's main
 areas the first time you open it, can be skipped at any step, does not open by itself again once
 ended, and can be started again from the Terms panel).
+
+F044 command palette, keyboard and performance budgets (the search bar at the top of the cockpit is
+now also a command palette: typing opens a dropdown that fuzzy-matches every command the write door
+exposes, jumps to any task by name, opens a project, or opens the help catalog, while a plain
+question routes straight to the chat panel instead of the command list; one shared keymap now drives
+the whole cockpit from the keyboard — slash or Ctrl/Cmd+K opens the bar, a held question mark opens a
+list of every shortcut, "g" then "p" jumps to the projects view, and the same keys drive zooming the
+task graph — replacing several separate, inconsistent keyboard listeners with one; and three
+automatic checks now run in the project's continuous-integration pipeline and fail the build if the
+cockpit's built page grows more than 10% past its measured baseline size, takes longer than 1.5
+seconds to first paint on a fresh load, or drops below a smooth 60-frames-per-second pace while
+navigating a 200-task graph).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

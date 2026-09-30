@@ -30,7 +30,7 @@ In the order CI runs them, taken from `CI_STAGES`.
 | `standard` | `(integration or subprocess) and not real_ollama` | Integration and subprocess tests on the fake provider. The determinism suite lives here rather than in a stage of its own (DECISION F083 D4), and so does the TypeScript compile check, which carries the `integration` marker. |
 | `ui` | `ui_contract and not real_ollama` | Python-verifiable frontend and UI contracts. No test in this selection shells out to the node toolchain. |
 | `smoke` | `smoke and not real_ollama` | Smoke contracts for the scripts and the infrastructure. |
-| `budgets` | `not real_ollama` over four named paths | Repository ceilings: the guard suites that assert what this repository may not exceed. This is the one stage that selects BY PATH; its marker expression only excludes the live provider. |
+| `budgets` | `not real_ollama` over seven named paths | Repository ceilings: the guard suites that assert what this repository may not exceed. This is the one stage that selects BY PATH; its marker expression only excludes the live provider. |
 | `excluded` | `real_ollama` | Live-provider tests. CI never runs them; they are listed so the coverage claim stays honest. |
 
 Remedy deliberately does NOT store a collected test COUNT per stage. A count is
@@ -58,14 +58,14 @@ factor 2 and the 300-second rounding are not folklore: they are pinned by
 | standard | 935.14 | `## Q11`, three samples | 2100 |
 | ui | 8.09 | `## Q10`, three samples | 300 |
 | smoke | 11.07 | `## Q10`, three samples | 300 |
-| budgets | 1.32 | `## Q12`, three samples | 300 |
+| budgets | 28.08 | `## Q14`, three samples | 300 |
 | excluded | not run — `runs_in_ci` is False | `## Q10` | 0 |
 
 Two figures follow from that table. The five CI budgets sum to 3900 s, i.e. 65
 minutes, which is why the hosted job caps at `timeout-minutes: 90`: the job cap
 sits ABOVE the sum of the stage budgets, so a slow stage dies at ITS OWN budget
 and names itself in the summary instead of the job being killed first and naming
-no stage at all. And the five measured maxima sum to 1353.07 s, about 22.6
+no stage at all. And the five measured maxima sum to 1379.83 s, about 23.0
 minutes, which is what a green serial run actually costs on the machine the
 samples came from.
 

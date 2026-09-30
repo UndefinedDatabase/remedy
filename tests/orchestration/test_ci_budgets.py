@@ -9,20 +9,41 @@ different config is a reading of a different repository (finding R-0463).
 """
 from __future__ import annotations
 
+import functools
+import http.server
+import json
+import math
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration import ci_budgets
 from packages.orchestration.ci_budgets import (
+    BUNDLE_BASELINE_CHUNKS,
+    BUNDLE_SIZE_CAP_FACTOR,
+    FIRST_PAINT_BUDGET_MS,
+    FRAME_PIPELINE_P95_BUDGET_MS,
     BudgetCheck,
+    bundle_report,
+    check_bundle_size,
+    check_first_paint,
+    check_frame_pipeline,
     check_lint_clean,
+    normalize_chunk_name,
     parse_ruff_error_count,
 )
+from tests.ui_server.test_story_export_file_live import CHROME_BIN, CHROME_STARTUP_TIMEOUT, ChromePipe
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: How long the live frame-pipeline test traces after navigating, covering the 200-node
+#: fixture's mount-and-settle window (DECISION F044 D10 measured this at ~2.2-2.3s across three
+#: runs; this is roughly double that, for CI-machine slack).
+FRAME_TRACE_WINDOW_SECONDS = 4.0
 
 
 def test_no_lint_ceiling_or_baseline_survives():
@@ -86,3 +107,291 @@ def test_this_repository_has_no_ruff_findings():
     observed = parse_ruff_error_count(done.stdout)
     check = check_lint_clean(observed)
     assert check.ok, f"{check.detail}\n{done.stdout}"
+
+
+def test_normalize_chunk_name_strips_the_vite_hash():
+    assert normalize_chunk_name("assets/index-BKD2HAVk.js") == "assets/index.js"
+    assert normalize_chunk_name("assets/diffHighlightGrammars-o9XqnLhb.js") == "assets/diffHighlightGrammars.js"
+
+
+def test_normalize_chunk_name_leaves_an_unhashed_name_alone():
+    assert normalize_chunk_name("index.html") == "index.html"
+    assert normalize_chunk_name("story/story-player.js") == "story/story-player.js"
+
+
+def test_bundle_report_sums_bytes_under_the_normalized_name():
+    report = bundle_report({"assets/index-AAAA1AAA.js": 100, "assets/index-BBBB2BBB.js": 50})
+    assert report.chunks == {"assets/index.js": 150}
+    assert report.total_bytes == 150
+
+
+def test_bundle_size_within_the_baseline_plus_ten_percent_is_ok():
+    baseline_total = sum(BUNDLE_BASELINE_CHUNKS.values())
+    report = bundle_report(dict(BUNDLE_BASELINE_CHUNKS))
+    check = check_bundle_size(report)
+    assert check.ok is True
+    assert check.observed == baseline_total
+
+
+def test_a_seeded_bundle_bloat_names_the_chunk_that_grew():
+    bloated = dict(BUNDLE_BASELINE_CHUNKS)
+    bloated["assets/index-Z9ZZZZZZ.js"] = bloated.pop("assets/index.js") + 500_000
+    report = bundle_report(bloated)
+    check = check_bundle_size(report)
+    assert check.ok is False
+    assert "assets/index.js +500000B" in check.detail
+
+
+def test_bundle_size_cap_is_the_baseline_plus_ten_percent():
+    baseline_total = sum(BUNDLE_BASELINE_CHUNKS.values())
+    assert BUNDLE_SIZE_CAP_FACTOR == 1.10
+    cap = math.ceil(baseline_total * BUNDLE_SIZE_CAP_FACTOR)
+    just_over = dict(BUNDLE_BASELINE_CHUNKS)
+    just_over["assets/index-Z9ZZZZZZ.js"] = just_over.pop("assets/index.js") + (cap - baseline_total) + 1
+    report = bundle_report(just_over)
+    check = check_bundle_size(report)
+    assert check.ok is False
+
+
+def test_bundle_size_at_exactly_the_rounded_cap_is_ok():
+    baseline_total = sum(BUNDLE_BASELINE_CHUNKS.values())
+    cap = math.ceil(baseline_total * BUNDLE_SIZE_CAP_FACTOR)
+    at_cap = dict(BUNDLE_BASELINE_CHUNKS)
+    at_cap["assets/index-Z9ZZZZZZ.js"] = at_cap.pop("assets/index.js") + (cap - baseline_total)
+    report = bundle_report(at_cap)
+    check = check_bundle_size(report)
+    assert check.ok is True
+    assert check.observed == cap
+
+
+@pytest.mark.subprocess
+def test_this_repositorys_ui_bundle_is_within_its_size_cap(tmp_path):
+    """The live check: a fresh `vite build` of `apps/ui`, never into the shared
+    `apps/ui/dist` (F039 D9), read as this module reads any build."""
+    outdir = tmp_path / "dist"
+    done = subprocess.run(
+        ["node_modules/.bin/vite", "build", "--outDir", str(outdir), "--emptyOutDir"],
+        cwd=str(REPO_ROOT / "apps" / "ui"),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    files = {str(p.relative_to(outdir)): p.stat().st_size for p in outdir.rglob("*") if p.is_file()}
+    report = bundle_report(files)
+    check = check_bundle_size(report)
+    assert check.ok, check.detail
+
+
+def test_first_paint_within_budget_is_ok():
+    check = check_first_paint(92)
+    assert check.ok is True
+    assert check.observed == 92
+    assert check.name == "first_paint"
+    assert "92ms" in check.detail
+
+
+def test_first_paint_over_budget_names_the_overage():
+    check = check_first_paint(FIRST_PAINT_BUDGET_MS + 250)
+    assert check.ok is False
+    assert "over by 250ms" in check.detail
+
+
+def test_first_paint_at_exactly_the_budget_is_ok():
+    check = check_first_paint(FIRST_PAINT_BUDGET_MS)
+    assert check.ok is True
+
+
+def test_first_paint_budget_is_fifteen_hundred_ms():
+    assert FIRST_PAINT_BUDGET_MS == 1500
+
+
+def _poll_first_contentful_paint_ms(pipe: ChromePipe, *, timeout: float = 15.0) -> float:
+    """Polls Chrome's own performance timeline rather than sleeping a fixed guess (the render
+    harness's own `drive.mjs` does the latter; a paint budget must read the real event)."""
+    deadline = time.monotonic() + timeout
+    expr = "JSON.stringify(performance.getEntriesByType('paint'))"
+    last = None
+    while time.monotonic() < deadline:
+        result = pipe.send("Runtime.evaluate", {"expression": expr, "returnByValue": True})
+        raw = result.get("result", {}).get("value")
+        last = raw
+        if raw:
+            entries = json.loads(raw)
+            for entry in entries:
+                if entry.get("name") == "first-contentful-paint":
+                    return entry["startTime"]
+        time.sleep(0.1)
+    raise AssertionError(f"timed out waiting for a first-contentful-paint entry; last reading was {last!r}")
+
+
+@pytest.mark.subprocess
+def test_this_repositorys_shell_paints_within_its_budget(tmp_path):
+    """The live check: a fresh `vite build` of `apps/ui`, served over real HTTP (never
+    `file://`, per DECISION F044 D9 — a cold load is a served load), first paint read from
+    Chrome's own performance timeline via the same `--remote-debugging-pipe` transport
+    `tests/ui_server/test_story_export_file_live.py`'s `ChromePipe` already proves."""
+    if CHROME_BIN is None:
+        pytest.skip("neither google-chrome nor chromium is on the path")
+    outdir = tmp_path / "dist"
+    done = subprocess.run(
+        ["node_modules/.bin/vite", "build", "--outDir", str(outdir), "--emptyOutDir"],
+        cwd=str(REPO_ROOT / "apps" / "ui"),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(outdir))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = server.server_address[1]
+    try:
+        pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
+        try:
+            target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
+            attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
+            pipe.session_id = attach["sessionId"]
+            pipe.send("Page.enable")
+            pipe.send("Runtime.enable")
+            pipe.send("Page.navigate", {"url": f"http://127.0.0.1:{port}/index.html"})
+            paint_ms = _poll_first_contentful_paint_ms(pipe)
+        finally:
+            pipe.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+    check = check_first_paint(round(paint_ms))
+    assert check.ok, check.detail
+
+
+def test_frame_pipeline_within_budget_is_ok():
+    check = check_frame_pipeline(12.5)
+    assert check.ok is True
+    assert check.observed == 12.5
+    assert check.name == "frame_pipeline_p95"
+    assert "12.5ms" in check.detail
+
+
+def test_frame_pipeline_over_budget_names_the_overage():
+    check = check_frame_pipeline(FRAME_PIPELINE_P95_BUDGET_MS + 16.0)
+    assert check.ok is False
+    assert "over by 16.0ms" in check.detail
+
+
+def test_frame_pipeline_at_exactly_the_budget_is_ok():
+    check = check_frame_pipeline(FRAME_PIPELINE_P95_BUDGET_MS)
+    assert check.ok is True
+
+
+def test_frame_pipeline_budget_is_seventeen_ms():
+    assert FRAME_PIPELINE_P95_BUDGET_MS == 17.0
+
+
+def _p95_presented_frame_interval_ms(pipe: ChromePipe) -> float:
+    """The p95 gap between consecutive REAL, presented compositor frames, in milliseconds,
+    read from Chrome's own `PipelineReporter` trace events (never a JS-side
+    `requestAnimationFrame` timer: headless Chrome paces `requestAnimationFrame` at a fixed
+    60 Hz regardless of the real work a frame costs, so an interval read from JS can only show
+    whether a frame was SCHEDULED, never whether it was DELIVERED on time — DECISION F044 D10).
+
+    `PipelineReporter` is an ASYNC trace event: Chrome emits a `ph="b"` (begin) entry and a
+    matching `ph="e"` (end) entry per pipeline ATTEMPT, and only the begin entry carries the
+    `frame_reporter` argument naming the attempt's outcome. An attempt is a REAL delivered frame
+    only when its `state` reads `STATE_PRESENTED_ALL`; roughly half of this fixture's attempts
+    read `STATE_PRESENTED_PARTIAL` instead (a real but partial compositor update, measured by
+    this round's reviewer, not a dropped frame), and counting every attempt as one frame reads
+    the pipeline queue's depth, not the display's own frame rate.
+    """
+    events: list[dict] = []
+    for message in pipe.events:
+        if message.get("method") == "Tracing.dataCollected":
+            events.extend(message.get("params", {}).get("value", []))
+    presented_ts = sorted(
+        e["ts"]
+        for e in events
+        if e.get("name") == "PipelineReporter"
+        and e.get("ph") == "b"
+        and e.get("args", {}).get("frame_reporter", {}).get("state") == "STATE_PRESENTED_ALL"
+    )
+    if len(presented_ts) < 2:
+        raise AssertionError(
+            f"only {len(presented_ts)} presented PipelineReporter event(s) captured; need at "
+            "least 2 to read an interval"
+        )
+    deltas_ms = sorted((presented_ts[i + 1] - presented_ts[i]) / 1000.0 for i in range(len(presented_ts) - 1))
+    return deltas_ms[int(len(deltas_ms) * 0.95)]
+
+
+@pytest.mark.subprocess
+def test_this_repositorys_shell_sustains_60fps_at_200_nodes(tmp_path):
+    """The live check: a fresh `vite build` of the committed frame-pipeline harness
+    (`apps/ui/perf/`), which mounts the real `ForceBrainGraph` over the committed 200-node
+    fixture (`apps/ui/src/components/graph/brainPerfFixture.ts`, DECISION F019 D6) exactly as
+    `BrainGraphStage.tsx` does at its root zoom level, served over real HTTP, traced across its
+    own mount-and-settle window with Chrome's `Tracing` domain via the same
+    `--remote-debugging-pipe` transport `tests/ui_server/test_story_export_file_live.py`'s
+    `ChromePipe` already proves."""
+    if CHROME_BIN is None:
+        pytest.skip("neither google-chrome nor chromium is on the path")
+    outdir = tmp_path / "dist"
+    done = subprocess.run(
+        [
+            "node_modules/.bin/vite", "build",
+            "--config", "perf/vite.config.mjs",
+            "--outDir", str(outdir),
+            "--emptyOutDir",
+        ],
+        cwd=str(REPO_ROOT / "apps" / "ui"),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(outdir))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = server.server_address[1]
+    try:
+        pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
+        try:
+            target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
+            attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
+            pipe.session_id = attach["sessionId"]
+            pipe.send("Page.enable")
+            pipe.send("Runtime.enable")
+            pipe.send(
+                "Tracing.start",
+                {
+                    "categories": (
+                        "disabled-by-default-devtools.timeline,devtools.timeline,"
+                        "blink.user_timing,disabled-by-default-devtools.timeline.frame"
+                    ),
+                },
+            )
+            pipe.send("Page.navigate", {"url": f"http://127.0.0.1:{port}/index.html?n=200"})
+            time.sleep(FRAME_TRACE_WINDOW_SECONDS)
+            pipe.send("Tracing.end")
+            deadline = time.monotonic() + 15.0
+            complete = False
+            while time.monotonic() < deadline and not complete:
+                pipe.drain(1.0)
+                complete = any(e.get("method") == "Tracing.tracingComplete" for e in pipe.events)
+            assert complete, "Tracing.tracingComplete never arrived"
+            p95_ms = _p95_presented_frame_interval_ms(pipe)
+        finally:
+            pipe.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+    check = check_frame_pipeline(round(p95_ms, 3))
+    assert check.ok, check.detail

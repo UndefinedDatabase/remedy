@@ -1,0 +1,43 @@
+/* The keymap's own cheat overlay (T5_F044 T002, DECISION F044 D6): a centred glass card on the
+   overlay layer, shown while "?" is held (useHeldHelpKey.ts). The glass, border, radius, shadow
+   and blur are the learning overlay's own (LessonsOverlay.module.css), so the card reads as the
+   same surface family. */
+.sheet {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 48px));
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-xl);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+  font-family: var(--remedy-font-ui);
+}
+.sheet h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.rows { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.row dt { margin: 0; }
+.row dd { margin: 0; font-size: 13px; color: var(--remedy-ink); }
+.keys {
+  font-family: var(--remedy-font-mono);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+}
+.hint { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }

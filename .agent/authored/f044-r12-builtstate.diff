@@ -1,0 +1,20 @@
+diff --git a/docs/roadmap/features/T5_F044.md b/docs/roadmap/features/T5_F044.md
+index 29b2dab25..1021a47a3 100644
+--- a/docs/roadmap/features/T5_F044.md
++++ b/docs/roadmap/features/T5_F044.md
+@@ -171,3 +171,15 @@ discharged as out of this feature's built scope by DECISION F044 D12,
+ which this closure round records. `docs/system/ci-self-check-v1.md`'s
+ stage and budget tables are synced to the `budgets` stage's real,
+ current seven-path selection (DECISION F044 D11).
++
++**The closure's self-use item.** `SU-039`, the item Tier 4 offered on the
++real tree at `393d558b6`, ran as job `97e3d35407fe4479` on the `self_use`
++role, `claude-cli` with `claude-sonnet-4-6` for builder and reviewer, in
++four provider calls measured at $1.13, and reached the approval gate with
++its one task's `reviewer_verdict` `pass` — but the job's own branch holds
++no change at all: `apps/cli/commands/dev.py`'s targeted `# noqa: BLE001`
++mark is still there, unedited. `describe_self_use_run_defects` caught the
++gap and it is registered as `R-1117`, owned by F290 (the next rolling
++findings-paydown feature); nothing from this item's job branch is applied
++to this feature's tree, exactly as `docs/roadmap/STATUS_closure_protocol.md`
++precondition 6 requires of every self-use item, landed or not.

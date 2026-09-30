@@ -84,8 +84,14 @@ def test_the_branch_glow_is_painted_in_the_in_progress_token():
 
 
 def test_escape_and_reconcile_live_in_the_hook():
+    # Since DECISION F044 D6 Escape's walk back is the graph's keys' own, read through the one
+    # keymap in `useZoomKeys.ts`; this hook keeps the reconcile and adds no key listener.
     src = _src(HOOK)
-    assert "escapeWalksBack(target, document.querySelector('[role=\"dialog\"]') !== null)" in src
+    assert "keydown" not in src
+    keys = _src(GRAPH / "useZoomKeys.ts")
+    assert "zoomKeyStep(latest.current.graph, latest.current.state, action)" in keys
+    assert 'dispatch({ type: "escape" });' in keys
+    assert keys.count('window.addEventListener("keydown", onKey);') == 1
     effect = src[src.index('dispatch({ type: "reconcile" });'):]
     assert effect.index("}, [graph, dispatch]);") < 60
 

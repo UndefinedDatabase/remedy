@@ -25,13 +25,13 @@ const broken: FirstRunTourStorage = {
 };
 
 describe("the first-run tour's steps", () => {
-  it("walks the graph, the timeline, the feed, the inbox, the note and the Terms button, in that order", () => {
+  it("walks the graph, the timeline, the feed, the inbox, the note and the command bar, in that order", () => {
     expect(FIRST_RUN_STEPS.map((step) => step.target)).toEqual([
-      "brain-graph-stage", "phase-timeline", "right-live-panel", "decision-inbox-card", "chat-input-row", "terms-button",
+      "brain-graph-stage", "phase-timeline", "right-live-panel", "decision-inbox-card", "chat-input-row", "command-bar",
     ]);
   });
 
-  it("words every step exactly as DECISION F043 D4 wrote it", () => {
+  it("words every step exactly as DECISION F043 D4 wrote it, DECISION F044 D2 moved its last and D4 reworded it", () => {
     expect(FIRST_RUN_STEPS).toEqual([
       {
         title: "The graph",
@@ -59,9 +59,9 @@ describe("the first-run tour's steps", () => {
         target: "chat-input-row",
       },
       {
-        title: "Every word explained",
-        body: "Hover an underlined word to see what it means, or press ? for the list of every term. You can start this tour again from there.",
-        target: "terms-button",
+        title: "Ask or jump to anything",
+        body: "Ask your agent a question here, or jump to any task, run a command, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
+        target: "command-bar",
       },
     ]);
   });

@@ -3,7 +3,7 @@ import type { BrainLayoutData, BrainLayoutLink, BrainLayoutNode } from "./forceB
 import { ZOOM_HOME, type ZoomState } from "./semanticZoom";
 import {
   ZOOM_CAMERA_MS, ZOOM_DIM_ALPHA, ZOOM_HOME_CAMERA, ZOOM_RUN_CAMERA, ZOOM_TASK_CAMERA,
-  escapeWalksBack, focusTaskIdOf, zoomCamera, zoomCrumbLabel, zoomEmphasis,
+  focusTaskIdOf, zoomCamera, zoomCrumbLabel, zoomEmphasis,
 } from "./zoomView";
 import { ZOOM_IN_ABOVE, ZOOM_OUT_BELOW } from "./zoomWheel";
 
@@ -121,19 +121,5 @@ describe("zoomCrumbLabel", () => {
   it("falls back to the level's word when the layout lacks the node", () => {
     expect(zoomCrumbLabel({ level: 1, nodeId: "task:gone", current: true }, LAYOUT)).toBe("Task");
     expect(zoomCrumbLabel({ level: 2, nodeId: "run:gone:1", current: true }, LAYOUT)).toBe("Run");
-  });
-});
-
-describe("escapeWalksBack", () => {
-  it("walks back from the page and from buttons", () => {
-    expect(escapeWalksBack(null, false)).toBe(true);
-    expect(escapeWalksBack({ tagName: "BODY" }, false)).toBe(true);
-    expect(escapeWalksBack({ tagName: "button" }, false)).toBe(true);
-  });
-
-  it("leaves Escape to text fields and to an open dialog", () => {
-    for (const tagName of ["INPUT", "textarea", "SELECT"]) expect(escapeWalksBack({ tagName }, false)).toBe(false);
-    expect(escapeWalksBack({ tagName: "DIV", isContentEditable: true }, false)).toBe(false);
-    expect(escapeWalksBack({ tagName: "BODY" }, true)).toBe(false);
   });
 });

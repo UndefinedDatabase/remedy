@@ -1,0 +1,133 @@
+diff --git a/apps/ui/src/api/firstRunTour.test.ts b/apps/ui/src/api/firstRunTour.test.ts
+index 782ff2d23..689b062f3 100644
+--- a/apps/ui/src/api/firstRunTour.test.ts
++++ b/apps/ui/src/api/firstRunTour.test.ts
+@@ -31,7 +31,7 @@ describe("the first-run tour's steps", () => {
+     ]);
+   });
+ 
+-  it("words every step exactly as DECISION F043 D4 wrote it and DECISION F044 D2 moved its last", () => {
++  it("words every step exactly as DECISION F043 D4 wrote it, DECISION F044 D2 moved its last and D4 reworded it", () => {
+     expect(FIRST_RUN_STEPS).toEqual([
+       {
+         title: "The graph",
+@@ -59,8 +59,8 @@ describe("the first-run tour's steps", () => {
+         target: "chat-input-row",
+       },
+       {
+-        title: "Jump to anything",
+-        body: "Type here to jump to any task, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
++        title: "Ask or jump to anything",
++        body: "Ask your agent a question here, or jump to any task, run a command, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
+         target: "command-bar",
+       },
+     ]);
+diff --git a/apps/ui/src/api/paletteSheet.test.ts b/apps/ui/src/api/paletteSheet.test.ts
+index 7172ffe32..514b278cc 100644
+--- a/apps/ui/src/api/paletteSheet.test.ts
++++ b/apps/ui/src/api/paletteSheet.test.ts
+@@ -1,8 +1,9 @@
+-// F044 T001 — the bar's dropdown sheet, its pure rules (DECISIONS F044 D2 and D3).
++// F044 T001 — the bar's dropdown sheet, its pure rules (DECISIONS F044 D2 to D4).
+ import { describe, expect, it } from "vitest";
+ import type { JumpTarget } from "./paletteJump";
+ import {
+   COMMAND_RESULT_LIMIT,
++  PALETTE_ASK_HINT,
+   PALETTE_HELP_ROWS,
+   PALETTE_RECENTS_KEY,
+   PALETTE_RECENT_LIMIT,
+@@ -42,7 +43,7 @@ function nonCommand(rows: ReturnType<typeof buildPaletteRows>) {
+ 
+ describe("the sheet's constants", () => {
+   it("orders the sections, and bounds projects and recents", () => {
+-    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Commands", "Jump", "Projects", "Help"]);
++    expect(PALETTE_SECTION_ORDER).toEqual(["Recent", "Ask", "Commands", "Jump", "Projects", "Help"]);
+     expect(PROJECT_RESULT_LIMIT).toBe(5);
+     expect(COMMAND_RESULT_LIMIT).toBe(6);
+     expect(PALETTE_RECENT_LIMIT).toBe(5);
+@@ -188,6 +189,39 @@ describe("buildPaletteRows, the Commands section (DECISION F044 D3)", () => {
+   });
+ });
+ 
++describe("buildPaletteRows, the Ask row (DECISION F044 D4)", () => {
++  it("puts a question first, as a row that hands the folded line to the chat", () => {
++    const rows = buildPaletteRows(input({ query: "  why did   it fail? " }));
++    expect(PALETTE_ASK_HINT).toBe("Ask the chat");
++    expect(rows[0]).toEqual({
++      key: "ask", ref: "ask", section: "Ask", label: "why did it fail?", hint: "Ask the chat",
++      ranges: [], action: { kind: "chat", text: "why did it fail?" }, disabledReason: "",
++    });
++    expect(rows.filter((row) => row.section === "Ask").length).toBe(1);
++  });
++
++  it("puts a question first even when other rows match it", () => {
++    const targets = [...TARGETS, { id: "t9", nodeId: "task:t9", label: "is tests green", kind: "test" }];
++    const rows = buildPaletteRows(input({ query: "is tests green", targets }));
++    expect(rows.map((row) => row.key)).toEqual(["ask", "jump:t9"]);
++  });
++
++  it("is the only row when nothing else matches a line", () => {
++    expect(buildPaletteRows(input({ query: "zzqx" })).map((row) => row.key)).toEqual(["ask"]);
++  });
++
++  it("is not offered for a command, for palette text that matches, for a blank line, or in task mode", () => {
++    expect(buildPaletteRows(input({ query: "pause" })).some((row) => row.key === "ask")).toBe(false);
++    expect(buildPaletteRows(input({ query: "tests" })).some((row) => row.key === "ask")).toBe(false);
++    expect(buildPaletteRows(input({ query: "   " })).some((row) => row.key === "ask")).toBe(false);
++    expect(buildPaletteRows(input({ query: "why?", mode: "task" })).some((row) => row.key === "ask")).toBe(false);
++  });
++
++  it("names nothing when remembered", () => {
++    expect(buildPaletteRows(input({ recents: ["ask"] })).some((row) => row.section === "Recent")).toBe(false);
++  });
++});
++
+ describe("the remembered rows", () => {
+   it("puts the chosen ref first, once, and keeps at most five", () => {
+     expect(rememberPaletteRef(["a", "b", "c"], "b")).toEqual(["b", "a", "c"]);
+diff --git a/tests/ui_contracts/test_palette_sheet_wiring.py b/tests/ui_contracts/test_palette_sheet_wiring.py
+index 494a408cb..0357c0b9c 100644
+--- a/tests/ui_contracts/test_palette_sheet_wiring.py
++++ b/tests/ui_contracts/test_palette_sheet_wiring.py
+@@ -1,4 +1,4 @@
+-"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 and D3).
++"""Wiring guard: the command bar is the palette's combobox (DECISIONS F044 D2 to D4).
+ 
+ The palette's jump REPLACES the shell's `handleJump`, a substring match over task labels, so
+ by AGENTS.md's "replacing is deleting" the shell no longer carries it and hands the bar the
+@@ -17,6 +17,8 @@ SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+ BAR = UI_SRC / "components" / "command" / "CommandBar.tsx"
+ SHEET = UI_SRC / "components" / "command" / "PaletteSheet.tsx"
+ SEND = UI_SRC / "api" / "paletteSend.ts"
++CHAT_SHEET = UI_SRC / "components" / "command" / "ChatSheet.tsx"
++CHAT_TAB = UI_SRC / "components" / "graph" / "EvidenceChatTab.tsx"
+ 
+ 
+ def strip_ts_comments(text: str) -> str:
+@@ -86,3 +88,25 @@ def test_the_shell_mounts_its_own_add_task_sheet_outside_main():
+     shell = code(SHELL)
+     assert shell.count("<AddTaskSheet ") == 1
+     assert shell.index("<AddTaskSheet ") > shell.index("</main>")
++
++
++def test_the_shell_mounts_the_chat_sheet_outside_main():
++    shell = code(SHELL)
++    assert shell.count("<ChatSheet ") == 1
++    assert shell.index("<ChatSheet ") > shell.index("</main>")
++    assert "onAskChat=" in shell
++
++
++def test_the_chat_sheet_routes_to_the_grounded_chat_and_builds_none_of_its_own():
++    sheet = code(CHAT_SHEET)
++    assert sheet.count("<EvidenceChatTab ") == 1
++    assert "initialQuestion={question}" in sheet
++    assert 'role="dialog"' in sheet
++    for door in ("fetch(", "loadChatTurn(", "sendChatCard("):
++        assert door not in sheet
++
++
++def test_the_chat_tab_asks_the_palettes_question_once():
++    tab = code(CHAT_TAB)
++    assert "initialQuestion?: string" in tab
++    assert tab.count("askedInitial.current = true;") == 1

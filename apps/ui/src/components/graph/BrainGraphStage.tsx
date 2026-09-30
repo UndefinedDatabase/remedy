@@ -5,16 +5,17 @@ import type { BrainEventRow } from "./brainOntology";
 import { buildBrainLayout } from "./buildForceBrainModel";
 import {
   brainTaskCount, dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId,
-  selectedPromptNodeId, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
+  selectedPromptNodeId, selectionIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 import { withPromptNodes } from "./promptNodes";
 import { ForceBrainGraph } from "./ForceBrainGraph";
 import { GraphFilterChips, type GraphFilter } from "./GraphFilterChips";
 import { GraphLegend } from "./GraphLegend";
 import { BrainGraphCanvas } from "./BrainGraphCanvas";
-import { zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
+import { isZoomRunKind, zoomBreadcrumbs, zoomGraphOf } from "./semanticZoom";
 import { useSemanticZoom } from "./useSemanticZoom";
 import { useZoomDeepLink } from "./useZoomDeepLink";
+import { useZoomKeys } from "./useZoomKeys";
 import { ZoomBreadcrumbs } from "./ZoomBreadcrumbs";
 import { PromptNodeList } from "./PromptNodeList";
 import { RunDetailPopover } from "./RunDetailPopover";
@@ -87,6 +88,13 @@ export function BrainGraphStage({
   const zoomGraph = useMemo(() => zoomGraphOf(model.nodes, baseLayout.nodes), [model, baseLayout]);
   const zoom = useSemanticZoom(zoomGraph);
   useZoomDeepLink(zoomGraph, zoom.state, zoom.dispatch);
+  // DECISION F044 D6: the graph's own keys pick a node exactly as a pointer's click would.
+  useZoomKeys(zoomGraph, zoom.state, zoom.dispatch, (nodeId) => {
+    const node = zoomGraph.get(nodeId);
+    if (!node || isZoomRunKind(node.kind)) return;
+    const id = selectionIdOf({ id: nodeId, kind: node.kind, parentId: node.parentId });
+    if (id !== null) onSelectNode(shellSelectionIdOf(dashboard.tasks, id));
+  });
   const zoomCrumbs = zoomBreadcrumbs(zoomGraph, zoom.state);
   // The focused task's cluster chip gives way to its runs; unfocused, the
   // chip returns (DECISION F023 D6).

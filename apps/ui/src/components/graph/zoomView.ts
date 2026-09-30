@@ -89,17 +89,3 @@ export function zoomCrumbLabel(crumb: ZoomCrumb, layout: BrainLayoutData): strin
   if (crumb.level === 1) return node?.label || "Task";
   return node ? GLYPHS[node.kind].name : "Run";
 }
-
-/** Whether an Escape keypress should walk the zoom back: not while the key
- *  goes to a text field, and not while a dialog is open, whose own Escape
- *  closes it first (GraphLegend.tsx). */
-export function escapeWalksBack(
-  target: { tagName?: string; isContentEditable?: boolean } | null,
-  dialogOpen: boolean,
-): boolean {
-  if (dialogOpen) return false;
-  if (!target) return true;
-  if (target.isContentEditable) return false;
-  const tag = (target.tagName ?? "").toUpperCase();
-  return tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT";
-}

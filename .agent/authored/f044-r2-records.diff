@@ -1,0 +1,78 @@
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 14381ef19..e8c21c473 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -26299,3 +26299,54 @@ argument typed as a line is a guess, not an argument flow.
+ HOW TO REVERSE: delete `apps/ui/src/api/fuzzyMatch.ts`, `paletteCommands.ts`,
+ `paletteRouting.ts`, `paletteRouting.goldens.json`, `paletteJump.ts`, their tests and
+ `tests/ui_contracts/test_palette_contract.py`, and delete this paragraph.
++
++## DECISION F044 D2 — the bar's dropdown sheet lists Recent, Jump, Projects and Help rows ranked by the fuzzy rule, in a portalled glass listbox the bar drives as a combobox; the palette's jump replaces the shell's `handleJump`, which is deleted; the Commands section joins with its execution in the next round; the tour's sixth stop moves to the bar (2026-09-30)
++
++CONTEXT: Measured by the reviewer at `d31a78c7`: `CommandBar.tsx` is a plain input whose Enter calls
++the shell's `handleJump`, a substring match that selects the first task whose label holds the
++text. The bar is a glass card whose sheet carries a `backdrop-filter`, and `tokens.css` names
++`--remedy-z-popover` (40) as the layer of the "command dropdown". The project context of DECISION
++F042 D3 (`useProjectContext`) holds the project list, the open project and a gated `switchTo`. The
++guards that read the bar require `onJump` and a placeholder holding "jump to", forbid a write verb
++in the bar's file, and keep the copy button of the next safe command; `test_digest_mount.py` holds
++the shell to one `window.localStorage` binding. The first-run tour's sixth stop points at the Terms
++button until the palette exists (DECISION F043 D1 (5)).
++
++CHOSEN: (1) THE SHEET'S RULES are `apps/ui/src/api/paletteSheet.ts`: `buildPaletteRows` lists, in
++the sections Recent, Jump, Projects and Help, the ranked jumps of D1 (4), the other projects when
++there are at least two, ranked by the fuzzy rule over their names, and two help rows, "Show every
++term" and "Take the tour"; for a blank query the remembered rows come first. A row names what it
++reaches by a `ref`, which is what a browser remembers, newest first and at most five, under
++`remedy:palette-recent`; a stored value that is not an array of strings, or a storage that throws,
++reads as none. `movePaletteCursor` moves the active row with wrap-around, and `highlightPieces` cuts
++a label at its matched ranges. (2) THE SHEET is `components/command/PaletteSheet.tsx`, a listbox of
++option rows grouped under their section headings, the matched letters marked, portalled into the
++page body at fixed coordinates under the bar and as wide as it, because the bar's `backdrop-filter`
++would confine a fixed descendant. A row's mousedown is cancelled so a click chooses it without
++blurring the bar. Its look is `ux_spec.md` §9's: a glass sheet of radius 14 on the popover layer,
++rows of 13px, the active row tinted. (3) THE BAR is the combobox: focus or typing opens the sheet,
++the arrow keys move the active row, Enter chooses it (the first row when none is active), Escape
++closes the sheet and keeps the focus, and choosing jumps, switches project, opens the Terms panel
++or starts the tour, then remembers the row and empties the bar. The bar binds its storage edge
++itself, as the tour's mount does. Its placeholder and its copy button stay as they are until the
++route to the chat lands, because "Ask your agent" would promise a route this round does not build.
++(4) REPLACING IS DELETING: the shell's `handleJump` is deleted, because the palette's jump searches
++the same task rows by a rule that ranks and highlights, and two jumps in one bar would disagree;
++`onJump` now receives the shell's own `onSelectNode`. (5) THE TOUR's sixth stop moves to the bar,
++titled "Jump to anything". (6) D1 (7) IS AMENDED: the Commands section joins in the next round with
++the commands' execution, because a listed command that does nothing when chosen would show a
++control that is not there. (7) THE ORDER: the next round lists the commands, sends them with their
++argument flows, disables a command the job's state refuses with the door's own reason, routes a
++question to the chat and gives the bar the reference's placeholder; then the form entries'
++structured flows; then the keymap and its cheat overlay; then the three budgets in CI; then the
++closure sequence.
++
++ALTERNATIVES: a sheet positioned inside the bar, rejected because the glass card confines it;
++keeping `handleJump` beside the palette, rejected by AGENTS.md's "replacing is deleting"; the recent
++rows kept by the shell, rejected because the shell's one storage binding is the digest's; the
++Commands section listed inert this round, rejected because a row must do what it shows.
++
++HOW TO REVERSE: delete `apps/ui/src/api/paletteSheet.ts`, its test, `PaletteSheet.tsx` and its
++sheet and `tests/ui_contracts/test_palette_sheet_wiring.py`, restore `CommandBar.tsx`, the shell's
++`handleJump` and the tour's sixth stop from `d31a78c7`, and delete this paragraph and its
++assumption-log line.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 731b73065..2970583e0 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -161,3 +161,5 @@ Gate: F043 R7 — the F043 round 7 entry, the closure's integration gate: the bo
+ Gate: F043 R8 — the F043 round 8 entry, the closure sequence's evidence round: the booking of round 7, the Built State's closure-suite paragraph, the staging reclaim, the evidence bundle and the review package. VERDICT PASS. Re-derived over `0e132923`..`37f9b67a` by the planner and reviewer of F043's second session: the range, the transport, the package's hash and manifest and the integrity check are the reviewer's own readings, and the bundle's test counts are the worker's, equal to the readings the round 8 block stated from the first session's dry run of the same tool, with the ancestry counts one higher for the round's first commit, as that block predicted. THE RANGE IS 3 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `86cefdc5` 381, `79137914` 11 and `37f9b67a` 178; the worker declared no deviation. THE TRANSPORT PROOF: the block and the three payloads, each read from `86cefdc5`, equal the reviewer's originals under `.remedy-wt/f043-r8/` and `.remedy-wt/f043-r8-payloads/` byte for byte, and the ledger, the plan and the feature file carry at `79137914` the sha256 values the block's G2 table states. THE RECLAIM: `data reclaim --orphans` read `Would free 0 B in 0 paths` with one refused path, `review_staging.n4o46eq_`, `class_not_job_keyed`, the block's stated preview, so `--apply` was rightly skipped. THE BUNDLE: evidence job `f043r8e1001` at the accepted head `79137914` against the fork point `21bfc188`, ancestry and plain counts equal at 58, 748 node ids with 2 deselected and none unsafe, pytest `748 passed` at exit 0, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE: `remedy-review-20260930-033441-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, whose SHA-256 the reviewer recomputed as `a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1`, `testzip()` None, and whose `.review_zip_manifest.json` names base `21bfc1881b81902b267171d0486d82d1ed89fe25`, head `79137914f113d510ecdef140dfecc8b0e49a76e3`, 58 commits and `READY_FOR_REVIEW`. All six `integrity check` checks read pass at `37f9b67a`. The open set at `37f9b67a` is empty.
+ 
+ Gate: F043 R9 — the F043 round 9 entry, the closure sequence's closing round: the booking of round 8, the ledger's rotation, the acceptance of F043 in STATUS with its README pins and the self-use queue, and the pull request. VERDICT PASS. Re-derived over `37f9b67a`..`d00a13f0` by the planner and reviewer of F044's first session from the commits themselves, after pull request 300 had merged. THE RANGE IS 4 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `b779fcc7` 374, `2f6228ad` 8, `7ee37545` 16 and `d00a13f0` 157; the worker declared no deviation. THE TRANSPORT PROOF: the block copy `.agent/authored/f043-r9-block.md` reads sha256 `7fbc565e445b9660d20398cb68abedcbeed43b388f421f980d6d6fec2118f38e`, the digest the delegation named, the five payload copies equal the reviewer's originals under `.remedy-wt/f043-r9-payloads/` byte for byte, and `README.md`, `docs/roadmap/STATUS.md` and `scripts/self_use_queue.json` at `d00a13f0` read the three sha256 values the block's G2 table ordered, beginning `aa2d7bb0`, `475a838e` and `05edcc9b`. THE ROTATION moved 6 gate records and one resolved finding pair into the archive, and the open set read `[]` before and after it. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `33f66862`, the merge commit whose tree equals that of `d00a13f0`, read `552 passed` at exit 0; all six `integrity check` checks read pass. Hosted CI run 36657033773 on `d00a13f0` ended `success` on both jobs. The open set at `d00a13f0` is empty.
++
++Gate: F044 R1 — the F044 round 1 entry, the claim with the palette's pure rules: F044 claimed, this record re-headed, F043's round 9 booked, DECISION F044 D1, and the fuzzy match, the command list, the routing rule and the node jump against the reviewer's tests. VERDICT PASS. Re-derived over `33f66862`..`d31a78c7` by the planner and reviewer of F044's first session from the commits themselves. THE RANGE IS 9 COMMITS, each single-parent and each under the 500-line cap by `git show --numstat`: `c10d1cef` 414, `72d85221` 350, `b9fb512e` 425, `1e15218b` 138, `ce5b50ed` 483, `b26cf7fd` 395, `7fa18582` 187, `d6e670b4` 280 and `d31a78c7` 132; the worker declared one deviation, a trial application of the two test diffs to its working tree before C3, reverted before any commit and absent from every commit. THE TRANSPORT PROOF: the block copy and the five payload copies, each read from the commit that added it, equal the reviewer's originals under `.remedy-wt/f044-r1/` and `.remedy-wt/f044-r1-payloads/` byte for byte, and the eleven files the block's G2 table names read its sha256 values at `1e15218b`, `b26cf7fd` and `7fa18582`. THE CODE: the four modules of D1 (1) to (4), read in full by the reviewer. THE TESTS: the round's selection, re-run by the reviewer in the primary checkout at `d31a78c7`, read `1725 passed, 5 skipped` at exit 0, its skips the four D3 quarantine nodes and the D12 quarantine; eslint over the four modules exit 0; ruff clean; all six `integrity check` checks read pass. THE RED PROOFS: the worker's tool, re-run by the reviewer in its own disposable worktree at `d31a78c7`, turned all fifteen mutations red with both controls passing and every restore byte-identical, and the reviewer read each mutation as a real behaviour change. The open set at `d31a78c7` is empty.
+diff --git a/docs/ui/design_reference/assumption_log.md b/docs/ui/design_reference/assumption_log.md
+index 667180a92..e2d40edfd 100644
+--- a/docs/ui/design_reference/assumption_log.md
++++ b/docs/ui/design_reference/assumption_log.md
+@@ -70,3 +70,4 @@ Column rules:
+ | 2026-09-29 | F041 | `ArtifactsPanel.tsx`, `ArtifactLightbox.tsx`, `AppPreviewCard.tsx` and `ArtifactsPanel.module.css` under `components/artifacts/`, `RightLivePanel.tsx`, `RemedyShell.tsx` | `component_spec.md` puts an "Open app" button in the task detail, visible only when the dashboard exposes a runtime link; nothing in the reference describes a lightbox or a place for a job's README and screenshots. | A `Results` button beside `Story` opens a glass panel docked on the right with the app card (its state in words, Start app or Stop app, and an Open app link only while the app answers), the README and a grid of screenshots; a screenshot opens a centred glass dialog over a dimmed backdrop, with Previous, Next and Close, the arrow keys and Escape. | A preview runs the whole job's project, not one task's, so its entry belongs with the job-wide Story and Tour buttons rather than in the task detail; the lightbox takes the tour overlay's centred glass card and backdrop, the one dialog pattern the cockpit already has. | DECISION F041 D5 |
+ | 2026-09-29 | F042 | `ProjectSwitcher.tsx`, `ProjectSwitcher.module.css`, `LeftBrandRail.tsx`, `RemedyApp.tsx` | `component_spec.md` gives the brand rail a JobHeader slot whose kicker is the project, and draws no switcher, no list of projects and no page for a project without a job. | With more than one project the kicker is a labelled native select of every project by slug, a project whose folder is gone marked "(folder missing)"; with one project the kicker names it; with none the rail keeps its earlier kicker. A project with no job opens a centred page with the same select above the line "This project has no jobs yet." | T5_F042.md orders a keyboard-friendly switcher in the header, and the kicker is the one place the reference already gives the project; a native select is reached and driven by the keyboard with nothing added. Below 1280 pixels wide the rail hides its copy block, and the switcher with it, until T003's home grid gives every width a way between projects. | DECISION F042 D3 |
+ | 2026-09-30 | F043 | `Term.tsx` and `Term.module.css` under `components/term/`, `LiveStatusPill.tsx`, `PhaseTimeline.tsx`, `styles/tokens.css` | `ux_spec.md` §10 shows the metrics bar's tooltips "on hover as glass tip" and §7 puts the dock's tooltips on its right side; `motion_spec.md` gives hovers `--remedy-dur-fast`; no file of the reference places a tooltip anywhere else or gives it a delay. | A term's tooltip is the same glass tip, opened on hover after 120 ms and at once on keyboard focus, placed below the term and moved to stay inside the viewport, above the term when there is no room below, with the term's title in bold over its explanation; the term itself wears a dotted underline and a focus ring in `--remedy-focus`. | The tooltip is portalled into the page body because a glass card's `backdrop-filter` confines a fixed descendant and a card's overflow clips an absolute one; a dotted underline is the usual sign that a word explains itself, and the delay is the reference's own hover duration. | DECISION F043 D1 |
++| 2026-09-30 | F044 | `CommandBar.tsx`, `PaletteSheet.tsx` and `PaletteSheet.module.css` under `components/command/`, `RemedyShell.tsx` | `ux_spec.md` §9: typing shows live jump matches (existing `handleJump` logic) in a dropdown glass sheet (radius 14, items 13px, arrow keys and Enter navigable); `component_spec.md` "CommandBar" keeps `handleJump` and names the combobox pattern; the reference draws no section headings, no recent rows, no project rows and no help rows. | The sheet ranks with the palette's fuzzy rule in place of `handleJump`'s substring match, which is deleted; it groups its rows under Recent, Jump, Projects and Help headings, marks the matched letters in bold `--remedy-blue-strong` on no background, tints the active row in `--remedy-blue-50`, and fades in over `--remedy-dur-base`. | `handleJump` selected the first label holding the text and could neither rank nor highlight, so keeping it beside the palette would give one bar two jumps that disagree; the sections and the recent rows are `T5_F044.md`'s own; the sheet is portalled into the page body because the bar's `backdrop-filter` confines a fixed descendant. | DECISION F044 D2 |

@@ -9,8 +9,7 @@ export interface FirstRunStep {
   readonly target: string;
 }
 
-// The sixth step stands in for the command palette until one exists (DECISION F043 D1 (5));
-// it points at the Terms button instead, which is also where the tour can be started again.
+// The sixth step is the palette's bar, moved there from the Terms button by DECISION F044 D2.
 export const FIRST_RUN_STEPS: readonly FirstRunStep[] = [
   {
     title: "The graph",
@@ -38,9 +37,9 @@ export const FIRST_RUN_STEPS: readonly FirstRunStep[] = [
     target: "chat-input-row",
   },
   {
-    title: "Every word explained",
-    body: "Hover an underlined word to see what it means, or press ? for the list of every term. You can start this tour again from there.",
-    target: "terms-button",
+    title: "Ask or jump to anything",
+    body: "Ask your agent a question here, or jump to any task, run a command, switch project, or open the list of every term. Hover an underlined word to see what it means, and start this tour again from here.",
+    target: "command-bar",
   },
 ];
 

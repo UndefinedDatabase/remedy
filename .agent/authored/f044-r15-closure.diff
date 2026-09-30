@@ -1,0 +1,67 @@
+diff --git a/README.md b/README.md
+index e94d1589b..f6a5426e5 100644
+--- a/README.md
++++ b/README.md
+@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-120 of 292 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
++121 of 292 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 2 | Minimal Self-Build Runtime | 39 | 40 |
+ | 3 | Full Token Economy & Autonomy | 6 | 27 |
+ | 4 | Memory & Learning | 1 | 17 |
+-| 5 | Operator Cockpit | 36 | 37 |
++| 5 | Operator Cockpit | 37 | 37 |
+ | 6 | Design-to-Code | 0 | 16 |
+ | 7 | Quality & Trust | 0 | 15 |
+ | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
+@@ -653,6 +653,18 @@ opens the whole catalog as a list you can search; and a six-step tour introduces
+ areas the first time you open it, can be skipped at any step, does not open by itself again once
+ ended, and can be started again from the Terms panel).
+ 
++F044 command palette, keyboard and performance budgets (the search bar at the top of the cockpit is
++now also a command palette: typing opens a dropdown that fuzzy-matches every command the write door
++exposes, jumps to any task by name, opens a project, or opens the help catalog, while a plain
++question routes straight to the chat panel instead of the command list; one shared keymap now drives
++the whole cockpit from the keyboard — slash or Ctrl/Cmd+K opens the bar, a held question mark opens a
++list of every shortcut, "g" then "p" jumps to the projects view, and the same keys drive zooming the
++task graph — replacing several separate, inconsistent keyboard listeners with one; and three
++automatic checks now run in the project's continuous-integration pipeline and fail the build if the
++cockpit's built page grows more than 10% past its measured baseline size, takes longer than 1.5
++seconds to first paint on a fresh load, or drops below a smooth 60-frames-per-second pace while
++navigating a 200-task graph).
++
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+ ## Install
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index e325db63c..63fe54bb8 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -188,7 +188,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
+ ## Tier 5 — Operator Cockpit (parallel human track, continued)
+ 
+ - [x] F043 — Explanation layer (T001–T003 complete, R-1115 resolved; accepted 2026-09-30 · live review PASS — ACCEPTED · Evidence job f043r8e1001 · package remedy-review-20260930-033441-READY_FOR_REVIEW.zip · SHA-256 a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 79137914f113d510ecdef140dfecc8b0e49a76e3)
+-- [~] F044 — Command palette, keyboard, performance budget
++- [x] F044 — Command palette, keyboard, performance budget (T001–T003 complete, R-1117 open — owned by F290; accepted 2026-09-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f044r14e1001 · package remedy-review-20260930-121429-READY_FOR_REVIEW.zip · SHA-256 a2d38929930d27bfd40e15874a545d482fd2b1abc850b95c21a185d5d59f0b41 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD eb6adff7019dbe578f77ed8f1fafe53fef558b14)
+ - [ ] F292 — Plan view and hunk decisions in the cockpit
+ 
+ ## Tier 12 — Observability & Operations
+diff --git a/scripts/self_use_queue.json b/scripts/self_use_queue.json
+index a765aa877..e77ae77ad 100644
+--- a/scripts/self_use_queue.json
++++ b/scripts/self_use_queue.json
+@@ -311,7 +311,7 @@
+       "title": "Narrow the excused handler at apps/cli/commands/dev.py:90",
+       "why": "except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks",
+       "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/dev.py:90\n\n## Task 1\nLine 90 of `apps/cli/commands/dev.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The handler at line 90 of `apps/cli/commands/dev.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/dev.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
+-      "consumed_by": "",
++      "consumed_by": "F044",
+       "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/dev.py:1:except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks)"
+     }
+   ]

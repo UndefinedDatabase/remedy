@@ -110,7 +110,7 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: F286's closure under operator amendment amend0911-feedback rule B and
 #: placed after F200, the fifth unaccepted line below F286, under its own
 #: Tier 2 heading with the Tier 12 list re-opened after it; see T2_F290.md.
-TOTAL_FEATURES = 291
+TOTAL_FEATURES = 292
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

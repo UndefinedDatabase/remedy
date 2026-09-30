@@ -1,6 +1,7 @@
-// The '?' panel's pure rules (T5_F043 T003, DECISION F043 D3): what the search keeps, where a
-// key's family is shown, and which key press opens the panel. Nothing here touches the DOM; the
-// panel component reads these and renders.
+// The '?' panel's pure rules (T5_F043 T003, DECISION F043 D3): what the search keeps and where a
+// key's family is shown. Nothing here touches the DOM; the panel component reads these and
+// renders. The key press that opens the panel is the keymap's, not this file's — see
+// `keymap.ts` and DECISION F044 D5.
 import type { TermEntry } from "./terminology";
 
 /** One catalog entry, carried with its key so a search result can be listed and placed. */
@@ -47,21 +48,4 @@ export const TERM_PLACES: Readonly<Record<string, string>> = {
 export function termPlace(key: string): string {
   const family = key.split(".")[0];
   return Object.prototype.hasOwnProperty.call(TERM_PLACES, family) ? TERM_PLACES[family] : "";
-}
-
-/** The minimal shape of the element a key press came from, read off `event.target`. */
-export interface KeyTarget {
-  readonly tagName?: string;
-  readonly isContentEditable?: boolean;
-}
-
-/** True only for "?" with no target, or a target that is not content-editable and whose
- *  upper-cased tag is none of INPUT, TEXTAREA and SELECT — so a typed question mark stays text
- *  wherever one could be typed. */
-export function isHelpShortcut(key: string, target: KeyTarget | null): boolean {
-  if (key !== "?") return false;
-  if (target === null) return true;
-  if (target.isContentEditable) return false;
-  const tag = (target.tagName ?? "").toUpperCase();
-  return tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT";
 }

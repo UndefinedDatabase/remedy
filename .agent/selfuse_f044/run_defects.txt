@@ -1,0 +1,3 @@
+From describe_self_use_run_defects():
+
+1. job 97e3d35407fe4479 (completed): a task passed review but no path outside .agent/ changed: (none)

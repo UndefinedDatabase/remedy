@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import { buildDiffFileSummaries } from "../../api/diffViewModel";
@@ -18,8 +18,14 @@ import { DiffView } from "../diff/DiffView";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
+import { ChatSheet } from "../command/ChatSheet";
+import { jumpTargetsOf } from "../../api/paletteJump";
+import { paletteCommandFactsOf, paletteCommandReasons } from "../../api/paletteCommandState";
+import { AddTaskSheet } from "../panels/AddTaskSheet";
+import { useProjectContext } from "./ProjectProvider";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
 import { shellSelectionIdOf } from "../graph/brainView";
+import type { EvidenceTab } from "../graph/semanticZoom";
 import { brainLedgerPrefix } from "../graph/brainLedger";
 import { useBrainLedger } from "../graph/useBrainLedger";
 import { RightLivePanel } from "../panels/RightLivePanel";
@@ -34,7 +40,9 @@ import { StoryPanel } from "../story/StoryPanel";
 import { ArtifactsPanel } from "../artifacts/ArtifactsPanel";
 import { TermPanel } from "../term/TermPanel";
 import { FirstRunTourMount } from "../tour/FirstRunTour";
-import { isHelpShortcut } from "../../api/termSearch";
+import { keymapAction } from "../../api/keymap";
+import { KeymapOverlay } from "../command/KeymapOverlay";
+import { useHeldHelpKey } from "./useHeldHelpKey";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -220,23 +228,44 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // state this shell needs to own beyond whether it is open.
   const [resultsOpen, setResultsOpen] = useState(false);
 
-  // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed; a window-level key listener
-  // opens it on "?" unless the key press came from a field, where a question mark is text.
+  // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed.
   const [termsOpen, setTermsOpen] = useState(false);
   // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
   // tour" raises, the only fact the tour's own mount needs from this shell.
   const [tourRelaunch, setTourRelaunch] = useState(0);
+  // THE PROJECT CONTEXT, read here rather than beside the palette's own inputs further down:
+  // the one window key listener directly below needs `goHome` for its "go-projects" action.
+  const projectContext = useProjectContext();
+  const { goHome } = projectContext;
+  // T5_F044 T002, DECISION F044 D5: THE ONE WINDOW KEY LISTENER. Every key press this shell
+  // reacts to is read through the keymap, never through a rule of this file's own.
+  // `barFocusRequest` is raised once per press the keymap answers "open-bar" for; `pendingG`
+  // holds the "g" wait a "g then p" chord needs across presses.
+  const [barFocusRequest, setBarFocusRequest] = useState(0);
+  const pendingG = useRef(false);
+  // DECISION F044 D6: the held "?" shows the keymap's own overlay; a quick press still opens the
+  // terms panel, exactly as before.
+  const { shortcutsOpen, press: pressHelp } = useHeldHelpKey(() => setTermsOpen(true));
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (isHelpShortcut(event.key, target)) {
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null;
+      const result = keymapAction(event, target, pendingG.current, dialogOpen);
+      pendingG.current = result.pendingG;
+      if (result.action === "open-terms") {
         event.preventDefault();
-        setTermsOpen(true);
+        pressHelp(event.repeat);
+      } else if (result.action === "open-bar") {
+        event.preventDefault();
+        setBarFocusRequest((count) => count + 1);
+      } else if (result.action === "go-projects") {
+        event.preventDefault();
+        goHome();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
-  }, []);
+  }, [goHome, pressHelp]);
 
   // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
   // path it named; once that diff's envelope has arrived, this effect finds the path's row key
@@ -268,12 +297,63 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     }
   }
 
-  // Jump-to: case-insensitive match over real task labels; focus the first match's node.
-  const handleJump = (query: string) => {
-    const q = query.toLowerCase();
-    const match = dashboard.tasks.find(t => t.label.toLowerCase().includes(q));
-    if (match) onSelectNode(match.nodeId);
-  };
+  // THE PALETTE'S OWN INPUTS (T5_F044 T001, DECISIONS F044 D2 and D3): its jump targets, one per
+  // task of the dashboard, ranked by the palette's fuzzy rule; and the project context's own list
+  // restated as the palette's `{ slug, name }` shape — none while the context has not loaded a
+  // view yet.
+  const jumpTargets = useMemo(() => jumpTargetsOf(dashboard), [dashboard]);
+  const paletteProjects = useMemo(
+    () => (projectContext.view ? projectContext.view.projects.map((p) => ({ slug: p.slug, name: p.name })) : []),
+    [projectContext.view],
+  );
+
+  // DECISION F044 D3: every command's own refusal reason, by command id, read once per dashboard
+  // and token — `paletteCommandFactsOf` reads the job's stage, pause action and open decisions.
+  const commandReasons = useMemo(
+    () => paletteCommandReasons(paletteCommandFactsOf(dashboard, serverToken)),
+    [dashboard, serverToken],
+  );
+  // THE ADD-TASK SHEET'S OWN OPEN STATE (DECISION F044 D3 (5)): the palette's "Add a task to the
+  // plan" command opens it here, beside the tasks card's own state, which this shell does not
+  // otherwise reach into.
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+
+  // THE CHAT SHEET'S OWN ASK (DECISION F044 D4 (2)): `null` while closed; otherwise the text the
+  // bar's Ask row handed it and a key one higher than the last, so a repeated question still
+  // mounts a fresh sheet that asks it.
+  const [chatAsk, setChatAsk] = useState<{ key: number; text: string } | null>(null);
+
+  // DECISION F044 D4 (4): the chat sheet's own evidence-item handler. A diff item opens the
+  // diff panel at the chat's own scope, exactly as the detail popover's does; a prompt item
+  // opens the focused task's detail, and opens nothing at the whole project's scope, where no
+  // task is named for it to open.
+  function handleChatEvidenceTab(tab: EvidenceTab) {
+    if (tab === "diff") {
+      setOpenDiffTaskId(focusedTaskId);
+    } else if (tab === "prompt" && focusedTaskId !== "") {
+      onSelectNode(shellSelectionIdOf(dashboard.tasks, focusedTaskId));
+    }
+  }
+
+  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet" and
+  // "task-edit-form" are surfaces this shell already owns a way to open; every other surface is a
+  // card already on the page, found by its own `data-ui` marker, scrolled into view and focused.
+  function handleOpenSurface(surface: string, taskNodeId: string) {
+    if (surface === "add-task-sheet") {
+      setAddTaskOpen(true);
+      return;
+    }
+    if (surface === "task-edit-form") {
+      onSelectNode(taskNodeId);
+      return;
+    }
+    const element = document.querySelector(`[data-ui="${surface}"]`);
+    if (element instanceof HTMLElement) {
+      element.scrollIntoView({ block: "center" });
+      element.querySelector<HTMLElement>("button, input, textarea, select")?.focus();
+    }
+  }
+
   return (
     <div className={styles.viewport}>
       <DegradedBanner apiHealth={dashboard.apiHealth} />
@@ -299,7 +379,23 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
               dashboard.live.running,
             )}
           />
-          <CommandBar nextAction={dashboard.nextAction} onJump={handleJump} />
+          <CommandBar
+            nextAction={dashboard.nextAction}
+            targets={jumpTargets}
+            projects={paletteProjects}
+            activeSlug={projectContext.active?.slug ?? ""}
+            jobId={dashboard.jobId}
+            serverToken={serverToken}
+            commandReasons={commandReasons}
+            focusedTaskId={focusedTaskId}
+            onJump={onSelectNode}
+            onSwitchProject={projectContext.switchTo}
+            onOpenTerms={() => setTermsOpen(true)}
+            onStartTour={() => setTourRelaunch((count) => count + 1)}
+            onOpenSurface={handleOpenSurface}
+            onAskChat={(text) => setChatAsk((previous) => ({ key: (previous?.key ?? 0) + 1, text }))}
+            focusRequest={barFocusRequest}
+          />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
@@ -333,6 +429,22 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           )}
         </section>
       )}
+      {/* THE ADD-TASK SHEET (DECISION F044 D3 (5)), mounted here as well as by the tasks card's
+          own state, so the palette's "Add a task to the plan" command can open it too. */}
+      {addTaskOpen && (
+        <AddTaskSheet target={{ jobId: dashboard.jobId, serverToken }} tasks={dashboard.tasks}
+          onClose={() => setAddTaskOpen(false)} />
+      )}
+      {/* THE CHAT SHEET (DECISION F044 D4 (2)), mounted directly after the add-task sheet for
+          the same reason it is a sibling outside <main>. */}
+      {chatAsk !== null && (
+        <ChatSheet key={chatAsk.key} jobId={dashboard.jobId} serverToken={serverToken}
+          taskId={focusedTaskId} question={chatAsk.text} onClose={() => setChatAsk(null)}
+          onOpenTab={handleChatEvidenceTab} />
+      )}
+      {/* THE KEYMAP OVERLAY (DECISION F044 D6), a sibling directly after the chat sheet for the
+          reason every overlay above is a sibling outside <main>. */}
+      {shortcutsOpen && <KeymapOverlay />}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (
         <LessonsOverlay

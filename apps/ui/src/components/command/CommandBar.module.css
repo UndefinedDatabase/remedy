@@ -31,6 +31,18 @@
 }
 .commandBar input::placeholder { color: var(--remedy-muted); }
 
+/* DECISION F044 D3: the chip naming a command whose argument flow is open. */
+.chip {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .actionBtn {
   width: 38px;
   height: 38px;
