@@ -5,17 +5,19 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 4, round 5. Round 4 is booked PASS. Round 5 caches `_unsafe_text` in
-`scripts/build_review_manifest.py` per string (DECISION F293 D3): the reviewer's dry run read
-`tests/orchestration/test_review_gate_totality.py` at 29.64 CPU seconds before the change and 5.26
-after, in the test load record. The open-findings count is 2 (`R-1117`, `R-1118`).
+Session 4, round 6. Round 5 is booked PASS. Round 6 writes the fixture records of
+`tests/cli/test_mission_cmd.py` in-process instead of in child Python processes; every CLI call in
+that file stays a child process. The reviewer's dry run read the file at 50.31 CPU seconds before
+and 41.67 after (serial runs, `-n 0`, test load record). The open-findings count is 2 (`R-1117`,
+`R-1118`).
 
 ## Next Steps
-1. T002 — more cuts, ranked by the CPU work they remove rather than by wall time: source scanners
-   that parse the same files in many tests, command-line tests that start a child process where
-   the child is not the point, UI builds and Chrome starts shared per module; every changed test
-   keeps a mutation red-proof. Target: the test load record's `cpu_seconds` at least 40% below
-   1246.09 (T001's own reading), or a dated DECISION with numbers showing no more can be cut.
+1. T002 — more cuts, ranked by the CPU work they remove rather than by wall time: the same file's
+   `mission start` setup calls where the start is not what a test checks, source scanners that
+   parse the same files in many tests, the two whole-repository collection runs of the CI stage
+   tests, UI builds and Chrome starts shared per module; every changed test keeps a mutation
+   red-proof. Target: the test load record's `cpu_seconds` at least 40% below 1246.09 (T001's own
+   reading), or a dated DECISION with numbers showing no more can be cut.
 2. T003 — each closure's suite transcript records CPU seconds; a closure costing >10% more than the
    previous feature's registers a finding owned by the rolling paydown; a run leaving a process
    behind fails.
