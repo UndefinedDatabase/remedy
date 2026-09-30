@@ -9,9 +9,14 @@ different config is a reading of a different repository (finding R-0463).
 """
 from __future__ import annotations
 
+import functools
+import http.server
+import json
 import math
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -20,13 +25,16 @@ from packages.orchestration import ci_budgets
 from packages.orchestration.ci_budgets import (
     BUNDLE_BASELINE_CHUNKS,
     BUNDLE_SIZE_CAP_FACTOR,
+    FIRST_PAINT_BUDGET_MS,
     BudgetCheck,
     bundle_report,
     check_bundle_size,
+    check_first_paint,
     check_lint_clean,
     normalize_chunk_name,
     parse_ruff_error_count,
 )
+from tests.ui_server.test_story_export_file_live import CHROME_BIN, CHROME_STARTUP_TIMEOUT, ChromePipe
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -166,4 +174,90 @@ def test_this_repositorys_ui_bundle_is_within_its_size_cap(tmp_path):
     files = {str(p.relative_to(outdir)): p.stat().st_size for p in outdir.rglob("*") if p.is_file()}
     report = bundle_report(files)
     check = check_bundle_size(report)
+    assert check.ok, check.detail
+
+
+def test_first_paint_within_budget_is_ok():
+    check = check_first_paint(92)
+    assert check.ok is True
+    assert check.observed == 92
+    assert check.name == "first_paint"
+    assert "92ms" in check.detail
+
+
+def test_first_paint_over_budget_names_the_overage():
+    check = check_first_paint(FIRST_PAINT_BUDGET_MS + 250)
+    assert check.ok is False
+    assert "over by 250ms" in check.detail
+
+
+def test_first_paint_at_exactly_the_budget_is_ok():
+    check = check_first_paint(FIRST_PAINT_BUDGET_MS)
+    assert check.ok is True
+
+
+def test_first_paint_budget_is_fifteen_hundred_ms():
+    assert FIRST_PAINT_BUDGET_MS == 1500
+
+
+def _poll_first_contentful_paint_ms(pipe: ChromePipe, *, timeout: float = 15.0) -> float:
+    """Polls Chrome's own performance timeline rather than sleeping a fixed guess (the render
+    harness's own `drive.mjs` does the latter; a paint budget must read the real event)."""
+    deadline = time.monotonic() + timeout
+    expr = "JSON.stringify(performance.getEntriesByType('paint'))"
+    last = None
+    while time.monotonic() < deadline:
+        result = pipe.send("Runtime.evaluate", {"expression": expr, "returnByValue": True})
+        raw = result.get("result", {}).get("value")
+        last = raw
+        if raw:
+            entries = json.loads(raw)
+            for entry in entries:
+                if entry.get("name") == "first-contentful-paint":
+                    return entry["startTime"]
+        time.sleep(0.1)
+    raise AssertionError(f"timed out waiting for a first-contentful-paint entry; last reading was {last!r}")
+
+
+@pytest.mark.subprocess
+def test_this_repositorys_shell_paints_within_its_budget(tmp_path):
+    """The live check: a fresh `vite build` of `apps/ui`, served over real HTTP (never
+    `file://`, per DECISION F044 D9 — a cold load is a served load), first paint read from
+    Chrome's own performance timeline via the same `--remote-debugging-pipe` transport
+    `tests/ui_server/test_story_export_file_live.py`'s `ChromePipe` already proves."""
+    if CHROME_BIN is None:
+        pytest.skip("neither google-chrome nor chromium is on the path")
+    outdir = tmp_path / "dist"
+    done = subprocess.run(
+        ["node_modules/.bin/vite", "build", "--outDir", str(outdir), "--emptyOutDir"],
+        cwd=str(REPO_ROOT / "apps" / "ui"),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(outdir))
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = server.server_address[1]
+    try:
+        pipe = ChromePipe(CHROME_BIN, tmp_path / "profile", log_path=tmp_path / "chrome.log")
+        try:
+            target = pipe.send("Target.createTarget", {"url": "about:blank"}, timeout=CHROME_STARTUP_TIMEOUT)
+            attach = pipe.send("Target.attachToTarget", {"targetId": target["targetId"], "flatten": True})
+            pipe.session_id = attach["sessionId"]
+            pipe.send("Page.enable")
+            pipe.send("Runtime.enable")
+            pipe.send("Page.navigate", {"url": f"http://127.0.0.1:{port}/index.html"})
+            paint_ms = _poll_first_contentful_paint_ms(pipe)
+        finally:
+            pipe.close()
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+    check = check_first_paint(round(paint_ms))
     assert check.ok, check.detail
