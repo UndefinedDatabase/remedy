@@ -192,7 +192,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Test load (operator amendment amend0930-test-load)
 
-- [ ] F293 — Test load diet
+- [~] F293 — Test load diet
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
