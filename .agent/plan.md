@@ -14,23 +14,20 @@ DECISIONS F044 D1 to D12).
 
 ## Current Step
 
-ROUND 12, the closure sequence's second round: book round 11, register
-`R-1117` (the self-use item's own reviewer approving a task that
-changed nothing — the safety net that caught it, `describe_self_use_
-run_defects`, working as designed), owned by F290, and add the
-self-use item's own paragraph to the feature file's Built State.
-Nothing from the self-use item's job branch is applied — its diff was
-empty.
+ROUND 13, the closure sequence's third round: the integration gate.
+Book round 12, then the feature's ONE full suite run
+(`python3 -m pytest -n auto -q`, worker, primary checkout,
+amend0917-throughput rule 1), committed verbatim as
+`.agent/authored/f044-closure-suite.txt`.
 
 ## Next Steps
 
-1. The integration gate: the feature's one full suite run
-   (`python3 -m pytest -n auto -q`, worker, primary checkout),
-   committed as `.agent/authored/f044-closure-suite.txt`.
-2. The evidence bundle and the review zip package.
-3. Runtime actuals, the STATUS line, the ledger rotation, the README
-   sync, the closure commit (which sets `scripts/self_use_queue.json`'s
-   `SU-039.consumed_by` to `F044`) and the pull request.
+1. If the suite is green: the evidence bundle and the review zip
+   package.
+2. If the suite carries any bad node: a repair round (amend0917-
+   throughput rule 2 — the shrinking rule, at most three repair
+   rounds), unless the same node is already red on `main`'s own hosted
+   CI record for the merge base.
 
 ## Risks
 
