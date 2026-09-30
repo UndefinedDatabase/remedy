@@ -15,6 +15,7 @@ root, so the assertions are made on what an operator actually sees.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -25,6 +26,30 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+@contextlib.contextmanager
+def _in_data_root(data_root: Path):
+    """Point THIS process at ``data_root`` while a helper writes a fixture record.
+
+    The records the helpers below write are setup, not the surface under test, so they are
+    written in-process instead of in a child Python process (F293 T002); every CLI call in this
+    file still runs in a child process. The previous value and the config cache are restored.
+    """
+    from packages.orchestration.config import reset_config
+
+    had = "REMEDY_DATA_DIR" in os.environ
+    previous = os.environ.get("REMEDY_DATA_DIR", "")
+    os.environ["REMEDY_DATA_DIR"] = str(data_root)
+    reset_config()
+    try:
+        yield
+    finally:
+        if had:
+            os.environ["REMEDY_DATA_DIR"] = previous
+        else:
+            os.environ.pop("REMEDY_DATA_DIR", None)
+        reset_config()
 
 
 def _run(args: list[str], data_root: Path, *, expect_ok: bool = True):
@@ -41,16 +66,12 @@ def _run(args: list[str], data_root: Path, *, expect_ok: bool = True):
 
 
 def _make_project(data_root: Path, name: str, slug: str) -> str:
-    proc = subprocess.run(
-        [sys.executable, "-c",
-         "import sys; sys.path.insert(0, '.');"
-         "from packages.orchestration.project_registry import RemyProject, save_project;"
-         f"p = RemyProject(name={name!r}, slug={slug!r}); save_project(p); print(p.id)"],
-        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60,
-        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
-    )
-    assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip().splitlines()[-1]
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    with _in_data_root(data_root):
+        p = RemyProject(name=name, slug=slug)
+        save_project(p)
+    return str(p.id)
 
 
 @pytest.fixture
@@ -71,23 +92,15 @@ def _start(data_root: Path, project_id: str, goal: str) -> str:
 def _link_job(data_root: Path, project_id: str, mission_id: str, *,
               role: str, state: str = "completed") -> str:
     """Persist a job in the given state and link it into the mission's chain."""
-    script = (
-        "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import RunState;"
-        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
-        "from packages.orchestration.mission_state import link_job_to_mission;"
-        f"job = JobPlan(job_title='fixture', state=RunState({state!r}));"
-        "save_job_plan(job);"
-        f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, {role!r});"
-        "print(job.job_id)"
-    )
-    proc = subprocess.run(
-        [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
-        text=True, timeout=60,
-        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
-    )
-    assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip().splitlines()[-1]
+    from packages.core.models import RunState
+    from packages.orchestration.mission_state import link_job_to_mission
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+    with _in_data_root(data_root):
+        job = JobPlan(job_title="fixture", state=RunState(state))
+        save_job_plan(job)
+        link_job_to_mission(project_id, mission_id, job.job_id, role)
+    return str(job.job_id)
 
 
 class TestCatalog:
@@ -355,26 +368,19 @@ def _missions_on_disk(data_root: Path) -> list[Path]:
 def _pending_plan_job(repo: Path, data_root: Path, goal: str,
                       *, mission_candidate: bool) -> str:
     """Persist a job with a pending task plan and the given intake hint."""
-    script = (
-        "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import RunState;"
-        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
-        "from packages.orchestration.project_registry import resolve_project;"
-        f"project = resolve_project({str(repo)!r});"
-        f"job = JobPlan(job_title='fixture', mission={goal!r}, project_id=str(project.id),"
-        f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
-        f"           'mission_candidate': {mission_candidate!r}}},"
-        "   task_plan={'schema_v': 'task_plan_v1', '_approval': 'pending'},"
-        "   state=RunState.PLANNED);"
-        "save_job_plan(job); print(job.job_id)"
-    )
-    proc = subprocess.run(
-        [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
-        text=True, timeout=60,
-        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
-    )
-    assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip().splitlines()[-1]
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    from packages.orchestration.project_registry import resolve_project
+
+    with _in_data_root(data_root):
+        project = resolve_project(str(repo))
+        job = JobPlan(job_title="fixture", mission=goal, project_id=str(project.id),
+                      intake={"schema_v": "ji1", "goal": goal,
+                              "mission_candidate": mission_candidate},
+                      task_plan={"schema_v": "task_plan_v1", "_approval": "pending"},
+                      state=RunState.PLANNED)
+        save_job_plan(job)
+    return str(job.job_id)
 
 
 @pytest.fixture
@@ -555,24 +561,16 @@ class TestContinue:
 
     def _green_job(self, data_root: Path, project_id: str, mission_id: str,
                    *, command: str = "check the importer") -> str:
-        script = (
-            "import sys; sys.path.insert(0, '.');"
-            "from packages.core.models import RunState;"
-            "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
-            "from packages.orchestration.mission_state import link_job_to_mission;"
-            f"job = JobPlan(job_title='job one', state=RunState('completed'),"
-            f"  project_id={project_id!r}, metadata={{'verify_command': {command!r}}});"
-            "save_job_plan(job);"
-            f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, 'initial');"
-            "print(job.job_id)"
-        )
-        proc = subprocess.run(
-            [sys.executable, "-c", script], cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=60,
-            env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
-        )
-        assert proc.returncode == 0, proc.stderr
-        return proc.stdout.strip().splitlines()[-1]
+        from packages.core.models import RunState
+        from packages.orchestration.mission_state import link_job_to_mission
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+        with _in_data_root(data_root):
+            job = JobPlan(job_title="job one", state=RunState("completed"),
+                          project_id=project_id, metadata={"verify_command": command})
+            save_job_plan(job)
+            link_job_to_mission(project_id, mission_id, job.job_id, "initial")
+        return str(job.job_id)
 
     def test_continue_is_in_the_catalog_with_a_handler(self):
         from apps.cli.command_catalog import get_command
@@ -1264,31 +1262,25 @@ def _append_trip_entry(data_root: Path, project_id: str, mission_id: str, *,
     (DECISION F077 D5) and not a shape this test invented.
     """
     payload = {"threshold": 3, "repeats": 3} if numbers is None else numbers
-    script = (
-        "import sys; sys.path.insert(0, '.');"
-        "from packages.orchestration.orchestrator_loop import ("
-        "LedgerEntry, MoveOutcome, USAGE_UNMEASURED, append_ledger_entry,"
-        " next_iteration_index);"
-        "from packages.orchestration.watchdog import ("
-        "MOVE_WATCHDOG_TRIPPED, OUTCOME_WATCHDOG_TRIPPED, Trip);"
-        f"trip = Trip(kind={kind!r}, what={what!r},"
-        f" since_iteration={since_iteration!r}, numbers={payload!r});"
-        "entry = LedgerEntry("
-        f"iteration=next_iteration_index({project_id!r}, {mission_id!r}),"
-        " context_digest='',"
-        " move={'kind': MOVE_WATCHDOG_TRIPPED, 'payload': trip.to_json()},"
-        " outcome=MoveOutcome(status=OUTCOME_WATCHDOG_TRIPPED,"
-        " detail=trip.what, terminal=False).to_json(),"
-        " cost={'calls': 0, 'usage': None, 'usage_source': USAGE_UNMEASURED});"
-        f"append_ledger_entry({project_id!r}, {mission_id!r}, entry);"
-        "print('appended')"
+    from packages.orchestration.orchestrator_loop import (
+        USAGE_UNMEASURED,
+        LedgerEntry,
+        MoveOutcome,
+        append_ledger_entry,
+        next_iteration_index,
     )
-    proc = subprocess.run(
-        [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
-        text=True, timeout=60,
-        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
-    )
-    assert proc.returncode == 0, proc.stderr
+    from packages.orchestration.watchdog import MOVE_WATCHDOG_TRIPPED, OUTCOME_WATCHDOG_TRIPPED, Trip
+
+    with _in_data_root(data_root):
+        trip = Trip(kind=kind, what=what, since_iteration=since_iteration, numbers=payload)
+        entry = LedgerEntry(
+            iteration=next_iteration_index(project_id, mission_id),
+            context_digest="",
+            move={"kind": MOVE_WATCHDOG_TRIPPED, "payload": trip.to_json()},
+            outcome=MoveOutcome(status=OUTCOME_WATCHDOG_TRIPPED,
+                                detail=trip.what, terminal=False).to_json(),
+            cost={"calls": 0, "usage": None, "usage_source": USAGE_UNMEASURED})
+        append_ledger_entry(project_id, mission_id, entry)
 
 
 class TestShowLeadsWithTheTrip:
