@@ -1,153 +1,227 @@
-# Handoff — F044 Command palette, keyboard, performance budget, round 1
+# Handoff — F044 Command palette, keyboard, performance budget, round 2
 
 ## Session
 
-SESSION 1 of feature F044 · round 1 · rounds so far 1. Roughly a third of
-the session's context budget remained when this handback was written; no
-scope report is owed (nowhere near the 25-round / 7-session soft limit).
+SESSION 1 of feature F044 · round 2 · rounds so far 2. Roughly half the session's context budget
+remained when this handback was written; no scope report is owed (nowhere near the 25-round /
+7-session soft limit).
 
 ## Range
 
-Review of `33f66862d..d6e670b4c` (C1a through C6; this handback, C7,
-follows and adds itself on top).
+Review of `d31a78c71..4a71d8914` (C1a through C6; this handback, C7, follows and adds itself on
+top).
 
 ## Commits
 
-### c10d1cef5 F044 R1 C1a: copy round 1 block and state payloads into .agent/authored/
+### f9770718d F044 R2 C1a: copy round 2 block and plan payload into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f044-r1-block.md | 342/0 | verbatim copy of the reviewer's block |
-| .agent/authored/f044-r1-context.md | 37/0 | verbatim copy of the context.md payload |
-| .agent/authored/f044-r1-plan.md | 35/0 | verbatim copy of the plan.md payload |
+| .agent/authored/f044-r2-block.md | 379/0 | verbatim copy of the reviewer's round 2 block (R-0954 bytes check) |
+| .agent/authored/f044-r2-plan.md | 34/0 | verbatim copy of the plan.md payload |
 
-### 72d852212 F044 R1 C1b: copy round 1 claim diff and contract test diff into .agent/authored/
+### d121f0fba F044 R2 C1b: copy round 2 records and tests diffs into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f044-r1-claim.diff | 157/0 | verbatim copy of claim.diff |
-| .agent/authored/f044-r1-tests_py.diff | 193/0 | verbatim copy of tests_py.diff |
+| .agent/authored/f044-r2-records.diff | 78/0 | verbatim copy of the records diff payload |
+| .agent/authored/f044-r2-tests.diff | 307/0 | verbatim copy of the tests diff payload |
 
-### b9fb512eb F044 R1 C1c: copy round 1 vitest diff into .agent/authored/
+### 49081ce64 F044 R2 C1c: copy the round 2 render harness page and driver into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f044-r1-tests_ui.diff | 425/0 | verbatim copy of tests_ui.diff |
+| .agent/authored/f044-r2-render_drive.mjs | 229/0 | verbatim copy of the render harness driver |
+| .agent/authored/f044-r2-render_index.html | 11/0 | verbatim copy of the render harness page |
+| .agent/authored/f044-r2-render_main.tsx | 40/0 | verbatim copy of the render harness mount |
+| .agent/authored/f044-r2-render_vite.config.mjs | 28/0 | verbatim copy of the render harness vite config |
 
-### 1e15218b7 F044 R1 C2: claim F044, re-head the live review record, book F043 R9, record D1
+### 9e4217671 F044 R2 C1d: copy the round 2 render harness runner into .agent/authored/
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | 15/14 | rewritten from the context.md payload |
-| .agent/decisions.md | 81/0 | DECISION F044 D1 appended, via claim.diff |
-| .agent/live_review.md | 20/17 | re-headed F043→F044, F043 R9 gate entry appended, via claim.diff |
-| .agent/plan.md | 21/14 | rewritten from the plan.md payload |
-| docs/roadmap/STATUS.md | 1/1 | F044 line `[ ]` → `[~]`, via claim.diff |
+| .agent/authored/f044-r2-render_measure.py | 186/0 | verbatim copy of the render harness runner |
 
-### ce5b50ed7 F044 R1 C3: add the palette's fuzzy match, command list, routing rule and jump
+### a1a8ae0bb F044 R2 C2: book F044 R1, record D2 and its assumption-log row
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/fuzzyMatch.ts | 138/0 | S1, the fuzzy rule (NEW) |
-| apps/ui/src/api/paletteCommands.ts | 185/0 | S2, the command list (NEW) |
-| apps/ui/src/api/paletteJump.ts | 80/0 | S4, the node jump (NEW) |
-| apps/ui/src/api/paletteRouting.ts | 80/0 | S3, the routing rule (NEW) |
+| .agent/decisions.md | 51/0 | `git apply records.diff` — DECISION F044 D2 appended |
+| .agent/live_review.md | 2/0 | `git apply records.diff` — F044 R1's Gate entry appended |
+| .agent/plan.md | 12/13 | rewritten to the plan.md payload — round 2 goal/current step/next steps |
+| docs/ui/design_reference/assumption_log.md | 1/0 | `git apply records.diff` — D2's assumption-log row appended |
 
-Total 483 insertions, under the 500 cap; no split needed. The reviewer's
-own version of these four files read 134/195/69/72 respectively — my
-counts differ (138/185/80/80) but every test the payloads carry passed
-against my code unedited (G3), which is what the block conditions on.
-
-### b26cf7fdf F044 R1 C4: add the reviewer's vitest tests and routing goldens for the palette
+### 36992a63a F044 R2 C3: add the sheet's pure rules and move the tour's last stop to the bar
 | Path | +/- | Reason |
 |---|---|---|
-| apps/ui/src/api/fuzzyMatch.test.ts | 108/0 | reviewer's vitest tests, via tests_ui.diff |
-| apps/ui/src/api/paletteCommands.test.ts | 82/0 | reviewer's vitest tests, via tests_ui.diff |
-| apps/ui/src/api/paletteJump.test.ts | 73/0 | reviewer's vitest tests, via tests_ui.diff |
-| apps/ui/src/api/paletteRouting.goldens.json | 37/0 | shared routing fixtures, via tests_ui.diff |
-| apps/ui/src/api/paletteRouting.test.ts | 95/0 | reviewer's vitest tests, via tests_ui.diff |
+| apps/ui/src/api/firstRunTour.ts | 4/5 | S2 — sixth step retargeted to `command-bar`; comment rewritten |
+| apps/ui/src/api/paletteJump.ts | 3/3 | S3 — header comment names the retired `handleJump` and DECISION F044 D2 |
+| apps/ui/src/api/paletteSheet.ts | 234/0 | S1 — NEW; the sheet's pure rules (rows, recents, cursor, highlight) written against the reviewer's tests, not transcribed from them |
+| apps/ui/src/components/graph/brainView.ts | 1/1 | S4 — `selectedBrainNodeId`'s doc comment names `paletteJump.ts` instead of `RemedyShell.tsx handleJump` |
 
-### 7fa185825 F044 R1 C5: add the reviewer's contract test holding the palette to Python
+### a10172fdf F044 R2 C4: make the command bar the palette's combobox over a portalled sheet
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ui_contracts/test_palette_contract.py | 187/0 | reviewer's contract test, via tests_py.diff |
+| apps/ui/src/components/command/CommandBar.tsx | 108/6 | S7 — rewritten as the palette's combobox: storage edge, rows, keyboard, `PaletteSheet` mount |
+| apps/ui/src/components/command/PaletteSheet.module.css | 78/0 | S6 — NEW; the sheet's styling |
+| apps/ui/src/components/command/PaletteSheet.tsx | 109/0 | S5 — NEW; the portalled listbox, grouped by section, placement measured off the anchor |
+| apps/ui/src/components/shell/RemedyShell.tsx | 22/7 | S8 — `handleJump` and its comment deleted; jump targets and project context wired to the bar |
 
-### d6e670b4c F044 R1 C6: add the round 1 mutation tool
+### 9b1085b20 F044 R2 C5: add the reviewer's tests for the sheet and the tour's last stop
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f044-r1-mutations.py | 280/0 | worker-authored G4 red-proof tool |
+| apps/ui/src/api/firstRunTour.test.ts | 6/6 | `git apply tests.diff` — reviewer's test, the sixth step's new words |
+| apps/ui/src/api/paletteSheet.test.ts | 193/0 | `git apply tests.diff` — NEW; reviewer's tests for the sheet's pure rules |
+| tests/ui_contracts/test_palette_sheet_wiring.py | 68/0 | `git apply tests.diff` — NEW; reviewer's wiring guard |
+
+### 4a71d8914 F044 R2 C6: add the round 2 mutation tool
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f044-r2-mutations.py | 254/0 | NEW; the round's 13-mutation red-proof tool (s1-s6, t1, w1, h1-h6), G5's own artifact |
+
+### (this commit) F044 R2 C7: rewrite handoff for round 2
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this handback |
 
 ## External actions
 
-- `git checkout -b feature/f044-command-palette` at `33f66862d` — branch created.
-- `git worktree add --detach .remedy-wt/f044-r1-mut d6e670b4c` — created for G4; HEAD detached at C6.
-- `os.symlink(".../apps/ui/node_modules", ".../f044-r1-mut/apps/ui/node_modules")` — linked for the worktree's vitest run.
-- `os.unlink(...)` then `git worktree remove --force .remedy-wt/f044-r1-mut` then `git worktree prune` — worktree removed cleanly after G4; `git worktree list | wc -l` read 13 before and after (unchanged from the step-4 reading).
-- `git push -u origin feature/f044-command-palette` — run after this commit (C7), per the block's own ordering; its real outcome is reported in the worker's reply, not here, since C7 cannot contain it.
+- `git worktree add --detach .remedy-wt/f044-r2-mut 4a71d8914` — created for G5; HEAD detached at C6.
+- `os.symlink(".../apps/ui/node_modules", ".../f044-r2-mut/apps/ui/node_modules")` — linked for the worktree's vitest and harness runs.
+- `os.unlink(...)` then `git worktree remove --force .remedy-wt/f044-r2-mut` then `git worktree prune` — worktree removed cleanly after G5; `git worktree list | wc -l` read 15 before G5 (step 4) and 15 again after cleanup.
+- `git push origin feature/f044-command-palette` — run after this commit (C7), per the block's own ordering; its real outcome is reported in the worker's reply, not here, since C7 cannot contain it.
 - No `gh pr create`, no `gh pr merge`, no checkout of `main`, no branch deletion, no force-push, no `git stash` — none of these were run, per CONSTRAINT 6.
 
 ## Verification
 
 BEFORE ANYTHING ELSE (block steps 1-4):
-- `ls .agent/STOP` → exit 2, "No such file or directory" — absent, proceeded.
-- `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty; `git branch --show-current` → `main`; `git log --oneline -1` → `33f66862d Merge pull request #300 ...`. `git checkout -b feature/f044-command-palette` → switched.
-- Block bytes: measured 342 lines, sha256 `8e37007fda5b5ebbc4565e45bd84c802b5302627f0f28c5c8df0fdfb0648320e` — both equal the delegation's stated readings.
-- `git worktree list | wc -l` → 13.
+- `ls .agent/STOP` → "No such file or directory" — absent, proceeded.
+- `pwd` → `/home/decodeux/Repos/remedy`; `git status --porcelain` → empty; `git branch --show-current`
+  → `feature/f044-command-palette`; `git log --oneline -1` → `d31a78c71 F044 R1 C7: rewrite
+  handoff for round 1`. All match.
+- Block bytes: measured 379 lines, sha256
+  `a7b2bfc71b1c8f99283ab76fd3bac1eb3cd39a0a61d60dbb611179f02692d301` — both equal the delegation's
+  stated readings.
+- `git worktree list | wc -l` → 15.
 
-PAYLOADS table: all five payloads (claim.diff, tests_ui.diff, tests_py.diff, plan.md, context.md) measured line count, byte count and sha256 — all five matched the block's table exactly (script output captured; see Authored-text proofs).
+PAYLOADS TABLE — all 8 payloads measured (records.diff 78/15385, tests.diff 307/12845, plan.md
+34/1280, render_index.html 11/243, render_main.tsx 40/2052, render_vite.config.mjs 28/744,
+render_drive.mjs 229/11580, render_measure.py 186/6416) — every line count, byte count and sha256
+equalled the block's PAYLOADS table exactly.
 
-G1 TRANSPORT: script compared each `.agent/authored/f044-r1-*` copy, read back via `git show <commit>:<path>`, byte-for-byte against its source file. All six copies (block, plan, context, claim.diff, tests_py.diff, tests_ui.diff) read `True`. `ALL TRANSPORT COPIES BYTE-IDENTICAL: True`.
+G1 TRANSPORT — all 9 `.agent/authored/f044-r2-*` copies, read back with `git show <commit>:<path>`
+from the commit that added each, compared byte-for-byte and by sha256 against their sources
+(`.remedy-wt/f044-r2/block.md` for the block copy, `.remedy-wt/f044-r2-payloads/*` for the rest):
+all 9 `True`.
 
-G2 THE CLAIM AND THE TESTS: sha256 of all 11 named files, read via `git show <commit>:<path>` at the commit named, all matched the block's table exactly (`ALL G2 HASHES MATCH: True`). `open_finding_ids` (from `scripts/rotate_live_review.py`) over `.agent/live_review.md` read `[]` at both `33f66862d` and C2 (`1e15218b7`). The ledger at C2 has exactly one line reading `## Findings` and exactly one reading `## Steps`; its last non-empty line begins `Gate: F043 R9 — the `. `docs/roadmap/STATUS.md`'s F044 line at C2 reads exactly `- [~] F044 — Command palette, keyboard, performance budget`. `git diff --name-only b9fb512eb 1e15218b7` (C1c..C2) named exactly the five C2 table paths: `.agent/context.md`, `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md`.
+G2 RECORDS AND TESTS — sha256 of the four C2 paths, read with `git show a1a8ae0bb:<path>`: all
+four equalled the block's table (`.agent/decisions.md` 2548715 bytes, `.agent/live_review.md`
+127510 bytes, `.agent/plan.md` 1280 bytes, `docs/ui/design_reference/assumption_log.md` 31580
+bytes — bytes and sha256 both matched). `open_finding_ids` over the ledger text at C2 → `[]`
+(matches the reviewer's reading). The ledger's last non-empty line at C2 begins `Gate: F044 R1 —
+the F044 round 1 entry` (confirmed verbatim). `git diff --name-only 9e4217671 a1a8ae0bb` →
+exactly the four C2 paths, no more, no fewer.
 
-G3 THE CODE AND THE TESTS (at C6, `d6e670b4c`):
-- `python3 -m ruff check .agent/authored/f044-r1-mutations.py tests/ui_contracts/test_palette_contract.py` → "All checks passed!", exit 0.
-- `apps/ui/node_modules/.bin/eslint --max-warnings 0` over the 4 production + 4 test files (cwd `apps/ui`) → exit 0, no output.
-- `git show --numstat ce5b50ed7` (C3) → `138 0 apps/ui/src/api/fuzzyMatch.ts`, `185 0 apps/ui/src/api/paletteCommands.ts`, `80 0 apps/ui/src/api/paletteJump.ts`, `80 0 apps/ui/src/api/paletteRouting.ts`.
-- Big serial pytest selection (`tests/ui_contracts tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/orchestration/test_chat_intent.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_live_review_rotation.py tests/regression/test_resource_safety.py tests/test_agent_tooling.py tests/docs tests/cli/test_golden_path.py`, `-q -p no:cacheprovider -rs`): **1725 passed, 5 skipped in 89.85s**, `REAL_EXIT=0`. SKIPPED lines: 2× `test_graph_architecture.py` (D3 quarantine, F252), 2× `test_ux_quality.py` (D3 quarantine, F252), 1× `test_agent_tooling.py:43` (D12 quarantine, F252). This is one more passed and one fewer skipped than the reviewer's dry-tree reading (1724 passed, 6 skipped) — the delta is exactly the `test_responsive.py:555` skip for an unbuilt `dist`, which the block predicted my checkout might have built; `apps/ui/dist/` is present here (built earlier this session), confirming the predicted cause.
-  - `test_typescript_compiles` (`tests/ui_server/test_dashboard_contract.py`): passed (part of the 1725; confirmed separately via direct `tsc --noEmit -p apps/ui` → exit 0).
-  - `test_vitest_passes` (`tests/orchestration/test_test_runner.py`): passed (part of the 1725).
-  - `tests/ui_contracts/test_ui_lint.py` (both nodes): passed (part of the 1725).
-  - Direct vitest run of just the four new test files (cwd `apps/ui`): `fuzzyMatch.test.ts` 17 tests, `paletteCommands.test.ts` 7, `paletteJump.test.ts` 7, `paletteRouting.test.ts` 7 — all 38 passed, matching the reviewer's reading (17, 7, 7, 7) exactly.
-  - Direct whole-suite vitest run: `Test Files  106 passed | 1 skipped (107)`, `Tests  2050 passed | 5 skipped (2055)`, exit 0 — matches the reviewer's reading exactly (2050 passed | 5 skipped, 107 files). The one skipped file is `src/components/timeline/scrubLive.test.ts` (pre-existing, unrelated to this round).
-  - `tests/ui_contracts/test_palette_contract.py` alone: **43 passed** — matches the reviewer's reading exactly.
-- `python3 -m apps.cli.main integrity check --json`: all six checks `pass`, `fail_count: 0`, `ok: true`.
+G3 CODE AND TESTS —
+- `python3 -m ruff check .agent/authored/f044-r2-mutations.py .agent/authored/f044-r2-render_measure.py tests/ui_contracts/test_palette_sheet_wiring.py`
+  → "All checks passed!", exit 0.
+- `apps/ui/node_modules/.bin/eslint --max-warnings 0 src/api/paletteSheet.ts src/api/paletteSheet.test.ts src/api/firstRunTour.ts src/api/paletteJump.ts src/components/graph/brainView.ts src/components/command/CommandBar.tsx src/components/command/PaletteSheet.tsx src/components/shell/RemedyShell.tsx`
+  (cwd `apps/ui`) → no output, exit 0.
+- `git show --numstat` of C3 (36992a63a): `4 5 apps/ui/src/api/firstRunTour.ts`, `3 3
+  apps/ui/src/api/paletteJump.ts`, `234 0 apps/ui/src/api/paletteSheet.ts`, `1 1
+  apps/ui/src/components/graph/brainView.ts`. Of C4 (a10172fdf): `108 6
+  apps/ui/src/components/command/CommandBar.tsx`, `78 0
+  apps/ui/src/components/command/PaletteSheet.module.css`, `109 0
+  apps/ui/src/components/command/PaletteSheet.tsx`, `22 7
+  apps/ui/src/components/shell/RemedyShell.tsx`. These differ from the reviewer's own reading
+  (5/5, 2/1, 169/0, 2/2 for C3; the block states none is expected to match beyond that reading,
+  since the code is mine, written against the spec and the reviewer's tests, not transcribed).
+  `RemedyShell.tsx`'s whole diff at C4 was self-reviewed inline (see Commits table; `handleJump`
+  and its comment deleted, `jumpTargetsOf`/`useProjectContext` imported, `jumpTargets` and
+  `paletteProjects` built in `useMemo`s, the bar's props extended).
+- The serial selection (`tests/ui_contracts tests/ui_server/test_dashboard_contract.py
+  tests/ui_server/test_explanation_layer_live.py tests/orchestration/test_test_runner.py
+  tests/orchestration/test_integrity_gate.py tests/orchestration/test_live_review_rotation.py
+  tests/regression/test_resource_safety.py tests/test_agent_tooling.py tests/docs
+  tests/cli/test_golden_path.py`) → `1697 passed, 5 skipped in 98.04s`, real exit 0
+  (`PIPESTATUS[0]`). SKIPPED: the four D3 quarantine nodes (`test_graph_architecture.py` x2,
+  `test_ux_quality.py` x2) and the one D12 quarantine (`test_agent_tooling.py`) — five, not the
+  reviewer's six, because `tests/ui_contracts/test_responsive.py:555`'s unbuilt-`dist` skip did
+  not fire here: this checkout already carries a built `apps/ui/dist`, so that node ran (and
+  passed) instead of skipping, exactly the deviation the block itself names as possible
+  ("which your checkout may have built"). `test_typescript_compiles` and `test_vitest_passes`
+  individually: `2 passed` (both green). `tests/ui_contracts/test_ui_lint.py` (2 tests) and
+  `tests/ui_server/test_explanation_layer_live.py` (1 test) individually: `3 passed`.
+- vitest counts of the two new/changed test files, run standalone (`apps/ui/node_modules/.bin/vitest
+  run --root /home/decodeux/Repos/remedy/apps/ui --config
+  /home/decodeux/Repos/remedy/apps/ui/vitest.config.ts src/api/paletteSheet.test.ts
+  src/api/firstRunTour.test.ts`): `paletteSheet.test.ts (18 tests)`, `firstRunTour.test.ts (7
+  tests)`, `25 passed (25)`, exit 0 — matches the reviewer's reading of 18 and 7 exactly.
+- `tests/ui_contracts/test_palette_sheet_wiring.py` alone: `4 passed`, exit 0 — matches the
+  reviewer's reading.
+- `python3 -m apps.cli.main integrity check --json` → `fail_count: 0`, all six checks `pass`
+  (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`,
+  `repo_root_hygiene`, `high_blockers_open`), `ok: true`, `passed: true`, exit 0.
 
-G4 THE RED PROOFS (worktree `.remedy-wt/f044-r1-mut` at C6 `d6e670b4c`, `node_modules` symlinked):
-```
-CONTROL (before) — vitest: exit=0 failed=0; contract: exit=0 failed=0
-f1: vitest exit=1 failed=1 — restored byte-identical: True
-f2: vitest exit=1 failed=10 — restored byte-identical: True
-f3: vitest exit=1 failed=1 — restored byte-identical: True
-f4: vitest exit=1 failed=1 — restored byte-identical: True
-f5: vitest exit=1 failed=1 — restored byte-identical: True
-c1: vitest exit=1 failed=2, contract exit=1 failed=1 — restored byte-identical: True
-c2: vitest exit=1 failed=1, contract exit=1 failed=1 — restored byte-identical: True
-r1: vitest exit=1 failed=1 — restored byte-identical: True
-r2: vitest exit=1 failed=1 — restored byte-identical: True
-r3: vitest exit=1 failed=1 — restored byte-identical: True
-r4: vitest exit=1 failed=1 — restored byte-identical: True
-r5: vitest exit=1 failed=1, contract exit=1 failed=1 — restored byte-identical: True
-j1: vitest exit=1 failed=2 — restored byte-identical: True
-j2: vitest exit=1 failed=1 — restored byte-identical: True
-j3: vitest exit=1 failed=1 — restored byte-identical: True
-CONTROL (after) — vitest: exit=0 failed=0; contract: exit=0 failed=0
-ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True
-REAL_EXIT=0
-```
-Every mutation turned every check named for it red; none stayed green. Worktree removed; `git worktree list | wc -l` read 13 after cleanup, matching the step-4 reading.
+G4 THE RENDER — `python3 -B .agent/authored/f044-r2-render_measure.py /home/decodeux/Repos/remedy`
+→ vite build succeeded (1247 modules), Chrome driven over CDP, all eleven checks R-a through R-k
+printed `PASS`, `RENDER: 11 of 11 checks pass`, exit 0 — matches the reviewer's own reading of 11
+of 11. Screenshot at `.remedy-wt/f044-r2-render-sheet.png` (379480 bytes): the bar reads "err" and
+its dropdown sheet is open directly beneath it — a JUMP section listing "Errata" (tinted, the
+active row) and "Fix error handling" (with "err" inside "error" marked in bold blue), then a HELP
+section listing "Show every term" (with "every term" marked) — the glass sheet, its rounded
+corners and its section headings all visible exactly as DECISION F044 D2 describes.
+
+G5 THE RED PROOFS — `git worktree add --detach .remedy-wt/f044-r2-mut 4a71d8914`, symlinked
+`node_modules`, then `python3 -B .agent/authored/f044-r2-mutations.py
+/home/decodeux/Repos/remedy/.remedy-wt/f044-r2-mut`:
+- CONTROL (before): vitest, wiring and harness all `pass=True` (`0 failed`, `0 failed`, `RENDER:
+  11 of 11 checks pass`).
+- All 13 mutations (s1-s6, t1, w1, h1-h6) → `exit=1 caught=True` and `restored byte-identical:
+  True`, every one. s5 failed 3 vitest tests, t1 failed 2, the rest 1 each; h1 dropped the
+  harness to 8 of 11 (R-d's geometry, R-i, R-j all failed once the sheet portalled into the bar's
+  own backdrop-filter box), h2 to 9 of 11 (R-i, R-j — a row's mousedown blurred the bar before its
+  click landed), h3 to 9 of 11 (R-f, R-g — Enter always picked "Errata" instead of the active
+  row), h4 and h5 and h6 each to 10 of 11 (the mark's default yellow background, `zIndex:"auto"`,
+  and a `null` `stored` value respectively). No mutation stayed green.
+- CONTROL (after): vitest, wiring and harness all `pass=True` again, `RENDER: 11 of 11 checks
+  pass`.
+- `ALL MUTATIONS CAUGHT AND RESTORED CLEANLY: True`, exit 0.
+- Cleanup: `os.unlink` the symlink, `git worktree remove --force .remedy-wt/f044-r2-mut`, `git
+  worktree prune` — `git worktree list | wc -l` → 15 (matches the step-4 reading).
 
 ## Authored-text proofs
 
-- `.agent/authored/f044-r1-block.md` (C1a, `c10d1cef5`) == `.remedy-wt/f044-r1/block.md`: byte-identical (G1).
-- `.agent/authored/f044-r1-plan.md` (C1a) == payload `plan.md`: byte-identical (G1).
-- `.agent/authored/f044-r1-context.md` (C1a) == payload `context.md`: byte-identical (G1).
-- `.agent/authored/f044-r1-claim.diff` (C1b, `72d852212`) == payload `claim.diff`: byte-identical (G1).
-- `.agent/authored/f044-r1-tests_py.diff` (C1b) == payload `tests_py.diff`: byte-identical (G1).
-- `.agent/authored/f044-r1-tests_ui.diff` (C1c, `b9fb512eb`) == payload `tests_ui.diff`: byte-identical (G1).
-- The 11 files `claim.diff`, `tests_ui.diff` and `tests_py.diff` actually apply into (`.agent/context.md`, `.agent/decisions.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/roadmap/STATUS.md` at C2; the five test files at C4; the contract test at C5): sha256 read via `git show <commit>:<path>` matched the block's G2 table exactly for all 11 (G2). `.agent/authored/f044-r1-mutations.py` (C6) is worker-authored, not reviewer-authored text — no fidelity comparison applies to it.
+All 9 `.agent/authored/f044-r2-*` copies, read back with `git show <commit>:<path>`, compared
+byte-for-byte AND by sha256 against their sources:
+| Copy | Source | Equal |
+|---|---|---|
+| f044-r2-block.md | `.remedy-wt/f044-r2/block.md` | True |
+| f044-r2-plan.md | `.remedy-wt/f044-r2-payloads/plan.md` | True |
+| f044-r2-records.diff | `.remedy-wt/f044-r2-payloads/records.diff` | True |
+| f044-r2-tests.diff | `.remedy-wt/f044-r2-payloads/tests.diff` | True |
+| f044-r2-render_index.html | `.remedy-wt/f044-r2-payloads/render_index.html` | True |
+| f044-r2-render_main.tsx | `.remedy-wt/f044-r2-payloads/render_main.tsx` | True |
+| f044-r2-render_vite.config.mjs | `.remedy-wt/f044-r2-payloads/render_vite.config.mjs` | True |
+| f044-r2-render_drive.mjs | `.remedy-wt/f044-r2-payloads/render_drive.mjs` | True |
+| f044-r2-render_measure.py | `.remedy-wt/f044-r2-payloads/render_measure.py` | True |
+
+`records.diff` and `tests.diff` were also applied for real with `git apply` (not retyped); each
+`git apply --check` ran first and read exit 0 before the real apply, which also read exit 0 (both
+reported per CONSTRAINT 1).
 
 ## Deviations & assumptions
 
-- None from the block's ordered commit sequence: C1a, C1b, C1c, C2, C3, C4, C5, C6 ran in that exact order, each a single commit, none split.
-- Process note (not a deviation from the block, disclosed for transparency): before writing S1–S4, I applied `tests_ui.diff` and `tests_py.diff` to the working tree as an UNCOMMITTED pre-check, ran vitest and pytest against my draft code, confirmed all 38 vitest + 43 pytest tests passed, then reverted both applies (`git apply -R`) before starting the official C3 commit and the C4/C5 real applies. This left no trace in any commit; `git status --porcelain` was re-verified clean of the test files before C3 was staged.
-- `apps/ui/dist/` was already built in the primary checkout before this round started (not built by this round); it is the reason G3's pytest selection read one more pass and one fewer skip than the reviewer's dry-tree reading, exactly as the block anticipated.
-- All 19 `PALETTE_COMMANDS` entries, the routing tables, and the fuzzy-match algorithm were derived by hand-tracing every vitest assertion (all 38 tests) and every contract-test regex/assertion (43 tests) before writing code; no test was read back from a first failing run — all four production modules passed their tests on the first attempt with zero edits.
+- ASSUMPTION: S5 pins that the listbox carries "an `aria-label`" without fixing its text, and S6
+  requires groups "after the first" to be "divided by a 1px `--remedy-line` rule" without naming a
+  divider selector. Chosen: `aria-label="Command palette results"` on the listbox, and a
+  `styles.group` class on each `role="group"` element with `.group + .group { border-top: 1px
+  solid var(--remedy-line); }` as the divider. No test pins either string or class name; both are
+  exercised indirectly (the render harness's `groups` snapshot reads `aria-label` values, which it
+  checks against ["Jump","Help"] / ["Recent","Jump","Help"] — the SECTION names, not the
+  listbox's own label).
+- ASSUMPTION: S6's "a backdrop blur" does not pin a radius. Matched
+  `CommandBar.module.css`'s own `backdrop-filter: blur(14px)` for visual consistency with the bar
+  the sheet hangs from.
+- No other deviations from the block's ordered commit sequence: all nine BUNDLE commits (C1a
+  through C6) landed in the block's exact order, each under the 500-insertion cap (largest: C4 at
+  317 insertions), with no split needed for C3 or C4.
+- Open findings: 0. Operator questions: 0.
 
 ## Item status
 
@@ -156,22 +230,24 @@ Every mutation turned every check named for it red; none stayed green. Worktree 
 | C1a | done | |
 | C1b | done | |
 | C1c | done | |
+| C1d | done | |
 | C2 | done | |
 | C3 | done | |
 | C4 | done | |
 | C5 | done | |
 | C6 | done | |
-| C7 | done | this commit |
-| G1 TRANSPORT | done | all six copies byte-identical |
-| G2 THE CLAIM AND THE TESTS | done | all 11 hashes matched, ledger/STATUS structure confirmed |
-| G3 THE CODE AND THE TESTS | done | ruff, eslint, tsc, vitest, pytest selection, integrity check all clean |
-| G4 THE RED PROOFS | done | all 15 mutations red, both controls clean, all restores byte-identical |
-| G5 TREE AND PUSH | deviated | runs after this commit per the block's own ordering; reported in the worker's reply, not in this handback |
+| C7 | done | this handback |
+| G1 | done | all 9 authored copies byte-identical and sha256-identical to source |
+| G2 | done | 4 C2 hashes matched, `open_finding_ids`=[], ledger's last line matched, name-only diff matched |
+| G3 | done | ruff, eslint, the serial selection, both named nodes, both vitest files, the wiring test alone, and `integrity check` all pass |
+| G4 | done | 11 of 11 render checks pass, screenshot described |
+| G5 | done | all 13 mutations caught and restored byte-identical; both controls clean |
+| G6 | done | reported in the worker's reply below (cannot be written into this commit) |
 
 ## Next
 
-Phase 1 rule 1 (read `.agent/STOP` from disk), then the review of round 1,
-then round 2: the bar's dropdown sheet over these four rules (DECISION
-F044 D1 (7), the sections Commands/Jump/Projects/Help, highlighted
-matches, recent items, the tour's palette stop). Open findings: 0.
-Operator questions: 0.
+Per the block's `## Next` order: (1) Phase 1 rule 1 — read `.agent/STOP` from disk before any
+further work. (2) The review of this round (round 2). (3) THE COMMANDS: the Commands section,
+their execution and argument flows, the disabled states with their reasons, the route to the
+chat, and the reference's placeholder (DECISION F044 D2 (6)-(7); the next item in `.agent/plan.md`'s
+own list). Open findings: 0. Operator questions: 0.
