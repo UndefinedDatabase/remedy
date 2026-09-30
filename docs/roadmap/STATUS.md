@@ -187,7 +187,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [~] F043 — Explanation layer
+- [x] F043 — Explanation layer (T001–T003 complete, R-1115 resolved; accepted 2026-09-30 · live review PASS — ACCEPTED · Evidence job f043r8e1001 · package remedy-review-20260930-033441-READY_FOR_REVIEW.zip · SHA-256 a9e44274ad032d41fae6741aeaa5f891ecfd983d5af99663208d97f1560da6e1 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 79137914f113d510ecdef140dfecc8b0e49a76e3)
 - [ ] F044 — Command palette, keyboard, performance budget
 
 ## Tier 12 — Observability & Operations
