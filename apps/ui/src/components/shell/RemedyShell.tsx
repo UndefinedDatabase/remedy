@@ -41,6 +41,8 @@ import { ArtifactsPanel } from "../artifacts/ArtifactsPanel";
 import { TermPanel } from "../term/TermPanel";
 import { FirstRunTourMount } from "../tour/FirstRunTour";
 import { keymapAction } from "../../api/keymap";
+import { KeymapOverlay } from "../command/KeymapOverlay";
+import { useHeldHelpKey } from "./useHeldHelpKey";
 import { DegradedBanner } from "./DegradedBanner";
 import styles from "./RemedyShell.module.css";
 import { browserBrainStreamEnv, createBrainStreamHostDeps, eventsSincePath } from "../../api/brainStreamDeps";
@@ -241,6 +243,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   // holds the "g" wait a "g then p" chord needs across presses.
   const [barFocusRequest, setBarFocusRequest] = useState(0);
   const pendingG = useRef(false);
+  // DECISION F044 D6: the held "?" shows the keymap's own overlay; a quick press still opens the
+  // terms panel, exactly as before.
+  const { shortcutsOpen, press: pressHelp } = useHeldHelpKey(() => setTermsOpen(true));
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -249,7 +254,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       pendingG.current = result.pendingG;
       if (result.action === "open-terms") {
         event.preventDefault();
-        setTermsOpen(true);
+        pressHelp(event.repeat);
       } else if (result.action === "open-bar") {
         event.preventDefault();
         setBarFocusRequest((count) => count + 1);
@@ -260,7 +265,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
-  }, [goHome]);
+  }, [goHome, pressHelp]);
 
   // THE SCROLL. A diff stop's "Show me" opens the job's whole diff (below) and records the
   // path it named; once that diff's envelope has arrived, this effect finds the path's row key
@@ -437,6 +442,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           taskId={focusedTaskId} question={chatAsk.text} onClose={() => setChatAsk(null)}
           onOpenTab={handleChatEvidenceTab} />
       )}
+      {/* THE KEYMAP OVERLAY (DECISION F044 D6), a sibling directly after the chat sheet for the
+          reason every overlay above is a sibling outside <main>. */}
+      {shortcutsOpen && <KeymapOverlay />}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (
         <LessonsOverlay
