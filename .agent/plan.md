@@ -5,20 +5,18 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 5, round 16: the third and last repair round of the amend0930b-slow-cap hardening stage.
-Round 15 is booked PASS with the second repeat audit, which left `R-1123` open: a statement placed
-before an unchanged assertion can empty it. This round compares every function, method and
-assignment that existed where F293 began, with each change F293 made pinned as reviewed (DECISION
-F293 D13). The open-findings count is 2 (`R-1117`, `R-1123`).
+Session 6, round 17: the hardening stage is finished. Round 16 is booked PASS with the third repeat
+audit (PROVEN), `R-1123` is resolved, the three repeat-audit reports are saved, and the feature file
+gains its Built State with the stage's record (amend0930b-slow-cap rule 4). The open-findings count
+is 1 (`R-1117`, owned by the rolling paydown).
 
 ## Next Steps
-1. Repeat the acceptance audit for "without losing a single assertion", by a fresh auditor.
-2. Record the stage in the feature file's Built State (statements audited, proven at once, gaps
-   found, repaired, remaining), and resolve `R-1123`, or, if the audit still finds a gap, keep it
-   open with its owner and close PASS_WITH_RISKS naming it (amend0930b-slow-cap rule 3).
-3. The closure sequence, whose integration-gate run supplies T002's after reading and the first
-   `Test load:` line from `scripts/closure_suite_cost.py`; below 40 percent, the closure's
-   DECISION states the remaining cost with D10's numbers.
+1. The self-use item the closure consumes (STATUS_closure_protocol.md precondition 6): read the
+   queue first; an item that needs a repair round runs before the integration-gate round.
+2. The integration-gate round: the one full suite, `scripts/closure_suite_cost.py`, T002's after
+   reading against 1,246.09 CPU seconds, and the closure's DECISION on the 40 percent target with
+   DECISION F293 D10's numbers when it is missed; the Built State takes the reading.
+3. The evidence bundle, the review zip, the ledger rotation, the STATUS flip and the pull request.
 
 ## Risks
 - The test load record adds up CPU time (`os.times()`), and a test that sleeps uses none; a cut
@@ -28,5 +26,5 @@ F293 D13). The open-findings count is 2 (`R-1117`, `R-1123`).
 - T001's run and the closure's integration-gate run are the feature's two full-suite readings
   (DECISION F293 D1); no round in between runs the full suite. The leftover-process check first
   meets the whole suite there; T001's run left no process behind.
-- Mutation runs under `-n auto` set `PYTHONDONTWRITEBYTECODE=1`: `-B` does not reach the xdist
-  workers, and a same-size mutation restored within a second is otherwise read back stale.
+- `tests/regression/test_f293_acceptance.py` reads the fork point through `git show` while F293 is
+  open; the closure suite runs in the primary checkout, which has that history.
