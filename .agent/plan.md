@@ -10,21 +10,20 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D4).
+DECISIONS F044 D1 to D5).
 
 ## Current Step
 
-ROUND 4: book round 3, record DECISION F044 D4, and route a question
-from the bar to the grounded chat in a sheet of its own, with the
-reference's placeholder on the bar.
+ROUND 5: book round 4, record DECISION F044 D5, register F292 for the
+plan view and hunk controls the palette's form entries need, and land
+the keymap module with "?", "/", Ctrl+K or Cmd+K and "g" then "p".
 
 ## Next Steps
 
-1. The form entries' structured flows: the plan edits and the hunks.
-2. The keymap module and its cheat overlay.
-3. The three budgets in CI with their recorded numbers.
-4. The closure sequence.
+1. The graph's keys through the keymap, and the keymap's cheat overlay.
+2. The three budgets in CI with their recorded numbers.
+3. The closure sequence.
 
 ## Risks
 
-Open findings: 0.
+Open findings: 0. Operator questions open: 1.

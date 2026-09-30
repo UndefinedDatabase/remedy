@@ -26442,3 +26442,49 @@ a question to the chat.
 HOW TO REVERSE: delete `ChatSheet.tsx` and its sheet, the Ask row from `paletteSheet.ts`, the two
 entry points from `EvidenceChatTab.tsx`, and the shell's chat mount; restore the bar's placeholder
 and the tour's last stop from `a706a070`; delete this paragraph and its assumption-log line.
+
+## DECISION F044 D5 — the seven form entries open surfaces that do not exist yet, so their plan view and hunk controls are registered as F292 directly after F044 and the palette keeps them disabled until F292 lands; the keymap is one pure module, and this round moves the '?' key onto it and adds "/", Ctrl+K or Cmd+K and "g" then "p" (2026-09-30)
+
+CONTEXT: Measured by the reviewer at `5cbbe6c8`, with a research agent's map read back against the
+sources: the six plan edits of DECISION F015 D3 need `expected_version`, the plan's version, and are
+open only while the plan waits for approval before its job starts (`edit_window_refusal` in
+`packages/orchestration/plan_editing.py`); no read route serves the version, the approval state or a
+planned task's dependencies, so a browser cannot name the version an edit was made against, and
+`remedy job plan-show --json` is the only reader. F015's file leaves its edits to "the plan view, a
+later feature", and none is registered. `patch.approve-hunks` needs a task run and hunk ids, which
+the diff envelope carries, but no screen offers hunk controls: F033 left them to the command line.
+F240's file, power keyboard, relies on hunk controls in the diff. There is no keymap module: the
+shell's '?' listener calls `isHelpShortcut` in `api/termSearch.ts`, and `escapeWalksBack` in
+`graph/zoomView.ts` keeps its own copy of the check for a field.
+
+CHOSEN: (1) F292, "Plan view and hunk decisions in the cockpit", is registered thin, directly after
+F044 under F044's Tier 5 heading so Rule A5 takes it next, with the plan read, the plan view with
+its six edits and the diff view's hunk controls, and with the palette's seven form entries turned
+into surface entries as its last slice; F240 gains F292 in its "Depends on" line. F044's acceptance
+line "Every exposed command executable from the palette with correct argument flows" is met for the
+seven by F292, which opens the surfaces the palette routes to; until then they stay listed and
+disabled with their reason. This is a reversible ruling on scope and order, entered in
+`.agent/operator_questions.md` and executed now. (2) THE KEYMAP is `apps/ui/src/api/keymap.ts`: the
+documented bindings in one list (`KEYMAP_BINDINGS`), which the cheat overlay will render; one rule
+for a press from a field, `isTypingTarget`, which `escapeWalksBack` now calls; and `keymapAction`,
+which maps a press, its target, a waiting "g" and whether a dialog is open to an action. Ctrl+K or
+Cmd+K opens the bar from anywhere, a field included; any other press from a field is text; "/"
+opens the bar, "?" the terms, "g" then "p" the projects, "j" and "k" walk the siblings, Enter zooms
+in only from the page itself, and Escape walks back unless a dialog is open. (3) THE SHELL listens
+once, through `keymapAction`: "?" opens the terms panel as before, "/" and the chord put the focus
+in the bar, which opens its sheet, and "g" then "p" goes to the projects' home. `isHelpShortcut` is
+deleted, replaced by the keymap. The graph's keys are wired into the graph in the next round. (4)
+THE ORDER: the next round wires "j", "k", Enter and Escape into the graph through the keymap, with
+the zoom's own Escape listener moving onto it, and adds the keymap's cheat overlay on a held '?';
+then the three budgets in CI; then the closure sequence.
+
+ALTERNATIVES: building the plan editor and hunk controls inside the palette, rejected because
+merging, splitting or reordering tasks from a single line is not an honest argument flow and the
+plan read is server work of its own; probing the version with a wrong one and reading it back from
+the 409, rejected because a lucky guess applies the edit; leaving the seven to F044's closure as a
+known gap, rejected because a gap without an owner is the kind the roadmap's rules forbid.
+
+HOW TO REVERSE: delete `docs/roadmap/features/T5_F292.md`, its STATUS line, and F292 from F240's
+"Depends on"; restore `TOTAL_FEATURES` and the README counter; delete `keymap.ts` and its test and
+restore `isHelpShortcut`, `escapeWalksBack`, the shell's listener and the bar from `5cbbe6c8`;
+delete this paragraph, its assumption-log line and its operator-questions entry.

@@ -20,7 +20,10 @@ the CI entrypoint's architecture.
   commands, held there by a contract test (DECISION F044 D1 (1)).
 - The bar's routing rule is the chat's own parse, held there by shared
   goldens (DECISION F044 D1 (3)).
-- The tour's palette stop is the '?' panel until the bar's round.
+- The palette's seven form entries stay disabled until F292 builds the
+  plan view and the hunk controls they open (DECISION F044 D5).
+- One keymap module decides every shortcut; a press from a field is text
+  (DECISION F044 D5).
 
 ## Constraints
 - Every pytest run in a round is targeted and serial; the resource and
