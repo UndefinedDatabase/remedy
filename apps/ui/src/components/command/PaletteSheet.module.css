@@ -59,6 +59,12 @@
   background: var(--remedy-blue-50);
 }
 
+/* DECISION F044 D3, ux_spec.md §8: a disabled control at 45% opacity with a not-allowed cursor. */
+.row[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -74,5 +80,43 @@
 .hint {
   font-size: 11px;
   color: var(--remedy-faint);
-  flex: none;
+  flex: 0 1 auto;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DECISION F044 D3 (4): the outcome line, placed exactly as the sheet is, hidden until placed. */
+.status {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--remedy-z-popover);
+  box-sizing: border-box;
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  box-shadow: var(--remedy-shadow-soft);
+  backdrop-filter: blur(14px);
+  font-family: var(--remedy-font-ui);
+  font-size: 13px;
+  padding: 8px 14px;
+  margin: 0;
+}
+
+.status[data-placed="false"] {
+  visibility: hidden;
+}
+
+.status[data-tone="ok"] {
+  color: var(--remedy-green-500);
+}
+
+.status[data-tone="warn"] {
+  color: var(--remedy-orange-400);
+}
+
+.status[data-tone="error"] {
+  color: var(--remedy-red-500);
 }

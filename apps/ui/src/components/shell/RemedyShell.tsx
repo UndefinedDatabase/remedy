@@ -19,6 +19,8 @@ import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
 import { jumpTargetsOf } from "../../api/paletteJump";
+import { paletteCommandFactsOf, paletteCommandReasons } from "../../api/paletteCommandState";
+import { AddTaskSheet } from "../panels/AddTaskSheet";
 import { useProjectContext } from "./ProjectProvider";
 import { BrainGraphStage } from "../graph/BrainGraphStage";
 import { shellSelectionIdOf } from "../graph/brainView";
@@ -270,16 +272,47 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     }
   }
 
-  // THE PALETTE'S OWN INPUTS (T5_F044 T001, DECISION F044 D2): its jump targets, built from this
-  // dashboard's own tasks the same way every jump has always been ranked, and the project
-  // context's own list restated as the palette's `{ slug, name }` shape — none while the context
-  // has not loaded a view yet.
+  // THE PALETTE'S OWN INPUTS (T5_F044 T001, DECISIONS F044 D2 and D3): its jump targets, one per
+  // task of the dashboard, ranked by the palette's fuzzy rule; and the project context's own list
+  // restated as the palette's `{ slug, name }` shape — none while the context has not loaded a
+  // view yet.
   const jumpTargets = useMemo(() => jumpTargetsOf(dashboard), [dashboard]);
   const projectContext = useProjectContext();
   const paletteProjects = useMemo(
     () => (projectContext.view ? projectContext.view.projects.map((p) => ({ slug: p.slug, name: p.name })) : []),
     [projectContext.view],
   );
+
+  // DECISION F044 D3: every command's own refusal reason, by command id, read once per dashboard
+  // and token — `paletteCommandFactsOf` reads the job's stage, pause action and open decisions.
+  const commandReasons = useMemo(
+    () => paletteCommandReasons(paletteCommandFactsOf(dashboard, serverToken)),
+    [dashboard, serverToken],
+  );
+  // THE ADD-TASK SHEET'S OWN OPEN STATE (DECISION F044 D3 (5)): the palette's "Add a task to the
+  // plan" command opens it here, beside the tasks card's own state, which this shell does not
+  // otherwise reach into.
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+
+  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet" and
+  // "task-edit-form" are surfaces this shell already owns a way to open; every other surface is a
+  // card already on the page, found by its own `data-ui` marker, scrolled into view and focused.
+  function handleOpenSurface(surface: string, taskNodeId: string) {
+    if (surface === "add-task-sheet") {
+      setAddTaskOpen(true);
+      return;
+    }
+    if (surface === "task-edit-form") {
+      onSelectNode(taskNodeId);
+      return;
+    }
+    const element = document.querySelector(`[data-ui="${surface}"]`);
+    if (element instanceof HTMLElement) {
+      element.scrollIntoView({ block: "center" });
+      element.querySelector<HTMLElement>("button, input, textarea, select")?.focus();
+    }
+  }
+
   return (
     <div className={styles.viewport}>
       <DegradedBanner apiHealth={dashboard.apiHealth} />
@@ -310,10 +343,15 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             targets={jumpTargets}
             projects={paletteProjects}
             activeSlug={projectContext.active?.slug ?? ""}
+            jobId={dashboard.jobId}
+            serverToken={serverToken}
+            commandReasons={commandReasons}
+            focusedTaskId={focusedTaskId}
             onJump={onSelectNode}
             onSwitchProject={projectContext.switchTo}
             onOpenTerms={() => setTermsOpen(true)}
             onStartTour={() => setTourRelaunch((count) => count + 1)}
+            onOpenSurface={handleOpenSurface}
           />
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
@@ -347,6 +385,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             <p>{diffEnvelope.reason === null ? DIFF_UNAVAILABLE_TEXT : `${DIFF_UNAVAILABLE_TEXT} ${diffEnvelope.reason}`}</p>
           )}
         </section>
+      )}
+      {/* THE ADD-TASK SHEET (DECISION F044 D3 (5)), mounted here as well as by the tasks card's
+          own state, so the palette's "Add a task to the plan" command can open it too. */}
+      {addTaskOpen && (
+        <AddTaskSheet target={{ jobId: dashboard.jobId, serverToken }} tasks={dashboard.tasks}
+          onClose={() => setAddTaskOpen(false)} />
       )}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (

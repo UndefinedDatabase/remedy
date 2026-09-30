@@ -1,12 +1,19 @@
-// T5_F044 T001, DECISION F044 D2 — the bar's dropdown sheet: a listbox of the palette's rows,
-// grouped under their section headings, portalled into `document.body` because the bar carries a
-// `backdrop-filter` glass card, which confines a fixed descendant to its own box — exactly the
-// rule that already portals `Term.tsx`'s tooltip (DECISION F043 D1) — so a sheet anchored to a
-// glass bar can only ever sit above the rest of the page from outside that box.
+// T5_F044 T001, DECISIONS F044 D2 and D3 — the bar's dropdown sheet: a listbox of the palette's
+// rows, grouped under their section headings, portalled into `document.body` because the bar
+// carries a `backdrop-filter` glass card, which confines a fixed descendant to its own box —
+// exactly the rule that already portals `Term.tsx`'s tooltip (DECISION F043 D1) — so a sheet
+// anchored to a glass bar can only ever sit above the rest of the page from outside that box.
+//
+// `PaletteStatus` (D3 (4)) is a SIBLING of the listbox, never a child of it: a `role="listbox"`'s
+// only valid children are its options, so an outcome sentence lives in its own portalled
+// `role="status"` paragraph instead, placed under the bar exactly as the sheet is — the two share
+// `usePalettePlacement` so a status shown while the sheet is closed still sits where the sheet
+// would.
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PALETTE_SECTION_ORDER, highlightPieces } from "../../api/paletteSheet";
 import type { PaletteRow } from "../../api/paletteSheet";
+import type { DecisionOutcomeMessage } from "../../api/decisionOutcome";
 import styles from "./PaletteSheet.module.css";
 
 export const PALETTE_SHEET_GAP_PX = 6;
@@ -21,6 +28,30 @@ interface SheetPlacement {
   readonly left: number;
   readonly top: number;
   readonly width: number;
+}
+
+/** THE PLACEMENT: measured from the anchor's own box, keyed by the anchor so a fresh bar element
+ *  re-measures, and again on every resize while mounted so a placed element tracks a reflowed bar
+ *  without waiting for the next keystroke. Shared by the sheet and `PaletteStatus`, unchanged in
+ *  behaviour from the sheet's own earlier effect. */
+function usePalettePlacement(anchor: HTMLElement | null): SheetPlacement | null {
+  const [placement, setPlacement] = useState<SheetPlacement | null>(null);
+
+  useLayoutEffect(() => {
+    if (anchor === null) {
+      setPlacement(null);
+      return undefined;
+    }
+    const measure = () => {
+      const box = anchor.getBoundingClientRect();
+      setPlacement({ left: box.left, top: box.bottom + PALETTE_SHEET_GAP_PX, width: box.width });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => { window.removeEventListener("resize", measure); };
+  }, [anchor]);
+
+  return placement;
 }
 
 export function PaletteSheet({
@@ -38,24 +69,7 @@ export function PaletteSheet({
   onChoose: (row: PaletteRow) => void;
   onHover: (index: number) => void;
 }) {
-  const [placement, setPlacement] = useState<SheetPlacement | null>(null);
-
-  // THE PLACEMENT: measured from the anchor's own box, keyed by the anchor so a fresh bar
-  // element re-measures, and again on every resize while mounted so the sheet tracks a reflowed
-  // bar without waiting for the next keystroke.
-  useLayoutEffect(() => {
-    if (anchor === null) {
-      setPlacement(null);
-      return undefined;
-    }
-    const measure = () => {
-      const box = anchor.getBoundingClientRect();
-      setPlacement({ left: box.left, top: box.bottom + PALETTE_SHEET_GAP_PX, width: box.width });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => { window.removeEventListener("resize", measure); };
-  }, [anchor]);
+  const placement = usePalettePlacement(anchor);
 
   const indexed = rows.map((row, index) => ({ row, index }));
 
@@ -77,12 +91,15 @@ export function PaletteSheet({
             <div aria-hidden="true" className={styles.heading}>{section}</div>
             {sectionRows.map(({ row, index }) => {
               const active = index === activeIndex;
+              const disabled = row.disabledReason !== "";
               return (
                 <div
                   key={row.key}
                   role="option"
                   id={paletteOptionId(listId, index)}
                   aria-selected={active}
+                  aria-disabled={disabled ? "true" : undefined}
+                  title={disabled ? row.disabledReason : undefined}
                   data-palette-row={row.key}
                   className={styles.row}
                   onMouseDown={(event) => event.preventDefault()}
@@ -104,6 +121,33 @@ export function PaletteSheet({
         );
       })}
     </div>,
+    document.body,
+  );
+}
+
+/** THE OUTCOME LINE (DECISION F044 D3 (4)): a `role="status"` paragraph, placed exactly as the
+ *  sheet is, in the chat outcome line's own tones. A SIBLING of the listbox rather than a row
+ *  inside it — see the header — so it renders whether or not the sheet itself is shown. */
+export function PaletteStatus({
+  status,
+  anchor,
+}: {
+  status: DecisionOutcomeMessage;
+  anchor: HTMLElement | null;
+}) {
+  const placement = usePalettePlacement(anchor);
+
+  return createPortal(
+    <p
+      role="status"
+      data-ui="palette-outcome"
+      data-tone={status.tone}
+      data-placed={placement !== null ? "true" : "false"}
+      className={styles.status}
+      style={placement !== null ? { left: placement.left, top: placement.top, width: placement.width } : undefined}
+    >
+      {status.sentence}
+    </p>,
     document.body,
   );
 }
