@@ -26615,3 +26615,54 @@ measured maxima, and this stage's own budget did not move.
 ALTERNATIVES: leaving `## Q12`'s 1.32 s or `tests/orchestration/test_ci_stages.py`'s own 24.40 s as the doc's cited number, rejected because both describe a selection the stage no longer makes (four and five paths respectively, not seven) and a doc whose Source column points at evidence for a different selection is worse than one that admits it has none; citing `44.2s` from DECISION F044 D10 as the doc's number, rejected because it is a single reading from a disposable worktree, not the three-sample-in-the-primary-checkout rigor every other row in the same table already carries, and reusing it here would launder a lighter-weight reading into the table's own convention; re-running all five stages' three-sample measurements to refresh the whole table at once, rejected as scope beyond what drifted — `fast`, `standard`, `ui` and `smoke` did not change, and re-measuring a settled number is `## Q10`'s and `## Q11`'s own "not measured" rule applied to this round.
 
 HOW TO REVERSE: delete `## Q14` from `.agent/f083_inventory.md`; restore `tests/orchestration/test_ci_stages.py`'s `MEASURED_MAX_WALL_S["budgets"]` to `24.40` and its comment to the F273-only wording; restore `docs/system/ci-self-check-v1.md`'s `budgets` row to `1.32` / `` `## Q12`, three samples `` and "four named paths", and the measured-maxima sum to `1353.07 s, about 22.6 minutes`; delete this paragraph.
+
+## DECISION F044 D12 — T003's "numbers recorded per run (trend visible)" DESIGN line is discharged as out of this feature's built scope; ACCEPTANCE's own "CI budgets red/green with numbers" is met by each `BudgetCheck.detail` (2026-09-30)
+
+CONTEXT, read at closure rather than caught earlier. `docs/roadmap/features/T5_F044.md`'s Design
+section, under "Budgets in CI", reads "numbers recorded per run (trend visible), breach output
+names the biggest deltas". Its Acceptance line, the binding contract, reads only "CI budgets
+red/green with numbers; a seeded bundle bloat fixture names the culprit chunk." No DECISION across
+F044's ten rounds names either clause; a grep of `.agent/decisions.md` and `.agent/live_review.md`
+for "recorded-numbers", "trend visible" and "numbers artifact" at `393d558b6` returns nothing, so
+this is the first time either clause was read against what shipped. MEASURED: `check_bundle_size`,
+`check_first_paint` and `check_frame_pipeline` each build a `BudgetCheck` whose `.detail` names the
+observed reading and, on a breach, the overage or the grown chunks — `check_bundle_size`'s own
+docstring already promises "a breach names the chunks that grew, largest delta first." Every one of
+the three live tests reads `assert check.ok, check.detail`, so a RED run's own pytest failure
+carries the numbers into whatever log retains that run — the local terminal, or, hosted, the
+GitHub Actions run's own retained log. A GREEN run computes the same `.detail` string and discards
+it; nothing in this repository persists it anywhere a later run could diff against. Searching
+`packages/orchestration/ci_run.py` and `apps/cli/commands/ci_cmd.py` (the whole `remedy ci`
+seam) finds no per-check reporting at all — `summarize_ci_results` prints one line PER STAGE
+(pass/fail/skip/duration), never per budget check — and no file under `.data`, `docs/` or
+`packages/` accumulates a budget reading across runs.
+
+CHOSEN: ACCEPTANCE's own wording — "CI budgets red/green with numbers" — is read as "a breach
+names its own numbers," which is what `check_bundle_size`'s docstring already promised before this
+round existed and what all three checks now do; this is MET, not aspirational, and needs no new
+code. The Design section's stronger "trend visible" is discharged as OUT OF THIS FEATURE'S BUILT
+SCOPE: no DECISION ever specified a storage format, an owner, a reader or a retention period for
+such a trend, and CI's own hosted-workflow log retention already gives an operator who wants to
+compare two runs' numbers a place to look — GitHub Actions keeps every run's own log, and a RED
+run's `.detail` string is IN that log by construction. A dedicated persistence artifact (a JSONL
+history file, a dashboard, a badge) would be new product surface invented at closure with no
+consumer named anywhere in this feature's file, which is exactly the shape
+`docs/agents/planner_reviewer_prompt.md` §4 item 7 asks a reviewer to name as a DECISION rather
+than build silently.
+
+ALTERNATIVES: building a trend-storage artifact now (e.g. `packages/orchestration/ci_budgets.py`
+appending each run's three readings to a committed or `.data`-scoped JSONL file), REJECTED: no
+Acceptance line, DECISION or Do-not-touch clause names a reader for it, a closure round is the
+wrong time to invent one, and DECISION F033 D3 sets the precedent for discharging a Design-only
+promise as vacuous when the codebase it would apply to was never built for it. Printing every
+`BudgetCheck.detail` unconditionally (pass or fail) from each live test via `print()`, REJECTED as
+a half-measure: pytest's own captured stdout on a PASSING run is discarded by default
+(`-q`, no `-s`, no `-rA`) exactly like the return value is now, so the print would add a line of
+code without adding a single byte of persistence — the real gap is STORAGE across runs, not stdout
+verbosity within one. Registering this as an open finding for a future feature to build, REJECTED:
+nothing in T5_F044.md's Acceptance or Do-not-touch sections obligates a trend artifact, so there is
+no unmet contract to carry forward — a finding records a contract this feature broke, not a
+Design-section wish nobody asked to keep.
+
+HOW TO REVERSE: delete this paragraph; if a trend-storage artifact is wanted, it is a new feature's
+scope, not a reopening of F044.

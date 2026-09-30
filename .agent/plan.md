@@ -10,26 +10,31 @@ write door's commands, a fuzzy jump to any task, the projects and the
 help, with a routing rule that sends questions to the chat; one keymap
 drives the cockpit from the keyboard; and CI enforces the bundle, first
 paint and frame-rate budgets (`docs/roadmap/features/T5_F044.md`,
-DECISIONS F044 D1 to D11).
+DECISIONS F044 D1 to D12).
 
 ## Current Step
 
-ROUND 10: book round 9, record DECISION F044 D11, and sync
-`docs/system/ci-self-check-v1.md`'s stage and budget tables to the
-`budgets` stage's real, current seven-path selection — a fresh
-three-sample measurement (`.agent/f083_inventory.md` `## Q14`) confirms
-the stage's `timeout_sec=300` is still correct, so
-`packages/orchestration/ci_stages.py` is unchanged.
+ROUND 11, the closure sequence's first round: book round 10, record
+DECISION F044 D12 (discharging T003's Design-only "trend visible" line
+as out of scope; Acceptance's own "numbers" clause is already met), the
+feature file's Built State for T001 through T003, the checklist
+consolidation pass (nothing to add — no F044 round left a
+`.agent/prose_slips.md` entry), and the closure's self-use item: run to
+its approval gate, its findings registered if any.
 
 ## Next Steps
 
-1. The closure sequence (docs/roadmap/STATUS_closure_protocol.md): the
-   checklist's consolidation, the feature file's Built State, the
-   self-use item, the integration gate's one full suite run, the
-   evidence bundle and review package, the ledger rotation, and the
-   STATUS flip with the pull request.
+1. Land the self-use item's own diff, with reviewer-authored tests, and
+   its own Built State paragraph (mirroring F043's R6→R7 split).
+2. The integration gate: the feature's one full suite run
+   (`python3 -m pytest -n auto -q`, worker, primary checkout),
+   committed as `.agent/authored/f044-closure-suite.txt`.
+3. The evidence bundle and the review zip package.
+4. Runtime actuals, the STATUS line, the ledger rotation, the README
+   sync, the closure commit and the pull request.
 
 ## Risks
 
-Open findings: 0.
+Open findings: 0 (pending the self-use item's own defects, if any,
+registered this round).
 Operator questions open: 0.
