@@ -14,18 +14,18 @@ DECISIONS F044 D1 to D12).
 
 ## Current Step
 
-ROUND 14, the closure sequence's evidence round: book round 13, reclaim
-staging copies, and build the evidence bundle and the review package at
-the accepted head.
+ROUND 15, the closing round: book round 14, close `R-1116` with a
+`Done:` line, rotate the finding ledger, accept F044 in STATUS with the
+README and the self-use queue in the same commit, and open the pull
+request.
 
 ## Next Steps
 
-1. The closing round: the booking of round 14, the ledger's rotation,
-   the STATUS line with the README and the self-use queue's
-   `consumed_by` edit in one commit, and the pull request. `R-1117`
-   already carries its `Owner: F290` line, so no reassignment is owed.
+1. The Open PR Gate merges this feature's pull request at the start of
+   the next feature's session, never in this one.
+2. Rule A5: the first unchecked feature in `docs/roadmap/STATUS.md`.
 
 ## Risks
 
-Open findings: 1 (`R-1117`, Medium, owned by F290).
-Operator questions open: 0.
+Open findings: 1 (`R-1117`, Medium, owned by F290; carried, not this
+feature's to resolve).
