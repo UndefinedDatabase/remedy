@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess
+from collections import Counter
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = REPO_ROOT / ".agent" / "f293_inventory.md"
@@ -38,6 +42,19 @@ FLOOR = {
 #: child process writing the record exited 0 (`assert proc.returncode == 0, proc.stderr`). The
 #: in-process call raises when the write fails, so the check is in the call (DECISION F293 D11).
 ALLOWED_REMOVALS = {"tests/cli/test_mission_cmd.py": (5, 0)}
+
+#: Where F293 left main, and F293's first commit: while main does not hold that commit, F293 is
+#: open and every assertion that existed where it began must still be there, word for word (R-1123).
+FORK = "8a067a3b93fb3d7080053f9cf742379534bed447"
+F293_FIRST_COMMIT = "6d51c38a920dfaa10d9f3ad138e8c9993987e685"
+#: The assertions F293 changed on purpose, as `ast.unparse` writes them, with how many times.
+ALLOWED_CHANGES = {
+    # The five setup checks of `ALLOWED_REMOVALS` (DECISION F293 D11).
+    "tests/cli/test_mission_cmd.py": {"assert proc.returncode == 0, proc.stderr": 5},
+    # Round 10 added `test_load` to doctor core's exact key list, a stricter check (DECISION F293 D7).
+    "tests/cli/test_worker_facade_cmd.py": {
+        "assert list(result.keys()) == ['ready', 'checks', 'blockers', 'warnings', 'dead_commands', 'disk']": 1},
+}
 
 
 def _section(text: str, heading: str) -> str:
@@ -95,3 +112,45 @@ class TestNoAssertionWasLost:
     def test_the_counter_sees_both_kinds(self):
         source = "import pytest\n\ndef test_x():\n    assert 1\n    with pytest.raises(ValueError):\n        int('x')\n"
         assert _assertions(source) == (1, 1)
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True, timeout=60)
+
+
+def _checks(source: str) -> Counter:
+    """Every assertion of a module as `ast.unparse` writes it: `assert` statements, and
+    `pytest.raises` / `pytest.warns` calls with their arguments."""
+    found: Counter = Counter()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Assert) or (
+                isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("raises", "warns")):
+            found[ast.unparse(node)] += 1
+    return found
+
+
+class TestNoAssertionWasWeakened:
+    """Goal & Done, read for content: no assertion that existed where F293 began was changed or
+    gutted, except `ALLOWED_CHANGES` (R-1123). The claim is about F293's own changes, so the check
+    runs while F293 is open, its closure's suite and its pull request included, and says it is
+    skipped once main holds F293 or the checkout has no history back to where F293 began."""
+
+    def test_every_assertion_that_existed_where_f293_began_is_still_there_word_for_word(self):
+        if _git("cat-file", "-e", FORK + "^{commit}").returncode != 0:
+            pytest.skip("this checkout has no history back to where F293 began")
+        if _git("merge-base", "--is-ancestor", F293_FIRST_COMMIT, "origin/main").returncode == 0:
+            pytest.skip("main holds F293, so its own changes are history")
+        changed = {}
+        for path in FLOOR:
+            before = _checks(_git("show", f"{FORK}:{path}").stdout)
+            now = _checks((REPO_ROOT / path).read_text(encoding="utf-8"))
+            gone = (before - now) - Counter(ALLOWED_CHANGES.get(path, {}))
+            if gone:
+                changed[path] = sorted(gone)
+        assert changed == {}
+
+    def test_a_gutted_assertion_is_no_longer_the_same_check(self):
+        before = _checks("def test_x():\n    assert value == 3, 'three'\n")
+        after = _checks("def test_x():\n    assert True, 'three'\n")
+        assert before - after == Counter({"assert value == 3, 'three'": 1})
