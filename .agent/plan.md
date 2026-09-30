@@ -13,19 +13,18 @@ introduces the shell, and '?' opens the catalog as a searchable panel
 
 ## Current Step
 
-ROUND 5: book round 4 with R-1115's resolution, record DECISION F043 D5,
-and land T003's end-to-end run over the real shell and the explanation
-layer's user guide.
+ROUND 6, the closure sequence's first round: book round 5, consolidate
+the reviewer's checklist, write the feature file's Built State, and run
+the closure's self-use item on the `self_use` role.
 
 ## Next Steps
 
-1. The closure sequence's first round: the self-use item run, the
-   checklist consolidation and the feature file's Built State.
-2. The integration gate: the one full suite of this feature.
-3. The evidence bundle and the review package.
-4. The ledger's rotation, STATUS, the README and the pull request.
+1. The integration gate: the self-use item's diff landed or declined, and
+   the one full suite of this feature.
+2. The evidence bundle and the review package.
+3. The ledger's rotation, STATUS, the README and the pull request.
 
 ## Risks
 
-Open findings: 0. A term whose defining feature has not shipped gets no
-entry until that feature builds it (DECISION F043 D1 (5)).
+Open findings: 0. The self-use run spends real money, at most the
+`self_use` role's default budget, and is never applied.
