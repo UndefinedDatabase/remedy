@@ -26706,3 +26706,13 @@ CHOSEN: change nothing; no contract test for `--disable-gpu`.
 ALTERNATIVES: adding `--disable-gpu` anyway, REJECTED because the frame-budget tests measure real compositor frames and the flag could change what they measure, for no measured saving.
 
 HOW TO REVERSE: nothing to reverse. If a later reading shows Chrome on the card, add the flag to that argument list and a contract that every `--headless=new` in tests is accompanied by it.
+
+## DECISION amend0930 D5 — F293 (Test load diet) is registered thin as the first unaccepted STATUS line, under its own Tier 2 heading, with the Tier 5 cockpit list re-opened after it (2026-09-30)
+
+CONTEXT: Operator amendment amend0930-test-load, Part F, orders one registered feature that makes the tests themselves cheaper, placed so that the loop's next claim is that feature. The highest feature number in `docs/roadmap/STATUS.md` was F292 on `origin/main`, and no feature branch was open (F044's PR was merged), so the new feature is F293. The first line starting `- [ ] F` was F292, which is not the first entry under its Tier 5 heading (F043 and F044 are accepted above it).
+
+CHOSEN: `docs/roadmap/features/T2_F293.md` in the shape of `T2_F290.md`; a new heading `## Tier 2 — Test load (operator amendment amend0930-test-load)` with the F293 line directly before F292's line, and the Tier 5 heading re-opened after it under its existing text (`(parallel human track, continued)`, which already says "continued", exactly as the ledger has done for every earlier re-opening of that heading). In the same commit `TOTAL_FEATURES` in `tests/docs/test_docs_consistency.py` went from 292 to 293 with one comment sentence, the README sentence to `121 of 293 registered items accepted.` and the Tier 2 row's Total cell from 40 to 41. `docs/roadmap/ROADMAP.md` was not touched.
+
+ALTERNATIVES: appending "(continued)" to the re-opened heading, REJECTED because that heading already ends in "continued)" and doubling it would break the ledger's own repeated-heading convention.
+
+HOW TO REVERSE: delete the feature file, the new heading and line, and put the three totals back to 292, 292 and 40.
