@@ -212,3 +212,9 @@ Operator questions open: 0
 3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
 4. Book round 10's verdict in the next round's first commit.
 5. T003.
+
+## Reviewer verdict — round 10 (added after the review)
+
+VERDICT PASS for F293 round 10, verified by dry run, bytes identical (amend0930-test-load rule 3), compared at `bb7f06ba3`: `apps/cli/commands/worker_facade_cmd.py` and `tests/cli/test_worker_facade_cmd.py` equal the reviewer's dry-run copies `.remedy-wt/f293-r10-dry-worker_facade_cmd.py` and `.remedy-wt/f293-r10-dry-test_worker_facade_cmd.py`, made on the same base `b225adae2`; the saved block, the plan and the three appends equal the prepared files. Insertions by `git show --numstat`: `0727a5566` 160, `b3f700786` 127, `bb7f06ba3` 121. The reviewer's dry-run readings are the ones DECISION F293 D7 records. A live run of `python3 -m apps.cli.main doctor core` in the primary checkout at `bb7f06ba3` printed `test load:` and then `159 test runs used 91.1 CPU minutes in the last 24 hours.` directly above `dead commands:`. The next session books this verdict as the `Gate: F293 R10` entry in the first commit of its first round.
+
+Session 4 ran six delegated rounds, rounds 5 to 10, and each one passed. It ends here because the reviewer's context has grown long over those six rounds; six rounds is inside the session target of six to eight.
