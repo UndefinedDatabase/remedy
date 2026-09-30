@@ -5,23 +5,22 @@ Cut the full suite's and round selections' CPU cost by at least 40% from T001's 
 with numbers that no more can be cut without weakening a test (docs/roadmap/features/T2_F293.md).
 
 ## Current Step
-Session 6, round 21: the closure's repair round (amend0917-throughput rule 2). Round 20 is booked
-PASS; its closure suite read no failed test and exit code 1, because a live UI test left its fake
-browser's `sleep` running (R-1124). This round starts the browser in a session of its own and ends
-its whole process group on close, with a test, and then re-runs the one full suite on the repaired
-tree, replacing `.agent/authored/f293-closure-suite.txt` (amend0921-operator-feedback rule 1). The
-open-findings count is 2 (`R-1117`, owned by the rolling paydown, and `R-1124`, this feature's).
+Session 6, round 22: the closure's decision round. Round 21 is booked PASS and R-1124 resolved:
+the closure suite on the tree that ships read exit 0, no process left behind, and 940.64 CPU
+seconds, 24.5 percent below T001's 1,246.09. The 40 percent target is missed, so F293 closes at
+this scope and the rest of T002 is registered as F294, "Test load diet, part two", directly after
+F293 (DECISION F293 D15), with an operator question recording the reversible ruling. R-1125 (the
+README's Tier 5 row) is registered for the rolling paydown. The open-findings count is 2
+(`R-1117`, `R-1125`, both owned by F290).
 
 ## Next Steps
-1. Read the new transcript and resolve R-1124 when it reads exit 0 with no process left behind.
-2. The closure DECISION on the 40 percent target: round 20's run read 944.99 CPU seconds against
-   T001's 1,246.09, 24.2 percent less; the new run's reading decides, and the remaining cost is
-   stated with DECISION F293 D10's numbers. The Built State takes the reading.
-3. The evidence bundle and the review zip; then the ledger rotation, `SU-040`'s `consumed_by`, the
-   STATUS flip and the pull request.
+1. The evidence bundle and the review zip (closure algorithm steps 1 and 2), with the staging-copy
+   reclaim.
+2. The ledger rotation, `SU-040`'s `consumed_by`, the STATUS flip with the README sync, and the pull
+   request.
 
 ## Risks
-- The test load record adds up CPU time (`os.times()`), and a test that sleeps uses none; a cut
-  that only removes a sleep shortens the run but moves the 40% target by nothing.
-- The real-browser test in the same file runs only in the primary checkout, where the UI's
-  dependencies are installed; the reviewer's dry tree skipped it, so the re-run is its proof.
+- The evidence bundle's verification records never carry a full-suite node list; they carry the
+  scoped selections of the closing rounds (STATUS_closure_protocol.md pitfall (d)).
+- `base_commit` is the fork point `8a067a3b9`; the branch merged nothing from main, so the
+  ancestry-path and plain counts must agree (pitfall (e)).
