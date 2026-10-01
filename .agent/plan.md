@@ -6,17 +6,18 @@ edits of a plan that waits for approval, and the approval or rejection of a chan
 palette's seven form entries open these surfaces (docs/roadmap/features/T5_F292.md).
 
 ## Current Step
-Session 1, round 2: book round 1 (PASS), record DECISION F292 D2, and land the read-only plan
-view: the `plan` section's type and normalizer, the pure rules in `apps/ui/src/api/planView.ts`,
-`PlanView` opened from the right panel's Plan button, and their tests. Round 1 landed the plan
-read. The open-findings count is 4 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, all owned by F290).
+Session 1, round 3: book round 2 (PASS), register R-1129 (owned by F290), record DECISION F292
+D3, and land the plan edits' send module, the dashboard re-read after an accepted edit, and each
+task's Edit and Delete in the plan view. Rounds 1 and 2 landed the plan read and the read-only
+view. The open-findings count is 5 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`, all
+owned by F290).
 
 ## Next Steps
-1. The six plan edits in the plan view, each sent with the version shown, a refusal told in plain
-   words, and the view read again after an accepted edit.
-2. The diff view's hunk controls, with their own DECISION on reading recorded decisions.
-3. The palette's seven form entries as surface entries, and an end-to-end run.
-4. The amend0930b-slow-cap hardening stage (SLOW MODE), then the closure sequence.
+1. The criteria editor (add, edit, remove) and the order of the tasks, in the plan view.
+2. Merge and split, in the plan view.
+3. The diff view's hunk controls, with their own DECISION on reading recorded decisions.
+4. The palette's seven form entries as surface entries, and an end-to-end run.
+5. The amend0930b-slow-cap hardening stage (SLOW MODE), then the closure sequence.
 
 ## Risks
 - A hunk decision replaces the whole record for its diff, so controls that send only the hunks
