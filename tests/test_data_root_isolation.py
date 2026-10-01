@@ -57,6 +57,33 @@ def test_a_root_is_made_without_numbering_the_base_directory(_data_root_allocato
     assert [r for r in roots if not r.is_dir()] == []
 
 
+#: The audit events seen while ``_AUDIT["armed"]`` holds; the hook is installed once per test
+#: process, because an audit hook can never be removed, and it records nothing while disarmed.
+_AUDIT: dict = {"armed": False, "events": [], "installed": False}
+
+
+def _record_audit_event(event, _args):
+    if _AUDIT["armed"]:
+        _AUDIT["events"].append(event)
+
+
+def test_allocating_a_root_raises_no_audit_event_but_one_mkdir(_data_root_allocator):
+    """R-1127: the interpreter raises an audit event inside every directory listing, started
+    process and foreign-library call, so a listing function the allocator bound to a name of its
+    own before this test ran is seen here although the test above cannot replace it."""
+    if not _AUDIT["installed"]:
+        sys.addaudithook(_record_audit_event)
+        _AUDIT["installed"] = True
+    _AUDIT["events"] = []
+    _AUDIT["armed"] = True
+    try:
+        roots = [_data_root_allocator() for _ in range(2)]
+    finally:
+        _AUDIT["armed"] = False
+    assert _AUDIT["events"] == ["os.mkdir", "os.mkdir"]
+    assert roots[0] != roots[1]
+
+
 def test_a_cli_subprocess_inherits_the_isolated_root():
     code = "from packages.orchestration.data_paths import resolve_data_root; print(resolve_data_root())"
     out = subprocess.run(

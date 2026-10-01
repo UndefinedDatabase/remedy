@@ -167,7 +167,7 @@ class TestPreviewEndToEnd:
 
             # (e) OPEN: `job.preview-start` through the door, bearer token, CSRF header,
             #     a fresh nonce.
-            nonce = secrets.token_urlsafe(8)
+            nonce = secrets.token_hex(8)
             status, body = _command(server_port, token, job_id, "job.preview-start", nonce)
             assert status == 200
             assert body["outcome"] == "accepted"
