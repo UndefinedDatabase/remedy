@@ -129,6 +129,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="serve.force_direct",
+        env_var="REMEDY_SERVE_DIRECT",
+        description=(
+            "Any non-empty value forces `job stop`, `job pause`, `job unpause` and `job run` "
+            "to run direct even when a serve supervisor answers its socket; the supervisor "
+            "sets it on every run it starts, so that run never sends a command back to the "
+            "supervisor waiting on it (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
         key="ollama.host",
         env_var="REMEDY_OLLAMA_HOST",
         description="Ollama server URL",
