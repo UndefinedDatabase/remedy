@@ -16,6 +16,8 @@ import { decodeChatTurn, chatTurnPath } from "./chatTurn";
 import type { ChatTurnView } from "./chatTurn";
 import { decodeJobProject, decodeProjectSummary, decodeProjectsView, jobProjectPath, projectSummaryPath, projectsViewPath } from "./projectScope";
 import type { JobProject, ProjectSummary, ProjectsView } from "./projectScope";
+import { hunkDecisionsPath, readHunkDecisions } from "./hunkDecisions";
+import type { HunkDecisions } from "./hunkDecisions";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPlan, RemedyPlanTask, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
@@ -963,6 +965,21 @@ export async function loadDiffEnvelope(
     return readDiffEnvelope(payload);
   } catch {
     return readDiffEnvelope(null);
+  }
+}
+
+/** THE RECORDED HUNK DECISION DOOR (T5_F292 T003, DECISION F292 D6): the decision recorded for
+ *  the attempt the diff of `taskId` shows (the job's own diff when it is blank), decoded by
+ *  `readHunkDecisions`. Never throws: a failed read decodes as nothing recorded, so the hunk
+ *  controls start from pending rather than from a stale record. */
+export async function loadHunkDecisions(
+  request: { jobId: string; token: string; taskId: string },
+  fetchPayload: (path: string) => Promise<unknown> = fetchJson,
+): Promise<HunkDecisions> {
+  try {
+    return readHunkDecisions(await fetchPayload(hunkDecisionsPath(request.jobId, request.token, request.taskId)));
+  } catch {
+    return readHunkDecisions(null);
   }
 }
 
