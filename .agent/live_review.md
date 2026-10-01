@@ -223,3 +223,7 @@ Done: R-1132 — RESOLVED at `8c69a1a6e` (F200 R7 C2), booked by F200 R8: `packa
 - R-1136 — Low, NOTHING STOPS A FURTHER COMMAND FROM BEING SENT THROUGH THE SUPERVISOR, ALTHOUGH DECISION F200 D4 LIMITS CLIENT MODE TO `job.stop`, `job.pause`, `job.unpause` AND `job.run`. Found by F200's acceptance audit, `.agent/f200_acceptance_audit.md`, claim 18, which found the statement true at `c820db28a` by reading the code and guarded by no test. THE REPAIR: a test that parses every module under `apps/` and `packages/` and requires the commands handed to `forward_effect` to be exactly those four, each written as a literal, and the modules that call `forward_effect` or `supervisor_answers` to be exactly the three that handle them. Owner: F200. OPEN.
 
 Landed: R-1134 — `tests/orchestration/test_serve_stop_file.py` runs one fixture job direct and through a real supervisor, stops each with `python3 -m apps.cli.main job stop`, and requires the same end in both modes; F200 round 8, in the commit that carries this line.
+
+Landed: R-1135 — `tests/orchestration/test_serve_artifacts.py` requires the entrypoint's header and `docs/system/serve-daemon-v1.md` to name `docker run --init`; F200 round 8, in the commit that carries this line.
+
+Landed: R-1136 — `tests/cli/test_serve_client_scope.py` requires the commands handed to `forward_effect` to be exactly `job.stop`, `job.pause`, `job.unpause` and `job.run`, and the modules reaching the client bridge to be exactly `job_stop_cmd.py`, `job_pause_cmd.py` and `do_cmd.py`; F200 round 8, in the commit that carries this line.

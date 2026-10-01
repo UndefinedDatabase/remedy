@@ -163,6 +163,20 @@ def test_entrypoint_refuses_without_data_dir_and_never_runs_the_stub(tmp_path):
     assert not stub_output.exists(), "the stub ran despite REMEDY_DATA_DIR being unset"
 
 
+def test_entrypoint_and_docs_both_tell_the_operator_to_run_with_an_init_process():
+    """DECISION F200 D8: 'the container entrypoint ... expects the container
+    to run with an init process.' A requirement an operator never reads is no
+    requirement at all, so both of its stated homes must carry it: the
+    entrypoint's own header comment, and the built-state page."""
+    entrypoint_text = ENTRYPOINT.read_text(encoding="utf-8")
+    assert "--init" in entrypoint_text
+    assert "docker run --init" in entrypoint_text
+
+    docs_page = REPO_ROOT / "docs" / "system" / "serve-daemon-v1.md"
+    docs_text = docs_page.read_text(encoding="utf-8")
+    assert "docker run --init" in docs_text
+
+
 def test_entrypoint_refuses_with_empty_data_dir_too(tmp_path):
     stub = _write_stub(tmp_path)
     stub_output = tmp_path / "stub-output.txt"
