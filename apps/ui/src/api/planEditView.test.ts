@@ -7,7 +7,14 @@ import {
   planCriterionRemoveBlocked,
   planDeleteQuestion,
   planEditBlockedReason,
+  planMergeBlocked,
+  planMergeIds,
+  planMergeSummary,
   planMove,
+  planSplitBlocked,
+  planSplitDefaultParts,
+  planSplitPartition,
+  planSplitSummary,
   planTaskDraftOf,
   planTaskDraftProblem,
 } from "./planEditView";
@@ -130,5 +137,56 @@ describe("planMove (DECISION F292 D4)", () => {
   });
   it("says an unknown task is already first or last rather than moving anything", () => {
     expect(planMove(free, "Z", -1)).toEqual({ blocked: "Z is already first." });
+  });
+});
+
+describe("the merge rules (DECISION F292 D5)", () => {
+  const four = plan({ tasks: [task("T1"), task("T2", ["T1"]), task("T3", ["T2", "T1"]), task("T4", ["T3"], { acceptance: ["a", "b"] })] });
+
+  it("needs a second task", () => {
+    expect(planMergeBlocked(plan({ tasks: [task("T1")] }))).toBe("There is no other task to merge with.");
+    expect(planMergeBlocked(four)).toBeNull();
+  });
+  it("names the merged tasks in plan order, whatever order they were chosen in", () => {
+    expect(planMergeIds(four, "T3", ["T4", "T1"])).toEqual(["T1", "T3", "T4"]);
+    expect(planMergeIds(four, "T2", [])).toEqual(["T2"]);
+  });
+  it("asks for a second task before it says anything", () => {
+    expect(planMergeSummary(four, ["T2"])).toEqual({ problem: "Choose at least one task to merge with." });
+  });
+  it("says the tasks become the first, with every criterion, and who will wait for it instead", () => {
+    expect(planMergeSummary(four, ["T3", "T4"])).toEqual({ text: "T3 and T4 become one task, T3, with all 3 of their criteria." });
+    expect(planMergeSummary(four, ["T1", "T3"])).toEqual(
+      { text: "T1 and T3 become one task, T1, with all 2 of their criteria. T4 will wait for T1 instead." });
+  });
+  it("leaves out a task that already waits for the first", () => {
+    expect(planMergeSummary(four, ["T2", "T3"])).toEqual(
+      { text: "T2 and T3 become one task, T2, with all 2 of their criteria. T4 will wait for T2 instead." });
+  });
+});
+
+describe("the split rules (DECISION F292 D5)", () => {
+  const p = plan({ tasks: [task("T1"), task("T2", ["T1"], { acceptance: ["a", "b", "c"] }), task("T3", ["T2"])] });
+
+  it("needs two criteria", () => {
+    expect(planSplitBlocked(task("T1"))).toBe("A task with one criterion cannot be split.");
+    expect(planSplitBlocked(p.tasks[1])).toBeNull();
+  });
+  it("starts with the last criterion in a second part", () => {
+    expect(planSplitDefaultParts(p.tasks[1])).toEqual([1, 1, 2]);
+  });
+  it("gives one group per part that holds a criterion, in part order", () => {
+    expect(planSplitPartition([1, 1, 2])).toEqual([[0, 1], [2]]);
+    expect(planSplitPartition([3, 1, 3])).toEqual([[1], [0, 2]]);
+    expect(planSplitPartition([2, 2, 2])).toEqual([[0, 1, 2]]);
+  });
+  it("asks for two parts before it says anything", () => {
+    expect(planSplitSummary(p, p.tasks[1], [[0, 1, 2]])).toEqual({ problem: "Put the criteria into at least two parts." });
+  });
+  it("says how many tasks run one after the other, and who will wait for the last part", () => {
+    expect(planSplitSummary(p, p.tasks[1], [[0, 1], [2]])).toEqual(
+      { text: "T2 becomes 2 tasks run one after the other, each with its part of the criteria. T3 will wait for the last part." });
+    expect(planSplitSummary(p, p.tasks[2], [[0], [1], [2]])).toEqual(
+      { text: "T3 becomes 3 tasks run one after the other, each with its part of the criteria." });
   });
 });

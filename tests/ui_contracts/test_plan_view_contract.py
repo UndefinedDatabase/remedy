@@ -76,7 +76,9 @@ def test_the_view_reaches_no_door_and_shows_only_the_rules_sentences():
     for forbidden in ("fetch(", "XMLHttpRequest", "remedyApi", "localStorage"):
         assert forbidden not in source, forbidden
     for pure in (UI_SRC / "api" / "planEditView.ts", UI_SRC / "components" / "plan" / "PlanTaskEditForm.tsx",
-                 UI_SRC / "components" / "plan" / "PlanCriteria.tsx"):
+                 UI_SRC / "components" / "plan" / "PlanCriteria.tsx",
+                 UI_SRC / "components" / "plan" / "PlanMergeForm.tsx",
+                 UI_SRC / "components" / "plan" / "PlanSplitForm.tsx"):
         for forbidden in ("fetch(", "XMLHttpRequest", "Date.now", "new Date", "localStorage"):
             assert forbidden not in _source(pure), (pure.name, forbidden)
     for rule in ("planHeadline(plan)", "planWindowText(plan)", "planDependencyText(task)",

@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { PLAN_ABSENT_TEXT, PLAN_UNREADABLE_TEXT } from "../../api/planView";
 import type { RemedyPlan } from "../../api/types";
 import { PlanCriteria } from "./PlanCriteria";
+import { PlanMergeForm } from "./PlanMergeForm";
+import { PlanSplitForm } from "./PlanSplitForm";
 import { PlanTaskEditForm } from "./PlanTaskEditForm";
 import { PlanView } from "./PlanView";
 
@@ -101,6 +103,17 @@ describe("the plan view", () => {
     ]);
   });
 
+  it("offers Merge and Split, each disabled with its reason when it cannot start", () => {
+    const markup = render(PLAN);
+    const regroup = [...markup.matchAll(/<button type="button"[^>]*?(?: disabled="" title="([^"]*)")?>(Merge|Split)<\/button>/g)]
+      .map((m) => [m[2], m[1] ?? null]);
+    expect(regroup).toEqual([
+      ["Merge", null], ["Split", null], ["Merge", null], ["Split", "A task with one criterion cannot be split."],
+    ]);
+    const alone = render({ ...PLAN, tasks: [PLAN.tasks[0]] });
+    expect(alone).toMatch(/disabled="" title="There is no other task to merge with\."[^>]*>Merge<\/button>/);
+  });
+
   it("lets a free task move both ways", () => {
     const free = { ...PLAN, tasks: [PLAN.tasks[0], { ...PLAN.tasks[1], id: "X", dependsOn: [] }, { ...PLAN.tasks[1], id: "Y", dependsOn: [] }] };
     expect(render(free)).toMatch(/data-plan-task="X"[\s\S]*?<button type="button" class="[^"]*">Move up<\/button><button type="button" class="[^"]*">Move down<\/button>/);
@@ -165,5 +178,38 @@ describe("the criteria forms (DECISION F292 D4)", () => {
 
   it("shows no form when none is open", () => {
     expect(renderCriteria(undefined)).not.toContain("plan-criterion-form");
+  });
+});
+
+describe("the merge and split forms (DECISION F292 D5)", () => {
+  it("the merge form lists every other task to choose, none chosen and nothing previewed yet", () => {
+    const markup = renderToStaticMarkup(createElement(PlanMergeForm, {
+      plan: PLAN, task: PLAN.tasks[0], blockedReason: null, onMerge: () => {}, onCancel: () => {} }));
+    expect(markup).toMatch(/^<form [^>]*aria-label="Merge T1"[^>]*data-ui="plan-merge-form"/);
+    expect(markup).toContain("<legend>Merge T1 with</legend>");
+    expect([...markup.matchAll(/<input type="checkbox"\/><span>([^<]*)<\/span>/g)].map((m) => m[1]))
+      .toEqual(["T2 — Write tests"]);
+    expect(markup).not.toContain("plan-merge-preview");
+    expect(markup).toMatch(/<button type="submit"[^>]*>Merge tasks<\/button>/);
+  });
+
+  it("the split form opens with the last criterion in part 2 and says what the split will do", () => {
+    const markup = renderToStaticMarkup(createElement(PlanSplitForm, {
+      plan: PLAN, task: PLAN.tasks[0], blockedReason: null, onSplit: () => {}, onCancel: () => {} }));
+    expect(markup).toMatch(/^<form [^>]*aria-label="Split T1"[^>]*data-ui="plan-split-form"/);
+    const selected = [...markup.matchAll(/aria-label="Part of criterion (\d)">[\s\S]*?<option value="(\d)" selected="">/g)]
+      .map((m) => [m[1], m[2]]);
+    expect(selected).toEqual([["0", "1"], ["1", "2"]]);
+    expect(markup).toMatch(/data-ui="plan-split-preview">T1 becomes 2 tasks run one after the other, each with its part of the criteria\. T2 will wait for the last part\.</);
+    expect(markup).toMatch(/<button type="submit"[^>]*>Split task<\/button>/);
+  });
+
+  it("disables Merge tasks and Split task with the reason while the controls are blocked", () => {
+    const merge = renderToStaticMarkup(createElement(PlanMergeForm, {
+      plan: PLAN, task: PLAN.tasks[0], blockedReason: "An edit is being saved.", onMerge: () => {}, onCancel: () => {} }));
+    const split = renderToStaticMarkup(createElement(PlanSplitForm, {
+      plan: PLAN, task: PLAN.tasks[0], blockedReason: "An edit is being saved.", onSplit: () => {}, onCancel: () => {} }));
+    expect(merge).toMatch(/disabled="" title="An edit is being saved\.">Merge tasks</);
+    expect(split).toMatch(/disabled="" title="An edit is being saved\.">Split task</);
   });
 });
