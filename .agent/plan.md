@@ -1,21 +1,28 @@
-# Plan — F292 Plan view and hunk decisions in the cockpit
+# Plan — F200 Daemon mode (remedy serve)
 
 ## Goal
-The cockpit offers the seven writes the write door already accepts and no screen offers: the six
-edits of a plan that waits for approval, and the approval or rejection of a change's hunks; the
-palette's seven form entries open these surfaces (docs/roadmap/features/T5_F292.md).
+`remedy serve` runs one supervisor per data root: it answers the cockpit's write door on a unix
+socket, the command line sends the door's commands and `job run` to it while it runs, and it runs
+again after a restart the jobs it was running; direct mode stays fully supported
+(docs/roadmap/features/T12_F200.md, amended by DECISION F200 D1).
 
 ## Current Step
-Session 2, round 14, the closing round: book round 13 (PASS; evidence job `f292r13e1001`, package
-`remedy-review-20261001-095015-READY_FOR_REVIEW.zip` at the accepted head `7b3229644`), record
-DECISION F292 D11 (the README's Tier 5 row reads 38 of 38), rotate the ledger, accept F292 in
-STATUS with the README sync and `SU-042`'s `consumed_by`, push, and open the pull request. F292
-owns no open finding. The open-findings count is 5 (`R-1117`, `R-1125`, `R-1127`, `R-1128`,
-`R-1129`, all owned by F290).
+Session 1, round 1: claim F200, re-head the ledger, book F292's round 14 (PASS), record DECISION
+F200 D1 with the feature file's Amendment section and operator question Q4, and land
+`packages/orchestration/serve_paths.py` with the durable data-root class `serve`. F200 owns no
+open finding. The open-findings count is 5 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`,
+all owned by F290).
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F292's pull
-   request, then round 14's verdict is booked in the next feature's first commit, then Rule A5.
+1. The supervisor: `remedy serve start`, `status` and `stop`, the socket answered by the
+   cockpit's own handler with source `cli`, the owner-only token and the process id file.
+2. Client detection, with `job.stop`, `job.pause` and `job.unpause` forwarded and one test module
+   that runs them in both modes.
+3. The door's other commands the command line shares, forwarded.
+4. `job run` through the supervisor, with its run registry.
+5. The restart that runs registered jobs again, with its SIGKILL test.
+6. The systemd unit, the container entrypoint and the built-state page.
+7. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
-- The diff panel opens below the cockpit (F037's deferred layout); the Built State says so.
+- A command the door does not carry runs direct in both modes (DECISION F200 D1 (3)).
