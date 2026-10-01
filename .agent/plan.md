@@ -7,17 +7,17 @@ runs, and it runs again after a restart the jobs it was running; direct mode sta
 (docs/roadmap/features/T12_F200.md, amended by DECISIONs F200 D1, D4, D5, D7 and D8).
 
 ## Current Step
-Session 2, round 7: book round 6 (FAIL, the reviewer's selection), register R-1132 and R-1133,
-record DECISION F200 D8 with the feature file's addendum, repair R-1132 by registering
-`REMEDY_SERVE_DIRECT`, and land the systemd unit, the container entrypoint, their tests and the
-built-state page `docs/system/serve-daemon-v1.md`. The open-findings count is 7 (`R-1117`,
-`R-1125`, `R-1127`, `R-1128`, `R-1129`, `R-1133`, owned by F290, and `R-1132`, owned by F200).
+Session 2, round 8, the hardening stage's repair round: book round 7 (PASS) and R-1132's
+resolution, register the acceptance audit's three gaps as R-1134, R-1135 and R-1136, record
+DECISION F200 D9, save the audit's report as `.agent/f200_acceptance_audit.md`, and land the three
+tests that close the gaps. The open-findings count is 9 (`R-1117`, `R-1125`, `R-1127`, `R-1128`,
+`R-1129`, `R-1133`, owned by F290, and `R-1134`, `R-1135`, `R-1136`, owned by F200).
 
 ## Next Steps
-1. The amend0930b-slow-cap hardening stage: an acceptance audit by a fresh worker, then repairs.
-2. The closure sequence.
+1. The audit repeated for the three statements that had gaps, by a fresh auditor.
+2. The feature file's Built State paragraph with the audit's counts, then the closure sequence.
 
 ## Risks
 - Every command other than those four runs direct in both modes (DECISION F200 D4).
 - Outside Linux a live process id alone marks a run as adopted (DECISION F200 D7).
-- No test yet shows a STOP file stopping a run the supervisor started; the audit must answer it.
+- The STOP test drives a fixture run, not a real `remedy job run` (DECISION F200 D9).
