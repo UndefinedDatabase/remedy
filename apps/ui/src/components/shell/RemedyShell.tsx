@@ -15,6 +15,7 @@ import { browserDigestVisibilityPort } from "../../api/browserDigestPort";
 import { DigestHeroCard } from "../digest/DigestHeroCard";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
+import { HunkDecisionPanel } from "../diff/HunkDecisionPanel";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
@@ -428,6 +429,9 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
             <>
               <DiffFileSidebar envelope={diffEnvelope} />
               <DiffView envelope={diffEnvelope} />
+              {/* THE HUNK DECISIONS (T5_F292 T003, DECISION F292 D7), a sibling after the diff
+                  view rather than controls inside its rows, for the reason that decision gives. */}
+              <HunkDecisionPanel envelope={diffEnvelope} target={{ jobId: dashboard.jobId, serverToken }} />
             </>
           ) : (
             <p>{diffEnvelope.reason === null ? DIFF_UNAVAILABLE_TEXT : `${DIFF_UNAVAILABLE_TEXT} ${diffEnvelope.reason}`}</p>

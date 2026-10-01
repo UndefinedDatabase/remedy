@@ -1,0 +1,75 @@
+/* The hunk decisions panel (T5_F292 T003, DECISION F292 D7), beside the diff view inside the diff
+   panel. It takes the plan view's tile and control scale (PlanView.module.css): an inner tile on
+   the second background with the line border, pill choices whose chosen one gains a border and
+   weight as well as a tint (ux_spec.md §14), and a filled Record pill. It is a sheet of its own
+   and adds nothing to DiffView.module.css, whose rules are the F037 binding transcription. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-lg);
+  background: var(--remedy-card);
+}
+.panel h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.quiet { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }
+.tally { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--remedy-ink-strong); }
+.hunks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hunk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-bg-2);
+}
+.header { font-family: var(--remedy-font-mono); font-size: 12px; color: var(--remedy-ink-strong); }
+.choices { display: flex; gap: 6px; }
+.choice,
+.choiceOn {
+  padding: 3px 10px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  font: 500 11.5px var(--remedy-font-ui);
+  color: var(--remedy-muted);
+  cursor: pointer;
+}
+.choiceOn { background: var(--remedy-blue-50); border-color: var(--remedy-blue-strong); font-weight: 700; color: var(--remedy-blue-strong); }
+.choice:disabled,
+.choiceOn:disabled { opacity: 0.45; cursor: not-allowed; }
+.reason {
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-card);
+  color: var(--remedy-ink-strong);
+  font: 500 12.5px var(--remedy-font-ui);
+  padding: 5px 8px;
+}
+.message { margin: 0; min-height: 1em; font-size: 12px; color: var(--remedy-ink-soft); }
+.record {
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue);
+  color: var(--remedy-card);
+  font: 700 12px var(--remedy-font-ui);
+  cursor: pointer;
+}
+.record:disabled { opacity: 0.45; cursor: not-allowed; }
+.choice:focus-visible,
+.choiceOn:focus-visible,
+.reason:focus-visible,
+.record:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
