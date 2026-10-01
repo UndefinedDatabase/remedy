@@ -31,10 +31,14 @@ from pathlib import Path
 from typing import Any
 
 from packages.orchestration.serve_paths import ServePaths, serve_paths, socket_path_problem
+from packages.orchestration.serve_runs import RunLauncher, RunRefused, job_run_argv
 
 #: The `source` an effect that arrives over the socket is recorded with: the word
 #: `remedy job stop`, `remedy job pause` and `remedy job unpause` write direct.
 SOCKET_EFFECT_SOURCE = "cli"
+
+#: The one command the socket accepts beyond the cockpit door's own set (DECISION F200 D4).
+JOB_RUN_COMMAND_ID = "job.run"
 
 
 class ServeError(Exception):
@@ -79,18 +83,47 @@ class UnixHTTPConnection(HTTPConnection):
         self.sock = sock
 
 
-def socket_handler_class(token: str) -> type:
-    """The cockpit's request handler, bound for the supervisor's socket."""
-    from packages.orchestration.ui_server import _RemedyHandler
+def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> type:
+    """The cockpit's request handler, bound for the supervisor's socket.
 
-    return type("_SocketHandler", (_RemedyHandler,), {
-        "server_token": token,
-        "target_job_id": "",
-        "app_html": "",
-        "preview_worker": None,
-        "effect_source": SOCKET_EFFECT_SOURCE,
-        "client_names_source": True,
-    })
+    With a LAUNCHER it also accepts `job.run` and starts the job's run through it;
+    every other command takes the cockpit door's own path.
+    """
+    from packages.orchestration.ui_server import (
+        COMMAND_EFFECT_FAILED_MESSAGE,
+        _RemedyHandler,
+        _safe_error,
+    )
+
+    class _SocketHandler(_RemedyHandler):
+        server_token = token
+        target_job_id = ""
+        app_html = ""
+        preview_worker = None
+        effect_source = SOCKET_EFFECT_SOURCE
+        client_names_source = True
+        run_launcher = launcher
+
+        def _command_is_ui_exposed(self, command_id: str) -> bool:
+            if command_id == JOB_RUN_COMMAND_ID:
+                return self.run_launcher is not None
+            return super()._command_is_ui_exposed(command_id)
+
+        def _dispatch_extra_command(
+                self, job: Any, payload: Any) -> tuple[int, dict[str, Any], str] | None:
+            if payload["command"] != JOB_RUN_COMMAND_ID or self.run_launcher is None:
+                return None
+            try:
+                record = self.run_launcher.start(str(job.job_id))
+            except RunRefused as exc:
+                return 409, {"error": str(exc), "code": exc.token}, "rejected_state"
+            except OSError:
+                status, body = _safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE)
+                return status, body, "rejected_effect"
+            return 200, {"command": JOB_RUN_COMMAND_ID, "outcome": "accepted",
+                         **record.to_json()}, "accepted"
+
+    return _SocketHandler
 
 
 def socket_answers(path: Path, timeout: float = 1.0) -> bool:
@@ -152,13 +185,15 @@ def run_supervisor(
     *,
     stop: threading.Event | None = None,
     on_ready: Callable[[SupervisorState], None] | None = None,
+    run_argv: Callable[[str], list[str]] = job_run_argv,
 ) -> None:
     """Answer ROOT's socket until STOP is set, or until SIGTERM or SIGINT arrives.
 
     Refuses a data root whose socket path is too long and a socket another
     supervisor already answers; a socket file nobody answers is what a killed
     supervisor leaves behind, and it is replaced. The socket, the process id file
-    and the token file are removed when the supervisor ends.
+    and the token file are removed when the supervisor ends. A run it started keeps
+    running when it ends; RUN_ARGV builds each run's command, which tests replace.
     """
     paths = serve_paths(root)
     problem = socket_path_problem(paths.socket)
@@ -174,7 +209,8 @@ def run_supervisor(
     token = secrets.token_urlsafe(24)
     _write_private(paths.token_file, token)
     stop = stop if stop is not None else threading.Event()
-    server = _SocketServer(str(paths.socket), socket_handler_class(token))
+    launcher = RunLauncher(paths, argv_for=run_argv)
+    server = _SocketServer(str(paths.socket), socket_handler_class(token, launcher))
     try:
         os.chmod(paths.socket, 0o600)
         _write_private(paths.pid_file, str(os.getpid()))

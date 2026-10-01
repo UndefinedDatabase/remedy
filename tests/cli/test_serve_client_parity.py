@@ -195,7 +195,7 @@ def test_a_refusal_the_door_answers_is_reported_with_the_commands_own_error(
     supervisor = _Running(root)
     try:
         with pytest.raises(SystemExit) as caught:
-            forward_effect(job.job_id, "job.run", {}, json_output=True,
+            forward_effect(job.job_id, "do.run", {}, json_output=True,
                            error="run_not_started", subject="nothing ran")
     finally:
         supervisor.close()

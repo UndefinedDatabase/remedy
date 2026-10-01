@@ -3683,6 +3683,18 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F200 D4: a command a subclass adds to this door — the `job.run` the
+        # supervisor's socket handler accepts — after every clause above. The cockpit's
+        # own handler adds none, so the hook answers None there and the guard below stands.
+        extra = self._dispatch_extra_command(job, payload)
+        if extra is not None:
+            status, body, outcome = extra
+            self._audit_attempt(str(job.job_id), outcome, create=True, payload=payload)
+            if status == 200:
+                self._publish_command_result(str(job.job_id), payload["client_nonce"], body)
+                self._emit_command_accepted_event(str(job.job_id), body)
+            self._send_json(status, body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while every id in the exposed subset has a clause above, and the
@@ -4219,6 +4231,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             )
         except (OSError, RuntimeError, ValueError, TypeError):   # D14, clause four
             return False
+
+    def _dispatch_extra_command(
+            self, job: Any, payload: Any) -> tuple[int, dict[str, Any], str] | None:
+        """`(status, body, audit outcome)` for a command a subclass adds, else None.
+
+        The cockpit's handler adds no command, so this answers None for every id;
+        the supervisor's socket handler overrides it for `job.run` (DECISION F200 D4).
+        """
+        return None
 
     def _command_is_ui_exposed(self, command_id: str) -> bool:
         """True when `command_id` is one of the ids the UI door accepts.

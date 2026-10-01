@@ -10,13 +10,16 @@ from __future__ import annotations
 import json
 import socket
 import stat
+import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration import safe_points
 from packages.orchestration import serve_daemon as SD
+from packages.orchestration import serve_runs as SR
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.serve_paths import serve_paths
 
@@ -32,7 +35,7 @@ def root(tmp_path_factory, monkeypatch):
 class _Running:
     """A supervisor running in a thread until `close` sets its stop event."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, run_argv=None) -> None:
         self.stop = threading.Event()
         self.ready = threading.Event()
         self.errors: list[Exception] = []
@@ -44,7 +47,10 @@ class _Running:
 
         def run() -> None:
             try:
-                SD.run_supervisor(root, stop=self.stop, on_ready=ready)
+                if run_argv is None:
+                    SD.run_supervisor(root, stop=self.stop, on_ready=ready)
+                else:
+                    SD.run_supervisor(root, stop=self.stop, on_ready=ready, run_argv=run_argv)
             except (SD.ServeError, OSError) as exc:
                 self.errors.append(exc)
                 self.ready.set()
@@ -136,8 +142,94 @@ def test_a_repeated_nonce_is_answered_from_the_record_as_the_door_answers_it(roo
 def test_a_command_the_door_does_not_expose_is_refused_as_the_door_refuses_it(root, running):
     from packages.orchestration.ui_server import COMMAND_NOT_EXPOSED_MESSAGE
 
-    status, body = SD.post_command(root, _job(), {"command": "job.run", "client_nonce": "n-1"})
+    status, body = SD.post_command(root, _job(), {"command": "do.run", "client_nonce": "n-1"})
     assert (status, body) == (400, {"error": COMMAND_NOT_EXPOSED_MESSAGE, "field": "command"})
+
+
+_RUN_CHILD = """\
+import sys, time
+from pathlib import Path
+release = Path(sys.argv[2])
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+sys.exit(4)
+"""
+
+
+@pytest.fixture
+def running_with_runs(root):
+    release = root / "release"
+    supervisor = _Running(root, run_argv=lambda job_id: [
+        sys.executable, "-c", _RUN_CHILD, job_id, str(release)])
+    yield supervisor, release
+    release.touch()
+    paths = serve_paths(root)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline and any(
+            (SR.read_run_record(paths, p.stem) or SR.RunRecord("", 0, "", "", "")).exit_code is None
+            for p in paths.runs_dir.glob("*.json")):
+        time.sleep(0.02)
+    supervisor.close()
+
+
+def _ended(root: Path, job_id: str) -> SR.RunRecord:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        record = SR.read_run_record(serve_paths(root), job_id)
+        if record is not None and record.exit_code is not None:
+            return record
+        time.sleep(0.02)
+    raise AssertionError(f"the run of {job_id} never recorded its end")
+
+
+def test_only_the_socket_handler_with_a_launcher_accepts_job_run(root):
+    from packages.orchestration.ui_server import _RemedyHandler
+
+    def bare(cls):
+        """An instance that never ran the HTTP handler's constructor."""
+        return cls.__new__(cls)
+
+    with_runs = bare(SD.socket_handler_class("t", SR.RunLauncher(serve_paths(root))))
+    without = bare(SD.socket_handler_class("t"))
+    assert bare(_RemedyHandler)._command_is_ui_exposed("job.run") is False
+    assert without._command_is_ui_exposed("job.run") is False
+    assert with_runs._command_is_ui_exposed("job.run") is True
+    assert with_runs._command_is_ui_exposed("job.stop") is True
+    assert with_runs._command_is_ui_exposed("do.run") is False
+
+
+def test_a_run_envelope_starts_the_jobs_run_and_answers_with_its_record(root, running_with_runs):
+    supervisor, release = running_with_runs
+    job_id = _job()
+    status, body = SD.post_command(root, job_id, {"command": "job.run", "client_nonce": "run-1"})
+    assert status == 200, body
+    record = SR.read_run_record(serve_paths(root), job_id)
+    assert body == {"command": "job.run", "outcome": "accepted", **record.to_json()}
+    release.touch()
+    assert _ended(root, job_id).exit_code == 4
+    audit = (root / "control" / "jobs" / job_id / "commands_audit.jsonl").read_bytes()
+    assert [json.loads(line)["outcome"] for line in audit.splitlines()] == ["accepted"]
+
+
+def test_a_second_run_of_a_job_still_running_is_refused_with_its_reason(root, running_with_runs):
+    job_id = _job()
+    first = SD.post_command(root, job_id, {"command": "job.run", "client_nonce": "run-a"})
+    status, body = SD.post_command(root, job_id, {"command": "job.run", "client_nonce": "run-b"})
+    assert status == 409
+    assert body["code"] == "job_already_running"
+    assert str(first[1]["pid"]) in body["error"]
+    audit = (root / "control" / "jobs" / job_id / "commands_audit.jsonl").read_bytes()
+    assert [json.loads(line)["outcome"] for line in audit.splitlines()] == [
+        "accepted", "rejected_state"]
+
+
+def test_a_repeated_run_nonce_answers_the_first_run_and_starts_no_second(root, running_with_runs):
+    job_id = _job()
+    envelope = {"command": "job.run", "client_nonce": "run-same"}
+    first = SD.post_command(root, job_id, envelope)
+    assert SD.post_command(root, job_id, envelope) == first
+    assert SR.read_run_record(serve_paths(root), job_id).pid == first[1]["pid"]
 
 
 def test_a_request_without_the_token_is_refused(root, running):
