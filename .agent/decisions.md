@@ -27320,3 +27320,13 @@ CHOSEN. (1) STOP, R-1134. `tests/orchestration/test_serve_stop_file.py` runs one
 ALTERNATIVES. Running a real `remedy job run` in the STOP test was rejected, because it needs a model provider and the restart kill test already set the fixture precedent. Leaving the init-process expectation as an untested comment was rejected, because the hardening stage closes every gap it can. A guard that imports every command module to see what it sends was rejected, because importing runs code, while a syntax tree only reads it.
 
 CONSEQUENCE. Every acceptance statement of F200 now has a test that turns red when the statement stops being true; the audit is repeated for the three statements before the closure. HOW TO REVERSE: delete the three tests and this section, and reopen R-1134, R-1135 and R-1136.
+
+## DECISION F200 D10 — The closure's self-use item SU-043 changed nothing, so no change of it is landed; it is consumed by F200 at the STATUS flip, and its defect is a recurrence of R-1117 (2026-10-01)
+
+CONTEXT. Closure precondition 6 (`docs/roadmap/STATUS_closure_protocol.md`) has every closure run exactly one self-use item to its approval gate. F200's round 10 found the queue empty, generated `SU-043`, "Narrow the excused handler at apps/cli/commands/dev.py:133", and ran it as job `0be4beca71234163` through the `self_use` role, for 4 provider calls and $0.80. The job ended `completed` and its one task passed review, but the job's branch changes no file, and `describe_self_use_run_defects` returned one string, "a task passed review but no path outside .agent/ changed". DECISION F292 D10 met the same case at the previous closure.
+
+CHOSEN. As DECISION F292 D10 ruled: no change of the item is landed, because the job produced none and a change written by the reviewer would not be the self-use pipeline's work. The item is consumed by F200, its `consumed_by` set in the STATUS flip's commit as precondition 6 orders. Its defect is booked as a recurrence of R-1117, which is open and owned by F290, and no new finding id is minted (checklist item 30). The closure's one full suite then runs on the tree as it stands.
+
+ALTERNATIVES. Landing a hand-written narrowing of the handler was rejected for the reason above. Running a second self-use item was rejected, because precondition 6 asks for exactly one per closure.
+
+CONSEQUENCE. The excused handler at `apps/cli/commands/dev.py:133` keeps its mark, and the generator may offer it again once R-1117 is repaired. HOW TO REVERSE: delete this section and the recurrence line, and land the item's change in a reviewed round before the closure suite.
