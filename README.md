@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-123 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+124 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -35,7 +35,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 41 | 42 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 37 | 37 |
+| 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -685,6 +685,16 @@ automatic checks now run in the project's continuous-integration pipeline and fa
 cockpit's built page grows more than 10% past its measured baseline size, takes longer than 1.5
 seconds to first paint on a fresh load, or drops below a smooth 60-frames-per-second pace while
 navigating a 200-task graph).
+
+F292 plan view and changes decided piece by piece (the cockpit now shows a job's plan before you
+approve it: the Plan button lists every planned task in order with the tasks it waits for and the
+checks it must pass, the same answer `remedy job plan-show` prints; while the plan waits for your
+approval you can edit, delete, move, merge or split its tasks and change, remove or add their checks
+right there, and if someone changed the plan in the meantime the cockpit says so in plain words
+instead of overwriting the newer plan; the change view now lists each changed piece of code with
+Approve, Reject with a reason, and Undecided, and records your choice exactly as `remedy patch
+approve-hunks` would; and the seven palette entries that stood disabled because they needed a form
+now open these views).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
