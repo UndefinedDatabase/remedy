@@ -21,7 +21,7 @@ import os, sys, time
 from pathlib import Path
 job_id, release, code = sys.argv[1], Path(sys.argv[2]), int(sys.argv[3])
 print("run", job_id, os.environ.get("REMEDY_SERVE_DIRECT"), os.environ.get("REMEDY_DATA_DIR"),
-      os.getsid(0) == os.getpid())
+      os.getsid(0) == os.getpid(), sys.argv[4:], os.environ["PYTHONPATH"].split(os.pathsep)[0])
 print("to stderr", file=sys.stderr)
 sys.stdout.flush()
 deadline = time.monotonic() + 60
@@ -70,9 +70,21 @@ def test_a_run_runs_direct_in_its_own_session_on_the_supervisors_data_root(setup
     record = launcher.start("job2")
     release.touch()
     launcher.wait("job2", timeout=30)
-    assert Path(record.out_log).read_text() == f"run job2 1 {root} True\n"
+    assert Path(record.out_log).read_text() == f"run job2 1 {root} True [] {SR.CODE_ROOT}\n"
     assert Path(record.err_log).read_text() == "to stderr\n"
     assert (Path(record.out_log).parent, Path(record.out_log).name) == (paths.runs_dir, "job2.out")
+
+
+def test_a_json_run_adds_the_one_option_a_supervised_run_takes(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("job8", json_output=True)
+    release.touch()
+    launcher.wait("job8", timeout=30)
+    assert Path(record.out_log).read_text().split(" ")[5] == "['--json']"
+
+
+def test_the_code_root_holds_the_command_line_the_run_imports():
+    assert (SR.CODE_ROOT / "apps" / "cli" / "main.py").is_file()
 
 
 def test_a_second_start_of_a_running_job_is_refused_and_starts_nothing(setup):

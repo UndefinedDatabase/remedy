@@ -20,12 +20,18 @@ import threading
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+from pathlib import Path
 
 from packages.orchestration.serve_paths import ServePaths
 
 #: The environment variable `apps/cli/serve_client.py` reads: a run the supervisor
 #: starts runs direct, and never sends a command back to the supervisor.
 DIRECT_ENV = "REMEDY_SERVE_DIRECT"
+
+#: The directory that holds this code's `apps` and `packages`, put first on a run's
+#: import path so that `-m apps.cli.main` runs the supervisor's own code wherever
+#: the supervisor was started from.
+CODE_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RunRefused(Exception):
@@ -94,8 +100,12 @@ class RunLauncher:
             child = self._children.get(job_id)
             return child is not None and child.poll() is None
 
-    def start(self, job_id: str) -> RunRecord:
-        """Start JOB_ID's run and return its record; refuse a job whose run has not ended."""
+    def start(self, job_id: str, *, json_output: bool = False) -> RunRecord:
+        """Start JOB_ID's run and return its record; refuse a job whose run has not ended.
+
+        JSON_OUTPUT adds `--json` to the run's command, the one option a run started
+        through the supervisor takes (DECISION F200 D5).
+        """
         with self._lock:
             child = self._children.get(job_id)
             if child is not None and child.poll() is None:
@@ -106,9 +116,12 @@ class RunLauncher:
             out_log = self._paths.runs_dir / f"{job_id}.out"
             err_log = self._paths.runs_dir / f"{job_id}.err"
             env = {**os.environ, DIRECT_ENV: "1",
-                   "REMEDY_DATA_DIR": str(self._paths.root.parent)}
+                   "REMEDY_DATA_DIR": str(self._paths.root.parent),
+                   "PYTHONPATH": os.pathsep.join(
+                       p for p in (str(CODE_ROOT), os.environ.get("PYTHONPATH", "")) if p)}
+            argv = [*self._argv_for(job_id), *(["--json"] if json_output else [])]
             with open(out_log, "wb") as out, open(err_log, "wb") as err:
-                child = subprocess.Popen(list(self._argv_for(job_id)), stdin=subprocess.DEVNULL,
+                child = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
                                          stdout=out, stderr=err, env=env,
                                          start_new_session=True)
             record = RunRecord(job_id=job_id, pid=child.pid, started_at=_now(),

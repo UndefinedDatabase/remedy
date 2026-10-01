@@ -113,8 +113,10 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> typ
                 self, job: Any, payload: Any) -> tuple[int, dict[str, Any], str] | None:
             if payload["command"] != JOB_RUN_COMMAND_ID or self.run_launcher is None:
                 return None
+            args = payload.get("args")
+            json_output = isinstance(args, dict) and args.get("json") is True
             try:
-                record = self.run_launcher.start(str(job.job_id))
+                record = self.run_launcher.start(str(job.job_id), json_output=json_output)
             except RunRefused as exc:
                 return 409, {"error": str(exc), "code": exc.token}, "rejected_state"
             except OSError:
