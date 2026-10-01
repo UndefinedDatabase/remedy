@@ -7,11 +7,11 @@ runs, and it runs again after a restart the jobs it was running; direct mode sta
 (docs/roadmap/features/T12_F200.md, amended by DECISIONs F200 D1, D4, D5, D7 and D8).
 
 ## Current Step
-Session 3, round 12, the closure's evidence round: book round 11 (PASS), register R-1137 (the
-closure suite's CPU cost, owned by F290), append session 2's prose slip, add the Built State's
-self-use and closure-suite paragraphs, then preview the staging reclaim and build the evidence job
-and the review package at the accepted head. The open-findings count is 7 (`R-1117`, `R-1125`,
-`R-1127`, `R-1128`, `R-1129`, `R-1133`, `R-1137`, all owned by F290).
+Session 3, round 13: book round 12 (PASS), append its prose slip, add F200's pass to the
+consolidation record of `docs/agents/planner_reviewer_prompt.md`, which becomes the closure's
+accepted head, then build the evidence job and the review package again at that head. The
+open-findings count is 7 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`, `R-1133`, `R-1137`,
+all owned by F290).
 
 ## Next Steps
 1. The closing round: book the evidence round, rotate the ledger, the STATUS line with the README
