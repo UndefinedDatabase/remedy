@@ -89,6 +89,7 @@ def socket_handler_class(token: str) -> type:
         "app_html": "",
         "preview_worker": None,
         "effect_source": SOCKET_EFFECT_SOURCE,
+        "client_names_source": True,
     })
 
 

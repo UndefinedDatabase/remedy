@@ -117,6 +117,16 @@ def test_a_pause_envelope_on_the_socket_is_recorded_with_the_command_lines_sourc
     assert (signal.request_id, signal.source, signal.reason) == (body["request_id"], "cli", "hold")
 
 
+def test_only_the_socket_handler_records_a_source_the_client_names():
+    from packages.orchestration.ui_server import COMMAND_EFFECT_SOURCE, _RemedyHandler
+
+    cockpit, socket_handler = _RemedyHandler, SD.socket_handler_class("t")
+    assert cockpit._effect_source_from(cockpit, {"source": "x"}) == COMMAND_EFFECT_SOURCE
+    assert socket_handler._effect_source_from(socket_handler, {"source": "x"}) == "x"
+    assert socket_handler._effect_source_from(socket_handler, {"source": ""}) == "cli"
+    assert socket_handler._effect_source_from(socket_handler, None) == "cli"
+
+
 def test_a_repeated_nonce_is_answered_from_the_record_as_the_door_answers_it(root, running):
     job_id = _job()
     envelope = {"command": "job.stop", "client_nonce": "serve-twice"}

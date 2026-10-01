@@ -2961,9 +2961,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: this door's own word in the cockpit's server, and `"cli"` in the handler the
     #: `remedy serve start` supervisor binds to its unix socket (DECISION F200 D1 (2)).
     effect_source: str = COMMAND_EFFECT_SOURCE
+    #: True only in the supervisor's socket handler: a non-empty `args.source` the
+    #: command line sends with those three commands is recorded as given, as its
+    #: `--source` option is when the command runs direct (DECISION F200 D3).
+    client_names_source: bool = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
+
+    def _effect_source_from(self, args: Any) -> str:
+        """The `source` to record: `args.source` where `client_names_source` holds and
+        the client sent a non-empty string, this handler's `effect_source` otherwise."""
+        source = args.get("source") if isinstance(args, dict) else None
+        if self.client_names_source and isinstance(source, str) and source:
+            return source
+        return self.effect_source
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
@@ -3690,7 +3702,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         reason = args.get("reason") if isinstance(args, dict) else ""
         signal = request_stop(
             job_id, reason=reason if isinstance(reason, str) else "",
-            source=self.effect_source)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
 
@@ -3731,7 +3743,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         result = pause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
             reason=reason if isinstance(reason, str) else "",
-            source=self.effect_source)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], **result}
 
     def _dispatch_job_unpause(self, job: Any, payload: Any) -> dict[str, Any]:
@@ -3745,7 +3757,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         task = args.get("task") if isinstance(args, dict) else None
         result = unpause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
-            source=self.effect_source)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], **result}
 
     def _dispatch_veto_task(self, job: Any, payload: Any) -> dict[str, Any]:
