@@ -82,6 +82,30 @@ def test_the_route_names_are_the_servers():
     assert "/hunk-decisions${query}" in path and "/task-runs/${encodeURIComponent(taskId)}/hunk-decisions" in path
 
 
+PANEL = REPO_ROOT / "apps" / "ui" / "src" / "components" / "diff" / "HunkDecisionPanel.tsx"
+SHELL = REPO_ROOT / "apps" / "ui" / "src" / "components" / "shell" / "RemedyShell.tsx"
+
+
+def test_the_panel_reads_and_sends_only_through_its_doors_and_drops_a_stale_read():
+    panel = _source(PANEL)
+    for forbidden in ("fetch(", "XMLHttpRequest", "localStorage"):
+        assert forbidden not in panel, forbidden
+    assert "loadHunkDecisions({ jobId: target.jobId, token: target.serverToken, taskId: envelope.taskId })" in panel
+    assert "const outcome = await sendHunkDecision(target, decision.args);" in panel
+    assert "let cancelled = false;" in panel and "if (!cancelled) {" in panel
+    assert "}, [envelope, target.jobId, target.serverToken, readCount]);" in panel
+    assert "if (outcome.recorded) setReadCount((count) => count + 1);" in panel
+
+
+def test_the_panel_sits_in_the_diff_panel_after_the_diff_view_and_never_inside_it():
+    shell = _source(SHELL)
+    panel_at = shell.index('<section data-ui="diff-panel"')
+    assert panel_at < shell.index("<DiffView envelope={diffEnvelope} />") < shell.index(
+        "<HunkDecisionPanel envelope={diffEnvelope} target={{ jobId: dashboard.jobId, serverToken }} />")
+    view = _source(REPO_ROOT / "apps" / "ui" / "src" / "components" / "diff" / "DiffView.tsx")
+    assert "HunkDecision" not in view
+
+
 def test_the_three_modules_open_no_socket_read_no_clock_and_keep_no_storage():
     for module in (DECISIONS_TS, VIEW_TS):
         for forbidden in ("fetch(", "XMLHttpRequest", "Date.now", "new Date", "localStorage"):
