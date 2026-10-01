@@ -1,23 +1,21 @@
-# Context — F200 Daemon mode (remedy serve)
+# Context — F290 Findings paydown v6
 
 ## Active Branch
-feature/f200-daemon-mode, cut from `main` at `959b88a85`
-(the merge commit of pull request 307, F292 Plan view and hunk decisions in the cockpit).
+feature/f290-findings-paydown-v6, cut from `main` at `31542dbfd`
+(the merge commit of pull request 308, F200 Daemon mode).
 
 ## Scope
-F200 (Tier 12): `remedy serve`, one supervisor per data root that answers the cockpit's write door
-on a unix socket, takes the command line's door commands and `job run` while it runs, and runs its
-jobs again after a restart, per `docs/roadmap/features/T12_F200.md` as its Amendment section
-states it. DECISION F200 D1 fixes the amended design and the round order.
+F290 (Tier 2): the rolling findings paydown. It takes the seven findings open at its claim, one
+slice per finding, as `docs/roadmap/features/T2_F290.md` lists them; DECISION F290 D1 fixes the
+slices and their order.
 
 ## Do not touch
-Direct mode stays first-class: with no socket every command runs exactly as today. No second write
-protocol: the socket carries the F009 envelope through the cockpit's own checks. The write door's
-argument checks and refusal codes, and the STOP file (F011), stay as they are.
+The resolutions earlier paydowns landed; the record is append-only. A repair changes only what its
+finding's own text names.
 
 ## Active assumptions
-- The supervisor and its clients find each other only through `serve_paths` of one data root.
-- A command the door does not carry runs direct in both modes (DECISION F200 D1 (3)).
+- Every repair lands with a test that is red without it, proved by the reviewer's mutation.
+- A finding that cannot be repaired in one round keeps its owner line and is carried by name.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

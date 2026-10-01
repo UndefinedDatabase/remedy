@@ -1,23 +1,26 @@
-# Plan — F200 Daemon mode (remedy serve)
+# Plan — F290 Findings paydown v6
 
 ## Goal
-`remedy serve` runs one supervisor per data root: it answers the cockpit's write door on a unix
-socket, the command line sends `job stop`, `job pause`, `job unpause` and `job run` to it while it
-runs, and it runs again after a restart the jobs it was running; direct mode stays fully supported
-(docs/roadmap/features/T12_F200.md, amended by DECISIONs F200 D1, D4, D5, D7 and D8).
+Pay down the seven findings open at the claim, `R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`,
+`R-1133` and `R-1137`, each by the repair its own text names, one slice per finding
+(docs/roadmap/features/T2_F290.md, DECISION F290 D1).
 
 ## Current Step
-Session 3, round 14, the closing round: book round 13 (PASS; evidence job `f200r13e1001`, package
-`remedy-review-20261001-153207-READY_FOR_REVIEW.zip` at the accepted head `f96507e80`), rotate the
-ledger, accept F200 in STATUS with the README sync and `SU-043`'s `consumed_by`, push, and open the
-pull request. F200 owns no open finding. The open-findings count is 7 (`R-1117`, `R-1125`,
-`R-1127`, `R-1128`, `R-1129`, `R-1133`, `R-1137`, all owned by F290).
+Session 1, round 1, the claim: book F200's round 14 (PASS), re-head the ledger, write the slice
+list and DECISION F290 D1, and land T001 (R-1128, the preview test's nonce drawn with
+`secrets.token_hex(8)`) and T002 (R-1127, a test that reads the interpreter's audit events while
+the data-root allocator makes two roots). The resolutions of both are booked by the next round.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F200's pull
-   request, then round 14's verdict is booked in the next feature's first commit, then Rule A5.
+1. Book round 1's verdict and the resolutions of R-1128 and R-1127; land T003 (R-1125, the README
+   tier rows held to STATUS by a test) and T004 (R-1133, every page under `docs/system/` and
+   `docs/guides/` linked from `docs/README.md`).
+2. T005 — R-1129, the cockpit's refused task edit worded by its `detail`.
+3. T006 — R-1117, a task whose apply changed no file is not recorded as passed.
+4. T007 — R-1137, the suite's CPU time per module measured, then cut or recorded.
+5. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
-- Every command other than those four runs direct in both modes (DECISION F200 D4).
-- Outside Linux a live process id alone marks a run as adopted (DECISION F200 D7).
-- The STOP test drives a fixture run, not a real `remedy job run` (DECISION F200 D9).
+- R-1117 touches the job pipeline every real run takes; its round reads every reader of a task's
+  status before it changes one.
+- R-1137 may find no cut that keeps every assertion; then a decision records the cost.
