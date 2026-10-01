@@ -578,6 +578,48 @@ class TestDevStatusCommandSchema:
         assert data["message"] == "RuntimeError: a defect in the task-progress probe"
         assert "task_progress_ok" not in data
 
+    @pytest.mark.parametrize("error", [ImportError, TypeError])
+    def test_a_failed_autocoder_check_does_not_block_the_others(self, error, monkeypatch, capsys):
+        """F294 SU-041 (DECISION F294 D11): each error the autocoder probe can meet reads as a
+        failed check, and the command still reports every other check."""
+        import sys
+
+        from apps.cli.main import main
+        from packages.orchestration import structured_patch
+
+        def _failing(*args, **kwargs):
+            raise error("the autocoder probe failed")
+
+        monkeypatch.setattr(structured_patch, "StructuredPatch", _failing)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        main()
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is True
+        assert data["autocoder_fake_e2e_ok"] is False
+        assert data["task_progress_ok"] is True
+
+    def test_a_defect_in_the_autocoder_probe_is_not_swallowed(self, monkeypatch, capsys):
+        """F294 SU-041 (DECISION F294 D11): the handler no longer catches everything, so a defect
+        of another kind fails the command with its own name instead of reading as a failed
+        check."""
+        import sys
+
+        from apps.cli.main import main
+        from packages.orchestration import structured_patch
+
+        def _broken(*args, **kwargs):
+            raise RuntimeError("a defect in the autocoder probe")
+
+        monkeypatch.setattr(structured_patch, "StructuredPatch", _broken)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        with pytest.raises(SystemExit) as stopped:
+            main()
+        data = json.loads(capsys.readouterr().out)
+        assert stopped.value.code == 1
+        assert data["ok"] is False
+        assert data["message"] == "RuntimeError: a defect in the autocoder probe"
+        assert "autocoder_fake_e2e_ok" not in data
+
     def test_dev_status_human_output(self):
         from apps.cli.commands.dev import _dev_status
         with patch("builtins.print") as mock_print:
