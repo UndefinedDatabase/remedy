@@ -101,6 +101,12 @@ def test_the_shell_mounts_the_view_outside_the_main_column_over_the_dashboards_p
     assert "onOpenPlan={() => setPlanOpen(true)}" in source
 
 
+def test_the_palette_opens_the_plan_view_and_the_job_diffs_hunk_decisions():
+    shell = _source(SHELL)
+    assert 'if (surface === "plan-view") {\n      setPlanOpen(true);\n      return;\n    }' in shell
+    assert 'if (surface === "hunk-decisions") {\n      setOpenDiffTaskId("");\n      return;\n    }' in shell
+
+
 def test_an_accepted_edit_reads_the_dashboard_again_at_once():
     app = _source(UI_SRC / "RemedyApp.tsx")
     assert "const requestReload = useCallback(() => setReloadRequest((count) => count + 1), []);" in app

@@ -7,7 +7,6 @@ import type { PaletteCommand } from "./paletteCommands";
 import {
   PALETTE_ALREADY_PAUSED_REASON,
   PALETTE_ENDED_REASON,
-  PALETTE_FORM_REASON,
   PALETTE_NOT_PAUSED_REASON,
   PALETTE_NOT_RUNNING_REASON,
   PALETTE_NO_DECISION_REASON,
@@ -30,12 +29,11 @@ const RUNNING: PaletteCommandFacts = { hasToken: true, ended: false, pauseAction
 describe("the reasons", () => {
   it("are the plain sentences DECISION F044 D3 wrote", () => {
     expect([
-      PALETTE_NO_TOKEN_REASON, PALETTE_ENDED_REASON, PALETTE_FORM_REASON, PALETTE_NOT_RUNNING_REASON,
+      PALETTE_NO_TOKEN_REASON, PALETTE_ENDED_REASON, PALETTE_NOT_RUNNING_REASON,
       PALETTE_ALREADY_PAUSED_REASON, PALETTE_PAUSE_PENDING_REASON, PALETTE_NOT_PAUSED_REASON, PALETTE_NO_DECISION_REASON,
     ]).toEqual([
       "This page has no write token, so it cannot send commands.",
       "This job has ended, so it takes no more commands.",
-      "The palette cannot ask for this command's arguments yet.",
       "The job is not running, so there is nothing to pause.",
       "The job is already paused.",
       "A pause is already on its way.",
@@ -46,12 +44,21 @@ describe("the reasons", () => {
 });
 
 describe("paletteCommandReason", () => {
-  it("refuses everything without a token first, a form entry next, then everything on an ended job", () => {
+  it("refuses everything without a token first, then everything on an ended job", () => {
     expect(paletteCommandReason(entry("job.stop"), { ...RUNNING, hasToken: false })).toBe(PALETTE_NO_TOKEN_REASON);
     expect(paletteCommandReason(entry("job.plan-reorder"), { ...RUNNING, hasToken: false })).toBe(PALETTE_NO_TOKEN_REASON);
-    expect(paletteCommandReason(entry("job.plan-reorder"), { ...RUNNING, ended: true })).toBe(PALETTE_FORM_REASON);
     expect(paletteCommandReason(entry("job.stop"), { ...RUNNING, ended: true })).toBe(PALETTE_ENDED_REASON);
     expect(paletteCommandReason(entry("job.pause"), { ...RUNNING, ended: true, pauseAction: "pause" })).toBe(PALETTE_ENDED_REASON);
+    expect(paletteCommandReason(entry("decision.resolve"), { ...RUNNING, ended: true })).toBe(PALETTE_ENDED_REASON);
+  });
+
+  it("opens the plan view and the hunk decisions on an ended job too, but never without a token (DECISION F292 D8)", () => {
+    for (const command of ["job.plan-edit-task", "job.plan-delete-task", "job.plan-reorder", "job.plan-merge-tasks",
+      "job.plan-split-task", "job.plan-edit-acceptance", "patch.approve-hunks"]) {
+      expect(paletteCommandReason(entry(command), { ...RUNNING, ended: true }), command).toBe("");
+      expect(paletteCommandReason(entry(command), RUNNING), command).toBe("");
+      expect(paletteCommandReason(entry(command), { ...RUNNING, hasToken: false }), command).toBe(PALETTE_NO_TOKEN_REASON);
+    }
   });
 
   it("offers a pause only while the job's own action is to pause", () => {
@@ -86,9 +93,9 @@ describe("paletteCommandReason", () => {
 describe("paletteCommandReasons", () => {
   it("holds only the refused commands, by id", () => {
     const reasons = paletteCommandReasons(RUNNING);
-    const forms = PALETTE_COMMANDS.filter((row) => row.flow === "form").map((row) => row.command);
-    expect(Object.keys(reasons).sort()).toEqual([...forms, "job.unpause"].sort());
+    expect(Object.keys(reasons)).toEqual(["job.unpause"]);
     expect(reasons["job.unpause"]).toBe(PALETTE_NOT_PAUSED_REASON);
+    expect(PALETTE_COMMANDS.every((row) => row.flow === "send" || row.flow === "surface")).toBe(true);
   });
 });
 
