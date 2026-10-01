@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-122 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+123 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 40 | 42 |
+| 2 | Minimal Self-Build Runtime | 41 | 42 |
 | 3 | Full Token Economy & Autonomy | 6 | 27 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 37 | 37 |
@@ -270,7 +270,17 @@ it; the full test run at the end of each feature records its processor time
 and is compared with the one before; and `remedy doctor core` says in one
 sentence how many test runs and processor minutes the last day cost. The
 larger cut that remains, in the many small git programs a job starts, is the
-next item).
+next item),
+F294 test load diet, part two (a full run of all tests now uses about 865
+processor seconds, 8 percent less than after the first diet and about 31
+percent less than at the start, with every earlier check kept: a job now
+reads which repository it works in with fewer small git programs and checks
+for submodules only when the project has one, which also makes real jobs
+start faster; each test gets its own data folder without searching a shared
+temporary folder first; and the tests of the main workflow run their main
+commands inside the test itself instead of starting a new program each time.
+The 40 percent target was not reached: the tests that still cost the most
+each run a real job, and making them cheaper would mean checking less).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
