@@ -39,6 +39,19 @@ def test_every_root_is_a_new_directory_under_one_parent(_data_root_allocator):
     assert [p for p in (root, first, second) if list(p.iterdir())] == []
 
 
+def test_a_root_is_made_without_numbering_the_base_directory(_data_root_allocator, tmp_path_factory,
+                                                             monkeypatch):
+    """DECISION F294 D2: after its one parent, the allocator never calls ``mktemp``, which lists the
+    whole base temporary directory to find its next number (R-1127)."""
+    def numbering(*_args, **_kwargs):
+        raise AssertionError("mktemp lists the whole base temporary directory")
+
+    monkeypatch.setattr(tmp_path_factory, "mktemp", numbering)
+    roots = [_data_root_allocator() for _ in range(2)]
+    assert roots[0] != roots[1]
+    assert [r for r in roots if not r.is_dir()] == []
+
+
 def test_a_cli_subprocess_inherits_the_isolated_root():
     code = "from packages.orchestration.data_paths import resolve_data_root; print(resolve_data_root())"
     out = subprocess.run(
