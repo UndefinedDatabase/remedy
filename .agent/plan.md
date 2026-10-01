@@ -6,17 +6,14 @@ edits of a plan that waits for approval, and the approval or rejection of a chan
 palette's seven form entries open these surfaces (docs/roadmap/features/T5_F292.md).
 
 ## Current Step
-Session 1, round 8: book round 7 (PASS), record DECISION F292 D8, turn the palette's seven form
-entries into surface entries opening the plan view and the job diff's hunk decisions, and land
-the end-to-end test through the real server. Rounds 1 to 7 built the plan read, the plan view
-with all six edits, and the hunk decisions. The open-findings count is 5 (`R-1117`, `R-1125`,
-`R-1127`, `R-1128`, `R-1129`, all owned by F290).
+Session 1, round 9: book round 8 (PASS), record DECISION F292 D9, commit the acceptance audit of
+the amend0930b-slow-cap hardening stage (nine statements, nine proven, no gap), and write the
+feature file's Built State with its hardening paragraph. Rounds 1 to 8 built T001 to T003. The
+open-findings count is 5 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`, all owned by F290).
 
 ## Next Steps
-1. The amend0930b-slow-cap hardening stage (SLOW MODE): an acceptance audit by a fresh worker
-   given only the feature file and the repository, then repair rounds for any gap.
-2. The closure sequence.
+1. The closure sequence (docs/roadmap/STATUS_closure_protocol.md): the integration gate's one
+   full suite, the self-use item, the evidence job and the review package, then the closing round.
 
 ## Risks
-- The door withholds a refused hunk decision's reason, so the controls must refuse in advance
-  everything the rules can see coming; a refusal they cannot foresee reads as plain refusal.
+- The diff panel opens below the cockpit (F037's deferred layout); the Built State says so.

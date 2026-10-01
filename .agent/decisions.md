@@ -27176,3 +27176,17 @@ CHOSEN: (1) THE ENTRIES: the six plan edits become surface entries opening `plan
 ALTERNATIVES CONSIDERED: (a) a task argument on the hunk entry to open a task run's diff, REJECTED because the palette's task step offers only tasks and the job's own diff is the change a person reviews as a whole; (b) keeping "form" as a flow with no entries, REJECTED because a flow nothing uses is a branch nothing tests; (c) a mocked door in the end-to-end test, REJECTED because the round's purpose is to prove the cockpit and the real door agree.
 
 HOW TO REVERSE: restore `paletteCommands.ts`, `paletteCommandState.ts`, their tests and `handleOpenSurface` in `RemedyShell.tsx` from `630b56070`; delete `tests/ui_server/test_plan_view_live.py` and the palette test added to `tests/ui_contracts/test_plan_view_contract.py`; delete this paragraph.
+
+## DECISION F292 D9 — The hardening stage audited nine statements, found a proving test for every one and no gap; F292 goes to its closure sequence with nothing to repair (2026-10-01)
+
+THE SITUATION: operator amendment amend0930b-slow-cap rule 2 orders, in SLOW MODE, one hardening stage after a feature's last building round and before its closure sequence. F292's last building round, round 8, was reviewed PASS at `5c68dfd9a`. The reviewer delegated the acceptance audit to a fresh worker given only `docs/roadmap/features/T5_F292.md`, `AGENTS.md`, the amendment's paragraph and the repository, and no block, handoff or verdict.
+
+THE AUDIT, committed as `.agent/f292_acceptance_audit.md`: nine statements, the five DONE clauses of Goal & Done and the four Acceptance lines. Each was matched to a test, and each test turned red under one mutation of the production code in the disposable worktree `.remedy-wt/f292-audit-wt` at `5c68dfd9a` and green again when the code was restored. Two of the proofs reach the feature as a person does: claims 6 and 7 through the real command line, `remedy job plan-show --json` and a stale `--plan-version`, and claim 4 through `tests/ui_server/test_plan_view_live.py`, headless Chrome against the real UI server, where a dead reason field for a rejected hunk stopped the run. The auditor removed its worktree; `git worktree list` read twelve lines afterwards and the primary checkout stayed clean.
+
+THE REVIEWER'S CHECK: the reviewer re-ran the user-path proof, claim 4, in its own dry tree, which equals `5c68dfd9a` byte for byte: the mutation read `1 failed`, the byte-identical restore `1 passed`. The reviewer reads claim 2, which the auditor proved through the door's own command list, as also pinned on the cockpit's side by the plan view's markup tests, whose mutations rounds 3 to 5 ran.
+
+CHOSEN: no gap was found, so no finding is registered and no repair round is owed (rule 3). The feature file's Built State gains its hardening paragraph (rule 4), and the closure sequence comes next, starting with the integration gate's one full suite (rule 5).
+
+ALTERNATIVES CONSIDERED: (a) a repeat audit by a second auditor, REJECTED because rule 3 repeats the audit only for statements that had gaps; (b) holding the closure for the diff panel's layout, REJECTED because that layout is F037's deferred ruling and no statement of this feature's file asks for it.
+
+HOW TO REVERSE: delete `.agent/f292_acceptance_audit.md`, the Built State section of `docs/roadmap/features/T5_F292.md` and its banner line's change, and this paragraph; a later audit then runs again.
