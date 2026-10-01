@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +25,12 @@ from apps.cli.grouped import main
 from apps.cli.serve_client import DIRECT_ENV
 from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.command_nonce import NONCE_DIRNAME
-from packages.orchestration.pingpong_job import JOB_COMPLETED, _persist_job, parse_job_file
+from packages.orchestration.pingpong_job import (
+    JOB_COMPLETED,
+    ExecutionConfig,
+    _persist_job,
+    parse_job_file,
+)
 from tests.orchestration.test_serve_daemon import _Running
 
 _JOB = """\
@@ -234,3 +241,161 @@ def test_the_direct_variable_keeps_a_command_direct_while_a_supervisor_answers(
     assert _audit(root, job) == []
     assert json.loads((root / "control" / "jobs" / job.job_id / "stop.json")
                       .read_text(encoding="utf-8"))["source"] == "cli"
+
+
+# --------------------------------------------------------------------------- job run
+# DECISION F200 D5: a plain `job run <job>` is handed to the supervisor and followed to
+# its end. The run's own process prints, so each mode's printed text is compared after
+# the paths and ids that differ by construction — each mode's fresh repository mints its
+# own commit ids — and the timestamps and durations, are replaced by placeholders.
+
+_HEX64 = re.compile(r"\b[0-9a-f]{64}\b")
+_HEX40 = re.compile(r"\b[0-9a-f]{40}\b")
+_FLOAT = re.compile(r"\b\d+\.\d+\b")
+
+
+def _git_repo(path: Path) -> Path:
+    path.mkdir()
+    subprocess.run("git init -q && git config user.email t@t && git config user.name t "
+                   "&& echo '# demo' > README.md && git add -A && git commit -qm init",
+                   shell=True, cwd=path, check=True)
+    return path
+
+
+def _run_scenario(mode: str, argv_tail: list[str], tmp_path_factory, monkeypatch, capsys,
+                  *, job_exists: bool = True) -> tuple[int, str, str, list[str]]:
+    base = tmp_path_factory.mktemp("r" + mode[0])
+    root = base / "d"
+    root.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+    monkeypatch.delenv(DIRECT_ENV, raising=False)
+    repo = _git_repo(base / "repo")
+    job = parse_job_file(_JOB, str(repo))
+    job.execution_config = ExecutionConfig(builder="fake", reviewer="fake")
+    _persist_job(job)
+    job_id = job.job_id if job_exists else "0123456789abcdef"
+    supervisor = _Running(root) if mode == "client" else None
+    try:
+        try:
+            main(["job", "run", job_id, *argv_tail])
+            code = 0
+        except SystemExit as exc:
+            code = exc.code if isinstance(exc.code, int) else 1
+        captured = capsys.readouterr()
+    finally:
+        if supervisor is not None:
+            supervisor.close()
+
+    def norm(text: str) -> str:
+        for path, name in ((str(repo), "<REPO>"), (str(root), "<ROOT>")):
+            text = text.replace(path, name)
+        text = _normalise(text, job)
+        return _FLOAT.sub("<F>", _HEX40.sub("<GIT>", _HEX64.sub("<SHA>", text)))
+
+    return code, norm(captured.out), norm(captured.err), _audit(root, job)
+
+
+@pytest.mark.parametrize("argv_tail", [[], ["--json"]], ids=["text", "json"])
+def test_a_plain_job_run_prints_and_exits_as_it_does_direct(
+        argv_tail, tmp_path_factory, monkeypatch, capsys):
+    direct = _run_scenario("direct", argv_tail, tmp_path_factory, monkeypatch, capsys)
+    client = _run_scenario("client", argv_tail, tmp_path_factory, monkeypatch, capsys)
+    assert client[:3] == direct[:3]
+    assert direct[0] == 0 and "<JOB>" in direct[1]
+    assert (direct[3], client[3]) == ([], ["accepted"])
+
+
+def test_a_job_run_with_an_option_runs_direct_while_a_supervisor_answers(
+        tmp_path_factory, monkeypatch, capsys):
+    code, out, err, audit = _run_scenario("client", ["--max-rounds", "2"], tmp_path_factory,
+                                          monkeypatch, capsys)
+    assert (code, audit) == (0, [])
+    assert "<JOB>" in out
+
+
+def test_a_job_run_of_a_job_this_root_does_not_hold_runs_direct(
+        tmp_path_factory, monkeypatch, capsys):
+    direct = _run_scenario("direct", [], tmp_path_factory, monkeypatch, capsys, job_exists=False)
+    client = _run_scenario("client", [], tmp_path_factory, monkeypatch, capsys, job_exists=False)
+    assert client == direct
+
+
+def _follow_body(tmp_path, pid: int) -> dict:
+    out, err = tmp_path / "x.out", tmp_path / "x.err"
+    out.write_bytes(b"partial line\n")
+    err.write_bytes(b"")
+    return {"job_id": "f" * 16, "pid": pid, "out_log": str(out), "err_log": str(err)}
+
+
+def test_ctrl_c_stops_following_and_leaves_the_run_going(tmp_path, monkeypatch, capsys):
+    from apps.cli import serve_client
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+    def interrupt(_seconds):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(serve_client.time, "sleep", interrupt)
+    assert serve_client.follow_run(_follow_body(tmp_path, 1)) == 1
+    captured = capsys.readouterr()
+    assert captured.out == "partial line\n"
+    assert "goes on in the serve supervisor" in captured.err
+    assert "remedy job stop " + "f" * 16 in captured.err
+
+
+def test_a_run_whose_end_is_never_recorded_is_reported(tmp_path, monkeypatch, capsys):
+    from apps.cli import serve_client
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(serve_client, "END_GRACE_SECONDS", 0.0)
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    assert serve_client.follow_run(_follow_body(tmp_path, gone.pid), poll=0.01) == 1
+    captured = capsys.readouterr()
+    assert captured.out == "partial line\n"
+    assert "did not record how" in captured.err
+
+
+def test_a_run_a_signal_ended_is_reported_and_exits_one(tmp_path, monkeypatch, capsys):
+    from apps.cli import serve_client
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import RunRecord
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    body = _follow_body(tmp_path, 4242)
+    runs = serve_paths(tmp_path).runs_dir
+    runs.mkdir(parents=True)
+    record = RunRecord(job_id=body["job_id"], pid=4242, started_at="s", out_log=body["out_log"],
+                       err_log=body["err_log"], exit_code=-9, ended_at="e")
+    (runs / f"{body['job_id']}.json").write_text(json.dumps(record.to_json()), encoding="utf-8")
+    assert serve_client.follow_run(body) == 1
+    captured = capsys.readouterr()
+    assert captured.out == "partial line\n"
+    assert "ended by signal 9" in captured.err
+
+
+def test_the_followed_runs_exit_code_is_the_commands_own(tmp_path_factory, monkeypatch, capsys):
+    from apps.cli import serve_client
+
+    monkeypatch.setattr(serve_client, "follow_run", lambda body: 2)
+    code = _run_scenario("client", [], tmp_path_factory, monkeypatch, capsys)[0]
+    assert code == 2
+
+
+def test_an_earlier_runs_record_is_never_taken_for_this_runs_end(tmp_path, monkeypatch, capsys):
+    from apps.cli import serve_client
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import RunRecord
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(serve_client, "END_GRACE_SECONDS", 0.0)
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    body = _follow_body(tmp_path, gone.pid)
+    runs = serve_paths(tmp_path).runs_dir
+    runs.mkdir(parents=True)
+    older = RunRecord(job_id=body["job_id"], pid=gone.pid + 100000, started_at="s",
+                      out_log=body["out_log"], err_log=body["err_log"], exit_code=0, ended_at="e")
+    (runs / f"{body['job_id']}.json").write_text(json.dumps(older.to_json()), encoding="utf-8")
+    assert serve_client.follow_run(body, poll=0.01) == 1
+    assert "did not record how" in capsys.readouterr().err

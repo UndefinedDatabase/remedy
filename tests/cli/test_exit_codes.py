@@ -66,6 +66,14 @@ UNRESOLVED_SITES: dict[str, tuple[frozenset[int], str]] = {
         "ci_exit_code (packages/orchestration/ci_run.py) returns 0 only when "
         "at least one stage ran and every stage that ran was green, else 1.",
     ),
+    "job.run": (
+        frozenset({0, 1, 2}),
+        "sys.exit(code) in apps/cli/commands/do_cmd.py, code = follow_run(body) "
+        "(apps/cli/serve_client.py) — the exit code of the serve supervisor's run of "
+        "`remedy job run <job>`, this same command run direct, which reaches the floor "
+        "alone; or 1 when following stops, a signal ended the run or its end was lost "
+        "(DECISION F200 D5).",
+    ),
 }
 
 

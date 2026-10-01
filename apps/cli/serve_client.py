@@ -14,14 +14,21 @@ the supervisor that is waiting on it.
 """
 from __future__ import annotations
 
+import codecs
 import os
 import secrets
+import sys
+import time
 from typing import Any
 
 from apps.cli.json_envelope import fail
 from packages.orchestration.serve_runs import DIRECT_ENV
 
-__all__ = ["DIRECT_ENV", "forward_effect", "supervisor_answers"]
+__all__ = ["DIRECT_ENV", "follow_run", "forward_effect", "supervisor_answers"]
+
+#: How long a run whose process is gone may take to have its end recorded before
+#: following it gives up and says so.
+END_GRACE_SECONDS = 5.0
 
 
 def supervisor_answers() -> bool:
@@ -58,3 +65,71 @@ def forward_effect(job_id: str, command: str, args: dict[str, Any], *,
         fail(error, f"{subject} — the serve supervisor refused it: {detail or status}",
              json_output=json_output, job_id=job_id, status=status)
     return {k: v for k, v in body.items() if k != "command"}
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def follow_run(body: dict[str, Any], *, poll: float = 0.1) -> int:
+    """Print the output of the run BODY names as it is written, until its end is recorded.
+
+    BODY is the door's answer to `job.run`: the run's record. Its standard output goes
+    to this process's standard output and its standard error to this one's, decoded
+    as they arrive, and the run's exit code is returned. Every other ending returns 1,
+    the CLI's `failed`, because its exit-code table has no narrower code for them
+    (DECISION F283 D12): Ctrl-C, which stops following and leaves the run going; a
+    run a signal ended; and a run whose process is gone and whose end was not
+    recorded within `END_GRACE_SECONDS`.
+    """
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import read_run_record
+
+    paths = serve_paths()
+    job_id, pid = str(body["job_id"]), int(body["pid"])
+    sources = [(open(body["out_log"], "rb"), sys.stdout), (open(body["err_log"], "rb"), sys.stderr)]
+    decoders = [codecs.getincrementaldecoder("utf-8")("replace") for _ in sources]
+    gone_since: float | None = None
+
+    def drain(final: bool = False) -> None:
+        for (source, stream), decoder in zip(sources, decoders):
+            text = decoder.decode(source.read(), final=final)
+            if text:
+                stream.write(text)
+                stream.flush()
+
+    try:
+        while True:
+            record = read_run_record(paths, job_id)
+            ended = record is not None and record.pid == pid and record.exit_code is not None
+            drain(final=ended)
+            if ended and record.exit_code < 0:
+                print(f"The run of job {job_id} was ended by signal {-record.exit_code}.",
+                      file=sys.stderr)
+                return 1
+            if ended:
+                return int(record.exit_code)
+            if _pid_alive(pid):
+                gone_since = None
+            elif gone_since is None:
+                gone_since = time.monotonic()
+            elif time.monotonic() - gone_since > END_GRACE_SECONDS:
+                drain(final=True)
+                print(f"The run of job {job_id} (process {pid}) ended, but the serve supervisor "
+                      f"did not record how; see `remedy serve status` and `remedy job show "
+                      f"{job_id}`.", file=sys.stderr)
+                return 1
+            time.sleep(poll)
+    except KeyboardInterrupt:
+        print(f"\nStopped following. The run of job {job_id} goes on in the serve supervisor; "
+              f"stop it with `remedy job stop {job_id}`.", file=sys.stderr)
+        return 1
+    finally:
+        for source, _stream in sources:
+            source.close()
