@@ -7,15 +7,15 @@ runs, and it runs again after a restart the jobs it was running; direct mode sta
 (docs/roadmap/features/T12_F200.md, amended by DECISIONs F200 D1, D4, D5, D7 and D8).
 
 ## Current Step
-Session 2, round 11, the closure's integration-gate round: book round 10 (PASS), R-1117's
-recurrence and DECISION F200 D10, build `apps/ui`, and run the feature's one full suite with its
-CPU cost, committing the transcript `.agent/authored/f200-closure-suite.txt`. The open-findings
-count is 6 (`R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`, `R-1133`, all owned by F290).
+Session 3, round 12, the closure's evidence round: book round 11 (PASS), register R-1137 (the
+closure suite's CPU cost, owned by F290), append session 2's prose slip, add the Built State's
+self-use and closure-suite paragraphs, then preview the staging reclaim and build the evidence job
+and the review package at the accepted head. The open-findings count is 7 (`R-1117`, `R-1125`,
+`R-1127`, `R-1128`, `R-1129`, `R-1133`, `R-1137`, all owned by F290).
 
 ## Next Steps
-1. The evidence bundle and the review package.
-2. The ledger rotation, the STATUS line with the README sync and the queue's `consumed_by`, and
-   the pull request, not merged.
+1. The closing round: book the evidence round, rotate the ledger, the STATUS line with the README
+   sync and the queue's `consumed_by`, and the pull request, not merged.
 
 ## Risks
 - Every command other than those four runs direct in both modes (DECISION F200 D4).
