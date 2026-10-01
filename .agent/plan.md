@@ -6,17 +6,17 @@ baseline, without losing an assertion; or rule with numbers that no more can be 
 weakening a test (docs/roadmap/features/T2_F294.md).
 
 ## Current Step
-Session 2, round 9: the third and last repair round of the amend0930b-slow-cap hardening stage.
-Book round 8 (PASS), save the second repeat audit's report, record DECISION F294 D9, and make the
-data-root allocator's test refuse every directory listing and every started process (`R-1127`).
-The open-findings count is 3 (`R-1117`, `R-1125`, owned by F290; `R-1127`, owned by F294).
+Session 2, round 10: the hardening stage's record. Book round 9 (PASS), save the third repeat
+audit's report, record DECISION F294 D10 (the stage ends after three repair rounds, `R-1127`
+stays open), and write the stage into the feature file's Built State. The open-findings count is
+3 (`R-1117`, `R-1125`, owned by F290; `R-1127`, owned by F294 until its closure hands it to F290).
 
 ## Next Steps
-1. Repeat the acceptance audit for the data-root statement.
-2. Book round 9, resolve `R-1127` or carry it with its owner, and record the hardening stage in
-   the feature file's Built State.
-3. The closure sequence, whose one full suite gives the "after" reading; if it misses 747.65,
-   the closure rules with the numbers or splits, and writes the trade-off to the operator.
+1. The closure sequence (docs/roadmap/STATUS_closure_protocol.md): run the closure's self-use
+   item to its approval gate, then the integration gate's one full suite and its cost, then the
+   evidence job and the review package, then the closing round.
+2. If the full suite misses 747.65 CPU seconds, the closure's DECISION states the remaining cost
+   with DECISION F294 D6's readings, and the trade-off goes to the operator.
 
 ## Risks
 - What remains can only be cut by changing what a job run does (DECISION F294 D6).

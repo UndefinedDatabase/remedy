@@ -27046,3 +27046,17 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in the product. One tes
 ALTERNATIVES CONSIDERED: (a) a timing check that allocation stays fast as the base temporary directory grows, REJECTED because a timing assertion is flaky under the worker cap and the lowered CPU priority; (b) refusing every system call by a seccomp filter in a child process, REJECTED as a test far heavier than the one line it guards.
 
 HOW TO REVERSE: restore round 8's body of `test_a_root_is_made_without_numbering_the_base_directory`.
+
+## DECISION F294 D10 — The hardening stage ends after its three repair rounds; R-1127 stays open, narrowed to a name bound before the test runs (2026-10-01)
+
+THE PROBLEM: the hardening stage's third repeat audit (operator amendment amend0930b-slow-cap), run by a fresh auditor at `8ceb35ef8` from the feature file and the repository alone, tried six mutations of the data-root allocator; its report is `.agent/f294_acceptance_reaudit3.md`. Four turned the test red: `tmp_path_factory.mktemp` per root, `ls -1 | wc -l` through `subprocess.run(shell=True)`, `os.walk`, and `glob.glob`. Two stayed green. The auditor counted one: an alias of `os.scandir` taken when `tests/conftest.py` is imported, used later to list the parent, because the test replaces the attribute `os.scandir` and a name bound before that keeps the original function. The other, a call of the C library's `system` through `ctypes`, the auditor did not count, as DECISION F294 D9 also rules.
+
+CHOSEN: rule (3) of operator amendment amend0930b-slow-cap allows three repair rounds, and rounds 7, 8 and 9 were those three, so the stage ends here. R-1127 stays OPEN, owned by F294 until its closure, whose bookkeeping commit hands it to the next findings paydown, F290, as amend0911-feedback rule A orders; F294 closes PASS_WITH_RISKS naming it. What remains of R-1127, stated in place of its registration's repair sentence: `test_a_root_is_made_without_numbering_the_base_directory` refuses every directory listing and every started process that the allocator looks up when it runs, and it cannot see a listing function the allocator's module bound to a name of its own before the test ran. A repair would check the allocator from outside the test process, for example by recording the directories a child pytest run lists while it allocates roots. The Built State of `docs/roadmap/features/T2_F294.md` records the stage in plain words.
+
+THE STAGE IN NUMBERS: the first audit took eight claims; four had a proving test at once, one is measured only by the closure's full suite, and three were reported as gaps. One of those three, the DECISION alternative, is decided by the closure's own record (DECISION F294 D7). Of the other two, R-1126 is resolved (rounds 7 and 8) and R-1127 is narrowed by three repairs and remains.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in the product and nothing in a test. The feature's record says what its hardening stage proved and what it did not.
+
+ALTERNATIVES CONSIDERED: (a) a fourth repair round binding the patch earlier, REJECTED because rule (3) caps the stage at three repair rounds, and an alias bound at import time escapes any patch the test can apply at run time; (b) ruling the alias outside what a developer would write, REJECTED because `from os import scandir` is ordinary Python, and the finding is the honest record of what the test cannot see.
+
+HOW TO REVERSE: a later feature that checks the allocator from outside the test process resolves R-1127 and edits the Built State's sentence that names it.
