@@ -162,6 +162,7 @@ GROUPS: dict[str, GroupDef] = {
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False, feature="F261", reach="self-build"),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False, feature="F261", reach="job-path"),
     "data": GroupDef("data", "Data", "The data root's disk footprint, per directory class.", user_facing=False, feature="F276", reach="job-path"),
+    "serve": GroupDef("serve", "Serve", "The supervisor the command line hands the cockpit's commands to, one per data root.", user_facing=False, feature="F200", reach="job-path"),
     "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False, feature="F266", reach="teacher"),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True, feature="F080", reach="self-build"),
@@ -2737,6 +2738,40 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("data.usage",),
+    ),
+
+    # ── serve (F200: one supervisor per data root, DECISION F200 D1) ─────
+    CommandEntry(
+        command_id="serve.start",
+        group_id="serve",
+        subcommand="start",
+        description="Start the supervisor in the foreground; it answers the cockpit's write door on this data root's unix socket.",
+        # local_state_change: it creates the socket, token and process id files
+        # under the data root, and never writes into a target repository.
+        action_class="local_state_change",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("serve.status", "serve.stop"),
+    ),
+    CommandEntry(
+        command_id="serve.status",
+        group_id="serve",
+        subcommand="status",
+        description="Show whether a supervisor answers on this data root's socket (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("serve.start",),
+    ),
+    CommandEntry(
+        command_id="serve.stop",
+        group_id="serve",
+        subcommand="stop",
+        description="Stop the supervisor that answers on this data root's socket.",
+        action_class="local_state_change",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("serve.start",),
     ),
 
     # ── config ──────────────────────────────────────────────────────────

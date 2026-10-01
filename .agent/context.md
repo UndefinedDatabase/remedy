@@ -1,24 +1,23 @@
-# Context — F292 Plan view and hunk decisions in the cockpit
+# Context — F200 Daemon mode (remedy serve)
 
 ## Active Branch
-feature/f292-plan-view-hunk-decisions, cut from `main` at `2d138e90f`
-(the merge commit of pull request 306, F294 Test load diet, part two).
+feature/f200-daemon-mode, cut from `main` at `959b88a85`
+(the merge commit of pull request 307, F292 Plan view and hunk decisions in the cockpit).
 
 ## Scope
-F292 (Tier 5, registered by DECISION F044 D5): a plan view in the cockpit that shows the stored
-plan with its version, its approval state and each planned task's dependencies and acceptance, and
-offers the six plan edits against the version it shows; hunk approve and reject controls in the
-diff view; and the palette's seven form entries opening these surfaces, per
-`docs/roadmap/features/T5_F292.md`. DECISION F292 D1 fixes the plan read and the round order.
+F200 (Tier 12): `remedy serve`, one supervisor per data root that answers the cockpit's write door
+on a unix socket, takes the command line's door commands and `job run` while it runs, and runs its
+jobs again after a restart, per `docs/roadmap/features/T12_F200.md` as its Amendment section
+states it. DECISION F200 D1 fixes the amended design and the round order.
 
 ## Do not touch
-The write door's argument checks and refusal codes; the plan's own validation; the diff view's
-reading of the envelope (feature file, "Do not touch"). The UI follows
-`docs/ui/design_reference/` and the shared `--remedy-*` tokens.
+Direct mode stays first-class: with no socket every command runs exactly as today. No second write
+protocol: the socket carries the F009 envelope through the cockpit's own checks. The write door's
+argument checks and refusal codes, and the STOP file (F011), stay as they are.
 
 ## Active assumptions
-- The plan view and `remedy job plan-show --json` read one builder, `plan_editing.plan_view`.
-- Every UI round renders its surface headless and reads every new style it adds.
+- The supervisor and its clients find each other only through `serve_paths` of one data root.
+- A command the door does not carry runs direct in both modes (DECISION F200 D1 (3)).
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

@@ -730,6 +730,26 @@ def _cmd_job_run(
     if _refusal:
         fail("job_not_resumable", _refusal, json_output=json_output)
 
+    # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
+    # supervisor while one answers, and this command follows it to its end; any other
+    # option, or a job this data root does not hold, runs here, as it always has.
+    _plain = invocation == RunInvocation() and all(v is None for v in (
+        max_rounds, repair_rounds, test_command, claude_cli_write_mode, builder_provider,
+        builder_model, builder_effort, reviewer_provider, reviewer_model, reviewer_effort,
+        repair_provider, repair_model, repair_effort, max_total_tokens, max_provider_calls,
+        max_wall_clock_minutes, max_cost_usd, deadline))
+    if _plain and _recorded is not None:
+        from apps.cli.serve_client import follow_run, forward_effect, supervisor_answers
+
+        if supervisor_answers():
+            body = forward_effect(job_id, "job.run", {"json": json_output},
+                                  json_output=json_output, error="job_not_started",
+                                  subject=f"job {job_id} was not started")
+            code = follow_run(body)
+            if code:
+                sys.exit(code)
+            return
+
     job = run_job(
         job_id,
         builder_name=builder_provider,

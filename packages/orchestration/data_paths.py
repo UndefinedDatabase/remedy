@@ -138,6 +138,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("roadmap", "packages.orchestration.roadmap_index", "never; roadmap index and drafts"),
     DataRootClass("self_dogfood", "packages.orchestration.self_dogfood_execution", "never; self-dogfood attempts"),
     DataRootClass("smoke", "scripts/remedy_smoke.sh", "never; smoke summaries `remedy dev` reads"),
+    DataRootClass("serve", "packages.orchestration.serve_paths",
+                  "never; the serve supervisor's socket, process id, token and the run "
+                  "registry it resumes from"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {

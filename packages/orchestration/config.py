@@ -129,6 +129,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="serve.force_direct",
+        env_var="REMEDY_SERVE_DIRECT",
+        description=(
+            "Any non-empty value forces `job stop`, `job pause`, `job unpause` and `job run` "
+            "to run direct even when a serve supervisor answers its socket; the supervisor "
+            "sets it on every run it starts, so that run never sends a command back to the "
+            "supervisor waiting on it (env-only)"
+        ),
+        value_type=str,
+        default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
         key="ollama.host",
         env_var="REMEDY_OLLAMA_HOST",
         description="Ollama server URL",
@@ -516,6 +529,17 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=str,
         default=None,
+        env_only=True,
+    ),
+    ConfigKeySpec(
+        key="serve.container_bin",
+        env_var="REMEDY_BIN",
+        description=(
+            "The `remedy` executable scripts/serve/container-entrypoint.sh execs; "
+            "resolved on PATH as plain `remedy` when unset (env-only)"
+        ),
+        value_type=str,
+        default="remedy",
         env_only=True,
     ),
     ConfigKeySpec(

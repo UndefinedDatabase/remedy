@@ -18,6 +18,7 @@ browser answer identically for the same request.
 from __future__ import annotations
 
 from apps.cli.json_envelope import emit_ok, fail
+from apps.cli.serve_client import forward_effect, supervisor_answers
 
 EXIT_ERROR = 1
 EXIT_USAGE = 2
@@ -71,9 +72,19 @@ def _unknown_job(job_id: str, *, json_output: bool) -> None:
     )
 
 
+def _door_args(task_id: str | None, source: str, *, reason: str | None = None) -> dict:
+    """The door's `args` for a pause or an unpause sent to the serve supervisor."""
+    args: dict = {"source": source or "cli"}
+    if task_id:
+        args["task"] = task_id
+    if reason is not None:
+        args["reason"] = reason
+    return args
+
+
 def _cmd_job_pause(job_id: str, *, task: str = "", reason: str = "", source: str = "cli",
                    json_output: bool = False) -> None:
-    from packages.orchestration.pause_control import pause_job_command
+    from packages.orchestration.pause_control import pause_command_refusal, pause_job_command
 
     job_id = _resolve_job_id(job_id, json_output=json_output)
     job = _load_job(job_id)
@@ -81,8 +92,15 @@ def _cmd_job_pause(job_id: str, *, task: str = "", reason: str = "", source: str
         _unknown_job(job_id, json_output=json_output)
 
     task_id = task.strip() or None
-    result = pause_job_command(job, task_id=task_id, reason=reason,
-                               source=source or "cli")
+    if supervisor_answers():
+        subject = f"task {task_id!r}" if task_id else f"job {job_id}"
+        result = pause_command_refusal(job, task_id) or forward_effect(
+            job_id, "job.pause", _door_args(task_id, source, reason=reason),
+            json_output=json_output, error="job_not_pausable",
+            subject=f"{subject} was not paused")
+    else:
+        result = pause_job_command(job, task_id=task_id, reason=reason,
+                                   source=source or "cli")
 
     if result["outcome"] == "refused":
         detail = result["reason"]
@@ -106,7 +124,7 @@ def _cmd_job_pause(job_id: str, *, task: str = "", reason: str = "", source: str
 
 def _cmd_job_unpause(job_id: str, *, task: str = "", source: str = "cli",
                      json_output: bool = False) -> None:
-    from packages.orchestration.pause_control import unpause_job_command
+    from packages.orchestration.pause_control import pause_command_refusal, unpause_job_command
 
     job_id = _resolve_job_id(job_id, json_output=json_output)
     job = _load_job(job_id)
@@ -114,7 +132,14 @@ def _cmd_job_unpause(job_id: str, *, task: str = "", source: str = "cli",
         _unknown_job(job_id, json_output=json_output)
 
     task_id = task.strip() or None
-    result = unpause_job_command(job, task_id=task_id, source=source or "cli")
+    if supervisor_answers():
+        subject = f"task {task_id!r}" if task_id else f"job {job_id}"
+        result = pause_command_refusal(job, task_id) or forward_effect(
+            job_id, "job.unpause", _door_args(task_id, source),
+            json_output=json_output, error="job_not_unpausable",
+            subject=f"{subject} was not unpaused")
+    else:
+        result = unpause_job_command(job, task_id=task_id, source=source or "cli")
 
     if result["outcome"] == "refused":
         detail = result["reason"]

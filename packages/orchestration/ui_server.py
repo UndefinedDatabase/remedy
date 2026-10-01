@@ -2957,9 +2957,25 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: `None` in any handler built without one, so the door's preview clause degrades
     #: to recording the request alone.
     preview_worker: Any = None
+    #: The `source` the door records `job.stop`, `job.pause` and `job.unpause` with:
+    #: this door's own word in the cockpit's server, and `"cli"` in the handler the
+    #: `remedy serve start` supervisor binds to its unix socket (DECISION F200 D1 (2)).
+    effect_source: str = COMMAND_EFFECT_SOURCE
+    #: True only in the supervisor's socket handler: a non-empty `args.source` the
+    #: command line sends with those three commands is recorded as given, as its
+    #: `--source` option is when the command runs direct (DECISION F200 D3).
+    client_names_source: bool = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
+
+    def _effect_source_from(self, args: Any) -> str:
+        """The `source` to record: `args.source` where `client_names_source` holds and
+        the client sent a non-empty string, this handler's `effect_source` otherwise."""
+        source = args.get("source") if isinstance(args, dict) else None
+        if self.client_names_source and isinstance(source, str) and source:
+            return source
+        return self.effect_source
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
@@ -3667,6 +3683,18 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F200 D4: a command a subclass adds to this door — the `job.run` the
+        # supervisor's socket handler accepts — after every clause above. The cockpit's
+        # own handler adds none, so the hook answers None there and the guard below stands.
+        extra = self._dispatch_extra_command(job, payload)
+        if extra is not None:
+            status, body, outcome = extra
+            self._audit_attempt(str(job.job_id), outcome, create=True, payload=payload)
+            if status == 200:
+                self._publish_command_result(str(job.job_id), payload["client_nonce"], body)
+                self._emit_command_accepted_event(str(job.job_id), body)
+            self._send_json(status, body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while every id in the exposed subset has a clause above, and the
@@ -3686,7 +3714,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         reason = args.get("reason") if isinstance(args, dict) else ""
         signal = request_stop(
             job_id, reason=reason if isinstance(reason, str) else "",
-            source=COMMAND_EFFECT_SOURCE)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
 
@@ -3727,7 +3755,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         result = pause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
             reason=reason if isinstance(reason, str) else "",
-            source=COMMAND_EFFECT_SOURCE)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], **result}
 
     def _dispatch_job_unpause(self, job: Any, payload: Any) -> dict[str, Any]:
@@ -3741,7 +3769,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         task = args.get("task") if isinstance(args, dict) else None
         result = unpause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
-            source=COMMAND_EFFECT_SOURCE)
+            source=self._effect_source_from(args))
         return {"command": payload["command"], **result}
 
     def _dispatch_veto_task(self, job: Any, payload: Any) -> dict[str, Any]:
@@ -4203,6 +4231,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             )
         except (OSError, RuntimeError, ValueError, TypeError):   # D14, clause four
             return False
+
+    def _dispatch_extra_command(
+            self, job: Any, payload: Any) -> tuple[int, dict[str, Any], str] | None:
+        """`(status, body, audit outcome)` for a command a subclass adds, else None.
+
+        The cockpit's handler adds no command, so this answers None for every id;
+        the supervisor's socket handler overrides it for `job.run` (DECISION F200 D4).
+        """
+        return None
 
     def _command_is_ui_exposed(self, command_id: str) -> bool:
         """True when `command_id` is one of the ids the UI door accepts.

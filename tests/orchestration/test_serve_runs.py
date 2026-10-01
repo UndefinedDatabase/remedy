@@ -1,0 +1,348 @@
+"""The runs the `remedy serve start` supervisor starts (F200, DECISIONs F200 D1 (4) and D4).
+
+Every run here is a stand-in for `remedy job run`: a Python child that prints its
+job id and its environment's two settings, waits until the test creates its
+release file, and exits with the code the test chose. Each test releases every
+child it started, so no run outlives the test.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import pytest
+
+from packages.orchestration import serve_runs as SR
+from packages.orchestration.serve_paths import serve_paths
+
+_CHILD = """\
+import os, sys, time
+from pathlib import Path
+job_id, release, code = sys.argv[1], Path(sys.argv[2]), int(sys.argv[3])
+print("run", job_id, os.environ.get("REMEDY_SERVE_DIRECT"), os.environ.get("REMEDY_DATA_DIR"),
+      os.getsid(0) == os.getpid(), sys.argv[4:], os.environ["PYTHONPATH"].split(os.pathsep)[0])
+print("to stderr", file=sys.stderr)
+sys.stdout.flush()
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+sys.exit(code)
+"""
+
+
+@pytest.fixture
+def setup(tmp_path_factory):
+    root = tmp_path_factory.mktemp("sr")
+    release = root / "release"
+    paths = serve_paths(root)
+
+    def argv(job_id: str) -> list[str]:
+        return [sys.executable, "-c", _CHILD, job_id, str(release), "3"]
+
+    launcher = SR.RunLauncher(paths, argv_for=argv)
+    yield root, paths, launcher, release
+    release.touch()
+    for record in paths.runs_dir.glob("*.json") if paths.runs_dir.is_dir() else ():
+        launcher.wait(record.stem, timeout=30)
+
+
+def test_the_default_command_is_job_run_through_this_interpreter():
+    assert SR.job_run_argv("abc") == [sys.executable, "-m", "apps.cli.main", "job", "run", "abc"]
+
+
+def test_a_started_run_is_recorded_then_recorded_again_with_its_exit_code(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("job1")
+    assert record.exit_code is None and record.ended_at is None
+    assert SR.read_run_record(paths, "job1") == record
+    assert launcher.running("job1")
+    release.touch()
+    assert launcher.wait("job1", timeout=30) == 3
+    ended = SR.read_run_record(paths, "job1")
+    assert (ended.pid, ended.started_at, ended.exit_code) == (record.pid, record.started_at, 3)
+    assert ended.ended_at is not None
+    assert not launcher.running("job1")
+
+
+def test_a_run_runs_direct_in_its_own_session_on_the_supervisors_data_root(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("job2")
+    release.touch()
+    launcher.wait("job2", timeout=30)
+    assert Path(record.out_log).read_text() == f"run job2 1 {root} True [] {SR.CODE_ROOT}\n"
+    assert Path(record.err_log).read_text() == "to stderr\n"
+    assert (Path(record.out_log).parent, Path(record.out_log).name) == (paths.runs_dir, "job2.out")
+
+
+def test_a_json_run_adds_the_one_option_a_supervised_run_takes(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("job8", json_output=True)
+    release.touch()
+    launcher.wait("job8", timeout=30)
+    assert Path(record.out_log).read_text().split(" ")[5] == "['--json']"
+
+
+def test_the_code_root_holds_the_command_line_the_run_imports():
+    assert (SR.CODE_ROOT / "apps" / "cli" / "main.py").is_file()
+
+
+def test_a_second_start_of_a_running_job_is_refused_and_starts_nothing(setup):
+    root, paths, launcher, release = setup
+    first = launcher.start("job3")
+    with pytest.raises(SR.RunRefused) as caught:
+        launcher.start("job3")
+    assert caught.value.token == "job_already_running"
+    assert str(first.pid) in str(caught.value)
+    assert SR.read_run_record(paths, "job3") == first
+
+
+def test_different_jobs_run_side_by_side(setup):
+    root, paths, launcher, release = setup
+    a, b = launcher.start("job4"), launcher.start("job5")
+    assert a.pid != b.pid and launcher.running("job4") and launcher.running("job5")
+
+
+def test_a_job_whose_run_ended_can_be_started_again(setup):
+    root, paths, launcher, release = setup
+    first = launcher.start("job6")
+    release.touch()
+    launcher.wait("job6", timeout=30)
+    second = launcher.start("job6")
+    assert second.pid != first.pid
+    assert SR.read_run_record(paths, "job6") == second
+
+
+def test_the_record_file_is_the_records_json(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("job7")
+    data = json.loads((paths.runs_dir / "job7.json").read_text(encoding="utf-8"))
+    assert data == record.to_json()
+    assert sorted(data) == ["ended_at", "err_log", "exit_code", "job_id", "out_log", "pid",
+                            "started_at"]
+
+
+def test_a_record_that_cannot_be_read_is_none(tmp_path):
+    paths = serve_paths(tmp_path)
+    assert SR.read_run_record(paths, "missing") is None
+    paths.runs_dir.mkdir(parents=True)
+    (paths.runs_dir / "bad.json").write_text("{not json", encoding="utf-8")
+    assert SR.read_run_record(paths, "bad") is None
+
+
+def test_waiting_for_a_job_this_launcher_never_started_is_none(setup):
+    root, paths, launcher, release = setup
+    assert launcher.wait("never") is None
+
+
+# ---------------------------------------------------------------------------
+# resume_registered (DECISION F200 D7): adopt / restart / lose a stale record
+# ---------------------------------------------------------------------------
+
+
+def _plant_record(paths, record: SR.RunRecord) -> None:
+    """Write RECORD directly, the way a crashed supervisor would leave it behind."""
+    paths.runs_dir.mkdir(parents=True, exist_ok=True)
+    (paths.runs_dir / f"{record.job_id}.json").write_text(
+        json.dumps(record.to_json()), encoding="utf-8")
+
+
+def _dead_pid() -> int:
+    """A process id guaranteed to name no process: spawned, then reaped."""
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.wait()
+    return proc.pid
+
+
+def _spawn_child(job_id: str, release: Path, code: int = 0) -> subprocess.Popen:
+    """A real `_CHILD` process, started OUTSIDE any `RunLauncher` (no reaper of its own)."""
+    return subprocess.Popen(
+        [sys.executable, "-c", _CHILD, job_id, str(release), str(code)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        env={**os.environ, "PYTHONPATH": str(SR.CODE_ROOT)})
+
+
+def test_resume_registered_restarts_a_job_whose_own_record_still_reads_running(setup):
+    root, paths, launcher, release = setup
+    _plant_record(paths, SR.RunRecord(
+        job_id="jobR", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log=str(paths.runs_dir / "jobR.out"), err_log=str(paths.runs_dir / "jobR.err")))
+    outcomes = launcher.resume_registered(job_is_running=lambda jid: jid == "jobR")
+    assert outcomes == [{"job_id": "jobR", "action": "restarted"}]
+    assert launcher.running("jobR")
+    release.touch()
+    assert launcher.wait("jobR", timeout=30) == 3
+
+
+def test_resume_registered_marks_a_lost_run_when_the_job_is_not_running(setup):
+    root, paths, launcher, release = setup
+    _plant_record(paths, SR.RunRecord(
+        job_id="jobL", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e"))
+    outcomes = launcher.resume_registered(job_is_running=lambda jid: False)
+    assert outcomes == [{"job_id": "jobL", "action": "lost"}]
+    ended = SR.read_run_record(paths, "jobL")
+    assert ended.exit_code is None
+    assert ended.ended_at is not None
+
+
+def test_resume_registered_leaves_an_already_ended_record_alone(setup):
+    root, paths, launcher, release = setup
+    ended_record = SR.RunRecord(
+        job_id="jobE", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e", exit_code=0, ended_at="2026-01-01T00:00:03Z")
+    _plant_record(paths, ended_record)
+    before = (paths.runs_dir / "jobE.json").read_bytes()
+
+    outcomes = launcher.resume_registered(job_is_running=lambda jid: True)
+
+    assert outcomes == []
+    assert not launcher.running("jobE")
+    after = (paths.runs_dir / "jobE.json").read_bytes()
+    assert after == before, "a record whose end was already recorded must not be touched"
+
+
+def test_resume_registered_skips_a_record_that_cannot_be_read(setup):
+    root, paths, launcher, release = setup
+    paths.runs_dir.mkdir(parents=True, exist_ok=True)
+    (paths.runs_dir / "bad.json").write_text("{not json", encoding="utf-8")
+    assert launcher.resume_registered(job_is_running=lambda jid: True) == []
+
+
+def test_resume_registered_adopts_a_still_running_process_and_refuses_a_second_start(setup):
+    root, paths, launcher, release = setup
+    proc = _spawn_child("jobA", release, 3)
+    try:
+        _plant_record(paths, SR.RunRecord(
+            job_id="jobA", pid=proc.pid, started_at="2026-01-01T00:00:00Z",
+            out_log="o", err_log="e"))
+        outcomes = launcher.resume_registered(job_is_running=lambda jid: False)
+        assert outcomes == [{"job_id": "jobA", "action": "adopted"}]
+        assert launcher.running("jobA")
+        with pytest.raises(SR.RunRefused) as caught:
+            launcher.start("jobA")
+        assert caught.value.token == "job_already_running"
+
+        release.touch()
+        deadline = time.monotonic() + 30
+        while launcher.running("jobA") and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not launcher.running("jobA"), "the adopted watcher never noticed the end"
+        ended = SR.read_run_record(paths, "jobA")
+        assert ended.exit_code is None, "this supervisor is not the process's parent"
+        assert ended.ended_at is not None
+    finally:
+        release.touch()
+        proc.wait(timeout=10)
+
+
+def test_resume_registered_does_not_adopt_a_live_pid_whose_cmdline_names_another_job(setup):
+    root, paths, launcher, release = setup
+    proc = _spawn_child("some-other-job", release, 0)
+    try:
+        _plant_record(paths, SR.RunRecord(
+            job_id="jobB", pid=proc.pid, started_at="2026-01-01T00:00:00Z",
+            out_log="o", err_log="e"))
+        outcomes = launcher.resume_registered(job_is_running=lambda jid: False)
+        assert outcomes == [{"job_id": "jobB", "action": "lost"}]
+        assert not launcher.running("jobB")
+        ended = SR.read_run_record(paths, "jobB")
+        assert ended.exit_code is None
+        assert ended.ended_at is not None
+    finally:
+        release.touch()
+        proc.wait(timeout=10)
+
+
+# ---------------------------------------------------------------------------
+# The default reader (`_job_is_running`, no override) against a real data root
+# ---------------------------------------------------------------------------
+
+
+def test_the_default_reader_restarts_a_job_whose_own_plan_reads_running(setup):
+    from packages.orchestration.pingpong_job import JOB_RUNNING, JobPlan, TaskEntry, save_job_plan
+
+    root, paths, launcher, release = setup
+    job = JobPlan(job_title="running-job", state=JOB_RUNNING,
+                 tasks=[TaskEntry(title="t0", body="d")])
+    save_job_plan(job, root)
+    job_id = str(job.job_id)
+    _plant_record(paths, SR.RunRecord(
+        job_id=job_id, pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log=str(paths.runs_dir / f"{job_id}.out"), err_log=str(paths.runs_dir / f"{job_id}.err")))
+    outcomes = launcher.resume_registered()                       # no override: the default reader
+    assert outcomes == [{"job_id": job_id, "action": "restarted"}]
+    assert launcher.running(job_id)
+    release.touch()
+    assert launcher.wait(job_id, timeout=30) == 3
+
+
+def test_the_default_reader_marks_a_completed_jobs_run_as_lost(setup):
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, TaskEntry, save_job_plan
+
+    root, paths, launcher, release = setup
+    job = JobPlan(job_title="completed-job", state=JOB_COMPLETED,
+                 tasks=[TaskEntry(title="t0", body="d")])
+    save_job_plan(job, root)
+    job_id = str(job.job_id)
+    _plant_record(paths, SR.RunRecord(
+        job_id=job_id, pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e"))
+    outcomes = launcher.resume_registered()
+    assert outcomes == [{"job_id": job_id, "action": "lost"}]
+    ended = SR.read_run_record(paths, job_id)
+    assert ended.exit_code is None
+    assert ended.ended_at is not None
+
+
+def test_the_default_reader_treats_a_wrong_shaped_job_record_as_not_running(setup):
+    """`load_job_plan` would RAISE on this record; the default reader must not."""
+    root, paths, launcher, release = setup
+    job_id = "0123456789abcdef"
+    job_dir = root / "jobs" / job_id
+    job_dir.mkdir(parents=True)
+    (job_dir / "job.json").write_text(
+        json.dumps({"job_id": job_id, "run_manifest": {"required_v": "oops"}}),
+        encoding="utf-8")
+    _plant_record(paths, SR.RunRecord(
+        job_id=job_id, pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e"))
+
+    outcomes = launcher.resume_registered()           # must not raise
+    assert outcomes == [{"job_id": job_id, "action": "lost"}]
+    ended = SR.read_run_record(paths, job_id)
+    assert ended.exit_code is None
+    assert ended.ended_at is not None
+
+
+# ---------------------------------------------------------------------------
+# A restart that cannot even launch (DECISION F200 D7's "failed" outcome)
+# ---------------------------------------------------------------------------
+
+
+def test_resume_registered_marks_a_failed_restart_and_leaves_the_record_untouched(setup):
+    root, paths, launcher, release = setup
+    bad_launcher = SR.RunLauncher(paths, argv_for=lambda job_id: ["/no/such/remedy-exe", job_id])
+
+    first = SR.RunRecord(
+        job_id="jobF", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log=str(paths.runs_dir / "jobF.out"), err_log=str(paths.runs_dir / "jobF.err"))
+    _plant_record(paths, first)
+    before = (paths.runs_dir / "jobF.json").read_bytes()
+
+    # a second stale record in the same registry, which must still be
+    # reconciled even though the first one's restart failed
+    _plant_record(paths, SR.RunRecord(
+        job_id="jobG", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e"))
+
+    outcomes = bad_launcher.resume_registered(job_is_running=lambda jid: True)
+    assert outcomes == [
+        {"job_id": "jobF", "action": "failed"},
+        {"job_id": "jobG", "action": "failed"},
+    ]
+    after = (paths.runs_dir / "jobF.json").read_bytes()
+    assert after == before, "a failed restart must not touch the stale record"

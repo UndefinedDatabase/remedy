@@ -585,6 +585,27 @@ def _refuse_unknown_task(task_id: str, job: Any) -> dict[str, Any] | None:
            "scope": "task", "task_id": task_id}
 
 
+def pause_command_refusal(job: Any, task_id: str | None) -> dict[str, Any] | None:
+    """D2's ``refused`` body for a pause or an unpause of ``job``, or of its task
+    ``task_id``, or None when neither command would refuse.
+
+    It only reads: a terminal job state, or a task id the plan does not hold. The two
+    commands below begin with it, and the command line calls it on its own before it
+    hands either command to the `remedy serve start` supervisor, whose door answers a
+    refusal without its reason (DECISION F200 D3).
+    """
+    state = _job_state_str(job)
+    if state in _TERMINAL_STATES:
+        body: dict[str, Any] = {"outcome": "refused", "reason": state,
+                                "scope": "task" if task_id else "job"}
+        if task_id:
+            body["task_id"] = task_id
+        return body
+    if task_id:
+        return _refuse_unknown_task(task_id, job)
+    return None
+
+
 def _task_pause_event_exists(job_id: str, event: str, request_id: str) -> bool | None:
     """Has this exact request already produced a ``task_paused`` or ``task_resumed``
     ledger event? Mirrors ``pingpong_job._job_paused_event_exists`` exactly — True/False,
@@ -664,18 +685,11 @@ def pause_job_command(job: Any, *, task_id: str | None = None, reason: str = "",
     answers ``requested`` (job scope) or ``paused`` (task scope), each with
     the request id.
     """
-    state = _job_state_str(job)
-    if state in _TERMINAL_STATES:
-        body: dict[str, Any] = {"outcome": "refused", "reason": state,
-                                "scope": "task" if task_id else "job"}
-        if task_id:
-            body["task_id"] = task_id
-        return body
+    refusal = pause_command_refusal(job, task_id)
+    if refusal is not None:
+        return refusal
 
     if task_id:
-        refusal = _refuse_unknown_task(task_id, job)
-        if refusal is not None:
-            return refusal
         pause = request_task_pause(job.job_id, task_id, reason, source,
                                    control_root_path=control_root_path)
         # R-1052: exactly once per request id BY THE LEDGER, as `job_paused` is — not
@@ -706,17 +720,11 @@ def unpause_job_command(job: Any, *, task_id: str | None = None, source: str,
     ``not_paused`` like any other job with nothing pending.
     """
     state = _job_state_str(job)
-    if state in _TERMINAL_STATES:
-        body: dict[str, Any] = {"outcome": "refused", "reason": state,
-                                "scope": "task" if task_id else "job"}
-        if task_id:
-            body["task_id"] = task_id
-        return body
+    refusal = pause_command_refusal(job, task_id)
+    if refusal is not None:
+        return refusal
 
     if task_id:
-        refusal = _refuse_unknown_task(task_id, job)
-        if refusal is not None:
-            return refusal
         pause = next(
             (p for p in paused_tasks(job.job_id, control_root_path=control_root_path)
              if p.task_id == task_id), None)
