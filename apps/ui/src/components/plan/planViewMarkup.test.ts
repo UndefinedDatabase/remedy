@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PLAN_ABSENT_TEXT, PLAN_UNREADABLE_TEXT } from "../../api/planView";
 import type { RemedyPlan } from "../../api/types";
+import { PlanCriteria } from "./PlanCriteria";
 import { PlanTaskEditForm } from "./PlanTaskEditForm";
 import { PlanView } from "./PlanView";
 
@@ -54,7 +55,7 @@ describe("the plan view", () => {
 
   it("numbers each acceptance criterion from 0, the index the plan edits take", () => {
     const markup = render(PLAN);
-    const criteria = [...markup.matchAll(/<li [^>]*><span [^>]*>(\d+)<\/span><span>([^<]*)<\/span><\/li>/g)];
+    const criteria = [...markup.matchAll(/<li [^>]*><span [^>]*>(\d+)<\/span><span>([^<]*)<\/span>/g)];
     expect(criteria.map((m) => [m[1], m[2]])).toEqual([["0", "reads a file"], ["1", "reports errors"]]);
     expect(markup).toContain('aria-label="Acceptance criteria of T1"');
   });
@@ -71,7 +72,38 @@ describe("the plan view", () => {
 
   it("offers no edit control on a plan that is not open for editing", () => {
     const markup = render({ ...PLAN, editable: false, notEditableBecause: "the plan is approved" });
-    expect(markup).not.toMatch(/>(Edit|Delete)<\/button>/);
+    expect(markup).not.toMatch(/>(Edit|Delete|Move up|Move down|Change|Remove|Add a criterion)<\/button>/);
+    expect(markup).toContain("reads a file");
+  });
+
+  it("offers Change and Remove on each criterion and Add a criterion on each task", () => {
+    const markup = render(PLAN);
+    const labels = [...markup.matchAll(/aria-label="((?:Change|Remove) criterion \d+ of T\d)"[^>]*>(Change|Remove)</g)]
+      .map((m) => m[1]);
+    expect(labels).toEqual(["Change criterion 0 of T1", "Remove criterion 0 of T1", "Change criterion 1 of T1",
+      "Remove criterion 1 of T1"]);
+    expect([...markup.matchAll(/>Add a criterion<\/button>/g)]).toHaveLength(2);
+  });
+
+  it("disables Remove on a task's only criterion, with the reason", () => {
+    const markup = render({ ...PLAN, tasks: [{ ...PLAN.tasks[1], acceptance: ["one"] }] });
+    expect(markup).toMatch(/<button type="button"[^>]*disabled=""[^>]*title="A task keeps at least one criterion\."[^>]*aria-label="Remove criterion 0 of T2"/);
+    expect(markup).not.toMatch(/disabled=""[^>]*aria-label="Change criterion 0 of T2"/);
+  });
+
+  it("disables each move a task cannot make, with the reason", () => {
+    const markup = render(PLAN);
+    const moves = [...markup.matchAll(/<button type="button"[^>]*?(?: disabled="" title="([^"]*)")?>(Move up|Move down)<\/button>/g)]
+      .map((m) => [m[2], m[1] ?? null]);
+    expect(moves).toEqual([
+      ["Move up", "T1 is already first."], ["Move down", "T2 waits for T1, so T1 cannot come after it."],
+      ["Move up", "T2 waits for T1, so it cannot come before it."], ["Move down", "T2 is already last."],
+    ]);
+  });
+
+  it("lets a free task move both ways", () => {
+    const free = { ...PLAN, tasks: [PLAN.tasks[0], { ...PLAN.tasks[1], id: "X", dependsOn: [] }, { ...PLAN.tasks[1], id: "Y", dependsOn: [] }] };
+    expect(render(free)).toMatch(/data-plan-task="X"[\s\S]*?<button type="button" class="[^"]*">Move up<\/button><button type="button" class="[^"]*">Move down<\/button>/);
   });
 
   it("says so quietly when the job has no plan, and lists nothing", () => {
@@ -109,5 +141,29 @@ describe("the task edit form", () => {
     expect(renderForm(null)).not.toMatch(/disabled[^>]*>Save</);
     expect(renderForm("An edit is being saved.")).toMatch(
       /<button type="submit"[^>]*disabled=""[^>]*title="An edit is being saved\."[^>]*>Save<\/button>/);
+  });
+});
+
+describe("the criteria forms (DECISION F292 D4)", () => {
+  function renderCriteria(open: number | null | undefined): string {
+    return renderToStaticMarkup(createElement(PlanCriteria, {
+      task: PLAN.tasks[0], editable: true, open, blockedReason: null, onOpen: () => {}, onSubmit: () => {} }));
+  }
+
+  it("opens a criterion's form on its own line, prefilled, in place of its text and its buttons", () => {
+    const markup = renderCriteria(1);
+    expect(markup).toMatch(/<span [^>]*>1<\/span><form [^>]*aria-label="Change criterion 1 of T1"[^>]*data-ui="plan-criterion-form"><input type="text" aria-label="Change criterion 1 of T1" value="reports errors"\/>/);
+    expect(markup).not.toContain('aria-label="Remove criterion 1 of T1"');
+    expect(markup).toContain('aria-label="Remove criterion 0 of T1"');
+  });
+
+  it("opens an empty add form in place of the Add a criterion button", () => {
+    const markup = renderCriteria(null);
+    expect(markup).toMatch(/<form [^>]*aria-label="Add a criterion to T1"[^>]*><input type="text" aria-label="Add a criterion to T1" value=""\/>/);
+    expect(markup).not.toContain(">Add a criterion</button>");
+  });
+
+  it("shows no form when none is open", () => {
+    expect(renderCriteria(undefined)).not.toContain("plan-criterion-form");
   });
 });

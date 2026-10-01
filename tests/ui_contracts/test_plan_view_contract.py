@@ -75,7 +75,8 @@ def test_the_view_reaches_no_door_and_shows_only_the_rules_sentences():
     source = _source(VIEW)
     for forbidden in ("fetch(", "XMLHttpRequest", "remedyApi", "localStorage"):
         assert forbidden not in source, forbidden
-    for pure in (UI_SRC / "api" / "planEditView.ts", UI_SRC / "components" / "plan" / "PlanTaskEditForm.tsx"):
+    for pure in (UI_SRC / "api" / "planEditView.ts", UI_SRC / "components" / "plan" / "PlanTaskEditForm.tsx",
+                 UI_SRC / "components" / "plan" / "PlanCriteria.tsx"):
         for forbidden in ("fetch(", "XMLHttpRequest", "Date.now", "new Date", "localStorage"):
             assert forbidden not in _source(pure), (pure.name, forbidden)
     for rule in ("planHeadline(plan)", "planWindowText(plan)", "planDependencyText(task)",
@@ -131,6 +132,14 @@ def test_the_sizes_and_the_edited_fields_are_the_planners():
     fields = re.findall(r"^  ([a-z_]+)\?: string;$", body[:body.index("}")], re.MULTILINE)
     assert fields == ["title", "goal", "est_tokens_band"]
     assert set(fields) <= set(EDITABLE_TASK_FIELDS)
+
+
+def test_the_criterion_operations_are_the_backends():
+    from packages.orchestration.plan_editing import ACCEPTANCE_OPS
+
+    send = _source(UI_SRC / "api" / "planEditSend.ts")
+    [ops] = re.findall(r"export type PlanAcceptanceOp = ([^;]*);", send)
+    assert re.findall(r'"([a-z]+)"', ops) == list(ACCEPTANCE_OPS)
 
 
 def test_the_right_panel_offers_the_plan_button():

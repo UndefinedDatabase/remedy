@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   PLAN_TOKEN_BANDS,
   changedPlanTaskFields,
+  planCriterionProblem,
+  planCriterionRemoveBlocked,
   planDeleteQuestion,
   planEditBlockedReason,
+  planMove,
   planTaskDraftOf,
   planTaskDraftProblem,
 } from "./planEditView";
@@ -89,5 +92,43 @@ describe("planDeleteQuestion", () => {
   it("joins three names with commas and a final and", () => {
     const p = plan({ tasks: [task("T1", ["T0"]), task("A", ["T1"]), task("B", ["T1"]), task("C", ["T1"])] });
     expect(planDeleteQuestion(p, p.tasks[0])).toBe("Delete T1? A, B and C wait for it and will wait for T0 instead.");
+  });
+});
+
+describe("the criteria rules (DECISION F292 D4)", () => {
+  it("an empty criterion cannot be sent", () => {
+    expect(planCriterionProblem("   ")).toBe("Write the criterion.");
+    expect(planCriterionProblem(" reads a file ")).toBeNull();
+  });
+  it("a task keeps at least one criterion", () => {
+    expect(planCriterionRemoveBlocked(task("T1"))).toBe("A task keeps at least one criterion.");
+    expect(planCriterionRemoveBlocked(task("T1", [], { acceptance: ["a", "b"] }))).toBeNull();
+  });
+});
+
+describe("planMove (DECISION F292 D4)", () => {
+  const free = plan({ tasks: [task("A"), task("B"), task("C")] });
+
+  it("swaps a task with its neighbour and answers the whole order", () => {
+    expect(planMove(free, "B", -1)).toEqual({ order: ["B", "A", "C"] });
+    expect(planMove(free, "B", 1)).toEqual({ order: ["A", "C", "B"] });
+  });
+  it("says a task at an end is already there", () => {
+    expect(planMove(free, "A", -1)).toEqual({ blocked: "A is already first." });
+    expect(planMove(free, "C", 1)).toEqual({ blocked: "C is already last." });
+  });
+  it("never moves a task before one it waits for", () => {
+    expect(planMove(plan(), "T2", -1)).toEqual({ blocked: "T2 waits for T1, so it cannot come before it." });
+  });
+  it("never moves a task after one that waits for it", () => {
+    expect(planMove(plan(), "T2", 1)).toEqual({ blocked: "T3 waits for T2, so T2 cannot come after it." });
+  });
+  it("moves past a neighbour that is not tied to it", () => {
+    const p = plan({ tasks: [task("T1"), task("X"), task("T2", ["T1"])] });
+    expect(planMove(p, "X", 1)).toEqual({ order: ["T1", "T2", "X"] });
+    expect(planMove(p, "T2", -1)).toEqual({ order: ["T1", "T2", "X"] });
+  });
+  it("says an unknown task is already first or last rather than moving anything", () => {
+    expect(planMove(free, "Z", -1)).toEqual({ blocked: "Z is already first." });
   });
 });
