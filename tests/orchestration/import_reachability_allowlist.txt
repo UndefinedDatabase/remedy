@@ -251,6 +251,7 @@ packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner
 packages.orchestration.serve_daemon
 packages.orchestration.serve_paths
+packages.orchestration.serve_runs
 packages.orchestration.session_sent_index
 packages.orchestration.source_apply
 packages.orchestration.spec_compliance

@@ -19,9 +19,9 @@ import secrets
 from typing import Any
 
 from apps.cli.json_envelope import fail
+from packages.orchestration.serve_runs import DIRECT_ENV
 
-#: The environment variable that forces direct mode.
-DIRECT_ENV = "REMEDY_SERVE_DIRECT"
+__all__ = ["DIRECT_ENV", "forward_effect", "supervisor_answers"]
 
 
 def supervisor_answers() -> bool:
