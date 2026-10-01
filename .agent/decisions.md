@@ -27210,3 +27210,13 @@ CHOSEN: the operator answers "Okay", confirming the recommendation as written. T
 ALTERNATIVES CONSIDERED: none weighed here; the operator confirmed the recommendation already executed.
 
 HOW TO REVERSE: delete this paragraph and write the question again; a later session then re-decides whether the cheaper job runs are worth registering as their own work item.
+
+## DECISION F292 D10 — The closure's self-use item SU-042 changed nothing, so no change of it is landed; it is consumed by F292 at the STATUS flip, and its defect is a recurrence of R-1117 (2026-10-01)
+
+THE SITUATION: closure precondition 6 (`docs/roadmap/STATUS_closure_protocol.md`) has every closure run exactly one self-use item to its approval gate. F292's round 11 generated `SU-042`, "Narrow the excused handler at apps/cli/commands/dev.py:126", and ran it as job `ee28dd2e1c254f05`. The job ended `completed` and its one task passed review, but the job's branch changes no file, and `describe_self_use_run_defects` returned one string, "a task passed review but no path outside .agent/ changed".
+
+CHOSEN: no change of `SU-042` is landed on this branch. The precondition asks for the item to be run, its defects registered and its `consumed_by` set; it does not ask for its change to land, and here there is no change. F293 and F294 landed their items because Remedy's own job had written a correct change, which a person then only had to accept; a repair written by the reviewer instead would not be Remedy used on Remedy. The defect is the one R-1117 already records, so round 12 books it as R-1117's recurrence with the new evidence, and R-1117 stays with its owner, F290. `SU-042`'s `consumed_by` becomes `F292` in the closure commit, and the mark at `apps/cli/commands/dev.py:126` stays where it is for a later item or for F290. This follows F044's closure, whose item `SU-039` changed nothing in the same way and was consumed without a landing.
+
+ALTERNATIVES CONSIDERED: (a) the reviewer writes the narrowed handler and lands it, REJECTED for the reason above and because the change is outside F292's scope; (b) running the item again, REJECTED because the precondition asks for one run, a second run costs money again, and R-1117 is the record of this behaviour; (c) a new finding id, REJECTED by checklist item 30, because R-1117 describes the same defect.
+
+HOW TO REVERSE: set `SU-042`'s `consumed_by` back to empty in `scripts/self_use_queue.json` and delete this paragraph; the next closure then runs `SU-042` again as its own item.
