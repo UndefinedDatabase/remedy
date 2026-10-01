@@ -9,6 +9,13 @@ when the run starts and again with its exit code when it ends.
 
 Nothing is kept for later: a job the supervisor is already running is refused, and
 a run that cannot start raises. There is no waiting line (DECISION F200 D1 (4)).
+
+A restart reconciles the registry (DECISION F200 D7, `RunLauncher.resume_registered`):
+a record whose end was never written is ADOPTED when its process still answers to
+that job (the launcher refuses a second `start` of it, a watcher thread records its
+end once it is gone), RESTARTED when its job's own record still reads `running`
+(or left FAILED, untouched, when that restart could not even launch), or marked
+LOST — nothing to resume.
 """
 from __future__ import annotations
 
@@ -17,6 +24,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
@@ -76,6 +84,59 @@ def read_run_record(paths: ServePaths, job_id: str) -> RunRecord | None:
         return None
 
 
+#: How often an adopted run's watcher checks whether its process has ended.
+ADOPT_POLL_SECONDS = 0.2
+
+
+def _process_is_alive(pid: int) -> bool:
+    """True when PID names a live, non-zombie process, by the best check this platform offers.
+
+    A zombie entry (state ``Z``) is treated as gone, not alive: its work is
+    already finished and only its exit status is waiting on a parent that will
+    never call `wait` on it — the adopted process's real parent died with the
+    old supervisor, and this one is not its parent either, so that reap is
+    somebody else's job (the kernel's subreaper, usually pid 1) and may lag.
+    Waiting on that lag would leave `running()` reporting an adopted job as
+    running after its last task already finished.
+    """
+    proc_dir = Path("/proc") / str(pid)
+    if proc_dir.parent.exists():
+        try:
+            fields = proc_dir.joinpath("stat").read_text().rsplit(") ", 1)[-1].split(" ")
+        except OSError:
+            return False
+        return fields[0] != "Z"
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _process_is_this_job(pid: int, job_id: str) -> bool:
+    """True when PID is alive and is the run JOB_ID started (DECISION F200 D7).
+
+    On Linux, ``/proc/<pid>/cmdline`` is argv joined by NUL bytes; JOB_ID must be
+    one whole argument, not a substring of one, so a job id that happens to
+    prefix another never matches, and a pid the kernel reused for an unrelated
+    process is correctly read as "not this run" rather than adopted by mistake.
+    Elsewhere `/proc` does not exist and another process's argv cannot be read
+    without extra privilege, so aliveness alone stands in; the pid-reuse gap
+    that leaves is accepted, the same way SIGKILL detection of foreign
+    processes is out of scope for this feature.
+    """
+    proc_dir = Path("/proc")
+    if proc_dir.exists():
+        try:
+            raw = (proc_dir / str(pid) / "cmdline").read_bytes()
+        except OSError:
+            return False
+        return job_id.encode("utf-8") in [arg for arg in raw.split(b"\0") if arg]
+    return _process_is_alive(pid)
+
+
 class RunLauncher:
     """Starts runs as child processes and records each one's start and end."""
 
@@ -86,6 +147,10 @@ class RunLauncher:
         self._lock = threading.Lock()
         self._children: dict[str, subprocess.Popen] = {}
         self._reapers: dict[str, threading.Thread] = {}
+        #: Job ids adopted from a previous supervisor (DECISION F200 D7): this
+        #: launcher started no child for them, but a `start` is refused and
+        #: `running` reports True until a watcher thread records their end.
+        self._adopted: set[str] = set()
 
     def _write(self, record: RunRecord) -> None:
         target = self._paths.runs_dir / f"{record.job_id}.json"
@@ -95,8 +160,10 @@ class RunLauncher:
         os.replace(scratch, target)
 
     def running(self, job_id: str) -> bool:
-        """True while a run this launcher started for JOB_ID has not ended."""
+        """True while a run this launcher started or adopted for JOB_ID has not ended."""
         with self._lock:
+            if job_id in self._adopted:
+                return True
             child = self._children.get(job_id)
             return child is not None and child.poll() is None
 
@@ -104,9 +171,15 @@ class RunLauncher:
         """Start JOB_ID's run and return its record; refuse a job whose run has not ended.
 
         JSON_OUTPUT adds `--json` to the run's command, the one option a run started
-        through the supervisor takes (DECISION F200 D5).
+        through the supervisor takes (DECISION F200 D5). A job adopted after a
+        restart (DECISION F200 D7) is refused exactly as a child this launcher
+        started itself is.
         """
         with self._lock:
+            if job_id in self._adopted:
+                raise RunRefused("job_already_running",
+                                 f"the serve supervisor is already running job {job_id} "
+                                 f"(adopted from before a restart)")
             child = self._children.get(job_id)
             if child is not None and child.poll() is None:
                 raise RunRefused("job_already_running",
@@ -138,6 +211,93 @@ class RunLauncher:
         code = child.wait()
         with self._lock:
             self._write(replace(record, exit_code=code, ended_at=_now()))
+
+    def resume_registered(self, *, job_is_running: Callable[[str], bool] | None = None
+                          ) -> list[dict[str, str]]:
+        """Reconcile every run this data root's registry still names as open.
+
+        DECISION F200 D7. Called once, when the supervisor starts, before it
+        answers its socket. Every ``runs/<job id>.json`` whose ``exit_code`` is
+        None — its end was never recorded — is one of these:
+
+        * its process is still running THAT job (:func:`_process_is_this_job`) —
+          ADOPTED: a second `start` of it is refused exactly as for a child this
+          launcher started itself, and a thread polls until it is gone and then
+          writes its end, `exit_code` staying None because this supervisor is
+          not its parent and the kernel never tells it one;
+        * else the job's own record (read through JOB_IS_RUNNING) still reads
+          `running` — RESTARTED: a fresh `start`, same as any other run; if
+          that raises OSError (the run could not even be launched), the
+          outcome is FAILED instead and the stale record is left exactly as it
+          was, so the next restart attempt tries it again;
+        * else — LOST: its end is written with `exit_code` None, nothing to
+          resume.
+
+        A record that cannot be read is skipped, and one job's FAILED start
+        never stops another record in the same registry from being reconciled.
+        JOB_IS_RUNNING answers whether one job's own plan reads `running`;
+        tests replace it the way they replace `argv_for`. Returns one
+        `{"job_id", "action"}` dict per reconciled job, ACTION one of
+        `"adopted"`, `"restarted"`, `"failed"`, `"lost"`, so a caller or a test
+        can assert what happened.
+        """
+        if job_is_running is None:
+            job_is_running = self._job_is_running
+        if not self._paths.runs_dir.is_dir():
+            return []
+        outcomes: list[dict[str, str]] = []
+        for job_id in sorted(p.stem for p in self._paths.runs_dir.glob("*.json")):
+            record = read_run_record(self._paths, job_id)
+            if record is None or record.exit_code is not None:
+                continue
+            if _process_is_this_job(record.pid, job_id):
+                self._adopt(record)
+                outcomes.append({"job_id": job_id, "action": "adopted"})
+            elif job_is_running(job_id):
+                try:
+                    self.start(job_id)
+                except OSError:
+                    outcomes.append({"job_id": job_id, "action": "failed"})
+                else:
+                    outcomes.append({"job_id": job_id, "action": "restarted"})
+            else:
+                with self._lock:
+                    self._write(replace(record, ended_at=_now()))
+                outcomes.append({"job_id": job_id, "action": "lost"})
+        return outcomes
+
+    def _job_is_running(self, job_id: str) -> bool:
+        """True when JOB_ID's own job record — not this launcher's run record — reads `running`.
+
+        Reads through :func:`load_job_plan_safe`, which never raises: a record
+        of the wrong shape reads as not running, the same as a missing one, so
+        one rotten job record cannot stop the supervisor from starting.
+        """
+        from packages.orchestration.pingpong_job import JOB_RUNNING, load_job_plan_safe
+
+        plan, _degraded = load_job_plan_safe(job_id, self._paths.root.parent)
+        return plan is not None and plan.state == JOB_RUNNING
+
+    def _adopt(self, record: RunRecord) -> None:
+        """Start a thread that watches an inherited run's process until it ends."""
+        with self._lock:
+            self._adopted.add(record.job_id)
+            watcher = threading.Thread(target=self._watch_adopted, args=(record,), daemon=True,
+                                       name=f"remedy-serve-adopt-{record.job_id}")
+            self._reapers[record.job_id] = watcher
+            watcher.start()
+
+    def _watch_adopted(self, record: RunRecord) -> None:
+        """Poll until RECORD's process is gone, then write its end.
+
+        `exit_code` stays None: this supervisor did not start this process and
+        is not its parent, so the kernel never reports an exit code to it.
+        """
+        while _process_is_alive(record.pid):
+            time.sleep(ADOPT_POLL_SECONDS)
+        with self._lock:
+            self._adopted.discard(record.job_id)
+            self._write(replace(record, ended_at=_now()))
 
     def wait(self, job_id: str, timeout: float | None = None) -> int | None:
         """Wait until JOB_ID's run has ended and its record says so; its exit code, or

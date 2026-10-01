@@ -188,6 +188,7 @@ def run_supervisor(
     stop: threading.Event | None = None,
     on_ready: Callable[[SupervisorState], None] | None = None,
     run_argv: Callable[[str], list[str]] = job_run_argv,
+    job_is_running: Callable[[str], bool] | None = None,
 ) -> None:
     """Answer ROOT's socket until STOP is set, or until SIGTERM or SIGINT arrives.
 
@@ -196,6 +197,12 @@ def run_supervisor(
     supervisor leaves behind, and it is replaced. The socket, the process id file
     and the token file are removed when the supervisor ends. A run it started keeps
     running when it ends; RUN_ARGV builds each run's command, which tests replace.
+
+    Before the supervisor serves any request on its socket, and before ON_READY
+    is called (DECISION F200 D7), the registry is reconciled: every run this
+    data root still names as open is adopted, restarted or declared lost — see
+    `RunLauncher.resume_registered`, which JOB_IS_RUNNING is passed through to;
+    tests replace it the way they replace RUN_ARGV.
     """
     paths = serve_paths(root)
     problem = socket_path_problem(paths.socket)
@@ -216,6 +223,7 @@ def run_supervisor(
     try:
         os.chmod(paths.socket, 0o600)
         _write_private(paths.pid_file, str(os.getpid()))
+        launcher.resume_registered(job_is_running=job_is_running)
         restore = _install_stop_signals(stop)
         thread = threading.Thread(target=server.serve_forever, name="remedy-serve", daemon=True)
         thread.start()
