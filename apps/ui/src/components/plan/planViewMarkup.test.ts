@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PLAN_ABSENT_TEXT, PLAN_UNREADABLE_TEXT } from "../../api/planView";
 import type { RemedyPlan } from "../../api/types";
+import { PlanTaskEditForm } from "./PlanTaskEditForm";
 import { PlanView } from "./PlanView";
 
 const PLAN: RemedyPlan = {
@@ -19,7 +20,8 @@ const PLAN: RemedyPlan = {
 };
 
 function render(plan: RemedyPlan): string {
-  return renderToStaticMarkup(createElement(PlanView, { plan, onClose: () => {} }));
+  return renderToStaticMarkup(createElement(PlanView, {
+    plan, target: { jobId: "0123456789abcdef", serverToken: "token" }, onClose: () => {} }));
 }
 
 describe("the plan view", () => {
@@ -57,6 +59,21 @@ describe("the plan view", () => {
     expect(markup).toContain('aria-label="Acceptance criteria of T1"');
   });
 
+  it("offers each task's Edit and Delete while the plan is open, and an empty outcome line", () => {
+    const markup = render(PLAN);
+    const buttons = [...markup.matchAll(/<button type="button"[^>]*>(Edit|Delete)<\/button>/g)].map((m) => m[1]);
+    expect(buttons).toEqual(["Edit", "Delete", "Edit", "Delete"]);
+    expect(markup).not.toMatch(/<button[^>]*disabled[^>]*>(Edit|Delete)</);
+    expect(markup).toMatch(/<p [^>]*role="status"[^>]*data-ui="plan-edit-message"[^>]*><\/p>/);
+    expect(markup).not.toContain("plan-task-form");
+    expect(markup).not.toContain("plan-delete-confirm");
+  });
+
+  it("offers no edit control on a plan that is not open for editing", () => {
+    const markup = render({ ...PLAN, editable: false, notEditableBecause: "the plan is approved" });
+    expect(markup).not.toMatch(/>(Edit|Delete)<\/button>/);
+  });
+
   it("says so quietly when the job has no plan, and lists nothing", () => {
     const markup = render({ ...PLAN, available: false, tasks: [] });
     expect(markup).toContain(PLAN_ABSENT_TEXT);
@@ -69,5 +86,28 @@ describe("the plan view", () => {
     expect(markup).toContain(PLAN_UNREADABLE_TEXT.replace(/'/g, "&#x27;"));
     expect(markup).not.toContain("invalid literal");
     expect(markup).not.toContain("data-plan-task");
+  });
+});
+
+describe("the task edit form", () => {
+  function renderForm(blockedReason: string | null): string {
+    return renderToStaticMarkup(createElement(PlanTaskEditForm, {
+      task: { ...PLAN.tasks[0], estTokensBand: "L" }, blockedReason, onSave: () => {}, onCancel: () => {} }));
+  }
+
+  it("is a form named for its task with the title, goal and size prefilled", () => {
+    const markup = renderForm(null);
+    expect(markup).toMatch(/^<form [^>]*aria-label="Edit T1"[^>]*data-ui="plan-task-form"/);
+    expect(markup).toMatch(/<span>Title<\/span><input type="text" value="Read the file"\/>/);
+    expect(markup).toMatch(/<span>Goal<\/span><textarea>parse it<\/textarea>/);
+    const options = [...markup.matchAll(/<option value="([^"]+)"( selected="")?>/g)].map((m) => [m[1], m[2] !== undefined]);
+    expect(options).toEqual([["S", false], ["M", false], ["L", true], ["XL", false]]);
+  });
+
+  it("offers Save and Cancel, Save disabled with the reason while the controls are blocked", () => {
+    expect(renderForm(null)).toMatch(/<button type="submit"[^>]*>Save<\/button><button type="button"[^>]*>Cancel<\/button>/);
+    expect(renderForm(null)).not.toMatch(/disabled[^>]*>Save</);
+    expect(renderForm("An edit is being saved.")).toMatch(
+      /<button type="submit"[^>]*disabled=""[^>]*title="An edit is being saved\."[^>]*>Save<\/button>/);
   });
 });

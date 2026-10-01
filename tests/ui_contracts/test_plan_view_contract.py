@@ -5,7 +5,9 @@
 writes would show a plan as empty, and one that missed a key the server added would drop a fact
 the plan view owes, so each key the TypeScript reads is compared with the Python that writes it.
 The view is read as source too (DECISION F292 D2): its rules live in a pure module, it reaches no
-door, it is a dialog that Escape closes, and the shell mounts it outside the main column.
+door, it is a dialog that Escape closes, and the shell mounts it outside the main column. Its
+edits (T002, DECISION F292 D3) name the door's own six commands, the planner's own size bands and
+editable fields, and an accepted one reads the dashboard again at once.
 """
 from __future__ import annotations
 
@@ -73,6 +75,9 @@ def test_the_view_reaches_no_door_and_shows_only_the_rules_sentences():
     source = _source(VIEW)
     for forbidden in ("fetch(", "XMLHttpRequest", "remedyApi", "localStorage"):
         assert forbidden not in source, forbidden
+    for pure in (UI_SRC / "api" / "planEditView.ts", UI_SRC / "components" / "plan" / "PlanTaskEditForm.tsx"):
+        for forbidden in ("fetch(", "XMLHttpRequest", "Date.now", "new Date", "localStorage"):
+            assert forbidden not in _source(pure), (pure.name, forbidden)
     for rule in ("planHeadline(plan)", "planWindowText(plan)", "planDependencyText(task)",
                  "planEntryText(task)"):
         assert rule in source, rule
@@ -88,8 +93,44 @@ def test_the_view_is_a_dialog_that_escape_closes():
 def test_the_shell_mounts_the_view_outside_the_main_column_over_the_dashboards_plan():
     source = _source(SHELL)
     assert source.index("</main>") < source.index("<PlanView")
-    assert "<PlanView plan={dashboard.plan} onClose={() => setPlanOpen(false)} />" in source
+    assert ("<PlanView plan={dashboard.plan} target={{ jobId: dashboard.jobId, serverToken }}\n"
+            "          onReload={onReload} onClose={() => setPlanOpen(false)} />") in source
     assert "onOpenPlan={() => setPlanOpen(true)}" in source
+
+
+def test_an_accepted_edit_reads_the_dashboard_again_at_once():
+    app = _source(UI_SRC / "RemedyApp.tsx")
+    assert "const requestReload = useCallback(() => setReloadRequest((count) => count + 1), []);" in app
+    assert "}, [face, jobId, token, reloadRequest]);" in app
+    assert "onReload={requestReload}" in app
+    view = _source(VIEW)
+    assert "const outcome = await sendPlanEdit(target, edit, plan.version);" in view
+    assert "if (outcome.version !== null) {\n      setOpen(null);\n      onReload?.();" in view
+
+
+def test_the_edit_commands_are_the_doors():
+    from packages.orchestration.ui_server import PLAN_EDIT_COMMAND_IDS
+
+    source = _source(UI_SRC / "api" / "planEditSend.ts")
+    block = source[source.index("export const PLAN_EDIT_COMMANDS = ["):]
+    listed = re.findall(r'^  "([a-z.-]+)",$', block[:block.index("] as const;")], re.MULTILINE)
+    assert listed == list(PLAN_EDIT_COMMAND_IDS)
+
+
+def test_the_sizes_and_the_edited_fields_are_the_planners():
+    from typing import get_args
+
+    from packages.orchestration.plan_editing import EDITABLE_TASK_FIELDS
+    from packages.orchestration.schemas.models import TokenBand
+
+    view = _source(UI_SRC / "api" / "planEditView.ts")
+    [bands] = re.findall(r"export const PLAN_TOKEN_BANDS = \[([^\]]*)\] as const;", view)
+    assert re.findall(r'"([A-Z]+)"', bands) == list(get_args(TokenBand))
+    send = _source(UI_SRC / "api" / "planEditSend.ts")
+    body = send[send.index("export interface PlanTaskFields {"):]
+    fields = re.findall(r"^  ([a-z_]+)\?: string;$", body[:body.index("}")], re.MULTILINE)
+    assert fields == ["title", "goal", "est_tokens_band"]
+    assert set(fields) <= set(EDITABLE_TASK_FIELDS)
 
 
 def test_the_right_panel_offers_the_plan_button():
