@@ -30,6 +30,15 @@ def test_each_test_gets_a_fresh_empty_root():
     assert list(root.iterdir()) == []
 
 
+def test_every_root_is_a_new_directory_under_one_parent(_data_root_allocator):
+    """DECISION F294 D2: the roots share one parent and no two are the same directory."""
+    root = data_paths.resolve_data_root().resolve()
+    first, second = (_data_root_allocator().resolve() for _ in range(2))
+    assert len({root, first, second}) == 3
+    assert root.parent == first.parent == second.parent
+    assert [p for p in (root, first, second) if list(p.iterdir())] == []
+
+
 def test_a_cli_subprocess_inherits_the_isolated_root():
     code = "from packages.orchestration.data_paths import resolve_data_root; print(resolve_data_root())"
     out = subprocess.run(

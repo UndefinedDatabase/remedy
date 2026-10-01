@@ -35,8 +35,29 @@ def _review_packages_stay_out_of_the_operator_archive():
         os.environ.pop("REMEDY_REVIEW_DIR", None)
 
 
+@pytest.fixture(scope="session")
+def _data_root_allocator(tmp_path_factory):
+    """Hand out every test's data root from one parent per test process (DECISION F294 D2).
+
+    ``tmp_path_factory.mktemp`` finds its next number by listing the whole base temporary
+    directory, so one numbered root per test made each test list every root before it, and
+    every ``tmp_path`` listed them too. The parent is made once; each root is a new, empty,
+    numbered directory inside it, made with the mode ``mktemp`` uses.
+    """
+    import itertools
+    parent = tmp_path_factory.mktemp("remedy-data")
+    numbers = itertools.count()
+
+    def allocate():
+        root = parent / str(next(numbers))
+        root.mkdir(mode=0o700)
+        return root
+
+    return allocate
+
+
 @pytest.fixture(autouse=True)
-def _isolated_data_root(tmp_path_factory):
+def _isolated_data_root(_data_root_allocator):
     """Give every test its own temporary Remedy data root (finding R-0803).
 
     ``resolve_data_root()`` answers ``$REMEDY_DATA_DIR``, else the configured
@@ -61,7 +82,7 @@ def _isolated_data_root(tmp_path_factory):
     if os.environ.get("REMEDY_DATA_DIR"):
         yield
         return
-    os.environ["REMEDY_DATA_DIR"] = str(tmp_path_factory.mktemp("remedy-data"))
+    os.environ["REMEDY_DATA_DIR"] = str(_data_root_allocator())
     yield
     os.environ.pop("REMEDY_DATA_DIR", None)
 
