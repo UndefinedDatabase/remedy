@@ -27220,3 +27220,13 @@ CHOSEN: no change of `SU-042` is landed on this branch. The precondition asks fo
 ALTERNATIVES CONSIDERED: (a) the reviewer writes the narrowed handler and lands it, REJECTED for the reason above and because the change is outside F292's scope; (b) running the item again, REJECTED because the precondition asks for one run, a second run costs money again, and R-1117 is the record of this behaviour; (c) a new finding id, REJECTED by checklist item 30, because R-1117 describes the same defect.
 
 HOW TO REVERSE: set `SU-042`'s `consumed_by` back to empty in `scripts/self_use_queue.json` and delete this paragraph; the next closure then runs `SU-042` again as its own item.
+
+## DECISION F292 D11 — F292's closing commit counts the README's Tier 5 row as 38 of 38, which also corrects the total R-1125 found short; R-1125 stays open for its test (2026-10-01)
+
+THE SITUATION: the README's status table reads `| 5 | Operator Cockpit | 37 | 37 |`, while `docs/roadmap/STATUS.md` holds 38 Tier 5 lines, the 38th being F292's own. Finding R-1125, owned by F290, records that the row's total was not raised when F292 was registered, and asks for the row to be corrected and for a test that reads every tier row. F292's closing commit must sync the README with its STATUS flip (closure algorithm step 5), which raises the row's done count to 38.
+
+CHOSEN: the closing commit writes the row as `| 5 | Operator Cockpit | 38 | 38 |`. A done count above its total would be false on its face, and 38 is the number of Tier 5 lines the STATUS file holds, so the total is corrected in the same edit. The README's overall line becomes `124 of 294`. R-1125 is not resolved by this: its second half, a test that reads every tier row against the STATUS file, is still owed, and it stays open with F290 as its owner.
+
+ALTERNATIVES CONSIDERED: (a) raising only the done count, to 38 of 37, REJECTED as a row that contradicts itself; (b) resolving R-1125 here, REJECTED because the test it asks for is outside F292's scope and the closing commit may touch only STATUS, README, the queue and `.agent/`.
+
+HOW TO REVERSE: set the row's total back to 37 in `README.md` and delete this paragraph; R-1125 then again describes the row as it stands.
