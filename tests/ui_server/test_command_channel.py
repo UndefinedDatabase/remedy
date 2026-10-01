@@ -1452,6 +1452,7 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
             f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
             f"/api/jobs/{self.job_id}/task-runs/T001/diff",
+            f"/api/jobs/{self.job_id}/task-runs/T001/hunk-decisions",
             f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
             f"/api/jobs/{self.job_id}/artifacts/file",
             "/api/projects/any-project/summary",
