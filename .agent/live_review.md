@@ -1,28 +1,31 @@
-# Live Review — F294 Test load diet, part two
+# Live Review — F292 Plan view and hunk decisions in the cockpit
 
-> Round-by-round review record, re-headed at the F294 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F293, whose STATUS
-> line went `[x]` at `089dc55de` and whose pull request 305 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `020bc9a16`, after both jobs of hosted
-> CI run 36789034668, Python 3.10 and 3.12, ended `success`. `089dc55de` is the second parent of
-> `020bc9a16`, and the two trees are identical. F293's round 24, its closing round, was reviewed
-> after its own handback, so operator amendment amend0827-process-diet rule 1 books its verdict
-> here, in the first commit of the next round that is happening anyway; its gate entry is appended
-> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
-> below are rewritten; everything from the Findings heading to the end of the file as it stood at
-> `020bc9a16` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `020bc9a16`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1117', 'R-1125']`.
+> Round-by-round review record, re-headed at the F292 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F294, whose STATUS
+> line went `[x]` at `b09335df7` and whose pull request 306 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `2d138e90f`. The first attempt of
+> hosted CI run 36809575026 failed its Python 3.12 job on one test node, which this claim
+> registers as R-1128 at the end of this record under operator amendment
+> amend0929-context-hygiene; the re-run of that job passed, and the Python 3.10 job had passed.
+> `b09335df7` is the second parent of `2d138e90f`, and the two trees are identical. F294's round
+> 16, its closing round, was reviewed after its own handback, so operator amendment
+> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round
+> that is happening anyway; its gate entry is appended at the end of this record by this claim.
+> Only the heading, this paragraph and the Steps section below are rewritten; everything from the
+> Findings heading to the end of the file as it stood at `2d138e90f` is carried forward
+> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+> open set at `2d138e90f`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is `['R-1117', 'R-1125', 'R-1127']`.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F294 D1's. The first round claims F294, re-heads this record, books
-F293's round 24, and lands the first cut of the job runner's git work: one `worktree_identity`
-reading discovers the repository's configured helpers once. The next rounds cut the job runner's
-other repeated git readings, each measured before and after in one tree; then the files that run
-whole jobs are measured and cut from the top of what remains; then the amend0930b-slow-cap
-hardening stage this SLOW MODE session orders before the closure sequence; then closure, whose one
-full suite gives the "after" reading of the 40 percent target.
+THE ORDER BELOW IS DECISION F292 D1's. The first round claims F292, re-heads this record, books
+F294's round 16, registers R-1128, and lands the plan read: `plan_editing.plan_view`, served by
+`remedy job plan-show --json` and by the dashboard's new `plan` section. The next rounds add the
+plan view in the cockpit, read only; then the six plan edits in it; then the diff view's hunk
+controls; then the palette's seven form entries as surface entries, with an end-to-end run; then
+the amend0930b-slow-cap hardening stage this SLOW MODE session orders before the closure
+sequence; then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -181,3 +184,7 @@ Gate: F294 R13 — the F294 round 13 entry, the integration gate, over `815a39a2
 Gate: F294 R14 — the F294 round 14 entry, the closure ruling, over `58357aa4b`..`bfe1001d8` (3 commits; insertions by `git show --numstat`: `943ac7940` 146, `2041930db` 10, `bfe1001d8` 165). VERDICT PASS, verified by dry run, bytes identical: every file the round committed except the handback equals the reviewer's dry tree on base `58357aa4b`, compared at `bfe1001d8`, where `tests/docs/` read `327 passed` and `tests/docs/` with the golden path `369 passed` (the worker's one run in the primary checkout read `369 passed`), and `remedy integrity check`, re-run by the reviewer at `bfe1001d8`, read six checks `pass` and `fail_count` 0. No code changed, so no mutation was owed. DECISION F294 D12 closes F294 on its Acceptance's second branch, the Built State carries the closure's reading, and operator question Q3 offers the job-run change to the operator. The worker took its gate 5 exit status from pytest's summary line, because its one run was piped through `tail`; the line reads `369 passed` with no failure. The handback carries its item-status table. The open set is `['R-1117', 'R-1125', 'R-1127']`.
 
 Gate: F294 R15 — the F294 round 15 entry, the closure's evidence round, over `bfe1001d8`..`e75fd79d2` (2 commits; insertions by `git show --numstat`: `5c7006583` 306, `e75fd79d2` 138). VERDICT PASS. The saved block `.agent/authored/f294-r15.md`, the evidence script `.agent/authored/f294-r15-create_f294_evidence.py` and `.agent/plan.md` equal the reviewer's prepared files, and `.agent/live_review.md` equals its blob at `bfe1001d8` followed by the prepared bytes. The staging reclaim previewed `Would free 0 B in 0 paths` with one path refused as `class_not_job_keyed`, so no `--apply` ran. Evidence job `f294r15e1001` at `5c7006583`: the ancestry-path and plain counts from the fork point read 49 and 49, 774 node ids with 16 deselected, no unsafe id, pytest exit 0 at 770 passed and 4 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. The package `remedy-review-20261001-050249-READY_FOR_REVIEW.zip` reads `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; its manifest's `committed_review_subject` spans `020bc9a16` to `5c7006583` over 49 commits, `testzip()` reads None, and the reviewer re-hashed the archived file in `/home/decodeux/Repos/remedy-history/zips` to the SHA-256 the tool printed, `eab0f7f1935e9b57ca6020ba508bd391a190b335f20a2648196beb69a98c0116`. The evidence run is the one selection on `5c7006583`, so the reviewer re-ran no test (amend0930-test-load rule 3). The handback carries its item-status table. The open set is `['R-1117', 'R-1125', 'R-1127']`.
+
+Gate: F294 R16 — the F294 round 16 entry, the closing round, over `e75fd79d2`..`b09335df7` (3 commits, each single-parent; insertions by `git show --numstat`: `bff42694e` 242, `b40a729d8` 52, `b09335df7` 137). VERDICT PASS, verified by dry run, bytes identical: every file the round committed except the handback equals the reviewer's sim tree on base `e75fd79d2`, where the closure's selection read `552 passed`, `remedy integrity check` read six checks `pass` and `fail_count` 0, and a README count raised by one turned `tests/docs/test_docs_consistency.py` red at 1 failed and back green. The rotation moved 24 gate records and one finding pair; the ledger went from 166843 to 129522 bytes and the archive from 5842596 to 5879917, and the open set stayed `['R-1117', 'R-1125', 'R-1127']`, all three owned by F290, R-1127 through the `Owner:` line the round inserted after its paragraph. `SU-041`'s `consumed_by` reads F294, and DECISION F294 D13 records the checklist's one consolidation pass. The verdict was reached by the reviewer of F294's third session, after its handback was committed, so no file of that branch carries it; the reviewer of F292's first session booked it here and re-measured the range's commits, their parents and their insertions at `2d138e90f`. The handback carries its item-status table. The open set is `['R-1117', 'R-1125', 'R-1127']`.
+
+- R-1128 — Low, THE PREVIEW END-TO-END TEST DRAWS ITS COMMAND NONCE WITH `secrets.token_urlsafe(8)`, WHICH BEGINS WITH `-` OR `_` ABOUT ONE TIME IN THIRTY-TWO, AND THE WRITE DOOR REFUSES SUCH A NONCE, SO THE TEST FAILS AT RANDOM. Raised by the planner and reviewer of F292's first session at the claim, from the Open PR Gate of pull request 306, under operator amendment amend0929-context-hygiene. SEARCHED BEFORE MINTING (checklist item 30): the open set at `2d138e90f` is `['R-1117', 'R-1125', 'R-1127']`, and none of the three names the preview test or a nonce; this record and its archive name `test_preview_end_to_end.py` only in F041's round 6 gate entry. MEASURED: the first attempt of hosted CI run 36809575026 on `b09335df7` failed its Python 3.12 job on `tests/ui_server/test_preview_end_to_end.py::TestPreviewEndToEnd::test_the_preview_flow_runs_end_to_end_on_a_real_fixture_app` alone, with `assert 400 == 200` at line 172, the test's check of the answer to its `job.preview-start`; the Python 3.10 job passed, and the re-run of the failed job passed. F294 changed no file that test reads. The log prints no body for the 400. The test's line 170 draws the nonce as `secrets.token_urlsafe(8)`, and the door takes a nonce only when `command_nonce.nonce_is_valid` holds, which is `safe_points.is_safe_id`, the pattern `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`, whose first character cannot be `-` or `_`. Of 100,000 such draws at `2d138e90f`, 3.142 percent failed that pattern, against the expected 2 in 64, 3.125 percent. No other file under `tests/` draws a nonce that way. THE REPAIR: draw the nonce with `secrets.token_hex(8)`, whose characters are all hexadecimal digits, at the same line. THE ORDER, stated because it departs from the rule: amend0929-context-hygiene registers a failing node BEFORE the one re-run, and the reviewer re-ran the failed job first and commits this registration after it, as F042's claim did with R-1107. WHY LOW: the product is unaffected, the defect is one line of one test, and a re-run clears it, but with two Python jobs about one CI run in sixteen goes red for nothing. Owner: F290 — Findings paydown v6. OPEN.

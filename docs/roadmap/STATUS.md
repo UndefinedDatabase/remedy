@@ -197,7 +197,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 5 — Operator Cockpit (parallel human track, continued)
 
-- [ ] F292 — Plan view and hunk decisions in the cockpit
+- [~] F292 — Plan view and hunk decisions in the cockpit
 
 ## Tier 12 — Observability & Operations
 
