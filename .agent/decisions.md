@@ -27086,3 +27086,13 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in the product. The ful
 ALTERNATIVES CONSIDERED: (a) a third test-diet feature, REJECTED because D6's ranking leaves no test-side cut of that size that keeps every test checking a real job, so it would mint the same remainder again; (b) a product feature that absorbs human changes less often, REJECTED on the session's own authority because it changes what every real job does for the operator, and offered to the operator instead; (c) holding the closure until the operator answers, REJECTED because operator questions never stall a feature (amend0917-throughput rule 5).
 
 HOW TO REVERSE: the operator asks for the job-run change; a new feature registered after F294 takes it, and this decision's CHOSEN paragraph is superseded by that feature's closure.
+
+## DECISION F294 D13 — The checklist's one consolidation pass at F294's closure: nothing joins, no two items merge, the list stays at 34 items (2026-10-01)
+
+THE PROBLEM: operator amendment amend0827-process-diet rule 4 orders exactly one consolidation pass of the pre-emission checklist in `docs/agents/planner_reviewer_prompt.md` §3 per feature, inside its closure sequence, and the list may come out of it the same length or shorter. F294 wrote two lines to `.agent/prose_slips.md`, both dated 2026-10-01.
+
+CHOSEN: nothing joins the list and no two items are merged, because neither line names a lesson the list lacks. The round 5 line, a DECISION that named a byte-identical neighbour commit instead of the commit at which its base reading was taken, is item 20's reading of a fact about a file stated with the commit it was read at. The round 12 line, a dry-tree selection run a second time on identical bytes only to read its skip reasons, is governed by operator amendment amend0930-test-load rule 3, which already states it, and not by the text of a block. The list stays at 34 items. The pass is recorded here and the prompt file is not edited: its consolidation paragraph would only say that nothing changed, and the prompt file lies outside the closing round's path set, after the review package that covers the accepted head was built.
+
+ALTERNATIVES CONSIDERED: (a) appending a consolidation paragraph to the prompt file in the closing round, REJECTED because it would put a content change after the package's accepted head; (b) rebuilding the evidence job and the package after such a paragraph, REJECTED because a second serial selection run buys nothing for a paragraph that changes no rule.
+
+HOW TO REVERSE: a later commit appends the paragraph "Consolidated at F294's closure on 2026-10-01: nothing joined and no two items were merged" to the prompt file, citing this decision.
