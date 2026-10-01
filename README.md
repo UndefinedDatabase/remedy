@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-124 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+125 of 294 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 0 | 9 |
+| 12 | Observability & Operations | 1 | 9 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -695,6 +695,16 @@ instead of overwriting the newer plan; the change view now lists each changed pi
 Approve, Reject with a reason, and Undecided, and records your choice exactly as `remedy patch
 approve-hunks` would; and the seven palette entries that stood disabled because they needed a form
 now open these views).
+
+Accepted in Tier 12 so far:
+F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and
+`remedy serve status` and `remedy serve stop` report on it and end it; while it runs, `remedy job
+stop`, `remedy job pause`, `remedy job unpause` and a plain `remedy job run` hand their work to it
+over a socket only its owner can open, through the same checks the cockpit's write door applies,
+and print exactly what they print without it; when the supervisor is killed and started again, it
+runs again every job it was running and each task still runs once; a systemd user unit and a
+container entrypoint ship with it; and without a supervisor every command runs directly, as
+before).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

@@ -201,7 +201,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Observability & Operations
 
-- [~] F200 — Daemon mode (remedy serve)
+- [x] F200 — Daemon mode (remedy serve) (T001–T002 complete, R-1131, R-1132, R-1134, R-1135 and R-1136 resolved; R-1133 and R-1137 open — owned by F290; accepted 2026-10-01 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f200r13e1001 · package remedy-review-20261001-153207-READY_FOR_REVIEW.zip · SHA-256 97fa32a252c2e4476e49cf958a37c98e68108e30f180805c681ae4f297b29bda · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f96507e803f7295f1e7727905b3ddd99f2669788)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
