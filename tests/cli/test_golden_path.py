@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 
+from tests.cli.in_process_cli import run_cli_in_process
+
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
 
@@ -35,53 +37,10 @@ def _git_repo(tmp_path):
     return repo
 
 
-def _in_process(args, repo, env):
-    """The command line run in this process, answered as `subprocess.run` answers a child.
-
-    DECISION F294 D4: `init`, `do` and `status` are the setup and the subject of most tests here,
-    and a child process for each started a fresh interpreter and read Remedy's own checkout again,
-    work this test process has already done. The child's surroundings are kept: its
-    environment, its working directory, an empty stdin, its captured output, and its exit code,
-    including 1 with the traceback on stderr for an exception nothing caught. The other commands
-    of this file still run as child processes, so the module entry point stays proven.
-    """
-    import contextlib
-    import io
-    import traceback
-
-    from apps.cli.grouped import main
-
-    out, err = io.StringIO(), io.StringIO()
-    saved_env, saved_cwd, saved_stdin = dict(os.environ), os.getcwd(), sys.stdin
-    os.environ.clear()
-    os.environ.update(env)
-    os.chdir(str(repo))
-    sys.stdin = io.StringIO("")
-    try:
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            try:
-                main(list(args))
-                code = 0
-            except SystemExit as exc:
-                code = exc.code
-            except Exception:  # noqa: BLE001 — a child process prints the traceback and exits 1
-                traceback.print_exc()
-                code = 1
-    finally:
-        sys.stdin = saved_stdin
-        os.chdir(saved_cwd)
-        os.environ.clear()
-        os.environ.update(saved_env)
-    if code is None:
-        code = 0
-    elif not isinstance(code, int):
-        err.write(f"{code}\n")
-        code = 1
-    return subprocess.CompletedProcess([*_CLI, *args], code, out.getvalue(), err.getvalue())
-
-
+# DECISION F294 D4: `init`, `do` and `status` run in this process; the file's other commands still
+# run as child processes, so the module entry point stays proven.
 def _init_project(repo, env):
-    return _in_process(["init"], repo, env)
+    return run_cli_in_process(["init"], repo, env)
 
 
 def _run_do(repo, env, mission, extra_args=None):
@@ -95,7 +54,7 @@ def _run_do(repo, env, mission, extra_args=None):
     if "--no-llm" not in args:
         args.append("--no-llm")
     args += ["--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"]
-    return _in_process(["do", mission, *args], repo, env)
+    return run_cli_in_process(["do", mission, *args], repo, env)
 
 
 def _shape_order(repo, order, **kwargs):
@@ -513,7 +472,7 @@ class TestLLMIntakeWiring:
 
 
 def _run_status(repo, env, extra_args=None):
-    return _in_process(["status", *(extra_args or [])], repo, env)
+    return run_cli_in_process(["status", *(extra_args or [])], repo, env)
 
 
 class TestStatus:
