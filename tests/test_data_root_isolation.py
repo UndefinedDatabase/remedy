@@ -40,15 +40,18 @@ def test_every_root_is_a_new_directory_under_one_parent(_data_root_allocator):
 
 
 def test_a_root_is_made_without_numbering_the_base_directory(_data_root_allocator, monkeypatch):
-    """DECISION F294 D2: after its one parent, the allocator lists no directory; ``mktemp``, and the
-    pytest helper under it, list the whole base temporary directory to find the next number
-    (R-1127, DECISION F294 D8)."""
-    def listing(*_args, **_kwargs):
-        raise AssertionError("allocating a root listed a directory")
+    """DECISION F294 D2: after its one parent, the allocator lists no directory and starts no
+    process; ``mktemp``, and the pytest helper under it, list the whole base temporary directory to
+    find the next number (R-1127, DECISIONs F294 D8 and D9)."""
+    def refused(*_args, **_kwargs):
+        raise AssertionError("allocating a root listed a directory or started a process")
 
+    routes = ((os, "scandir"), (os, "listdir"), (Path, "iterdir"), (Path, "glob"), (Path, "rglob"),
+              (subprocess, "Popen"), (os, "system"), (os, "fork"), (os, "posix_spawn"),
+              (os, "posix_spawnp"))
     with monkeypatch.context() as patched:
-        for owner, name in ((os, "scandir"), (os, "listdir"), (Path, "iterdir")):
-            patched.setattr(owner, name, listing)
+        for owner, name in routes:
+            patched.setattr(owner, name, refused)
         roots = [_data_root_allocator() for _ in range(2)]
     assert roots[0] != roots[1]
     assert [r for r in roots if not r.is_dir()] == []
