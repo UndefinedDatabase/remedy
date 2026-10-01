@@ -18,7 +18,7 @@ import { decodeJobProject, decodeProjectSummary, decodeProjectsView, jobProjectP
 import type { JobProject, ProjectSummary, ProjectsView } from "./projectScope";
 import { decodeTaskRunRounds, taskRunRoundsPath } from "./taskRunRounds";
 import type { TaskRunRounds } from "./taskRunRounds";
-import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
+import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPause, RemedyPhase, RemedyPipeline, RemedyPlan, RemedyPlanTask, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskAttempt, RemedyTaskItem, RemedyTaskSpec, RemedyTaskSpecFields, RemedyTaskSpecs, RemedyTaskSpecVersion, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase, RemedyVetoEntry, RemedyVetoes } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
 
@@ -258,6 +258,7 @@ export function normalizeDashboardPayload(
     pause: normalizePause(dashboard.pause),
     taskSpecs: normalizeTaskSpecs(dashboard.task_specs),
     vetoes: normalizeVetoes(dashboard.vetoes),
+    plan: normalizePlan(dashboard.plan),
     projectSummary: dashboard.project_summary ?? null,
     // Carried raw: `storyPacingOf` (apps/ui/src/components/story/storyAutoplay.ts)
     // is this section's one reader, and the API layer imports nothing from the
@@ -432,6 +433,45 @@ function normalizeTaskSpecs(raw: any): RemedyTaskSpecs {
 }
 
 // ---------------------------------------------------------------------------
+// Plan normalization (T5_F292 T001, DECISION F292 D2)
+// ---------------------------------------------------------------------------
+
+function normalizePlanTask(raw: any): RemedyPlanTask {
+  const r = raw && typeof raw === "object" ? raw : {};
+  return {
+    id: typeof r.id === "string" ? r.id : "",
+    title: typeof r.title === "string" ? r.title : "",
+    goal: typeof r.goal === "string" ? r.goal : "",
+    dependsOn: toStringList(r.depends_on),
+    estTokensBand: typeof r.est_tokens_band === "string" ? r.est_tokens_band : "",
+    filesHint: toStringList(r.files_hint),
+    acceptance: toStringList(r.acceptance),
+    jobTaskId: typeof r.job_task_id === "string" ? r.job_task_id : "",
+    status: typeof r.status === "string" ? r.status : "",
+    specVersion: normalizeSpecVersionNumber(r.spec_version),
+  };
+}
+
+/** DECISION F292 D2: a payload with no `plan` section — or a raw value that is
+ *  not an object — normalizes to the no-plan shape the server sends for a job
+ *  with no stored plan. The server's `null` approval and `null` reason read
+ *  `""`; a version that is not a whole number of at least 1 reads 0; and a
+ *  section that is not `available` is never editable and lists no task. */
+function normalizePlan(raw: any): RemedyPlan {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const available = r.available === true;
+  return {
+    available,
+    version: available && Number.isInteger(r.version) && r.version >= 1 ? r.version : 0,
+    approval: typeof r.approval === "string" ? r.approval : "",
+    editable: available && r.editable === true,
+    notEditableBecause: typeof r.not_editable_because === "string" ? r.not_editable_because : "",
+    tasks: available && Array.isArray(r.tasks) ? r.tasks.map(normalizePlanTask) : [],
+    error: typeof r.error === "string" ? r.error : "",
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Prompt trace normalization
 // ---------------------------------------------------------------------------
 
@@ -541,6 +581,7 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     pause: normalizePause(undefined),
     taskSpecs: normalizeTaskSpecs(undefined),
     vetoes: normalizeVetoes(undefined),
+    plan: normalizePlan(undefined),
     projectSummary: null,
     // No endpoint answered, so there is no pacing section either.
     story: null,

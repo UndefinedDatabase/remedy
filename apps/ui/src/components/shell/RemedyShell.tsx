@@ -33,6 +33,7 @@ import { steeringFocusTaskId } from "../../api/steeringNote";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { useTimelineScrub } from "../timeline/useTimelineScrub";
 import { DetailPopover } from "../detail/DetailPopover";
+import { PlanView } from "../plan/PlanView";
 import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
 import { TourOverlay } from "../tour/TourOverlay";
@@ -206,6 +207,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     latestActivityMs,
     nowMs: Date.now(),
   });
+
+  // THE PLAN VIEW (T5_F292 T001, DECISION F292 D2): open or closed; it reads the dashboard's
+  // own `plan` section, so it is as fresh as the dashboard this shell is given.
+  const [planOpen, setPlanOpen] = useState(false);
 
   // THE LEARNING OVERLAY (T5_F265 T002, DECISION F265 D3): open or closed, and the newest
   // stream position that announced a stored lesson, which is what makes an open overlay read
@@ -399,7 +404,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -445,6 +450,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {/* THE KEYMAP OVERLAY (DECISION F044 D6), a sibling directly after the chat sheet for the
           reason every overlay above is a sibling outside <main>. */}
       {shortcutsOpen && <KeymapOverlay />}
+      {/* THE PLAN VIEW (T5_F292 T001, DECISION F292 D2), a sibling directly after the keymap
+          overlay for the reason every overlay above is a sibling outside <main>. */}
+      {planOpen && <PlanView plan={dashboard.plan} onClose={() => setPlanOpen(false)} />}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (
         <LessonsOverlay

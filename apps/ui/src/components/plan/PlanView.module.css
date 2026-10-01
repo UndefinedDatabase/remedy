@@ -1,0 +1,79 @@
+/* The plan view (T5_F292 T001, DECISION F292 D2): a right-anchored glass sheet over the cockpit,
+   the learning overlay's surface (LessonsOverlay.module.css) at a narrower width, so the two read
+   as the same kind of sheet. Inner task tiles take --remedy-bg-2 without blur (ux_spec.md §4,
+   glass on glass at most two deep). The open edit window is told by its words and a tinted pill,
+   never by colour alone (ux_spec.md §14). */
+.overlay {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(720px, calc(100vw - 48px));
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-xl);
+  box-shadow: var(--remedy-shadow-card);
+  backdrop-filter: blur(14px);
+}
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.close { font-size: 12px; color: var(--remedy-muted); padding: 4px 8px; }
+.close:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.quiet { margin: 0; font-size: 12px; line-height: 1.45; color: var(--remedy-muted); }
+.body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.headline { margin: 0; font-size: 14px; font-weight: 600; color: var(--remedy-ink-strong); }
+.window,
+.windowOpen {
+  align-self: flex-start;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--remedy-muted);
+}
+.windowOpen { background: var(--remedy-blue-50); border-color: var(--remedy-blue-strong); color: var(--remedy-blue-strong); }
+.tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.task {
+  padding: 10px 12px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-bg-2);
+}
+.taskHead { display: flex; align-items: baseline; gap: 8px; }
+.taskId { font-family: var(--remedy-font-mono); font-size: 12px; color: var(--remedy-muted); }
+.taskTitle { font-size: 13px; font-weight: 600; color: var(--remedy-ink-strong); }
+.band {
+  margin-left: auto;
+  padding: 1px 8px;
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-pill);
+  font-size: 11px;
+  color: var(--remedy-muted);
+}
+.goal { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--remedy-ink); }
+.meta { margin: 4px 0 0; font-size: 11.5px; color: var(--remedy-muted); }
+.criteria { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.criterion { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45; color: var(--remedy-ink); }
+.index {
+  flex: none;
+  min-width: 18px;
+  font-family: var(--remedy-font-mono);
+  font-size: 11px;
+  color: var(--remedy-faint);
+  text-align: right;
+}
