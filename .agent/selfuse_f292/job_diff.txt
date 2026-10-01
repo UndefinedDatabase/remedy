@@ -1,0 +1,1 @@
+$ git diff HEAD...remedy/job-ee28dd2e1c254f05  (exit 0)

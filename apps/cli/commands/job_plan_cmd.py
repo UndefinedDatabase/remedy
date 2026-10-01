@@ -48,47 +48,28 @@ def _load(job_id_raw: str, *, json_output: bool) -> Any:
     return job
 
 
-def _task_entry_for_planned_id(job: Any, planned_id: Any) -> Any | None:
-    """The ``TaskEntry`` whose ``inputs["plan"]["planned_id"]`` matches, or ``None``."""
-    return next(
-        (t for t in job.tasks if (t.inputs.get("plan") or {}).get("planned_id") == planned_id),
-        None)
-
-
 def _cmd_plan_show(job_id_raw: str, *, json_output: bool = False) -> None:
-    """Print the job's stored plan. Exits 3 when the job or its plan cannot be read."""
-    from packages.orchestration.plan_editing import edit_window_refusal, plan_version
+    """Print the job's stored plan as `plan_editing.plan_view` reads it, the read the
+    cockpit's plan section serves too (DECISION F292 D1 (1)). Exits 3 when the job or its
+    plan cannot be read."""
+    from packages.orchestration.plan_editing import plan_view
 
     job = _load(job_id_raw, json_output=json_output)
-    body = job.task_plan
-    if not isinstance(body, dict) or not body.get("tasks"):
+    view = plan_view(job)
+    if view is None:
         fail("no_task_plan", f"Job {job.job_id} has no task plan.", json_output=json_output,
              exit_code=EXIT_NOT_READY, job_id=job.job_id)
-    version = plan_version(body)
-    refusal = edit_window_refusal(job, body)
-    tasks = []
-    for t in body["tasks"]:
-        task = {k: t.get(k) for k in ("id", "title", "goal", "depends_on", "est_tokens_band",
-                                       "files_hint", "acceptance")}
-        # DECISION F026 D2: the matching task entry's own id, status and spec
-        # version — what a runtime edit's `--spec-version` must name.
-        entry = _task_entry_for_planned_id(job, t.get("id"))
-        task["job_task_id"] = entry.task_id if entry is not None else ""
-        task["status"] = entry.status if entry is not None else ""
-        task["spec_version"] = entry.spec_version if entry is not None else 1
-        tasks.append(task)
     if json_output:
-        emit_ok(job_id=job.job_id, version=version, approval=body.get("_approval"),
-                editable=refusal is None, not_editable_because=refusal and refusal.detail,
-                tasks=tasks)
+        emit_ok(job_id=job.job_id, **view)
         return
-    print(f"Plan of job {job.job_id} — version {version}, approval {body.get('_approval')}")
-    if refusal is None:
+    version = view["version"]
+    print(f"Plan of job {job.job_id} — version {version}, approval {view['approval']}")
+    if view["editable"]:
         print("The approval is open, so the plan can be edited; name --plan-version "
               f"{version} on each edit.")
     else:
-        print(f"The plan cannot be edited: {refusal.detail}.")
-    for task in tasks:
+        print(f"The plan cannot be edited: {view['not_editable_because']}.")
+    for task in view["tasks"]:
         deps = ", ".join(task["depends_on"]) or "nothing"
         print(f"\n{task['id']} — {task['title']} (band {task['est_tokens_band']}; "
               f"waits for {deps})")

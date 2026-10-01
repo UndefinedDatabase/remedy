@@ -1,10 +1,13 @@
 // T5_F044 T001, DECISION F044 D3 — whether the palette can offer a command right now. The rule
-// is FIRST REASON WINS, in DECISION F044 D3 (2)'s own order: no write token, then a form entry
-// the palette cannot yet ask the arguments of, then an ended job, then the command's own state —
-// a pause only while the job's action is to pause, a resume only while it is parked or a pause is
-// on its way, and the decision's answer only while a decision is open. Every other listed command
-// (every "send" and "surface" entry besides `job.pause`, `job.unpause` and `decision.resolve`) is
-// available whenever the first three checks pass, because their own refusal is the door's alone.
+// is FIRST REASON WINS, in DECISION F044 D3 (2)'s own order: no write token, then an ended job,
+// then the command's own state — a pause only while the job's action is to pause, a resume only
+// while it is parked or a pause is on its way, and the decision's answer only while a decision is
+// open. Every other listed command (every "send" and "surface" entry besides `job.pause`,
+// `job.unpause` and `decision.resolve`) is available whenever the first checks pass, because its
+// own refusal is the door's alone. DECISION F292 D8 retired the "form" entries, whose reason came
+// second, and keeps the plan view and the hunk decisions open on an ended job: both are views that
+// say for themselves what can still be done, and a finished job's change is the one whose hunks a
+// person decides.
 import type { PauseAction } from "./pauseView";
 import { jobPauseAction } from "./pauseView";
 import { steeringIsOpen } from "./steeringSend";
@@ -14,7 +17,6 @@ import { PALETTE_COMMANDS } from "./paletteCommands";
 
 export const PALETTE_NO_TOKEN_REASON = "This page has no write token, so it cannot send commands.";
 export const PALETTE_ENDED_REASON = "This job has ended, so it takes no more commands.";
-export const PALETTE_FORM_REASON = "The palette cannot ask for this command's arguments yet.";
 export const PALETTE_NOT_RUNNING_REASON = "The job is not running, so there is nothing to pause.";
 export const PALETTE_ALREADY_PAUSED_REASON = "The job is already paused.";
 export const PALETTE_PAUSE_PENDING_REASON = "A pause is already on its way.";
@@ -39,11 +41,13 @@ export function paletteCommandFactsOf(dashboard: RemedyDashboard, serverToken: s
   };
 }
 
+/** The surfaces the palette opens on an ended job too (DECISION F292 D8). */
+const OPEN_ON_AN_ENDED_JOB: ReadonlySet<string> = new Set(["plan-view", "hunk-decisions"]);
+
 /** THE FIRST-REASON-WINS RULE (DECISION F044 D3 (2)). "" means the command is available. */
 export function paletteCommandReason(entry: PaletteCommand, facts: PaletteCommandFacts): string {
   if (!facts.hasToken) return PALETTE_NO_TOKEN_REASON;
-  if (entry.flow === "form") return PALETTE_FORM_REASON;
-  if (facts.ended) return PALETTE_ENDED_REASON;
+  if (facts.ended && !OPEN_ON_AN_ENDED_JOB.has(entry.surface)) return PALETTE_ENDED_REASON;
   if (entry.command === "job.pause") {
     if (facts.pauseAction === "pause") return "";
     if (facts.pauseAction === "resume") return PALETTE_ALREADY_PAUSED_REASON;

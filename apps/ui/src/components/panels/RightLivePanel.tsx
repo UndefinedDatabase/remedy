@@ -14,7 +14,7 @@ import { PauseControl } from "./PauseControl";
 import { TaskChecklistCard } from "./TaskChecklistCard";
 import styles from "./RightLivePanel.module.css";
 
-export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenLessons, onOpenTour, onOpenStory, onOpenResults, onOpenTerms, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; onOpenResults?: () => void; onOpenTerms?: () => void; focusedTaskId?: string }) {
+export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamStatus, replay, recent, recentDropped, onOpenPlan, onOpenLessons, onOpenTour, onOpenStory, onOpenResults, onOpenTerms, focusedTaskId }: { dashboard: RemedyDashboard; serverToken: string; onSelectNode: (nodeId: string | null) => void; streamStatus?: BrainStreamStatus | null; replay?: boolean; recent?: readonly FeedRow[]; recentDropped?: number; onOpenPlan?: () => void; onOpenLessons?: () => void; onOpenTour?: () => void; onOpenStory?: () => void; onOpenResults?: () => void; onOpenTerms?: () => void; focusedTaskId?: string }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -29,6 +29,9 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} focusedTaskId={focusedTaskId} />
       <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
+      {/* The plan view's entry point (T5_F292 T001, DECISION F292 D2), first of the quiet buttons
+          below the tasks card it reads beside; the shell owns whether the view is open. */}
+      {onOpenPlan && (<button type="button" className={styles.advancedToggle} data-ui="plan-button" onClick={onOpenPlan}>Plan</button>)}
       {/* The learning overlay's entry point (T5_F265 T002, DECISION F265 D3), in the quiet style
           of the toggle below; the shell owns whether the overlay is open. */}
       {onOpenLessons && (

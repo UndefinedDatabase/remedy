@@ -355,6 +355,42 @@ def edit_window_refusal(job: Any, body: dict[str, Any]) -> PlanEditRefused | Non
     return None
 
 
+#: The fields of a stored plan task that the plan read serves, in this order.
+PLAN_VIEW_TASK_FIELDS = ("id", "title", "goal", "depends_on", "est_tokens_band", "files_hint",
+                         "acceptance")
+
+
+def plan_view(job: Any) -> dict[str, Any] | None:
+    """The plan read (T5_F292 T001, DECISION F292 D1 (1)): *job*'s stored plan as the
+    cockpit and ``remedy job plan-show --json`` both serve it, or None when the job has no
+    stored plan with tasks.
+
+    The answer carries the plan's version, its approval as stored, whether it is open for
+    editing and, when it is not, the reason ``edit_window_refusal`` gives (None while it is
+    open), and every planned task in plan order with ``PLAN_VIEW_TASK_FIELDS`` plus the
+    matching task entry's own id, status and spec version (DECISION F026 D2), which read
+    ``""``, ``""`` and 1 for a planned task no entry maps.
+    """
+    body = job.task_plan
+    if not isinstance(body, dict) or not body.get("tasks"):
+        return None
+    refusal = edit_window_refusal(job, body)
+    # Built from the last entry back, so the FIRST entry naming a planned id wins.
+    entries = {(t.inputs.get("plan") or {}).get("planned_id"): t for t in reversed(job.tasks)}
+    tasks = []
+    for planned in body["tasks"]:
+        task = {key: planned.get(key) for key in PLAN_VIEW_TASK_FIELDS}
+        entry = entries.get(planned.get("id"))
+        task["job_task_id"] = entry.task_id if entry is not None else ""
+        task["status"] = entry.status if entry is not None else ""
+        task["spec_version"] = entry.spec_version if entry is not None else 1
+        tasks.append(task)
+    return {"version": plan_version(body), "approval": body.get("_approval"),
+            "editable": refusal is None,
+            "not_editable_because": refusal.detail if refusal is not None else None,
+            "tasks": tasks}
+
+
 @contextmanager
 def plan_edit_lock(job_id: str, root: Path | None = None) -> Iterator[None]:
     """Hold the job's plan-edit lock: one read-check-write of the plan at a time."""

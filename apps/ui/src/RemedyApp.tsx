@@ -70,6 +70,12 @@ export default function RemedyApp() {
     writeAddress(homeSearch(window.location.search), false);
   }, [writeAddress]);
 
+  // DECISION F292 D3: a write that changed what the dashboard shows asks for the dashboard
+  // again at once rather than waiting for the next five-second read. Each request raises the
+  // count, which re-runs the read below immediately and restarts its timer.
+  const [reloadRequest, setReloadRequest] = useState(0);
+  const requestReload = useCallback(() => setReloadRequest((count) => count + 1), []);
+
   useEffect(() => {
     if (face !== "job") return;
     let cancelled = false;
@@ -84,7 +90,7 @@ export default function RemedyApp() {
     load();
     const timer = window.setInterval(load, 5000);
     return () => { cancelled = true; window.clearInterval(timer); };
-  }, [face, jobId, token]);
+  }, [face, jobId, token, reloadRequest]);
 
   let body: React.ReactNode;
   if (face === "missing") {
@@ -123,7 +129,7 @@ export default function RemedyApp() {
     // The per-run token travels as a PROP from here to the decision inbox's answer
     // buttons, because this is the only place that reads it and a component that
     // re-read the URL would be a second source for one credential.
-    body = <RemedyShell key={shellKeyOf(address)} dashboard={dashboard} serverToken={token} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />;
+    body = <RemedyShell key={shellKeyOf(address)} dashboard={dashboard} serverToken={token} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} onReload={requestReload} />;
   }
 
   return (

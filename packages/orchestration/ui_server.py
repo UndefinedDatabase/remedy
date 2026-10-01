@@ -1090,6 +1090,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
+        "plan": _build_plan_section(job),
         "task_specs": _build_task_spec_section(job),
         "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
@@ -1243,6 +1244,30 @@ def _build_pause_section(job: Any) -> dict[str, Any]:
         }
     except (PauseControlError, StopControlError) as exc:
         return {"record": {}, "requested": False, "paused_task_ids": [], "error": str(exc)}
+
+
+def _empty_plan_section(error: str = "") -> dict[str, Any]:
+    """The `plan` section of a job whose plan cannot be served, fresh on every call."""
+    return {"available": False, "version": 0, "approval": None, "editable": False,
+            "not_editable_because": None, "tasks": [], "error": error}
+
+
+def _build_plan_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `plan` section (T5_F292 T001, DECISION F292 D1 (1)): the
+    plan read `plan_editing.plan_view` gives `remedy job plan-show --json`, with
+    `available` True beside it and `error` empty, so the plan view and the command line
+    read one answer. A job with no stored plan with tasks reads `_empty_plan_section()`.
+    Never raises: a `ValueError` or `TypeError` met while reading a malformed stored plan
+    is reported as `error` over the empty section."""
+    from packages.orchestration.plan_editing import plan_view
+
+    try:
+        view = plan_view(job)
+    except (ValueError, TypeError) as exc:
+        return _empty_plan_section(str(exc))
+    if view is None:
+        return _empty_plan_section()
+    return {"available": True, **view, "error": ""}
 
 
 def _build_task_spec_section(job: Any) -> dict[str, Any]:
@@ -1784,6 +1809,33 @@ def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
     including an unknown task id, in its own envelope."""
     from packages.orchestration.diff_view_source import build_diff_view
     return build_diff_view(_resolve_evidence_dir(str(job.job_id)), task_id=task_id)
+
+
+def _hunk_decisions_for_view(job: Any, view: dict[str, Any]) -> dict[str, Any]:
+    """The hunk decision recorded for the attempt `view` shows (T5_F292 T003, DECISION F292
+    D6), keyed as `_dispatch_approve_hunks` keys the decision it records: the view's task id,
+    or `DIFF_SCOPE_JOB` for the job's own diff, and the view's `source`. A view with no
+    `source` shows no attempt, so there is no key and no row to read."""
+    from packages.orchestration.diff_view_source import DIFF_SCOPE_JOB
+    from packages.orchestration.hunk_decision_record import recorded_hunk_decision
+    if view.get("source") is None:
+        return {"attempt_key": "", "decided_at": "", "hunks": []}
+    task_id = view.get("task_id")
+    return recorded_hunk_decision(
+        getattr(job, "metadata", None), task_id=task_id if task_id is not None else DIFF_SCOPE_JOB,
+        attempt=view["source"])
+
+
+def _build_hunk_decisions_json(job: Any) -> dict[str, Any]:
+    """The hunk decision recorded for the job's own diff, the attempt `_build_diff_json` shows
+    (DECISION F292 D6). Never raises, for the reason `_build_diff_json` gives."""
+    return _hunk_decisions_for_view(job, _build_diff_json(job))
+
+
+def _build_task_run_hunk_decisions_json(job: Any, task_id: str) -> dict[str, Any]:
+    """The hunk decision recorded for one task run's diff, the attempt
+    `_build_task_run_diff_json` shows (DECISION F292 D6). Never raises, for the same reason."""
+    return _hunk_decisions_for_view(job, _build_task_run_diff_json(job, task_id))
 
 
 def _build_task_run_rounds_json(job: Any, task_id: str) -> dict[str, Any]:
@@ -2963,6 +3015,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "checklist": _build_checklist_json,
                 "diagnostics": _build_diagnostics_json,
                 "diff": _build_diff_json,
+                "hunk-decisions": _build_hunk_decisions_json,
                 "digest": _build_digest_json,
                 "ownership": _build_ownership_json,
                 "lessons": _build_lessons_json,
@@ -3084,6 +3137,19 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # `available` False and `reason` `unknown_task_run`. A 404 would make a job with
             # no diff indistinguishable from a bad URL.
             self._send_json(200, _build_task_run_diff_json(job, parts[5]))
+            return
+
+        # /api/jobs/<job_id>/task-runs/<task_id>/hunk-decisions — the decision recorded for the
+        # attempt the route above shows (DECISION F292 D6). Structural for the diff route's
+        # reason, and spelled out in `_walkable_paths` by hand for the same one; an unknown task
+        # run has no attempt and answers 200 with no row.
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "task-runs" and parts[6] == "hunk-decisions"):
+            job, err = _load_job(parts[3])
+            if err:
+                self._send_json(*err)
+                return
+            self._send_json(200, _build_task_run_hunk_decisions_json(job, parts[5]))
             return
 
         # /api/jobs/<job_id>/task-runs/<task_id>/rounds — the L2 run detail's facts

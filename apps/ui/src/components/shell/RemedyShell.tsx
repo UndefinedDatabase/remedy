@@ -15,6 +15,7 @@ import { browserDigestVisibilityPort } from "../../api/browserDigestPort";
 import { DigestHeroCard } from "../digest/DigestHeroCard";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
+import { HunkDecisionPanel } from "../diff/HunkDecisionPanel";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
@@ -33,6 +34,7 @@ import { steeringFocusTaskId } from "../../api/steeringNote";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { useTimelineScrub } from "../timeline/useTimelineScrub";
 import { DetailPopover } from "../detail/DetailPopover";
+import { PlanView } from "../plan/PlanView";
 import { LessonsOverlay } from "../lessons/LessonsOverlay";
 import { lessonsRefreshKey } from "../../api/lessons";
 import { TourOverlay } from "../tour/TourOverlay";
@@ -61,7 +63,7 @@ const DIFF_PENDING_TEXT = "Reading the change for this task run…";
  *  carries one, since `reason` is legitimately null on a plain empty diff. */
 const DIFF_UNAVAILABLE_TEXT = "No diff is available for this task run.";
 
-export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; serverToken: string; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
+export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; serverToken: string; onReload?: () => void; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
   // only once a dashboard has loaded, so `dashboard.jobId` is always a real
   // job, where RemedyApp would have to open a stream against an empty id on
@@ -207,6 +209,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     nowMs: Date.now(),
   });
 
+  // THE PLAN VIEW (T5_F292 T001, DECISION F292 D2): open or closed; it reads the dashboard's
+  // own `plan` section, so it is as fresh as the dashboard this shell is given.
+  const [planOpen, setPlanOpen] = useState(false);
+
   // THE LEARNING OVERLAY (T5_F265 T002, DECISION F265 D3): open or closed, and the newest
   // stream position that announced a stored lesson, which is what makes an open overlay read
   // its index again. No timer: the stream is the only trigger.
@@ -335,9 +341,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     }
   }
 
-  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet" and
-  // "task-edit-form" are surfaces this shell already owns a way to open; every other surface is a
-  // card already on the page, found by its own `data-ui` marker, scrolled into view and focused.
+  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet",
+  // "task-edit-form", "plan-view" and "hunk-decisions" are surfaces this shell already owns a way
+  // to open; every other surface is a card already on the page, found by its own `data-ui` marker,
+  // scrolled into view and focused.
   function handleOpenSurface(surface: string, taskNodeId: string) {
     if (surface === "add-task-sheet") {
       setAddTaskOpen(true);
@@ -345,6 +352,16 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     }
     if (surface === "task-edit-form") {
       onSelectNode(taskNodeId);
+      return;
+    }
+    // DECISION F292 D8: the plan view is a sheet this shell opens, and the hunk decisions sit in
+    // the diff panel, so the palette opens the job's own diff, whose panel shows them.
+    if (surface === "plan-view") {
+      setPlanOpen(true);
+      return;
+    }
+    if (surface === "hunk-decisions") {
+      setOpenDiffTaskId("");
       return;
     }
     const element = document.querySelector(`[data-ui="${surface}"]`);
@@ -399,7 +416,7 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -423,6 +440,9 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
             <>
               <DiffFileSidebar envelope={diffEnvelope} />
               <DiffView envelope={diffEnvelope} />
+              {/* THE HUNK DECISIONS (T5_F292 T003, DECISION F292 D7), a sibling after the diff
+                  view rather than controls inside its rows, for the reason that decision gives. */}
+              <HunkDecisionPanel envelope={diffEnvelope} target={{ jobId: dashboard.jobId, serverToken }} />
             </>
           ) : (
             <p>{diffEnvelope.reason === null ? DIFF_UNAVAILABLE_TEXT : `${DIFF_UNAVAILABLE_TEXT} ${diffEnvelope.reason}`}</p>
@@ -445,6 +465,12 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {/* THE KEYMAP OVERLAY (DECISION F044 D6), a sibling directly after the chat sheet for the
           reason every overlay above is a sibling outside <main>. */}
       {shortcutsOpen && <KeymapOverlay />}
+      {/* THE PLAN VIEW (T5_F292 T001, DECISION F292 D2), a sibling directly after the keymap
+          overlay for the reason every overlay above is a sibling outside <main>. */}
+      {planOpen && (
+        <PlanView plan={dashboard.plan} target={{ jobId: dashboard.jobId, serverToken }}
+          onReload={onReload} onClose={() => setPlanOpen(false)} />
+      )}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (
         <LessonsOverlay

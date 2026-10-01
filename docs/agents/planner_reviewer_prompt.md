@@ -414,6 +414,12 @@ end the response with:
   tooltip's text and test id and never the box of the detail its own round had styled is item 18's
   reading of an ordered recipe, here the harness's checks, against the property it must establish,
   here what a person sees. The list stays at 34 items.
+  Consolidated again at F292's closure on 2026-10-01: nothing joined and no two items were merged,
+  because F292 wrote no line to `.agent/prose_slips.md`. Its one authoring defect was registered
+  as a finding, R-1130, because it left a sentence wrong on disk: a Built State paragraph that
+  counted the routes by which the audit's proofs reach a person, two, where the audit lists three
+  proofs, is item 16's reading of a quantifying sentence against the list it names. The list stays
+  at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

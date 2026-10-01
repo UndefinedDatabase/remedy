@@ -293,6 +293,40 @@ export interface RemedyTaskSpecs {
   error: string;
 }
 
+/** T5_F292 T001, DECISION F292 D2 — one planned task as the plan read
+ *  (`plan_editing.plan_view`) serves it: its own fields, the planned tasks it
+ *  waits for, its acceptance criteria in the order the plan edits address by
+ *  index, and the task entry that runs it — `jobTaskId` and `status` read `""`
+ *  and `specVersion` 1 when no entry maps it. */
+export interface RemedyPlanTask {
+  id: string;
+  title: string;
+  goal: string;
+  dependsOn: string[];
+  estTokensBand: string;
+  filesHint: string[];
+  acceptance: string[];
+  jobTaskId: string;
+  status: string;
+  specVersion: number;
+}
+
+/** T5_F292 T001, DECISION F292 D2 — the dashboard's `plan` section, the read
+ *  `remedy job plan-show --json` prints: whether a stored plan exists, its
+ *  version (0 when none), its approval as stored (`""` when none), whether it
+ *  is open for editing and why not (`""` while it is), its planned tasks in
+ *  plan order, and `error` — `""` unless the section's own read failed. A
+ *  payload with no `plan` section normalizes to the no-plan shape. */
+export interface RemedyPlan {
+  available: boolean;
+  version: number;
+  approval: string;
+  editable: boolean;
+  notEditableBecause: string;
+  tasks: RemedyPlanTask[];
+  error: string;
+}
+
 export interface RemedyProjectSummary {
   project_id: string;
   job_count: number;
@@ -327,4 +361,4 @@ export interface RemedyProjectSummary {
  *  `apps/ui/src/components/story/storyAutoplay.ts` is its one reader, and a
  *  required field here would break every test fixture that builds a
  *  dashboard without it. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; story?: unknown; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; plan: RemedyPlan; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; story?: unknown; }

@@ -1,26 +1,24 @@
-# Context — F294 Test load diet, part two
+# Context — F292 Plan view and hunk decisions in the cockpit
 
 ## Active Branch
-feature/f294-test-load-diet-two, cut from `main` at `020bc9a16`
-(the merge commit of pull request 305, F293 Test load diet).
+feature/f292-plan-view-hunk-decisions, cut from `main` at `2d138e90f`
+(the merge commit of pull request 306, F294 Test load diet, part two).
 
 ## Scope
-F294 (Tier 2, split off F293 by DECISION F293 D15): the rest of F293's T002. Cut the full suite's
-CPU time to at most 747.65 CPU seconds, 40 percent below F293's T001 baseline of 1,246.09, without
-losing an assertion, per `docs/roadmap/features/T2_F294.md`. It starts from F293's closure reading,
-940.64 CPU seconds. The first cuts make a job run start fewer git processes (DECISION F293 D10):
-product work in the job runner that must keep every job's behaviour exactly as it is.
+F292 (Tier 5, registered by DECISION F044 D5): a plan view in the cockpit that shows the stored
+plan with its version, its approval state and each planned task's dependencies and acceptance, and
+offers the six plan edits against the version it shows; hunk approve and reject controls in the
+diff view; and the palette's seven form entries opening these surfaces, per
+`docs/roadmap/features/T5_F292.md`. DECISION F292 D1 fixes the plan read and the round order.
 
 ## Do not touch
-No assertion is weakened or deleted to gain time (feature file, "Do not touch"). The rule of one
-full suite per feature (amend0917-throughput). The worker cap and its record
-(`tests/load_governor.py`, `tests/conftest.py`). The F7 rule that reading a repository never runs
-its configured helpers (`packages/orchestration/run_manifest.py`).
+The write door's argument checks and refusal codes; the plan's own validation; the diff view's
+reading of the envelope (feature file, "Do not touch"). The UI follows
+`docs/ui/design_reference/` and the shared `--remedy-*` tokens.
 
 ## Active assumptions
-- A cut is measured before and after in one tree, by the reviewer's dry run: the git processes one
-  in-process one-task `remedy do` starts, and the CPU seconds of the test files it touches.
-- The "after" reading of the 40 percent target is the closure's one full-suite run.
+- The plan view and `remedy job plan-show --json` read one builder, `plan_editing.plan_view`.
+- Every UI round renders its surface headless and reads every new style it adds.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

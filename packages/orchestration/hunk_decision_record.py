@@ -66,6 +66,7 @@ Public API::
     record_hunk_decision_from_view — the ONE implementation, over an ALREADY PARSED view
     record_hunk_decision — the TEXT door: parse a diff, then delegate to the one above
     load_latest_hunk_ledger_from_metadata — the READ side: a task's LATEST decision, as a ledger
+    recorded_hunk_decision — the READ side for one ATTEMPT: its record's rows, for the cockpit
 """
 
 from __future__ import annotations
@@ -353,3 +354,31 @@ def load_latest_hunk_ledger_from_metadata(
         return import_hunk_ledger(winner)
     except Exception:  # noqa: BLE001 — malformed metadata yields an empty ledger, never a partial one
         return HunkDecisionLedger(())
+
+
+# The READ side for ONE attempt, the cockpit's (T5_F292 T003, DECISION F292 D6): a decision
+# REPLACES the whole record for its attempt, so hunk controls must start from what is recorded.
+def recorded_hunk_decision(metadata: Any, *, task_id: Any, attempt: Any) -> dict[str, Any]:
+    """The decision RECORDED for one attempt: ``{"attempt_key", "decided_at", "hunks"}``, each
+    row ``{"id", "state", "reason"}`` as the record stores it, in the record's order.
+
+    THE KEY IS ``_attempt_key``'s, over ``task_id`` and ``attempt`` coerced to text exactly as the
+    two doors above coerce them, so this reader and the writers cannot disagree about which
+    attempt a record belongs to.
+
+    TOTAL, like the reader above and for a reason of the same kind: it runs while a screen is
+    being served. Metadata that is not a mapping, no record under the key, or a record whose rows
+    are not a list all answer the key with ``decided_at`` ``""`` and no row, which is the honest
+    reading of a record nobody can read: nothing is recorded for this attempt. A row that is not a
+    mapping with a text ``id`` is dropped rather than guessed at. It performs no storage I/O, for
+    the reason the reader above gives."""
+    key = _attempt_key(str(task_id), str(attempt))
+    decisions = metadata.get(HUNK_DECISIONS_METADATA_KEY) if isinstance(metadata, Mapping) else None
+    record = decisions.get(key) if isinstance(decisions, Mapping) else None
+    if not isinstance(record, Mapping) or not isinstance(record.get(_LEDGER_ROWS_KEY), list):
+        return {"attempt_key": key, "decided_at": "", "hunks": []}
+    rows = [{"id": row["id"], "state": str(row.get("state", "")), "reason": str(row.get("reason", ""))}
+            for row in record[_LEDGER_ROWS_KEY]
+            if isinstance(row, Mapping) and isinstance(row.get("id"), str)]
+    stamp = record.get("decided_at")
+    return {"attempt_key": key, "decided_at": stamp if isinstance(stamp, str) else "", "hunks": rows}

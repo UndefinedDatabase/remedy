@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope, loadJobDigest } from "./remedyApi";
+import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope, loadHunkDecisions, loadJobDigest } from "./remedyApi";
 import type { DiffEnvelopeRequest } from "./remedyApi";
 import { JOB_DIGEST_VERSION, jobDigestPath } from "./jobDigest";
 
@@ -366,6 +366,78 @@ describe("normalizeDashboardPayload", () => {
   });
 });
 
+describe("normalizeDashboardPayload — plan (T5_F292 T001, DECISION F292 D2)", () => {
+  const NO_PLAN = {
+    available: false, version: 0, approval: "", editable: false, notEditableBecause: "",
+    tasks: [], error: "",
+  };
+
+  it("maps every field of a served plan and of each planned task", () => {
+    const payload = makeDashboardPayload({
+      plan: {
+        available: true, version: 2, approval: "pending", editable: true,
+        not_editable_because: null, error: "",
+        tasks: [{
+          id: "T2", title: "Parse", goal: "read the file", depends_on: ["T1"],
+          est_tokens_band: "M", files_hint: ["src/p.py"], acceptance: ["reads", "reports"],
+          job_task_id: "e2", status: "pending", spec_version: 3,
+        }],
+      },
+    });
+    expect(normalizeDashboardPayload("abc-123", payload).plan).toEqual({
+      available: true, version: 2, approval: "pending", editable: true, notEditableBecause: "",
+      error: "",
+      tasks: [{
+        id: "T2", title: "Parse", goal: "read the file", dependsOn: ["T1"], estTokensBand: "M",
+        filesHint: ["src/p.py"], acceptance: ["reads", "reports"], jobTaskId: "e2",
+        status: "pending", specVersion: 3,
+      }],
+    });
+  });
+
+  it("a closed plan keeps the server's reason", () => {
+    const payload = makeDashboardPayload({
+      plan: { available: true, version: 1, approval: "approved", editable: false,
+        not_editable_because: "the plan is approved", tasks: [], error: "" },
+    });
+    const plan = normalizeDashboardPayload("abc-123", payload).plan;
+    expect([plan.editable, plan.notEditableBecause, plan.approval]).toEqual(
+      [false, "the plan is approved", "approved"]);
+  });
+
+  it("a payload without a plan section reads as the no-plan shape", () => {
+    expect(normalizeDashboardPayload("abc-123", makeDashboardPayload()).plan).toEqual(NO_PLAN);
+  });
+
+  it("the server's no-plan section reads as the no-plan shape", () => {
+    const payload = makeDashboardPayload({
+      plan: { available: false, version: 0, approval: null, editable: false,
+        not_editable_because: null, tasks: [], error: "" },
+    });
+    expect(normalizeDashboardPayload("abc-123", payload).plan).toEqual(NO_PLAN);
+  });
+
+  it("a section that is not available is never editable and lists no task", () => {
+    const payload = makeDashboardPayload({
+      plan: { available: "yes", version: 4, editable: true, tasks: [{ id: "T1" }], error: "boom" },
+    });
+    expect(normalizeDashboardPayload("abc-123", payload).plan).toEqual({ ...NO_PLAN, error: "boom" });
+  });
+
+  it("a version that is not a whole number of at least 1 reads 0, and a bad task field reads empty", () => {
+    const payload = makeDashboardPayload({
+      plan: { available: true, version: 1.5, approval: 7, editable: "true", error: null,
+        tasks: [{ id: 3, depends_on: "T1", acceptance: null, spec_version: 0 }] },
+    });
+    const plan = normalizeDashboardPayload("abc-123", payload).plan;
+    expect([plan.version, plan.approval, plan.editable, plan.error]).toEqual([0, "", false, ""]);
+    expect(plan.tasks).toEqual([{
+      id: "", title: "", goal: "", dependsOn: [], estTokensBand: "", filesHint: [],
+      acceptance: [], jobTaskId: "", status: "", specVersion: 1,
+    }]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // B. Dashboard failure path
 // ---------------------------------------------------------------------------
@@ -400,6 +472,13 @@ describe("normalizeApiFailure", () => {
   it("returns the empty task_specs shape", () => {
     const result = normalizeApiFailure("abc-123", ["dashboard"]);
     expect(result.taskSpecs).toEqual({ tasks: {}, error: "" });
+  });
+
+  it("returns the no-plan shape", () => {
+    expect(normalizeApiFailure("abc-123", ["dashboard"]).plan).toEqual({
+      available: false, version: 0, approval: "", editable: false, notEditableBecause: "",
+      tasks: [], error: "",
+    });
   });
 });
 
@@ -1008,5 +1087,24 @@ describe("the job digest door", () => {
     expect(fromString).toBeNull();
     const fromArray = await loadJobDigest(request, async () => [1, 2, 3]);
     expect(fromArray).toBeNull();
+  });
+});
+
+describe("loadHunkDecisions (T5_F292 T003, DECISION F292 D6)", () => {
+  it("reads the task run's recorded decision from its own route", async () => {
+    const paths: string[] = [];
+    const decisions = await loadHunkDecisions({ jobId: "abc", token: "tok", taskId: "T001" }, async (path) => {
+      paths.push(path);
+      return { attempt_key: "T001:task_runs/T001/safe.diff", decided_at: "d", hunks: [{ id: "h1", state: "approved", reason: "" }] };
+    });
+    expect(paths).toEqual(["/api/jobs/abc/task-runs/T001/hunk-decisions?token=tok"]);
+    expect(decisions).toEqual({ attemptKey: "T001:task_runs/T001/safe.diff", decidedAt: "d",
+      hunks: [{ id: "h1", state: "approved", reason: "" }] });
+  });
+  it("reads a failed read as nothing recorded, and never throws", async () => {
+    const decisions = await loadHunkDecisions({ jobId: "abc", token: "tok", taskId: "" }, async () => {
+      throw new Error("down");
+    });
+    expect(decisions).toEqual({ attemptKey: "", decidedAt: "", hunks: [] });
   });
 });
