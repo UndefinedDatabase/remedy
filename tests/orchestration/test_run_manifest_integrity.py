@@ -196,6 +196,71 @@ class TestOneHelperDiscoveryPerReading:
 
 
 # ---------------------------------------------------------------------------
+# F294 — `git submodule status` only when the index holds a submodule
+# ---------------------------------------------------------------------------
+
+def _always_submodule_status(monkeypatch, repo):
+    """The reading as it was before DECISION F294 D3: `git submodule status` every time."""
+    import packages.orchestration.run_manifest as RM
+    with monkeypatch.context() as m:
+        m.setattr(RM, "_submodule_status",
+                  lambda rp: RM._git_bytes(rp, ["submodule", "status"]))
+        return worktree_identity(str(repo))
+
+
+def _ran_submodule_status(seen):
+    return [a for a in seen if a[-2:] == ["submodule", "status"]]
+
+
+class TestSubmoduleStatusOnlyWithASubmodule:
+    def test_without_a_submodule_it_never_runs_and_the_identity_is_unchanged(self, repo,
+                                                                            monkeypatch):
+        (repo / ".gitmodules").write_text('[submodule "broken"\n\tpath = \n')
+        before = _always_submodule_status(monkeypatch, repo)
+        seen = _recording_git(monkeypatch)
+        wt = worktree_identity(str(repo))
+        assert _ran_submodule_status(seen) == []
+        assert (wt.status, wt.digest, wt.dirty) == (before.status, before.digest, before.dirty)
+
+    def test_with_a_submodule_its_status_still_enters_the_identity(self, tmp_path, repo,
+                                                                   monkeypatch):
+        child = _git_repo(tmp_path / "child")
+        subprocess.run(["git", "-c", "protocol.file.allow=always", "submodule", "add", "-q",
+                        str(child), "child"], cwd=repo, check=True, capture_output=True)
+        _git(repo, "git commit -qm sub")
+        before = _always_submodule_status(monkeypatch, repo)
+        seen = _recording_git(monkeypatch)
+        wt = worktree_identity(str(repo))
+        assert len(_ran_submodule_status(seen)) == 1
+        assert wt.status == GIT_OK and wt.dirty is True
+        assert (wt.digest, wt.dirty) == (before.digest, before.dirty)
+
+    def test_a_gitlink_without_a_mapping_still_makes_the_identity_incomplete(self, repo):
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
+                              text=True, check=True).stdout.strip()
+        subprocess.run(["git", "update-index", "--add", "--cacheinfo", f"160000,{head},sub"],
+                       cwd=repo, check=True)
+        wt = worktree_identity(str(repo))
+        assert wt.status == GIT_INCOMPLETE
+        assert [p for p in wt.problems if p.startswith("submodules:")]
+
+    def test_a_failed_index_listing_falls_back_to_submodule_status(self, repo, monkeypatch):
+        import packages.orchestration.run_manifest as RM
+        real = RM._git_bytes
+        asked: list[list[str]] = []
+
+        def git_bytes(rp, args, timeout=15):
+            asked.append(args)
+            if args[:2] == ["ls-files", "--stage"]:
+                return False, b"", "forced"
+            return real(rp, args, timeout=timeout)
+
+        monkeypatch.setattr(RM, "_git_bytes", git_bytes)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        assert ["submodule", "status"] in asked
+
+
+# ---------------------------------------------------------------------------
 # F1 — complete job-input definition
 # ---------------------------------------------------------------------------
 

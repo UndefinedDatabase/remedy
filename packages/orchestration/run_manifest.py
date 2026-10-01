@@ -381,6 +381,21 @@ def _git_bytes(repo_path: str, args: list[str], *, timeout: int = 15):
     return True, proc.stdout, ""
 
 
+def _submodule_status(repo_path: str):
+    """`git submodule status` for a reading, asked only when the index holds a submodule.
+
+    F294 (DECISION F294 D3): the command lists the index's gitlinks (mode 160000), so with none it
+    prints nothing and exits 0, whatever `.gitmodules` says. On git 2.34 it is a shell script that
+    costs about twenty times any other command of a reading, so the index is listed first and the
+    command runs only when a gitlink is there, or when the listing failed. Its answer, and so the
+    identity, is the same either way.
+    """
+    ok, staged, _ = _git_bytes(repo_path, ["ls-files", "--stage", "-z"])
+    if ok and not any(entry.startswith(b"160000 ") for entry in staged.split(b"\0")):
+        return True, b"", ""
+    return _git_bytes(repo_path, ["submodule", "status"])
+
+
 def inspect_contained_workspace_identity(canonical_root: str | Path,
                                          claimed_workspace_path: str | Path
                                          ) -> WorktreeIdentity:
@@ -600,7 +615,7 @@ def _read_worktree_identity(repo_path: str, *, root_dir_fd: int | None
         if root_fd is not None and owns_root_fd:
             os.close(root_fd)          # never close a descriptor the CALLER still holds
 
-    ok_s, subm, sp = _git_bytes(repo_path, ["submodule", "status"])
+    ok_s, subm, sp = _submodule_status(repo_path)
     if not ok_s:
         problems.append(f"submodules: {sp}")
     elif subm.strip():
