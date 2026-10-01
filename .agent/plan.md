@@ -7,13 +7,15 @@ runs, and it runs again after a restart the jobs it was running; direct mode sta
 (docs/roadmap/features/T12_F200.md, amended by DECISIONs F200 D1, D4, D5, D7 and D8).
 
 ## Current Step
-Session 2, round 9: book round 8 (PASS) and the resolutions of R-1134, R-1135 and R-1136, save
-the repeat audit's report as `.agent/f200_acceptance_reaudit1.md`, and write the feature file's
-Built State section with the hardening stage's record. The open-findings count is 6 (`R-1117`,
-`R-1125`, `R-1127`, `R-1128`, `R-1129`, `R-1133`, all owned by F290).
+Session 2, round 10, the closure sequence's first round: book round 9 (PASS), generate the
+closure's self-use item into the empty queue and run it to its approval gate through the
+`self_use` role, never applying it, with every reading saved under `.agent/selfuse_f200/`. The
+reviewer's probe at `d9524de29` answered `SU-043`, the excused handler at
+`apps/cli/commands/dev.py:133`. The open-findings count is 6 (`R-1117`, `R-1125`, `R-1127`,
+`R-1128`, `R-1129`, `R-1133`, all owned by F290).
 
 ## Next Steps
-1. The closure's self-use item: generate one if the queue is empty, run it to its approval gate.
+1. Register any self-use run defect; land the item's change with its tests if it is sound.
 2. The closure's one full suite, the evidence bundle and the review package.
 3. The STATUS line and the pull request, not merged.
 
