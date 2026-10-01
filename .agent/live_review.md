@@ -1,34 +1,28 @@
-# Live Review — F293 Test load diet
+# Live Review — F294 Test load diet, part two
 
-> Round-by-round review record, re-headed at the F293 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F044, whose STATUS
-> line went `[x]` at `235377104` and whose pull request 301 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `53690a5cd`, after both jobs of hosted
-> CI run 36704212208, Python 3.10 and 3.12, ended `success`. F044's round 15, its closing round,
-> was reviewed after its own handback but its verdict was never booked: the session that closed it
-> found `.agent/STOP` before authoring a round, and the two sessions between the merge and this
-> claim (the post-merge STOP handoff, pull request 302, and the amend0930/amend0930b amendment
-> work, pull requests 303 and 304) were not feature rounds, so operator amendment
-> amend0827-process-diet rule 1 books the pending verdict here, in the first commit of the next
-> round that is happening anyway. Its gate entry is appended at the end of this record by this
-> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> from the Findings heading to the end of the file as it stood at `53690a5cd` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The open
-> set at `53690a5cd`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, is
-> `['R-0413', 'R-0441', 'R-0471', 'R-0533', 'R-0632', 'R-0672', 'R-1117', 'R-1118']`.
+> Round-by-round review record, re-headed at the F294 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F293, whose STATUS
+> line went `[x]` at `089dc55de` and whose pull request 305 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `020bc9a16`, after both jobs of hosted
+> CI run 36789034668, Python 3.10 and 3.12, ended `success`. `089dc55de` is the second parent of
+> `020bc9a16`, and the two trees are identical. F293's round 24, its closing round, was reviewed
+> after its own handback, so operator amendment amend0827-process-diet rule 1 books its verdict
+> here, in the first commit of the next round that is happening anyway; its gate entry is appended
+> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
+> below are rewritten; everything from the Findings heading to the end of the file as it stood at
+> `020bc9a16` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `020bc9a16`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `['R-1117', 'R-1125']`.
 
 ## Steps
 
-THE ORDER BELOW IS THIS ROUND'S OWN. The first round claims F293, re-heads this record, books
-F044's round 15, and runs T001: one full-suite run, collection timed separately, its transcript
-committed verbatim, and `.agent/f293_inventory.md` built from it — the CPU share per test file, the
-100 slowest tests, the cost of collection, how many tests start a child process, how many times the
-UI is built and Chrome is started, and which processes are still alive after the run. This run is
-the one full suite amend0917-throughput permits this feature, taken at T001 rather than at closure
-because T001 is what needs its data; no second full run is ordered later in this feature. The next
-round reads the ranking and cuts from its top (T002); then keeps it down in every closure (T003);
-then makes it visible in `remedy doctor core` (T004); then the amend0930b-slow-cap hardening stage
-this SLOW MODE session orders before the closure sequence; then closure.
+THE ORDER BELOW IS DECISION F294 D1's. The first round claims F294, re-heads this record, books
+F293's round 24, and lands the first cut of the job runner's git work: one `worktree_identity`
+reading discovers the repository's configured helpers once. The next rounds cut the job runner's
+other repeated git readings, each measured before and after in one tree; then the files that run
+whole jobs are measured and cut from the top of what remains; then the amend0930b-slow-cap
+hardening stage this SLOW MODE session orders before the closure sequence; then closure, whose one
+full suite gives the "after" reading of the 40 percent target.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -200,3 +194,5 @@ Gate: F293 R21 — the F293 round 21 entry, over `8b69679e7`..`00c44d1f7` (4 com
 Gate: F293 R22 — the F293 round 22 entry, over `00c44d1f7`..`785cfe70e` (4 commits; insertions by `git show --numstat`: `67298c6e3` 141, `8a53be6a3` 50, `95deefa78` 12, `785cfe70e` 149). VERDICT PASS, verified by dry run, bytes identical (amend0930-test-load rule 3), compared at `785cfe70e`: `docs/roadmap/features/T2_F294.md`, `docs/roadmap/STATUS.md`, `README.md`, `tests/docs/test_docs_consistency.py`, `docs/roadmap/features/T2_F293.md` and `.agent/operator_questions.md` equal the reviewer's dry-tree copies made on the same base `00c44d1f7`, where `tests/docs/` read `327 passed`, the integrity check `fail_count` 0 and the open set `['R-1117', 'R-1125']`, and where the pin left at 293, the README's overall count left at 293 and the STATUS line dropped each turned `tests/docs/` red (the README's tier row is R-1125); the saved block `.agent/authored/f293-r22.md` and `.agent/plan.md` equal the prepared files, and both appends equal their pre-commit blobs followed by the prepared bytes. THE CHANGE: F294, "Test load diet, part two", is registered directly after F293 with the pin at 294 and the README at 121 of 294 and Tier 2 at 39 of 42 (`8a53be6a3`); F293's Built State records the closure reading and the split (`95deefa78`); DECISION F293 D15 records the split-and-close; operator question Q2 records the reversible ruling. The worker's gates read ruff clean, `tests/docs/` `327 passed`, the canary `42 passed`, `fail_count` 0 and the open set `['R-1117', 'R-1125']`.
 
 Gate: F293 R23 — the F293 round 23 entry, over `785cfe70e`..`0a8575af2` (2 commits; insertions by `git show --numstat`: `b59d42cc9` 300, `0a8575af2` 155). VERDICT PASS: the saved block `.agent/authored/f293-r23.md`, the evidence script `.agent/authored/f293-r23-create_f293_evidence.py` and `.agent/plan.md` equal the prepared files, and `.agent/live_review.md` equals its blob at `785cfe70e` followed by the prepared bytes. THE ACCEPTED HEAD is `b59d42cc9ec43cfdc8199f777ec9c0bc3929d81e`. THE STAGING RECLAIM previewed `Would free 0 B in 0 paths` with one refused path, `review_staging.n4o46eq_` (`class_not_job_keyed`), so `--apply` was skipped. THE EVIDENCE JOB `f293r23e1001`, base the fork point `8a067a3b93fb3d7080053f9cf742379534bed447`, run `vr-1201`: ancestry-path and plain counts equal at 81, 1195 node ids with 12 deselected, no unsafe id, pytest exit 0 with 1192 passed and 3 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. THE PACKAGE `remedy-review-20261001-005405-READY_FOR_REVIEW.zip`: `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`, SHA-256 `2c72c60f7058a7c2d9d7a0ad72a161115c282162a7ebc994bd7f0118ea704fb6`, which the reviewer re-hashed from the archived file itself, archived at `/home/decodeux/Repos/remedy-history/zips`, its manifest's review subject from the fork point to the accepted head. The worker's gates read `fail_count` 0 after the booking and after the package, the canary `42 passed` and the open set `['R-1117', 'R-1125']`.
+
+Gate: F293 R24 — the F293 round 24 entry, the closure sequence's last round, over `0a8575af2`..`089dc55de` (3 commits; insertions by `git show --numstat`: `d6c0b43ec` 234, `9ec135745` 58, `089dc55de` 166). VERDICT PASS. The feature's acceptance in its STATUS line is PASS_WITH_RISKS — ACCEPTED, naming `R-1125` (Low, owned by F290). The round is verified by dry run, bytes identical: every file the round committed equals the reviewer's simulated tree on base `0a8575af2`, where the closure selection read `552 passed` and `remedy integrity check` six `pass`. THE ROTATION moved 15 gate records and 7 finding pairs, the ledger from 201195 to 148948 bytes and the archive from 5790349 to 5842596, with the open set `['R-1117', 'R-1125']` before and after. `SU-040`'s `consumed_by` reads `F293`. Re-derived at the F294 claim from the commits themselves: the three insertion counts above, the open set, the saved block's sha256 `898705dcc3a141ea1acea95b5a01a5c6f593a1d5eff818ce021a9aacc3d34490`, and `git diff --quiet 089dc55de 020bc9a16` exiting 0. Pull request 305 merged as `020bc9a16` after both jobs of hosted CI run 36789034668 ended `success`.
