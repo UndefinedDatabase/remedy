@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-36d6e3a3d6cb403c  (exit 0)
+diff --git a/apps/cli/commands/dev.py b/apps/cli/commands/dev.py
+index 83f8b8417..426b70ad4 100644
+--- a/apps/cli/commands/dev.py
++++ b/apps/cli/commands/dev.py
+@@ -116,7 +116,7 @@ def _dev_status(*, json_output: bool = False) -> None:
+             risk="low", applicability="applicable", requires_approval=False,
+         )
+         status["autocoder_fake_e2e_ok"] = callable(apply_structured_patch)
+-    except (ImportError, Exception):  # noqa: BLE001 — an autocoder check failure must not block other checks
++    except (ImportError, TypeError):
+         status["autocoder_fake_e2e_ok"] = False
+ 
+     # Check repair loop — module importable and build_repair_context callable
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 28f399fec..86e75f777 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 287
++MAX_EXCUSED = 286
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
