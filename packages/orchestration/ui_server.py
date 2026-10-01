@@ -1090,6 +1090,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "pause": _build_pause_section(job),
+        "plan": _build_plan_section(job),
         "task_specs": _build_task_spec_section(job),
         "vetoes": _build_veto_section(job),
         "project_summary": _build_project_summary_section(job),
@@ -1243,6 +1244,30 @@ def _build_pause_section(job: Any) -> dict[str, Any]:
         }
     except (PauseControlError, StopControlError) as exc:
         return {"record": {}, "requested": False, "paused_task_ids": [], "error": str(exc)}
+
+
+def _empty_plan_section(error: str = "") -> dict[str, Any]:
+    """The `plan` section of a job whose plan cannot be served, fresh on every call."""
+    return {"available": False, "version": 0, "approval": None, "editable": False,
+            "not_editable_because": None, "tasks": [], "error": error}
+
+
+def _build_plan_section(job: Any) -> dict[str, Any]:
+    """Build the dashboard's `plan` section (T5_F292 T001, DECISION F292 D1 (1)): the
+    plan read `plan_editing.plan_view` gives `remedy job plan-show --json`, with
+    `available` True beside it and `error` empty, so the plan view and the command line
+    read one answer. A job with no stored plan with tasks reads `_empty_plan_section()`.
+    Never raises: a `ValueError` or `TypeError` met while reading a malformed stored plan
+    is reported as `error` over the empty section."""
+    from packages.orchestration.plan_editing import plan_view
+
+    try:
+        view = plan_view(job)
+    except (ValueError, TypeError) as exc:
+        return _empty_plan_section(str(exc))
+    if view is None:
+        return _empty_plan_section()
+    return {"available": True, **view, "error": ""}
 
 
 def _build_task_spec_section(job: Any) -> dict[str, Any]:
