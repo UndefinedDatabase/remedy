@@ -2957,6 +2957,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: `None` in any handler built without one, so the door's preview clause degrades
     #: to recording the request alone.
     preview_worker: Any = None
+    #: The `source` the door records `job.stop`, `job.pause` and `job.unpause` with:
+    #: this door's own word in the cockpit's server, and `"cli"` in the handler the
+    #: `remedy serve start` supervisor binds to its unix socket (DECISION F200 D1 (2)).
+    effect_source: str = COMMAND_EFFECT_SOURCE
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -3686,7 +3690,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         reason = args.get("reason") if isinstance(args, dict) else ""
         signal = request_stop(
             job_id, reason=reason if isinstance(reason, str) else "",
-            source=COMMAND_EFFECT_SOURCE)
+            source=self.effect_source)
         return {"command": payload["command"], "outcome": "accepted",
                 "request_id": signal.request_id}
 
@@ -3727,7 +3731,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         result = pause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
             reason=reason if isinstance(reason, str) else "",
-            source=COMMAND_EFFECT_SOURCE)
+            source=self.effect_source)
         return {"command": payload["command"], **result}
 
     def _dispatch_job_unpause(self, job: Any, payload: Any) -> dict[str, Any]:
@@ -3741,7 +3745,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         task = args.get("task") if isinstance(args, dict) else None
         result = unpause_job_command(
             job, task_id=task if isinstance(task, str) and task else None,
-            source=COMMAND_EFFECT_SOURCE)
+            source=self.effect_source)
         return {"command": payload["command"], **result}
 
     def _dispatch_veto_task(self, job: Any, payload: Any) -> dict[str, Any]:
