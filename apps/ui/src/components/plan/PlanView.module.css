@@ -77,3 +77,46 @@
   color: var(--remedy-faint);
   text-align: right;
 }
+/* The edit controls (T5_F292 T002, DECISION F292 D3) take the detail popover's edit-form scale
+   (DetailPopover.module.css): ghost buttons, a filled save pill, labelled fields. Disabled is 45%
+   opacity with the reason in the button's title (ux_spec.md §14). The outcome sentence is always
+   in the same ink; its words carry the outcome, never a colour alone. */
+.message { margin: 0; min-height: 1em; font-size: 12px; color: var(--remedy-ink-soft); }
+.actions,
+.formActions { display: flex; gap: 8px; margin-top: 8px; }
+.ghost,
+.save,
+.danger {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--remedy-radius-pill);
+  font: 600 12px var(--remedy-font-ui);
+  cursor: pointer;
+  transition: background-color var(--remedy-dur-base);
+}
+.ghost { border: none; background: transparent; color: var(--remedy-ink-soft); }
+.ghost:hover { background: var(--remedy-blue-50); }
+.save { border: none; background: var(--remedy-blue); color: var(--remedy-card); font-weight: 700; }
+.danger { border: 1px solid var(--remedy-red-500); background: transparent; color: var(--remedy-red-500); }
+.ghost:disabled,
+.save:disabled,
+.danger:disabled { opacity: 0.45; cursor: not-allowed; }
+.ghost:focus-visible,
+.save:focus-visible,
+.danger:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--remedy-muted); }
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid var(--remedy-line);
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-card);
+  color: var(--remedy-ink-strong);
+  font: 500 12.5px var(--remedy-font-ui);
+  padding: 6px 8px;
+}
+.field textarea { min-height: 48px; resize: vertical; }
+.problem { margin: 0; font-size: 12px; color: var(--remedy-ink-soft); }
+.confirm { margin-top: 10px; }
+.confirm p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--remedy-ink); }

@@ -62,7 +62,7 @@ const DIFF_PENDING_TEXT = "Reading the change for this task run…";
  *  carries one, since `reason` is legitimately null on a plain empty diff. */
 const DIFF_UNAVAILABLE_TEXT = "No diff is available for this task run.";
 
-export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; serverToken: string; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
+export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, onSelectNode }: { dashboard: RemedyDashboard; serverToken: string; onReload?: () => void; selectedNodeId: string | null; onSelectNode: (nodeId: string | null) => void }) {
   // The cockpit subscribes HERE rather than in RemedyApp: the shell renders
   // only once a dashboard has loaded, so `dashboard.jobId` is always a real
   // job, where RemedyApp would have to open a stream against an empty id on
@@ -452,7 +452,10 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
       {shortcutsOpen && <KeymapOverlay />}
       {/* THE PLAN VIEW (T5_F292 T001, DECISION F292 D2), a sibling directly after the keymap
           overlay for the reason every overlay above is a sibling outside <main>. */}
-      {planOpen && <PlanView plan={dashboard.plan} onClose={() => setPlanOpen(false)} />}
+      {planOpen && (
+        <PlanView plan={dashboard.plan} target={{ jobId: dashboard.jobId, serverToken }}
+          onReload={onReload} onClose={() => setPlanOpen(false)} />
+      )}
       {/* THE LEARNING OVERLAY, a sibling outside <main> for the reason the diff panel is. */}
       {lessonsOpen && (
         <LessonsOverlay
