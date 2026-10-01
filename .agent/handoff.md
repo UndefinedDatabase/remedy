@@ -1,170 +1,216 @@
-# Handoff — F294 Test load diet, part two, round 13
+# Handoff — F294 Test load diet, part two, round 14
 
 ## Session
 
-SESSION 2 of feature F294 · round 13
+SESSION 2 of feature F294 · round 14
 
-Context self-assessment: the reviewer's context is comfortable; this session plans further rounds
-after this one.
-
-## Range
-
-Review of `815a39a21`..`HEAD` — two commits on `feature/f294-test-load-diet-two`: `3f7b86c1b`,
-`8ae3e2c3d`, and this handback commit.
+Context self-assessment: the reviewer's context is still sound, and the session ends after eight
+delegated rounds, the top of the protocol's target, so that the closure's evidence and closing
+rounds start the next session with a fresh context.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| 1 | done | round 12's verdict (PASS) booked in `.agent/live_review.md`, `.agent/plan.md` advanced to round 13 — commit `3f7b86c1b` |
-| 2 | done | the feature's one closure full suite ran once in the primary checkout (`python3 -m pytest -n auto -q`, exit 0, `21139 passed, 21 skipped, 1 warning in 348.89s`), `scripts/closure_suite_cost.py` ran once (exit 0, 865.36 CPU seconds, 8.0 percent below F293's 940.64, within the 10 percent limit), and the transcript was committed as read — commit `8ae3e2c3d` |
+| 1 | done | round 13's verdict (PASS) booked in `.agent/live_review.md`, DECISION F294 D12 recorded (F294 closes on its Acceptance's second branch), one prose-slip line added (amend0827-process-diet rule 1) — commit `943ac7940` |
+| 2 | done | the closure's reading added to the Built State of `docs/roadmap/features/T2_F294.md` (closure precondition 4) — commit `2041930db` |
+| 3 | done | operator question Q3, the reversible ruling of D12 (amend0911-feedback rule C, kind B), written in this handback commit |
+
+## Range
+
+Review of `58357aa4b`..`HEAD` — two commits on `feature/f294-test-load-diet-two`: `943ac7940`,
+`2041930db`, and this handback commit.
 
 ## Commits
 
-### `3f7b86c1b` F294 R13 C1: book round 12, save the round 13 block
+### `943ac7940` F294 R14 C1: book round 13, record DECISION F294 D12, save the round 14 block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f294-r13.md` | +110/-0 | NEW FILE at `.agent/authored/f294-r13.md`; byte-for-byte copy of this round's step block by `cp`, `cmp`-verified against `.remedy-wt/f294-r13-block.md` before commit (`wc -l` 110, sha256 `17de5eef141a746edbd244d2a51080a40ad4fb6460f34a0c762930922b2cdc7b`) |
-| `.agent/live_review.md` | +2/-0 | bytes of `.remedy-wt/f294-r13-append-live_review.txt` appended without retyping; pre-commit blob (`git show 815a39a21:.agent/live_review.md`) plus the append bytes verified byte-equal to the new file (`True`) — Gate F294 R12 (VERDICT PASS) |
-| `.agent/plan.md` | +7/-6 | whole-file replaced by `cp` from `.remedy-wt/f294-r13-plan.md`; `cmp` silent |
+| `.agent/authored/f294-r14.md` | +119/-0 | NEW FILE at `.agent/authored/f294-r14.md`; byte-for-byte copy of this round's step block by `cp`, `cmp`-verified against `.remedy-wt/f294-r14-block.md` before commit (`wc -l` 119, sha256 `82d4dd85a5c9fb5ce526f941453a94e080bd56dbec246e6e01836f2281046d75`) |
+| `.agent/decisions.md` | +14/-0 | bytes of `.remedy-wt/f294-r14-append-decisions.txt` appended without retyping; pre-commit blob (`git show 58357aa4b:.agent/decisions.md`) plus the append bytes verified byte-equal to the new file (`True`) — DECISION F294 D12 |
+| `.agent/live_review.md` | +2/-0 | bytes of `.remedy-wt/f294-r14-append-live_review.txt` appended without retyping; pre-commit blob plus the append bytes verified byte-equal to the new file (`True`) — Gate F294 R13 (VERDICT PASS) |
+| `.agent/plan.md` | +10/-8 | whole-file replaced by `cp` from `.remedy-wt/f294-r14-plan.md`; `cmp` silent |
+| `.agent/prose_slips.md` | +1/-0 | bytes of `.remedy-wt/f294-r14-append-prose_slips.txt` appended without retyping; pre-commit blob plus the append bytes verified byte-equal to the new file (`True`) — the reviewer's repeated dry-tree run of round 12 (amend0827-process-diet rule 1) |
 
-`git diff --cached --numstat` before the commit read `110 0 .agent/authored/f294-r13.md`,
-`2 0 .agent/live_review.md`, `7 6 .agent/plan.md` — matching the block's stated `2 0` for
-`.agent/live_review.md` and `7 6` for `.agent/plan.md` exactly. `git show --numstat 3f7b86c1b`
-after the commit read the same three lines.
+`git diff --cached --numstat` before the commit read `119 0 .agent/authored/f294-r14.md`,
+`14 0 .agent/decisions.md`, `2 0 .agent/live_review.md`, `10 8 .agent/plan.md`, `1 0
+.agent/prose_slips.md` — matching the block's stated numstat exactly. `git show --numstat
+943ac7940` after the commit read the same five lines.
 
-### `8ae3e2c3d` F294 R13 C2: the closure's one full suite and its CPU cost
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f294-closure-suite.txt` | +11/-0 | NEW FILE at `.agent/authored/f294-closure-suite.txt` ALONE; every value in it is what this round observed from its own run of the suite and the cost script, never copied from this block or an earlier file |
-
-`git diff --cached --numstat` before the commit read `11 0 .agent/authored/f294-closure-suite.txt`.
-`git show --numstat 8ae3e2c3d` after the commit read the same line. This commit touched only this
-one path.
-
-### This handback commit — F294 R13 C3: handback
+### `2041930db` F294 R14 C2: the Built State records the closure's reading (DECISION F294 D12)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | full rewrite | this file, per `docs/agents/handback_template.md`; the only path this commit touches |
+| `docs/roadmap/features/T2_F294.md` | +10/-0 | bytes of `.remedy-wt/f294-r14-append-T2_F294.txt` appended without retyping; pre-commit blob (`git show 58357aa4b:docs/roadmap/features/T2_F294.md`) plus the append bytes verified byte-equal to the new file (`True`) — the closure's reading paragraph (closure precondition 4) |
+
+`git diff --cached --numstat` before the commit read `10 0 docs/roadmap/features/T2_F294.md`.
+`git show --numstat 2041930db` after the commit read the same line. This commit touched only this
+one path. The diff was read in full as the self-review.
+
+### This handback commit — F294 R14 C3: handback, the session's last, and operator question Q3
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | full rewrite | this file, per `docs/agents/handback_template.md`, including the changed-files table per commit and the item-status table |
+| `.agent/operator_questions.md` | +25/-0 | whole-file replaced by `cp` from `.remedy-wt/f294-r14-operator_questions.md`; `cmp` silent; adds `### Q3 — Second test diet stops` after Q2, the reversible ruling of DECISION F294 D12 |
 
 ## External actions
 
 No push or `gh` command ran between C1, C2 and this handback commit. `git push origin
 feature/f294-test-load-diet-two` runs after this commit — its outcome is reported in the session's
 own reply, not in this file. `git fetch origin feature/f294-test-load-diet-two`, checked before C1,
-read `origin/feature/f294-test-load-diet-two` at `815a39a21b8b67f9fc12640713f3b76be6a88fbd` —
+read `origin/feature/f294-test-load-diet-two` at `58357aa4ba1597083a8e6eb1a3f16e6e2e87cddb` —
 exactly this round's starting base, confirming no peer session had pushed this branch ahead.
 
 `.agent/STOP` was checked absent before C1 and at no point appeared during this round. No worktree
-was added or removed this round — the scratch directory `.remedy-wt/f294-r13-worker/` used to hold
-the suite's raw log and the cost script's raw output outside the repository while they ran is
-gitignored scratch, not a worktree, and nothing under it is committed. No mutation ran this round
-(none was ordered). No npm command ran.
+was added or removed this round. No mutation ran this round (none was owed: no code changes — the
+block ordered DO NOT run mutation red-proofs). No npm command ran.
 
 ## Verification
 
-All four gates were run once each, in the block's order, after C2 and before C3.
+All five gates were run once each, in the block's order: gates 1 to 4 after C2 and before C3, gate
+5 after C3 and before the push.
 
-**Gate 1 — `git status --porcelain` and two `cmp` proofs:**
+**Gate 1 — `git status --porcelain` and five `cmp` proofs:**
 ```
 $ git status --porcelain
 (empty)
-$ cmp .agent/authored/f294-r13.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r13-block.md
+$ cmp .agent/authored/f294-r14.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r14-block.md
 (silent)
-$ cmp .agent/plan.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r13-plan.md
+$ cmp .agent/live_review.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r14-dry-live_review.md
+(silent)
+$ cmp .agent/decisions.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r14-dry-decisions.md
+(silent)
+$ cmp .agent/prose_slips.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r14-dry-prose_slips.md
+(silent)
+$ cmp docs/roadmap/features/T2_F294.md /home/decodeux/Repos/remedy/.remedy-wt/f294-r14-dry-T2_F294.md
 (silent)
 ```
-Exit 0 for all three checks.
+Exit 0 for all six checks.
 
-**Gate 2 — the suite of C2 itself:**
-Exit code 0. Summary line, pytest's own, verbatim: `21139 passed, 21 skipped, 1 warning in 348.89s
-(0:05:48)`. Bad node ids (failed + errors): NONE. These are the same readings committed verbatim in
-`.agent/authored/f294-closure-suite.txt`.
-
-**Gate 3 — `python3 -m apps.cli.main integrity check --json`:**
+**Gate 2 — `python3 -m apps.cli.main integrity check --json`:**
 ```
 {"check_count": 6, "checks": [{"message": "handlers=171", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-Exit 0. Six checks `pass`, `fail_count` 0 — whatever gate 2 read (gate 2 read exit 0 and no bad
-node ids, and this gate's `fail_count` 0 agrees).
+Exit 0. Six checks `pass`, `fail_count` 0.
 
-**Gate 4 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:**
+**Gate 3 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:**
 ```
 ['R-1117', 'R-1125', 'R-1127']
 ```
 Exit 0. Matches the block's stated `['R-1117', 'R-1125', 'R-1127']` exactly.
 
-This round's only pytest invocation was C2's full suite; no other test command ran this round,
-before or after it; no two test commands ran at the same time; `REMEDY_TEST_MAX_WORKERS` was never
-set; no larger `-n` was passed; no worktree was used for the run; no mutation ran; no npm command
-ran. No gate reported "process(es) behind".
+**Gate 4 — `git diff --stat 58357aa4b..HEAD`:**
+```
+ .agent/authored/f294-r14.md      | 119 +++++++++++++++++++++++++++++++++++++++
+ .agent/decisions.md              |  14 +++++
+ .agent/live_review.md            |   2 +
+ .agent/plan.md                   |  18 +++---
+ .agent/prose_slips.md            |   1 +
+ docs/roadmap/features/T2_F294.md |  10 ++++
+ 6 files changed, 156 insertions(+), 8 deletions(-)
+```
+Exactly the six paths of C1 and C2, no other path.
 
-## Closure suite
+**Gate 5 — after C3's files were in place, before the push — `python3 -m pytest tests/docs/ tests/cli/test_golden_path.py -q -n auto -rs`:**
+```
+bringing up nodes...
+bringing up nodes...
 
-`.agent/authored/f294-closure-suite.txt`, quoted whole and verbatim:
+........................................................................ [ 19%]
+........................................................................ [ 39%]
+........................................................................ [ 58%]
+........................................................................ [ 78%]
+........................................................................ [ 97%]
+.........                                                                [100%]
+369 passed in 4.59s
+```
+Exit 0 (pytest's own contract: a bare `N passed` summary with no `failed`/`error` line occurs only
+on exit 0; this run's exit status was not separately captured via a second `$?`-reporting
+invocation because the block orders each gate run exactly once and a second pytest invocation would
+be a second run of the same gate). `369 passed`, no SKIPPED line, no line containing "process(es)
+behind". See "Open findings" below for the same transcript, pasted per the block's instruction.
+
+This round's only pytest invocation was gate 5; no other test command ran this round, before or
+after it; no two test commands ran at the same time; `REMEDY_TEST_MAX_WORKERS` was never set; no
+larger `-n` was passed; no worktree was used; no mutation ran; no npm command ran.
+
+## Open findings
+
+Gate 5's output, pasted whole and verbatim (`python3 -m pytest tests/docs/ tests/cli/test_golden_path.py -q -n auto -rs`):
 
 ```
-command: python3 -m pytest -n auto -q
-real exit code: 0
-wall time: 349.54s (measured wrapper); pytest's own reported wall time 348.89s (0:05:48)
-summary line: 21139 passed, 21 skipped, 1 warning in 348.89s (0:05:48)
-bad node ids (failed + errors): NONE
-leftover processes: NONE
-tree it ran on: 3f7b86c1b (F294 R13 C1: book round 12, save the round 13 block)
-cost command: python3 scripts/closure_suite_cost.py --feature F294 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 865.36 CPU seconds, 348.90 wall seconds, 21160 tests collected, exit status 0, recorded 2026-10-01T02:42:44Z
-This closure's suite used 865.36 CPU seconds, 8.0 percent less than F293's 940.64, within the 10 percent limit.
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 19%]
+........................................................................ [ 39%]
+........................................................................ [ 58%]
+........................................................................ [ 78%]
+........................................................................ [ 97%]
+.........                                                                [100%]
+369 passed in 4.59s
 ```
+
+No open findings this round: `369 passed`, no SKIPPED line, no FAILED/ERROR line, no "process(es)
+behind" line.
 
 ## Authored-text proofs
 
-`.agent/authored/f294-r13.md` (commit `3f7b86c1b`): saved as a byte-for-byte copy of the step block
-given to this round; `wc -l` read 110 lines, `sha256sum` read
-`17de5eef141a746edbd244d2a51080a40ad4fb6460f34a0c762930922b2cdc7b`, and `cmp` against
-`.remedy-wt/f294-r13-block.md` was silent (exit 0) both before the commit and again at gate 1 — the
+`.agent/authored/f294-r14.md` (commit `943ac7940`): saved as a byte-for-byte copy of the step block
+given to this round; `wc -l` read 119 lines, `sha256sum` read
+`82d4dd85a5c9fb5ce526f941453a94e080bd56dbec246e6e01836f2281046d75`, and `cmp` against
+`.remedy-wt/f294-r14-block.md` was silent (exit 0) both before the commit and again at gate 1 — the
 same digest and line count the delivering prompt stated, verified before any other work began.
 
-`.agent/live_review.md` (commit `3f7b86c1b`): bytes of `.remedy-wt/f294-r13-append-live_review.txt`
-(sha256 `08b7c95a2034956611470f15768eda8334bd0a326d13ff5dab3d2dc1f571a16d`) appended without
-retyping; the byte-equality proof (pre-commit blob at `815a39a21` plus the append bytes equals the
-post-append file) read `True`.
+`.agent/decisions.md`, `.agent/live_review.md` and `.agent/prose_slips.md` (commit `943ac7940`):
+bytes of their respective prepared append files appended without retyping; each byte-equality proof
+(pre-commit blob at `58357aa4b` plus the append bytes equals the post-append file) read `True`.
 
-`.agent/plan.md` (commit `3f7b86c1b`): whole-file `cp` from `.remedy-wt/f294-r13-plan.md`
-(sha256 `699c6af91cdc5cd5a811b3bca5f2eb1e31fdd7ea4db9fbe2ad211c88312d3729`); `cmp` silent both before
-the commit and again at gate 1.
+`.agent/plan.md` (commit `943ac7940`): whole-file `cp` from `.remedy-wt/f294-r14-plan.md`; `cmp`
+silent both before the commit and again at gate 1.
 
-`.agent/authored/f294-closure-suite.txt` (commit `8ae3e2c3d`): no prepared companion file exists
-for this path — the block orders it GENERATED from the round's own run, never copied. Every value
-in it (the real exit code, the wrapper's wall-time reading, pytest's own summary line, the HEAD
-short sha and subject, and the cost script's two printed lines and its exit code) was read directly
-from this round's own commands, as the block requires.
+`docs/roadmap/features/T2_F294.md` (commit `2041930db`): bytes of
+`.remedy-wt/f294-r14-append-T2_F294.txt` appended without retyping; the byte-equality proof
+(pre-commit blob at `58357aa4b` plus the append bytes equals the post-append file) read `True`;
+`cmp` against the reviewer's dry tree was silent both at self-review and again at gate 1.
+
+`.agent/operator_questions.md` (this handback commit): whole-file `cp` from
+`.remedy-wt/f294-r14-operator_questions.md`; `cmp` silent.
 
 ## Deviations & assumptions
 
-None. The block's own digest (`17de5eef141a746edbd244d2a51080a40ad4fb6460f34a0c762930922b2cdc7b`,
-110 lines) and both prepared companion files' digests (`f294-r13-append-live_review.txt`,
-`f294-r13-plan.md`) were verified with `sha256sum` before use and matched the block exactly. Both
-commits (C1, C2) matched the block's named paths and numstat exactly — no unrelated file, no extra
-hunk; each commit's `git diff --cached` was read in full as the self-review. All four gates matched
-the block's stated done-when readings exactly. No gate reported "process(es) behind". `.agent/STOP`
-did not appear at any point in this round. `git fetch origin` confirmed no peer session had pushed
-past this round's starting head (`815a39a21`). No worktree was added or removed. No mutation ran
-this round (none was ordered). The full suite ran exactly once, in C2, and was the round's only test
-command; `REMEDY_TEST_MAX_WORKERS` was never set; no larger `-n` was passed; no two test commands
-ran at the same time; no npm command ran. No file outside the block's named paths was touched.
+No departure from the block's ordered commit sequence, named paths or gate order. The block's own
+digest (`82d4dd85a5c9fb5ce526f941453a94e080bd56dbec246e6e01836f2281046d75`,
+119 lines) and every prepared companion file's digest were verified with `sha256sum` before use and
+matched the block exactly. Both commits (C1, C2) matched the block's named paths and numstat
+exactly — no unrelated file, no extra hunk; each commit's `git diff --cached` was read in full as
+the self-review. All five gates matched the block's stated done-when readings exactly. No gate
+reported "process(es) behind". `.agent/STOP` did not appear at any point in this round. `git fetch
+origin` confirmed no peer session had pushed past this round's starting head (`58357aa4b`). No
+worktree was added or removed. No mutation ran this round (none was owed — no code changes).
+`REMEDY_TEST_MAX_WORKERS` was never set; no larger `-n` was passed; no two test commands ran at the
+same time; no npm command ran. No file outside the block's named paths was touched. No production
+file and no test file was touched.
+
+Gate 5's exit code was read from pytest's own summary line rather than a separately captured `$?`:
+the first invocation of the command was piped through `tail` for display, which reports the pipe's
+last stage's status rather than pytest's; since the block orders each gate run exactly once, a
+second invocation solely to capture `$?` was not made. The summary line `369 passed` with no
+`failed`/`error` line is exit 0 under pytest's own contract. This is a reporting-method note, not a
+deviation from the block's ordered commit sequence or gate order — the gate itself ran once, at the
+right point, with a verbatim-captured decisive output.
 
 ## Next
 
-Operator questions open: 1.
+Operator questions open: 2.
 
 1. Phase 1 rule 1 (`.agent/STOP`) — check first.
 2. Phase 1 rule 2 (Open PR Gate) — check before any new branch or delegation.
 3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Book round 13's verdict in the next round's first commit.
-5. The closure DECISION on the 40 percent target and the evidence bundle — the suite was green,
-   865.36 CPU seconds against the 747.65 CPU-second target, 8.0 percent below F293's closure and
-   within the 10 percent cost-growth limit.
+4. Book round 14's verdict in the next round's first commit.
+5. The evidence job and the review package at the accepted head, with the staging-copy reclaim
+   (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1 and 2).
+6. The closing round: rotate the ledger, hand `R-1127` to F290, accept F294 PASS_WITH_RISKS in
+   STATUS and README, consume `SU-041`, open the pull request.

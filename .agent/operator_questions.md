@@ -29,3 +29,28 @@ the job runner change as the next item.
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise.
+
+### Q3 — Second test diet stops (2026-10-01, F294, round 14)
+
+**What needs deciding.** This is the follow-up to the question above. The second round of test
+savings is finished. One full run of all tests now uses about 865 processor seconds. That is 8
+percent less than after the first round of savings, about 941 seconds, and about 31 percent less
+than where we started, about 1,246 seconds. Your target was 40 percent, which is about 748
+seconds, so about 118 seconds are still missing. I am closing this work below the target. I did
+not register another work item for the rest.
+
+**Why it matters.** The tests that cost the most each run a complete job, the way you run one, and
+then check what the job left behind. Inside a job, most of the remaining cost is two things the
+job does to protect you. First, at every safe point of every task it checks whether you edited the
+code yourself in the meantime, so that it never overwrites your edit. Second, before it releases a
+job, it runs the project's own tests. The tests could only skip that work by no longer checking a
+real job, which would make them weaker. The other way is to change the product: check for your
+edits less often, or run the project's tests in a cheaper way. That would save processor time in
+every real job too, but your own edits would be noticed later. I do not think that is worth about
+118 processor seconds, roughly two minutes of computer time, per full test run.
+
+**My recommendation.** Accept the 31 percent and keep the protective checks as they are.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise. If you want the cheaper job runs anyway, say so, and I will register that change as
+its own work item.
