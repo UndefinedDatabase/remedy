@@ -27190,3 +27190,23 @@ CHOSEN: no gap was found, so no finding is registered and no repair round is owe
 ALTERNATIVES CONSIDERED: (a) a repeat audit by a second auditor, REJECTED because rule 3 repeats the audit only for statements that had gaps; (b) holding the closure for the diff panel's layout, REJECTED because that layout is F037's deferred ruling and no statement of this feature's file asks for it.
 
 HOW TO REVERSE: delete `.agent/f292_acceptance_audit.md`, the Built State section of `docs/roadmap/features/T5_F292.md` and its banner line's change, and this paragraph; a later audit then runs again.
+
+## DECISION F293 D16 — the operator answers Q2: shaken by the 210 git programs per job but decides by delegation; the already-registered job runner change stays the one cleanup item (2026-10-01)
+
+CONTEXT: Operator question Q2 in `.agent/operator_questions.md`, written at F293 round 22 on 2026-10-01, reported that the test-load cut reached about a quarter against the 40 percent target, that the largest remaining cost is not in the tests but in the job runner starting about 210 small git programs during every test that runs a whole job, and that fixing the job runner is a product change which also makes real jobs faster. The reviewer closed the finished work at the quarter it reached and registered the job runner change as a new roadmap item, placed directly after it. The operator's answer arrived via remedy-answer, quoted in full: "Holy shit, 210 sounds like a lot. Do we need a cleanup? Decide by yourself please"
+
+CHOSEN: deciding by delegation, as the operator asked: the already-registered job runner item is the one cleanup the 210-git-program cost needs, and no second, separate cleanup item is registered beside it. The split stands — F293 closes at the quarter it reached, and the job runner change is built next, directly after it. The Q2 entry is deleted, and `.agent/operator_questions.md` reads EMPTY once Q3 is also recorded.
+
+ALTERNATIVES CONSIDERED: (a) a second, separate cleanup item for the 210 git-program cost outside the already-registered job runner change, REJECTED because the registered item already is that cleanup, and a second one would duplicate its scope; (b) reopening F293 or F294 now to chase the remaining 40 percent target, REJECTED because the operator's concern names the subprocess count specifically, which the job runner item already addresses as a product change, not a test change.
+
+HOW TO REVERSE: delete this paragraph and write the question again; a later session then re-decides whether a second cleanup item is needed.
+
+## DECISION F294 D14 — the operator answers Q3 "Okay": the 31 percent cut stands as F294's closing figure and the protective checks stay as they are (2026-10-01)
+
+CONTEXT: Operator question Q3 in `.agent/operator_questions.md`, written at F294 round 14 on 2026-10-01, reported that the second round of test-load savings reached about 865 processor seconds, roughly 31 percent below the 1,246-second starting point and short of the 40 percent target by about 118 seconds, that the shortfall traces to two protective checks a job-running test cannot skip without weakening what it proves, and that no new work item was registered for the rest. Recommendation: accept the 31 percent and keep the protective checks as they are.
+
+CHOSEN: the operator answers "Okay", confirming the recommendation as written. The 31 percent cut stands as F294's closing figure, and the protective checks — the edit-safety poll at every task's safe point and the pre-release test run — stay unchanged. The Q3 entry is deleted, and `.agent/operator_questions.md` reads EMPTY.
+
+ALTERNATIVES CONSIDERED: none weighed here; the operator confirmed the recommendation already executed.
+
+HOW TO REVERSE: delete this paragraph and write the question again; a later session then re-decides whether the cheaper job runs are worth registering as their own work item.

@@ -145,6 +145,7 @@ runs read the exact outputs the block's done-when conditions state.
 
 ## Next
 
+Operator decision on Q2 recorded in decisions.md — apply it before other work.
 1. Phase 1 rule 1 (`.agent/STOP`) — check first, in the next session.
 2. The Open PR Gate (Phase 1 rule 2).
 3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
