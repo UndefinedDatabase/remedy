@@ -17,6 +17,7 @@ not read as its type; neither warning stops Remedy from running.
 |---|---|---|---|---|
 | `REMEDY_AGENT_DIR` | text | `.agent` | env-only | Directory of the .agent state files the self-dogfood inspection reads; the inspection also sets it for its own children (env-only) |
 | `REMEDY_APPLY_PUSH_AFTER_MISSION` | yes or no (1, true, yes / 0, false, no) | no | `apply.push_after_mission` | Push the branch a mission's commit landed on to its configured upstream at the end of the mission, exactly as --push would (F270). |
+| `REMEDY_BIN` | text | `remedy` | env-only | The `remedy` executable scripts/serve/container-entrypoint.sh execs; resolved on PATH as plain `remedy` when unset (env-only) |
 | `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_HIGH` | a whole number | `120000` | `budget.class_default_tokens_high` | Expected tokens for a high-band task (F104; provisional until calibration) |
 | `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_LOW` | a whole number | `8000` | `budget.class_default_tokens_low` | Expected tokens for a low-band task (F104; provisional until calibration) |
 | `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_MEDIUM` | a whole number | `32000` | `budget.class_default_tokens_medium` | Expected tokens for a medium-band task (F104; provisional until calibration) |

@@ -532,6 +532,17 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         env_only=True,
     ),
     ConfigKeySpec(
+        key="serve.container_bin",
+        env_var="REMEDY_BIN",
+        description=(
+            "The `remedy` executable scripts/serve/container-entrypoint.sh execs; "
+            "resolved on PATH as plain `remedy` when unset (env-only)"
+        ),
+        value_type=str,
+        default="remedy",
+        env_only=True,
+    ),
+    ConfigKeySpec(
         key="tests.run_real_ollama",
         env_var="REMEDY_RUN_REAL_OLLAMA",
         description=(

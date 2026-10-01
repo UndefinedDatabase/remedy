@@ -1,0 +1,42 @@
+# remedy-serve.service — a systemd USER unit for `remedy serve start` (F200).
+#
+# Install (as the operator who will run it, not root):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/serve/remedy-serve.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#
+# Enable and start it, and have it survive a reboot even with nobody logged in:
+#   systemctl --user enable --now remedy-serve.service
+#   loginctl enable-linger "$USER"
+#
+# Read its log:
+#   journalctl --user -u remedy-serve.service -f
+#
+# Data root: the supervisor resolves its data root the same way every other
+# `remedy` command does (REMEDY_DATA_DIR, then the operator's normal
+# remedy.toml configuration, then the default). To pin this unit to one data
+# root regardless of the environment it starts in, uncomment and edit the
+# Environment= line below.
+#
+# ExecStart below assumes a user install (`pip install --user` or `pipx
+# install`), whose console script lands at %h/.local/bin/remedy. If `remedy`
+# is installed elsewhere (a virtualenv, a system install, pipx's own shim
+# path), change ExecStart to that executable's full path — systemd user units
+# do not read a login shell's PATH.
+
+[Unit]
+Description=Remedy serve supervisor
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/remedy serve start
+# Environment=REMEDY_DATA_DIR=%h/.remedy
+Restart=on-failure
+# Ends only this supervisor on stop or restart: its SIGTERM is caught by
+# run_supervisor, which leaves any run it started going (DECISION F200 D1,
+# D7); killing the whole cgroup here would kill those runs too, and the
+# restart that follows exists precisely to adopt or resume them instead.
+KillMode=process
+
+[Install]
+WantedBy=default.target
