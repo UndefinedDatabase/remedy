@@ -420,6 +420,20 @@ end the response with:
   counted the routes by which the audit's proofs reach a person, two, where the audit lists three
   proofs, is item 16's reading of a quantifying sentence against the list it names. The list stays
   at 34 items.
+  Consolidated again at F200's closure on 2026-10-01: nothing joined and no two items were merged,
+  because none of F200's five lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  delegation issued from a shell that had moved into a dry worktree is item 12's working-directory
+  clause; a dry-run test that named as refused a command the round's own socket had just begun to
+  accept, and so started a real run, is item 34's reading of the code the order reaches; a handback
+  sentence ordered as a forecast of what the session would do next, and a block that dropped the
+  sentence telling the worker to capture a gate's exit code inside the run that executes it, are
+  both item 18's reading of an ordered wording against the property it must establish, here a true
+  sentence and one run per gate; and an evidence round ordered ahead of this very pass is governed
+  by `docs/roadmap/STATUS_closure_protocol.md`, whose build order already puts every content commit
+  before the package. Its two selection defects were registered as findings, R-1131 and R-1132,
+  because each left a guard red on disk: a test selection that left out a guard reading the whole
+  repository is item 34's reading of the tests that already guard a path. The list stays at 34
+  items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
