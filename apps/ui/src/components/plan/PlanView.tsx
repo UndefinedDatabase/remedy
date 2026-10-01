@@ -2,9 +2,22 @@ import { useEffect, useState } from "react";
 import type { DecisionOutcomeMessage } from "../../api/decisionOutcome";
 import type { DecisionSendTarget } from "../../api/decisionSend";
 import type { PlanEdit } from "../../api/planEditSend";
-import { planDeleteTaskEdit, planEditTaskEdit, planReorderEdit, sendPlanEdit } from "../../api/planEditSend";
+import {
+  planDeleteTaskEdit,
+  planEditTaskEdit,
+  planMergeTasksEdit,
+  planReorderEdit,
+  planSplitTaskEdit,
+  sendPlanEdit,
+} from "../../api/planEditSend";
 import type { PlanEditGate } from "../../api/planEditView";
-import { planDeleteQuestion, planEditBlockedReason, planMove } from "../../api/planEditView";
+import {
+  planDeleteQuestion,
+  planEditBlockedReason,
+  planMergeBlocked,
+  planMove,
+  planSplitBlocked,
+} from "../../api/planEditView";
 import type { RemedyPlan, RemedyPlanTask } from "../../api/types";
 import {
   PLAN_ABSENT_TEXT,
@@ -16,13 +29,16 @@ import {
   planWindowText,
 } from "../../api/planView";
 import { PlanCriteria } from "./PlanCriteria";
+import { PlanMergeForm } from "./PlanMergeForm";
+import { PlanSplitForm } from "./PlanSplitForm";
 import { PlanTaskEditForm } from "./PlanTaskEditForm";
 import styles from "./PlanView.module.css";
 
 /** Which control is open, one across the whole plan: a task's edit form, the question its
- *  delete asks first, or the form of one of its criteria (`index` null for the add form). */
+ *  delete asks first, its merge or split form, or the form of one of its criteria (`index` null
+ *  for the add form). */
 type OpenControl =
-  | { taskId: string; kind: "fields" | "delete" }
+  | { taskId: string; kind: "fields" | "delete" | "merge" | "split" }
   | { taskId: string; kind: "criterion"; index: number | null }
   | null;
 
@@ -31,8 +47,9 @@ type OpenControl =
  * dashboard's `plan` section serves it, the same read `remedy job plan-show --json` prints — its
  * version and approval, whether it is open for editing, and each planned task with what it waits
  * for and its acceptance criteria under the index the plan edits address. While the plan is open
- * for editing, each task can be edited, deleted or moved one place, and each criterion changed,
- * removed or added (DECISION F292 D4); every edit is sent against the version shown
+ * for editing, each task can be edited, deleted, moved one place, merged with others or split
+ * into parts, and each criterion changed, removed or added (DECISIONS F292 D4 and D5); every edit
+ * is sent against the version shown
  * through `sendPlanEdit`, its outcome is said in one sentence, and an accepted edit asks the
  * cockpit to read the dashboard again (`onReload`). Every sentence and rule it shows is decided
  * in `api/planView.ts` and `api/planEditView.ts`.
@@ -133,6 +150,18 @@ function TaskControls({ plan, task, open, blockedReason, onOpen, onSubmit }: {
         onSave={(fields) => onSubmit(planEditTaskEdit(task.id, fields))} onCancel={() => onOpen(null)} />
     );
   }
+  if (mine === "merge") {
+    return (
+      <PlanMergeForm plan={plan} task={task} blockedReason={blockedReason}
+        onMerge={(ids) => onSubmit(planMergeTasksEdit(ids))} onCancel={() => onOpen(null)} />
+    );
+  }
+  if (mine === "split") {
+    return (
+      <PlanSplitForm plan={plan} task={task} blockedReason={blockedReason}
+        onSplit={(partition) => onSubmit(planSplitTaskEdit(task.id, partition))} onCancel={() => onOpen(null)} />
+    );
+  }
   if (mine === "delete") {
     return (
       <div className={styles.confirm} role="group" aria-label={`Delete ${task.id}`} data-ui="plan-delete-confirm">
@@ -149,6 +178,8 @@ function TaskControls({ plan, task, open, blockedReason, onOpen, onSubmit }: {
   const down = planMove(plan, task.id, 1);
   const upBlocked = blockedReason ?? ("blocked" in up ? up.blocked : null);
   const downBlocked = blockedReason ?? ("blocked" in down ? down.blocked : null);
+  const mergeBlocked = blockedReason ?? planMergeBlocked(plan);
+  const splitBlocked = blockedReason ?? planSplitBlocked(task);
   return (
     <div className={styles.actions}>
       <button type="button" className={styles.ghost} disabled={blockedReason !== null} title={blockedReason ?? undefined}
@@ -159,6 +190,10 @@ function TaskControls({ plan, task, open, blockedReason, onOpen, onSubmit }: {
         onClick={() => { if ("order" in up) onSubmit(planReorderEdit(up.order)); }}>Move up</button>
       <button type="button" className={styles.ghost} disabled={downBlocked !== null} title={downBlocked ?? undefined}
         onClick={() => { if ("order" in down) onSubmit(planReorderEdit(down.order)); }}>Move down</button>
+      <button type="button" className={styles.ghost} disabled={mergeBlocked !== null} title={mergeBlocked ?? undefined}
+        onClick={() => onOpen({ taskId: task.id, kind: "merge" })}>Merge</button>
+      <button type="button" className={styles.ghost} disabled={splitBlocked !== null} title={splitBlocked ?? undefined}
+        onClick={() => onOpen({ taskId: task.id, kind: "split" })}>Split</button>
     </div>
   );
 }

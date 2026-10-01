@@ -1,7 +1,7 @@
-// T5_F292 T002, DECISIONS F292 D3 and D4: the rules of the plan view's edit controls — when they
+// T5_F292 T002, DECISIONS F292 D3 to D5: the rules of the plan view's edit controls — when they
 // may be used, what a task's edit form sends, what deleting a task will do to the tasks that wait
-// for it, when a criterion may be written or removed, and where a task may move. Nothing here
-// reaches a fetch, a clock, storage or a DOM.
+// for it, when a criterion may be written or removed, where a task may move, and what a merge or
+// a split will do. Nothing here reaches a fetch, a clock, storage or a DOM.
 import type { PlanTaskFields } from "./planEditSend";
 import { planWindowText } from "./planView";
 import type { RemedyPlan, RemedyPlanTask } from "./types";
@@ -97,6 +97,62 @@ export function planMove(plan: RemedyPlan, taskId: string, step: -1 | 1): { orde
   order[at] = passed.id;
   order[to] = moving.id;
   return { order };
+}
+
+/** Why no merge can start from this plan, or `null`: a merge needs a second task. */
+export function planMergeBlocked(plan: RemedyPlan): string | null {
+  return plan.tasks.length < 2 ? "There is no other task to merge with." : null;
+}
+
+/** The tasks a merge names, in plan order: the task it started from and the ones chosen. The
+ *  planner merges them at the first one's place, under the first one's id. */
+export function planMergeIds(plan: RemedyPlan, taskId: string, chosen: readonly string[]): string[] {
+  return plan.tasks.map((task) => task.id).filter((id) => id === taskId || chosen.includes(id));
+}
+
+/** What a merge will do, said before it is sent, or the reason it cannot be sent: the planner's
+ *  `plan_merge_tasks` joins the tasks into the first, with every criterion of each, and every
+ *  other task that waited for one of them waits for the first instead. */
+export function planMergeSummary(plan: RemedyPlan, ids: readonly string[]): { text: string } | { problem: string } {
+  if (ids.length < 2) return { problem: "Choose at least one task to merge with." };
+  const members = plan.tasks.filter((task) => ids.includes(task.id));
+  const criteria = members.reduce((count, task) => count + task.acceptance.length, 0);
+  const first = ids[0];
+  const rewired = plan.tasks.filter((task) => !ids.includes(task.id)
+    && task.dependsOn.some((dep) => dep !== first && ids.includes(dep))).map((task) => task.id);
+  const text = `${joinIds(ids)} become one task, ${first}, with all ${criteria} of their criteria.`;
+  return { text: rewired.length === 0 ? text : `${text} ${joinIds(rewired)} will wait for ${first} instead.` };
+}
+
+/** Why a task cannot be split, or `null`: a split gives each part at least one criterion. */
+export function planSplitBlocked(task: RemedyPlanTask): string | null {
+  return task.acceptance.length < 2 ? "A task with one criterion cannot be split." : null;
+}
+
+/** The part each criterion starts in: the first part, but the last criterion in the second, so
+ *  the form opens on a split the planner would take. */
+export function planSplitDefaultParts(task: RemedyPlanTask): number[] {
+  return task.acceptance.map((_, index) => (index === task.acceptance.length - 1 ? 2 : 1));
+}
+
+/** The partition `plan_split_task` takes: one group of criterion indexes per part that holds
+ *  any, in part order, each group in criterion order. */
+export function planSplitPartition(parts: readonly number[]): number[][] {
+  const numbers = [...new Set(parts)].sort((a, b) => a - b);
+  return numbers.map((part) => parts.flatMap((p, index) => (p === part ? [index] : [])));
+}
+
+/** What a split will do, said before it is sent, or the reason it cannot be sent: the planner
+ *  runs the parts one after the other, the first waiting for what the task waited for, and every
+ *  task that waited for the task waits for the last part. */
+export function planSplitSummary(plan: RemedyPlan, task: RemedyPlanTask, partition: readonly (readonly number[])[]):
+    { text: string } | { problem: string } {
+  if (partition.length < 2) return { problem: "Put the criteria into at least two parts." };
+  const dependents = plan.tasks.filter((other) => other.id !== task.id && other.dependsOn.includes(task.id))
+    .map((other) => other.id);
+  const text = `${task.id} becomes ${partition.length} tasks run one after the other, each with its part of the criteria.`;
+  if (dependents.length === 0) return { text };
+  return { text: `${text} ${joinIds(dependents)} will wait for the last part.` };
 }
 
 function joinIds(ids: readonly string[]): string {
