@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope, loadJobDigest } from "./remedyApi";
+import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope, loadHunkDecisions, loadJobDigest } from "./remedyApi";
 import type { DiffEnvelopeRequest } from "./remedyApi";
 import { JOB_DIGEST_VERSION, jobDigestPath } from "./jobDigest";
 
@@ -1087,5 +1087,24 @@ describe("the job digest door", () => {
     expect(fromString).toBeNull();
     const fromArray = await loadJobDigest(request, async () => [1, 2, 3]);
     expect(fromArray).toBeNull();
+  });
+});
+
+describe("loadHunkDecisions (T5_F292 T003, DECISION F292 D6)", () => {
+  it("reads the task run's recorded decision from its own route", async () => {
+    const paths: string[] = [];
+    const decisions = await loadHunkDecisions({ jobId: "abc", token: "tok", taskId: "T001" }, async (path) => {
+      paths.push(path);
+      return { attempt_key: "T001:task_runs/T001/safe.diff", decided_at: "d", hunks: [{ id: "h1", state: "approved", reason: "" }] };
+    });
+    expect(paths).toEqual(["/api/jobs/abc/task-runs/T001/hunk-decisions?token=tok"]);
+    expect(decisions).toEqual({ attemptKey: "T001:task_runs/T001/safe.diff", decidedAt: "d",
+      hunks: [{ id: "h1", state: "approved", reason: "" }] });
+  });
+  it("reads a failed read as nothing recorded, and never throws", async () => {
+    const decisions = await loadHunkDecisions({ jobId: "abc", token: "tok", taskId: "" }, async () => {
+      throw new Error("down");
+    });
+    expect(decisions).toEqual({ attemptKey: "", decidedAt: "", hunks: [] });
   });
 });
