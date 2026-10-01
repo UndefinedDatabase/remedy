@@ -1,6 +1,7 @@
-// T5_F292 T002, DECISION F292 D3: the rules of the plan view's edit controls — when they may be
-// used, what a task's edit form sends, and what deleting a task will do to the tasks that wait
-// for it. Nothing here reaches a fetch, a clock, storage or a DOM.
+// T5_F292 T002, DECISIONS F292 D3 and D4: the rules of the plan view's edit controls — when they
+// may be used, what a task's edit form sends, what deleting a task will do to the tasks that wait
+// for it, when a criterion may be written or removed, and where a task may move. Nothing here
+// reaches a fetch, a clock, storage or a DOM.
 import type { PlanTaskFields } from "./planEditSend";
 import { planWindowText } from "./planView";
 import type { RemedyPlan, RemedyPlanTask } from "./types";
@@ -59,6 +60,43 @@ export function changedPlanTaskFields(task: RemedyPlanTask, draft: PlanTaskDraft
   if (goal !== task.goal) fields.goal = goal;
   if (draft.band !== task.estTokensBand) fields.est_tokens_band = draft.band;
   return fields;
+}
+
+/** What is wrong with a criterion as typed, or `null` when it can be sent: the planner refuses
+ *  an empty criterion. */
+export function planCriterionProblem(text: string): string | null {
+  return text.trim() === "" ? "Write the criterion." : null;
+}
+
+/** Why a criterion cannot be removed, or `null` when it can: the planner refuses a task with no
+ *  criterion at all. */
+export function planCriterionRemoveBlocked(task: RemedyPlanTask): string | null {
+  return task.acceptance.length <= 1 ? "A task keeps at least one criterion." : null;
+}
+
+/** Moving a task one place up (-1) or down (1): the whole new order `plan_reorder` takes, or the
+ *  reason it cannot move — it is already at that end, or the task it would pass is one it waits
+ *  for (up) or one that waits for it (down), which the planner refuses because a job runs its
+ *  tasks in plan order. */
+export function planMove(plan: RemedyPlan, taskId: string, step: -1 | 1): { order: string[] } | { blocked: string } {
+  const ids = plan.tasks.map((task) => task.id);
+  const at = ids.indexOf(taskId);
+  const to = at + step;
+  if (at < 0 || to < 0 || to >= ids.length) {
+    return { blocked: step < 0 ? `${taskId} is already first.` : `${taskId} is already last.` };
+  }
+  const moving = plan.tasks[at];
+  const passed = plan.tasks[to];
+  if (step < 0 && moving.dependsOn.includes(passed.id)) {
+    return { blocked: `${moving.id} waits for ${passed.id}, so it cannot come before it.` };
+  }
+  if (step > 0 && passed.dependsOn.includes(moving.id)) {
+    return { blocked: `${passed.id} waits for ${moving.id}, so ${moving.id} cannot come after it.` };
+  }
+  const order = [...ids];
+  order[at] = passed.id;
+  order[to] = moving.id;
+  return { order };
 }
 
 function joinIds(ids: readonly string[]): string {

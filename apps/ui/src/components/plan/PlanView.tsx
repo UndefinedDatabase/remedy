@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import type { DecisionOutcomeMessage } from "../../api/decisionOutcome";
 import type { DecisionSendTarget } from "../../api/decisionSend";
 import type { PlanEdit } from "../../api/planEditSend";
-import { planDeleteTaskEdit, planEditTaskEdit, sendPlanEdit } from "../../api/planEditSend";
+import { planDeleteTaskEdit, planEditTaskEdit, planReorderEdit, sendPlanEdit } from "../../api/planEditSend";
 import type { PlanEditGate } from "../../api/planEditView";
-import { planDeleteQuestion, planEditBlockedReason } from "../../api/planEditView";
+import { planDeleteQuestion, planEditBlockedReason, planMove } from "../../api/planEditView";
 import type { RemedyPlan, RemedyPlanTask } from "../../api/types";
 import {
   PLAN_ABSENT_TEXT,
@@ -15,18 +15,24 @@ import {
   planHeadline,
   planWindowText,
 } from "../../api/planView";
+import { PlanCriteria } from "./PlanCriteria";
 import { PlanTaskEditForm } from "./PlanTaskEditForm";
 import styles from "./PlanView.module.css";
 
-/** Which control a task has open: its edit form, or the question its delete asks first. */
-type OpenControl = { taskId: string; kind: "fields" | "delete" } | null;
+/** Which control is open, one across the whole plan: a task's edit form, the question its
+ *  delete asks first, or the form of one of its criteria (`index` null for the add form). */
+type OpenControl =
+  | { taskId: string; kind: "fields" | "delete" }
+  | { taskId: string; kind: "criterion"; index: number | null }
+  | null;
 
 /**
  * The plan view (T5_F292 T001 and T002, DECISIONS F292 D2 and D3): the job's stored plan as the
  * dashboard's `plan` section serves it, the same read `remedy job plan-show --json` prints — its
  * version and approval, whether it is open for editing, and each planned task with what it waits
  * for and its acceptance criteria under the index the plan edits address. While the plan is open
- * for editing, each task can be edited or deleted; every edit is sent against the version shown
+ * for editing, each task can be edited, deleted or moved one place, and each criterion changed,
+ * removed or added (DECISION F292 D4); every edit is sent against the version shown
  * through `sendPlanEdit`, its outcome is said in one sentence, and an accepted edit asks the
  * cockpit to read the dashboard again (`onReload`). Every sentence and rule it shows is decided
  * in `api/planView.ts` and `api/planEditView.ts`.
@@ -94,14 +100,11 @@ export function PlanView({ plan, target, onReload, onClose }: {
                 </div>
                 {task.goal !== "" && <p className={styles.goal}>{task.goal}</p>}
                 <p className={styles.meta}>{planDependencyText(task)} · {planEntryText(task)}</p>
-                <ol className={styles.criteria} aria-label={`Acceptance criteria of ${task.id}`}>
-                  {task.acceptance.map((criterion, index) => (
-                    <li key={index} className={styles.criterion}>
-                      <span className={styles.index}>{index}</span>
-                      <span>{criterion}</span>
-                    </li>
-                  ))}
-                </ol>
+                <PlanCriteria task={task} editable={plan.editable}
+                  open={open !== null && open.taskId === task.id && open.kind === "criterion" ? open.index : undefined}
+                  blockedReason={blockedReason}
+                  onOpen={(index) => setOpen(index === undefined ? null : { taskId: task.id, kind: "criterion", index })}
+                  onSubmit={submit} />
                 {plan.editable && (
                   <TaskControls plan={plan} task={task} open={open} blockedReason={blockedReason}
                     onOpen={setOpen} onSubmit={submit} />
@@ -142,12 +145,20 @@ function TaskControls({ plan, task, open, blockedReason, onOpen, onSubmit }: {
       </div>
     );
   }
+  const up = planMove(plan, task.id, -1);
+  const down = planMove(plan, task.id, 1);
+  const upBlocked = blockedReason ?? ("blocked" in up ? up.blocked : null);
+  const downBlocked = blockedReason ?? ("blocked" in down ? down.blocked : null);
   return (
     <div className={styles.actions}>
       <button type="button" className={styles.ghost} disabled={blockedReason !== null} title={blockedReason ?? undefined}
         onClick={() => onOpen({ taskId: task.id, kind: "fields" })}>Edit</button>
       <button type="button" className={styles.ghost} disabled={blockedReason !== null} title={blockedReason ?? undefined}
         onClick={() => onOpen({ taskId: task.id, kind: "delete" })}>Delete</button>
+      <button type="button" className={styles.ghost} disabled={upBlocked !== null} title={upBlocked ?? undefined}
+        onClick={() => { if ("order" in up) onSubmit(planReorderEdit(up.order)); }}>Move up</button>
+      <button type="button" className={styles.ghost} disabled={downBlocked !== null} title={downBlocked ?? undefined}
+        onClick={() => { if ("order" in down) onSubmit(planReorderEdit(down.order)); }}>Move down</button>
     </div>
   );
 }
