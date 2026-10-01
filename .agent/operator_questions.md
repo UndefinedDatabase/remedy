@@ -17,21 +17,23 @@ purpose, together with the command that worked through it, and nothing replaced 
 several jobs at once from such a line was never built. And the two helpers it was meant to host,
 one for notifications and one for exporting the audit trail, do not exist. So I rewrote the item
 to what can be built today. The service listens on a private connection that only your user
-account on this machine can open. It accepts exactly the commands the cockpit page already
-accepts, and it checks them in exactly the same way. While the service runs, those commands from
-the command line go through it and print the same output as before. It also runs the jobs you
-hand it, and if it is killed, it starts those jobs again when it comes back. It ships with a file
+account on this machine can open. It checks what it receives in exactly the same way as the
+cockpit page does. While the service runs, the four commands that start, stop, pause and resume a
+job go through it from the command line, and they print the same output as before. It runs the
+jobs you hand it, and if it is killed, it starts those jobs again when it comes back. It ships with a file
 for the system's service manager and a start script for containers. I left out the waiting line,
 running several jobs at once from one list, the two helpers, and serving the cockpit page from
 the service.
 
 **Why it matters.** Building the old plan as written would bring back the waiting line you
 removed. Leaving the item untouched would also hold up the remote access item, which needs this
-service. One part of the old promise is not kept in full. Commands that the cockpit page does not
-accept, such as applying a finished change to your project, still run directly even while the
-service runs, so the service is not the only program that writes a job's records. I chose this
-so that the command line keeps working completely. Letting every command go through one door is
-a separate roadmap item that builds a complete programming interface.
+service. One part of the old promise is not kept in full. Only those four commands go through the
+service. Every other command, for example editing a plan that waits for your approval, sending a
+note to a running job, or applying a finished change to your project, still writes its records
+directly while the service runs, exactly as it does today. Those records are made to be written
+while a job runs, so nothing is lost. Sending each of them through the service would cost a lot
+of work and would make some error messages less exact. Letting every command go through one door
+is a separate roadmap item that builds a complete programming interface.
 
 **My recommendation.** Build the smaller service as described, and leave the waiting line
 removed.
