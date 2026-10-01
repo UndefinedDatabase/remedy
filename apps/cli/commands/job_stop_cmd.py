@@ -11,6 +11,7 @@ consumed, and is this job actually stopped?
 from __future__ import annotations
 
 from apps.cli.json_envelope import emit_ok, fail
+from apps.cli.serve_client import forward_effect, supervisor_answers
 
 EXIT_ERROR = 1
 EXIT_USAGE = 2
@@ -68,6 +69,21 @@ def _unknown_job(job_id: str, *, json_output: bool) -> None:
         exit_code=EXIT_UNKNOWN_JOB,
         job_id=job_id,
     )
+
+
+def _stop_signal(job_id: str, request_id: str):
+    """The stop request REQUEST_ID of JOB_ID, pending or already consumed, or None.
+
+    Client mode reads back the request the supervisor's door wrote, because the door
+    answers with its id alone and this command prints the whole request.
+    """
+    from packages.orchestration.safe_points import stop_status
+
+    status = stop_status(job_id)
+    for signal in (status.pending, *status.archived):
+        if signal is not None and signal.request_id == request_id:
+            return signal
+    return None
 
 
 def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
@@ -143,13 +159,24 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         fail("job_not_stoppable", message, json_output=json_output,
              job_id=job_id, job_status=job.state)
 
-    try:
-        signal = request_stop(job_id, reason=reason, source=source or "cli")
-    except StopControlError as exc:
-        # An unwritable control area is never a silent no-op: the operator must know that
-        # NOTHING asked this job to stop.
-        fail("stop_not_requested", f"no stop was requested — {exc}",
-             json_output=json_output, detail=str(exc), job_id=job_id)
+    if supervisor_answers():
+        body = forward_effect(job_id, "job.stop", {"reason": reason, "source": source or "cli"},
+                              json_output=json_output, error="stop_not_requested",
+                              subject="no stop was requested")
+        signal = _stop_signal(job_id, body["request_id"])
+        if signal is None:
+            fail("stop_not_requested",
+                 f"the serve supervisor answered request {body['request_id']} but no such "
+                 f"stop request is on disk",
+                 json_output=json_output, job_id=job_id)
+    else:
+        try:
+            signal = request_stop(job_id, reason=reason, source=source or "cli")
+        except StopControlError as exc:
+            # An unwritable control area is never a silent no-op: the operator must know
+            # that NOTHING asked this job to stop.
+            fail("stop_not_requested", f"no stop was requested — {exc}",
+                 json_output=json_output, detail=str(exc), job_id=job_id)
 
     if json_output:
         emit_ok(job_id=job_id, job_status=job.state, stop=signal.to_json())
