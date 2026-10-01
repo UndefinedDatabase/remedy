@@ -1,164 +1,183 @@
-# Handoff — F292 Plan view and hunk decisions in the cockpit, round 14 (closing round)
+# Handoff — F200 Daemon mode (remedy serve), round 1
 
 ## Session
 
-SESSION 2 of feature F292 · round 14
+SESSION 1 of feature F200 · round 1
 
-Context self-assessment: the reviewer's context is comfortable; the session ends here because F292
-is closed and the next feature starts in a fresh session.
+Context self-assessment: the reviewer's context is comfortable; the session continues.
+
+Fortschritt: ~8 % (T001 begun: serve_paths landed · T002 open) — Schätzung
 
 ## Range
 
-Review of `8cd0a2297`..`HEAD` — three commits on `feature/f292-plan-view-hunk-decisions`:
-`a27a9af6b`, `989f13cee` and this handback commit.
+Review of `959b88a85`..`HEAD` — two commits on `feature/f200-daemon-mode` plus this handback
+commit: `efd0b7184`, `267a02938`, and this commit.
 
 ## Commits
 
-### `a27a9af6b` F292 R14 C1: book round 13, record DECISION F292 D11, save the round 14 block
+### `efd0b7184` F200 R1 C1: claim F200, book F292 R14, re-head the ledger, DECISION F200 D1 and the feature file's Amendment
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f292-r14.md` | +124/-0 | NEW FILE at `.agent/authored/f292-r14.md`; byte-for-byte copy of this round's step block, verified against `.remedy-wt/f292-r14/block.md` before commit (`wc -l` 124, sha256 `2573aa6bf849226428a2e80f3afc762dcd99e273f10493f51605bd9f961312fe`) |
-| `.agent/authored/f292-r14-status_line.txt` | +1/-0 | NEW FILE at `.agent/authored/f292-r14-status_line.txt`; byte copy of `.remedy-wt/f292-r14/status_line.txt`, verified equal |
-| `.agent/authored/f292-r14-pr_body.md` | +127/-0 | NEW FILE at `.agent/authored/f292-r14-pr_body.md`; byte copy of `.remedy-wt/f292-r14/pr_body.md`, verified equal |
-| `.agent/decisions.md` | +10/-0 | bytes of `append-decisions.txt` appended without retyping; pre-commit blob (`git show 8cd0a2297:.agent/decisions.md`) plus the append bytes verified byte-equal to the new file (`True`) — records DECISION F292 D11 |
-| `.agent/live_review.md` | +2/-0 | bytes of `append-live_review.txt` appended without retyping; pre-commit blob (`git show 8cd0a2297:.agent/live_review.md`) plus the append bytes verified byte-equal to the new file (`True`) — books round 13's `Gate: F292 R13` entry (VERDICT PASS) |
-| `.agent/plan.md` | +8/-8 | whole-file replaced from `.remedy-wt/f292-r14/plan.md`; byte comparison equal |
+| `.agent/authored/f200-r1.md` | +145/-0 | NEW FILE at `.agent/authored/f200-r1.md`; byte-for-byte copy of this round's step block, verified against `.remedy-wt/f200-r1/block.md` before commit (`wc -l` 145, sha256 `6c8582c3b7974c719454989ecdcc5db362c815c7058288acd112753465e84576`) |
+| `docs/roadmap/STATUS.md` | +1/-1 | F200's line flips `[ ]` to `[~]`; whole-file `cp` from `.remedy-wt/f200-r1/dry-STATUS.md`; `cmp` silent |
+| `.agent/live_review.md` | +22/-21 | whole-file `cp` from `.remedy-wt/f200-r1/dry-live_review.md`; `cmp` silent; separately verified the new file ends with the bytes of `.remedy-wt/f200-r1/append-live_review.txt`, and that its bytes from the one `## Findings` heading up to that appended tail equal `git show 959b88a85:.agent/live_review.md` from its one `## Findings` heading to its end (`True True`) — books F292's round 14 Gate entry (VERDICT PASS) |
+| `.agent/decisions.md` | +10/-0 | bytes of `.remedy-wt/f200-r1/append-decisions.txt` appended without retyping (records DECISION F200 D1); pre-commit blob (`git show 959b88a85:.agent/decisions.md`) plus the append bytes verified byte-equal to the new file (`True`) |
+| `.agent/plan.md` | +20/-13 | whole-file `cp` from `.remedy-wt/f200-r1/dry-plan.md`; `cmp` silent |
+| `.agent/context.md` | +12/-13 | whole-file `cp` from `.remedy-wt/f200-r1/dry-context.md`; `cmp` silent |
+| `docs/roadmap/features/T12_F200.md` | +43/-0 | whole-file `cp` from `.remedy-wt/f200-r1/dry-T12_F200.md`; `cmp` silent; appends `## Amendment — DECISION F200 D1 (2026-10-01)` |
 
-`git diff --cached --numstat` before the commit read `127 0` (pr_body), `1 0` (status_line), `124 0`
-(f292-r14.md), `10 0` (decisions.md), `2 0` (live_review.md), `8 8` (plan.md) — matching the block's
-stated numstat exactly. `git show --numstat` after the commit read the same six lines.
+`git diff --cached --numstat` before the commit read `145 0 .agent/authored/f200-r1.md`,
+`12 13 .agent/context.md`, `10 0 .agent/decisions.md`, `22 21 .agent/live_review.md`,
+`20 13 .agent/plan.md`, `1 1 docs/roadmap/STATUS.md`, `43 0 docs/roadmap/features/T12_F200.md` —
+matching the block's stated numbers exactly. `git show --numstat efd0b7184` after the commit read
+the same seven lines.
 
-### `989f13cee` F292 R14 C2: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-36 | `python3 scripts/rotate_live_review.py` moved 16 gate records and 1 finding pair (2 records) into the archive; new ledger size 141540 bytes, sha256 `5edcce06afa7a974b3a67416a61dca59c0e32e0c30af7dd8f49983817f116b5f` |
-| `.agent/live_review_archive.md` | +36/-0 | receives the rotated records; new archive size 5897760 bytes, sha256 `25265e8d4ff3d12fb7ae52ac3f4bcaf0fcb839fe7b401c5a27d186a5b9b9c2ac` |
-
-Script output matched the block's stated reading exactly: `gate records moved: 16`, `finding pairs
-moved: 1 (2 records)`, `resolved-text records moved: 0`, `old ledger size: 159383 bytes`, `new ledger
-size: 141540 bytes`, `old archive size: 5879917 bytes`, `new archive size: 5897760 bytes`, `open
-findings before: 5`, `open findings after: 5`.
-
-### C3 (measured before this handback commit joined it) — `docs/roadmap/STATUS.md`, `README.md`,
-`scripts/self_use_queue.json`, `.agent/handoff.md`
+### `267a02938` F200 R1 C2: serve_paths and the durable data-root class serve (DECISION F200 D1)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | copy of `sim-STATUS.md`; F292's `- [~]` line becomes the one `status_line.txt` line |
-| `README.md` | +12/-2 | copy of `sim-README.md`; 124 of 294, Tier 5 row raised to 38 of 38 per DECISION F292 D11, F292's paragraph added after F044's in the Tier 5 list |
-| `scripts/self_use_queue.json` | +1/-1 | copy of `sim-self_use_queue.json`; `SU-042`'s `consumed_by` becomes `F292` |
+| `packages/orchestration/serve_paths.py` | +62/-0 | NEW FILE at `packages/orchestration/serve_paths.py`; whole-file `cp` from `.remedy-wt/f200-r1/dry-serve_paths.py`; `cmp` silent; `ServePaths`, `serve_paths()` and `socket_path_problem()` |
+| `packages/orchestration/data_paths.py` | +3/-0 | whole-file `cp` from `.remedy-wt/f200-r1/dry-data_paths.py`; `cmp` silent; adds the one `DataRootClass("serve", ...)` entry, three lines, as the last entry of `DURABLE_CLASSES` |
+| `tests/orchestration/test_serve_paths.py` | +63/-0 | NEW FILE at `tests/orchestration/test_serve_paths.py`; whole-file `cp` from `.remedy-wt/f200-r1/dry-test_serve_paths.py`; `cmp` silent |
+
+`git diff --cached --numstat` before the commit read `3 0 packages/orchestration/data_paths.py`,
+`62 0 packages/orchestration/serve_paths.py`, `63 0 tests/orchestration/test_serve_paths.py` —
+matching the block's stated numbers exactly. `git show --numstat 267a02938` after the commit read
+the same three lines. `git diff --cached` was read in full as self-review before the commit: it
+showed only the new module, the one three-line `DataRootClass("serve", ...)` entry, and the new
+test file — nothing else.
+
+### this commit — F200 R1 C3: handback, and operator question Q4
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/operator_questions.md` | +32/-1 | whole-file `cp` from `.remedy-wt/f200-r1/dry-operator_questions.md`; `cmp` silent; `EMPTY` becomes `### Q4 — Background service built smaller (2026-10-01, F200, round 1)` with its four labelled paragraphs |
 | `.agent/handoff.md` | full rewrite | this file, per `docs/agents/handback_template.md`; last commit on the branch (Rule A4) |
-
-All three C3 source files were byte-verified equal to their prepared `sim-*` counterparts
-immediately after copy, before staging.
 
 ## External actions
 
-`git push origin feature/f292-plan-view-hunk-decisions` runs after this commit; its outcome is
-reported in the session's own reply, not in this file, because it occurs after this file is written
-and committed. `gh pr create` and `gh pr list` run after the push; their readings are reported in the
-session's own reply. No worktree was added or removed by this session.
+`git push -u origin feature/f200-daemon-mode` runs after this commit; its outcome is reported in
+the session's own reply, not in this file, because it occurs after this file is written and
+committed. No pull request was opened — the block forbids it this round. No worktree was added or
+removed by this session's own commands.
 
 ## Verification
 
-**Gate 1**, after C3's three files were in place:
+**Gate 1**, after C2:
 ```
 $ git status --porcelain
- M README.md
- M docs/roadmap/STATUS.md
- M scripts/self_use_queue.json
+(empty)
 ```
-Only the three C3 files modified, as required. Every file this round copied (C1's six, C3's three)
-was byte-compared against its prepared file at copy time — all `True`.
+Then nine `cmp` proofs, all silent, of each committed file against its prepared file under
+`.remedy-wt/f200-r1/`: `.agent/authored/f200-r1.md`/`block.md`, `docs/roadmap/STATUS.md`/`dry-STATUS.md`,
+`.agent/live_review.md`/`dry-live_review.md`, `.agent/plan.md`/`dry-plan.md`,
+`.agent/context.md`/`dry-context.md`, `docs/roadmap/features/T12_F200.md`/`dry-T12_F200.md`,
+`packages/orchestration/serve_paths.py`/`dry-serve_paths.py`,
+`packages/orchestration/data_paths.py`/`dry-data_paths.py`,
+`tests/orchestration/test_serve_paths.py`/`dry-test_serve_paths.py` — all nine `True` (filecmp
+equal).
 
 **Gate 2**:
 ```
-$ python3 (status-line-occurrence check)
-occurrences of status_line (no trailing newline): 1
-lines starting '- [~] F292': []
+$ python3 -m ruff check packages/orchestration/serve_paths.py packages/orchestration/data_paths.py tests/orchestration/test_serve_paths.py
+All checks passed!
 ```
+Exit 0.
 
 **Gate 3**:
 ```
-$ python3 -m pytest -q -n auto -rs tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py
-552 passed in 6.17s
+$ python3 -m pytest tests/orchestration/test_serve_paths.py tests/test_data_root_classes.py tests/test_data_paths.py tests/cli/test_data_cmd.py tests/orchestration/test_import_reachability.py tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_block_lint.py tests/ui_server/test_dashboard_contract.py tests/docs/ tests/cli/test_golden_path.py -q -n auto -rs
+680 passed in 12.66s
 ```
-No SKIPPED line, no line containing "process(es) behind".
+Exit 0. No failure, no error, no SKIPPED line (this primary checkout has `apps/ui/node_modules`,
+so the two tests the reviewer's dry tree skipped for lacking it ran here instead: 678 + 2 = 680,
+consistent with the block's stated dry-tree reading). No line containing "process(es) behind".
 
 **Gate 4**:
 ```
 $ python3 -m apps.cli.main integrity check --json
-{"check_count": 6, "checks": [...six "pass"...], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+{"check_count": 6, "checks": [{"message": "handlers=171", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
+Exit 0. `fail_count` 0.
 
 **Gate 5**:
 ```
 $ python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
 ['R-1117', 'R-1125', 'R-1127', 'R-1128', 'R-1129']
 ```
+Exit 0. Matches exactly.
 
-**Gate 6** (after the pull request): reported in the session's own reply, since the handback cannot
-quote a reading of itself.
+**Gate 6**:
+```
+$ python3 -c "print(open('docs/roadmap/STATUS.md', encoding='utf-8').read().count('- [~] F200 — Daemon mode (remedy serve)'))"
+1
+```
+Exit 0. Matches exactly.
 
 ## Authored-text proofs
 
-`.agent/authored/f292-r14.md` (commit `a27a9af6b`): saved as a byte-for-byte copy of the step block
-given to this round; `wc -l` read 124 lines, `sha256sum` read
-`2573aa6bf849226428a2e80f3afc762dcd99e273f10493f51605bd9f961312fe`, matching both the delivering
-prompt's stated digest/line count and `block.md`'s own digest.
+`.agent/authored/f200-r1.md` (commit `efd0b7184`): saved as a byte-for-byte copy of the step block
+given to this round; `wc -l` read 145 lines, `sha256sum` read
+`6c8582c3b7974c719454989ecdcc5db362c815c7058288acd112753465e84576`, matching both the delivering
+prompt's stated digest/line count and `block.md`'s own digest; `cmp` against `block.md` printed
+nothing.
 
-`.agent/authored/f292-r14-status_line.txt` and `.agent/authored/f292-r14-pr_body.md` (commit
-`a27a9af6b`): byte copies of the prepared files; byte comparison equal at copy time.
+`.agent/live_review.md` and `.agent/decisions.md` (commit `efd0b7184`): the append-byte-equality
+proofs (pre-commit blob at `959b88a85` plus the respective append bytes equals the post-append
+file) read `True` for `.agent/decisions.md` and `True True` for `.agent/live_review.md`.
 
-`.agent/live_review.md` and `.agent/decisions.md` (commit `a27a9af6b`): the append-byte-equality
-proof (pre-commit blob at `8cd0a2297` plus the respective append bytes equals the post-append file)
-read `True True`.
+`.agent/plan.md`, `.agent/context.md`, `docs/roadmap/STATUS.md`, `docs/roadmap/features/T12_F200.md`
+(commit `efd0b7184`): whole-file replace from their respective `dry-*` prepared files; `cmp`
+against each prepared file printed nothing.
 
-`.agent/plan.md` (commit `a27a9af6b`): whole-file replace from `plan.md`; byte comparison equal.
+`packages/orchestration/serve_paths.py`, `packages/orchestration/data_paths.py`,
+`tests/orchestration/test_serve_paths.py` (commit `267a02938`): whole-file replace from their
+respective `dry-*` prepared files; `cmp` against each prepared file printed nothing.
 
-The STATUS line applied in C3: the content of `.agent/authored/f292-r14-status_line.txt` without its
-trailing newline occurs exactly once in `docs/roadmap/STATUS.md` (count 1), verified by the Gate 2
-script above.
+`.agent/operator_questions.md` (this commit): whole-file replace from `dry-operator_questions.md`;
+`cmp` printed nothing; `git diff --numstat` read `32 1`, matching the block.
 
 ## Deviations & assumptions
 
 None from the block's ordered commit sequence, named paths, numstat or gate order. The block's own
-digest (`2573aa6bf849226428a2e80f3afc762dcd99e273f10493f51605bd9f961312fe`, 124 lines) and every
+digest (`6c8582c3b7974c719454989ecdcc5db362c815c7058288acd112753465e84576`, 145 lines) and every
 prepared companion file's digest were verified with `sha256sum` before use and matched the block
-exactly. All three commits matched the block's named paths and numstat exactly — no unrelated file,
-no extra hunk. All six gates matched the block's stated done-when readings exactly, each run once, in
-order. `.agent/STOP` did not appear at any point in this round. No worktree was added or removed by
-this session's own commands. No npm command ran. No full suite ran and no mutation ran, per the
-block's constraint; Gate 3 was the round's one test selection, run once.
-`REMEDY_TEST_MAX_WORKERS` was not set. F292 is not a paydown feature, so no paydown is registered,
-and F292 owns no open finding, so none is re-assigned — both as the block states.
+exactly, before any file was applied. All three commits matched the block's named paths and
+numstat exactly — no file outside the paths named per commit, no extra hunk; `git diff --cached`
+was read as self-review after C2 and showed only the named changes. All six gates matched the
+block's stated done-when readings exactly, each run once, in order, strictly after C2 and before
+C3. No mutation red-proof ran (amend0930-test-load rule 4, reserved to the reviewer in a
+disposable worktree). No full suite ran and `REMEDY_TEST_MAX_WORKERS` was not set; every test
+command passed `-n auto`, and only one test command ran at any time. `.agent/STOP` did not appear
+at any point in this round.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`) — check first, in the next session.
-2. The Open PR Gate, which merges F292's pull request in the NEXT session and never in this one.
-3. The booking of round 14's verdict in the next feature's first commit.
-4. Rule A5 — pick the next feature (first `[ ]` in `docs/roadmap/STATUS.md`).
+2. Phase 1 rule 2 (the Open PR Gate).
+3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
+4. Book round 1's verdict in the next round's first commit.
+5. The supervisor: `remedy serve start`, `status` and `stop`, and the socket answered by the
+   cockpit's own handler.
 
-Operator questions open: 0.
-Open findings: 5 (R-1117 Medium; R-1125, R-1127, R-1128, R-1129 Low; all owned by F290).
+Operator questions open: 1.
+Open findings: 5 (R-1117, R-1125, R-1127, R-1128, R-1129, all owned by F290).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 13's verdict (PASS) in `.agent/live_review.md` | done | commit `a27a9af6b` |
-| C1: record DECISION F292 D11 in `.agent/decisions.md` | done | commit `a27a9af6b` |
-| C1: advance `.agent/plan.md` | done | commit `a27a9af6b` |
-| C1: NEW FILE `.agent/authored/f292-r14.md` (copy of `block.md`) | done | commit `a27a9af6b` |
-| C1: NEW FILE `.agent/authored/f292-r14-status_line.txt` | done | commit `a27a9af6b` |
-| C1: NEW FILE `.agent/authored/f292-r14-pr_body.md` | done | commit `a27a9af6b` |
-| C2: rotate the finding ledger into its archive | done | commit `989f13cee`; readings matched exactly |
-| C3: copy STATUS/README/queue from the prepared files | done | numstat `1 1` / `12 2` / `1 1`, matching the block |
-| C3: Gates 1-5 before the handoff | done | all matched the block's stated readings |
-| C3: rewrite `.agent/handoff.md` | done | this file |
-| Push | done/reported in reply | `git push origin feature/f292-plan-view-hunk-decisions` — outcome in the session's own reply |
-| `gh pr create` | done/reported in reply | PR number and URL in the session's own reply |
-| `gh pr list` (Gate 6) | done/reported in reply | reading in the session's own reply |
+| Claim F200 in `docs/roadmap/STATUS.md` (`[ ]` → `[~]`) | done | commit `efd0b7184` |
+| Book F292's round 14 (PASS) in `.agent/live_review.md` | done | commit `efd0b7184` |
+| Record DECISION F200 D1 in `.agent/decisions.md` | done | commit `efd0b7184` |
+| Append the Amendment section to `docs/roadmap/features/T12_F200.md` | done | commit `efd0b7184` |
+| Rewrite `.agent/plan.md` and `.agent/context.md` for F200 | done | commit `efd0b7184` |
+| NEW FILE `.agent/authored/f200-r1.md` (copy of `block.md`) | done | commit `efd0b7184` |
+| Land `packages/orchestration/serve_paths.py` | done | commit `267a02938` |
+| Register the durable data-root class `serve` in `data_paths.py` | done | commit `267a02938` |
+| NEW FILE `tests/orchestration/test_serve_paths.py` | done | commit `267a02938` |
+| Gates 1-6 before the handback | done | all matched the block's stated readings |
+| Write operator question Q4 (DECISION F200 D1 in plain words) | done | commit this commit |
+| Rewrite `.agent/handoff.md` | done | this file |
+| Push | done/reported in reply | `git push -u origin feature/f200-daemon-mode` — outcome in the session's own reply |
