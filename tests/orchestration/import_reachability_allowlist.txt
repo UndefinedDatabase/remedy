@@ -44,6 +44,7 @@ apps.cli.commands.roadmap_cmd
 apps.cli.commands.run_invocation
 apps.cli.commands.runtime_cmd
 apps.cli.commands.self_cmd
+apps.cli.commands.serve_cmd
 apps.cli.commands.snapshot_cmds
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.status_cmd
@@ -247,6 +248,8 @@ packages.orchestration.self_dogfood_execution
 packages.orchestration.self_use_job
 packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner
+packages.orchestration.serve_daemon
+packages.orchestration.serve_paths
 packages.orchestration.session_sent_index
 packages.orchestration.source_apply
 packages.orchestration.spec_compliance
