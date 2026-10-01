@@ -131,6 +131,71 @@ class TestStrictGitCollector:
 
 
 # ---------------------------------------------------------------------------
+# F294 — one discovery of the configured helpers per reading
+# ---------------------------------------------------------------------------
+
+_DISCOVERY = ["config", "--name-only"]
+
+
+def _recording_git(monkeypatch, *, failed_discoveries=0):
+    """Record every git command `run_manifest` starts; the first discoveries may time out."""
+    import packages.orchestration.run_manifest as RM
+    real = RM.subprocess.run
+    seen: list[list[str]] = []
+    left = [failed_discoveries]
+
+    def run(argv, *args, **kwargs):
+        if not isinstance(argv, list):
+            return real(argv, *args, **kwargs)          # the tests' own shell setup
+        seen.append(argv)
+        if argv[1:3] == _DISCOVERY and left[0] > 0:
+            left[0] -= 1
+            raise subprocess.TimeoutExpired(argv, 5)
+        return real(argv, *args, **kwargs)
+
+    monkeypatch.setattr(RM.subprocess, "run", run)
+    return seen
+
+
+def _split(seen):
+    discoveries = [a for a in seen if a[1:3] == _DISCOVERY]
+    commands = [a for a in seen if a[1:3] != _DISCOVERY]
+    return discoveries, commands
+
+
+class TestOneHelperDiscoveryPerReading:
+    def test_a_reading_discovers_the_helpers_once(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 1 and len(commands) == 6
+
+    def test_every_command_of_a_reading_is_neutralized(self, repo, monkeypatch):
+        _git(repo, "git config filter.canary.clean false")
+        seen = _recording_git(monkeypatch)
+        worktree_identity(str(repo))
+        _, commands = _split(seen)
+        assert len(commands) == 6
+        assert all("filter.canary.clean=cat" in argv for argv in commands)
+
+    def test_the_next_reading_discovers_afresh(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch)
+        worktree_identity(str(repo))
+        _git(repo, "git config filter.canary.clean false")
+        seen.clear()
+        worktree_identity(str(repo))
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 1
+        assert commands and all("filter.canary.clean=cat" in argv for argv in commands)
+
+    def test_a_failed_discovery_is_retried_by_the_next_command(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch, failed_discoveries=1)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 2 and len(commands) == 6
+
+
+# ---------------------------------------------------------------------------
 # F1 — complete job-input definition
 # ---------------------------------------------------------------------------
 

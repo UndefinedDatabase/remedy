@@ -27,6 +27,7 @@ different code path.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import dataclasses
 import errno
 import functools
@@ -310,13 +311,29 @@ def _git_helper_env() -> dict[str, str]:
     return env
 
 
+#: F294: the helper discovery of the ONE `worktree_identity` reading in progress, per directory.
+#: A reading runs six git commands back to back; discovering the configured helpers before each
+#: of them started six `git config` processes where one answers them all. The memo lives only for
+#: that reading and only in its own thread, so a later reading always discovers afresh.
+_READING_HELPER_ARGS: contextvars.ContextVar[dict[str, list[str]] | None] = contextvars.ContextVar(
+    "remedy_reading_helper_args", default=None)
+
+
 def _helper_neutralizing_args(cwd: str, env: dict[str, str]) -> list[str]:
     """F7 (round 12): discover this repository's configured helpers and neutralize each one.
 
     The clean/smudge substitution keeps the identity meaningful: it digests the RAW working-tree
     bytes, and both sides of every comparison are captured the same way, so drift detection is
     unaffected while no configured command ever runs.
+
+    F294: inside one `worktree_identity` reading the answer for a directory is discovered once
+    and reused. Only a discovery that ended with git's own answer, exit 0 (helpers listed) or
+    exit 1 (nothing configured), is remembered; a discovery that failed is retried by the next
+    command.
     """
+    memo = _READING_HELPER_ARGS.get()
+    if memo is not None and cwd in memo:
+        return list(memo[cwd])
     args = list(_HELPER_NEUTRALIZING_ARGS)
     try:
         proc = subprocess.run(
@@ -324,20 +341,21 @@ def _helper_neutralizing_args(cwd: str, env: dict[str, str]) -> list[str]:
             capture_output=True, shell=False, timeout=5, cwd=cwd, env=env)
     except Exception:  # noqa: BLE001 — helper discovery failure falls back to default neutralization
         return args
-    if proc.returncode != 0:
-        return args                     # nothing configured (git exits 1)
-    for name in proc.stdout.decode("utf-8", "replace").split():
-        name = name.strip()
-        if name.endswith((".clean", ".smudge")):
-            args += ["-c", f"{name}=cat"]          # a passthrough, never the configured command
-        elif name.endswith(".process"):
-            args += ["-c", f"{name}=false"]
-        elif name.endswith(".required"):
-            args += ["-c", f"{name}=false"]        # a disabled filter must not be "required"
-        elif name.endswith((".command", ".textconv")):
-            args += ["-c", f"{name}="]
-        elif name == "core.fsmonitor":
-            args += ["-c", "core.fsmonitor=false"]
+    if proc.returncode == 0:
+        for name in proc.stdout.decode("utf-8", "replace").split():
+            name = name.strip()
+            if name.endswith((".clean", ".smudge")):
+                args += ["-c", f"{name}=cat"]          # a passthrough, never the configured command
+            elif name.endswith(".process"):
+                args += ["-c", f"{name}=false"]
+            elif name.endswith(".required"):
+                args += ["-c", f"{name}=false"]        # a disabled filter must not be "required"
+            elif name.endswith((".command", ".textconv")):
+                args += ["-c", f"{name}="]
+            elif name == "core.fsmonitor":
+                args += ["-c", "core.fsmonitor=false"]
+    if memo is not None and proc.returncode in (0, 1):
+        memo[cwd] = list(args)          # nothing configured is git's exit 1
     return args
 
 
@@ -463,7 +481,20 @@ def worktree_identity(repo_path: str, *, root_dir_fd: int | None = None
     renames, copies, mode and deletions), every untracked entry (regular file → bytes+mode;
     symlink → the LINK TARGET TEXT + a marker, never followed; special/FIFO/socket/device →
     marked unsupported, never opened; directory that git reports → its contained files), and
-    submodule status. Any component failure makes the whole identity ``incomplete``."""
+    submodule status. Any component failure makes the whole identity ``incomplete``.
+
+    F294: the reading's git commands share one discovery of the configured helpers
+    (`_READING_HELPER_ARGS`), which ends with the reading."""
+    token = _READING_HELPER_ARGS.set({})
+    try:
+        return _read_worktree_identity(repo_path, root_dir_fd=root_dir_fd)
+    finally:
+        _READING_HELPER_ARGS.reset(token)
+
+
+def _read_worktree_identity(repo_path: str, *, root_dir_fd: int | None
+                            ) -> WorktreeIdentity:
+    """The reading `worktree_identity` describes, run inside its helper-discovery scope."""
     if not repo_path or not Path(repo_path).is_dir():
         return WorktreeIdentity(GIT_UNAVAILABLE, UNAVAILABLE, "",
                                 ("path is not a directory",))
