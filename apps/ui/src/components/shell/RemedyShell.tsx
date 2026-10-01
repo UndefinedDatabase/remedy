@@ -341,9 +341,10 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
     }
   }
 
-  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet" and
-  // "task-edit-form" are surfaces this shell already owns a way to open; every other surface is a
-  // card already on the page, found by its own `data-ui` marker, scrolled into view and focused.
+  // DECISION F044 D3 (5): where a completed command's own surface opens. "add-task-sheet",
+  // "task-edit-form", "plan-view" and "hunk-decisions" are surfaces this shell already owns a way
+  // to open; every other surface is a card already on the page, found by its own `data-ui` marker,
+  // scrolled into view and focused.
   function handleOpenSurface(surface: string, taskNodeId: string) {
     if (surface === "add-task-sheet") {
       setAddTaskOpen(true);
@@ -351,6 +352,16 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
     }
     if (surface === "task-edit-form") {
       onSelectNode(taskNodeId);
+      return;
+    }
+    // DECISION F292 D8: the plan view is a sheet this shell opens, and the hunk decisions sit in
+    // the diff panel, so the palette opens the job's own diff, whose panel shows them.
+    if (surface === "plan-view") {
+      setPlanOpen(true);
+      return;
+    }
+    if (surface === "hunk-decisions") {
+      setOpenDiffTaskId("");
       return;
     }
     const element = document.querySelector(`[data-ui="${surface}"]`);

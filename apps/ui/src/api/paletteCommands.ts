@@ -5,11 +5,11 @@
 // chat's titles and to the chat's required arguments, so drift on either side goes red.
 //
 // Remedy deliberately does not send a command whose arguments the palette cannot ask for
-// honestly: the six plan edits and the hunk approval get their argument flow in a later round,
-// each listed here as a "form" entry with no arguments of its own.
+// honestly: the six plan edits and the hunk approval open the surfaces that ask for them
+// (T5_F292 T003, DECISION F292 D8) — the plan view, and the hunk decisions of the job's own diff.
 
 export type PaletteArgKind = "task" | "text";
-export type PaletteFlow = "send" | "surface" | "form";
+export type PaletteFlow = "send" | "surface";
 
 export interface PaletteArg {
   readonly name: string;
@@ -60,8 +60,8 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
   {
     command: "patch.approve-hunks",
     title: "Approve or reject the hunks of a change",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "hunk-decisions",
     args: [],
   },
   {
@@ -76,43 +76,43 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
   {
     command: "job.plan-edit-task",
     title: "Edit a planned task",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
     command: "job.plan-delete-task",
     title: "Delete a planned task",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
     command: "job.plan-reorder",
     title: "Reorder the plan",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
     command: "job.plan-merge-tasks",
     title: "Merge planned tasks",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
     command: "job.plan-split-task",
     title: "Split a planned task",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
     command: "job.plan-edit-acceptance",
     title: "Edit a planned task's acceptance",
-    flow: "form",
-    surface: "",
+    flow: "surface",
+    surface: "plan-view",
     args: [],
   },
   {
