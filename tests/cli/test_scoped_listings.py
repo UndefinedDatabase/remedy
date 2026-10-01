@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.project_scope import ProjectScope, job_in_scope, scoped_jobs
+from tests.cli.in_process_cli import run_cli_in_process
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
@@ -50,12 +51,10 @@ def _git_repo(base, name):
     return repo
 
 
+# DECISION F294 D5: the setup commands, `init`, `do` and `project current`, run in this process;
+# every listing a test asserts on still runs as a child process through `_run_cli`.
 def _init_project(repo, env):
-    result = subprocess.run(
-        [*_CLI, "init"],
-        capture_output=True, text=True, timeout=30,
-        cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
-    )
+    result = run_cli_in_process(["init"], repo, env)
     assert result.returncode == 0, result.stderr
     return result
 
@@ -78,9 +77,9 @@ def _create_job(repo, env, mission):
     fake builder and reviewer for the same reason: since F268 ``do`` runs the
     job it plans.
     """
-    result = _run_cli(
+    result = run_cli_in_process(
         ["do", mission, "--no-llm", "--json", "--no-ui",
-         "--builder-provider", "fake", "--reviewer-provider", "fake"], env, cwd=str(repo),
+         "--builder-provider", "fake", "--reviewer-provider", "fake"], repo, env,
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -96,7 +95,7 @@ def _write_legacy_job(data_dir, name="legacy-job"):
 
 
 def _get_project_slug(repo, env):
-    result = _run_cli(["project", "current", "--json"], env, cwd=str(repo))
+    result = run_cli_in_process(["project", "current", "--json"], repo, env)
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)["slug"]
 

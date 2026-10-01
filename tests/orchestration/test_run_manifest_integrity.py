@@ -131,6 +131,136 @@ class TestStrictGitCollector:
 
 
 # ---------------------------------------------------------------------------
+# F294 — one discovery of the configured helpers per reading
+# ---------------------------------------------------------------------------
+
+_DISCOVERY = ["config", "--name-only"]
+
+
+def _recording_git(monkeypatch, *, failed_discoveries=0):
+    """Record every git command `run_manifest` starts; the first discoveries may time out."""
+    import packages.orchestration.run_manifest as RM
+    real = RM.subprocess.run
+    seen: list[list[str]] = []
+    left = [failed_discoveries]
+
+    def run(argv, *args, **kwargs):
+        if not isinstance(argv, list):
+            return real(argv, *args, **kwargs)          # the tests' own shell setup
+        seen.append(argv)
+        if argv[1:3] == _DISCOVERY and left[0] > 0:
+            left[0] -= 1
+            raise subprocess.TimeoutExpired(argv, 5)
+        return real(argv, *args, **kwargs)
+
+    monkeypatch.setattr(RM.subprocess, "run", run)
+    return seen
+
+
+def _split(seen):
+    discoveries = [a for a in seen if a[1:3] == _DISCOVERY]
+    commands = [a for a in seen if a[1:3] != _DISCOVERY]
+    return discoveries, commands
+
+
+class TestOneHelperDiscoveryPerReading:
+    def test_a_reading_discovers_the_helpers_once(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 1 and len(commands) == 6
+
+    def test_every_command_of_a_reading_is_neutralized(self, repo, monkeypatch):
+        _git(repo, "git config filter.canary.clean false")
+        seen = _recording_git(monkeypatch)
+        worktree_identity(str(repo))
+        _, commands = _split(seen)
+        assert len(commands) == 6
+        assert all("filter.canary.clean=cat" in argv for argv in commands)
+
+    def test_the_next_reading_discovers_afresh(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch)
+        worktree_identity(str(repo))
+        _git(repo, "git config filter.canary.clean false")
+        seen.clear()
+        worktree_identity(str(repo))
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 1
+        assert commands and all("filter.canary.clean=cat" in argv for argv in commands)
+
+    def test_a_failed_discovery_is_retried_by_the_next_command(self, repo, monkeypatch):
+        seen = _recording_git(monkeypatch, failed_discoveries=1)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        discoveries, commands = _split(seen)
+        assert len(discoveries) == 2 and len(commands) == 6
+
+
+# ---------------------------------------------------------------------------
+# F294 — `git submodule status` only when the index holds a submodule
+# ---------------------------------------------------------------------------
+
+def _always_submodule_status(monkeypatch, repo):
+    """The reading as it was before DECISION F294 D3: `git submodule status` every time."""
+    import packages.orchestration.run_manifest as RM
+    with monkeypatch.context() as m:
+        m.setattr(RM, "_submodule_status",
+                  lambda rp: RM._git_bytes(rp, ["submodule", "status"]))
+        return worktree_identity(str(repo))
+
+
+def _ran_submodule_status(seen):
+    return [a for a in seen if a[-2:] == ["submodule", "status"]]
+
+
+class TestSubmoduleStatusOnlyWithASubmodule:
+    def test_without_a_submodule_it_never_runs_and_the_identity_is_unchanged(self, repo,
+                                                                            monkeypatch):
+        (repo / ".gitmodules").write_text('[submodule "broken"\n\tpath = \n')
+        before = _always_submodule_status(monkeypatch, repo)
+        seen = _recording_git(monkeypatch)
+        wt = worktree_identity(str(repo))
+        assert _ran_submodule_status(seen) == []
+        assert (wt.status, wt.digest, wt.dirty) == (before.status, before.digest, before.dirty)
+
+    def test_with_a_submodule_its_status_still_enters_the_identity(self, tmp_path, repo,
+                                                                   monkeypatch):
+        child = _git_repo(tmp_path / "child")
+        subprocess.run(["git", "-c", "protocol.file.allow=always", "submodule", "add", "-q",
+                        str(child), "child"], cwd=repo, check=True, capture_output=True)
+        _git(repo, "git commit -qm sub")
+        before = _always_submodule_status(monkeypatch, repo)
+        seen = _recording_git(monkeypatch)
+        wt = worktree_identity(str(repo))
+        assert len(_ran_submodule_status(seen)) == 1
+        assert wt.status == GIT_OK and wt.dirty is True
+        assert (wt.digest, wt.dirty) == (before.digest, before.dirty)
+
+    def test_a_gitlink_without_a_mapping_still_makes_the_identity_incomplete(self, repo):
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
+                              text=True, check=True).stdout.strip()
+        subprocess.run(["git", "update-index", "--add", "--cacheinfo", f"160000,{head},sub"],
+                       cwd=repo, check=True)
+        wt = worktree_identity(str(repo))
+        assert wt.status == GIT_INCOMPLETE
+        assert [p for p in wt.problems if p.startswith("submodules:")]
+
+    def test_a_failed_index_listing_falls_back_to_submodule_status(self, repo, monkeypatch):
+        import packages.orchestration.run_manifest as RM
+        real = RM._git_bytes
+        asked: list[list[str]] = []
+
+        def git_bytes(rp, args, timeout=15):
+            asked.append(args)
+            if args[:2] == ["ls-files", "--stage"]:
+                return False, b"", "forced"
+            return real(rp, args, timeout=timeout)
+
+        monkeypatch.setattr(RM, "_git_bytes", git_bytes)
+        assert worktree_identity(str(repo)).status == GIT_OK
+        assert ["submodule", "status"] in asked
+
+
+# ---------------------------------------------------------------------------
 # F1 — complete job-input definition
 # ---------------------------------------------------------------------------
 

@@ -116,7 +116,7 @@ def _dev_status(*, json_output: bool = False) -> None:
             risk="low", applicability="applicable", requires_approval=False,
         )
         status["autocoder_fake_e2e_ok"] = callable(apply_structured_patch)
-    except (ImportError, Exception):  # noqa: BLE001 — an autocoder check failure must not block other checks
+    except (ImportError, TypeError):
         status["autocoder_fake_e2e_ok"] = False
 
     # Check repair loop — module importable and build_repair_context callable

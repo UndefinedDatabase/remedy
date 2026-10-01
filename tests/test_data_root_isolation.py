@@ -30,6 +30,33 @@ def test_each_test_gets_a_fresh_empty_root():
     assert list(root.iterdir()) == []
 
 
+def test_every_root_is_a_new_directory_under_one_parent(_data_root_allocator):
+    """DECISION F294 D2: the roots share one parent and no two are the same directory."""
+    root = data_paths.resolve_data_root().resolve()
+    first, second = (_data_root_allocator().resolve() for _ in range(2))
+    assert len({root, first, second}) == 3
+    assert root.parent == first.parent == second.parent
+    assert [p for p in (root, first, second) if list(p.iterdir())] == []
+
+
+def test_a_root_is_made_without_numbering_the_base_directory(_data_root_allocator, monkeypatch):
+    """DECISION F294 D2: after its one parent, the allocator lists no directory and starts no
+    process; ``mktemp``, and the pytest helper under it, list the whole base temporary directory to
+    find the next number (R-1127, DECISIONs F294 D8 and D9)."""
+    def refused(*_args, **_kwargs):
+        raise AssertionError("allocating a root listed a directory or started a process")
+
+    routes = ((os, "scandir"), (os, "listdir"), (Path, "iterdir"), (Path, "glob"), (Path, "rglob"),
+              (subprocess, "Popen"), (os, "system"), (os, "fork"), (os, "posix_spawn"),
+              (os, "posix_spawnp"))
+    with monkeypatch.context() as patched:
+        for owner, name in routes:
+            patched.setattr(owner, name, refused)
+        roots = [_data_root_allocator() for _ in range(2)]
+    assert roots[0] != roots[1]
+    assert [r for r in roots if not r.is_dir()] == []
+
+
 def test_a_cli_subprocess_inherits_the_isolated_root():
     code = "from packages.orchestration.data_paths import resolve_data_root; print(resolve_data_root())"
     out = subprocess.run(

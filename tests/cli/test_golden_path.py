@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 
+from tests.cli.in_process_cli import run_cli_in_process
+
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
 
@@ -35,12 +37,10 @@ def _git_repo(tmp_path):
     return repo
 
 
+# DECISION F294 D4: `init`, `do` and `status` run in this process; the file's other commands still
+# run as child processes, so the module entry point stays proven.
 def _init_project(repo, env):
-    return subprocess.run(
-        [*_CLI, "init"],
-        capture_output=True, text=True, timeout=30,
-        cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
-    )
+    return run_cli_in_process(["init"], repo, env)
 
 
 def _run_do(repo, env, mission, extra_args=None):
@@ -54,11 +54,7 @@ def _run_do(repo, env, mission, extra_args=None):
     if "--no-llm" not in args:
         args.append("--no-llm")
     args += ["--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"]
-    return subprocess.run(
-        [*_CLI, "do", mission, *args],
-        capture_output=True, text=True, timeout=30,
-        cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
-    )
+    return run_cli_in_process(["do", mission, *args], repo, env)
 
 
 def _shape_order(repo, order, **kwargs):
@@ -476,11 +472,7 @@ class TestLLMIntakeWiring:
 
 
 def _run_status(repo, env, extra_args=None):
-    return subprocess.run(
-        [*_CLI, "status", *(extra_args or [])],
-        capture_output=True, text=True, timeout=30,
-        cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
-    )
+    return run_cli_in_process(["status", *(extra_args or [])], repo, env)
 
 
 class TestStatus:
