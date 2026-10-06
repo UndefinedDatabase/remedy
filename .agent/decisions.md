@@ -27378,3 +27378,13 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: `remedy dev status` still repor
 ALTERNATIVES CONSIDERED: (a) keeping only `ImportError`, REJECTED because a module-level attribute lookup in `ui_server` or in a module it imports raises `AttributeError` at the probe's import, which is the failure the check exists to report; (b) narrowing the two sibling handlers at lines 126 and 133 in the same change, REJECTED because the item names one mark, and the generator offers each mark as an item of its own.
 
 HOW TO REVERSE: restore the handler's `except (ImportError, Exception):` line with its `# noqa: BLE001` mark, set `MAX_EXCUSED` back to 286, and delete the two tests and the helper named above.
+
+## DECISION F290 D5 — the operator answers Q4 by delegation: the stop on a task that changes no file stands, as DECISION F290 D2 already built it (2026-10-06)
+
+CONTEXT: Operator question Q4 in `.agent/operator_questions.md`, written at F290 round 4 on 2026-10-06, reported that a job task whose builder changes no file is no longer recorded as done even when its reviewer passed it, that the job stops at that task and gives the reason "no file changed", and that this already happened twice when Remedy ran jobs on its own code, each time a task asking for one line to change and none changing. Recommendation: keep the stop, because a false "done" costs more than a stop a person has to look at. The operator's answer arrived via remedy-answer, quoted in full: "Decide whats best please"
+
+CHOSEN: deciding by delegation, as the operator asked: the stop stands exactly as DECISION F290 D2 built it, and no "already done" recording path is added beside it. The Q4 entry is deleted, and `.agent/operator_questions.md` reads EMPTY.
+
+ALTERNATIVES CONSIDERED: recording such a task as "already done" while the job goes on, as Q4's own closing paragraph offered, REJECTED because the operator's delegation did not pick it over the recommendation, and the recommendation's reasoning — a false "done" is caught only by reading the code, a stop is caught by looking at it — still holds.
+
+HOW TO REVERSE: delete this paragraph and write the question again; a later session then re-decides whether an "already done" path belongs beside the stop.
