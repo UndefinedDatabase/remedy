@@ -1,18 +1,23 @@
-# Plan — F290 Findings paydown v6
+# Plan — F295 Machine client contract v1
 
 ## Goal
-Pay down the seven findings open at the claim, `R-1117`, `R-1125`, `R-1127`, `R-1128`, `R-1129`,
-`R-1133` and `R-1137`, each by the repair its own text names, one slice per finding
-(docs/roadmap/features/T2_F290.md, DECISION F290 D1). All seven are resolved; F290 is accepted.
+Remedy can be driven end to end by a program through the command line's JSON envelope alone: an
+order file, one digest, decisions answered with `--json`, an approved apply and the proof
+(docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 6, round 14, the session's last: book round 13's verdict, correct the README's sentence on
-F290's processor time to name both full-suite runs, and hand off.
+Session 1, round 1: claim F295, re-head the review record, book F290's round 14, record the
+claim's measurement in `.agent/f295_inventory.md`, and write the slice order.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges pull request 310 once hosted CI
-   on its head is green; round 14's verdict is booked in the next feature's first commit; then
-   Rule A5.
+1. T001: `remedy do <order.md>` reads the order file, and refuses a missing, empty or unreadable
+   file, and a file without a cost cap, before any step.
+2. T002: `remedy status --json` gains the versioned section for a machine client.
+3. T003: every decision kind answerable with `--json`, and a test that a run with `--yes --no-ui
+   --json` on a pipe never reads stdin.
+4. T004: `docs/system/machine-client-contract-v1.md` and the gate test.
+5. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
 
 ## Risks
-- R-1138 and R-1139 (Low) stay open, owned by F297.
+- R-1138 and R-1139 (Low) stay open, owned by F297; F295 owns no finding at its claim.
+- The order-file detection rule must not turn order text that names a `.md` file into a path.

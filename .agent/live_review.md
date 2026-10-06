@@ -1,29 +1,28 @@
-# Live Review — F290 Findings paydown v6
+# Live Review — F295 Machine client contract v1
 
-> Round-by-round review record, re-headed at the F290 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F200, whose STATUS
-> line went `[x]` at `9bbe297df` and whose pull request 308 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `31542dbfd`. Hosted CI run 36870609054
-> on `9bbe297df` passed both its Python 3.10 and its Python 3.12 job at its first attempt.
-> `9bbe297df` is the second parent of `31542dbfd`, and the two trees are identical. F200's round
-> 14, its closing round, was reviewed after its own handback, so operator amendment
-> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round
-> that is happening anyway; its gate entry is appended at the end of this record by this claim.
-> Only the heading, this paragraph and the Steps section below are rewritten; everything from the
-> Findings heading to the end of the file as it stood at `31542dbfd` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `31542dbfd`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is `['R-1117', 'R-1125', 'R-1127', 'R-1128', 'R-1129', 'R-1133', 'R-1137']`, and F290 owns
-> every id in it.
+> Round-by-round review record, re-headed at the F295 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F290, whose STATUS
+> line went `[x]` on its own branch and whose pull request 310 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `9a8431ea9`. Hosted CI run 37533024027
+> on `a21ed75a1`, the pull request's last commit, passed both its Python 3.10 and its Python 3.12
+> job. `a21ed75a1` is the second parent of `9a8431ea9`, and the two trees are identical. F290's
+> round 14, its closing round, was reviewed after its own handback, so operator amendment
+> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
+> is happening anyway; its gate entry is appended at the end of this record by this claim. Only the
+> heading, this paragraph and the Steps section below are rewritten; everything from the Findings
+> heading to the end of the file as it stood at `9a8431ea9` is carried forward BYTE-IDENTICAL, and
+> finding ids continue the monotonic R-XXXX series across the re-head. The open set at
+> `9a8431ea9`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, is
+> `['R-1138', 'R-1139']`; F297 owns both, and F295 owns none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F290 D1's, which also writes the feature file's slice list. The first
-round claims F290, re-heads this record, books F200's round 14, and lands the two test repairs of
-R-1128 and R-1127. The next rounds take the two documentation guards of R-1125 and R-1133; then
-the cockpit's task-edit wording of R-1129; then the apply step's refusal of a pass that changed no
-file, R-1117; then the suite's measured cost, R-1137; then the amend0930b-slow-cap hardening stage
-this SLOW MODE session orders before the closure sequence; then closure.
+THE ORDER BELOW IS DECISION F295 D1's, which also writes the feature file's slice order. The first
+round claims F295, re-heads this record, books F290's round 14, and records the claim's measurement
+in `.agent/f295_inventory.md`. Then T001, the order file; then T002, the digest in `remedy status
+--json`; then T003, decisions and approvals without a terminal; then T004, the contract page and
+the gate test; then the amend0930b-slow-cap hardening stage this SLOW MODE session orders before
+the closure sequence; then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -179,3 +178,5 @@ Gate: F290 R11 — the F290 round 11 entry, the closing round, over `967e6c04b`.
 Gate: F290 R12 — the F290 round 12 entry, the Open PR Gate repair, over `95a39dd24`..`5aa5ad5c3` (4 commits; `71f179e85` is the merge of `origin/main` at `008e4dfde` with first parent `9efd68806`, the others single-parent; insertions by `git show --numstat`, the merge's against its first parent: `9efd68806` 122, `71f179e85` 464, `ed61eeec4` 12, `5aa5ad5c3` 133). VERDICT PASS, re-verified by the reviewer, no dry run: the block copy and `.agent/plan.md` equal the reviewer's authored files, and `.agent/live_review.md` equals its base plus the round 11 entry, at `9efd68806`; at the merge, `.agent/decisions.md` equals the branch's file followed by main's bytes after the merge base's length, both files having been proved to start with the merge base's file; `docs/roadmap/features/T2_F297.md` equals the authored file, `T2_F295.md` is gone and main's `T12_F295.md` is unchanged; against `origin/main` the merge changes `docs/roadmap/STATUS.md` only by F290's accepted line with "owned by F297" and the six inserted lines after F199, `tests/docs/test_docs_consistency.py` only by the pin comment, `TOTAL_FEATURES = 297` and the branch's own two guards, and `README.md` only by the two counters and the branch's F290 paragraph, byte-equal to that hunk on the branch; the only path differing from main outside the branch's own change set is `T2_F297.md`. At `ed61eeec4` the ledger gains exactly the two `Owner: F297` lines and `.agent/decisions.md` equals its base plus DECISION F290 D7. `git grep F295` over docs, tests, README, scripts, apps and packages names the machine-client feature only, apart from two sentences that state the paydown's former number. The reviewer's run of the round's selection, `tests/docs/`, `tests/cli/test_golden_path.py`, `tests/orchestration/test_live_review_rotation.py` and `tests/orchestration/test_integrity_gate.py`, read `429 passed`, the worker's one run the same; `ruff check` on the pin's file read `All checks passed!`; the open set read `['R-1138', 'R-1139']`. No production code changed, so no mutation was owed. After the push GitHub reported pull request 310 `MERGEABLE`.
 
 Gate: F290 R13 — the F290 round 13 entry, the one full suite again on the merged tree, over `5aa5ad5c3`..`6a5abdb0f` (3 commits, each single-parent; insertions by `git show --numstat`: `7f48f94c4` 108, `ec12ac642` 6, `6a5abdb0f` 235). VERDICT PASS, re-verified by the reviewer, no dry run: the block copy and `.agent/plan.md` equal the reviewer's authored files, and `.agent/live_review.md` equals its base plus the round 12 entry, at `7f48f94c4`; `ec12ac642` changes `.agent/authored/f290-closure-suite.txt` alone and `6a5abdb0f` the PR body file and the handoff alone. The transcript's summary line `21311 passed, 22 skipped, 1 warning in 402.78s (0:06:42)`, exit 0, is the last line of the worker's raw log, which holds no `FAILED` or `ERROR` line and no `process(es) behind` line; its `Test load:` line, 1048.65 CPU seconds over 21333 collected tests, equals the newest full-suite line of the test load record, recorded 2026-10-06T20:33:14Z on `7f48f94c4`, and the cost script read 6.8 percent above F200's 981.70, within the limit, exit 0. The first run, before the merge, read 1196.01; finding R-1139 keeps its text, and F297 reads both runs at its claim. The PR body file differs from the reviewer's template only in the filled suite bullet and one dropped trailing blank line, and GitHub's body equals the file but for one trailing newline. The reviewer did not re-run the suite (amend0917-throughput rule 1). Hosted CI run 37527859901 on `6a5abdb0f` concluded `success` for ci (3.10) and ci (3.12), and pull request 310 read `MERGEABLE`, `CLEAN`. The README's sentence on F290's processor time, which named only the first run, is corrected in round 14.
+
+Gate: F290 R14 — the F290 round 14 entry, the session's closing round, over `6a5abdb0f`..`a21ed75a1` (3 commits, each single-parent; insertions by `git show --numstat`: `010648465` 91, `5d79403d0` 116, `a21ed75a1` 147). VERDICT PASS, re-verified by the reviewer of F295's first session, no dry run: the block copy `.agent/authored/f290-r14.md` and `.agent/plan.md` equal the reviewer's authored files under `.remedy-wt/f290-r14/`, and `.agent/live_review.md` equals its base at `6a5abdb0f` followed by the round 13 entry, at `010648465`; at `5d79403d0` the three lines of `.remedy-wt/f290-r14/readme_new.txt` occur once in `README.md`, in place of the two-line sentence that named only the first full-suite run, and the PR body file differs from round 13's by four inserted and four deleted lines, the verdict bullet and the rounds count. The reviewer's run of the round's selection, `tests/docs/` and `tests/cli/test_golden_path.py`, read `372 passed`, the worker's one run the same, and the open set read `['R-1138', 'R-1139']`. No production code changed, so no mutation was owed. One worker deviation changed nothing on disk: the handback commit's subject reads `F290 R14 C3: handback` where the block ordered `F290 R14 C3: session 6 handoff`. Hosted CI run 37533024027 on `a21ed75a1` concluded `success` for ci (3.10) and ci (3.12), pull request 310 read `MERGEABLE` and `CLEAN`, and the Open PR Gate of F295's first session merged it with `gh pr merge 310 --merge --delete-branch` as `9a8431ea9`, whose tree equals that of `a21ed75a1`.
