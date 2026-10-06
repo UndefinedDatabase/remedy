@@ -2106,7 +2106,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show", "change.proof"),
         args=(
-            ArgDef("goal", "Goal to accomplish", required=False),
+            ArgDef("goal", "What you ask, as text, or one path ending in .md to an order file", required=False),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--project", "Select a registered project by slug or id instead of the repository's own", required=False, is_option=True),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),

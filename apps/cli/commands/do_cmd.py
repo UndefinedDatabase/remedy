@@ -425,6 +425,34 @@ def _cmd_do(
     flags only it read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`)
     were deleted by DECISION F268 D16 (1) and (2).
     """
+    # DECISION F295 D2: an order argument naming a `.md` file is read before any
+    # other step, and a file without a cost cap is refused before any step.
+    from packages.orchestration.order_file import (
+        OrderFileError,
+        order_argument_names_file,
+        read_order_file,
+    )
+
+    if order_argument_names_file(goal):
+        try:
+            order_file = read_order_file(goal.strip())
+        except OrderFileError as exc:
+            fail(exc.error, f"{exc} Nothing was run.",
+                 json_output=json_output, exit_code=2)
+        if max_cost_usd is None and order_file.max_cost_usd is None:
+            fail("order_file_no_cost_cap",
+                 f"{goal.strip()}: an unattended order without a cost cap is "
+                 "refused; set `max-cost-usd:` in the header or pass "
+                 "--max-cost-usd. Nothing was run.",
+                 json_output=json_output, exit_code=2)
+        goal = order_file.text
+        if project is None:
+            project = order_file.project
+        if contract is None:
+            contract = order_file.contract
+        if max_cost_usd is None:
+            max_cost_usd = order_file.max_cost_usd
+
     # DECISION F270 D4 (1): the commit and push flags are refused before any step.
     mode, push_source = _resolve_do_commit_flags(
         repo, commit=commit, commit_auto=commit_auto,
