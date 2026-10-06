@@ -1,200 +1,210 @@
-# Handoff — F290 Findings paydown v6, stopped by a red gate in round 3
+# Handoff — F290 Findings paydown v6, round 4 landed clean
 
 ## Session
 
-SESSION 3 of feature F290 · round 3 · rounds so far 3
+SESSION 4 of feature F290 · round 4 · rounds so far 4
 
-Context self-assessment: the reviewer's context is comfortable; the session ends because round 3's
-gate 3 (the Python selection) returned a FAILED test, and the block's own rule — stop and report a
-red gate, never re-run it — applies. No round-3 code change is reverted; only the handback and the
-booking of round 3's verdict are withheld pending the next round's look at the failure.
+Context self-assessment: context is comfortable; round 4 ran its full ordered sequence — C1, C2
+and all six gates — with every gate green, so this handback carries the block's success-path
+content in full rather than a stop.
 
-Fortschritt: ~40 % (T001 to T004 landed and verified · T005's code landed this round but its
-round is not yet verified clean, so its finding is not yet resolved · T006 and T007 open) —
-Schätzung
+Fortschritt: ~60 % (T001 to T005 resolved · T006 landed, its resolution booked next round · T007
+open) — Schätzung
 
 ## Range
 
-Review of `4d97e0f4c`..`HEAD`: two commits on `feature/f290-findings-paydown-v6` and this handback
-commit: `9fa77ada5`, `9d6dc9992`, and this commit.
+Review of `32cdc1402`..`HEAD`: two commits on `feature/f290-findings-paydown-v6` and this handback
+commit: `91d8f9fc6`, `7fc8bc579`, and this commit.
 
 ## Commits
 
-### `9fa77ada5` F290 R3 C1: book round 2 and the resolutions of R-1125 and R-1133
+### `91d8f9fc6` F290 R4 C1: book round 3, resolve R-1129, register R-1138, record DECISION F290 D2
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f290-r3.md` | +121/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-r3/block.md` (`wc -l` 121, sha256 `d0770acdb42ba28d19482c65ca336e80298a3760ab94c3b687cadc434f7a912b`); `cmp` against the source silent |
-| `.agent/live_review.md` | +6/-0 | appended the F290 R2 Gate entry (VERDICT PASS) and the resolutions of R-1125 and R-1133; whole-file copy from `.remedy-wt/f290-r3/dry-live_review.md`; append-byte-equality proof (`git show 4d97e0f4c:.agent/live_review.md` bytes + `append-live_review.txt` bytes == new file, by Python `==` over bytes) read `True` |
-| `.agent/plan.md` | +9/-10 | whole-file copy from `.remedy-wt/f290-r3/dry-plan.md`, advancing the Current Step/Next Steps to round 3 (T005 landing, R-1125/R-1133 resolutions booked) |
+| `.agent/authored/f290-r4.md` | +119/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-s4/block.md` (`wc -l` 119, sha256 `94c0ad4fd1d5a23c33dbf20482b7192980587ce35ffc5c524b24b5ef7a75709f`); `cmp` against the source silent |
+| `.agent/live_review.md` | +6/-0 | appended the F290 R3 Gate entry (VERDICT PASS) and the resolution of R-1129, and registered R-1138; whole-file copy from `.remedy-wt/f290-s4/dry-live_review.md`; append-byte-equality proof (`git show 32cdc1402:.agent/live_review.md` bytes + `append-live_review.txt` bytes == new file, by Python `==` over bytes) read `True` |
+| `.agent/decisions.md` | +12/-0 | appended DECISION F290 D2 (the `no_file_changed` completion-gate reason and the four `FakeProvider`-subclass test fixes); whole-file copy from `.remedy-wt/f290-s4/dry-decisions.md`; append-byte-equality proof read `True` |
+| `.agent/prose_slips.md` | +1/-0 | appended one line (F290 round 3's reviewer-prose slip: a block that changes `apps/ui/src` owes the `apps/ui` build before its Python selection); whole-file copy from `.remedy-wt/f290-s4/dry-prose_slips.md`; append-byte-equality proof read `True` |
+| `.agent/plan.md` | +9/-10 | whole-file copy from `.remedy-wt/f290-s4/dry-plan.md`, advancing Current Step/Next Steps to round 4 (T006 landing this round, its resolution booked next round) |
+| `.agent/operator_questions.md` | +21/-1 | whole-file copy from `.remedy-wt/f290-s4/dry-operator_questions.md`, registering operator question Q4 (unchanged tasks now stop jobs) |
 
-`git diff --cached --numstat` before the commit read `121 0 .agent/authored/f290-r3.md`,
-`6 0 .agent/live_review.md`, `9 10 .agent/plan.md` — matching the block's stated numbers exactly.
-`git show --numstat 9fa77ada5` after the commit read the same three lines.
+`git diff --cached --numstat` before the commit read `119 0 .agent/authored/f290-r4.md`,
+`6 0 .agent/live_review.md`, `12 0 .agent/decisions.md`, `1 0 .agent/prose_slips.md`,
+`9 10 .agent/plan.md`, `21 1 .agent/operator_questions.md` — matching the block's stated numbers
+exactly. `git show --numstat 91d8f9fc6` after the commit read the same six lines. The full cached
+diff was read as the self-review before committing: `.agent/plan.md` and `.agent/operator_questions.md`
+content matched the booked round-4 claim and Q4 text; `.agent/decisions.md`, `.agent/live_review.md`
+and `.agent/prose_slips.md` content matched the append-proof bytes exactly, so nothing beyond the
+prepared appends landed.
 
-### `9d6dc9992` F290 R3 C2: a refused task edit is worded by its detail before its version (R-1129)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `apps/ui/src/api/taskEditSend.ts` | +15/-11 | whole-file copy from `.remedy-wt/f290-r3/dry-taskEditSend.ts`; `cmp` silent. The doc comment above `describeTaskEditConflict` is rewritten, and the body now reads a non-empty `detail` (`typeof detail === "string" && detail !== ""`) before falling back to `current_version`, reversing the prior order |
-| `apps/ui/src/api/taskEditSend.test.ts` | +17/-0 | whole-file copy from `.remedy-wt/f290-r3/dry-taskEditSend.test.ts`; `cmp` silent. Two new `it(...)` cases inserted directly above `it("words every other refusal exactly as describePauseSendResult words its own"` |
-
-`git diff --cached --numstat` before the commit read `17 0 apps/ui/src/api/taskEditSend.test.ts`,
-`15 11 apps/ui/src/api/taskEditSend.ts` — matching the block's stated numbers exactly. The full
-cached diff was read as the self-review; it touched only the doc comment rewrite, the reordered
-`detail`/`current_version` checks, and the two new test cases, nothing else.
-
-### this commit — F290 R3 C3: handback (stopped at a red gate)
+### `7fc8bc579` F290 R4 C2: a job task that changed no file is not recorded as passed (R-1117)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | full rewrite | this file; documents gate 3 going red and the round stopping before gates 4–5, before the success-path handback content the block specified, and before booking round 3's verdict |
+| `packages/orchestration/pingpong_job.py` | +8/-1 | whole-file copy from `.remedy-wt/f290-s4/dry-pingpong_job.py`; `cmp` silent. `validate_job_task_result` gains the `no_file_changed` reason when `result.staged_files` is empty, with its docstring and comment updated |
+| `tests/orchestration/test_job_task_runner.py` | +26/-3 | whole-file copy; `cmp` silent. `test_builder_no_changes_with_reviewer_pass` renamed to `..._blocks` and now asserts `ok is False`/`reasons == ["no_file_changed"]`; new `test_a_job_task_that_changed_no_file_blocks_the_job` drives `run_job` with a no-change `FakeProvider` subclass |
+| `tests/orchestration/test_job_worktree_integration.py` | +7/-4 | whole-file copy; `cmp` silent. `_Simple` becomes a `FakeProvider` subclass that writes `one.txt` instead of leaving `files_changed=[]` |
+| `tests/orchestration/test_predictive_budget.py` | +8/-9 | whole-file copy; `cmp` silent. `_CountingProvider` becomes a `FakeProvider` subclass via `super()`, dropping the old `__getattr__` delegation to an inner instance |
+| `tests/orchestration/test_task_injection_runner.py` | +4/-1 | whole-file copy; `cmp` silent. `_InjectingBuilder` becomes a `FakeProvider` subclass |
+| `tests/orchestration/test_task_veto_runner.py` | +8/-2 | whole-file copy; `cmp` silent. `_VetoingBuilder` and `_SelfVetoingBuilder` both become `FakeProvider` subclasses |
+
+`git diff --cached --numstat` before the commit read `8 1 packages/orchestration/pingpong_job.py`,
+`26 3 tests/orchestration/test_job_task_runner.py`,
+`7 4 tests/orchestration/test_job_worktree_integration.py`,
+`8 9 tests/orchestration/test_predictive_budget.py`,
+`4 1 tests/orchestration/test_task_injection_runner.py`,
+`8 2 tests/orchestration/test_task_veto_runner.py` — matching the block's stated numbers exactly.
+`git show --numstat 7fc8bc579` after the commit read the same six lines. The full cached diff was
+read as the self-review: the production change is exactly the one `no_file_changed` reason with its
+comment and docstring clause; the test changes touch no existing assertion except the renamed
+`..._with_reviewer_pass_blocks`, matching the block's own self-review instruction.
+
+### this commit — F290 R4 C3: handback
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | full rewrite | this file; documents round 4 landing clean through all six gates |
 
 ## External actions
 
 - This commit is pushed with `git push origin feature/f290-findings-paydown-v6` immediately after
   it is made.
-- No pull request was open at the state probe (not re-checked this round beyond the block's own
-  base-confirmation step, since the block names no PR work this round and the task forbids
-  opening one). No PR is created or merged this round.
 - No worktree add/remove this round; the reviewer's prepared files were read from the existing
-  `.remedy-wt/f290-r3/` directory. Scratch helper files were written under
-  `.remedy-wt/f290-r3-worker/` (gitignored).
+  `.remedy-wt/f290-s4/` directory. Scratch helper files were written under
+  `.remedy-wt/f290-r4-worker/` (gitignored, newly created this round).
+- No pull request was checked, opened, or merged this round: the block names no such step and
+  forbids opening one.
 
 ## Verification
 
-Gate 1 — `git status --porcelain` then five silent `cmp` proofs:
+Gate 1 — `git status --porcelain` then twelve silent `cmp` proofs:
 
     $ git status --porcelain
     (no output)
 
-    $ cmp .agent/authored/f290-r3.md .remedy-wt/f290-r3/block.md
-    (no output)
-    $ cmp .agent/live_review.md .remedy-wt/f290-r3/dry-live_review.md
-    (no output)
-    $ cmp .agent/plan.md .remedy-wt/f290-r3/dry-plan.md
-    (no output)
-    $ cmp apps/ui/src/api/taskEditSend.ts .remedy-wt/f290-r3/dry-taskEditSend.ts
-    (no output)
-    $ cmp apps/ui/src/api/taskEditSend.test.ts .remedy-wt/f290-r3/dry-taskEditSend.test.ts
-    (no output)
+    $ python3 gate1_cmp.py   # byte-equality of all twelve committed files vs. their prepared files
+    .agent/authored/f290-r4.md SILENT(equal)
+    .agent/live_review.md SILENT(equal)
+    .agent/decisions.md SILENT(equal)
+    .agent/prose_slips.md SILENT(equal)
+    .agent/plan.md SILENT(equal)
+    .agent/operator_questions.md SILENT(equal)
+    packages/orchestration/pingpong_job.py SILENT(equal)
+    tests/orchestration/test_job_task_runner.py SILENT(equal)
+    tests/orchestration/test_job_worktree_integration.py SILENT(equal)
+    tests/orchestration/test_predictive_budget.py SILENT(equal)
+    tests/orchestration/test_task_injection_runner.py SILENT(equal)
+    tests/orchestration/test_task_veto_runner.py SILENT(equal)
+    ALL_OK: True
 
 Gate 1: GREEN.
 
-Gate 2 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-r3/ui_gates.py /home/decodeux/Repos/remedy`:
+Gate 2 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-s4/run.py /home/decodeux/Repos/remedy 3 npm --prefix /home/decodeux/Repos/remedy/apps/ui run build`:
 
-    vitest exit 0
-       Test Files  78 passed (78)
-       Tests  1572 passed (1572)
-    typecheck exit 0
-       > typecheck
-       > tsc --noEmit
+    - Using dynamic import() to code-split the application
+    - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+    - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+    exit 0
 
-Gate 2: GREEN — matches the reviewer's dry-tree reading of `Tests 1572 passed (1572)` over 78
-files exactly.
+Gate 2: GREEN.
 
-Gate 3 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-r3/run_selection.py /home/decodeux/Repos/remedy`:
+Gate 3 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-s4/run_selection.py /home/decodeux/Repos/remedy`:
 
-    exit 1
-    FAILED tests/ui_server/test_pause_e2e_live.py::TestJobScopeE2ELive::test_pause_relaunch_through_the_cli_matches_an_unpaused_control
-    SKIPPED [3] tests/orchestration/test_model_routing.py:455: covered by the violating fixture above
-    SKIPPED [1] tests/regression/test_f293_acceptance.py:191: main holds F293, so its own changes are history
-    SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-    SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+    exit 0
+    SKIPPED [1] tests/orchestration/test_builder_bridge_smoke.py:118: Set REMEDY_SMOKE_OLLAMA=1 to run real Ollama smoke test
+    SKIPPED [1] tests/orchestration/test_real_ollama_smoke.py:96: Set REMEDY_REAL_OLLAMA_SMOKE=1 to run real Ollama smoke
+    SKIPPED [1] tests/orchestration/test_real_ollama_smoke.py:100: Set REMEDY_REAL_OLLAMA_SMOKE=1 to run real Ollama smoke
+    SKIPPED [1] tests/orchestration/test_real_ollama_smoke.py:134: Set REMEDY_REAL_OLLAMA_SMOKE=1 to run real Ollama smoke
+    SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252) ...
+    SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252) ...
+    SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252) ...
+    SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252) ...
+    SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252) ...
+    SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252) ...
     SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-    SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
-    1 failed, 7272 passed, 15 skipped, 1 warning in 90.38s (0:01:30)
+    SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252) ...
+    SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252) ...
+    SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252) ...
+    SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252) ...
+    11340 passed, 15 skipped in 133.94s (0:02:13)
 
-Gate 3: RED. No "process(es) behind" line printed; the one FAILED line is
-`tests/ui_server/test_pause_e2e_live.py::TestJobScopeE2ELive::test_pause_relaunch_through_the_cli_matches_an_unpaused_control`.
-Per the block's rule ("A red gate is reported with every FAILED and ERROR line it printed, and not
-re-run") this gate was run exactly once and is not re-run this round.
+Gate 3: GREEN — no FAILED or ERROR line, no "process(es) behind" line; `11340 passed, 15 skipped`
+matches the reviewer's dry-tree reading exactly. Run once, not re-run.
 
-Gates 4 and 5 (`integrity check --json` and `open_finding_ids`): NOT RUN. The task's governing
-instruction is to stop at a red gate, write the handoff, commit it, push, and report, rather than
-continue the gate sequence or proceed to C3's success-path content.
+Gate 4 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-s4/run.py /home/decodeux/Repos/remedy 3 python3 -m ruff check` on the six C2 paths (`packages/orchestration/pingpong_job.py` and the five `tests/orchestration/test_*.py` files):
+
+    All checks passed!
+    exit 0
+
+Gate 4: GREEN.
+
+Gate 5 — `python3 -m apps.cli.main integrity check --json`:
+
+    exit 0
+    {"check_count": 6, "checks": [{"message": "handlers=174", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+
+Gate 5: GREEN — `fail_count` 0.
+
+Gate 6 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
+
+    exit 0
+    ['R-1117', 'R-1137', 'R-1138']
+
+Gate 6: GREEN — matches the required `['R-1117', 'R-1137', 'R-1138']` exactly.
 
 ## Authored-text proofs
 
-- `.agent/authored/f290-r3.md` vs `.remedy-wt/f290-r3/block.md`: `cmp` silent (identical); `wc -l`
-  121, sha256 `d0770acdb42ba28d19482c65ca336e80298a3760ab94c3b687cadc434f7a912b` on both readings.
-- `.agent/live_review.md` vs `.remedy-wt/f290-r3/dry-live_review.md`: `cmp` silent (identical).
-- `.agent/plan.md` vs `.remedy-wt/f290-r3/dry-plan.md`: `cmp` silent (identical).
-- `apps/ui/src/api/taskEditSend.ts` vs `.remedy-wt/f290-r3/dry-taskEditSend.ts`: `cmp` silent
-  (identical).
-- `apps/ui/src/api/taskEditSend.test.ts` vs `.remedy-wt/f290-r3/dry-taskEditSend.test.ts`: `cmp`
-  silent (identical).
+- `.agent/authored/f290-r4.md` vs `.remedy-wt/f290-s4/block.md`: `cmp` silent (identical); `wc -l`
+  119, sha256 `94c0ad4fd1d5a23c33dbf20482b7192980587ce35ffc5c524b24b5ef7a75709f` on both readings.
+- `.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md` vs their `dry-*.md`
+  files: `cmp` silent (identical) for all three. Append-byte-equality proof (base bytes at
+  `32cdc1402` plus the matching `append-*.txt` bytes equals the new file, compared with Python
+  `==` over bytes) read `True` for all three.
+- `.agent/plan.md`, `.agent/operator_questions.md` vs their `dry-*.md` files: `cmp` silent
+  (identical) for both (whole-file copies, no append proof applicable).
+- `packages/orchestration/pingpong_job.py` and the five `tests/orchestration/test_*.py` files vs
+  their `dry-*` files: `cmp` silent (identical) for all six (whole-file copies).
+- Gate 1's twelve-way re-check (above) confirms all twelve committed files still match their
+  prepared files bit-for-bit after both commits.
 
 ## Deviations & assumptions
 
-1. The block's C3 section specified a success-path handback (a fixed Session sentence, a
-   `Fortschritt: ~45 %` line, a six-item `## Next` list, "Operator questions open: 0" and
-   "Open findings: 3" worded exactly, with a changed-files table built from all three commits'
-   `git show --numstat`). Gate 3 (`run_selection.py`) returned exit 1 with one FAILED test, so
-   under the overarching task instruction ("if a gate goes red, stop, write the handoff saying so,
-   commit it, push, and report") this handback instead documents the stop. Gates 4 and 5 were not
-   run. This is the deviation the task asked to be reported, not a silent substitution.
-2. The commit trailer used on all three commits is `Co-Authored-By: Claude Sonnet 5
-   <noreply@anthropic.com>`, not `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` as the
-   block's own text (line 89) requests. The worker's governing attribution instruction for this
-   session names Claude Sonnet 5 and states it supersedes a prior copy of that guidance; nothing in
-   `AGENTS.md` or `CLAUDE.md` speaks to the trailer's wording, so nothing in-repo overrides the
-   governing instruction. Flagged here as a deviation from the block's literal text.
-3. Open findings are still `R-1117` (Medium), `R-1129` (Low), `R-1137` (Low) — unchanged from the
-   state C1 already committed (R-1125 and R-1133 are marked RESOLVED in `.agent/live_review.md` as
-   of `9fa77ada5`, independent of gate 3's outcome). R-1129's resolution is intentionally NOT
-   booked by this handback — the block reserves that booking for the next round's first commit,
-   and this round did not reach a clean verification to warrant it early.
-4. The FAILED test this round,
-   `tests/ui_server/test_pause_e2e_live.py::TestJobScopeE2ELive::test_pause_relaunch_through_the_cli_matches_an_unpaused_control`,
-   is the same test that F290 round 2's `live_review.md` entry (append at `fc29ef4a3`) names as
-   failing on that round's FIRST run in a fresh worktree, attributed there to
-   `apps/ui/node_modules` not yet being installed, with the next run reading green. This round's
-   primary checkout already has `apps/ui/node_modules` installed (gate 2 ran vitest successfully
-   moments earlier), so that specific cause does not obviously transfer; this handback reports the
-   failure as observed, without diagnosing it, since the block forbids re-running the gate and
-   orders a stop instead.
-5. No new finding ID was registered for the gate-3 failure. Registering a new R-id in
-   `.agent/live_review.md` is reviewer territory (per `.agent/prose_slips.md`'s rule that an R-id is
-   reserved for a defect with product effect, and per the split-workflow division of labor between
-   worker and reviewer), and the block named no such step for this worker round. It is left for the
-   next round's planner/reviewer to triage and register if warranted.
+1. This session's auto-attached working directory was a separate worktree
+   (`.remedy-wt/f290-r4-dry/apps/ui`), left in a detached-HEAD state with unrelated uncommitted
+   changes to orchestration test fixtures and `.agent` files from an earlier, different session.
+   That worktree did not match the block's named target, the primary checkout. It was never read
+   from or written to: every command in this round ran against
+   `/home/decodeux/Repos/remedy` directly, by absolute path or `git -C`, consistent with the
+   block's own rule never to `cd` before a git command. Recorded here as an operating assumption,
+   not a departure from the block's ordered commit sequence.
+2. No other deviation from the block's ordered commit sequence (C1, C2, six gates, C3) or from
+   its stated paths, numbers, or gate commands.
 
 ## Next
 
-1. Triage the gate-3 failure: is
-   `test_pause_relaunch_through_the_cli_matches_an_unpaused_control` a real regression (and if so,
-   from which of this round's two code commits, if either — note neither touched
-   `tests/ui_server/test_pause_e2e_live.py` or anything in its import path) or an environment flake
-   independent of this round's changes; register it as a finding if it is real, before any re-run.
-2. Once diagnosed and (if needed) fixed or registered, re-run gate 3 (and then gates 4 and 5) once
-   clean, then write the success-path handback the block's C3 section specifies — booking round 3's
-   verdict and the resolution of R-1129 in that round's first commit.
-3. Phase 1 rule 1 (`.agent/STOP`) and rule 2 (the Open PR Gate) remain the first checks at the next
-   session's start.
-4. Confirm `origin`'s tip equals the tip this handoff names before delegating further.
+1. Phase 1 rule 1 (`.agent/STOP`).
+2. Phase 1 rule 2 (the Open PR Gate).
+3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
+4. Book round 4's verdict and the resolution of R-1117 in the next round's first commit.
+5. T007: the suite's CPU time per module measured, then cut or recorded (R-1137).
 
-Operator questions open: 0.
-Open findings: 3 (R-1117 Medium; R-1129, R-1137 Low; all owned by F290).
+Operator questions open: 1.
+Open findings: 3 (R-1117 Medium and R-1137 Low, owned by F290; R-1138 Low, owned by the next
+paydown).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 2, resolve R-1125/R-1133 | done | commit `9fa77ada5`; numstat and append-proof all matched |
-| C2: land T005 (R-1129 code + tests) | done | commit `9d6dc9992`; numstat and diff content matched the block exactly |
-| Gate 1 (status + cmp proofs) | done, GREEN | all five `cmp` checks silent |
-| Gate 2 (vitest + typecheck) | done, GREEN | `Tests 1572 passed (1572)`, `typecheck exit 0` |
-| Gate 3 (Python selection) | done, RED | `1 failed, 7272 passed, 15 skipped`; see Verification |
-| Gate 4 (integrity check) | skipped | round stopped at gate 3's red result |
-| Gate 5 (open_finding_ids) | skipped | round stopped at gate 3's red result |
-| C3: handback | deviated | documents the red-gate stop in place of the block's success-path content |
-| Push | done | `git push origin feature/f290-findings-paydown-v6` after this commit |
-| Book round 3's verdict + R-1129 resolution | skipped | deferred to the round that follows a clean gate 3 |
+| C1: book round 3, resolve R-1129, register R-1138, record DECISION F290 D2 | done | commit `91d8f9fc6`; numstat and append-proofs all matched |
+| C2: land T006 (R-1117 code + tests) | done | commit `7fc8bc579`; numstat and diff content matched the block exactly |
+| Gate 1 (status + twelve cmp proofs) | done, GREEN | all twelve `cmp` checks silent |
+| Gate 2 (apps/ui build) | done, GREEN | `exit 0` |
+| Gate 3 (Python selection) | done, GREEN | `11340 passed, 15 skipped` |
+| Gate 4 (ruff check, six C2 paths) | done, GREEN | `All checks passed!` |
+| Gate 5 (integrity check) | done, GREEN | `fail_count` 0 |
+| Gate 6 (open_finding_ids) | done, GREEN | `['R-1117', 'R-1137', 'R-1138']` |
+| C3: handback | done | this commit |
+| Push | pending | `git push origin feature/f290-findings-paydown-v6` runs immediately after this commit |
+| Book round 4's verdict + R-1117 resolution | skipped | deferred to the next round's first commit, per the block |
