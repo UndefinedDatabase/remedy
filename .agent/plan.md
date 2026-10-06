@@ -6,9 +6,9 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 3: book round 2's verdict, register R-1140, and repair it with four tests — the
-order file's `max-cost-usd` is the job's budget, and `--max-cost-usd` and `--project` each win
-over the header.
+Session 1, round 4: book round 3's verdict and R-1140's resolution, register R-1141, and repair it
+as DECISION F295 D3 rules — a mission started from an order file records the file's absolute
+path and the sha256 of its bytes.
 
 ## Next Steps
 1. T002: `remedy status --json` gains the versioned section for a machine client.
@@ -19,4 +19,4 @@ over the header.
 4. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
 
 ## Risks
-- R-1140 (Medium) is F295's own; R-1138 and R-1139 (Low) stay open, owned by F297.
+- R-1141 (Low) is F295's own; R-1138 and R-1139 (Low) stay open, owned by F297.
