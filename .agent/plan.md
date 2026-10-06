@@ -6,13 +6,13 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 5: book round 4's verdict and R-1141's resolution, and land the digest's frame as
-DECISION F295 D4 rules it — a `client` object in `remedy status --json` with projects, missions,
-jobs, the jobs that wait for apply and whether the supervisor answers.
+Session 1, round 6, the session's last: book round 5's verdict, and land the digest's open
+decisions as DECISION F295 D5 rules them — every open decision of every job with its question,
+documented default, options, bundled questions and age.
 
 ## Next Steps
-1. T002, second half: the digest's open decisions with question, default and age, each job's cost
-   with its basis and its evidence references, and each project's cost of the day.
+1. T002, last part: each job's measured cost with its basis and its evidence references, and each
+   project's cost of the day, in the digest; and the digest's read cost measured.
 2. T003: every decision kind answerable with `--json`, and a test that a run with `--yes --no-ui
    --json` on a pipe never reads stdin.
 3. T004: `docs/system/machine-client-contract-v1.md`, which also writes down the order file's
@@ -21,4 +21,5 @@ jobs, the jobs that wait for apply and whether the supervisor answers.
 
 ## Risks
 - R-1138 and R-1139 (Low) stay open, owned by F297; F295 owns no open finding.
-- The digest reads every job file on each call; its cost is measured before T002 closes.
+- The digest reads every job file and every job's events on each call; its cost is measured
+  before T002 closes.
