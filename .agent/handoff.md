@@ -197,3 +197,49 @@ Open findings: 2 (R-1138 and R-1139, both Low, owned by F297).
 | Gate 5 (open finding ids) | skipped | round stopped at gate 3's red result, per this round's own constraint |
 | C4 handback commit | done | this file |
 | Push after C4 | pending | runs immediately after this commit, reported in the worker's final reply |
+
+## Reviewer verdict on round 6, added after the handback
+
+Written by the reviewer of F295's first session after it reviewed round 6, and applied by a
+worker as this file's one later commit. Under operator amendment amend0827-process-diet rule 1
+this committed and pushed handoff is the durable carrier of the verdict and the finding draft
+below; the next session does not review round 6 again from the start, it books both texts and
+repairs.
+
+VERDICT: FAIL. The reviewer re-ran `tests/test_ble001_ratchet.py` at `bd5d293ea` and read
+`1 failed, 2 passed`: "286 excused blind handlers, above the frozen 285". The worker stopped at
+that red gate as its block ordered and committed no repair, which was right. The defect is the
+reviewer's own: the round 6 block ordered "on any exception from reading one job's decisions"
+without naming the ratchet that counts excused blind handlers over the whole repository
+(checklist item 7 of `docs/agents/planner_reviewer_prompt.md`). The reviewer read the round's
+diff, found the records commit `9d4b0e194` equal to its prepared files four of four, and ran no
+mutation, because a red tip is not reviewed further.
+
+THE TWO TEXTS TO BOOK. The next round's FIRST commit appends to `.agent/live_review.md`, in this
+order, each paragraph preceded by one blank line, exactly the two paragraphs between the marker
+lines below (the marker lines themselves are not copied):
+
+BEGIN-R6-BOOKING
+Gate: F295 R6 — the F295 round 6 entry, the digest's open decisions, over `7936f8104`..`bd5d293ea` (4 commits, each single-parent; insertions by `git show --numstat`: `9d4b0e194` 168, `d7a802e66` 74, `85b6782e5` 206, `bd5d293ea` 126). VERDICT FAIL. The records commit `9d4b0e194` equals the reviewer's prepared files under `.remedy-wt/f295-r6/`, four of four. `d7a802e66` lands DECISION F295 D5 in `packages/orchestration/client_digest.py` and wraps each job's decision read in `except Exception:  # noqa: BLE001`, which raises the count `tests/test_ble001_ratchet.py` freezes at 285 to 286, so the round's selection read `1 failed, 3524 passed, 3 skipped` in the worker's one run and the reviewer's re-run of the ratchet read `1 failed, 2 passed`. The worker stopped at the red gate as its block ordered and committed no repair; gates 4 and 5 were not run. No mutation was run on a red tip. The defect is the reviewer's block, which ordered "on any exception" without naming the ratchet, and is R-1142.
+
+- R-1142 — Low, THE DIGEST'S DECISION READ CATCHES EVERY EXCEPTION AND PUSHES THE REPOSITORY'S EXCUSED BLIND HANDLERS ABOVE THEIR FROZEN COUNT, SO THE BRANCH'S SELECTION IS RED. Raised at the F295 R6 gate by the worker's gate 3 and confirmed by the reviewer. SEARCHED BEFORE MINTING (checklist item 30): the open set at `bd5d293ea` is `['R-1138', 'R-1139']`, a reviewer prompt and a suite's CPU time, and neither names an exception handler. MEASURED at `bd5d293ea`: `build_client_digest` in `packages/orchestration/client_digest.py` reads each job's decisions inside `except Exception:  # noqa: BLE001`, and `tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises` fails with "286 excused blind handlers, above the frozen 285". What the read can raise, measured in the same tree: `load_run_events` reads files, so `OSError`, and `ValueError` for a line that is not JSON or not UTF-8 (`json.JSONDecodeError` and `UnicodeDecodeError` are both `ValueError`); `list_decisions` ends in `enforce_decision_evidence`, whose `DecisionEvidenceError` is a `ValueError`. WHY LOW: the branch is not merged and no run depends on it; the ratchet caught the handler before any review passed it. THE REPAIR, which the next round lands before any other code: the handler becomes `except (OSError, ValueError):` with no `noqa` mark, and the test in `tests/orchestration/test_client_digest.py` whose replacement `list_decisions` raises `RuntimeError("boom")` raises an `OSError` instead, so it still proves that one unreadable job is named in `skipped_files` while the others are listed. Owner: F295. OPEN.
+END-R6-BOOKING
+
+THE REPAIR ROUND, in order: (1) the booking commit above, with `.agent/plan.md` advanced; (2) the
+two-line repair R-1142 names, in one commit; (3) the reviewer re-runs round 6's selection
+(`.remedy-wt/f295-r6/selection.txt` plus every `tests/test_*.py`, through
+`.remedy-wt/f295-r6/run_selection.py`), `remedy integrity check --json`, the open-finding read,
+and its own mutations of DECISION F295 D5 over `tests/orchestration/test_client_digest.py` and
+`tests/cli/test_status_cmd.py` — the question source, the default source, the clarification
+default, the open-status filter, the sort, the age rule and the degraded path — then books round
+6's repair as PASS with the resolution of R-1142. After that comes T002's last part, as `## Next`
+above names it.
+
+FOR THE OPERATOR, IN PLAIN SENTENCES, correcting the paragraph above: the session ends with one
+automatic check failing on this feature's working branch. A new piece of code caught every kind of
+error, and the project has a fixed limit on how many places may do that; the fix is to catch only
+the two kinds of error that can really happen there. The next session repairs it first. The main
+line is not affected, and nothing waits for the operator.
+
+Open findings after the booking: 3 (R-1142 Low, owned by F295; R-1138 and R-1139 Low, owned by
+F297). Operator questions open: 0.
