@@ -1997,6 +1997,26 @@ def load_job_apply_record(job_id: str, job_apply_id: str) -> dict[str, Any] | No
         return None
 
 
+# DECISION F295 D4 (3): the client digest's `waits_for_apply` reader — this module owns the records.
+def job_apply_landed(job_id: str) -> bool:
+    """True when any apply record of ``job_id`` reads ``"status": "applied"``.
+
+    A missing records directory is False. A record file that cannot be read or
+    parsed is skipped, not an error — one corrupt record must not hide another.
+    """
+    record_dir = _job_apply_records_dir() / job_id
+    if not record_dir.is_dir():
+        return False
+    for record_file in record_dir.glob("*.json"):
+        try:
+            data = json.loads(record_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and data.get("status") == "applied":
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Export / summary (redacted, baseline-aware)
 # ---------------------------------------------------------------------------
