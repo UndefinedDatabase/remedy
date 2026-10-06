@@ -9,12 +9,16 @@ otherwise the whole file is the order. A header line is `key: value`, a
 blank line is ignored, the keys are `project`, `contract`, `max-cost-usd`
 (each at most once) and `constraint` (as often as needed). The constraints
 reach the planner appended to the order text. This module knows nothing of
-the command line; `apps/cli/commands/do_cmd.py` calls it first.
+the command line; `apps/cli/commands/do_cmd.py` calls it first. DECISION
+F295 D3: `read_order_file` also returns the file's resolved absolute path
+and the sha256 of the exact bytes it read, as `OrderFile.source_path` and
+`.source_sha256`.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 #: The header's recognised keys, each meaning what the flag of the same name
@@ -54,6 +58,10 @@ class OrderFile:
     contract: str | None
     max_cost_usd: str | None
     constraints: tuple[str, ...]
+    #: The file's resolved absolute path (DECISION F295 D3); "" for text `parse_order_file_text` parsed directly.
+    source_path: str = ""
+    #: sha256 (hex) of the exact bytes `read_order_file` read (DECISION F295 D3); "" likewise.
+    source_sha256: str = ""
 
 
 # WHY: the one predicate that decides text-vs-file, read by both `_cmd_do` and
@@ -156,7 +164,8 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
 
 # WHY: the one function `_cmd_do` calls — reads the bytes, maps every I/O
 # failure to its refusal code, then hands off to parse_order_file_text
-# (DECISION F295 D2 (5)).
+# (DECISION F295 D2 (5)); it alone sees the bytes on disk, so it alone sets
+# `source_path` and `source_sha256` (DECISION F295 D3).
 def read_order_file(path: str) -> OrderFile:
     """Read and parse the order file at `path`, or raise `OrderFileError`."""
     try:
@@ -172,4 +181,9 @@ def read_order_file(path: str) -> OrderFile:
     except UnicodeDecodeError as exc:
         raise OrderFileError(
             "order_file_unreadable", f"{path} cannot be read: {exc}.") from exc
-    return parse_order_file_text(text, path)
+    order = parse_order_file_text(text, path)
+    return replace(
+        order,
+        source_path=str(Path(path).resolve()),
+        source_sha256=hashlib.sha256(raw_bytes).hexdigest(),
+    )

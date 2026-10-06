@@ -105,6 +105,10 @@ class DoContext:
     """Everything one `remedy do` walk carries from step to step."""
 
     order: str
+    #: The order file's resolved absolute path (DECISION F295 D3); "" for an order given as text.
+    order_source_path: str = ""
+    #: sha256 (hex) of the order file's exact bytes (DECISION F295 D3); "" for an order given as text.
+    order_source_sha256: str = ""
     repo: str = "."
     builder_provider: str | None = None
     reviewer_provider: str | None = None
@@ -736,7 +740,9 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     project_id = str(ctx.project.id)
     try:
         mission = create_mission(project_id, ctx.order)
-        set_mission_order(project_id, mission.id, MissionOrder(text=ctx.order))
+        set_mission_order(project_id, mission.id, MissionOrder(
+            text=ctx.order, source_path=ctx.order_source_path,
+            source_sha256=ctx.order_source_sha256))
     except MissionError as exc:
         return DO_STEP_FAILED, f"no mission created: {exc}"
     ctx.mission_id = mission.id

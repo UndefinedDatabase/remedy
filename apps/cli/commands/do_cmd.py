@@ -202,6 +202,8 @@ def _cmd_do_order(
     order: str,
     *,
     repo: str = ".",
+    order_source_path: str = "",
+    order_source_sha256: str = "",
     json_output: bool = False,
     no_llm: bool = False,
     yes: bool = False,
@@ -313,6 +315,8 @@ def _cmd_do_order(
 
     ctx = walk_do_sequence(DoContext(
         order=order,
+        order_source_path=order_source_path,
+        order_source_sha256=order_source_sha256,
         repo=repo,
         builder_provider=builder_provider,
         reviewer_provider=reviewer_provider,
@@ -433,6 +437,7 @@ def _cmd_do(
         read_order_file,
     )
 
+    order_source_kwargs: dict[str, str] = {}
     if order_argument_names_file(goal):
         try:
             order_file = read_order_file(goal.strip())
@@ -452,6 +457,10 @@ def _cmd_do(
             contract = order_file.contract
         if max_cost_usd is None:
             max_cost_usd = order_file.max_cost_usd
+        order_source_kwargs = {
+            "order_source_path": order_file.source_path,
+            "order_source_sha256": order_file.source_sha256,
+        }
 
     # DECISION F270 D4 (1): the commit and push flags are refused before any step.
     mode, push_source = _resolve_do_commit_flags(
@@ -479,7 +488,8 @@ def _cmd_do(
                  f"--contract {contract!r} is not a contract template; the "
                  f"templates are {', '.join(templates) or '(none)'}. Nothing was run.",
                  json_output=json_output, exit_code=2)
-    _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
+    _cmd_do_order(goal, repo=repo, **order_source_kwargs,
+                  json_output=json_output, no_llm=no_llm,
                   yes=yes, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
                   reviewer_model=reviewer_model, planner_model=planner_model,
