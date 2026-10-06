@@ -209,3 +209,33 @@ def test_status_without_json_prints_neither_client_nor_awaiting_apply(repo, caps
 
     assert "client" not in out
     assert "awaiting_apply" not in out
+
+
+# ── 8: a task decision lands in client.decisions and agrees with decisions_open ──
+
+
+def test_a_task_decision_appears_in_client_decisions_and_matches_decisions_open(
+        repo, capsys):
+    from datetime import datetime, timezone
+
+    from packages.orchestration.escalation import enqueue_task_decision
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+    data = _do_json(capsys, ORDER, "--plan-only")
+    [job_id] = data["job_ids"]
+
+    job = load_job_plan(job_id)
+    enqueue_task_decision(
+        job, task_id="t1", question="Which port?",
+        options=["8080", "9090"], safe_default="8080",
+        now=datetime.now(timezone.utc),
+    )
+    save_job_plan(job)
+
+    result = _status_json(capsys)
+    client = result["client"]
+
+    job_decisions = [d for d in client["decisions"] if d["job_id"] == job_id]
+    assert len(job_decisions) == 1
+    assert job_decisions[0]["type"] == "task_decision"
+    assert result["decisions_open"] == len(job_decisions)
