@@ -620,6 +620,70 @@ class TestDevStatusCommandSchema:
         assert data["message"] == "RuntimeError: a defect in the autocoder probe"
         assert "autocoder_fake_e2e_ok" not in data
 
+    @staticmethod
+    def _live_ui_import_raises(error, message, monkeypatch):
+        """Make the live-UI probe's import of `ui_server` run again and raise `error`.
+
+        A failing FIRST import, not a replaced attribute: `from m import n` turns an
+        AttributeError of a loaded module into ImportError, so only a module whose own
+        execution fails can show the probe an AttributeError."""
+        import importlib.abc
+        import importlib.util
+        import sys
+
+        name = "packages.orchestration.ui_server"
+
+        class _FailingLoader(importlib.abc.Loader):
+            def create_module(self, spec):
+                return None
+
+            def exec_module(self, module):
+                raise error(message)
+
+        class _FailingFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path, target=None):
+                if fullname == name:
+                    return importlib.util.spec_from_loader(fullname, _FailingLoader())
+                return None
+
+        monkeypatch.delitem(sys.modules, name, raising=False)
+        monkeypatch.setattr(sys, "meta_path", [_FailingFinder(), *sys.meta_path])
+
+    @pytest.mark.parametrize("error", [ImportError, AttributeError])
+    def test_a_failed_live_ui_check_does_not_block_the_others(self, error, monkeypatch, capsys):
+        """F290 SU-044 (DECISION F290 D4): each error the live-UI probe can meet reads as a
+        failed check, and the command still reports every other check."""
+        import sys
+
+        from apps.cli.main import main
+
+        self._live_ui_import_raises(error, "the live-UI probe failed", monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        main()
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is True
+        assert data["live_ui_ok"] is False
+        assert data["reviewer_loop_ok"] is True
+        assert "live UI module import failed" in data["remaining_blockers"]
+
+    def test_a_defect_in_the_live_ui_probe_is_not_swallowed(self, monkeypatch, capsys):
+        """F290 SU-044 (DECISION F290 D4): the handler no longer catches everything, so a defect
+        of another kind fails the command with its own name instead of reading as a failed
+        check."""
+        import sys
+
+        from apps.cli.main import main
+
+        self._live_ui_import_raises(RuntimeError, "a defect in the live-UI probe", monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
+        with pytest.raises(SystemExit) as stopped:
+            main()
+        data = json.loads(capsys.readouterr().out)
+        assert stopped.value.code == 1
+        assert data["ok"] is False
+        assert data["message"] == "RuntimeError: a defect in the live-UI probe"
+        assert "live_ui_ok" not in data
+
     def test_dev_status_human_output(self):
         from apps.cli.commands.dev import _dev_status
         with patch("builtins.print") as mock_print:

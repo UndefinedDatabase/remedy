@@ -137,7 +137,7 @@ def _dev_status(*, json_output: bool = False) -> None:
     try:
         from packages.orchestration.ui_server import _build_live_state_json
         status["live_ui_ok"] = callable(_build_live_state_json)
-    except (ImportError, Exception):  # noqa: BLE001 — a live-UI check failure must not block other checks
+    except (ImportError, AttributeError):
         status["live_ui_ok"] = False
 
     # Remaining blockers (hard failures) vs advisories (informational)
