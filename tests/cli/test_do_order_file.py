@@ -212,6 +212,91 @@ def test_a_header_contract_gives_that_template_and_a_contract_flag_wins_over_it(
     assert data["contract"]["template"] == "cli-tool"
 
 
+# ── 9a-9d: the header's max-cost-usd and project reach the job, flags win (R-1140) ──
+
+
+def test_a_header_max_cost_usd_becomes_the_run_jobs_recorded_budget(repo, capsys):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(
+        repo, "---\nmax-cost-usd: 0.75\n---\nWrite a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path))
+
+    assert _step(data, "run")["status"] == "done"
+    [job_id] = data["job_ids"]
+    assert load_job_plan(job_id).budgets["max_cost_usd"] == 0.75
+
+
+def test_the_max_cost_usd_flag_wins_over_the_headers_value(repo, capsys):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(
+        repo, "---\nmax-cost-usd: 0.75\n---\nWrite a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path), "--max-cost-usd", "2")
+
+    assert _step(data, "run")["status"] == "done"
+    [job_id] = data["job_ids"]
+    assert load_job_plan(job_id).budgets["max_cost_usd"] == 2
+
+
+def test_a_header_project_selects_that_registered_project_for_the_job(
+        repo, tmp_path, capsys, monkeypatch):
+    """The project `remedy init` registered for ANOTHER repository, named by the
+    header, so a walk that ignored the header's `project` key would never find
+    it and the target repository must stay unregistered throughout."""
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.project_registry import resolve_project
+
+    other = _git_repo(tmp_path / "other")
+    monkeypatch.chdir(other)
+    main(["init"])
+    project = resolve_project(other)
+    assert project is not None
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+
+    order_path = _write_order(
+        repo, f"---\nproject: {project.slug}\nmax-cost-usd: 1\n---\n"
+        "Write a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path), "--plan-only")
+
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert job.project_id == str(project.id)
+    assert resolve_project(repo) is None
+
+
+def test_the_project_flag_wins_over_a_header_naming_an_unknown_project(
+        repo, tmp_path, capsys, monkeypatch):
+    """The header names a project that does not exist; if the header won, the
+    init step would fail on it. `--project` wins instead, so the walk selects
+    the flag's (real, registered) project and the job plans successfully."""
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.project_registry import resolve_project
+
+    other = _git_repo(tmp_path / "other")
+    monkeypatch.chdir(other)
+    main(["init"])
+    project = resolve_project(other)
+    assert project is not None
+    monkeypatch.chdir(repo)
+    capsys.readouterr()
+
+    order_path = _write_order(
+        repo, "---\nproject: no-such-project\nmax-cost-usd: 1\n---\n"
+        "Write a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path), "--plan-only", "--project", project.slug)
+
+    assert data["ok"] is True
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert job.project_id == str(project.id)
+
+
 # ── 10: a header constraint reaches the plan ─────────────────────────────────
 
 
