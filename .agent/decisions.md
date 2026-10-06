@@ -27390,3 +27390,13 @@ CHOSEN: This amendment records itself in `.agent/decisions.md` only; the next lo
 ALTERNATIVES: Rewriting `.agent/plan.md` to name F290 as next, REJECTED because the plan is F200's record until its closure rewrites it, and Rule A5 reads STATUS, not the plan.
 
 HOW TO REVERSE: None needed.
+
+## DECISION amend1006 D7 — the amendment lands although its append to this file will conflict textually with F290's unmerged branch (2026-10-06)
+
+CONTEXT: A trial merge of `origin/feature/f290-findings-paydown-v6` (head `4d97e0f4c`) into this amendment's branch, run in a disposable worktree under `.remedy-wt/` and removed afterwards, merged `docs/roadmap/STATUS.md` and `tests/docs/test_docs_consistency.py` cleanly and conflicted only in `.agent/decisions.md`, because both branches append sections at the end of the file. The amendment may not touch F290's branch.
+
+CHOSEN: Land the amendment as ordered. The conflict is a pure both-sides append; its resolution is to keep both blocks, F290's sections first and the amend1006 sections after them, with no text changed. The F290 session that merges `main` into its branch, or repairs its pull request, resolves it that way.
+
+ALTERNATIVES: Writing the DECISIONs somewhere other than the end of this file, REJECTED because the amendment orders an append and the file is read by heading. Holding the amendment until F290 closes, REJECTED because the amendment's only early end is the F200 precondition, which held.
+
+HOW TO REVERSE: None needed; if the conflict is resolved otherwise, the headings `## DECISION amend1006 D1` to `D7` must each still appear exactly once.
