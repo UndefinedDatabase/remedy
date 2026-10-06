@@ -116,11 +116,19 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F294 (test load diet, part two), was registered on 2026-10-01 by F293's
 #: closure as the rest of F293's T002, directly after F293 under the same Tier 2
 #: heading (amend0906-split-placement); see T2_F294.md.
-#: One more, F295 (findings paydown v7), was registered on 2026-10-06 by
-#: F290's closure under operator amendment amend0911-feedback rule B and
-#: placed after F198, the fifth unaccepted line below F290, under its own
-#: Tier 2 heading with the Tier 12 list re-opened after it; see T2_F295.md.
-TOTAL_FEATURES = 295
+#: Two more, F295 (machine client contract v1: order files, the digest and decisions for
+#: a machine) and F296 (evidence-triggered tier escalation, routing v2), were registered on
+#: 2026-10-06 by operator amendment amend1006-luna-control-plane, which also ordered the
+#: unchecked lines of Package 1 into the three Luna gates; see T12_F295.md, T3_F296.md and
+#: docs/roadmap/design/luna-control-plane-v1.md.
+#: One more, F297 (findings paydown v7), was registered on 2026-10-06 by
+#: F290's closure under operator amendment amend0911-feedback rule B, first as
+#: F295 on F290's branch and renumbered by DECISION F290 D6 because the main
+#: line had given F295 and F296 to amend1006-luna-control-plane; it is placed
+#: after F199, the fifth unaccepted line below F290 in that amendment's order,
+#: under its own Tier 2 heading with the Tier 12 list re-opened after it; see
+#: T2_F297.md.
+TOTAL_FEATURES = 297
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

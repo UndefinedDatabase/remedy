@@ -6,7 +6,7 @@
 
 ## Package 1 — Self-Use (active execution order)
 
-The tier-block order below is the operator-decided Self-Use sequence of 2026-08-10; it intentionally no longer mirrors the numeric tier order of ROADMAP.md Part F. Rule A5 reads this file top to bottom, so this order IS the strategy.
+The tier-block order below is the operator-decided Self-Use sequence of 2026-08-10; it intentionally no longer mirrors the numeric tier order of ROADMAP.md Part F. Rule A5 reads this file top to bottom, so this order IS the strategy. Operator ruling amend1006-luna-control-plane (2026-10-06): the unchecked lines are ordered into the three Luna gates of docs/roadmap/design/luna-control-plane-v1.md — gate A (the machine client), gate B (unattended missions), gate C (controlled autonomy) — then routing v2, the second worker, self-dogfood automation and the remaining tiers in their earlier order; reversible by restoring the region from the commit before the ruling.
 
 <!-- operator ruling amend0830-cost-first (2026-08-30): the six lines below are pulled forward from their Tier 3 block (originally directly after F113 — see the "## Tier 3 — Full Token Economy & Autonomy Extension" heading further down, where F113 now sits alone) so that, once no feature is in progress, Rule A5 proposes F106 first and consumes F106/F108/F109/F110/F112/F114 in this order before any other unchecked feature. Reversible by moving these six lines back to immediately before F113's line and deleting this heading and comment. -->
 ## Tier 3 — Cost-First Pull-Forward (operator ruling amend0830)
@@ -199,54 +199,101 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F292 — Plan view and hunk decisions in the cockpit (T001–T003 complete, R-1130 resolved; accepted 2026-10-01 · live review PASS — ACCEPTED · Evidence job f292r13e1001 · package remedy-review-20261001-095015-READY_FOR_REVIEW.zip · SHA-256 f178c7e8e63d3652480d7aa77bfe824c91bd0533d4d2fdb7549526c6fe7b8a9b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7b322964482026296eb5e9bf721517b9a8540d14)
 
+<!-- operator ruling amend1006-luna-control-plane (2026-10-06): the unchecked lines of Package 1 below are ordered into the three Luna gates of docs/roadmap/design/luna-control-plane-v1.md (gate A: the machine client; gate B: unattended missions and the operations of a service; gate C: controlled autonomy), then routing v2, the second worker, self-dogfood automation and the remaining tiers in their earlier relative order. Every pre-existing line is kept byte-identical; only the order, these headings and the two registrations F295 and F296 are new. Reversible by restoring the region from the commit before this ruling. -->
 ## Tier 12 — Observability & Operations
 
 - [x] F200 — Daemon mode (remedy serve) (T001–T002 complete, R-1131, R-1132, R-1134, R-1135 and R-1136 resolved; R-1133 and R-1137 open — owned by F290; accepted 2026-10-01 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f200r13e1001 · package remedy-review-20261001-153207-READY_FOR_REVIEW.zip · SHA-256 97fa32a252c2e4476e49cf958a37c98e68108e30f180805c681ae4f297b29bda · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD f96507e803f7295f1e7727905b3ddd99f2669788)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [x] F290 — Findings paydown v6 (T001–T007 complete, R-1117, R-1125, R-1127, R-1128, R-1129, R-1133 and R-1137 resolved; R-1138 and R-1139 open — owned by F295; accepted 2026-10-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f290r10e1001 · package remedy-review-20261006-194554-READY_FOR_REVIEW.zip · SHA-256 dd2feaf4fbd473023e119dabf9cd48d4403be4cbb722d4196e10677e8fdea15a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 555d8144802f1c3e908862b0d4f16542108ed47e)
+- [x] F290 — Findings paydown v6 (T001–T007 complete, R-1117, R-1125, R-1127, R-1128, R-1129, R-1133 and R-1137 resolved; R-1138 and R-1139 open — owned by F297; accepted 2026-10-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f290r10e1001 · package remedy-review-20261006-194554-READY_FOR_REVIEW.zip · SHA-256 dd2feaf4fbd473023e119dabf9cd48d4403be4cbb722d4196e10677e8fdea15a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 555d8144802f1c3e908862b0d4f16542108ed47e)
 
-## Tier 12 — Observability & Operations (continued)
+## Tier 12 — Luna gate A: the machine client (operator ruling amend1006-luna-control-plane)
 
-- [ ] F201 — Remote access & mobile view
+- [ ] F295 — Machine client contract v1: order files, the digest and decisions for a machine
+
+## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane)
+
+- [ ] F287 — Provider session continuity across relaunch
+- [ ] F116 — Cost anomaly alarm
+- [ ] F058 — Model failover chain
+
+## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
+
 - [ ] F199 — Self-health & crash reports
-- [ ] F203 — Structured logging & correlation
-- [ ] F202 — Backup/restore & schema migrations
-- [ ] F198 — Prometheus metrics endpoint
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F295 — Findings paydown v7
+- [ ] F297 — Findings paydown v7
 
-## Tier 12 — Observability & Operations (continued)
+## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)
 
-- [ ] F204 — Update channel & change transparency
+- [ ] F203 — Structured logging & correlation
+
+## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
+
+- [ ] F055 — Rehearsal (dry check)
+- [ ] F078 — Autonomy levels
+
+## Tier 7 — Luna gate C: permissions (operator ruling amend1006-luna-control-plane)
+
+- [ ] F141 — Permission matrix per autonomy level
+
+## Tier 3 — Luna gate C: the certificate (operator ruling amend1006-luna-control-plane)
+
+- [ ] F060 — Long-run certificate
+
+## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
+
 - [ ] F253 — Headless API contract
 
-## Tier 3 — Full Token Economy & Autonomy Extension
+## Tier 3 — Routing v2: cheap first, evidence escalates (operator ruling amend1006-luna-control-plane)
 
-- [ ] F287 — Provider session continuity across relaunch
+- [ ] F296 — Evidence-triggered tier escalation (routing v2)
 - [ ] F113 — Local models for side roles
-- [ ] F116 — Cost anomaly alarm
-- [ ] F049 — Parallelism
-- [ ] F054 — Auto-revert proposal
-- [ ] F055 — Rehearsal (dry check)
-- [ ] F058 — Model failover chain
-- [ ] F059 — Notifications
-- [ ] F060 — Long-run certificate
+- [ ] F074 — Estimate calibration
+
+## Tier 7 — Routing v2: the history (operator ruling amend1006-luna-control-plane)
+
+- [ ] F133 — Provider trust score
+
+## Tier 8 — Worker Ecosystem & Neutrality: the second worker (operator ruling amend1006-luna-control-plane)
+
+- [ ] F151 — Worker adapter contract v2
+- [ ] F157 — Capability matrix & honest degradation
+- [ ] F152 — Worker config isolation
+- [ ] F162 — Sandbox profiles per adapter
+- [ ] F153 — Codex CLI adapter
+- [ ] F158 — Cost normalization & price catalog
+- [ ] F155 — Local full builder
+- [ ] F154 — Gemini CLI adapter
+- [ ] F161 — MCP passthrough with policy
+
+## Tier 3 — Self-dogfood automation (operator ruling amend1006-luna-control-plane)
+
+- [ ] F073 — Post-mortem miner → playbook proposals
 - [ ] F063 — Idea engine v1
 - [ ] F064 — Idea queue UI/CLI
-- [ ] F065 — Idea engine v2 (continuous, opt-in)
 - [ ] F066 — Idea provenance
 - [ ] F067 — Routine missions
+- [ ] F065 — Idea engine v2 (continuous, opt-in)
+
+## Tier 3 — Full Token Economy & Autonomy Extension (the rest)
+
+- [ ] F054 — Auto-revert proposal
+- [ ] F059 — Notifications
 - [ ] F068 — Autonomy balance (on demand)
 - [ ] F072 — Spec-first (living specification)
-- [ ] F073 — Post-mortem miner → playbook proposals
-- [ ] F074 — Estimate calibration
+- [ ] F049 — Parallelism
 - [ ] F076 — Vision-capable planner
-- [ ] F078 — Autonomy levels
 - [ ] F084 — Demo mode
+
+## Tier 12 — Observability & Operations (the rest)
+
+- [ ] F202 — Backup/restore & schema migrations
+- [ ] F201 — Remote access & mobile view
+- [ ] F198 — Prometheus metrics endpoint
+- [ ] F204 — Update channel & change transparency
 
 ## Tier 4 — Memory & Learning
 
@@ -267,13 +314,12 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F149 — remedy study (initial analysis as a card draw)
 - [ ] F150 — Card value & exploration chance
 
-## Tier 7 — Quality & Trust
+## Tier 7 — Quality & Trust (the rest)
 
 - [ ] F129 — TDD gate (optional per job)
 - [ ] F130 — Mutation sampling
 - [ ] F131 — Adversarial second review
 - [ ] F132 — Review tournament
-- [ ] F133 — Provider trust score
 - [ ] F134 — Security gate
 - [ ] F135 — Flaky detector
 - [ ] F136 — Time-travel checkpoints
@@ -281,7 +327,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F138 — ADR automation
 - [ ] F139 — Code churn metric
 - [ ] F140 — Bit-exact evidence replay
-- [ ] F141 — Permission matrix per autonomy level
 - [ ] F142 — Trust dashboard
 - [ ] F143 — Genesis run: one prompt → one product
 
@@ -316,18 +361,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [ ] F194 — i18n checks
 - [ ] F195 — Budgeted fuzzing
 - [ ] F196 — Flake-resistant E2E discipline
-
-## Tier 8 — Worker Ecosystem & Neutrality
-
-- [ ] F151 — Worker adapter contract v2
-- [ ] F152 — Worker config isolation
-- [ ] F153 — Codex CLI adapter
-- [ ] F154 — Gemini CLI adapter
-- [ ] F155 — Local full builder
-- [ ] F157 — Capability matrix & honest degradation
-- [ ] F158 — Cost normalization & price catalog
-- [ ] F161 — MCP passthrough with policy
-- [ ] F162 — Sandbox profiles per adapter
 
 ## Tier 9 — Evidence & Compliance Product
 

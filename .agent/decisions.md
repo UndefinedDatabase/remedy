@@ -27398,3 +27398,73 @@ CHOSEN: deciding by delegation, as the operator asked: the recommendation stands
 ALTERNATIVES CONSIDERED: giving the seventh paydown the number 295 and moving the main line's machine-client feature to a later number instead, REJECTED because the operator's delegation did not pick it over the recommendation, and the main line's registration was merged first and is already the base every other branch reads, so moving it would be the larger disruption.
 
 HOW TO REVERSE: delete this paragraph and write the question again; a later session then re-decides which side keeps 295.
+
+## DECISION amend1006 D1 — Package 1 of STATUS.md is ordered into the three Luna gates; every pre-existing line is kept byte-identical and only the order and the headings change (2026-10-06)
+
+CONTEXT: The operator's strategy document and its review against both repositories, Remedy and the universe workspace; the gates as the design annex `docs/roadmap/design/luna-control-plane-v1.md` names them. Measured on `origin/main` at the time of this amendment, `scripts.rotate_live_review.open_finding_ids` listed seven open findings (R-1117 Medium; R-1125, R-1127, R-1128, R-1129, R-1133, R-1137 Low); F290's own branch, not yet merged, had resolved R-1127 and R-1128 in its round 2 and listed five.
+
+CHOSEN: The ORDER of the reorder script of amend1006 Part B, run from the scratchpad with all of its assertions holding (163 region lines rebuilt into 196; 121 ids before, 123 after). F290 is kept before F295 because the rolling paydown rule fixes its place and findings are open, R-1117 among them at Medium.
+
+ALTERNATIVES: F295 before F290, REJECTED because the ledger should shrink before a large new feature starts; DECISION amend0929 D2 says a paydown with no open finding waits, and this one has seven open on main (five on its branch). A smaller reorder of only the first ten lines, REJECTED because Rule A5 makes the whole order the strategy, and a half-ordered tail would be read as a decision too.
+
+HOW TO REVERSE: Restore the Package 1 region of `docs/roadmap/STATUS.md` from the commit before this amendment.
+
+## DECISION amend1006 D2 — F295, machine client contract v1, is registered thin in Tier 12 directly after F290 as Luna gate A (2026-10-06)
+
+CONTEXT: Luna's family talks to runners through files, never through a service in the operator's home; `remedy do` takes only text although DECISION F259 D2 decided the order file; no single read gives every mission, job and open decision.
+
+CHOSEN: Tier 12 (the operations tier that holds F200 and F253) and the four tasks of `docs/roadmap/features/T12_F295.md`.
+
+ALTERNATIVES: Amending F253 to carry the command-line half, REJECTED because F253's Done is the HTTP surface and the shipped UI's migration, which Luna does not need first. A Tier 8 placement, REJECTED because no worker is involved.
+
+HOW TO REVERSE: Delete the feature file and its STATUS line, and lower `TOTAL_FEATURES`, the README counter and the Tier 12 total by one.
+
+## DECISION amend1006 D3 — F296, evidence-triggered tier escalation, is registered thin in Tier 3 as the first line of routing v2, distinct from F058 (2026-10-06)
+
+CONTEXT: F110 routes by task class and promotes only with evidence; F058 fails over only on availability and forbids quality triggers; the strategy wants premium models as the escalation resource, not the default.
+
+CHOSEN: A separate feature, `docs/roadmap/features/T3_F296.md`: upward only, never on `provider_unavailable`, default off until a benchmark on the F082 corpus.
+
+ALTERNATIVES: Widening F058's trigger, REJECTED because its file forbids it for a stated reason: failing over on a timeout hides infrastructure problems and burns money on the wrong model. Folding into F133, REJECTED because F133 recommends; it does not route a round.
+
+HOW TO REVERSE: Delete the feature file and its STATUS line, and lower `TOTAL_FEATURES`, the README counter and the Tier 3 total by one.
+
+## DECISION amend1006 D4 — Luna's night, the clock and the routing policy stay outside Remedy (2026-10-06)
+
+CONTEXT: The strategy's first draft wanted the night run as a Remedy mission type, a night window and a self-adjusting router.
+
+CHOSEN: The night stays in Luna's service and its engineering consequences arrive as orders; there is no time-of-day mechanic (ROADMAP.md A9, Part J); routing history is a recommendation, and the policy changes by configuration and an ADR.
+
+ALTERNATIVES: A `luna_night_run` mission type, REJECTED because it would be a parallel job model for state work that is not a repository change. A scheduler of order files, REJECTED because DECISION amend0905-vocab D7 names it a later feature and nothing here registers it.
+
+HOW TO REVERSE: Register the rejected features by a new amendment.
+
+## DECISION amend1006 D5 — ROADMAP.md is edited in exactly four places on the operator's explicit request (2026-10-06)
+
+CONTEXT: AGENTS.md forbids agents to edit `docs/roadmap/ROADMAP.md` without an explicit operator request; amendment amend1006-luna-control-plane is that request.
+
+CHOSEN: The header amendment line, the Tier 3 and Tier 12 headings and summaries, and the Part G paragraph. Part F's feature texts and every other part are untouched.
+
+ALTERNATIVES: Leaving ROADMAP.md untouched, REJECTED because its header already carries the 2026-08-10 amendment that reorganized the ledger, and a reorganization of the same weight belongs beside it.
+
+HOW TO REVERSE: Revert commit 2 of the amendment (`amend1006: the roadmap names the Luna gates and the two registrations`).
+
+## DECISION amend1006 D6 — the loop's own state files are not touched by this amendment (2026-10-06)
+
+CONTEXT: `.agent/plan.md`, `.agent/handoff.md`, `.agent/live_review.md` and `scripts/self_use_queue.json` are written by the loop's rounds.
+
+CHOSEN: This amendment records itself in `.agent/decisions.md` only; the next loop session reads the ledger from `docs/roadmap/STATUS.md` (Rule A1) and finds the new order.
+
+ALTERNATIVES: Rewriting `.agent/plan.md` to name F290 as next, REJECTED because the plan is F200's record until its closure rewrites it, and Rule A5 reads STATUS, not the plan.
+
+HOW TO REVERSE: None needed.
+
+## DECISION amend1006 D7 — the amendment lands although its append to this file will conflict textually with F290's unmerged branch (2026-10-06)
+
+CONTEXT: A trial merge of `origin/feature/f290-findings-paydown-v6` (head `4d97e0f4c`) into this amendment's branch, run in a disposable worktree under `.remedy-wt/` and removed afterwards, merged `docs/roadmap/STATUS.md` and `tests/docs/test_docs_consistency.py` cleanly and conflicted only in `.agent/decisions.md`, because both branches append sections at the end of the file. The amendment may not touch F290's branch.
+
+CHOSEN: Land the amendment as ordered. The conflict is a pure both-sides append; its resolution is to keep both blocks, F290's sections first and the amend1006 sections after them, with no text changed. The F290 session that merges `main` into its branch, or repairs its pull request, resolves it that way.
+
+ALTERNATIVES: Writing the DECISIONs somewhere other than the end of this file, REJECTED because the amendment orders an append and the file is read by heading. Holding the amendment until F290 closes, REJECTED because the amendment's only early end is the F200 precondition, which held.
+
+HOW TO REVERSE: None needed; if the conflict is resolved otherwise, the headings `## DECISION amend1006 D1` to `D7` must each still appear exactly once.

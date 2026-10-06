@@ -23,6 +23,7 @@
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
+| luna control plane | [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) | roadmap |
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
@@ -242,7 +243,7 @@ The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the fu
 plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
-Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038).
+Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038, and [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) for the Luna gates of amend1006).
 Closure process: [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) — the only path from `[~]` to `[x]`.
 
 ## UI Reference (`docs/ui/`)
