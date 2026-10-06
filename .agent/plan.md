@@ -6,12 +6,13 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 4: book round 3's verdict and R-1140's resolution, register R-1141, and repair it
-as DECISION F295 D3 rules — a mission started from an order file records the file's absolute
-path and the sha256 of its bytes.
+Session 1, round 5: book round 4's verdict and R-1141's resolution, and land the digest's frame as
+DECISION F295 D4 rules it — a `client` object in `remedy status --json` with projects, missions,
+jobs, the jobs that wait for apply and whether the supervisor answers.
 
 ## Next Steps
-1. T002: `remedy status --json` gains the versioned section for a machine client.
+1. T002, second half: the digest's open decisions with question, default and age, each job's cost
+   with its basis and its evidence references, and each project's cost of the day.
 2. T003: every decision kind answerable with `--json`, and a test that a run with `--yes --no-ui
    --json` on a pipe never reads stdin.
 3. T004: `docs/system/machine-client-contract-v1.md`, which also writes down the order file's
@@ -19,4 +20,5 @@ path and the sha256 of its bytes.
 4. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
 
 ## Risks
-- R-1141 (Low) is F295's own; R-1138 and R-1139 (Low) stay open, owned by F297.
+- R-1138 and R-1139 (Low) stay open, owned by F297; F295 owns no open finding.
+- The digest reads every job file on each call; its cost is measured before T002 closes.
