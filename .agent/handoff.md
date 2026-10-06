@@ -72,6 +72,7 @@ commit; byte equality of both applied files with their authored copies;
 
 ## Next
 
+Operator decision on Q5 recorded in decisions.md — apply it before other work.
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Phase 1 rule 2, the Open PR Gate on pull request 310: if Q5 is answered, carry out the answer
    (under the recommendation: merge `origin/main` into the branch, keep both decision blocks per
