@@ -116,7 +116,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F294 (test load diet, part two), was registered on 2026-10-01 by F293's
 #: closure as the rest of F293's T002, directly after F293 under the same Tier 2
 #: heading (amend0906-split-placement); see T2_F294.md.
-TOTAL_FEATURES = 294
+#: One more, F295 (findings paydown v7), was registered on 2026-10-06 by
+#: F290's closure under operator amendment amend0911-feedback rule B and
+#: placed after F198, the fifth unaccepted line below F290, under its own
+#: Tier 2 heading with the Tier 12 list re-opened after it; see T2_F295.md.
+TOTAL_FEATURES = 295
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
