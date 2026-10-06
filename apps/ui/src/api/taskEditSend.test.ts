@@ -150,6 +150,23 @@ describe("describeTaskEditResult", () => {
     expect(message.tone).toBe("error");
   });
 
+  it("words a failed revalidation by its detail although current_version came too (R-1129)", () => {
+    const message = describeTaskEditResult({
+      outcome: "refused", status: 409,
+      body: { error: "x", detail: "task T002 depends on the unknown task T009", current_version: 4 },
+    });
+    expect(message.sentence).toBe("Not saved: task T002 depends on the unknown task T009.");
+    expect(message.tone).toBe("error");
+  });
+
+  it("says the stale-version sentence when the detail beside current_version is empty", () => {
+    const message = describeTaskEditResult(
+      { outcome: "refused", status: 409, body: { detail: "", current_version: 4 } },
+    );
+    expect(message.sentence).toBe(
+      "Not saved: this task changed since you opened it. Close it and edit again.");
+  });
+
   it("words every other refusal exactly as describePauseSendResult words its own", () => {
     const statuses: TaskEditSubmitResult[] = [
       { outcome: "refused", status: 400, body: null },
