@@ -225,7 +225,7 @@ def test_a_job_whose_decisions_cannot_be_read_marks_degraded_and_skips_only_that
 
     def fake_list_decisions(job, events):
         if str(job.job_id) == str(bad_job.job_id):
-            raise RuntimeError("boom")
+            raise OSError("boom")
         return real_list_decisions(job, events)
 
     monkeypatch.setattr(client_digest_mod, "list_decisions", fake_list_decisions)
@@ -236,6 +236,50 @@ def test_a_job_whose_decisions_cannot_be_read_marks_degraded_and_skips_only_that
     assert f"decisions of job {bad_job.job_id}" in digest["skipped_files"]
     [entry] = digest["decisions"]
     assert entry["decision_id"] == good_record["decision_id"]
+
+
+@pytest.mark.parametrize("run_log", [
+    "[1]\n",
+    '{"timestamp": 1}\n{"timestamp": "2026-01-01T00:00:00"}\n',
+], ids=["a-line-that-is-json-but-not-an-object", "timestamps-of-mixed-types"])
+def test_a_job_whose_run_log_holds_a_malformed_record_marks_degraded_and_skips_only_that_job(
+        root, run_log):
+    from packages.orchestration.data_paths import run_log_dir
+
+    bad_job = JobPlan(job_title="bad-log-job", project_id="proj-1", metadata=_job_metadata())
+    enqueue_task_decision(bad_job, task_id="T001", question="Q1", options=["a"], now=NOW)
+    save_job_plan(bad_job)
+    log_dir = run_log_dir(bad_job.job_id, root)
+    log_dir.mkdir(parents=True)
+    (log_dir / "run.jsonl").write_text(run_log, encoding="utf-8")
+
+    good_job = JobPlan(job_title="good-log-job", project_id="proj-2", metadata=_job_metadata())
+    good_record = enqueue_task_decision(
+        good_job, task_id="T002", question="Q2", options=["b"], now=NOW)
+    save_job_plan(good_job)
+
+    digest = build_client_digest(now=NOW)
+
+    assert digest["degraded"] is True
+    assert f"decisions of job {bad_job.job_id}" in digest["skipped_files"]
+    [entry] = digest["decisions"]
+    assert entry["decision_id"] == good_record["decision_id"]
+
+
+def test_an_error_outside_the_named_read_errors_is_not_hidden_as_degradation(
+        root, monkeypatch):
+    import packages.orchestration.client_digest as client_digest_mod
+
+    job = JobPlan(job_title="crash-job", project_id="proj-1", metadata=_job_metadata())
+    save_job_plan(job)
+
+    def fake_list_decisions(job, events):
+        raise RuntimeError("a defect, not a bad record")
+
+    monkeypatch.setattr(client_digest_mod, "list_decisions", fake_list_decisions)
+
+    with pytest.raises(RuntimeError, match="a defect, not a bad record"):
+        build_client_digest(now=NOW)
 
 
 def test_the_age_helper_reads_an_offsetless_created_at_as_utc():
