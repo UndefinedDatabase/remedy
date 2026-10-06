@@ -1665,15 +1665,16 @@ class TestCompletionGate:
         assert ok is False
         assert any("staging_path_missing" in r for r in reasons)
 
-    def test_builder_no_changes_with_reviewer_pass(self):
+    def test_builder_no_changes_with_reviewer_pass_blocks(self):
+        """R-1117: a reviewer's pass does not make a task that changed no file passed."""
         result = _make_fake_result(
             final_status="staged_review_passed",
             staged_files=[],
             reviewer_verdict="pass",
         )
         ok, reasons = validate_job_task_result(result)
-        assert ok is True
-        assert reasons == []
+        assert ok is False
+        assert reasons == ["no_file_changed"]
 
     def test_builder_no_changes_without_reviewer_blocks(self):
         result = _make_fake_result(
@@ -1693,6 +1694,28 @@ class TestCompletionGate:
         )
         ok, reasons = validate_job_task_result(result)
         assert ok is False
+
+    def test_a_job_task_that_changed_no_file_blocks_the_job(self, isolate_data_root, demo_repo):
+        """R-1117: the reviewer passes, the builder changed nothing, and the task is not passed."""
+
+        class _NoChangeBuilder(FakeProvider):
+            def build(self, prompt, **kwargs):
+                out = super().build(prompt, **kwargs)
+                out.files_changed = []
+                return out
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        result = run_job(
+            job.job_id,
+            builder_provider=_NoChangeBuilder(pass_on_round=1, fail_on_round=99),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        first, second = result.tasks
+        assert first.status == TASK_BLOCKED
+        assert first.error == "completion_gate_failed: no_file_changed"
+        assert result.state == JOB_BLOCKED
+        assert second.status == TASK_SKIPPED
 
     def test_later_tasks_run_after_no_change(self, isolate_data_root, demo_repo):
         """A no-change T001 that passes must not skip T002."""

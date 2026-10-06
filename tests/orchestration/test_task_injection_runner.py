@@ -184,10 +184,13 @@ class TestConfirmedBeforeTheRun:
 # ---------------------------------------------------------------------------
 
 
-class _InjectingBuilder:
+# A FakeProvider, so the loop writes the file its build names: a job task that changed no
+# file is blocked (R-1117).
+class _InjectingBuilder(FakeProvider):
     """During the LAST original task's OWN build call, drafts and confirms an injection."""
 
     def __init__(self, job_id: str, inject_on_build: int):
+        super().__init__(pass_on_round=1, fail_on_round=99)
         self._job_id = job_id
         self._inject_on_build = inject_on_build
         self.build_calls = 0

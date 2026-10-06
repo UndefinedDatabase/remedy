@@ -25,7 +25,7 @@ from packages.orchestration.pingpong_job import (
     run_job,
 )
 from packages.orchestration.pingpong_loop import load_run
-from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
 
 
 @pytest.fixture(autouse=True)
@@ -498,15 +498,18 @@ class TestPerTaskCommitsOnTheJobBranch:
         (plain / "base.txt").write_text("base\n")
         job = parse_job_file("# J\n\n## Task 1 — write\n\nWrite one.txt.\n", str(plain))
 
-        class _Simple:
+        # A FakeProvider, so the loop writes one.txt: a job task that changed no file is
+        # blocked (R-1117), and this test needs the task applied.
+        class _Simple(FakeProvider):
             def build(self, prompt, **kw):
-                return BuilderOutput(summary="noop", files_changed=[], provider="fake")
+                return BuilderOutput(summary="wrote one.txt", files_changed=["one.txt"],
+                                     provider="fake")
 
             def review(self, prompt, **kw):
                 return ReviewerOutput(verdict="pass", confidence="high",
                                       summary="ok", provider="fake")
 
-        prov = _Simple()
+        prov = _Simple(pass_on_round=1, fail_on_round=99)
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
         assert done.isolation_mode == "copy"
