@@ -1,271 +1,221 @@
-# Handoff — F290 Findings paydown v6, round 10 landed: the evidence job and the review package
+# Handoff — F290 Findings paydown v6, round 11 landed: the closing round
 
 ## Session
 
-SESSION 4 of feature F290 · round 10 · rounds so far 10
+SESSION 4 of feature F290 · round 11 · rounds so far 11
 
-Context self-assessment: context is comfortable; round 10 ran its full ordered sequence — C1,
-C2 (then push), A0 (the staging reclaim preview), A1 (the evidence job), A2 (the review package),
-all five gates and C3 — with every gate green, the evidence job exiting 0 with every expected
-reading, and the package building `READY_FOR_REVIEW` on its first attempt, so this handback
-carries the block's success-path content in full rather than a stop.
-
-Fortschritt: ~96 % (all seven findings resolved and hardened; the self-use item landed; suite
-green; the checklist pass recorded; the evidence and the package built at the accepted head; the
-ledger rotation, the next paydown, the STATUS line and the pull request open) — Schätzung
+Context self-assessment: the reviewer's context is comfortable; the session ends here because
+F290 is closed and the next feature starts in a fresh session.
 
 ## Range
 
-Review of `f6ca8e74d`..`HEAD`: two commits on `feature/f290-findings-paydown-v6`, `85556e2a5` and
-`555d81448`, and this handback commit.
+Review of `967e6c04b`..`HEAD`: three content commits on `feature/f290-findings-paydown-v6`,
+`2a8184fe3`, `132de5b86` and `0654e42c1`, plus this handback commit (C4).
 
 ## Commits
 
-### `85556e2a5` F290 R10 C1: book round 9 and R-1139, save the round 10 block and the evidence script
+### `2a8184fe3` F290 R11 C1: book round 10, re-assign R-1138 and R-1139 to F295, save the round 11 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f290-r10.md` | +160/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-s10/block.md` (`wc -l` 160, sha256 `d01ebcd5e5c0783fef71cc3ef6d8af2034ddae9d32fa208f3edadf932f0c570c`); byte comparison against the source read equal, matching both the prompt-delivered digest and the post-copy re-measurement |
-| `.agent/authored/f290-r10-create_f290_evidence.py` | +169/-0 | NEW FILE; byte-for-byte copy of `.remedy-wt/f290-s10/dry-f290-r10-create_f290_evidence.py` (the adapted F200 R13 evidence script, with its base, test files, deselection, run id, job id, job title, step range and feature id changed for F290); byte comparison read equal |
-| `.agent/live_review.md` | +4/-0 | whole-file copy from `.remedy-wt/f290-s10/dry-live_review.md`, appending the F290 R9 Gate entry (VERDICT PASS) and registering R-1139 (closure precondition 2: the closure suite's CPU cost 21.8 percent above F200's); append-byte-equality proof (`git show f6ca8e74d:.agent/live_review.md` bytes + `append-live_review.txt` bytes == new file, compared with Python `==` over bytes) read `True` |
-| `.agent/plan.md` | +7/-8 | whole-file copy from `.remedy-wt/f290-s10/dry-plan.md`, advancing Current Step/Next Steps to round 10 (the evidence round: book round 9's verdict, register R-1139, the consolidation pass, the staging reclaim, the evidence job and the review package) |
+| `.agent/authored/f290-r11.md` | +137/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-s11/block.md` (`wc -l` 137, sha256 `ed782be594a1b4e31b3455fb356d2f657592c65091ee8029877cb3f490f6be48`); byte comparison against the source read equal, matching both the prompt-delivered digest and the post-copy re-measurement |
+| `.agent/authored/f290-r11-status_line.txt` | +1/-0 | NEW FILE; byte-for-byte copy of `.remedy-wt/f290-s11/status_line.txt` (the reviewer-authored STATUS line for F290's `[x]` flip, applied verbatim in C4) |
+| `.agent/authored/f290-r11-pr_body.md` | +104/-0 | NEW FILE; byte-for-byte copy of `.remedy-wt/f290-s11/pr_body.md` (the PR description, used verbatim by `gh pr create --body-file`) |
+| `.agent/live_review.md` | +4/-0 | whole-file copy from `.remedy-wt/f290-s11/sim-C1-live_review.md`: the base file with one `Owner: F295 — ...` line inserted directly after each of the two registration paragraphs `- R-1138 — ` and `- R-1139 — `, and the bytes of `append-live_review.txt` (the F290 R10 Gate entry) appended; byte comparison against the prepared file read equal |
+| `.agent/plan.md` | +6/-7 | whole-file copy from `.remedy-wt/f290-s11/plan.md`, advancing Current Step/Next Steps to round 11 (the closing round: book round 10, rotate the ledger, register F295, accept F290, open the PR) |
 
-`git diff --cached --numstat` before the commit read `169 0`, `160 0`, `4 0` and `7 8` for the four
-paths — matching the block's stated numbers exactly. `git show --numstat 85556e2a5` after the
-commit read the same four lines.
+`git diff --cached --numstat` before the commit read `104 0`, `1 0`, `137 0`, `4 0` and `6 7` for
+the five paths — matching the block's stated numbers exactly. `git show --numstat 2a8184fe3`
+after the commit read the same five lines.
 
-### `555d81448` F290 R10 C2: F290's pass in the checklist's consolidation record
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | +8/-0 | ALONE; inserted the bytes of `.remedy-wt/f290-s10/consolidation.txt` directly before the file's one line `  The next consolidation measures against 34.` (that marker line occurred exactly once); the resulting file equals `git show f6ca8e74d:docs/agents/planner_reviewer_prompt.md` with those bytes inserted at that point, compared with Python `==` over bytes, which read `True` |
-
-`git diff --cached --numstat` before the commit read `8 0` for the one path this commit touches —
-matching the block's stated number exactly. `git show --numstat 555d81448` after the commit read
-the same line. This is the ACCEPTED HEAD: `555d8144802f1c3e908862b0d4f16542108ed47e`.
-
-### this commit — F290 R10 C3: handback with the evidence and package readings
+### `132de5b86` F290 R11 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | this file; documents round 10 landing through C1, C2 (push), A0, A1, A2 and all five gates |
+| `.agent/live_review.md` | +0/-61 | `python3 scripts/rotate_live_review.py`, run once from the repository root: moved every `Gate:` record of a `[x]` feature and every resolved finding pair, byte-verbatim, into the archive. Output: `gate records moved: 14`, `finding pairs moved: 7 (14 records)`, `resolved-text records moved: 2`, `old ledger size: 170987 bytes`, `new ledger size: 130464 bytes`, `old archive size: 5930915 bytes`, `new archive size: 5971438 bytes`, `open findings before: 2`, `open findings after: 2` — matching the block's expected reading exactly |
+| `.agent/live_review_archive.md` | +61/-0 | same run; append-only archive gains the moved records |
+
+Post-rotation readings matched the block's expectations exactly: `.agent/live_review.md` 130464
+bytes, sha256 `786db7e1e41ec45932fc415ee40ae75263165eb1fea33854b8807e528aa28244`; `.agent/live_review_archive.md`
+5971438 bytes, sha256 `88d8d0929d0ca5e2e51b8d1049216f2b39a956d669f1964d69f264aa7007cb77`. `git show --numstat 132de5b86`
+read `0 61` and `61 0`.
+
+### `0654e42c1` F290 R11 C3: register F295 — Findings paydown v7 under amend0911-feedback rule B: feature file, STATUS line, pin 295, README counters
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/features/T2_F295.md` | +40/-0 | NEW FILE; byte-for-byte copy of `.remedy-wt/f290-s11/T2_F295.md` (F295 — Findings paydown v7's feature file) |
+| `docs/roadmap/STATUS.md` | +7/-0 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C3-STATUS.md`: F295's line directly after F198's, under its own Tier 2 heading with the Tier 12 list re-opened after it |
+| `README.md` | +2/-2 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C3-README.md`: 125 of 295, Tier 2 row 41 of 43 |
+| `tests/docs/test_docs_consistency.py` | +5/-1 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C3-test_docs_consistency.py`: `TOTAL_FEATURES` 295 with its four comment lines |
+
+`git diff --cached --numstat` before the commit read `2 2`, `7 0`, `40 0` and `5 1` for the four
+paths — matching the block's stated numbers exactly. `git show --numstat 0654e42c1` after the
+commit read the same four lines. Nothing else was in this commit.
+
+### this commit — F290 R11 C4: accept F290 in STATUS with its README sync and the self-use queue
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C4-STATUS.md`: F290's `[~]` line becomes the one line of `status_line.txt` |
+| `README.md` | +13/-3 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C4-README.md`: 126 of 295, Tier 2 row 42 of 43, and F290's entry after F294's in "Accepted in Tier 2 so far:" |
+| `scripts/self_use_queue.json` | +1/-1 | byte-for-byte copy of `.remedy-wt/f290-s11/sim-C4-self_use_queue.json`: `SU-044`'s `consumed_by` becomes `F290` |
+| `.agent/handoff.md` | this commit | this file; a handoff cannot table the commit that writes it (R-0149 pattern) |
+
+The three non-`.agent` numstats above are measured BEFORE this handoff joined the commit (staged
+`git diff --numstat` read `1 1`, `13 3` and `1 1` for the three paths, matching the block's stated
+numbers exactly); `git show --numstat` of the actual commit, once made, additionally carries this
+file's own insertion count.
 
 ## External actions
 
-- `555d81448` (C2) was pushed with `git push origin feature/f290-findings-paydown-v6` immediately
-  after it was made: `f6ca8e74d..555d81448  feature/f290-findings-paydown-v6 -> feature/f290-findings-paydown-v6`.
-- This commit (C3) is pushed with the same command immediately after it is made.
-- No worktree add/remove issued this round; the reviewer's prepared files were read from the
-  existing `.remedy-wt/f290-s10/` directory. Scratch helper files were written under
-  `.remedy-wt/f290-r10-worker/` (gitignored, newly created this round).
-- The evidence job wrote its bundle to `.remedy-wt/f290-r10-evidence/` (gitignored, not
-  committed). The review package was built to the operator's archive (no `REMEDY_REVIEW_DIR` set):
-  `/home/decodeux/Repos/remedy-history/zips/remedy-review-20261006-194554-READY_FOR_REVIEW.zip`.
-- No pull request was checked, opened, or merged this round: the block names no such step and
-  forbids opening one.
+- No push and no `gh` command issued yet for this round's content commits (C1–C3): the block's
+  `THEN` section places the push and the pull request after C4, not after each content commit.
+  Both run immediately after this commit, in order, and are reported in full below once executed.
+- No worktree add/remove issued this round: the reviewer's prepared files were read from the
+  existing `.remedy-wt/f290-s11/` directory. Scratch helper files were written under
+  `.remedy-wt/f290-r11-worker/` (gitignored, newly created this round by `mkdir -p`, not a git
+  worktree operation).
 
 ## Verification
 
-A0, A1, A2 (commit nothing) and the five gates, run once each, in the block's order.
+Gates 1–5, run once each after C4's three files were in place and before this handoff, in the
+block's order.
 
-A0 — the staging reclaim preview, `python3 -m apps.cli.main data reclaim --orphans`, cwd the
-primary checkout:
-
-    exit code: 0
-    Data root: /home/decodeux/Repos/remedy/.data
-      Reclaimable: nothing
-      Refused (kept, with the reason):
-        review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only  1.5 MB
-      Not reclaimed — reclaim addresses ephemeral classes only:
-        (18 durable/unclassified data-root entries, sizes listed in the raw transcript; none
-        eligible for reclaim)
-      Would free 0 B in 0 paths — nothing deleted; re-run with --apply
-
-Reading: `Would free 0 B in 0 paths`, matching the block's expected reading exactly. Per the
-block's instruction, `--apply` was SKIPPED. The one refused path and its reason are recorded
-above in full; every other listed entry is a durable/unclassified data-root class, not a refusal.
-
-A1 — the evidence job. First, the node_modules check (Python `os.path.isdir`/`os.path.islink` on
-`/home/decodeux/Repos/remedy/apps/ui/node_modules`): `isdir: True`, `islink: False` — a real
-directory, not a symlink. Then, from the repository root at C2 (`555d81448`), one run of
-`python3 .agent/authored/f290-r10-create_f290_evidence.py .remedy-wt/f290-r10-evidence`, output
-captured to `.remedy-wt/f290-r10-worker/evidence.txt`:
-
-    exit code: 0
-    head 555d8144802f1c3e908862b0d4f16542108ed47e
-    ancestry-path count 29
-    plain count 29
-    collected node ids 1000, deselected 13
-    red control: unsafe among the real ids 0 []
-    red control: planted id -> a local absolute path
-    pytest exit 0, {'passed': 997, 'failed': 0, 'skipped': 3}, output_hash f613abbee3937251c18c66aeb19a05fd544737ebcf35cee7a4613d053720ea1b
-    validate_verification_tests problems [] passed 997
-    is_valid_current_run True
-    validation_errors []
-    gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-    job_id "f290r10e1001", head_commit "555d8144802f1c3e908862b0d4f16542108ed47e", authority_count 18,
-    partition {"T001": 6, "T002": 6, "T003": 6}, commit_count 29, verdict "PASS_WITH_RISKS",
-    manual_completion true, operator_attested_tasks ["T001","T002","T003"], total_passed 997
-
-Reading: both ancestry counts equal (29 and 29), 1000 node ids with 13 deselected, no unsafe id,
-the planted id answering `a local absolute path`, pytest exit 0 with 997 passed and 3 skipped, an
-EMPTY `validate_verification_tests` problem list, and `is_valid_current_run` True with no
-validation error — every expected reading matched, exit code 0. `git status --porcelain` stayed
-empty afterward.
-
-A2 — the review package. `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f290-r10-evidence`,
-cwd the primary checkout, WITHOUT setting `REMEDY_REVIEW_DIR` (confirmed unset beforehand), output
-captured to `.remedy-wt/f290-r10-worker/zip.txt`:
-
-    exit code: 0
-    {"member_count": 7608, "authoritative_count": 18, "symlink_count": 0, "tombstone_count": 0,
-     "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20261006-194554-READY_FOR_REVIEW.zip",
-     "final_sha256": "dd2feaf4fbd473023e119dabf9cd48d4403be4cbb722d4196e10677e8fdea15a",
-     "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW",
-     "evidence_authoritative": true, "review_subject_alignment": "PASS",
-     "manifest_sha256": "ee0e0c50b8c345c2d180c9f4b89edbc1f8d8b1e2c3a97bcda76c884d77357501"}
-    REVIEW_PACKAGE_CREATED=true
-    PACKAGE_STATUS=READY_FOR_REVIEW
-    EVIDENCE_DIR=.remedy-wt/f290-r10-evidence
-    REVIEW_SUBJECT_ALIGNMENT=PASS
-    EVIDENCE_AUTHORITATIVE=true
-    REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
-    ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261006-194554-READY_FOR_REVIEW.zip
-    35M  remedy-review-20261006-194554-READY_FOR_REVIEW.zip
-    Included files: 7608
-    Branch: feature/f290-findings-paydown-v6
-    Commit: 555d8144802f1c3e908862b0d4f16542108ed47e
-
-Package: `remedy-review-20261006-194554-READY_FOR_REVIEW.zip`, SHA-256
-`dd2feaf4fbd473023e119dabf9cd48d4403be4cbb722d4196e10677e8fdea15a`, archived directory
-`/home/decodeux/Repos/remedy-history/zips`. `.review_zip_manifest.json` INSIDE the package:
-`committed_review_subject.base_commit` = `31542dbfd3b74fda71ccb0b58ad5180c8453c755` (the fork
-point), `committed_review_subject.head_commit` = `555d8144802f1c3e908862b0d4f16542108ed47e`
-(C2's full sha — equal to the accepted HEAD). Python `zipfile.is_zipfile(ZIP_PATH)` read `True`
-and `ZipFile.testzip()` read `None`. `PACKAGE_STATUS` read `READY_FOR_REVIEW` (not merely exit 0).
-
-Gate 1 (after C2) — `git status --porcelain` empty; a byte comparison of each table path and of
-`.agent/authored/f290-r10.md` against its prepared file; integrity check; `open_finding_ids`:
+Gate 1 — `git status --porcelain`, byte comparisons, ledger post-rotation hashes:
 
     $ git status --porcelain
-    (no output)
+     M README.md
+     M docs/roadmap/STATUS.md
+     M scripts/self_use_queue.json
 
-    $ python3 gate1.py
-    .agent/authored/f290-r10.md vs block.md : EQUAL=True
-    .agent/live_review.md vs dry-live_review.md : EQUAL=True
-    .agent/plan.md vs dry-plan.md : EQUAL=True
-    .agent/authored/f290-r10-create_f290_evidence.py vs dry-f290-r10-create_f290_evidence.py : EQUAL=True
+    status_only_c4_files: True
+    block.md vs .agent/authored/f290-r11.md : EQUAL= True
+    status_line.txt vs .agent/authored/f290-r11-status_line.txt : EQUAL= True
+    pr_body.md vs .agent/authored/f290-r11-pr_body.md : EQUAL= True
+    plan.md vs .agent/plan.md : EQUAL= True
+    T2_F295.md vs docs/roadmap/features/T2_F295.md : EQUAL= True
+    sim-C4-STATUS.md vs docs/roadmap/STATUS.md : EQUAL= True
+    sim-C4-README.md vs README.md : EQUAL= True
+    sim-C4-self_use_queue.json vs scripts/self_use_queue.json : EQUAL= True
+    sim-C3-test_docs_consistency.py vs tests/docs/test_docs_consistency.py : EQUAL= True
+    .agent/live_review.md post-rotation EQUAL= True
+    .agent/live_review_archive.md post-rotation EQUAL= True
     ALL_OK: True
+    GATE1_RETURNCODE: 0
+
+Gate 1: GREEN — only the three C4 files modified; every byte comparison equal.
+
+Gate 2 — the STATUS line occurrence and the absent `[~] F290` line:
+
+    $ python3 gate2.py
+    occurs_count: 1
+    no_tilde_f290_line: True
+    GATE2_RETURNCODE: 0
+
+Gate 2: GREEN.
+
+Gate 3 — the round's one test selection:
+
+    $ python3 -B -m pytest -q -n auto -rfEs -p no:cacheprovider tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py
+    bringing up nodes...
+    ........................................................................ [ 12%]
+    ........................................................................ [ 25%]
+    ........................................................................ [ 38%]
+    ........................................................................ [ 51%]
+    ........................................................................ [ 64%]
+    ........................................................................ [ 77%]
+    ........................................................................ [ 90%]
+    ...................................................                      [100%]
+    555 passed in 7.99s
+    GATE3_RETURNCODE: 0
+
+Gate 3: GREEN — `555 passed`, no FAILED, ERROR or SKIPPED line, no `process(es) behind` line,
+matching the block's expected reading exactly.
+
+Gate 4 — the integrity check:
 
     $ python3 -m apps.cli.main integrity check --json
-    exit 0
-    {"check_count": 6, ..., "fail_count": 0, "ok": true, "passed": true, ...}
+    {"check_count": 6, "checks": [{"message": "handlers=174", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+    GATE4_RETURNCODE: 0
+
+Gate 4: GREEN — six checks `pass`, `fail_count` 0.
+
+Gate 5 — the open findings set:
 
     $ python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
-    exit 0
     ['R-1138', 'R-1139']
+    GATE5_RETURNCODE: 0
 
-Gate 1: GREEN — matches the required `['R-1138', 'R-1139']` exactly.
-
-Gate 2 — A1's readings, quoted above in full: GREEN (every expected reading matched, pytest exit
-0, empty problem list, `is_valid_current_run` True).
-
-Gate 3 — A2's readings, quoted above in full: GREEN (`PACKAGE_STATUS` `READY_FOR_REVIEW`,
-`REVIEW_SUBJECT_ALIGNMENT` `PASS`, manifest base/head correct, `is_zipfile` True, `testzip()`
-None).
-
-Gate 4 (after A2, before C3) — integrity check and `git status --porcelain`:
-
-    $ python3 -m apps.cli.main integrity check --json
-    exit 0
-    {"check_count": 6, "checks": [{"name": "handler_import", "status": "pass", "message": "handlers=174"}, {"name": "live_review_verdict", "status": "pass", "message": "last Gate verdict PASS"}, {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"}, {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"}, {"name": "repo_root_hygiene", "status": "pass", "message": "no reviewer scratch, evidence dir or archive at the root"}, {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}], "fail_count": 0, "ok": true, "passed": true}
-
-    $ git status --porcelain
-    (no output)
-
-Gate 4: GREEN — six checks `pass`, `fail_count` 0, tree clean.
-
-Gate 5 (after C3, before its push) — reported here since the handback cannot quote a reading of
-itself: `git status --porcelain` read empty and `python3 -m apps.cli.main integrity check --json`
-read `fail_count` 0, both confirmed immediately before this commit's push (see the reply to the
-delegator for the literal transcript, since this file is the artifact being verified).
+Gate 5: GREEN — matches the required `['R-1138', 'R-1139']` exactly.
 
 ## Authored-text proofs
 
-- `.agent/authored/f290-r10.md` vs `.remedy-wt/f290-s10/block.md`: byte comparison equal; `wc -l`
-  160, sha256 `d01ebcd5e5c0783fef71cc3ef6d8af2034ddae9d32fa208f3edadf932f0c570c` on both readings
+- `.agent/authored/f290-r11.md` vs `.remedy-wt/f290-s11/block.md`: byte comparison equal; `wc -l`
+  137, sha256 `ed782be594a1b4e31b3455fb356d2f657592c65091ee8029877cb3f490f6be48` on both readings
   (the prompt-delivered digest and the post-copy re-measurement).
-- `.agent/authored/f290-r10-create_f290_evidence.py` vs
-  `.remedy-wt/f290-s10/dry-f290-r10-create_f290_evidence.py`: byte comparison equal.
-- `.agent/live_review.md` vs `dry-live_review.md`: byte comparison equal. Append-byte-equality
-  proof (base bytes at `f6ca8e74d` plus `append-live_review.txt` bytes equals the new file,
-  compared with Python `==` over bytes) read `True`.
-- `.agent/plan.md` vs `dry-plan.md`: byte comparison equal (whole-file copy, no append proof
-  applicable).
-- `docs/agents/planner_reviewer_prompt.md`: the new file equals `git show
-  f6ca8e74d:docs/agents/planner_reviewer_prompt.md` with the bytes of `consolidation.txt` inserted
-  directly before its one line `  The next consolidation measures against 34.`, compared with
-  Python `==` over bytes, which read `True`. The marker line occurred exactly once in the base
-  file (byte offset 31787), so the insertion point was unambiguous.
-- Gate 1's re-check (above) confirms all four committed C1 files still match their prepared files
-  bit-for-bit after both commits.
+- `.agent/authored/f290-r11-status_line.txt` vs `.remedy-wt/f290-s11/status_line.txt`: byte
+  comparison equal.
+- `.agent/authored/f290-r11-pr_body.md` vs `.remedy-wt/f290-s11/pr_body.md`: byte comparison equal.
+- `.agent/live_review.md` (C1) vs `.remedy-wt/f290-s11/sim-C1-live_review.md`: byte comparison
+  equal, before the C2 rotation changed the file; the post-rotation file then matched the block's
+  stated size and sha256 exactly (Gate 1).
+- `.agent/plan.md` vs `.remedy-wt/f290-s11/plan.md`: byte comparison equal.
+- `docs/roadmap/features/T2_F295.md` vs `.remedy-wt/f290-s11/T2_F295.md`: byte comparison equal.
+- `docs/roadmap/STATUS.md` vs `.remedy-wt/f290-s11/sim-C3-STATUS.md` (C3) and then vs
+  `.remedy-wt/f290-s11/sim-C4-STATUS.md` (C4): byte comparison equal at each step.
+- `README.md` vs `.remedy-wt/f290-s11/sim-C3-README.md` (C3) and then vs
+  `.remedy-wt/f290-s11/sim-C4-README.md` (C4): byte comparison equal at each step.
+- `tests/docs/test_docs_consistency.py` vs `.remedy-wt/f290-s11/sim-C3-test_docs_consistency.py`:
+  byte comparison equal.
+- `scripts/self_use_queue.json` vs `.remedy-wt/f290-s11/sim-C4-self_use_queue.json`: byte
+  comparison equal.
+- The STATUS line in `docs/roadmap/STATUS.md` is byte-identical to
+  `.agent/authored/f290-r11-status_line.txt` without its trailing newline: occurrence count 1
+  (Gate 2).
 
 ## Deviations & assumptions
 
 1. This session's auto-attached working directory was again a separate location (a disposable
    reviewer worktree under `.remedy-wt/`), unrelated to this round's work. It was never read from
    or written to: every command in this round ran against `/home/decodeux/Repos/remedy` directly,
-   by absolute path or `git -C`, or by passing that path as a `cwd`/argument to a `python3` script.
+   by absolute path, `git -C`, or by passing that path as a `cwd` argument to a `python3` script.
 2. The round's first verification step (the dual sha256/line-count reading of `block.md`, and the
-   sha256 reading of all four reviewer-prepared files named in the Bundle) was performed with
-   Python scripts written via the Write tool rather than a shell heredoc, since the block itself
+   sha256 reading of every reviewer-prepared file the Bundle names) was performed with Python
+   scripts written via the Write tool rather than a shell heredoc, since the block itself
    anticipates that "this sandbox refuses many shell shapes including heredocs". Every scratch
-   script this round was written with the Write tool and invoked as `python3 -I <path>` or
-   `python3 <path>` (plain, where the script imports repository modules such as
-   `apps.cli.main`/`scripts.rotate_live_review` that rely on the repo's own sys.path/package
-   resolution), never a heredoc, never a `cd`+`&&`+`git -C` compound.
-3. Minor, non-blocking: Gate 4 as specified names only the integrity check and `git status
-   --porcelain`. The helper script used to run Gate 4 (`gate1b.py`, reused from Gate 1 for
-   convenience) also re-ran the `open_finding_ids` import-and-call, which Gate 4 does not call
-   for. That command is a pure read of `.agent/live_review.md` with no side effect, and it read
-   the same `['R-1138', 'R-1139']` both times, so no state was affected and no reading changed;
-   recorded here because the block's constraint is "no command is ever run a second time to read
-   its exit code," and this is technically a second invocation of that one read-only command
-   outside what Gate 4 ordered. The two gate commands Gate 4 actually calls for (integrity check,
-   git status) were each run exactly once for Gate 4, as a separate invocation from Gate 1's.
-4. No other deviation from the block's ordered sequence (C1, C2 then push, A0, A1, A2, five gates,
-   C3 then push) or from its stated paths, numbers, commands, or expected readings. Exactly two
-   content commits landed before this handback, matching the block's own change set; A0's reclaim
-   preview read "Would free 0 B in 0 paths" so `--apply` was correctly skipped per the block's own
-   branching instruction; A1 and A2 each ran exactly once and both exited 0 with every expected
-   reading matched on the first attempt.
+   script this round was written with the Write tool under `.remedy-wt/f290-r11-worker/` and
+   invoked as `python3 -I <path>`, never a heredoc, never a `cp`/`for`-loop compound.
+3. No other deviation from the block's ordered sequence (C1, C2 run once, C3, C4's three copies,
+   gates 1–5, the handoff rewrite committed with C4, the push, `gh pr create`, `gh pr list`) or
+   from its stated paths, numbers, commands, or expected readings. Every numstat reading this round
+   matched the block's stated numbers exactly, at every commit, with no retyped content — every
+   applied file is a `shutil.copyfile` byte copy of a reviewer-prepared file.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
-2. Phase 1 rule 2 (the Open PR Gate).
-3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. The closing round: book round 10, rotate the ledger, register the next findings paydown with
-   the owner lines of R-1138 and R-1139, `SU-044`'s `consumed_by`, the STATUS flip with the README
-   sync, and the pull request.
+2. The Open PR Gate, which merges F290's pull request in the NEXT session and never in this one.
+3. The booking of round 11's verdict in the next feature's first commit.
+4. Rule A5.
 
+Open findings: 2 (R-1138 and R-1139, both Low, owned by F295).
 Operator questions open: 1.
-Open findings: 2 (R-1138, R-1139, both Low, owned by the next paydown).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 9 and R-1139, save the round 10 block and the evidence script | done | commit `85556e2a5`; numstat matched the block's stated numbers exactly (`169 0`, `160 0`, `4 0`, `7 8`) |
-| C2: F290's pass in the checklist's consolidation record | done | commit `555d81448`; numstat matched exactly (`8 0`); pushed immediately; recorded as the ACCEPTED HEAD |
-| Push after C2 | done | `f6ca8e74d..555d81448 feature/f290-findings-paydown-v6 -> feature/f290-findings-paydown-v6` |
-| A0: the staging reclaim preview | done | `Would free 0 B in 0 paths`; `--apply` skipped per the block's own instruction; one refused path recorded |
-| A1: the evidence job | done | exit 0; both ancestry counts 29/29; 1000 node ids, 13 deselected; no unsafe id; planted id `a local absolute path`; pytest `997 passed, 3 skipped`; empty validation problem list; `is_valid_current_run` True |
-| A2: the review package | done | exit 0; `PACKAGE_STATUS=READY_FOR_REVIEW`; `REVIEW_SUBJECT_ALIGNMENT=PASS`; manifest base/head correct; package archived at `/home/decodeux/Repos/remedy-history/zips` |
-| Gate 1 (status + byte comparisons + integrity + open_finding_ids) | done, GREEN | all comparisons equal; `fail_count` 0; `['R-1138', 'R-1139']` |
-| Gate 2 (A1's readings) | done, GREEN | every expected reading matched |
-| Gate 3 (A2's readings) | done, GREEN | every expected reading matched |
-| Gate 4 (integrity + status, after A2 before C3) | done, GREEN | six checks pass, `fail_count` 0, tree clean |
-| Gate 5 (status + integrity, after C3 before push) | done, GREEN | confirmed immediately before push; reported in the reply, not quotable from within this file |
-| C3: handback | done | this commit |
-| Push after C3 | pending | `git push origin feature/f290-findings-paydown-v6` runs immediately after this commit |
+| C1: book round 10, re-assign R-1138 and R-1139 to F295, save the block/STATUS line/PR body | done | commit `2a8184fe3`; numstat matched the block's stated numbers exactly |
+| C2: rotate the finding ledger into its archive | done | commit `132de5b86`; rotation script output and post-rotation hashes matched the block exactly |
+| C3: register F295 — Findings paydown v7 | done | commit `0654e42c1`; numstat matched exactly; nothing else in the commit |
+| C4: accept F290 in STATUS with README sync and self-use queue (file copies) | done | three files copied byte-for-byte; numstat matched exactly |
+| Gate 1 (status + byte comparisons + ledger hashes) | done, GREEN | only the three C4 files modified; all comparisons equal |
+| Gate 2 (STATUS line) | done, GREEN | occurs exactly once; no `[~] F290` line |
+| Gate 3 (test selection) | done, GREEN | `555 passed`, exit 0, no FAILED/ERROR/SKIPPED/behind line |
+| Gate 4 (integrity check) | done, GREEN | six checks pass, `fail_count` 0 |
+| Gate 5 (open_finding_ids) | done, GREEN | `['R-1138', 'R-1139']` |
+| C4: handoff rewrite | done | this commit |
+| Push | pending | `git push origin feature/f290-findings-paydown-v6` runs immediately after this commit |
+| `gh pr create` | pending | runs immediately after the push |
+| `gh pr list` | pending | runs immediately after the PR create |
