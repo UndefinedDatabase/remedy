@@ -6,10 +6,9 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 2: book round 1's verdict and land T001 as DECISION F295 D2 rules it —
-`remedy do <order.md>` reads an order file with an optional header, a flag wins over the header,
-and a missing, unreadable or empty file, a broken header and a file without a cost cap are each
-refused before any step.
+Session 1, round 3: book round 2's verdict, register R-1140, and repair it with four tests — the
+order file's `max-cost-usd` is the job's budget, and `--max-cost-usd` and `--project` each win
+over the header.
 
 ## Next Steps
 1. T002: `remedy status --json` gains the versioned section for a machine client.
@@ -20,5 +19,4 @@ refused before any step.
 4. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
 
 ## Risks
-- R-1138 and R-1139 (Low) stay open, owned by F297; F295 owns no finding.
-- The order-file detection rule must not turn order text that names a `.md` file into a path.
+- R-1140 (Medium) is F295's own; R-1138 and R-1139 (Low) stay open, owned by F297.
