@@ -1985,7 +1985,8 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     """Validate a ping-pong result before applying to job workspace.
 
     Does NOT rely solely on final_status. Independently checks test results,
-    reviewer verdict, findings, target mutation, and staging path consistency.
+    reviewer verdict, findings, target mutation, staging path consistency, and
+    that the task changed at least one file.
 
     Returns (ok, reasons). If ok is False, reasons lists all failures.
     """
@@ -1993,6 +1994,12 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
 
     if result.final_status != "staged_review_passed":
         reasons.append(f"final_status={result.final_status}")
+
+    # R-1117: a task that changed no file did nothing its order asked for, so no
+    # reviewer's pass makes it passed. A single run may still end a clean
+    # `builder_no_changes`; a job task is what a job applies, and it applied nothing.
+    if not result.staged_files:
+        reasons.append("no_file_changed")
 
     if result.target_mutated:
         reasons.append("target_mutated=True")

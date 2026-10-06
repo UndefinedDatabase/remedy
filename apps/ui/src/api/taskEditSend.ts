@@ -182,20 +182,24 @@ function describeTaskEditAcceptance(
   return { tone: "ok", sentence };
 }
 
-/** What a 409 means, DECISION F026 D2's two shapes: `task_edit_refusal`
- *  answers `current_version` for a stale `expected_version` (the SAME body
- *  shape `plan_edit_refusal`'s own version conflict carries) and `detail` for
- *  every other refusal — the task's own state gate, a closed plan, or a
- *  failed revalidation. Every other status is worded exactly as
- *  `describePauseSendResult` words its own, because none of them carries any
- *  task-edit-specific meaning. */
+/** What a 409 means, DECISION F026 D2's shapes: `task_edit_refusal` answers
+ *  `current_version` alone for a stale `expected_version` (the SAME body shape
+ *  `plan_edit_refusal`'s own version conflict carries) and `detail` for every
+ *  other refusal — the task's own state gate, a closed plan, or a failed
+ *  revalidation, whose body (`plan_edit_refusal`'s `invalid_plan`) carries
+ *  `current_version` AS WELL. So a non-empty `detail` is read FIRST, as
+ *  `describePlanEditResult` reads it, and the stale sentence is said only when
+ *  no `detail` came (R-1129): read the other way round, a plan that fails its
+ *  checks was worded as a stale version and its real reason was dropped.
+ *  Every other status is worded exactly as `describePauseSendResult` words its
+ *  own, because none of them carries any task-edit-specific meaning. */
 function describeTaskEditConflict(body: Record<string, unknown> | null): DecisionOutcomeMessage {
+  const detail = body?.detail;
+  if (typeof detail === "string" && detail !== "") {
+    return { tone: "error", sentence: `Not saved: ${detail}.` };
+  }
   if (typeof body?.current_version === "number") {
     return { tone: "error", sentence: STALE_VERSION_SENTENCE };
-  }
-  const detail = body?.detail;
-  if (typeof detail === "string") {
-    return { tone: "error", sentence: `Not saved: ${detail}.` };
   }
   return describePauseSendResult({ outcome: "refused", status: 409, body });
 }

@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-125 of 296 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+126 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 41 | 42 |
+| 2 | Minimal Self-Build Runtime | 42 | 43 |
 | 3 | Full Token Economy & Autonomy | 6 | 28 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
@@ -280,7 +280,18 @@ start faster; each test gets its own data folder without searching a shared
 temporary folder first; and the tests of the main workflow run their main
 commands inside the test itself instead of starting a new program each time.
 The 40 percent target was not reached: the tests that still cost the most
-each run a real job, and making them cheaper would mean checking less).
+each run a real job, and making them cheaper would mean checking less),
+F290 findings paydown v6 (all seven review findings that were open when it began
+were repaired with evidence: a job no longer records a task as done when the task
+changed no file, even when the reviewing model says the work is fine; the cockpit
+shows the real reason when it refuses an edit to a task; a test that failed by
+chance about one run in thirty no longer does; two new checks keep the README's
+tier table and the documentation index complete; and the extra test time the
+previous feature added was measured and recorded. At its end, Remedy narrowed one
+more error handler in its own `remedy dev status` command in a self-repair run
+whose change was kept. A full run of all tests used about 1,196 processor
+seconds before the last merge with the main line and about 1,049 after it, both
+more than before, and finding out why is the next paydown's work).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

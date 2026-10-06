@@ -246,10 +246,13 @@ class TestLegacyJobFileVeto:
 # ---------------------------------------------------------------------------
 
 
-class _VetoingBuilder:
+# A FakeProvider, so the loop writes the file its build names: a job task that changed no
+# file is blocked (R-1117).
+class _VetoingBuilder(FakeProvider):
     """Vetoes ``c_task_id`` the first time it is asked to build — i.e. while A runs."""
 
     def __init__(self, job_id: str, c_task_id: str):
+        super().__init__(pass_on_round=1, fail_on_round=99)
         self._job_id = job_id
         self._c_task_id = c_task_id
         self.build_calls = 0
@@ -572,13 +575,16 @@ class TestGitWorktreeVetoRestoresTheWorkspace:
 # ---------------------------------------------------------------------------
 
 
-class _SelfVetoingBuilder:
+# A FakeProvider, so the loop writes the file its build names: a job task that changed no
+# file is blocked (R-1117).
+class _SelfVetoingBuilder(FakeProvider):
     """During B's OWN build call — the second task this job dispatches — records a
     veto of B itself. The in-task safe point catches it at the NEXT safe point,
     which is before B's reviewer call, so B's build finishes but its review never
     runs (D3 (1): the call already running finishes; nothing is killed mid-call)."""
 
     def __init__(self, job_id: str, b_task_id: str):
+        super().__init__(pass_on_round=1, fail_on_round=99)
         self._job_id = job_id
         self._b_task_id = b_task_id
         self.build_calls = 0

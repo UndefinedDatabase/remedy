@@ -36,6 +36,7 @@ from packages.orchestration.budget_guard import (
     predict_next_task_cost,
 )
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
+from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.token_economy import TokenBand
 
 UTC = timezone.utc
@@ -584,25 +585,23 @@ def _arm_the_ledger(monkeypatch):
         je, "_resolve_job_ledger_project_id", lambda job: _LEDGER_PROJECT_ID)
 
 
-class _CountingProvider:
-    """Wraps FakeProvider and counts calls, so "zero tasks ran" is provable."""
+# A FakeProvider, so the loop writes the file its build names: a job task that changed no
+# file is blocked (R-1117).
+class _CountingProvider(FakeProvider):
+    """A FakeProvider that counts calls, so "zero tasks ran" is provable."""
 
     def __init__(self, **kwargs):
-        from packages.orchestration.pingpong_provider import FakeProvider
-        self._inner = FakeProvider(pass_on_round=1, fail_on_round=99, **kwargs)
+        super().__init__(pass_on_round=1, fail_on_round=99, **kwargs)
         self.build_calls = 0
         self.review_calls = 0
 
-    def __getattr__(self, name):
-        return getattr(self._inner, name)
-
     def build(self, prompt, **kwargs):
         self.build_calls += 1
-        return self._inner.build(prompt, **kwargs)
+        return super().build(prompt, **kwargs)
 
     def review(self, prompt, **kwargs):
         self.review_calls += 1
-        return self._inner.review(prompt, **kwargs)
+        return super().review(prompt, **kwargs)
 
 
 class TestPredictiveStopAtTheLiveDispatchSafePoint:

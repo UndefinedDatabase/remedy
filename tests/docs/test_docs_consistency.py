@@ -121,7 +121,14 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: 2026-10-06 by operator amendment amend1006-luna-control-plane, which also ordered the
 #: unchecked lines of Package 1 into the three Luna gates; see T12_F295.md, T3_F296.md and
 #: docs/roadmap/design/luna-control-plane-v1.md.
-TOTAL_FEATURES = 296
+#: One more, F297 (findings paydown v7), was registered on 2026-10-06 by
+#: F290's closure under operator amendment amend0911-feedback rule B, first as
+#: F295 on F290's branch and renumbered by DECISION F290 D6 because the main
+#: line had given F295 and F296 to amend1006-luna-control-plane; it is placed
+#: after F199, the fifth unaccepted line below F290 in that amendment's order,
+#: under its own Tier 2 heading with the Tier 12 list re-opened after it; see
+#: T2_F297.md.
+TOTAL_FEATURES = 297
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
@@ -368,6 +375,31 @@ class TestPrimaryDocsAreHonest:
         missing = sorted(set(derived) - listed)
         assert not missing, f"accepted tiers with no README row: {missing}"
 
+    def test_the_readme_tier_table_total_column_matches_the_ledger(self):
+        """R-1125: pin the README tier table's Total column to the ledger.
+
+        The Done column is pinned above, and the README's overall count beside the table, but
+        no test read a row's Total, so F292's registration raised the overall count and left
+        the Tier 5 row one short. Derive each tier's total the way the Done column is derived,
+        every STATUS id resolved through its feature file's tier prefix, and pin every row.
+        """
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        features = _feature_ids()
+        derived: dict[int, int] = {}
+        for num in _status_tiers():
+            assert num in features, f"F{num:03d} is in STATUS with no feature file"
+            tier = features[num][0]
+            derived[tier] = derived.get(tier, 0) + 1
+
+        rows = re.findall(r"^\| (\d{1,2}) \| [^|]+ \|\s*(\d+) \|\s*(\d+) \|$",
+                          readme, re.MULTILINE)
+        assert rows, "README must carry the Tier status table"
+        wrong = [(int(tier), int(total), derived.get(int(tier), 0))
+                 for tier, _done, total in rows if int(total) != derived.get(int(tier), 0)]
+        assert wrong == [], f"README tier rows (tier, Total, ledger total) that differ: {wrong}"
+        missing = sorted(set(derived) - {int(tier) for tier, _done, _total in rows})
+        assert not missing, f"tiers with STATUS lines and no README row: {missing}"
+
     def test_every_accepted_feature_is_listed_under_its_tier(self):
         """R-0570: pin the README accepted lists ledger→list.
 
@@ -513,6 +545,23 @@ class TestPrimaryDocLinksResolve:
             if not (path.parent / target).exists():
                 broken.append(target)
         assert broken == [], f"{doc} has broken links: {broken}"
+
+
+class TestDocsIndexRegistersEveryPage:
+    """R-1133: AGENTS.md requires every new or renamed document to be registered in
+    docs/README.md, and no test read that rule, so a page under docs/system/ could land with no
+    entry in the index a session starts at while every test stayed green."""
+
+    @pytest.mark.parametrize("folder", ["system", "guides"])
+    def test_every_page_in_the_folder_is_linked_from_the_docs_index(self, folder):
+        index = (REPO / "docs" / "README.md").read_text(encoding="utf-8")
+        linked = {target.split("#")[0].strip()
+                  for target in re.findall(r"\]\(([^)]+)\)", index)}
+        pages = sorted(str(page.relative_to(REPO / "docs"))
+                       for page in (REPO / "docs" / folder).rglob("*.md"))
+        assert pages, f"docs/{folder}/ holds no page; retire this case with the folder"
+        unlinked = [page for page in pages if page not in linked]
+        assert unlinked == [], f"pages docs/README.md does not link: {unlinked}"
 
 
 class TestRoutedDocsExist:

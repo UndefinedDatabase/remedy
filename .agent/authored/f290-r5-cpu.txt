@@ -1,0 +1,41 @@
+F290 round 5 — CPU seconds per test module, for R-1137
+
+Measured by the reviewer of F290's fourth session in the primary checkout at `fdf873b6c`, one
+module at a time, serially (`python3 -B -m pytest <module> -q -n 0 -p no:cacheprovider`), as the
+CPU time of the pytest process and every child it waited for, which is the measure
+`tests/load_governor.py` records for the closure suite. The modules are every test module that
+differs between the tree F292's closure suite ran on, `6e0a6ccd8`, and the tree F200's ran on,
+`2546bdc0b`: nine F200 added and two it changed (`git diff --stat 6e0a6ccd8 2546bdc0b -- tests/`;
+`tests/orchestration/import_reachability_allowlist.txt` is the twelfth path there and is not a
+module). Each run includes one interpreter and pytest start.
+
+    2.00 cpu     2.37 wall  exit 0  tests/orchestration/test_serve_restart_kill.py  | 1 passed in 1.95s
+    4.16 cpu     4.72 wall  exit 0  tests/orchestration/test_serve_stop_file.py  | 6 passed in 2.36s
+    3.60 cpu     3.90 wall  exit 0  tests/orchestration/test_serve_runs.py  | 21 passed in 2.00s
+    1.08 cpu     6.39 wall  exit 0  tests/orchestration/test_serve_daemon.py  | 17 passed in 6.21s
+    0.57 cpu     0.56 wall  exit 0  tests/orchestration/test_serve_artifacts.py  | 12 passed in 0.40s
+    0.82 cpu     0.81 wall  exit 0  tests/orchestration/test_serve_paths.py  | 10 passed in 0.35s
+   19.12 cpu    27.40 wall  exit 0  tests/cli/test_serve_client_parity.py  | 27 passed in 27.05s
+    2.14 cpu     2.13 wall  exit 0  tests/cli/test_serve_client_scope.py  | 2 passed in 1.96s
+    2.13 cpu     2.12 wall  exit 0  tests/cli/test_serve_cmd.py  | 3 passed in 1.95s
+    2.45 cpu     2.44 wall  exit 0  tests/cli/test_cli_ux.py  | 76 passed in 1.87s
+    1.11 cpu     1.10 wall  exit 0  tests/cli/test_exit_codes.py  | 349 passed in 0.73s
+   39.18 cpu total
+
+The slowest calls, from one serial run of `tests/cli/test_serve_client_parity.py`,
+`tests/orchestration/test_serve_daemon.py` and `tests/orchestration/test_serve_stop_file.py` with
+`--durations=12` (50 passed in 33.04s):
+
+    5.45s call     tests/cli/test_serve_client_parity.py::test_a_plain_job_run_prints_and_exits_as_it_does_direct[text]
+    5.24s call     tests/cli/test_serve_client_parity.py::test_a_plain_job_run_prints_and_exits_as_it_does_direct[json]
+    2.55s call     tests/cli/test_serve_client_parity.py::test_a_job_run_with_an_option_runs_direct_while_a_supervisor_answers
+    2.04s setup    tests/orchestration/test_serve_stop_file.py::test_the_run_reaches_the_same_stopped_end_in_each_mode[direct]
+
+Every line of the test load record `~/.remedy-loop/test_load.jsonl` for the full-suite command
+`pytest -n auto -q`; the record begins at 2026-09-30T12:19:22Z:
+
+    2026-09-30T22:24:06Z  21144 collected  exit 1  356.09 wall  944.99 cpu
+    2026-09-30T22:38:22Z  21145 collected  exit 0  276.83 wall  940.64 cpu
+    2026-10-01T02:42:44Z  21160 collected  exit 0  348.90 wall  865.36 cpu   (F294's closure)
+    2026-10-01T07:40:51Z  21208 collected  exit 0  255.91 wall  863.01 cpu   (F292's closure)
+    2026-10-01T13:05:04Z  21325 collected  exit 0  267.99 wall  981.70 cpu   (F200's closure)

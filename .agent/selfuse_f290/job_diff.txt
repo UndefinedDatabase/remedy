@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-b30005533dd74be8  (exit 0)
+diff --git a/apps/cli/commands/dev.py b/apps/cli/commands/dev.py
+index 426b70ad4..00361ff39 100644
+--- a/apps/cli/commands/dev.py
++++ b/apps/cli/commands/dev.py
+@@ -137,7 +137,7 @@ def _dev_status(*, json_output: bool = False) -> None:
+     try:
+         from packages.orchestration.ui_server import _build_live_state_json
+         status["live_ui_ok"] = callable(_build_live_state_json)
+-    except (ImportError, Exception):  # noqa: BLE001 — a live-UI check failure must not block other checks
++    except (ImportError, AttributeError):
+         status["live_ui_ok"] = False
+ 
+     # Remaining blockers (hard failures) vs advisories (informational)
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 86e75f777..ff1f68ae3 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 286
++MAX_EXCUSED = 285
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
