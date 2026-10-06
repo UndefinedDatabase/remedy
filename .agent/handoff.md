@@ -1,45 +1,41 @@
-# Handoff — F290 Findings paydown v6, paused at the weekly usage cap after round 2
+# Handoff — F290 Findings paydown v6, stopped by the operator before round 3
 
 ## Session
 
-SESSION 1 of feature F290 · round 2 · rounds so far 2
+SESSION 2 of feature F290 · round 2 · rounds so far 2
 
-Context self-assessment: the reviewer's context is comfortable; the session ends because the loop
-runner wrote `.agent/STOP` at the weekly usage cap, not because of the context.
+Context self-assessment: the reviewer's context is comfortable; the session ends at once because
+`.agent/STOP` was present at the state probe (Phase 1 rule 1), and it delegated no round.
 
 Fortschritt: ~30 % (T001 to T004 landed · T005 to T007 open) — Schätzung
 
-For the operator, in plain words: the automatic build loop paused itself because this week's usage
-allowance reached the limit you set (60 percent). It starts again by itself after the allowance
-resets on Wednesday, 7 October, at 01:00. Nothing is waiting for you. In this session the previous
-feature, the background service called "remedy serve", was merged into the main line, and the
-next feature, a clean-up of seven known defects, was started; four of the seven are repaired so
-far, and all four repairs are tests or wording checks, not changes to how Remedy behaves.
+For the operator, in plain words: you stopped the automatic build loop yourself today, 6 October,
+at 13:11, with the stop command. This session started, saw your stop signal, and ended without
+changing anything except this note. The loop stays stopped until you remove the stop signal or
+start it again; it will not resume by itself. Nothing else is waiting for you. The current work,
+a clean-up of seven known defects, has four of the seven repaired, and the fifth is prepared and
+ready for the next session.
 
 ## Range
 
-Review of `491529fc8`..`491529fc8` — no round ran after round 2's handback; this commit only
-rewrites this file.
+Review of `72b77d91f`..`72b77d91f` — no round ran in this session; this commit only rewrites this
+file.
 
 ## Commits
 
-### this commit — F290 S1: handoff at the weekly usage cap
+### this commit — F290 S2: handoff at the operator's stop
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | full rewrite | this file; copied byte for byte from the reviewer's prepared file `.remedy-wt/f290-stop/handoff.md` |
+| `.agent/handoff.md` | full rewrite | this file; copied byte for byte from the reviewer's prepared file `.remedy-wt/f290-stop2/handoff.md` |
 
 ## External actions
 
-- Session start: the Open PR Gate merged pull request 308 (F200) with
-  `gh pr merge 308 --merge --delete-branch` after hosted CI run 36870609054 on `9bbe297df` passed
-  both its Python 3.10 and its Python 3.12 job at its first attempt; `main` is `31542dbfd`.
-- Round 1 pushed `feature/f290-findings-paydown-v6` (new branch) to `977f46f50`; round 2 pushed it
-  to `491529fc8`. No pull request exists for it yet.
 - This commit is pushed with `git push origin feature/f290-findings-paydown-v6`.
-- The reviewer's disposable dry worktree `.remedy-wt/f290-r3-dry` (detached at `491529fc8`) is
-  left in place for the next session's round 3, together with its prepared files under
-  `.remedy-wt/f290-r3/`; the round 1 and round 2 dry worktrees were removed.
+- No pull request was open at the state probe, so the Open PR Gate merged nothing. No pull
+  request exists for `feature/f290-findings-paydown-v6` yet.
+- The reviewer's disposable dry worktree `.remedy-wt/f290-r3-dry` (detached at `491529fc8`) and
+  its prepared files under `.remedy-wt/f290-r3/` are left in place for round 3.
 
 ## Verification
 
@@ -48,12 +44,13 @@ handback at `491529fc8`.
 
 ## Authored-text proofs
 
-`.agent/handoff.md` (this commit): byte comparison against `.remedy-wt/f290-stop/handoff.md`.
+`.agent/handoff.md` (this commit): byte comparison against `.remedy-wt/f290-stop2/handoff.md`.
 
 ## Deviations & assumptions
 
-None in this commit. `.agent/STOP` (author `remedy-weekly-cap`, 2026-10-01 16:43) is untracked and
-is left in place: the loop runner removes it itself.
+None. `.agent/STOP` (author `remedy-stop (decodeux)`, 2026-10-06 13:11, reason
+`remedy-stop-loop von decodeux`) is untracked and is left in place: it is the operator's own
+stop, and only the operator removes it.
 
 ## Round 2's verdict, to book in round 3's first commit (amend0827-process-diet rule 1)
 
@@ -75,8 +72,10 @@ round's Python selection read `7273 passed, 15 skipped`. Prepared files under
 `.remedy-wt/f290-r3/`; the block is not yet written. Before writing it, the next session
 regenerates `selection.txt` (the last `compose.py` run rewrote it without
 `tests/ui_contracts/test_task_edit_controls_contract.py`, which belongs in it) and re-checks every
-prepared digest. The first full run in a fresh worktree installs `apps/ui/node_modules` and reads
-four failures before it does; only the second run is a reading.
+prepared digest. The dry tree's base `491529fc8` is behind the branch by the two handoff-only
+commits `72b77d91f` and this one, which touch `.agent/handoff.md` alone, so the dry readings
+still hold for every file round 3 changes. The first full run in a fresh worktree installs
+`apps/ui/node_modules` and reads four failures before it does; only the second run is a reading.
 
 ## Next
 
@@ -86,6 +85,8 @@ four failures before it does; only the second run is a reading.
    before delegating.
 4. Round 3: book round 2's verdict and the resolutions of R-1125 and R-1133, and land T005
    (R-1129).
+5. SLOW MODE: after T007, the last building slice, run the acceptance-audit hardening stage of
+   operator amendment amend0930b-slow-cap before the closure sequence.
 
 Operator questions open: 0.
 Open findings: 5 (R-1117 Medium; R-1125, R-1129, R-1133, R-1137 Low; all owned by F290).
@@ -94,8 +95,7 @@ Open findings: 5 (R-1117 Medium; R-1125, R-1129, R-1133, R-1137 Low; all owned b
 
 | Item | Status | Reason |
 |---|---|---|
-| Open PR Gate: merge pull request 308 | done | merged as `31542dbfd` |
+| Open PR Gate: merge pull request 308 | done (session 1) | merged as `31542dbfd` |
 | Round 1: claim, F200 R14 booked, D1, T001, T002 | done, PASS | booked by round 2 |
 | Round 2: R1 booked, T003, T004 | done, PASS | to book in round 3 |
-| Round 3: T005 | prepared, not delegated | the session stopped at the weekly usage cap |
-| T006, T007, hardening stage, closure | open | later rounds |
+| Round 3: T005 | prepared, not delegated | the operator stopped the loop before the session began |
