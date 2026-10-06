@@ -25,6 +25,11 @@ from packages.orchestration.timeline import load_run_events
 #: The frame's own version; DECISION F295 D4 (5) adds to it without moving it.
 CLIENT_DIGEST_VERSION = 1
 
+#: What one job's decision read raises on a bad record (DECISION F295 D6): a run log that cannot
+#: be read, a line that is not UTF-8 or not JSON or a decision that fails its evidence gate
+#: (`ValueError`), a line that is JSON but not an object, and timestamps of mixed types.
+_DECISION_READ_ERRORS = (OSError, ValueError, AttributeError, TypeError)
+
 
 def _decision_entry(
     job_id: str, project_id: str, decision: HumanDecision, now: datetime,
@@ -150,7 +155,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
                 if decision.status == "open":
                     decision_entries.append(
                         _decision_entry(job_id, plan.project_id, decision, when))
-        except Exception:  # noqa: BLE001 — one job's unreadable decisions must not break the digest
+        except _DECISION_READ_ERRORS:
             degraded = True
             skipped_files.append(f"decisions of job {job_id}")
 
