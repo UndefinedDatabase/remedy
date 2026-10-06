@@ -289,8 +289,9 @@ chance about one run in thirty no longer does; two new checks keep the README's
 tier table and the documentation index complete; and the extra test time the
 previous feature added was measured and recorded. At its end, Remedy narrowed one
 more error handler in its own `remedy dev status` command in a self-repair run
-whose change was kept. A full run of all tests now uses about 1,196 processor
-seconds, more than before, and finding out why is the next paydown's work).
+whose change was kept. A full run of all tests used about 1,196 processor
+seconds before the last merge with the main line and about 1,049 after it, both
+more than before, and finding out why is the next paydown's work).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
