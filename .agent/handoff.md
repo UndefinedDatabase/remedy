@@ -1,79 +1,67 @@
-# Handoff — F290 Findings paydown v6, round 7 landed clean
+# Handoff — F290 Findings paydown v6, round 8 landed clean
 
 ## Session
 
-SESSION 4 of feature F290 · round 7 · rounds so far 7
+SESSION 4 of feature F290 · round 8 · rounds so far 8
 
-Context self-assessment: context is comfortable; round 7 ran its full ordered sequence — C1, C2
-(the closure's self-use item, run through a real frontier-provider job to its approval gate and
-never applied), both gates and C3 — with every gate green and the self-use job coming back
-`completed`/`pass` with no run defects, so this handback carries the block's success-path content
-in full rather than a stop.
+Context self-assessment: context is comfortable; round 8 ran its full ordered sequence — C1, C2
+(landing the closure's self-use item `SU-044` exactly as the job wrote it, before the closure's one
+full suite), all five gates and C3 — with every gate green, so this handback carries the block's
+success-path content in full rather than a stop.
 
-Fortschritt: ~85 % (all seven findings resolved and hardened; the closure's self-use item run; the
+Fortschritt: ~88 % (all seven findings resolved and hardened; the self-use item run and landed; the
 suite, the evidence and the pull request open) — Schätzung
 
 ## Range
 
-Review of `f5ea5713e`..`HEAD`: two commits on `feature/f290-findings-paydown-v6`, `cca0ff94e` and
-`65c21907e`, and this handback commit.
+Review of `3a5aba4e9`..`HEAD`: two commits on `feature/f290-findings-paydown-v6`, `500eebd93` and
+`004f97870`, and this handback commit.
 
 ## Commits
 
-### `cca0ff94e` F290 R7 C1: book round 6, save the round 7 block and the self-use script
+### `500eebd93` F290 R8 C1: book round 7, record DECISION F290 D4
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f290-r7.md` | +110/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-s7/block.md` (`wc -l` 110, sha256 `fe213234a72d8212b2e0a4883e0d724f66c2350b479d86844c661a15538cb12f`); byte comparison against the source read equal |
-| `.agent/authored/f290-r7-selfuse.py` | +122/-0 | NEW FILE; byte-for-byte copy of `dry-f290-r7-selfuse.py` (reviewer-authored, adapted from `.agent/authored/f200-r10-selfuse.py` with only its paths changed); byte comparison equal |
-| `.agent/live_review.md` | +2/-0 | appended the F290 R6 Gate entry (VERDICT PASS, covering round 6's two commits and closure preconditions 4/8); whole-file copy from `.remedy-wt/f290-s7/dry-live_review.md`; append-byte-equality proof (`git show f5ea5713e:.agent/live_review.md` bytes + `append-live_review.txt` bytes == new file, compared with Python `==` over bytes) read `True` |
-| `.agent/plan.md` | +5/-5 | whole-file copy from `.remedy-wt/f290-s7/dry-plan.md`, advancing Current Step/Next Steps to round 7 (run the closure's self-use item to its approval gate) and adding the self-use cost risk |
+| `.agent/authored/f290-r8.md` | +107/-0 | NEW FILE; byte-for-byte copy of this round's step block `.remedy-wt/f290-s8/block.md` (`wc -l` 107, sha256 `b0ad4e33868986685b10fbf77e76dd06b1798d06aad6bd13f61e6635a28276e8`); byte comparison against the source read equal |
+| `.agent/decisions.md` | +12/-0 | appended DECISION F290 D4 ("the closure's self-use item SU-044 lands"); whole-file copy from `.remedy-wt/f290-s8/dry-decisions.md`; append-byte-equality proof (`git show 3a5aba4e9:.agent/decisions.md` bytes + `append-decisions.txt` bytes == new file, compared with Python `==` over bytes) read `True` |
+| `.agent/live_review.md` | +2/-0 | appended the F290 R7 Gate entry (VERDICT PASS, the closure's self-use item run to its approval gate, never applied); whole-file copy from `.remedy-wt/f290-s8/dry-live_review.md`; append-byte-equality proof read `True` |
+| `.agent/plan.md` | +7/-9 | whole-file copy from `.remedy-wt/f290-s8/dry-plan.md`, advancing Current Step/Next Steps to round 8 (land `SU-044` as the job wrote it, before the closure's one full suite) |
 
-`git diff --cached --numstat` before the commit read `122 0` for the script, `110 0` for the new
-block file, `2 0` for `.agent/live_review.md` and `5 5` for `.agent/plan.md` — matching the block's
-stated numbers exactly. `git show --numstat cca0ff94e` after the commit read the same four lines.
+`git diff --cached --numstat` before the commit read `107 0` for the new block file, `12 0` for
+`.agent/decisions.md`, `2 0` for `.agent/live_review.md` and `7 9` for `.agent/plan.md` — matching
+the block's stated numbers exactly. `git show --numstat 500eebd93` after the commit read the same
+four lines.
 
-### `65c21907e` F290 R7 C2: the closure's self-use item run to its approval gate, never applied
-
-| Path | +/- | Reason |
-|---|---|---|
-| `scripts/self_use_queue.json` | +8/-0 | the generator's one appended entry, `SU-044` (tier 4, excused handler `apps/cli/commands/dev.py:140`), `consumed_by` empty |
-| `.agent/selfuse_f290/SU-044.md` | +13/-0 | NEW FILE; the job markdown the generator wrote (byte copy of the run's own job file) |
-| `.agent/selfuse_f290/changed_paths.txt` | +2/-0 | NEW FILE; the job's changed paths |
-| `.agent/selfuse_f290/entry_and_job_file.txt` | +5/-0 | NEW FILE; entry id/title/provenance/consumed_by and the job file path |
-| `.agent/selfuse_f290/execution_config.txt` | +39/-0 | NEW FILE; the plan's execution config |
-| `.agent/selfuse_f290/full_transcript.txt` | +14/-0 | NEW FILE; job id/title/state, stop reason/source, execution, task summary |
-| `.agent/selfuse_f290/job_diff.txt` | +27/-0 | NEW FILE; `git diff HEAD...remedy/job-b30005533dd74be8` |
-| `.agent/selfuse_f290/result_state.txt` | +12/-0 | NEW FILE; job/task state, budgets and budget actuals |
-| `.agent/selfuse_f290/run_defects.txt` | +1/-0 | NEW FILE; `describe_self_use_run_defects()` output |
-| `.agent/selfuse_f290/staleness_after.txt` | +2/-0 | NEW FILE; post-run staleness catalog, read from the job branch |
-| `.agent/selfuse_f290/timing.txt` | +3/-0 | NEW FILE; start/finish timestamps and wall seconds |
-
-`git diff --cached --numstat` before the commit matched the eleven lines above exactly.
-`git show --numstat 65c21907e` after the commit read the same eleven lines. `git status --porcelain`
-immediately after the run and before staging showed only `scripts/self_use_queue.json` modified and
-`.agent/selfuse_f290/` untracked, matching the block's required reading; `git diff
-scripts/self_use_queue.json` showed exactly one appended entry, id `SU-044` (the id
-`next_self_use_item()` printed), `consumed_by` empty.
-
-### this commit — F290 R7 C3: handback
+### `004f97870` F290 R8 C2: the live-UI probe of dev status catches the two errors it can meet (SU-044)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | this file; documents round 7 landing clean through C1, C2 (the self-use run) and all five gates |
+| `apps/cli/commands/dev.py` | +1/-1 | narrows the live-UI probe's excused handler at line 140 from `(ImportError, Exception)` (with its `# noqa: BLE001` mark) to `(ImportError, AttributeError)`; the job's own change (`.agent/selfuse_f290/job_diff.txt`), copied from `dry-dev.py` |
+| `tests/regression/test_named_bugs.py` | +64/-0 | two new tests in `TestDevStatusCommandSchema` pinning `remedy dev status --json` through the two errors the narrowed handler can meet, and confirming an unrelated error (`RuntimeError`) is no longer swallowed; copied from `dry-test_named_bugs.py` |
+| `tests/test_ble001_ratchet.py` | +1/-1 | `MAX_EXCUSED` lowered from 286 to 285; the job's own change, copied from `dry-test_ble001_ratchet.py` |
+
+`git diff --cached --numstat` before the commit read `1 1` for `apps/cli/commands/dev.py`, `64 0`
+for `tests/regression/test_named_bugs.py` and `1 1` for `tests/test_ble001_ratchet.py` — matching
+the block's stated numbers exactly. `git show --numstat 004f97870` after the commit read the same
+three lines. The change to `apps/cli/commands/dev.py` and `tests/test_ble001_ratchet.py` was
+confirmed as the job's own: a Python byte equality of `git diff --cached -- apps/cli/commands/dev.py
+tests/test_ble001_ratchet.py` against everything after the first line of
+`.agent/selfuse_f290/job_diff.txt` read `True`.
+
+### this commit — F290 R8 C3: handback
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | this commit | this file; documents round 8 landing clean through C1, C2 (landing `SU-044`) and all five gates |
 
 ## External actions
 
 - This commit is pushed with `git push origin feature/f290-findings-paydown-v6` immediately after
   it is made.
-- No worktree add/remove issued directly by the worker this round; the reviewer's prepared files
-  were read from the existing `.remedy-wt/f290-s7/` directory. The self-use runner's OWN code (not
-  a worker-issued command) performed one internal `git worktree add --detach
-  .remedy-wt/f290-r7-jobtree remedy/job-b30005533dd74be8`, read the job branch's staleness catalog,
-  then `git worktree remove --force` and `git worktree prune`, all inside the single run of
-  `.agent/authored/f290-r7-selfuse.py`; `git status --porcelain` after the run showed no stray
-  worktree state. Scratch helper files were written under `.remedy-wt/f290-r7-worker/` (gitignored,
-  newly created this round).
+- No worktree add/remove issued this round; the reviewer's prepared files were read from the
+  existing `.remedy-wt/f290-s8/` directory. Scratch helper files were written under
+  `.remedy-wt/f290-r8-worker/` (gitignored, newly created this round).
 - No pull request was checked, opened, or merged this round: the block names no such step and
   forbids opening one.
 
@@ -81,52 +69,50 @@ scripts/self_use_queue.json` showed exactly one appended entry, id `SU-044` (the
 
 Gates run once each, after C2 and before C3, in the block's order.
 
-Gate 1 — `git status --porcelain`, then a byte comparison of the four reviewer-authored files
-against their committed copies:
+Gate 1 — `git status --porcelain`, then a byte comparison of the seven committed files against
+their prepared files:
 
     $ git status --porcelain
     (no output)
 
     $ python3 gate1_cmp.py
-    f290-r7.md vs block.md : SILENT(equal)
-    f290-r7-selfuse.py vs dry-f290-r7-selfuse.py : SILENT(equal)
-    live_review.md vs dry-live_review.md : SILENT(equal)
-    plan.md vs dry-plan.md : SILENT(equal)
+    .agent/authored/f290-r8.md vs block.md : SILENT(equal)
+    .agent/live_review.md vs dry-live_review.md : SILENT(equal)
+    .agent/decisions.md vs dry-decisions.md : SILENT(equal)
+    .agent/plan.md vs dry-plan.md : SILENT(equal)
+    apps/cli/commands/dev.py vs dry-dev.py : SILENT(equal)
+    tests/regression/test_named_bugs.py vs dry-test_named_bugs.py : SILENT(equal)
+    tests/test_ble001_ratchet.py vs dry-test_ble001_ratchet.py : SILENT(equal)
     ALL_OK: True
 
 Gate 1: GREEN.
 
-Gate 2 — the files under `.agent/selfuse_f290/`, listed with byte size:
-
-    $ python3 gate2_list.py
-    SU-044.md 948
-    changed_paths.txt 54
-    entry_and_job_file.txt 395
-    execution_config.txt 1203
-    full_transcript.txt 1416
-    job_diff.txt 1211
-    result_state.txt 801
-    run_defects.txt 5
-    staleness_after.txt 59
-    timing.txt 105
-
-Gate 2: GREEN — ten files, each non-empty, exactly the names the block lists.
-
-Gate 3 — `python3 -B -m pytest tests/cli/test_golden_path.py tests/docs/ -q -n auto
--p no:cacheprovider`, from the primary checkout:
+Gate 2 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-s8/run_selection.py
+/home/decodeux/Repos/remedy`:
 
     exit 0
-    bringing up nodes...
-    ........................................................................ [ 19%]
-    ........................................................................ [ 38%]
-    ........................................................................ [ 58%]
-    ........................................................................ [ 77%]
-    ........................................................................ [ 96%]
-    ............                                                             [100%]
-    372 passed in 16.20s
+    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). ...
+    SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+    SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+    SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252): ... (same reason)
+    SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252): ... (same reason)
+    SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252): ... (same reason)
+    SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252): ... (same reason)
+    SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252): ... (same reason)
+    SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+    4358 passed, 9 skipped in 50.70s
 
-Gate 3: GREEN — no FAILED or ERROR line, no "process(es) behind" line; `372 passed` matches the
-reviewer's dry-tree reading exactly. Run once, not re-run.
+Gate 2: GREEN — no FAILED or ERROR line, no "process(es) behind" line; `4358 passed, 9 skipped`
+matches the reviewer's dry-tree reading exactly. Run once, not re-run.
+
+Gate 3 — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f290-s4/run.py /home/decodeux/Repos/remedy 3
+python3 -m ruff check apps/cli/commands/dev.py tests/regression/test_named_bugs.py
+tests/test_ble001_ratchet.py`:
+
+    All checks passed!
+    exit 0
+
+Gate 3: GREEN.
 
 Gate 4 — `python3 -m apps.cli.main integrity check --json`, from the primary checkout:
 
@@ -142,116 +128,77 @@ Gate 5 — `python3 -c "import scripts.rotate_live_review as r; print(r.open_fin
 
 Gate 5: GREEN — matches the required `['R-1138']` exactly.
 
-## Self-use run
-
-- Entry id: `SU-044`.
-- Title: "Narrow the excused handler at apps/cli/commands/dev.py:140".
-- Job id: `b30005533dd74be8`.
-- Builder: provider `claude-cli`, model `claude-sonnet-4-6`, effort `medium` (source `cli`).
-- Reviewer: provider `claude-cli`, model `claude-sonnet-4-6`, effort `medium` (source `cli`) — the
-  `self_use` role's configured frontier provider on both seats, not the local model.
-- Job state: `completed`. Stop reason: (empty). Stop source: (empty).
-- Task statuses and reviewer verdict (from `result_state.txt`):
-  `T001: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed;
-  repair_rounds_used: 2; run_id: fd5b96c30e0b44b5)`.
-- Wall seconds (from `timing.txt`): `423.7`.
-- Changed paths (from `changed_paths.txt`): `apps/cli/commands/dev.py`,
-  `tests/test_ble001_ratchet.py`.
-- Job diff (from `job_diff.txt`), VERBATIM:
-
-```
-$ git diff HEAD...remedy/job-b30005533dd74be8  (exit 0)
-diff --git a/apps/cli/commands/dev.py b/apps/cli/commands/dev.py
-index 426b70ad4..00361ff39 100644
---- a/apps/cli/commands/dev.py
-+++ b/apps/cli/commands/dev.py
-@@ -137,7 +137,7 @@ def _dev_status(*, json_output: bool = False) -> None:
-     try:
-         from packages.orchestration.ui_server import _build_live_state_json
-         status["live_ui_ok"] = callable(_build_live_state_json)
--    except (ImportError, Exception):  # noqa: BLE001 — a live-UI check failure must not block other checks
-+    except (ImportError, AttributeError):
-         status["live_ui_ok"] = False
- 
-     # Remaining blockers (hard failures) vs advisories (informational)
-diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
-index 86e75f777..ff1f68ae3 100644
---- a/tests/test_ble001_ratchet.py
-+++ b/tests/test_ble001_ratchet.py
-@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
- 
- #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
- #: commit that removes a mark lowers this number in the same commit, and it is never raised.
--MAX_EXCUSED = 286
-+MAX_EXCUSED = 285
- 
- 
- def _marks() -> list[tuple[str, int, str]]:
-```
-
-- `run_defects.txt`, VERBATIM:
-
-```
-NONE
-```
-
-No finding is registered by this round for the self-use run: `describe_self_use_run_defects()`
-returned an empty tuple (rendered as `NONE`), so there is nothing to mint an id for. The job's own
-change lives on `remedy/job-b30005533dd74be8` only and was never applied to this branch.
-
 ## Authored-text proofs
 
-- `.agent/authored/f290-r7.md` vs `.remedy-wt/f290-s7/block.md`: byte comparison equal; `wc -l` 110,
-  sha256 `fe213234a72d8212b2e0a4883e0d724f66c2350b479d86844c661a15538cb12f` on both readings (the
+- `.agent/authored/f290-r8.md` vs `.remedy-wt/f290-s8/block.md`: byte comparison equal; `wc -l` 107,
+  sha256 `b0ad4e33868986685b10fbf77e76dd06b1798d06aad6bd13f61e6635a28276e8` on both readings (the
   prompt-delivered digest and the post-copy re-measurement).
-- `.agent/authored/f290-r7-selfuse.py` vs `dry-f290-r7-selfuse.py`: byte comparison equal; sha256
-  `97e540e7fdd9da4ef9f29252940e03818763f65dc4ec37ff7b33aa47188b6a7c` on both readings.
 - `.agent/live_review.md` vs `dry-live_review.md`: byte comparison equal; sha256
-  `07d11ae084af5ccb265cc292da99d6594d531dc39217b13f8cfaa1ac8c2715e6` on both readings.
-  Append-byte-equality proof (base bytes at `f5ea5713e` plus `append-live_review.txt` bytes equals
-  the new file, compared with Python `==` over bytes) read `True`.
+  `9bdb700d807a6d8a873f6032d6ea6a8f73ae6ef67a86f7a8c2d9e3c005ae07de`. Append-byte-equality proof
+  (base bytes at `3a5aba4e9` plus `append-live_review.txt` bytes equals the new file, compared with
+  Python `==` over bytes) read `True`.
+- `.agent/decisions.md` vs `dry-decisions.md`: byte comparison equal; sha256
+  `b4df17b11fb5b573f96057f78e431466ceb58f7a5a0bf99329953cafc904b5aa`. Append-byte-equality proof
+  (base bytes at `3a5aba4e9` plus `append-decisions.txt` bytes equals the new file) read `True`.
 - `.agent/plan.md` vs `dry-plan.md`: byte comparison equal; sha256
-  `eb7484b4f0fa0e7ea46c97f5828c96b7bdc10eaeabc69d6eaa07c71b1230fabe` on both readings (whole-file
-  copy, no append proof applicable).
-- Gate 1's four-way re-check (above) confirms all four committed files still match their prepared
-  files bit-for-bit after the C1 commit.
-- `.agent/selfuse_f290/SU-044.md` is a byte copy (`Path(job_file_path).read_bytes()` written
-  verbatim by the reviewer-authored script itself) of the job file the generator produced; not a
-  worker-typed text, so no separate disk-to-disk proof is owed beyond the script's own write, which
-  is reviewer-authored and run unedited exactly once.
+  `b597bba9b18c549721eeebdc0dcdcfff395ca573c409c6e1a4b5a709f612f5ea` (whole-file copy, no append
+  proof applicable).
+- `apps/cli/commands/dev.py` vs `dry-dev.py`: byte comparison equal; sha256
+  `f70070fa74f867dbab467642efae1e5ab1bc5ac130e8724c208460ed5716fe51`; confirmed as the job's own
+  change jointly with `tests/test_ble001_ratchet.py` below by the byte-equality proof against
+  `.agent/selfuse_f290/job_diff.txt` (everything after its first line equals `git diff --cached` of
+  the two files, read `True`).
+- `tests/regression/test_named_bugs.py` vs `dry-test_named_bugs.py`: byte comparison equal; sha256
+  `4ffc015936d03cf733a771d4c82b0f45de35139f630e339eee016ca65b250d99`.
+- `tests/test_ble001_ratchet.py` vs `dry-test_ble001_ratchet.py`: byte comparison equal; sha256
+  `2c651e2e889f2aba430d7382d23a93abda1555633563586bd16c9a7f0df549c7`; confirmed as the job's own
+  change jointly with `apps/cli/commands/dev.py` above.
+- Gate 1's seven-way re-check (above) confirms all seven committed files still match their prepared
+  files bit-for-bit after both commits.
 
 ## Deviations & assumptions
 
-1. This session's auto-attached working directory was again a separate worktree
-   (`.remedy-wt/f290-r4-dry/apps/ui`), unrelated to this round's work. It was never read from or
+1. This session's auto-attached working directory was again a separate location (a disposable
+   reviewer worktree under `.remedy-wt/`), unrelated to this round's work. It was never read from or
    written to: every command in this round ran against `/home/decodeux/Repos/remedy` directly, by
-   absolute path or `git -C`, consistent with the block's own rule never to `cd` immediately before
-   a git command. Recorded here as an operating assumption, not a departure from the block's
-   ordered commit sequence.
-2. `python3 .agent/authored/f290-r7-selfuse.py` (C2's run) and the two non-git gates (`apps.cli.main
-   integrity check` and the `rotate_live_review` import) were run with a plain `cd` to the primary
-   checkout rather than `git -C`, since none of them is a version-control command and the sandbox
-   only refuses `cd` immediately before a git command. The self-use script was run exactly once, did
-   not raise, and its stdout was captured in full for this handback; it is not re-run.
-3. The self-use script's own internal staleness read fell to the "job branch" path rather than the
-   "job workspace" path (`staleness_after.txt` reads "Read from: the job branch
-   remedy/job-b30005533dd74be8"), because the runner had already removed the job's workspace
-   directory by the time the script reached that step even though `result_state.txt` still names
-   `Job Workspace: /home/decodeux/Repos/remedy/.remedy-wt/job-b30005533dd74be8` as the path it was
-   built at. This is the script's own documented fallback (see its `_stale_lines`/branch-check
-   logic), not a worker action or a defect; it is recorded here because it is the kind of reading
-   DECISION/precedent text asks a later reader to be able to find.
-4. No other deviation from the block's ordered commit sequence (C1, C2, five gates, C3) or from its
+   absolute path or `git -C`. Recorded as an operating assumption, consistent with prior rounds.
+2. For every git command this round the shell's working directory was first moved to the primary
+   checkout with `cd` and the git command was then issued with an explicit `git -C
+   /home/decodeux/Repos/remedy` argument naming the same path (e.g. `cd /home/decodeux/Repos/remedy
+   && git -C /home/decodeux/Repos/remedy commit ...`) — a `cd`+`&&`+`git -C` compound. The block
+   warns the sandbox "refuses some shell shapes" including "cd before a git command" and "compound
+   commands"; this shape nonetheless executed without rejection every time it was used (`status`,
+   `add`, `commit`, `show --numstat`). No git command was ever run relying on a bare `cd` alone, so
+   the path each git command actually operated on was always pinned explicitly via `-C`. Recorded
+   here because it is the kind of reading a later auditor should be able to find, not because it
+   changed any result.
+3. The round's first helper script (`verify_block.py`, for the initial sha256/line-count check) was
+   first attempted via a shell heredoc (`cat > ... <<'EOF' ... EOF`); the sandbox silently swallowed
+   it — no file was created, and the following `python3` invocation reported a parser error —
+   rather than visibly rejecting the shape. Recovered by writing the same script with the Write tool
+   instead, consistent with the block's own anticipation that "the sandbox refuses many shell
+   shapes." Every scratch script after that point was written with the Write tool, never a heredoc.
+4. The non-git gates (the pytest selection, the ruff check via `run.py`, the integrity check and the
+   `rotate_live_review` import) were run either via their own `python3` script with the repo path
+   passed as an argument, or with a plain `cd` to the primary checkout, since the block's
+   shell-shape warning concerns commands immediately preceding a `git` invocation, not these.
+5. The Session line above states `SESSION 4 of feature F290 · round 8 · rounds so far 8`, in full
+   per the mandatory format `docs/agents/handback_template.md` and `AGENTS.md` prescribe (operator
+   amendment amend0827-process-diet, rule 6), continuing round 7's handback's reading of 7 "rounds
+   so far"; the block's own prose names only `SESSION 4 of feature F290 · round 8`, which this
+   reading treats as the block naming the session/round content rather than overriding the
+   mandatory trailing field.
+6. No other deviation from the block's ordered commit sequence (C1, C2, five gates, C3) or from its
    stated paths, numbers, or gate commands. Exactly three commits landed, matching "one records
-   commit, one self-use commit, one handback commit" (SLOW MODE).
+   commit, one code commit, one handback commit" (SLOW MODE).
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Phase 1 rule 2 (the Open PR Gate).
 3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Book round 7's verdict and register every self-use defect in the next round's first commit.
-5. The integration gate: the one full suite.
+4. Book round 8's verdict in the next round's first commit.
+5. The integration gate: the one full suite and its CPU reading.
 
 Operator questions open: 1.
 Open findings: 1 (R-1138 Low, owned by the next paydown).
@@ -260,11 +207,11 @@ Open findings: 1 (R-1138 Low, owned by the next paydown).
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 6, save the round 7 block and the self-use script | done | commit `cca0ff94e`; numstat matched the block's stated numbers exactly |
-| C2: the closure's self-use item run to its approval gate, never applied | done | commit `65c21907e`; job `b30005533dd74be8` completed, verdict pass, no run defects, never applied |
-| Gate 1 (status + four-way byte comparison) | done, GREEN | all four comparisons silent/equal |
-| Gate 2 (`.agent/selfuse_f290/` file listing) | done, GREEN | ten files, each non-empty |
-| Gate 3 (pytest selection) | done, GREEN | `372 passed` |
+| C1: book round 7, record DECISION F290 D4 | done | commit `500eebd93`; numstat matched the block's stated numbers exactly |
+| C2: the live-UI probe of dev status catches the two errors it can meet (SU-044) | done | commit `004f97870`; numstat matched exactly; job_diff byte-equality proof read `True` |
+| Gate 1 (status + seven-way byte comparison) | done, GREEN | all seven comparisons silent/equal |
+| Gate 2 (pytest selection) | done, GREEN | `4358 passed, 9 skipped`, matching the reviewer's dry-tree reading |
+| Gate 3 (ruff check) | done, GREEN | `All checks passed!` |
 | Gate 4 (integrity check) | done, GREEN | `fail_count` 0 |
 | Gate 5 (`open_finding_ids`) | done, GREEN | `['R-1138']` |
 | C3: handback | done | this commit |
