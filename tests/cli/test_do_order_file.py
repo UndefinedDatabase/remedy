@@ -326,3 +326,41 @@ def test_order_text_naming_a_md_file_stays_text_and_the_cap_rule_does_not_bind(
     assert data["ok"] is True
     plan_text = Path(data["mission_plan_path"]).read_text()
     assert order_text in plan_text
+
+
+# ── 12: the mission records the order file's path and digest (R-1141) ──────
+
+
+def test_an_order_file_given_as_a_relative_path_records_its_path_and_digest_on_the_mission(
+        repo, capsys):
+    """DECISION F295 D3: the mission's order carries the file's resolved absolute
+    path and the sha256 of its exact bytes, given `remedy do order.md` as a
+    RELATIVE path from the repository as the working directory."""
+    import hashlib
+
+    from packages.orchestration.mission_state import mission_for_job
+
+    order_path = _write_order(repo, "---\nmax-cost-usd: 1\n---\nWrite a CONTRIBUTING.md\n")
+    raw = order_path.read_bytes()
+
+    data = _do_json(capsys, order_path.name, "--plan-only")
+
+    [job_id] = data["job_ids"]
+    mission = mission_for_job(job_id)
+    assert mission is not None
+    assert mission.order.source_path == str(order_path.resolve())
+    assert mission.order.source_sha256 == hashlib.sha256(raw).hexdigest()
+    assert mission.order.text == "Write a CONTRIBUTING.md"
+
+
+def test_a_text_order_leaves_the_missions_order_source_path_and_digest_empty(
+        repo, capsys):
+    from packages.orchestration.mission_state import mission_for_job
+
+    data = _do_json(capsys, "fix the heading in README.md", "--plan-only")
+
+    [job_id] = data["job_ids"]
+    mission = mission_for_job(job_id)
+    assert mission is not None
+    assert mission.order.source_path == ""
+    assert mission.order.source_sha256 == ""

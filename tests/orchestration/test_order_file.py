@@ -1,6 +1,8 @@
 """Unit tests for `packages/orchestration/order_file.py` (F295 T001, DECISION F295 D2)."""
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from packages.orchestration.order_file import (
@@ -178,3 +180,21 @@ def test_invalid_utf8_gives_order_file_unreadable(tmp_path):
     with pytest.raises(OrderFileError) as exc_info:
         read_order_file(str(path))
     assert exc_info.value.error == "order_file_unreadable"
+
+
+# ── source_path and source_sha256 (DECISION F295 D3) ─────────────────────────
+
+
+def test_read_order_file_returns_the_resolved_path_and_digest_of_the_bytes_read(tmp_path):
+    path = tmp_path / "order.md"
+    raw = b"\xef\xbb\xbfWrite a CONTRIBUTING.md.\n"
+    path.write_bytes(raw)
+    order = read_order_file(str(path))
+    assert order.source_path == str(path.resolve())
+    assert order.source_sha256 == hashlib.sha256(raw).hexdigest()
+
+
+def test_parse_order_file_text_leaves_source_path_and_digest_empty():
+    order = parse_order_file_text("Write a CONTRIBUTING.md.\n", "order.md")
+    assert order.source_path == ""
+    assert order.source_sha256 == ""
