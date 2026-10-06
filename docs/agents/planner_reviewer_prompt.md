@@ -434,6 +434,14 @@ end the response with:
   because each left a guard red on disk: a test selection that left out a guard reading the whole
   repository is item 34's reading of the tests that already guard a path. The list stays at 34
   items.
+  Consolidated again at F290's closure on 2026-10-06: nothing joined and no two items were merged,
+  because neither of F290's two lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  selection runner that passed pytest `-rs` alone, so that a red gate would have printed its count
+  without the ids of the failed tests, is item 12's clause on what a dry run must emit; and a
+  selection that started a live UI server right after a commit that changed `apps/ui/src`, without
+  the build that keeps the server from rebuilding `apps/ui/dist` inside a test's timing window, is
+  item 33's reading of a sound recipe that only its environment defeats. The list stays at 34
+  items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
