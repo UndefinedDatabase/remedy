@@ -8,9 +8,9 @@ every operation, field, word, token and exit code (docs/roadmap/features/T12_F29
 F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 3, round 12: T001's eleventh part. The interface names the keys under the answers of
-the four `remedy patch` commands, two of them declared empty (DECISION F298 D12), held to the code
-that builds each tree and to a real run; round 11's verdict and R-1177's resolution are booked.
+Session 3, round 13: T001's twelfth part. The interface names the keys under
+`remedy job evidence`'s answer, with the target guard as a second shared tree (DECISION F298 D13),
+held to the code that builds each tree and to a real run; round 12's verdict is booked.
 
 ## Next Steps
 1. T001, next parts: the other operations' answer trees, a few operations at a time.
