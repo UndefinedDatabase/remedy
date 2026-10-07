@@ -239,3 +239,30 @@ def test_a_task_decision_appears_in_client_decisions_and_matches_decisions_open(
     assert len(job_decisions) == 1
     assert job_decisions[0]["type"] == "task_decision"
     assert result["decisions_open"] == len(job_decisions)
+
+
+# ── 9: a completed job references its evidence; the project names its cost of the day ──
+
+
+def test_a_completed_jobs_entry_references_its_evidence_and_the_project_its_cost_today(
+        repo, capsys):
+    data = _do_json(capsys, ORDER)
+    [job_id] = data["job_ids"]
+
+    client = _status_json(capsys)["client"]
+
+    [job] = client["jobs"]
+    assert job["job_id"] == job_id
+    assert job["cost"] == {"value_usd": None, "basis": "absent"}
+    evidence = job["evidence"]
+    assert Path(evidence["evidence_dir"]).is_dir()
+    assert evidence["run_ids"]
+    diff = Path(evidence["result_diff_path"])
+    assert hashlib.sha256(diff.read_bytes()).hexdigest() == evidence["result_diff_sha256"]
+    # The fake providers' calls reach today's ledger and none of them reports a price.
+    [project] = client["projects"]
+    cost_today = project["cost_today"]
+    assert cost_today["day"] == client["read_at"][:10]
+    assert cost_today["calls"] >= 1
+    assert cost_today["value_usd"] is None
+    assert cost_today["basis"] == "absent"

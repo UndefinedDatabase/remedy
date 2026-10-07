@@ -6,6 +6,7 @@ Each test sets `REMEDY_DATA_DIR` to a short directory from
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -306,3 +307,138 @@ def test_the_age_helper_reads_a_non_iso8601_created_at_as_null():
     entry = _decision_entry("job-1", "proj-1", decision, NOW)
 
     assert entry["age_seconds"] is None
+
+
+# ── each job's cost and evidence, each project's cost of the day (T002, DECISION F295 D7) ──
+
+ACTUALS_STARTED_AT = "2026-01-01T11:00:00+00:00"
+
+
+def _priced_actuals(*, cost, priced, unpriced) -> dict:
+    """A version-2 persisted actuals record that `decode_persisted_budget_actuals` accepts."""
+    return {
+        "schema_version": "2.0.0", "provider_call_count": 4, "actual_call_count": 3,
+        "unmeasured_call_count": 1, "total_tokens": 4200, "started_at": ACTUALS_STARTED_AT,
+        "actual_sources": ["pingpong_actuals"], "measured_cost_usd": cost,
+        "priced_call_count": priced, "unpriced_call_count": unpriced,
+    }
+
+
+def _git_folder(path: Path) -> Path:
+    path.mkdir()
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    return path
+
+
+def test_a_job_without_actuals_or_evidence_reads_an_absent_cost_and_null_references(root):
+    job = JobPlan(job_title="bare-job", project_id="proj-1")
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["cost"] == {"value_usd": None, "basis": "absent"}
+    assert entry["evidence"] == {
+        "evidence_dir": None, "run_ids": [], "postmortem_path": None,
+        "run_manifest_path": None, "result_diff_path": None, "result_diff_sha256": None,
+    }
+
+
+@pytest.mark.parametrize(("cost", "priced", "unpriced", "expected"), [
+    (1.25, 3, 0, {"value_usd": 1.25, "basis": "actual"}),
+    (0.5, 1, 2, {"value_usd": 0.5, "basis": "lower_bound"}),
+    (None, 0, 2, {"value_usd": None, "basis": "absent"}),
+], ids=["every-call-priced", "a-call-unpriced", "never-priced"])
+def test_a_jobs_persisted_actuals_give_its_cost_and_exactness_basis(
+        root, cost, priced, unpriced, expected):
+    job = JobPlan(job_title="priced-job", project_id="proj-1",
+                  first_running_at=ACTUALS_STARTED_AT,
+                  budget_actuals=_priced_actuals(cost=cost, priced=priced, unpriced=unpriced))
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["cost"] == expected
+
+
+def test_a_job_whose_actuals_are_damaged_marks_degraded_and_nulls_only_its_cost(root):
+    bad_job = JobPlan(job_title="bad-actuals", project_id="proj-1",
+                      budget_actuals={"schema_version": "9.9.9"})
+    save_job_plan(bad_job)
+    good_job = JobPlan(job_title="good-actuals", project_id="proj-2",
+                       first_running_at=ACTUALS_STARTED_AT,
+                       budget_actuals=_priced_actuals(cost=1.25, priced=3, unpriced=0))
+    save_job_plan(good_job)
+
+    digest = build_client_digest(now=NOW)
+
+    costs = {entry["job_id"]: entry["cost"] for entry in digest["jobs"]}
+    assert costs[str(bad_job.job_id)] is None
+    assert costs[str(good_job.job_id)] == {"value_usd": 1.25, "basis": "actual"}
+    assert digest["degraded"] is True
+    assert f"cost of job {bad_job.job_id}" in digest["skipped_files"]
+
+
+def test_a_jobs_evidence_names_the_files_that_exist_and_nulls_the_one_that_does_not(root):
+    from packages.orchestration.data_paths import job_dir, job_evidence_dir
+
+    job = JobPlan(job_title="evidence-job", project_id="proj-1",
+                  run_refs=["run-a", "run-b"], postmortem_path="postmortem.json",
+                  run_manifest_path="run_manifest.json", result_diff_path="result.diff",
+                  result_diff_sha256="ab" * 32)
+    save_job_plan(job)
+    evidence_dir = job_evidence_dir(str(job.job_id))
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / "postmortem.json").write_text("{}", encoding="utf-8")
+    (job_dir(str(job.job_id)) / "result.diff").write_text("", encoding="utf-8")
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["evidence"] == {
+        "evidence_dir": str(evidence_dir),
+        "run_ids": ["run-a", "run-b"],
+        "postmortem_path": str(evidence_dir / "postmortem.json"),
+        "run_manifest_path": None,
+        "result_diff_path": str(job_dir(str(job.job_id)) / "result.diff"),
+        "result_diff_sha256": "ab" * 32,
+    }
+
+
+def test_a_projects_cost_today_sums_the_ledgers_calls_of_the_utc_day_of_read_at(
+        root, tmp_path):
+    from packages.orchestration.project_registry import register_project_repo
+    from packages.orchestration.token_ledger import (
+        COST_BASIS_PROVIDER_REPORTED,
+        CallRecord,
+        record_call,
+    )
+
+    project = register_project_repo("ledger-project", _git_folder(tmp_path / "ledger-project"))
+    for call_id, ts_utc, cost_usd in (("today", "2026-01-01T09:00:00+00:00", 0.25),
+                                      ("yesterday", "2025-12-31T23:59:59+00:00", 1.0)):
+        assert record_call(CallRecord(call_id=call_id, ts_utc=ts_utc, cost_usd=cost_usd,
+                                      cost_basis=COST_BASIS_PROVIDER_REPORTED),
+                           project_id=project.id)
+
+    [entry] = build_client_digest(now=NOW)["projects"]
+
+    assert entry["cost_today"] == {
+        "day": "2026-01-01", "value_usd": 0.25, "basis": "actual", "calls": 1,
+    }
+
+
+def test_a_project_whose_ledger_cannot_be_read_marks_degraded_and_nulls_its_cost_today(
+        root, tmp_path):
+    from packages.orchestration.project_registry import register_project_repo
+    from packages.orchestration.token_ledger import token_ledger_path_for
+
+    project = register_project_repo("broken-ledger", _git_folder(tmp_path / "broken-ledger"))
+    ledger = token_ledger_path_for(project.id)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    ledger.write_bytes(b"this is not an SQLite database, and it is long enough to be read")
+
+    digest = build_client_digest(now=NOW)
+
+    [entry] = digest["projects"]
+    assert entry["cost_today"] is None
+    assert digest["degraded"] is True
+    assert f"cost of the day of project {project.id}" in digest["skipped_files"]
