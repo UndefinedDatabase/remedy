@@ -7,20 +7,20 @@ arithmetic in the decision, and the watchdog's burn tripwire uses the same detec
 (docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 2: T001. Book round 1, then build `packages/orchestration/burn_detector.py` as
-DECISION F116 D2 specifies, a pure function with a per-sample trailing basis and a per-hour class
-basis, with its table tests in `tests/orchestration/test_burn_detector.py` and its entry in the
-orphan-module guard's `ALLOWED_UNWIRED`.
+Session 1, round 3: book round 2 and register R-1165 and R-1166; repair both in the detector's
+tests and docstring; then T002's first part, DECISION F116 D3: `packages/orchestration/job_burn.py`
+with `JobBurnMonitor`, its configuration resolver and record shape, the five `job_burn.*` keys, the
+regenerated environment guide, and its tests. Nothing calls the monitor yet.
 
 ## Next Steps
-1. T002: the job runner calls the detector at its safe point; attended warning, unattended pause
-   decision with the arithmetic, one open trip decision per job; the configuration keys; the
-   `ALLOWED_UNWIRED` entry removed.
-2. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; docs.
-3. The amend0930b-slow-cap hardening stage, then the closure sequence.
+1. T002, wiring: `run_job` records each counted provider call in the monitor, evaluates at its safe
+   point, persists a tripped reading on the job and shows it in `remedy job budget`.
+2. T002, unattended: a trip pauses an unattended job with one decision carrying the arithmetic.
+3. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; docs.
+4. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
-- The ledger gives every call of one task run the same timestamp, so a window spans whole task
-  runs; a run with very few task runs gives the detector little to measure.
-- R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162 (Low) stay
-  open, owned by F297.
+- The trailing baseline needs eight measured calls in one run before it can trip, and samples do
+  not survive a stop and relaunch, so a short run is never judged.
+- R-1165 and R-1166 (Low) are F116's own, repaired this round. R-1160 (Medium) and R-1138, R-1139,
+  R-1143, R-1149, R-1156, R-1157, R-1158, R-1162 (Low) stay open, owned by F297.
