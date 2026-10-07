@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D13).
+what a real run returns (DECISIONs F298 D8 to D14).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -249,46 +249,58 @@ TARGET_GUARD_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "ignored_target_noise_files",
 )}
 
+#: The keys of a mission's contract, its acceptance criteria, as its record holds them, a tree
+#: several answers carry under `contract` (DECISION F298 D14).
+MISSION_CONTRACT_KEY_TREE: dict[str, Any] = {
+    "schema": {},
+    "template": {},
+    "criteria": {
+        "id": {},
+        "text": {},
+        "blocking": {},
+        "origin": {},
+        "milestones": {},
+        "check": {
+            "id": {},
+            "kind": {},
+            "spec": None,
+            "blocking": {},
+            "acceptance_refs": {},
+            "description": {},
+            "source": {},
+        },
+        "status": {},
+        "evidence_ref": {},
+    },
+    "amendments": {
+        "id": {},
+        "text": {},
+        "received_at": {},
+        "applies_from": {},
+        "criteria": {},
+        "understood": {},
+        "acknowledged_in": {},
+    },
+}
+
+#: The mark a key of a tree maps to when the object under it, or each element of the list under
+#: it, has the shape of the object that holds the key: a shape that repeats itself (DECISION F298
+#: D14). A mission plan's `_versions` holds each earlier version of the plan, and each of those
+#: carries its own `_versions`.
+KEY_TREE_REPEAT_MARK = "^"
+
 #: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
 #: the form of `DIGEST_KEY_TREE` (DECISION F298 D8). A top-level key absent here carries no keys
 #: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
 #: tree under each of them; a key that maps to None holds an object whose keys the interface does
 #: not fix, which only a mission contract's check `spec` does: its keys are the arguments of the
-#: check's `kind`. An operation that maps to an empty dict answers no keys below its top level; an
-#: operation absent here has its nested keys named in a later part of F298.
+#: check's `kind`; a key that maps to `KEY_TREE_REPEAT_MARK` holds the tree of the object that holds
+#: it again, which only a mission plan's `_versions` does. An operation that maps to an empty dict
+#: answers no keys below its top level; an operation absent here has its nested keys named in a
+#: later part of F298.
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "do.run": {
-        "contract": {
-            "schema": {},
-            "template": {},
-            "criteria": {
-                "id": {},
-                "text": {},
-                "blocking": {},
-                "origin": {},
-                "milestones": {},
-                "check": {
-                    "id": {},
-                    "kind": {},
-                    "spec": None,
-                    "blocking": {},
-                    "acceptance_refs": {},
-                    "description": {},
-                    "source": {},
-                },
-                "status": {},
-                "evidence_ref": {},
-            },
-            "amendments": {
-                "id": {},
-                "text": {},
-                "received_at": {},
-                "applies_from": {},
-                "criteria": {},
-                "understood": {},
-                "acknowledged_in": {},
-            },
-        },
+        "contract": MISSION_CONTRACT_KEY_TREE,
         "cost": {
             "roles": {
                 "role": {},
@@ -501,6 +513,38 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     },
     "patch.approve": {},
     "patch.reject": {},
+    "mission.abandon": {
+        "mission": {
+            "schema_version": {},
+            "id": {},
+            "project_id": {},
+            "goal": {},
+            "status": {},
+            "job_links": {"job_id": {}, "role": {}, "created_at": {}, "job_state": {}},
+            "dossier_ref": {},
+            "created_at": {},
+            "mission_plan": {
+                "schema_v": {},
+                "milestones": {
+                    "id": {},
+                    "goal": {},
+                    "rationale": {},
+                    "depends_on": {},
+                    "jobs_draft": {"title": {}, "goal": {}, "est_band": {}},
+                    "dod_ref": {},
+                },
+                "risks": {},
+                "assumptions": {},
+                "compiled": {},
+                "origin": {},
+                "_versions": KEY_TREE_REPEAT_MARK,
+                "_version": {},
+                "_milestones_done": {},
+            },
+            "order": {"text": {}, "source_path": {}, "source_sha256": {}},
+            "contract": MISSION_CONTRACT_KEY_TREE,
+        },
+    },
 }
 
 

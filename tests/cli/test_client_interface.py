@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D13): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D14): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -41,6 +41,8 @@ from apps.cli.client_interface import (
     CLIENT_OPERATION_IDS,
     DIGEST_KEY_TREE,
     EXECUTION_CONFIG_KEY_TREE,
+    KEY_TREE_REPEAT_MARK,
+    MISSION_CONTRACT_KEY_TREE,
     OPERATION_ANSWER_KEYS,
     OPERATION_REFUSAL_TOKENS,
     TARGET_GUARD_KEY_TREE,
@@ -587,31 +589,32 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
 
 # The keys under the answers' top-level keys (DECISION F298 D8).
 
-def _tree_names(tree: dict | None) -> set[str]:
+def _tree_names(tree: dict | str | None) -> set[str]:
     """Every key a tree names at any depth, without the data key `*`."""
     names: set[str] = set()
-    for key, below in (tree or {}).items():
+    for key, below in (tree if isinstance(tree, dict) else {}).items():
         if key != "*":
             names.add(key)
         names |= _tree_names(below)
     return names
 
 
-def _opaque_paths(tree: dict, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
-    """Every path in a tree whose key maps to None."""
+def _leaf_paths(tree: dict, leaf: str | None, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
+    """Every path in a tree whose key maps to `leaf`, None or the repeat mark, instead of a tree."""
     paths: set[tuple[str, ...]] = set()
     for key, below in tree.items():
-        if below is None:
+        if below == leaf:
             paths.add((*prefix, key))
-        else:
-            paths |= _opaque_paths(below, (*prefix, key))
+        elif isinstance(below, dict):
+            paths |= _leaf_paths(below, leaf, (*prefix, key))
     return paths
 
 
 def _undeclared_paths(returned: dict, declared: dict | None,
                       prefix: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
-    """Every path of a returned key tree that a declared tree does not name; `*` names any key, and
-    a declared None admits everything under it."""
+    """Every path of a returned key tree that a declared tree does not name; `*` names any key, a
+    declared None admits everything under it, and the repeat mark names the declared tree that holds
+    it again."""
     if declared is None:
         return []
     undeclared: list[tuple[str, ...]] = []
@@ -619,7 +622,10 @@ def _undeclared_paths(returned: dict, declared: dict | None,
         if key not in declared and "*" not in declared:
             undeclared.append((*prefix, key))
             continue
-        undeclared += _undeclared_paths(below, declared.get(key, declared.get("*")), (*prefix, key))
+        below_declared = declared.get(key, declared.get("*"))
+        if below_declared == KEY_TREE_REPEAT_MARK:
+            below_declared = declared
+        undeclared += _undeclared_paths(below, below_declared, (*prefix, key))
     return undeclared
 
 
@@ -651,8 +657,11 @@ def test_every_answer_tree_hangs_under_a_declared_top_level_key():
         assert sorted(set(trees) - set(OPERATION_ANSWER_KEYS[command_id])) == [], command_id
         for key, tree in trees.items():
             assert isinstance(tree, dict) and tree, f"{command_id} {key}: an empty or opaque tree"
-            assert all(path[-2:] == ("check", "spec") for path in _opaque_paths(tree)), (
+            assert all(path[-2:] == ("check", "spec") for path in _leaf_paths(tree, None)), (
                 f"{command_id} {key}: a key the interface does not fix, other than a check's spec")
+            assert all(path[-2:] == ("mission_plan", "_versions")
+                       for path in _leaf_paths(tree, KEY_TREE_REPEAT_MARK)), (
+                f"{command_id} {key}: a shape that repeats itself, other than a plan's versions")
 
 
 def test_the_do_answer_trees_name_exactly_what_their_code_builds():
@@ -663,6 +672,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     contracts = "packages/orchestration/mission_contract.py"
     trees = ANSWER_KEY_TREES["do.run"]
     contract = trees["contract"]
+    assert contract is MISSION_CONTRACT_KEY_TREE
     assert set(contract) == set(mission_contract._CONTRACT_FIELDS) == (
         _returned_dict_keys(contracts, "MissionContract.to_json"))
     assert set(contract["criteria"]) == set(mission_contract._CRITERION_FIELDS) == (
@@ -837,6 +847,82 @@ def test_the_patch_intent_answers_carry_no_keys_below_the_top_level():
     assert all(isinstance(level, str) for level in (*RISK_LEVELS, RISK_UNKNOWN))
 
 
+def _model_tree(model) -> dict:
+    """The key tree a pydantic model's `model_dump()` writes: each field, and under a field whose type
+    is a model, or a list of one, that model's tree."""
+    from typing import get_args, get_origin
+
+    from pydantic import BaseModel
+
+    tree: dict = {}
+    for name, field in model.model_fields.items():
+        inner = get_args(field.annotation)[0] if get_origin(field.annotation) is list else field.annotation
+        tree[name] = _model_tree(inner) if isinstance(inner, type) and issubclass(inner, BaseModel) else {}
+    return tree
+
+
+def _subscript_stores(path: str, function: str, name: str) -> set[str]:
+    """The source of every subscript `function` in `path` stores into `name` with `name[...] = ...`."""
+    return {ast.unparse(target.slice) for node in ast.walk(_function_def(path, function))
+            if isinstance(node, ast.Assign) for target in node.targets
+            if isinstance(target, ast.Subscript) and ast.unparse(target.value) == name}
+
+
+def _bound_sources(path: str, function: str, name: str) -> set[str]:
+    """The source of every expression `function` in `path` binds `name` to."""
+    return {ast.unparse(node.value) for node in ast.walk(_function_def(path, function))
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == name for target in node.targets)}
+
+
+def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
+    from packages.orchestration.mission_compiler import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
+    from packages.orchestration.mission_plan_schema import MissionPlan
+    from packages.orchestration.orchestrator_loop import MILESTONES_DONE_KEY
+
+    mission_state = "packages/orchestration/mission_state.py"
+    mission_cmd = "apps/cli/commands/mission_cmd.py"
+    compiler = "packages/orchestration/mission_compiler.py"
+    loop = "packages/orchestration/orchestrator_loop.py"
+    mission = ANSWER_KEY_TREES["mission.abandon"]["mission"]
+    # The answer's mission is the record's own export, whose job links `_mission_json` widens.
+    assert set(mission) == _returned_dict_keys(mission_state, "Mission.to_json")
+    assert _bound_sources(mission_cmd, "_mission_json", "body") == {"mission.to_json()"}
+    assert _stored_keys(mission_cmd, "_mission_json", "body") == {"job_links"}
+    [link] = [node.elt for node in ast.walk(_function_def(mission_cmd, "_mission_json"))
+              if isinstance(node, ast.ListComp)]
+    assert [ast.unparse(value) for key, value in zip(link.keys, link.values) if key is None] == [
+        "link.to_json()"]
+    assert set(mission["job_links"]) == (
+        _returned_dict_keys(mission_state, "MissionJobLink.to_json")
+        | _dict_value_keys(mission_cmd, "_mission_json", "job_links"))
+    assert set(mission["order"]) == _returned_dict_keys(mission_state, "MissionOrder.to_json")
+    assert mission["contract"] is MISSION_CONTRACT_KEY_TREE
+    # A mission's plan is the plan model's dump with the keys its two writers store into it.
+    plan = mission["mission_plan"]
+    stored = {PLAN_VERSIONS_KEY, PLAN_VERSION_KEY, MILESTONES_DONE_KEY}
+    assert {key: below for key, below in plan.items() if key not in stored} == _model_tree(MissionPlan)
+    assert _bound_sources(compiler, "plan_mission", "body") == {"plan.model_dump()"}
+    assert _subscript_stores(compiler, "plan_mission", "body") == {"PLAN_VERSIONS_KEY", "PLAN_VERSION_KEY"}
+    assert _bound_sources(loop, "mark_milestone_done", "body") == {"dict(mission.mission_plan or {})"}
+    assert _subscript_stores(loop, "mark_milestone_done", "body") == {"MILESTONES_DONE_KEY"}
+    writers = set()
+    for path in sorted((_REPO_ROOT / "packages").rglob("*.py")) + sorted((_REPO_ROOT / "apps").rglob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        if "set_mission_plan" in source:
+            writers |= {(path.relative_to(_REPO_ROOT).as_posix(), fn.name)
+                        for fn in ast.walk(ast.parse(source)) if isinstance(fn, ast.FunctionDef)
+                        for call in ast.walk(fn) if isinstance(call, ast.Call)
+                        and ast.unparse(call.func).split(".")[-1] == "set_mission_plan"}
+    assert writers == {(compiler, "plan_mission"), (loop, "mark_milestone_done")}
+    # Each earlier version is a whole plan body, with its own earlier versions; the other two are
+    # a number and a list of milestone ids.
+    assert plan[PLAN_VERSIONS_KEY] == KEY_TREE_REPEAT_MARK
+    assert _bound_sources(compiler, "plan_mission", "previous") == {
+        "mission.mission_plan if isinstance(mission.mission_plan, dict) else None"}
+    assert plan[PLAN_VERSION_KEY] == plan[MILESTONES_DONE_KEY] == {}
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -871,12 +957,12 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
     answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)
     answer("patch.reject", ["patch", "reject", job_id, "no-such-intent"], 1)
-    answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
+    abandoned = answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
-    # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks` and
-    # `remedy job evidence`.
+    # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
+    # `remedy job evidence` and `remedy mission abandon`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -895,6 +981,19 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert {("manifest", "execution_config", "builder"),
             ("manifest", "target_guard", "target_mutated")} <= _key_paths(_key_tree(exported))
     assert exported["files"] and exported["manifest"]["task_statuses"], "no path or task was named"
+    assert {("mission", "job_links", "job_state"), ("mission", "order", "source_sha256"),
+            ("mission", "mission_plan", "milestones", "jobs_draft", "est_band"),
+            ("mission", "contract", "criteria", "check", "kind")} <= _key_paths(_key_tree(abandoned))
+    # A first plan has no earlier version, so a plan with two is built from the real one: the tree
+    # names each earlier version's keys, and a key one of them adds is still caught.
+    declared = ANSWER_KEY_TREES["mission.abandon"]
+    plan = abandoned["mission"]["mission_plan"]
+    for versions, undeclared in (
+            ([plan, {**plan, "_versions": [plan], "_version": 2}], []),
+            ([{**plan, "_versions": [{**plan, "added_key": 1}]}],
+             [("mission", "mission_plan", "_versions", "_versions", "added_key")])):
+        mission = {**abandoned["mission"], "mission_plan": {**plan, "_versions": versions}}
+        assert _undeclared_paths(_key_tree({"mission": mission}), declared) == undeclared
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
