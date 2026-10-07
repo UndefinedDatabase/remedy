@@ -7,16 +7,16 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order; T001 to T003 have landed.
 
 ## Current Step
-Round 12, the closure sequence's integration-gate round (docs/agents/integration_gate.md,
-amend0917-throughput rule 1): book round 11, whose self-use run reported no defect; run the
-feature's one full suite on the tree that ships and its cost script, and commit the transcript
-`.agent/authored/f287-closure-suite.txt`.
+Round 13, the closure sequence's last content round before the evidence: book round 12, whose one
+full suite read green (21520 passed, 22 skipped) on the tree that ships; one prose slip; the
+checklist's once-per-feature consolidation pass for F287 in docs/agents/planner_reviewer_prompt.md
+(the list stays at 34 items).
 
 ## Next Steps
-1. A green suite: the checklist's consolidation pass, then the evidence job and the review
-   package. A red one: repair rounds that strictly shrink the bad set, at most three.
-2. The ledger rotation, the STATUS line with its README sync and the self-use queue's
-   `consumed_by`, and the pull request, left unmerged.
+1. The evidence round, in a fresh session: the staging reclaim, the evidence job and the review
+   package at the accepted head (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1, 2).
+2. The closing round: the ledger rotation, the STATUS line with its README sync and the self-use
+   queue's `consumed_by` for SU-046, and the pull request, left unmerged.
 
 ## Risks
 - Repair rounds on `claude-cli` now send shortened prompts to a continued session (F106, F109,
