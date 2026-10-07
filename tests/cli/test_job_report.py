@@ -31,11 +31,13 @@ pytestmark = pytest.mark.integration
 UTC = timezone.utc
 T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=UTC)
 
-#: Every key of the former `job report --json` payload, in its order; DECISION F261 D11 renamed one of them.
+#: Every key of the former `job report --json` payload, in its order; DECISION F261 D11 renamed one of them,
+#: and DECISION F116 D7 (3) added `burn_alarm`.
 PROGRESS_KEYS = [
     "job_id", "name", "state", "task_count", "done_count", "pending_count", "event_count",
     "artifact_count", "patch_intent_ids", "approval_required", "latest_stop_reason",
-    "code_applied", "next_safe_action", "open_decisions", "open_decision_count", "tasks",
+    "burn_alarm", "code_applied", "next_safe_action", "open_decisions", "open_decision_count",
+    "tasks",
 ]
 
 
@@ -273,6 +275,32 @@ class TestTheProgressView:
         assert progress[0] == f"Job Report: {job.job_id}"   # the pre-F053 view
         assert "  Tasks:     2/2 done, 0 pending" in progress
         assert "# Run report" not in "\n".join(progress)
+
+
+_TRIPPED_BURN_READING = {
+    "tripped": True, "rate_unit": "per_sample", "window_samples": 1, "rate": 15000.0,
+    "expectation": 1500.0, "multiplier": 3.0, "since_label": 3}
+
+
+class TestTheBurnAlarm:
+    """F116 (DECISION F116 D7 (3)): the progress view names a recorded burn alarm."""
+
+    def test_a_recorded_trip_is_named_in_the_data_and_the_text(self, capsys):
+        from packages.orchestration.job_burn import job_burn_sentence
+
+        job = saved_job()
+        job.burn_reading = dict(_TRIPPED_BURN_READING)
+        save_job_plan(job)
+        section, text = show_report(capsys, str(job.job_id))
+        sentence = job_burn_sentence(_TRIPPED_BURN_READING)
+        assert section["data"]["burn_alarm"] == sentence
+        assert f"  Burn alarm: {sentence}" in text.splitlines()
+
+    def test_no_recorded_trip_reads_none_and_prints_no_line(self, capsys):
+        job = saved_job()
+        section, text = show_report(capsys, str(job.job_id))
+        assert section["data"]["burn_alarm"] is None
+        assert "Burn alarm" not in text
 
 
 def _headings(text: str) -> list[str]:

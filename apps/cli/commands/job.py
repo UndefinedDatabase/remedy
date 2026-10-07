@@ -223,6 +223,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
+    _print_burn_alarm(job)
     for line in section_text:
         print(line, file=sys.stderr)
 
@@ -239,6 +240,18 @@ def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
         if entry["findings_omitted"]:
             print(f"  {entry['task_id']} \u2026 {entry['findings_omitted']} more "
                   f"(job show {job_id} --full)", file=sys.stderr)
+
+
+def _print_burn_alarm(job: JobPlan) -> None:
+    """F116 (DECISION F116 D7 (2)): a recorded burn alarm, on stderr beside the findings block."""
+    from packages.orchestration.job_burn import recorded_burn_sentence
+
+    sentence = recorded_burn_sentence(job.burn_reading)
+    if sentence is None:
+        return
+    print("\n--- Burn alarm ---", file=sys.stderr)
+    print(f"  {sentence}", file=sys.stderr)
+    print(f"  remedy job budget {job.job_id} shows the numbers.", file=sys.stderr)
 
 
 #: DECISION amend0905-vocab D4: the read views of a job are sections of
@@ -508,6 +521,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
     import json
     from dataclasses import asdict
 
+    from packages.orchestration.job_burn import recorded_burn_sentence
     from packages.orchestration.long_run_executor import REPORTED_TERMINALS
     from packages.orchestration.run_report import (
         MODE_FINAL,
@@ -546,6 +560,8 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         "patch_intent_ids": truth["patch_intent_ids"],
         "approval_required": truth["approval_required"],
         "latest_stop_reason": truth["latest_stop_reason"],
+        # F116 (DECISION F116 D7 (3)): the recorded burn alarm's sentence, or None.
+        "burn_alarm": recorded_burn_sentence(job.burn_reading),
         "code_applied": truth["code_applied"],
         # F051: a blocked run's next action is the command that answers its
         # most urgent open decision — that is what unblocks it.
@@ -568,6 +584,8 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         lines.append("  Approval:  REQUIRED")
     if truth["latest_stop_reason"]:
         lines.append(f"  Stop:      {truth['latest_stop_reason']}")
+    if report["burn_alarm"] is not None:
+        lines.append(f"  Burn alarm: {report['burn_alarm']}")
     lines.append(f"  Applied:   {'Yes' if truth['code_applied'] else 'No'}")
     if task_details:
         lines.append("  Task details:")
