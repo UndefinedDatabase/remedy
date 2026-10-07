@@ -170,7 +170,7 @@ commands fails when an answer returns a key the document does not name (DECISION
 and D7). `remedy job resume` answers in several shapes, by what it finds, so its list is the
 union of all of them. Under `answer_trees` it names the keys under those keys, as trees in the
 form of the digest's, for each command whose answers F298 has reached so far, today
-`remedy do` and `remedy job run`; a key written `*` stands for keys that are data, such as a job id, and a mission
+`remedy do`, `remedy job run` and `remedy job apply`; a key written `*` stands for keys that are data, such as a job id, and a mission
 contract check's `spec` is left open, because its keys are the arguments of the check's kind. A
 test holds each tree to the code that builds it, and the run above fails when an answer returns a
 key below the top level that the trees do not name (DECISION F298 D8). Inside one major version
