@@ -7,15 +7,14 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order; T001 to T003 have landed.
 
 ## Current Step
-Round 16, the closure's evidence round again (docs/roadmap/STATUS_closure_protocol.md algorithm
-steps 1 and 2), because round 15's docs repair moved the head past round 14's package: book round
-15, resolve R-1164, one prose slip, then at the accepted head the staging reclaim, the evidence job
-`f287r16e1001` over 47 test files, and the review package from the clean, pushed tree.
+Session 3, round 17: the closing round. Book round 16's PASS, rotate the ledger, accept F287 in
+STATUS with its README sync and the self-use entry SU-046's `consumed_by`, push, and open the
+pull request. F287 owns no open finding; the nine open findings are owned by F297.
 
 ## Next Steps
-1. Round 17, the closing round: book round 16, the ledger rotation, the STATUS line with its
-   README sync and the self-use queue's `consumed_by` for SU-046, and the pull request, left
-   unmerged.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F287's pull
+   request; round 17's verdict is booked in the next feature's first commit.
+2. Then Rule A5: the next unchecked feature in `docs/roadmap/STATUS.md`, F116.
 
 ## Risks
 - Repair rounds on `claude-cli` now send shortened prompts to a continued session (F106, F109,
