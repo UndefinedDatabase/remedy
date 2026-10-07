@@ -1,66 +1,81 @@
-# Handoff — F116 session 4, round 14: book round 13; the evidence job and the review package
+# Handoff — F116 session 4, round 15: the closing round; book round 14, rotate the ledger, accept F116, open the PR
 
 ## Session
 
-SESSION 4 of feature F116 · round 14 · rounds so far 14
+SESSION 4 of feature F116 · round 15 · rounds so far 15
 
-Context self-assessment (the reviewer's, quoted): "The reviewer's context is comfortable after one round; the session goes on with the closing round."
+Context self-assessment: the reviewer's context is comfortable; the session ends here because F116 is closed and the next feature starts in a fresh session.
 
-Fortschritt: ~98 % (everything but the closing commit and the pull request is done) — Schätzung
+Fortschritt: 100 % (F116 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `4df47397cb860b0bd6918cd93eb4d1026105db57`..HEAD (HEAD is this commit, C2 below). The ACCEPTED HEAD, the commit the evidence and the package cover, is C1: `e6950538b30420cb9f1c6ed3fb76ae5bf1be814d`.
+Review of `06f4c093e80aa36d11c474f49de489881ca07037`..HEAD (HEAD is C3 below).
 
 ## Commits
 
-### e6950538b F116 R14 C1: book round 13, the plan, save the block and the evidence script
+### 8f7e3b8b3 F116 R15 C1: book round 14, save the round 15 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f116-r14.md` | 163/0 (new) | byte copy of the reviewer's `block.md` (163 lines, sha256 `7f09d489997cc8a6d2d41c5bc1b3b54a7c1167cd33bd1cbc5efe06e7f4c3e42f`) |
-| `.agent/authored/f116-r14-create_f116_evidence.py` | 192/0 (new) | byte copy of the prepared evidence script (192 lines, sha256 `0cded2b873dfe2b94e508a0738caef4915ced7560aa5064c1804cca8e7a3a0e2`) |
-| `.agent/live_review.md` | 2/0 | append `append-live_review.txt`'s bytes (round 13 booked: PASS) |
-| `.agent/plan.md` | 7/8 | replace with the prepared `dry-plan.md`, byte for byte |
+| `.agent/authored/f116-r15.md` | 132/0 (new) | byte copy of the reviewer's `block.md` (132 lines, sha256 `4b71748f1a2c67ac30164608763e676e52efc556f67d1c4ec1e7e8a0d0d0af53`) |
+| `.agent/authored/f116-r15-status_line.txt` | 1/0 (new) | byte copy of `status_line.txt` |
+| `.agent/authored/f116-r15-pr_body.md` | 114/0 (new) | byte copy of `pr_body.md` |
+| `.agent/live_review.md` | 2/0 | `sim-C1-live_review.md`, whole file (round 14 booked) |
+| `.agent/plan.md` | 6/7 | `dry-plan.md`, byte for byte |
 
-### F116 R14 C2: handback (self-reference exception — the handoff is committed by this same commit)
+### 362180ed2 F116 R15 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | this file, rewritten in full per `docs/agents/handback_template.md` |
+| `.agent/live_review.md` | 0/76 | output of `scripts/rotate_live_review.py`, byte-equal to `sim-C2-live_review.md` |
+| `.agent/live_review_archive.md` | 76/0 | output of the same run, byte-equal to `sim-C2-live_review_archive.md` |
+
+### F116 R15 C3: accept F116 in STATUS with its README sync and the self-use queue (self-reference exception: the handoff is committed by this same commit)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 | F116's `[~]` line becomes the accepted line (`sim-STATUS.md`) |
+| `README.md` | 16/2 | `129 of 297`, Tier 3 row `8 | 28`, F116's paragraph after F114's (`sim-README.md`) |
+| `scripts/self_use_queue.json` | 1/1 | `SU-047` `consumed_by` becomes `F116` (`sim-self_use_queue.json`) |
+| `.agent/handoff.md` | this commit | this file, rewritten per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git push origin feature/f116-cost-anomaly-alarm` after C1: `4df47397c..e6950538b  feature/f116-cost-anomaly-alarm -> feature/f116-cost-anomaly-alarm`, first attempt, no error.
-- A0 `python3 -m apps.cli.main data reclaim --orphans` (preview only, `--apply` skipped, nothing deleted).
-- A1 the evidence job and A2 `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f116-r14-evidence` (both below).
-- `git push origin feature/f116-cost-anomaly-alarm` after C2: outcome reported in the worker's final reply (write-once rule; not known when this file is written).
-- No merge, no branch switch, no new branch, no force-push, no pull, no pull request opened.
+- `git push origin feature/f116-cost-anomaly-alarm`, then `gh pr create --base main --head feature/f116-cost-anomaly-alarm --title "F116 — Cost anomaly alarm" --body-file .agent/authored/f116-r15-pr_body.md`, then `gh pr list --state open ...`: outcomes, including the pull request number, are in the worker's final reply (write-once rule; not known when this file is written).
+- No merge, no branch switch, no new branch, no force-push, no pull.
 
 ## Verification
 
-0. Before any write: `git rev-parse HEAD` and `origin/feature/f116-cost-anomaly-alarm` both read `4df47397cb860b0bd6918cd93eb4d1026105db57`; `git status --porcelain` empty; `.agent/STOP` absent; `block.md` sha256 and 163 lines matched; the three prepared-file digests matched.
-1. **Gate 1** (after C1, `git status --porcelain`, then byte proofs over the committed blobs): status empty; block copy, script copy, plan copy and the ledger (base blob at `4df47397c` followed by the slice) all `True`, four of four. C1 numstat: script `192 0`, block `163 0`, `.agent/live_review.md` `2 0`, `.agent/plan.md` `7 8`, four paths.
-2. **A0, the reclaim** (`python3 -m apps.cli.main data reclaim --orphans`, exit 0): `Reclaimable: nothing`; `Would free 0 B in 0 paths — nothing deleted; re-run with --apply`. `--apply` SKIPPED. Refused path: `review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only  1.5 MB`.
-3. **A1, the evidence job** (`apps/ui/node_modules` read before it: `isdir True, islink False`; reflog newest entry C1 and branch `feature/f116-cost-anomaly-alarm` before and after, unmoved; exit code from the done file `0`). Decisive lines of the log:
-   - `ancestry-path count 48` / `plain count 48`
-   - `collected node ids 1779, deselected 17`
-   - `red control: unsafe among the real ids 0 []`
-   - `red control: planted id -> a local absolute path`
-   - `pytest exit 0, {'passed': 1776, 'failed': 0, 'skipped': 3}, output_hash 09f5cb7a071dff7a8e280ae31bd9f4d6f209092e0e27e8370aa503ae065ff7ff`
-   - `validate_verification_tests problems [] passed 1776`
-   - `is_valid_current_run True` / `validation_errors []`
-   - job `f116r14e1001`, `head_commit` `e6950538b30420cb9f1c6ed3fb76ae5bf1be814d`, `commit_count` 48, verdict `PASS_WITH_RISKS`, `total_passed` 1776. PASS.
-4. **A2, the review package** (exit 0): `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`, `REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips`, `ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261007-203842-READY_FOR_REVIEW.zip`; SHA-256 `7925df03d6e95440742cd2831517afc45ca7adf333dcd317c7ed48a0f4fcc342` (recomputed from the file, equal to the script's `final_sha256`); 7776 included files; manifest `committed_review_subject` base `e80b95467fcf0d00cda6e234fd63fbf1b818e322`, head `e6950538b30420cb9f1c6ed3fb76ae5bf1be814d`, `commit_count` 48; `zipfile.is_zipfile` True, `testzip()` None. PASS.
-5. **Gate 4** (after A2, before C2): `python3 -m apps.cli.main integrity check --json` exit 0, six of six checks `pass`, `"fail_count": 0`, `"ok": true`; `open_finding_ids` printed `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172']`, an exact match; `git status --porcelain` empty; `git worktree list` 12 lines; `git reflog -n 3` newest entry `e6950538b HEAD@{2026-10-07 20:34:15 +0200}: commit: F116 R14 C1: book round 13, the plan, save the block and the evidence script`. PASS.
-6. **Gate 5** (after C2 and its push): reported in the worker's final reply (not known when this file is written).
+0. Before any write: `git rev-parse HEAD` and `origin/feature/f116-cost-anomaly-alarm` both `06f4c093e80aa36d11c474f49de489881ca07037`; `git status --porcelain` empty; `.agent/STOP` absent; `block.md` (132 lines, sha256 `4b71748f...af53`) and `digests.txt` (22 lines, sha256 `9d7d7c97...f30d`) matched, and all ten digests it lists matched.
+1. C1: byte comparisons of the five copies all `True`; numstat `114 0` pr_body, `1 0` status_line, `132 0` block copy, `2 0` live_review, `6 7` plan.
+2. C2: `python3 scripts/rotate_live_review.py`, exit 0, whole output:
+   ```
+   gate records moved: 17
+   finding pairs moved: 10 (20 records)
+   resolved-text records moved: 0
+   old ledger size: 214504 bytes
+   new ledger size: 165931 bytes
+   old archive size: 6095811 bytes
+   new archive size: 6144384 bytes
+   open findings before: 10
+   open findings after: 10
+   written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+   ```
+   Both files byte-equal to the prepared ones (`True`, `True`); numstat `0 76` and `76 0`.
+3. **Gate 1** (after the three C3 files): `git status --porcelain` read ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`, nothing else; all nine copied files byte-equal to their prepared files. C3 numstat before the handoff: `16 2` README, `1 1` STATUS, `1 1` queue.
+4. **Gate 2**: the STATUS line (`status_line.txt` without its trailing newline) occurs 1 time in `docs/roadmap/STATUS.md`; no line begins `- [~]`.
+5. **Gate 3**: `python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py` exit 0, `555 passed in 38.98s`, no FAILED, ERROR or SKIPPED line.
+6. **Gate 4**: `python3 -m apps.cli.main integrity check --json` exit 0, `"check_count": 6`, six `pass`, `"fail_count": 0`, `"ok": true`.
+7. **Gate 5**: `open_finding_ids` exit 0 printed `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172']`, an exact match.
+8. **Gate 6** (after the pull request): reported in the worker's final reply.
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f116-r14.md`: 163 lines, byte-equal (`True`), sha256 `7f09d489997cc8a6d2d41c5bc1b3b54a7c1167cd33bd1cbc5efe06e7f4c3e42f`.
-- `f116-r14-create_f116_evidence.py` → `.agent/authored/f116-r14-create_f116_evidence.py`: 192 lines, byte-equal (`True`), sha256 `0cded2b873dfe2b94e508a0738caef4915ced7560aa5064c1804cca8e7a3a0e2`.
-- `append-live_review.txt` appended verbatim to its base blob: `True` over the committed blob.
-- `dry-plan.md` → `.agent/plan.md`: 24 lines, byte-equal (`True`), sha256 `a80b4e4acc0edd7c64fb1c61b9df9ebe593e2200685c029b840e2bb808d6813f`.
+- `block.md` → `.agent/authored/f116-r15.md`: 132 lines, byte-equal (`True`), sha256 `4b71748f1a2c67ac30164608763e676e52efc556f67d1c4ec1e7e8a0d0d0af53`.
+- `status_line.txt` → `.agent/authored/f116-r15-status_line.txt`: byte-equal (`True`); the STATUS line in `docs/roadmap/STATUS.md` is byte-identical to that file without its trailing newline, count 1.
+- `pr_body.md` → `.agent/authored/f116-r15-pr_body.md`: byte-equal (`True`).
+- `sim-C1-live_review.md`, `dry-plan.md`, `sim-C2-live_review.md`, `sim-C2-live_review_archive.md`, `sim-STATUS.md`, `sim-README.md`, `sim-self_use_queue.json` applied whole: each byte-equal (`True`).
 
 ## Findings
 
@@ -68,23 +83,22 @@ None registered by the worker.
 
 ## Deviations & assumptions
 
-None: C1, the three actions and C2 follow the block's order with its subjects. Artifact-build attempts: one evidence build (success, above) and one package build (`READY_FOR_REVIEW`, above); no failed attempt. No `cd`, nothing written under `/tmp`, no `-n`, no `REMEDY_TEST_MAX_WORKERS`, no other pytest command than the evidence script's own.
+None: C1, C2 and C3 follow the block's order with its subjects. No `cd`, nothing written under `/tmp`, no `-n`, no `REMEDY_TEST_MAX_WORKERS`; gate 3 was the one test selection, run once.
 
 ## For the operator, in plain sentences
 
-Remedy built the review package for this feature, the cost alarm that pauses an unattended job whose spending suddenly runs away. The package is the file `remedy-review-20261007-203842-READY_FOR_REVIEW.zip`, saved in the folder `/home/decodeux/Repos/remedy-history/zips`. The evidence run ran 1,779 tests selected for this feature (17 more were left out on purpose); 1,776 passed, none failed and 3 were skipped. No old scratch copies were cleaned up, because the cleanup found none it was allowed to remove, so it freed 0 bytes and left one 1.5 MB scratch folder in place. Nothing waits for you.
+The cost alarm is finished and accepted. When a job's spending suddenly runs far faster than expected, a job nobody is watching is paused with the numbers that tripped it and a choice to resume or abandon, and a job a person started keeps running and shows the alarm. A pull request is open for it and will be merged at the start of the next session unless you merge it earlier. Ten smaller problems, one found during this feature and nine carried from earlier ones, are written down for the next clean-up feature. Nothing waits for you.
 
 ## Round verdicts
 
-Rounds 1 to 13 are booked in the ledger (round 13 by this round's C1: PASS). Round 14's verdict is the reviewer's to give and book in the next round's first commit.
+Rounds 1 to 14 are booked in the ledger (round 14 by this round's C1). Round 15's verdict is the reviewer's to give and book in the next feature's first commit.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
-2. Then rule 2, the Open PR Gate; no pull request is open for this branch yet.
-3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Rule 4: the reviewer reviews round 14 and books its verdict in the next round's first commit.
-5. The closing round: book round 14, rotate the ledger, the open findings stay with F297, the self-use entry SU-047's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+2. Then the Open PR Gate, which merges F116's pull request in the NEXT session and never in this one.
+3. Then the booking of round 15's verdict in the next feature's first commit.
+4. Then Rule A5: the next unchecked line is F058 — Model failover chain.
 
 Operator questions open: 0.
 Open findings: 10 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162 and R-1172, Low; all owned by F297).
@@ -93,12 +107,10 @@ Open findings: 10 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 13, the plan, save the block and the evidence script | done | `e6950538b`, the accepted head |
-| Push after C1 | done | `4df47397c..e6950538b` |
-| A0: the staging reclaim | done | preview read "nothing"; `--apply` skipped as the block orders |
-| A1: the evidence job | done | job `f116r14e1001`, exit 0, 1776 passed |
-| A2: the review package | done | `READY_FOR_REVIEW`, `7925df03d6e95440742cd2831517afc45ca7adf333dcd317c7ed48a0f4fcc342` |
-| Gates 1 to 4 | done | PASS |
-| C2: handback | done | this commit |
-| Push after C2 | pending | run right after this commit, reported in the worker's final reply |
-| Gate 5 | pending | run after the push, reported in the worker's final reply |
+| C1: book round 14, save the block, the STATUS line and the PR body | done | `8f7e3b8b3` |
+| C2: rotate the ledger | done | `362180ed2`, output above |
+| C3: accept F116 in STATUS, README, self-use queue, handback | done | this commit |
+| Gates 1 to 5 | done | PASS |
+| Push | pending | run right after this commit, reported in the worker's final reply |
+| Pull request | pending | created after the push, number in the worker's final reply |
+| Gate 6 | pending | reported in the worker's final reply |
