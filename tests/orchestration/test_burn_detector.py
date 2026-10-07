@@ -1,10 +1,10 @@
 """F116 T001 — the burn detector's table tests (DECISION F116 D2).
 
-One test function per behaviour. The trailing basis reproduces the
-watchdog's own ``evaluate_burn_anomaly`` exactly (DECISION F116 D1), so the
-table test at the bottom builds the SAME ledger entries ``test_watchdog.py``
-builds and asserts the two evaluators agree, number for number, rather than
-asserting each in isolation and hoping they stay in step.
+One test function per behaviour. Since DECISION F116 D6 the watchdog's
+``evaluate_burn_anomaly`` calls the trailing basis, so the table tests at the
+bottom build the SAME ledger entries ``test_watchdog.py`` builds and assert
+that the watchdog's translation of a ledger into samples, and of a reading
+into a trip, loses no number on the way.
 
 Fixtures are built IN-PROCESS — plain dataclasses and plain dicts, no JSONL
 file, no disk, no conftest, exactly as ``test_watchdog.py`` builds its own.

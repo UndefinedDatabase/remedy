@@ -42,6 +42,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from packages.orchestration.burn_detector import (
+    BurnSample,
+    BurnThresholds,
+    evaluate_burn_rate,
+)
 from packages.orchestration.orchestrator_move_schema import (
     MOVE_DECLARE_MILESTONE_DONE,
     MOVE_DISPATCH_JOB,
@@ -304,7 +309,9 @@ def evaluate_no_progress(
 
 #: The run is burning far above its OWN history. The baseline is the same
 #: mission's earlier measured iterations, not a global constant, so a big
-#: mission is not permanently anomalous and a small one is not blind.
+#: mission is not permanently anomalous and a small one is not blind. The
+#: arithmetic is the burn detector's trailing basis (DECISION F116 D6): this
+#: function only turns ledger entries into samples and a reading into a trip.
 def evaluate_burn_anomaly(
     entries: Sequence[dict[str, Any]],
     *,
@@ -313,36 +320,30 @@ def evaluate_burn_anomaly(
     multiplier: float,
 ) -> Trip | None:
     """INERT below ``min_samples`` measured entries: thin data never trips."""
-    if window < 1:
-        return None
-    measured: list[tuple[int, int]] = []
-    for entry in entries:
-        tokens = measured_tokens(entry)
-        if tokens is None:
-            # Unmeasured: contributes nothing and does not shrink the window.
-            continue
-        measured.append((_iteration(entry), tokens))
-    if len(measured) < min_samples + window:
-        return None
-    baseline = measured[:-window]
-    recent = measured[-window:]
-    if not baseline:
-        return None
-    baseline_mean = sum(tokens for _, tokens in baseline) / len(baseline)
-    window_mean = sum(tokens for _, tokens in recent) / len(recent)
-    if not window_mean > multiplier * baseline_mean:
+    # An unmeasured entry's amount is None: it contributes nothing and does
+    # not shrink the window, which the detector guarantees for every caller.
+    samples = [
+        BurnSample(amount=measured_tokens(entry), label=_iteration(entry))
+        for entry in entries
+    ]
+    reading = evaluate_burn_rate(
+        samples,
+        BurnThresholds(window=window, min_samples=min_samples, multiplier=multiplier),
+    )
+    if reading is None or not reading.tripped:
         return None
     return Trip(
         kind=TRIP_BURN_ANOMALY,
-        what=(f"the last {len(recent)} measured iterations averaged "
-              f"{window_mean:.1f} tokens against a baseline of "
-              f"{baseline_mean:.1f} over {len(baseline)} iterations"),
-        since_iteration=recent[0][0],
+        what=(f"the last {reading.window_samples} measured iterations averaged "
+              f"{reading.rate:.1f} tokens against a baseline of "
+              f"{reading.expectation:.1f} over {reading.baseline_samples} iterations"),
+        since_iteration=reading.since_label,
         numbers={
-            "window_mean": window_mean,
-            "baseline_mean": baseline_mean,
-            "multiplier": multiplier,
-            "baseline_samples": len(baseline),
+            "window_mean": reading.rate,
+            "baseline_mean": reading.expectation,
+            "multiplier": reading.multiplier,
+            "baseline_samples": reading.baseline_samples,
+            "basis": reading.basis,
         },
     )
 

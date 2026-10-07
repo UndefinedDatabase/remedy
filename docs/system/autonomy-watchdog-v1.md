@@ -41,7 +41,7 @@ reported in the `note`, while the pause and the ledger entry happen anyway.
 | Kind | Fires when | Evidence in `numbers` |
 |---|---|---|
 | `no_progress` | N `dispatch_job` moves in a row on ONE milestone with no `declare_milestone_done` between them | `repeats`, `threshold`, `milestone_id` |
-| `burn_anomaly` | the mean of the most recent measured iterations STRICTLY exceeds `multiplier` times the mean of the earlier ones | `window_mean`, `baseline_mean`, `multiplier`, `baseline_samples` |
+| `burn_anomaly` | the mean of the most recent measured iterations STRICTLY exceeds `multiplier` times the mean of the earlier ones | `window_mean`, `baseline_mean`, `multiplier`, `baseline_samples`, `basis` |
 | `goal_drift` | a dispatched job names a milestone that is not in the mission plan | `milestone_id`, `known_milestones` |
 
 Every trip is a frozen `Trip` carrying `kind`, `what` (one human sentence),
@@ -60,6 +60,13 @@ small one is not blind. It is INERT until the ledger holds at least
 `burn_min_samples + burn_window` measured entries. An entry with no measured
 `cost.usage` contributes nothing rather than a zero, because a zero would drag
 the baseline down and manufacture an anomaly out of missing data.
+The arithmetic is not the watchdog's own: `evaluate_burn_anomaly` turns the
+ledger's entries into samples for the burn detector, `evaluate_burn_rate` in
+`packages/orchestration/burn_detector.py`, reads it on its `trailing_baseline`
+basis and turns the reading into the trip, so the job runner's burn alarm and
+this tripwire share one definition of expected spend (DECISION F116 D6). The
+trip's `basis` number names that basis. An entry whose measured total is
+negative is not a measurement and is skipped like an unmeasured one.
 
 `goal_drift` is BINARY rather than counted — one job on an invented goal is
 already the whole failure — and it reads the milestone from the ledger entry's
@@ -193,9 +200,11 @@ number from `next_iteration_index`, so those entries are numbered consecutively.
   watchdog that could edit the run it is judging would be judging its own work.
   There is no retry, no rollback and no plan surgery here: it stops, and it
   reports.
-- Remedy deliberately does not do class-expectation anomaly detection here,
-  because a later cost-anomaly feature owns it. `burn_anomaly` is self-relative
-  against the mission's own trailing baseline only.
+- Remedy deliberately does not give the watchdog the burn detector's hourly
+  `class_default` basis, because no configured expectation exists for a mission
+  and the watchdog's contract is per iteration. `burn_anomaly` is self-relative
+  against the mission's own trailing baseline only, while a job run's burn
+  alarm may use the hourly basis.
 - Remedy deliberately does not write to mission plans, jobs or dossiers, because
   the independence rule bounds the writes to the three named above. The job the
   mission last linked receives exactly one escalation record and nothing else.

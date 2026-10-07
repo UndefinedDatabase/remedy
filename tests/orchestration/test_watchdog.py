@@ -219,7 +219,8 @@ def test_burn_fires_when_the_window_beats_the_multiple():
     assert trip.kind == TRIP_BURN_ANOMALY
     assert trip.since_iteration == 6
     assert trip.numbers == {"window_mean": 1000.0, "baseline_mean": 100.0,
-                            "multiplier": 3.0, "baseline_samples": 5}
+                            "multiplier": 3.0, "baseline_samples": 5,
+                            "basis": "trailing_baseline"}
 
 
 def test_burn_does_not_fire_just_under_or_at_the_multiple():
@@ -263,6 +264,23 @@ def test_burn_skips_unmeasured_entries_instead_of_counting_them_as_zero():
     assert torn.since_iteration == clean.since_iteration == 6
     assert measured_tokens(_entry(1, tokens=None)) is None
     assert measured_tokens(_entry(1, tokens=42)) == 42
+
+
+def test_burn_skips_an_entry_whose_measured_total_is_negative():
+    measured_only = _burn_ledger(100, 1000)
+    negative = _entry(0, tokens=-500)
+
+    clean = evaluate_burn_anomaly(measured_only, window=3, min_samples=5,
+                                  multiplier=3.0)
+    skipped = evaluate_burn_anomaly([negative, *measured_only], window=3,
+                                    min_samples=5, multiplier=3.0)
+
+    # DECISION F116 D6 (4): the burn detector's definition of a measurement
+    # is the one definition, and a negative token total is not one.
+    assert measured_tokens(negative) == -500
+    assert clean is not None and skipped is not None
+    assert skipped.numbers == clean.numbers
+    assert skipped.since_iteration == clean.since_iteration == 6
 
 
 # ── goal_drift ─────────────────────────────────────────────────────────────

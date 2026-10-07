@@ -3,17 +3,17 @@
 A runaway between checkpoints burns quietly unless something compares what a
 run is spending NOW with what it was expected to spend. This module is that
 comparison, factored out of the watchdog's own tripwire (DECISION F116 D1) so
-every caller — the job runner from T002 on, the watchdog from T003 on — reads the
-same arithmetic rather than keeping its own copy.
+every caller — the job runner's burn monitor and the watchdog's burn tripwire —
+reads the same arithmetic rather than keeping its own copy.
 
 Two BASES, chosen by whether the caller supplies an hourly expectation:
 
   * ``trailing_baseline`` (rate unit ``per_sample``) — no outside expectation
     at all. The expected rate is the run's OWN earlier measured samples; a
     recent window is compared against everything measured before it. This is
-    exactly the watchdog's present contract (DECISION F116 D2), reproduced
-    here rather than re-derived, so T003 can delete the watchdog's private
-    copy once it calls this one.
+    exactly the watchdog's contract (DECISION F116 D2), and since DECISION
+    F116 D6 the watchdog's ``evaluate_burn_anomaly`` calls this basis and
+    keeps no arithmetic of its own.
   * ``class_default`` (rate unit ``per_hour``) — the caller supplies
     ``expected_per_hour``, a configured class expectation. The rate is read
     across wall-clock time between a fixed anchor sample and the most recent
