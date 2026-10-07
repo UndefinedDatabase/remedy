@@ -96,13 +96,14 @@ otherwise resend rather than with this fixture's own size.
 
 ## What this does NOT do
 
-- **Nothing dedupes in production today.** Dedupe fires only inside a resumed
-  session, and every concrete adapter in
-  `packages/orchestration/pingpong_provider.py` returns
-  `supports_resume = False` — `ClaudeProvider`, `ClaudeCliProvider` and
-  `OllamaPingPongProvider` alike. Only `FakeProvider`'s test-only constructor
-  override ever returns `True`, so the mechanism is exercised by the suite and
-  is inert on every real run.
+- **Only `claude-cli` repair rounds dedupe.** Dedupe fires only inside a
+  resumed session. Since F287, `ClaudeCliProvider` returns
+  `supports_resume = True` (DECISION F287 D4), so a `claude-cli` repair round
+  that resumes its session may dedupe. `ClaudeProvider` and
+  `OllamaPingPongProvider` still return `False`, so the mechanism is inert on
+  them. The sent-hash index lives for one run, so round 1 of a relaunch, which
+  resumes a session an earlier run parked, has no proven send and dedupes
+  nothing.
 - A dedupe never crosses session ids: each session's hashes live in their own
   set, and an empty session id is never used as a key.
 - A resume fallback forgets the resumed session entirely — once it has fallen
@@ -117,6 +118,6 @@ otherwise resend rather than with this fixture's own size.
 
 - `docs/roadmap/features/T3_F109.md` — the target spec and its acceptance list.
 - [session-resume-v1.md](session-resume-v1.md) — the resume machinery this
-  feature's scope rule depends on, and the reason nothing dedupes in production.
+  feature's scope rule depends on, and which providers resume.
 - [cache-optimal-prompt-ordering-v1.md](cache-optimal-prompt-ordering-v1.md) —
   the ranked segment composition that dedupe rewrites one segment of.

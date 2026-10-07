@@ -312,8 +312,9 @@ exact content already provably reached that session is replaced by a one-line
 records only proven sends, a resume fallback forgets the session entirely, a
 config kill switch disables the path completely, and a run's own prompt traces
 measure what it withheld — 556 characters avoided against 97 spent on markers on
-the fixture chain. No concrete adapter resumes in production yet, so the
-mechanism is exercised by the suite and inert on real runs today).
+the fixture chain. Since F287 the `claude-cli` provider resumes, so the
+mechanism works on its repair rounds; the Anthropic API and Ollama providers
+never resume, so on them it stays inert).
 
 F110 model routing by task class (every role Remedy resolves a runtime
 configuration for now carries a declared task class; a single resolver
