@@ -47,6 +47,7 @@ from packages.orchestration.diff_parser import parse_unified_diff_to_view
 from packages.orchestration.diff_view_source import (
     DIFF_JOB_ARTIFACT_NAME,
     DIFF_REASON_NO_EVIDENCE_DIR,
+    DIFF_REASON_UNKNOWN_TASK_RUN,
     DIFF_TASK_RUN_ARTIFACT_NAME,
     DIFF_TASK_RUNS_DIR_NAME,
 )
@@ -568,3 +569,169 @@ class TestRevertRefusalIsAnEnvelope:
         assert payload["error"] == "no_apply_record"
         assert payload["block_reason"] == "no_apply_record"
         assert payload["success"] is False
+
+
+class TestTheHunksCommandIsTheReadSide:
+    """DECISION F295 D14 — `remedy patch hunks`, the command line's read side of `patch
+    approve-hunks`: a client that never sees the cockpit reads the hunk ids it answers with,
+    and the decision recorded for them, through `apps.cli.grouped.main`.
+
+    Every test drives the real parser over a real job on an isolated data root. The parity
+    tests compare the envelope with the cockpit's own two reads in
+    `packages/orchestration/ui_server.py`, `_build_diff_json` and `_build_hunk_decisions_json`
+    and their task-run twins, over the same job, so the command and the cockpit cannot drift
+    apart without one of these tests going red.
+    """
+
+    def _hunks(self, capsys, *argv: str) -> dict:
+        from apps.cli.grouped import main
+
+        main(["patch", "hunks", *argv, "--json"])
+        return json.loads(capsys.readouterr().out)
+
+    def test_the_entry_is_a_read_with_json_and_its_handler_is_registered(self):
+        entry = get_command("patch.hunks")
+        assert entry.group_id == "patch" and entry.subcommand == "hunks"
+        assert entry.action_class == "read_only"
+        assert entry.supports_json is True
+        assert not entry.may_mutate_repo and not entry.requires_permission
+        assert "patch.hunks" in collect_all_handlers()
+
+    def test_it_lists_every_hunk_id_of_the_job_level_diff_with_nothing_recorded(
+        self, isolated, tmp_path, capsys,
+    ):
+        job = _job()
+        _evidence(tmp_path, job)
+
+        body = self._hunks(capsys, str(job.job_id))
+
+        assert body["ok"] is True and body["schema_version"] == 1
+        assert body["job_id"] == str(job.job_id)
+        view = body["view"]
+        assert view["available"] is True and view["scope"] == "job"
+        assert view["source"] == DIFF_JOB_ARTIFACT_NAME
+        assert [hunk["id"] for file_view in view["files"] for hunk in file_view["hunks"]] == HUNK_IDS
+        assert body["decision"] == {
+            "attempt_key": f"job:{DIFF_JOB_ARTIFACT_NAME}", "decided_at": "", "hunks": []}
+
+    def test_it_reads_back_the_decision_approve_hunks_recorded(
+        self, isolated, tmp_path, capsys,
+    ):
+        from apps.cli.grouped import main
+
+        job = _job()
+        _evidence(tmp_path, job)
+        main(["patch", "approve-hunks", str(job.job_id), "--approve-hunk", HUNK_IDS[0],
+              "--reject-hunk", f"{HUNK_IDS[1]}={REASON}", "--json"])
+        recorded = json.loads(capsys.readouterr().out)
+
+        body = self._hunks(capsys, str(job.job_id))
+
+        assert body["decision"]["attempt_key"] == f"job:{DIFF_JOB_ARTIFACT_NAME}"
+        assert body["decision"]["decided_at"] == recorded["decided_at"]
+        assert [(row["id"], row["state"], row["reason"]) for row in body["decision"]["hunks"]] == [
+            (HUNK_IDS[0], "approved", ""),
+            (HUNK_IDS[1], "rejected", REASON),
+            (HUNK_IDS[2], "pending", ""),
+        ]
+
+    def test_the_envelope_is_what_the_cockpit_reads_for_the_job_level_diff(
+        self, isolated, tmp_path, capsys,
+    ):
+        from packages.orchestration.ui_server import (
+            _build_diff_json,
+            _build_hunk_decisions_json,
+        )
+
+        job = _job()
+        _evidence(tmp_path, job)
+        CMD._cmd_approve_hunks(str(job.job_id), approve=[HUNK_IDS[2]])
+        capsys.readouterr()
+
+        body = self._hunks(capsys, str(job.job_id))
+
+        reloaded = load_job_plan(job.job_id)
+        assert body["view"] == _build_diff_json(reloaded)
+        assert body["decision"] == _build_hunk_decisions_json(reloaded)
+
+    def test_a_task_run_reads_that_runs_own_diff_as_the_cockpit_does(
+        self, isolated, tmp_path, capsys,
+    ):
+        from packages.orchestration.ui_server import (
+            _build_task_run_diff_json,
+            _build_task_run_hunk_decisions_json,
+        )
+
+        job = _job()
+        _evidence(tmp_path, job, task_run="T001")
+        CMD._cmd_approve_hunks(str(job.job_id), task_run="T001", approve=[HUNK_IDS[0]])
+        capsys.readouterr()
+
+        body = self._hunks(capsys, str(job.job_id), "--task-run", "T001")
+
+        source = f"{DIFF_TASK_RUNS_DIR_NAME}/T001/{DIFF_TASK_RUN_ARTIFACT_NAME}"
+        assert body["view"]["source"] == source
+        assert body["decision"]["attempt_key"] == f"T001:{source}"
+        reloaded = load_job_plan(job.job_id)
+        assert body["view"] == _build_task_run_diff_json(reloaded, "T001")
+        assert body["decision"] == _build_task_run_hunk_decisions_json(reloaded, "T001")
+
+    def test_a_diff_that_is_not_there_is_named_and_is_not_a_refusal(
+        self, isolated, tmp_path, capsys,
+    ):
+        job = _job()
+        _evidence(tmp_path, job)
+
+        body = self._hunks(capsys, str(job.job_id), "--task-run", "T999")
+
+        assert body["ok"] is True
+        assert body["view"]["available"] is False
+        assert body["view"]["reason"] == DIFF_REASON_UNKNOWN_TASK_RUN
+        assert body["decision"] == {"attempt_key": "", "decided_at": "", "hunks": []}
+
+    def test_it_writes_nothing_to_the_job(self, isolated, tmp_path, monkeypatch, capsys):
+        job = _job()
+        _evidence(tmp_path, job)
+        calls: list[object] = []
+        monkeypatch.setattr(CMD, "save_job_plan", lambda saved: calls.append(saved))
+
+        self._hunks(capsys, str(job.job_id))
+
+        assert calls == []
+
+    def test_without_json_each_hunk_is_one_line_with_its_state(
+        self, isolated, tmp_path, capsys,
+    ):
+        from apps.cli.grouped import main
+
+        job = _job()
+        _evidence(tmp_path, job)
+        CMD._cmd_approve_hunks(str(job.job_id), approve=[HUNK_IDS[1]])
+        capsys.readouterr()
+
+        main(["patch", "hunks", str(job.job_id)])
+        lines = capsys.readouterr().out.splitlines()
+
+        assert lines[0] == f"Diff: {DIFF_JOB_ARTIFACT_NAME} (job)"
+        assert lines[1] == "  f.txt"
+        assert [line.split()[:2] for line in lines[2:5]] == [
+            [HUNK_IDS[0], "pending"], [HUNK_IDS[1], "approved"], [HUNK_IDS[2], "pending"]]
+        assert lines[5].startswith(f"Decision: job:{DIFF_JOB_ARTIFACT_NAME}, recorded ")
+        assert len(lines) == 6
+
+    def test_without_json_a_diff_nobody_decided_reads_pending_and_none_recorded(
+        self, isolated, tmp_path, capsys,
+    ):
+        """The one case where a hunk has no row to read its state from: nothing is recorded,
+        so every hunk reads `pending`, the state an undecided hunk has in a ledger."""
+        from apps.cli.grouped import main
+
+        job = _job()
+        _evidence(tmp_path, job)
+
+        main(["patch", "hunks", str(job.job_id)])
+        lines = capsys.readouterr().out.splitlines()
+
+        assert [line.split()[:2] for line in lines[2:5]] == [
+            [hunk_id, "pending"] for hunk_id in HUNK_IDS]
+        assert lines[5:] == ["Decision: none recorded"]

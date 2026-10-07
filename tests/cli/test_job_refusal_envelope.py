@@ -861,6 +861,7 @@ class TestEveryMigratedJsonCommandAnswersABadIdInTheEnvelope:
         "patch.apply": ["zzzznotajob", "intent-placeholder"],
         "patch.revert": ["zzzznotajob", "intent-placeholder"],
         "patch.approve-hunks": ["zzzznotajob"],
+        "patch.hunks": ["zzzznotajob"],
         "teacher.narrate": ["zzzznotajob"],
         "teacher.ask": ["question-placeholder", "--job-id", "zzzznotajob"],
     }
