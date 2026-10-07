@@ -547,6 +547,30 @@ def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
     assert data["stopped_before_apply"] is True
 
 
+def test_with_no_ui_the_cockpit_launcher_is_never_called_and_the_ui_step_says_so(
+        repo, capsys, monkeypatch):
+    """R-1154: `--no-ui` opens no cockpit, which a machine client relies on (F295).
+
+    A cockpit that does not come up is a skipped ui step too, so the step's status alone cannot
+    tell `--no-ui` from a launch that was tried; the stand-in launcher must never be called.
+    """
+    launched: list[str] = []
+
+    def launcher(job_id: str) -> str:
+        launched.append(job_id)
+        return f"http://127.0.0.1:43210/?job={job_id}&token=t"
+
+    _stand_in_for_the_cockpit(monkeypatch, launcher)
+
+    data = _do_json(capsys)
+
+    assert launched == []
+    ui = _step(data, "ui")
+    assert (ui["status"], ui["detail"]) == (
+        "skipped", "--no-ui given; the cockpit was not opened")
+    assert [line for line in data["next"] if line.startswith("remedy ui ")] == []
+
+
 def _track(repo: Path, *paths: str) -> None:
     """Commit each path into the target, so the fake builder's writes change tracked content."""
     for rel in paths:
