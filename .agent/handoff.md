@@ -1,36 +1,36 @@
-# Handoff — F295 session 6, round 24: round 23 booked, R-1156 and R-1157 registered, the closure's one full suite
+# Handoff — F295 session 7, round 25: round 24 booked, DECISION F295 D20, the closure's one full suite again on the shipped tree
 
 ## Session
 
-SESSION 6 of feature F295 · round 24 · rounds so far 24
+SESSION 7 of feature F295 · round 25 · rounds so far 25
 
-Context self-assessment (quoted from the block): "The reviewer's context is comfortable after one
-round; this session goes on with the closure sequence."
+Context self-assessment (quoted from the block): "The reviewer's context is comfortable at the start of the seventh session; the session goes on with the closure sequence."
 
-Fortschritt: ~98 % (T001 to T004 landed; the hardening stage closed; the closure's self-use run
-and the one full suite done; the evidence, the zip and the closing commit remain) — Schätzung
+Fortschritt: ~98 % (T001 to T004 landed; the hardening stage closed; the closure's self-use run done and the one full suite repeated on the shipped tree; the evidence, the zip and the closing commit remain) — Schätzung
 
 ## Range
 
-Review of `6c7ee8a68`..`c465f8198`, plus this handback commit.
+Review of `647077858`..`3f300ad0d`, plus this handback commit.
 
 ## Commits
 
-### 72f160591 F295 R24 C1: book round 23's PASS, register R-1156 and R-1157, the plan, save the block
+### 6d2e8cc44 F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f295-r24.md` | 135/0 (new) | byte copy of this round's block |
-| `.agent/live_review.md` | 6/0 | append round 23's gate entry, R-1156 and R-1157, exactly as prepared |
-| `.agent/plan.md` | 9/10 | rewrite to round 24's current step |
+| `.agent/authored/f295-r25.md` | 153/0 (new) | byte copy of this round's block |
+| `.agent/live_review.md` | 2/0 | append round 24's gate entry, exactly as prepared |
+| `.agent/decisions.md` | 10/0 | append DECISION F295 D20, exactly as prepared |
+| `.agent/prose_slips.md` | 1/0 | append the round 24 prose slip, exactly as prepared |
+| `.agent/plan.md` | 11/9 | rewrite to round 25's current step |
 
-### c465f8198 F295 R24 C2: the closure's one full suite and its CPU cost
+### 3f300ad0d F295 R25 C2: the closure's one full suite on the shipped tree, with the reflog read around it
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f295-closure-suite.txt` | 11/0 (new) | the suite's transcript as read, with the cost script's two lines |
+| `.agent/authored/f295-closure-suite.txt` | 9/6 | the new transcript, replacing round 24's, with the reflog lines and the cost script's two lines |
 
-### F295 R24 C3: handback (self-reference exception — committed by this same write)
+### F295 R25 C3: handback (self-reference exception — committed by this same write)
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -38,80 +38,54 @@ Review of `6c7ee8a68`..`c465f8198`, plus this handback commit.
 
 ## External actions
 
-No `gh` command was run, no PR opened. After C3: `git push origin
-feature/f295-machine-client-contract-v1`; its outcome is in the worker's final reply (write-once
-rule). `.agent/STOP` was absent throughout. One local-only branch operation, declared under
-Deviations: `git branch -f feature/document-claude-abo-binding 9a8431ea9`.
+No `gh` command was run, no PR opened, no worktree added, no branch moved, no `git checkout` or `git switch` run. After C3: `git push origin feature/f295-machine-client-contract-v1`; its outcome is in the worker's final reply (write-once rule). `.agent/STOP` was absent throughout.
 
 ## Verification
 
 Gates ran after C2 and before C3, in the block's order.
 
-1. `git -C /home/decodeux/Repos/remedy status --porcelain` → empty. Byte comparison of every file
-   C1 wrote (`git show 72f160591:<path>`) against its prepared file, three of three equal.
+1. `git -C /home/decodeux/Repos/remedy status --porcelain` → empty. Byte comparison of every file C1 wrote (`git show 6d2e8cc44:<path>`) against its prepared file, five of five equal.
    ```
-   porcelain: ''
-   72f160591 .agent/authored/f295-r24.md == block.md True
-   72f160591 .agent/live_review.md == dry-live_review.md True
-   72f160591 .agent/plan.md == dry-plan.md True
-   ALL EQUAL: True
+   status porcelain: ''
+   .agent/authored/f295-r25.md True
+   .agent/live_review.md True
+   .agent/decisions.md True
+   .agent/prose_slips.md True
+   .agent/plan.md True
+   5 of 5
    ```
-2. The suite of C2: exit code 0, summary line `21479 passed, 22 skipped, 1 warning in 330.49s
-   (0:05:30)`, bad node ids NONE (quoted whole under `## Closure suite`). Before the run
-   `apps/ui/dist/index.html` existed: 414 bytes, modified Wed Oct  7 00:18:26 2026.
-3. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f295-r15/run.py /home/decodeux/Repos/remedy 3
-   python3 -m apps.cli.main integrity check --json`, read on the F295 branch at `c465f8198`'s
-   tree:
+2. The suite of C2: exit code 0, summary line `21479 passed, 22 skipped, 1 warning in 308.07s (0:05:08)`, bad node ids NONE, reflog before and after byte-identical (quoted whole under `## Closure suite`). Before the run `apps/ui/dist/index.html` existed: 414 bytes, modified 2026-10-07 00:18:26 (local).
+3. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f295-r15/run.py /home/decodeux/Repos/remedy 3 python3 -m apps.cli.main integrity check --json`:
    ```
    exit 0
    {"check_count": 6, "checks": [{"message": "handlers=175", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
    ```
-4. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f295-r15/run.py /home/decodeux/Repos/remedy 3
-   python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
+4. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f295-r15/run.py /home/decodeux/Repos/remedy 3 python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
    ```
    exit 0
    ['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157']
    ```
+5. `git -C /home/decodeux/Repos/remedy reflog -n 4 --date=iso`, read after C2:
+   ```
+   3f300ad0d HEAD@{2026-10-07 08:28:38 +0200}: commit: F295 R25 C2: the closure's one full suite on the shipped tree, with the reflog read around it
+   6d2e8cc44 HEAD@{2026-10-07 08:22:52 +0200}: commit: F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
+   647077858 HEAD@{2026-10-07 08:19:20 +0200}: commit: F295 R24 C4: the reviewer's verdict on round 24 and the end of session 6, carried in the handoff; operator question Q6
+   1eb844db4 HEAD@{2026-10-07 08:16:45 +0200}: commit: F295 R24 C3: handback
+   ```
 
-Cost script, once: `python3 scripts/closure_suite_cost.py --feature F295 --record
-/home/decodeux/.remedy-loop/test_load.jsonl`, exit 0; its two lines are in the transcript below.
+Cost script, once: `python3 scripts/closure_suite_cost.py --feature F295 --record /home/decodeux/.remedy-loop/test_load.jsonl`, exit 1 (a reading, not a failure of the round); its two lines are in the transcript below.
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f295-r24.md`: 135 lines / 135 lines, sha256
-  `3e1e8fcf4e5a5e350c142677e823b963c1a7ae609abe67d0eea4791ca5d6742e` / same, verified before any
-  other read; byte comparison equal from the committed bytes in gate 1. `digests.txt` sha256
-  `5bed37c1cabf37877ab4fdb1c0ac997ea7e159aa286d9b74207222ae965a8bd6` matched.
-- `append-live_review.txt`, `dry-live_review.md` and `dry-plan.md`: sha256 read with Python before
-  use, three of three matched `digests.txt` (`8ec3ab4d...`, `50d5d465...`, `2ed7fa4e...`).
-- Append proof, `True`: `git show 6c7ee8a68:.agent/live_review.md` plus `append-live_review.txt`
-  equals the new `.agent/live_review.md`. `HEAD` equalled
-  `origin/feature/f295-machine-client-contract-v1` at `6c7ee8a68` before any write.
-- `git diff --cached --numstat` before C1 read `135 0`, `6 0`, `9 10` (the cells of `digests.txt`);
-  before C2 it read `11 0`.
+- `block.md` → `.agent/authored/f295-r25.md`: 153 lines / 153 lines, sha256 `26a0ff3af4c69aee0e1b4900e56107d90e3feed39fb8855a0c3ea0bd7505e867` / same, verified before any other read; byte comparison equal from the committed bytes in gate 1. `digests.txt` sha256 `be7bc75b6fd3340239ce820d3de186ad48427398d8fa374dbad2e62f51d92d78` matched, and every other prepared file's digest matched its line in `digests.txt` (seven of seven).
+- Append proof, `True` three times: for `live_review.md`, `decisions.md` and `prose_slips.md`, `git show 647077858:.agent/<name>` plus the bytes of `append-<name>.txt` equals the new `.agent/<name>`. `HEAD` equalled `origin/feature/f295-machine-client-contract-v1` at `647077858` before any write.
+- `git diff --cached --numstat` before C1 read `153 0`, `10 0`, `2 0`, `11 9`, `1 0` (the cells of `digests.txt`); before C2 it read one file.
 
 ## Deviations & assumptions
 
-- A foreign branch switch during the suite. At 08:15:18 (local), 14 seconds before the suite
-  wrapper ended at 08:15:32, something other than this worker ran `git checkout main` and at
-  08:15:20 `git checkout feature/document-claude-abo-binding` in the primary checkout (reflog
-  entries `HEAD@{2}` and `HEAD@{1}`). This worker did not issue them. The suite ran from 08:09:58
-  on the F295 tree at `72f160591` for all but its last 14 seconds, and read exit 0; the transcript's
-  `tree it ran on` line is true for the run's start and for 5 minutes 20 seconds of its 5 minutes
-  31 seconds. The 08:15:44 commit of C2 therefore landed (as `b203e182d`) on
-  `feature/document-claude-abo-binding`, not on the F295 branch. Recovery, all local: after
-  `git status --porcelain` read empty, `git checkout feature/f295-machine-client-contract-v1`,
-  `git cherry-pick b203e182d` (now `c465f8198`, identical content), and
-  `git branch -f feature/document-claude-abo-binding 9a8431ea9`, its tip before this worker's
-  commit. Gates 3 and 4 had first been read on the wrong branch (`handlers=174`, open ids
-  `['R-1138', 'R-1139']`); both were read again on the F295 branch and the second readings are
-  the ones recorded above. This is the only repeat of a gate command; no test command was repeated.
-- Otherwise none. Every file C1 wrote is a byte copy of a reviewer-prepared file; the suite ran
-  once, with no marker, no `-k`, no path, no `--timeout`, no `-x`, no `REMEDY_TEST_MAX_WORKERS`,
-  and was the round's only test command. Every commit ends with
-  `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Helper scripts under
-  `.remedy-wt/f295-r24-worker/` (gitignored) did the digest checks, copies, the detached timed
-  suite wrapper and the proofs.
+- None against the block's commit sequence. The suite ran once, with no marker, no `-k`, no path, no `--timeout`, no `-x`, no `REMEDY_TEST_MAX_WORKERS`, and was the round's only test command. Every commit ends with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Helper scripts under `.remedy-wt/f295-r25-worker/` (gitignored) did the digest checks, copies, the detached timed suite wrapper and the proofs.
+- Two readings worth the reviewer's eye. The cost script exited 1: 1165.39 CPU seconds, 11.1 percent more than F290's 1048.65, above the 10 percent limit; its own line says the closure "registers a finding owned by the rolling findings paydown". The block orders no such finding minted this round, so none was minted; the reading is recorded and the decision is the reviewer's. `git show --stat` printed 14 insertions and 11 deletions for the transcript (a rewrite display); `git show --numstat` reads 9/6, which the table uses.
+- The "tree it ran on" line names `6d2e8cc44` (C1), the HEAD at the run's start, as the block's shape requires.
 
 ## Closure suite
 
@@ -120,125 +94,51 @@ Quoting `.agent/authored/f295-closure-suite.txt` whole and verbatim:
 ```
 command: python3 -m pytest -n auto -q
 real exit code: 0
-wall time: 331.14s (measured wrapper); pytest's own reported wall time 330.49s (0:05:30)
-summary line: 21479 passed, 22 skipped, 1 warning in 330.49s (0:05:30)
+wall time: 308.73s (measured wrapper); pytest's own reported wall time 308.07s (0:05:08)
+summary line: 21479 passed, 22 skipped, 1 warning in 308.07s (0:05:08)
 bad node ids (failed + errors): NONE
 leftover processes: NONE
-tree it ran on: 72f160591 (F295 R24 C1: book round 23's PASS, register R-1156 and R-1157, the plan, save the block)
+tree it ran on: 6d2e8cc44 (F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block)
+reflog before: 6d2e8cc44 HEAD@{2026-10-07 08:22:52 +0200}: commit: F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
+reflog after: 6d2e8cc44 HEAD@{2026-10-07 08:22:52 +0200}: commit: F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
+reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F295 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 1076.00 CPU seconds, 330.50 wall seconds, 21501 tests collected, exit status 0, recorded 2026-10-07T06:15:32Z
-This closure's suite used 1076.00 CPU seconds, 2.6 percent more than F290's 1048.65, within the 10 percent limit.
+cost exit code: 1
+Test load: 1165.39 CPU seconds, 308.08 wall seconds, 21501 tests collected, exit status 0, recorded 2026-10-07T06:28:10Z
+This closure's suite used 1165.39 CPU seconds, 11.1 percent more than F290's 1048.65; that is above the 10 percent limit, so this closure registers a finding owned by the rolling findings paydown.
 ```
+
+## Scope report (soft limit)
+
+F295 has reached its soft limit of 25 rounds and 7 sessions. Finished: T001 to T004 and the SLOW MODE hardening stage. Missing in scope: nothing. Remaining: the closure steps only — the evidence bundle and the review package, the ledger rotation, the re-assignment of the open findings to F297, the STATUS line and the pull request. These are the self-consistent close, so no split is proposed.
 
 ## Round verdicts
 
-Rounds 1 to 5, 7 to 13 and 15 to 23 PASS, rounds 6 and 14 FAIL, booked in the ledger (round 23 by
-this round's C1); round 24's verdict is the reviewer's to give and book in the next round's first
-commit.
+Rounds 1 to 5, 7 to 13 and 15 to 24 are booked in the ledger (round 24 by this round's C1: PASS, with its transcript not accepted as the shipped tree's run), rounds 6 and 14 FAIL; round 25's verdict is the reviewer's to give and book in the next round's first commit.
 
 ## For the operator, in plain sentences
 
-Before a feature closes, Remedy runs its whole test suite once on the code that will ship. This
-time 21,479 tests passed and none failed (22 were skipped on purpose). The run took about five and
-a half minutes. The cost script said the run used 2.6 percent more computer time than the previous
-feature's closing run, which is inside the 10 percent allowed. The paid trial run on Remedy's own
-work from the round before revealed two small problems, both now written down for the next
-clean-up feature: the standing order to refresh the tool versions has a spending limit too small to
-finish its own five steps, and it asks for the newest Python version without saying where to look
-it up, so the run guessed and guessed wrong. Nothing waits for the operator.
+The final test run of round 24 was partly disturbed when another program switched the repository folder to a different branch in its last seconds, so the loop ran the whole test suite once more today. In this new run 21,479 tests passed and none failed (22 were skipped on purpose). The run took about five minutes (308 seconds). The folder stayed on the loop's branch for the whole run, because the two reflog lines read before and after it are identical. The cost script said the run used 11.1 percent more computer time than the previous feature's closing run, which is above the 10 percent limit it names, so the reviewer will decide how that is recorded. The earlier question about the shared folder still stands, and nothing else waits for the operator.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`): not present during this round; if it appears, finish the
-   commit in hand, write the handoff and stop.
+1. Phase 1 rule 1 (`.agent/STOP`): not present during this round; if it appears, finish the commit in hand, write the handoff and stop.
 2. Phase 1 rule 2: the Open PR Gate; no pull request is open for this branch yet.
-3. Phase 1 rule 4: "the reviewer reviews round 24 and books its verdict in the next round's first
-   commit"; then "the evidence bundle and the review zip" (the suite is green); then "the
-   rotation, the STATUS line and the pull request".
+3. Phase 1 rule 4: "the reviewer reviews round 25 and books its verdict in the next round's first commit"; then "the evidence bundle and the review zip" (the suite is green and the reflog unchanged); then "the rotation, the STATUS line and the pull request".
 
-Operator questions open: 0.
+Operator questions open: 1.
 Open findings: 6 (R-1138, R-1139, R-1143, R-1149, R-1156 and R-1157, Low, owned by F297).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 (book round 23, register R-1156 and R-1157, save block) | done | `72f160591` |
-| C2 (the one full suite and its cost) | done | `c465f8198`, suite exit 0, cost exit 0; see the branch-switch deviation |
-| Gate 1 (status and byte comparisons) | done | porcelain empty, three of three equal |
-| Gate 2 (the suite) | done | `21479 passed, 22 skipped, 1 warning in 330.49s (0:05:30)`, no bad node ids |
-| Gate 3 (integrity check) | done | `"fail_count": 0`, read again on the right branch |
-| Gate 4 (open finding ids) | done | six ids, read again on the right branch |
+| C1 (book round 24, D20, prose slip, plan, save block) | done | `6d2e8cc44` |
+| C2 (the one full suite again, with the reflog read) | done | `3f300ad0d`, suite exit 0, cost exit 1 (a reading) |
+| Gate 1 (status and byte comparisons) | done | porcelain empty, five of five equal |
+| Gate 2 (the suite) | done | `21479 passed, 22 skipped, 1 warning in 308.07s (0:05:08)`, no bad node ids, reflog unchanged |
+| Gate 3 (integrity check) | done | `"fail_count": 0` |
+| Gate 4 (open finding ids) | done | six ids as ordered |
+| Gate 5 (reflog -n 4) | done | recorded whole above |
 | C3 handback commit | done | this file |
 | Push after C3 | pending | runs right after this commit, reported in the worker's final reply |
-
-## Reviewer's verdict on round 24 and the end of session 6
-
-Written by the reviewer of F295's sixth session after reading `6c7ee8a68`..`1eb844db4` and
-re-checking it with `.remedy-wt/f295-r24/review24.py`; applied by a worker as this commit,
-because the reviewer writes no work-tree file. This section supersedes `## Round verdicts` and
-`## Next` above wherever they differ.
-
-VERDICT ON ROUND 24 — PASS ON C1, C3 AND THE GATES; C2'S TRANSCRIPT NOT ACCEPTED AS THE SHIPPED
-TREE'S ONE RUN. Measured by the reviewer: the three files C1 wrote equal the prepared files under
-`.remedy-wt/f295-r24/`, three of three; C1, C2 and C3 each touch only their named paths and are
-single-parent; `c465f8198` carries the same transcript blob as the stray `b203e182d`, which no
-branch contains any more; `origin` holds `1eb844db4`; the worker's log
-`.remedy-wt/f295-r24-worker/suite.txt` ends `21479 passed, 22 skipped, 1 warning in 330.49s
-(0:05:30)` with no FAILED or ERROR line, as the transcript says. But the HEAD reflog shows
-`checkout: moving from feature/f295-machine-client-contract-v1 to main` at 08:15:18 and
-`moving from main to feature/document-claude-abo-binding` at 08:15:20, both from outside this
-session, while the suite ended at 08:15:32. For its last 14 seconds the working tree held main's
-`9a8431ea9`, which lacks this branch's 101 commits, and a test that started a subprocess or read
-a file in that span ran against main's bytes. The run is green, but it is not wholly a run of
-the tree that ships. Ruling, to be booked as a dated DECISION in the next round's first commit:
-read in the spirit of amend0921-operator-feedback rule 1 ("the one run belongs to the shipped
-tree"), the next round runs the full suite once more on the shipped tree, in a quiet checkout, and
-its transcript replaces `.agent/authored/f295-closure-suite.txt` at the same path; this
-transcript stays in git history. That round's worker reads `git reflog -n 3` before and after
-the run and records both, so a second foreign switch would be seen.
-
-THE WORKER'S RECOVERY is accepted as declared: it cherry-picked its own commit back onto this
-branch and moved the local ref `feature/document-claude-abo-binding` back to `9a8431ea9`, the
-point that branch's own reflog shows it was created at 08:15:20, so that branch lost nothing and
-was never pushed. It was still a move of a branch ref this session does not own, and the
-operator is told so in operator question Q6.
-
-WHY THE SESSION ENDS HERE (G8). Another actor used this primary checkout while a round ran. No
-other Claude session was listed afterwards, and nothing has touched the checkout since 08:16:45,
-but the rules do not say whether the checkout is shared now, and the rest of the closure (the
-suite re-run, the evidence bundle, the review package from a clean tree) is exactly the work a
-second switch would spoil. The session therefore ends cleanly after one round, below the round
-target, and the operator is asked in Q6.
-
-Prose slip of the reviewer, to be booked into `.agent/prose_slips.md` in the next round's first
-commit: the round 24 block called the previous closure "F294's" in C2 step 3, but
-`scripts/closure_suite_cost.py` compares with the closure recorded last, which is F290's; the
-worker recorded what the script printed.
-
-Soft limit: round 25 reaches F295's limit of 25 rounds (session 7 of at most 7 begins next). The
-scope report is short: T001 to T004 and the hardening stage are finished, nothing in scope is
-missing, and the remaining closure steps (the suite re-run, the evidence bundle and package, the
-rotation, the STATUS line, the pull request) are the self-consistent close, so no split is
-proposed. The next session's output carries the banner line
-`SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE`.
-
-Context self-assessment: the reviewer's context is comfortable; the session ends for the reason
-above, not for context.
-
-### Next (supersedes the list above)
-
-1. Phase 1 rule 1 (`.agent/STOP`); then rule 2 (Open PR Gate; no pull request is open for this
-   branch).
-2. Confirm that `git branch --show-current` reads `feature/f295-machine-client-contract-v1`, that
-   `origin`'s tip equals `1eb844db4` plus this commit, and that `git reflog -n 5` shows no new
-   foreign entry; if it does, hand off again.
-3. Round 25: book round 24 (the verdict above), the DECISION on the re-run and the prose slip in
-   C1; run the full suite once on the shipped tree, with the reflog read before and after, and
-   commit its transcript at `.agent/authored/f295-closure-suite.txt`.
-4. Then the evidence bundle and the review package; then the rotation, the re-assignment of the
-   open findings to F297, the STATUS line and the pull request.
-
-Operator questions open: 1.
-Open findings: 6 (R-1138, R-1139, R-1143, R-1149, R-1156 and R-1157, Low, owned by F297).
