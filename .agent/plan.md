@@ -7,16 +7,14 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order; T001 to T003 have landed.
 
 ## Current Step
-Round 13, the closure sequence's last content round before the evidence: book round 12, whose one
-full suite read green (21520 passed, 22 skipped) on the tree that ships; one prose slip; the
-checklist's once-per-feature consolidation pass for F287 in docs/agents/planner_reviewer_prompt.md
-(the list stays at 34 items).
+Round 14, the closure's evidence round (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1
+and 2): book round 13 and its prose slip, then at the accepted head the staging reclaim, the
+evidence job `f287r14e1001` over 47 test files, and the review package from the clean, pushed tree.
 
 ## Next Steps
-1. The evidence round, in a fresh session: the staging reclaim, the evidence job and the review
-   package at the accepted head (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1, 2).
-2. The closing round: the ledger rotation, the STATUS line with its README sync and the self-use
-   queue's `consumed_by` for SU-046, and the pull request, left unmerged.
+1. The closing round: book round 14, the ledger rotation, the open findings stay with F297, the
+   STATUS line with its README sync and the self-use queue's `consumed_by` for SU-046, and the
+   pull request, left unmerged.
 
 ## Risks
 - Repair rounds on `claude-cli` now send shortened prompts to a continued session (F106, F109,
