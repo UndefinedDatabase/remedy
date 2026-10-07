@@ -15,7 +15,7 @@ returns (DECISION F298 D3); the refusal tokens each operation can answer with,
 `OPERATION_REFUSAL_TOKENS`, which the same test file holds equal to a static reading of each
 operation's handler, the way the catalog's exit codes are held (DECISION F298 D4); and the
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
-reading of each handler and to what a real run returns (DECISIONs F298 D5 and D6).
+reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -101,8 +101,8 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
-#: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5
-#: and D6). `job.resume`'s answers are read in a later part of T001.
+#: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5,
+#: D6 and D7).
 OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
@@ -125,6 +125,21 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "job_workspace_path", "next_command", "pending_tasks", "postmortem", "repair_rounds_allowed",
         "repair_rounds_source", "repo_path", "result_diff", "status", "target_guard", "tasks",
         "warning", "worktree",
+    ),
+    "job.resume": (
+        "action", "awaiting_checks", "blocked_reason", "budget_stop", "can_resume",
+        "checkpoint_id", "checkpoint_index", "checkpoint_kind", "context_strategy", "cost_mirror",
+        "created_at", "cycles", "cycles_run", "decision_id", "dry_run", "elapsed_ms",
+        "execution_config", "failures", "file", "finished_at", "handoff_available",
+        "has_workspace_changes", "isolation_mode", "job_id", "job_status", "job_title",
+        "job_workspace_path", "log", "matches", "model", "next_command", "open_decision_ids",
+        "outcome", "output_truncated", "patch_intents", "pending_tasks", "persisted_output_bytes",
+        "plan_approval_gate", "postmortem", "reason", "redaction", "remaining",
+        "repair_rounds_allowed", "repair_rounds_source", "repo", "repo_path", "required_approvals",
+        "required_capabilities", "result_diff", "resume_mode", "resumed", "safety_summary",
+        "stage", "state", "status", "stop_reason", "stop_request", "target_guard", "task_id",
+        "task_type", "tasks", "terminal_status", "test_run_id", "tests_passed", "verified",
+        "warning", "worktree", "worktree_head", "worktrees", "would_run", "would_run_stage",
     ),
     "job.apply": (
         "approved", "blocked_reason", "blocked_reasons", "commit_message_mode", "commit_sha",

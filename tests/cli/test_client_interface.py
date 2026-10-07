@@ -15,7 +15,7 @@ reading of the operation's handler (DECISION F298 D4) that walks the code the wa
 `tests/cli/test_exit_codes.py` walks it for exit codes.
 
 The top-level keys of the operations' answers are declared there as well, and held the same two
-ways as the digest's (DECISIONs F298 D5 and D6): a static reading of each handler, the same walk,
+ways as the digest's (DECISIONs F298 D5, D6 and D7): a static reading of each handler, the same walk,
 and a real run of the path and of the operations after it, whose every answer returns no key the
 declaration does not name.
 """
@@ -329,7 +329,7 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
     assert hunk_codes == UNRESOLVED_TOKEN_SITES["apps.cli.commands.patch:_cmd_approve_hunks:result.code"][0]
 
 
-# The top-level keys of the answers (DECISIONs F298 D5 and D6).
+# The top-level keys of the answers (DECISIONs F298 D5, D6 and D7).
 
 #: The calls that print or build an answer envelope; a keyword of any of them is an answer key.
 _ANSWER_CALLS = frozenset({"emit_ok", "build_ok", "fail", "emit_error", "build_error"})
@@ -404,22 +404,66 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
+    "apps.cli.commands.job:_cmd_job_resume:**preview": (
+        frozenset({
+            "action", "budget_stop", "checkpoint_index", "job_id", "pending_tasks",
+            "plan_approval_gate", "resumed", "state", "stop_request", "would_run", "worktree_head",
+        }),
+        "the keys _resume_preview in apps/cli/commands/job.py returns",
+    ),
+    "apps.cli.commands.job:_cmd_job_run_cycles:**result.to_json()": (
+        frozenset({
+            "awaiting_checks", "cycles", "cycles_run", "job_id", "job_status", "open_decision_ids",
+            "stop_reason", "terminal_status",
+        }),
+        "the keys CycleLoopResult.to_json in packages/orchestration/long_run_executor.py returns; "
+        "run_cycles returns a CycleLoopResult",
+    ),
+    "apps.cli.commands.job:_cmd_resume:**_payload": (
+        frozenset({
+            "blocked_reason", "checkpoint_id", "checkpoint_kind", "output_truncated",
+            "persisted_output_bytes", "redaction", "resume_mode", "resumed", "stage",
+            "stop_reason", "test_run_id", "tests_passed", "worktrees",
+        }),
+        "the keys export_resume_result_json in packages/orchestration/event_replay.py returns, and "
+        "the worktrees _cmd_resume stores into that payload",
+    ),
+    "apps.cli.commands.job:_cmd_resume:**export_dry_run_json(dr)": (
+        frozenset({
+            "blocked_reason", "can_resume", "checkpoint_id", "checkpoint_kind", "job_id",
+            "next_command", "redaction", "required_approvals", "required_capabilities",
+            "safety_summary", "would_run_stage",
+        }),
+        "the keys export_dry_run_json in packages/orchestration/event_replay.py returns",
+    ),
 }
 
 
+def _dict_display_keys(value: ast.AST | None) -> set[str] | None:
+    """The string keys of a dict literal, or of a `dict(...)` call made of keywords alone; None for
+    any other expression."""
+    if isinstance(value, ast.Dict):
+        return {key.value for key in value.keys
+                if isinstance(key, ast.Constant) and isinstance(key.value, str)}
+    if (isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "dict"
+            and not value.args and all(keyword.arg is not None for keyword in value.keywords)):
+        return {keyword.arg for keyword in value.keywords}
+    return None
+
+
 def _bound_dict_keys(fn: ast.AST, name: str) -> set[str] | None:
-    """The string keys of the dict literal `name` is bound to in `fn`, with every `name["key"] = ...`
-    store there; None when `fn` binds `name` to no dict literal."""
+    """The string keys of the dict literal, or keyword-only `dict(...)` call, `name` is bound to in
+    `fn`, with every `name["key"] = ...` store there; None when `fn` binds `name` to neither."""
     keys: set[str] = set()
     bound = False
     for node in ast.walk(fn):
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):
             continue
         for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
-            if isinstance(target, ast.Name) and target.id == name and isinstance(node.value, ast.Dict):
+            displayed = _dict_display_keys(node.value)
+            if isinstance(target, ast.Name) and target.id == name and displayed is not None:
                 bound = True
-                keys |= {key.value for key in node.value.keys
-                         if isinstance(key, ast.Constant) and isinstance(key.value, str)}
+                keys |= displayed
             if (isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
                     and target.value.id == name and isinstance(target.slice, ast.Constant)
                     and isinstance(target.slice.value, str)):
@@ -459,11 +503,29 @@ def _handler_answer_keys(command_id: str) -> set[str]:
     return _handler_reading(command_id, _answer_sites, _answer_memo, UNRESOLVED_ANSWER_SITES)
 
 
+def _function_def(path: str, function: str) -> ast.FunctionDef:
+    """The one definition of `function` in `path`; `Class.method` names a method of one class."""
+    scope: ast.AST = ast.parse((_REPO_ROOT / path).read_text(encoding="utf-8"))
+    *classes, name = function.split(".")
+    for class_name in classes:
+        [scope] = [node for node in ast.walk(scope)
+                   if isinstance(node, ast.ClassDef) and node.name == class_name]
+    [fn] = [node for node in ast.walk(scope) if isinstance(node, ast.FunctionDef) and node.name == name]
+    return fn
+
+
+def _stored_keys(path: str, function: str, name: str) -> set[str]:
+    """Every key `function` in `path` stores into `name` with `name["key"] = ...`."""
+    return {target.slice.value for node in ast.walk(_function_def(path, function))
+            if isinstance(node, ast.Assign) for target in node.targets
+            if isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
+            and target.value.id == name and isinstance(target.slice, ast.Constant)}
+
+
 def _returned_dict_keys(path: str, function: str) -> set[str]:
     """The string keys of the dict literal `function` in `path` returns, directly or as the name its
     `return` statement passes on."""
-    [fn] = [node for node in ast.walk(ast.parse((_REPO_ROOT / path).read_text(encoding="utf-8")))
-            if isinstance(node, ast.FunctionDef) and node.name == function]
+    fn = _function_def(path, function)
     [returned] = [node.value for node in fn.body if isinstance(node, ast.Return)]
     if isinstance(returned, ast.Call) and returned.args:
         returned = returned.args[0]
@@ -476,7 +538,7 @@ def _returned_dict_keys(path: str, function: str) -> set[str]:
 
 
 def test_every_declared_answer_is_a_sorted_list_of_payload_keys():
-    assert set(OPERATION_ANSWER_KEYS) <= set(CLIENT_OPERATION_IDS)
+    assert sorted(OPERATION_ANSWER_KEYS) == sorted(CLIENT_OPERATION_IDS)
     for command_id, keys in OPERATION_ANSWER_KEYS.items():
         assert list(keys) == sorted(set(keys)), f"{command_id}: keys not sorted or repeated"
         assert not set(keys) & _ENVELOPE_KEYS, f"{command_id}: names an envelope key as its own"
@@ -488,18 +550,12 @@ def test_declared_answer_keys_equal_the_keys_the_handler_reaches(command_id):
 
 
 def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
-    from apps.cli.commands import do_cmd
     from packages.orchestration import hunk_decision_record
 
-    [job_run] = [node for node in ast.walk(ast.parse(inspect.getsource(do_cmd)))
-                 if isinstance(node, ast.FunctionDef) and node.name == "_cmd_job_run"]
-    stored = {target.slice.value for node in ast.walk(job_run) if isinstance(node, ast.Assign)
-              for target in node.targets
-              if isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
-              and target.value.id == "report" and isinstance(target.slice, ast.Constant)}
     sites = {site: keys for site, (keys, _why) in UNRESOLVED_ANSWER_SITES.items()}
     assert sites["apps.cli.commands.do_cmd:_cmd_job_run:**report"] == (
-        _returned_dict_keys("packages/orchestration/pingpong_job.py", "export_job_report") | stored)
+        _returned_dict_keys("packages/orchestration/pingpong_job.py", "export_job_report")
+        | _stored_keys("apps/cli/commands/do_cmd.py", "_cmd_job_run", "report"))
     assert sites["apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)"] == (
         _returned_dict_keys("packages/orchestration/job_apply.py", "export_job_apply_json"))
     assert sites["apps.cli.commands.change:_cmd_change_proof:**export_proof_chain_json(chain)"] == (
@@ -510,6 +566,15 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         set(hunk_decision_record._RECORD_KEYS))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_interface:**interface"] == (
         _returned_dict_keys("apps/cli/client_interface.py", "build_client_interface"))
+    assert sites["apps.cli.commands.job:_cmd_job_resume:**preview"] == (
+        _returned_dict_keys("apps/cli/commands/job.py", "_resume_preview"))
+    assert sites["apps.cli.commands.job:_cmd_job_run_cycles:**result.to_json()"] == (
+        _returned_dict_keys("packages/orchestration/long_run_executor.py", "CycleLoopResult.to_json"))
+    assert sites["apps.cli.commands.job:_cmd_resume:**_payload"] == (
+        _returned_dict_keys("packages/orchestration/event_replay.py", "export_resume_result_json")
+        | _stored_keys("apps/cli/commands/job.py", "_cmd_resume", "_payload"))
+    assert sites["apps.cli.commands.job:_cmd_resume:**export_dry_run_json(dr)"] == (
+        _returned_dict_keys("packages/orchestration/event_replay.py", "export_dry_run_json"))
 
 
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
@@ -532,6 +597,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     status = answer("status.run", ["status"], 0)
     [budget] = [d for d in status["client"]["decisions"]
                 if d["job_id"] == job_id and d["type"] == "token_budget"]
+    # While its budget decision is open, the job's resume previews and refuses.
+    answer("job.resume", ["job", "resume", job_id, "--dry-run"], 0)
+    answer("job.resume", ["job", "resume", job_id], 3)
     answer("decision.resolve", ["decision", "resolve", job_id, budget["decision_id"], "--reason",
                                 "extend", "--answer", f"deadline={LATER_DEADLINE}"], 0)
     answer("job.run", ["job", "run", job_id], 0)
