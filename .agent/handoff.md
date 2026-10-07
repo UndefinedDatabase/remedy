@@ -166,3 +166,61 @@ and R-1149 Low, owned by F297).
 | Gate 5 (open finding ids) | done | `['R-1138', 'R-1139', 'R-1143', 'R-1147', 'R-1149', 'R-1151']` |
 | C3 handback commit | done | this file |
 | Push after C3 | pending | runs right after this commit, reported in the worker's final reply |
+
+## Reviewer verdict on round 15 and the end of session 3, added after the handback
+
+Written by the reviewer of F295's third session after it reviewed round 15, and applied by a
+worker as this file's one later commit. Under operator amendment amend0827-process-diet rule 1
+this committed and pushed handoff is the durable carrier of the verdict and of the three
+paragraphs below; the next session does not review round 15 again, it books the texts and goes on.
+
+THE SESSION ENDS HERE, after six delegated rounds, 10 to 15, inside the target of six to eight,
+for two reasons: the next round needs fresh research — which command answers a hunk decision and
+a patch intent under `--json`, and what the cockpit's door records for each — and this reviewer
+left two gaps in its own blocks this session, R-1150 and R-1151, which is the signal the protocol
+names for handing over. This sentence replaces the self-assessment above.
+
+VERDICT ON ROUND 15: PASS, and with it the code of round 14. Every file C1 and C2 committed
+equals the reviewer's prepared file under `.remedy-wt/f295-r15/`, four of four; the reviewer's
+dry run of round 14's selection over `4ae5d4d33` with C2's file applied read green, and the
+reviewer's own run in the primary checkout at `306a710e9` read `4444 passed, 3 skipped`.
+
+THE TEXTS TO BOOK. The next round's FIRST commit appends to `.agent/live_review.md`, in this
+order, each paragraph preceded by one blank line, exactly the three paragraphs between the marker
+lines below (the marker lines themselves are not copied):
+
+BEGIN-R15-BOOKING
+Gate: F295 R15 — the F295 round 15 entry, R-1151's repair and the review of round 14's code, over `4ae5d4d33`..`306a710e9` (3 commits, each single-parent; insertions by `git show --numstat`: `0e5652b5a` 112, `4692b7d07` 7, `306a710e9` 97). VERDICT PASS, which also passes the code round 14 committed in `6f9f0a195`, `8838cb092` and `23af94e30`. Every file C1 and C2 committed equals the reviewer's prepared file under `.remedy-wt/f295-r15/`, four of four. `4692b7d07` gives `UNRESOLVED_SITES` in `tests/cli/test_exit_codes.py` a `job.resume` entry, `frozenset({0, 1, 2})`, for the serve supervisor's `follow_run` exit site that `remedy job resume` reaches through `_cmd_job_run`. Before delegating, the reviewer ran round 14's selection over `4ae5d4d33` with that file applied, in a disposable worktree, and read `4443 passed, 4 skipped`, the fourth skip being the UI toolchain a worktree lacks; the worker's one run in the primary checkout read `4444 passed, 3 skipped`, and so did the reviewer's own run there at `306a710e9`, because the records commit changed bytes the dry run did not hold. `remedy integrity check --json` read `"fail_count": 1`, the one failing check naming R-1147, which the next paragraph resolves. MUTATIONS of round 14's code in that worktree, over `tests/orchestration/test_resume_cli.py`, `tests/cli/test_decision_cmd.py` and `tests/cli/test_exit_codes.py`, the unmutated control `427 passed` before and after, seven of seven red: no job handed to `_cmd_job_run` 3, every job handed to it 12, the note never printed 1, the note for `--cycles` only 1, the progress line always on stdout 2, always on stderr 3, and `_cmd_job_run` called without the JSON flag 3. With the hand-off removed, the command-line test was stopped by its builder stand-in, so no model was called.
+
+Done: R-1147 — RESOLVED at F295 R10 to R15, by `100548861` under DECISION F295 D9, by `62e622d24` and `5289f4303` under DECISION F295 D11, by `3aefba842` and `6ed8bd9cd` under DECISION F295 D12, and by `6f9f0a195` under DECISION F295 D13, proved by the reviewer's mutations recorded in the F295 R10, R12, R13 and R15 gate entries above. `remedy job resume` and the loop's resume refuse a job its budget stopped until its budget decision is answered, with exit 3, `budget_decision_open` and the decision's id; an answered `extend` lets the job resume, and an answered `abandon` cancels it so that nothing runs it again; and `remedy job resume` hands a job the ping-pong engine has run to `remedy job run`'s own handler, with the builder and the reviewer its record names, never to the local model the single pass builds with. `test_extend_then_resume_runs_the_job_through_its_own_providers` in `tests/cli/test_decision_cmd.py` resumes exactly the job R-1147 measured, through `apps.cli.grouped.main`, with a stand-in that fails the test if the local builder is ever built.
+
+Done: R-1151 — RESOLVED at F295 R15 by `4692b7d07`, proved by the reviewer's dry run and by the worker's and the reviewer's runs recorded in the F295 R15 gate entry above, against the red reading at `4ae5d4d33` that R-1151 records. `UNRESOLVED_SITES` in `tests/cli/test_exit_codes.py` names the serve supervisor's exit site for `job.resume` as well as for `job.run`, with the reason that `remedy job resume` reaches it through `_cmd_job_run`, so `test_declared_codes_equal_the_codes_the_handler_reaches[job.resume]` passes and still compares the codes `job.resume` reaches with the `(0, 1, 2, 3)` it declares.
+END-R15-BOOKING
+
+THE NEXT ROUND, in order: (1) the booking above, with `.agent/plan.md` advanced, as its first
+commit; after it `remedy integrity check --json` reads `"fail_count": 0` again. (2) T003's last
+part, measured first: for every decision kind `list_decisions` in
+`packages/orchestration/decision_queue.py` raises, which command answers it under `--json` —
+the hunk decision of F033 and the patch intent first, the two the reviewer of session 2 found
+answered "by other commands or by none" (DECISION F295 D8) — and whether that answer is recorded
+the way the cockpit's write door records it; then a DECISION and the repair. (3) T004, the
+contract page and the gate test; then the SLOW MODE hardening stage; then the closure.
+
+LESSONS THIS SESSION TAUGHT ITS OWN BLOCKS, for the next reviewer: `tests/cli/test_exit_codes.py`
+follows a handler's `apps.cli` imports into other commands' handlers, so a block that makes one
+command call another's handler names that test and its `UNRESOLVED_SITES`; and
+`tests/cli/test_decision_cmd.py` pins the exact set of refusal tokens `decision.py` passes to
+`fail()`, so a block adding a refusal there names the pin.
+
+FOR THE OPERATOR, IN PLAIN SENTENCES: this session made a stopped job behave properly for a
+program that drives Remedy. When a job stops because it ran out of budget, Remedy no longer lets
+it continue by accident; a person or a program can raise its budget or give it up with one
+command; a job that was given up never runs again; and a job that continues uses the same AI
+builder and reviewer it started with. Along the way it fixed a missing run record for every job
+started by `remedy do`. Nothing waits for the operator.
+
+Fortschritt: ~80 % (T001 and T002 landed · T003's stdin proof and the budget decision landed ·
+T003's hunk decision and T004 open; then the hardening stage and the closure) — Schätzung.
+
+Open findings after the booking: 4 (R-1138, R-1139, R-1143 and R-1149, Low, owned by F297; R-1147
+and R-1151 resolved by the booking). Operator questions open: 0.
