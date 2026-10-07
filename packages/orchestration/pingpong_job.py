@@ -3185,10 +3185,13 @@ def run_job(
                                 open_task_decisions as _open_burn_decisions,
                             )
                             _question = f"{_burn_marker} {_sentence}"
+                            # DECISION F116 D9 (1): the park consumes the pause request,
+                            # so `remedy job unpause` has nothing to lift; the relaunch
+                            # is what continues the job, and answering only records.
                             _impact = (
-                                f"job {job.job_id} is paused until this is "
-                                f"answered; continue it with `remedy job "
-                                f"unpause {job.job_id}`")
+                                f"job {job.job_id} is paused; `remedy job run "
+                                f"{job.job_id}` continues it, and answering "
+                                f"this question only records your choice")
                             _open_burn = next(
                                 (r for r in _open_burn_decisions(job)
                                  if str(r.get("question", ""))

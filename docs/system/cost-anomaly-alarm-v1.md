@@ -55,8 +55,9 @@ holds, the runner:
    question starts with `[burn_alarm]` and states the numbers in a sentence, its options are
    `resume` and `abandon`, and it has no safe default. A second trip updates that open decision
    instead of adding one. The job parks before its next provider call, and
-   `remedy job unpause <job_id>` lets it continue. When the pause cannot be requested, the job is
-   blocked rather than left to burn.
+   `remedy job run <job_id>` continues it; answering the decision records the person's
+   choice and does not by itself continue or end the job. When the pause cannot be
+   requested, the job is blocked rather than left to burn.
 
 A job a person started keeps running, and the trip is a recorded warning.
 
@@ -66,7 +67,8 @@ A job a person started keeps running, and the trip is a recorded warning.
   `burn_reading`.
 - The report section of `remedy job show <job_id> --full` carries the sentence as `burn_alarm`
   and in its text.
-- `remedy job budget <job_id>` prints the full numbers under "recorded burn alarm", described in
+- `remedy job budget <job_id>` prints the full numbers under "recorded burn alarm", whatever
+  limits the job has, none included, described in
   [job-budget-enforcement-v0.md](job-budget-enforcement-v0.md).
 - The job's run log holds one `job_burn_tripped` event per new trip.
 

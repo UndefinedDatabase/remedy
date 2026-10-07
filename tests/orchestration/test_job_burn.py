@@ -531,6 +531,12 @@ def _run_unattended_spike(tmp_path, monkeypatch, *, prepare=None):
     return job, counter
 
 
+def _expected_burn_impact(job_id: str) -> str:
+    """The impact DECISION F116 D9 (1) gives a burn decision: the command that continues the job."""
+    return (f"job {job_id} is paused; `remedy job run {job_id}` continues it, and answering "
+            f"this question only records your choice")
+
+
 def test_an_unattended_trip_pauses_the_job_before_the_next_call(tmp_path, monkeypatch):
     from packages.orchestration.escalation import open_task_decisions
 
@@ -547,6 +553,10 @@ def test_an_unattended_trip_pauses_the_job_before_the_next_call(tmp_path, monkey
     assert decision["options"] == ["resume", "abandon"]
     assert decision["safe_default"] == ""
     assert decision["task_id"] == job.tasks[1].task_id
+    # R-1173: the first trip's decision carries the whole sentence and the impact.
+    assert decision["question"] == (
+        f"{BURN_DECISION_MARKER} {job_burn_sentence(job.burn_reading)}")
+    assert decision["impact"] == _expected_burn_impact(job.job_id)
 
 
 def test_a_second_trip_updates_the_open_burn_decision_in_place(tmp_path, monkeypatch):
@@ -572,9 +582,7 @@ def test_a_second_trip_updates_the_open_burn_decision_in_place(tmp_path, monkeyp
     assert open_decisions[0]["question"] == (
         f"{BURN_DECISION_MARKER} {job_burn_sentence(job.burn_reading)}")
     # R-1171: the re-trip replaces the seeded impact as well as the question.
-    assert open_decisions[0]["impact"] == (
-        f"job {job.job_id} is paused until this is answered; continue it "
-        f"with `remedy job unpause {job.job_id}`")
+    assert open_decisions[0]["impact"] == _expected_burn_impact(job.job_id)
 
 
 def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
