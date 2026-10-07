@@ -34,6 +34,7 @@ from packages.orchestration.job_burn import (
     job_burn_record,
     job_burn_sentence,
     job_burn_thresholds_from_config,
+    recorded_burn_sentence,
 )
 from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
 from packages.orchestration.pingpong_job import (
@@ -590,3 +591,27 @@ def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
     assert job.state == JOB_BLOCKED
     assert job.burn_reading is not None
     assert job.burn_reading["tripped"] is True
+
+
+# ── recorded_burn_sentence ────────────────────────────────────────────────────
+
+
+def _tripped_record() -> dict[str, Any]:
+    return {
+        "tripped": True, "rate_unit": RATE_UNIT_PER_SAMPLE, "window_samples": 1,
+        "rate": 15000.0, "expectation": 1500.0, "multiplier": 3.0, "since_label": 3}
+
+
+def test_recorded_burn_sentence_reads_a_whole_tripped_record():
+    record = _tripped_record()
+
+    assert recorded_burn_sentence(record) == job_burn_sentence(record)
+
+
+def test_recorded_burn_sentence_is_none_for_anything_but_a_whole_trip():
+    untripped = {**_tripped_record(), "tripped": False}
+    torn = {k: v for k, v in _tripped_record().items() if k != "rate"}
+    wrong_type = {**_tripped_record(), "rate": "fast"}
+
+    for record in (None, "tripped", [], untripped, torn, wrong_type):
+        assert recorded_burn_sentence(record) is None, record

@@ -22,6 +22,10 @@ this module stays importable — and testable — with no config layer and no
 point (DECISION F116 D4 (1) to (4)): one ``JobBurnMonitor`` per run, a sample
 recorded for every counted provider call, and the newest tripped reading kept
 on the job.
+
+Remedy deliberately does not throttle a job's parallel width on a trip,
+because ``run_job`` runs one task and one provider call at a time, so there
+is no width to narrow (DECISION F116 D7 (4)).
 """
 from __future__ import annotations
 
@@ -149,6 +153,19 @@ def job_burn_sentence(record: dict[str, Any]) -> str:
         f"tokens per call this job spent before them (from call "
         f"{record['since_label']} on)."
     )
+
+
+#: DECISION F116 D7 (1): the one reader every view a person reads uses. A
+#: record loaded from disk may be torn or edited by hand, and a view must never
+#: raise on one, so anything but a whole tripped record reads None.
+def recorded_burn_sentence(record: Any) -> str | None:
+    """``job_burn_sentence`` of a persisted ``burn_reading``, or None without a whole trip."""
+    if not isinstance(record, dict) or record.get("tripped") is not True:
+        return None
+    try:
+        return job_burn_sentence(record)
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 #: The job runner's own accumulator: one sample per counted provider call,
