@@ -22,7 +22,7 @@ from packages.orchestration.job_digest import cost_exactness_basis
 from packages.orchestration.mission_state import Mission, list_missions_safe
 from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, list_job_plans_safe
 from packages.orchestration.project_cockpit import project_cost_of_day
-from packages.orchestration.project_registry import list_projects
+from packages.orchestration.project_registry import _list_projects_readonly
 from packages.orchestration.serve_daemon import socket_answers
 from packages.orchestration.serve_paths import serve_paths
 from packages.orchestration.timeline import load_run_events
@@ -163,7 +163,8 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     degraded = False
     skipped_files: list[str] = []
 
-    projects = sorted(list_projects(), key=lambda p: p.slug or "")
+    # R-1144: the read-only projection, never `list_projects`, which migrates a legacy record on read.
+    projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
     project_entries: list[dict[str, Any]] = []
     mission_id_by_job_id: dict[str, str] = {}
     for project in projects:

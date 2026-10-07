@@ -442,3 +442,40 @@ def test_a_project_whose_ledger_cannot_be_read_marks_degraded_and_nulls_its_cost
     assert entry["cost_today"] is None
     assert digest["degraded"] is True
     assert f"cost of the day of project {project.id}" in digest["skipped_files"]
+
+
+# ── the digest reads and never writes (R-1144) ──────────────────────────────
+
+
+def _data_root_snapshot(root: Path) -> dict[str, tuple[bytes, int]]:
+    """Every file under *root* with its bytes and its modification time in nanoseconds."""
+    return {str(path.relative_to(root)): (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in sorted(root.rglob("*")) if path.is_file()}
+
+
+def test_reading_the_digest_changes_no_file_under_the_data_root(root, tmp_path):
+    from packages.orchestration.data_paths import projects_dir
+    from packages.orchestration.project_registry import RemyProject, register_project_repo
+    from packages.orchestration.token_ledger import (
+        COST_BASIS_PROVIDER_REPORTED,
+        CallRecord,
+        record_call,
+    )
+
+    project = register_project_repo("kept-project", _git_folder(tmp_path / "kept-project"))
+    assert record_call(CallRecord(call_id="c1", ts_utc="2026-01-01T09:00:00+00:00", cost_usd=0.25,
+                                  cost_basis=COST_BASIS_PROVIDER_REPORTED), project_id=project.id)
+    # A record written before slugs existed: `list_projects` would migrate it on read.
+    legacy = json.loads(RemyProject(name="Legacy Project").model_dump_json())
+    legacy.pop("slug", None)
+    (projects_dir() / f"{legacy['id']}.json").write_text(json.dumps(legacy), encoding="utf-8")
+    job = JobPlan(job_title="kept-job", project_id=str(project.id), metadata=_job_metadata())
+    enqueue_task_decision(job, task_id="T001", question="Q1", options=["a"], now=NOW)
+    save_job_plan(job)
+    before = _data_root_snapshot(root)
+
+    digest = build_client_digest(now=NOW)
+
+    assert _data_root_snapshot(root) == before
+    assert sorted(entry["slug"] for entry in digest["projects"]) == ["kept-project",
+                                                                      "legacy-project"]
