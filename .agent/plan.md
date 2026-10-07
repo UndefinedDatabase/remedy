@@ -8,10 +8,9 @@ every operation, field, word, token and exit code (docs/roadmap/features/T12_F29
 F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 3, round 11: T001's tenth part. The interface names the keys under the answers of
-`remedy status` and `remedy change proof` (DECISION F298 D11), held to the code that builds each
-tree and to a real run; round 10's verdict is booked, and R-1177, a miscounted docstring, is
-registered and repaired.
+Session 3, round 12: T001's eleventh part. The interface names the keys under the answers of
+the four `remedy patch` commands, two of them declared empty (DECISION F298 D12), held to the code
+that builds each tree and to a real run; round 11's verdict and R-1177's resolution are booked.
 
 ## Next Steps
 1. T001, next parts: the other operations' answer trees, a few operations at a time.
@@ -26,4 +25,4 @@ registered and repaired.
 - F298 is large for 25 rounds; D1 names the split point if the soft limit is reached.
 - The operator's data root holds 11,652 jobs and 13,480 open decisions, so T007's default matters.
 - R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
-  R-1176 (Low) stay open, owned by F297; R-1177 (Low) is F298's, repaired in round 11.
+  R-1176 (Low) stay open, owned by F297.
