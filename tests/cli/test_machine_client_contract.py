@@ -13,7 +13,9 @@ that fails the test if anything reads it, so the path is proved to ask nothing o
 The decision the path answers is the budget decision: the order's run is given a deadline that has
 already passed, so its budget stops it before any task runs and raises `budget:<request id>`, the
 one decision a fake run raises on its own. Answering it `extend` with a later deadline lets
-`remedy job run` finish the job (DECISIONs F295 D11 and D13).
+`remedy job run` finish the job (DECISIONs F295 D11 and D13). The same stop raised a contract
+remainder decision, which the `extend` answers `no` (DECISION F295 D19), so after the run the
+digest lists no open decision for the job.
 
 The second half of this file holds the contract page, `docs/system/machine-client-contract-v1.md`,
 to the gate test (DECISION F295 D17): the tables of the page's section "The path, step by step"
@@ -143,6 +145,9 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
               if d["job_id"] == job_id and d["type"] == "token_budget"]
     assert len(budget) == 1
     assert budget[0]["options"] == ["extend", "abandon"]
+    remainder = [d for d in digest["decisions"]
+                 if d["job_id"] == job_id and d["type"] == "task_decision"]
+    assert len(remainder) == 1
     assert job_id not in digest["awaiting_apply"]
 
     # 3. Answer: the budget decision, extended past the deadline that stopped it.
@@ -152,6 +157,8 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     assert code == 0, answered
     assert answered["outcome"] == "extended"
     assert answered["next_command"] == f"remedy job run {job_id} --json"
+    # The extend answered the remainder decision the same stop raised (DECISION F295 D19).
+    assert answered["closed_decisions"] == [remainder[0]["decision_id"]]
     # The order file's header cap is the job's own budget, kept beside the raised deadline.
     assert answered["budgets"]["max_cost_usd"] == 1.0
 
@@ -163,8 +170,7 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     assert _digest_job(digest, job_id)["state"] == "completed"
     assert _digest_job(digest, job_id)["waits_for_apply"] is True
     assert job_id in digest["awaiting_apply"]
-    assert not [d for d in digest["decisions"]
-                if d["job_id"] == job_id and d["type"] == "token_budget"]
+    assert not [d for d in digest["decisions"] if d["job_id"] == job_id]
 
     # 5. Approve and apply: the reviewed result lands in the repository.
     code, applied = _remedy(["job", "apply", job_id, "--approve"], repo, env)

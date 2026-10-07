@@ -1218,3 +1218,34 @@ def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
     status = json.loads(capsys.readouterr().out)
     client_jobs = {j["job_id"]: j for j in status["client"]["jobs"]}
     assert client_jobs[job_id]["state"] == "stopped"
+
+
+# ── F295 R21: an extend answers the remainder its budget stop raised (R-1155, DECISION F295 D19) ──
+
+
+def test_an_extend_answers_the_remainder_and_says_so_in_its_text(repo, capsys):
+    """D19: the operator at a terminal reads which remainder decision the extend answered."""
+    from packages.orchestration.escalation import find_task_decision
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    with pytest.raises(SystemExit):
+        _do(capsys, "--json", "--contract", "cli-tool",
+            "--deadline", "2000-01-01T00:00:00+00:00")
+    data = json.loads(capsys.readouterr().out)
+    [job_id] = data["job_ids"]
+    [remainder_id] = re.findall(r"remainder decision (td:\S+) was raised",
+                                _step(data, "run")["detail"])
+    main(["decision", "list", job_id, "--json"])
+    [budget_id] = [d["id"] for d in json.loads(capsys.readouterr().out)["decisions"]
+                   if d["id"].startswith("budget")]
+
+    main(["decision", "resolve", job_id, budget_id, "--reason", "extend",
+          "--answer", "deadline=2999-01-01T00:00:00+00:00"])
+
+    out = capsys.readouterr().out
+    assert (f"  Remainder decision {remainder_id} answered no: the job runs on "
+            "instead of a follow-up mission") in out.splitlines()
+    record = find_task_decision(load_job_plan(job_id), remainder_id)
+    assert (record["status"], record["answer"]) == (
+        "answered", f"no: {budget_id} was answered extend, so the job runs on "
+        "and no follow-up mission is started")
