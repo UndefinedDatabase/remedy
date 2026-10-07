@@ -1,11 +1,14 @@
 command: python3 -m pytest -n auto -q
 real exit code: 0
-wall time: 331.14s (measured wrapper); pytest's own reported wall time 330.49s (0:05:30)
-summary line: 21479 passed, 22 skipped, 1 warning in 330.49s (0:05:30)
+wall time: 308.73s (measured wrapper); pytest's own reported wall time 308.07s (0:05:08)
+summary line: 21479 passed, 22 skipped, 1 warning in 308.07s (0:05:08)
 bad node ids (failed + errors): NONE
 leftover processes: NONE
-tree it ran on: 72f160591 (F295 R24 C1: book round 23's PASS, register R-1156 and R-1157, the plan, save the block)
+tree it ran on: 6d2e8cc44 (F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block)
+reflog before: 6d2e8cc44 HEAD@{2026-10-07 08:22:52 +0200}: commit: F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
+reflog after: 6d2e8cc44 HEAD@{2026-10-07 08:22:52 +0200}: commit: F295 R25 C1: book round 24, DECISION F295 D20, one prose slip, the plan, save the block
+reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F295 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 1076.00 CPU seconds, 330.50 wall seconds, 21501 tests collected, exit status 0, recorded 2026-10-07T06:15:32Z
-This closure's suite used 1076.00 CPU seconds, 2.6 percent more than F290's 1048.65, within the 10 percent limit.
+cost exit code: 1
+Test load: 1165.39 CPU seconds, 308.08 wall seconds, 21501 tests collected, exit status 0, recorded 2026-10-07T06:28:10Z
+This closure's suite used 1165.39 CPU seconds, 11.1 percent more than F290's 1048.65; that is above the 10 percent limit, so this closure registers a finding owned by the rolling findings paydown.
