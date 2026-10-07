@@ -216,6 +216,36 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F287 — Provider session continuity across relaunch (T001–T003 complete, R-1161, R-1163 and R-1164 resolved; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1160 and R-1162 open — owned by F297; accepted 2026-10-07 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f287r16e1001 · package remedy-review-20261007-150840-READY_FOR_REVIEW.zip · SHA-256 90554c5598fb14a5804bd34b241802a7d6006473a4006c5b3b502ce5305a781b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD ee90eaa09f7a0d2452bd29ab802ef9ceeff4125c)
 - [x] F116 — Cost anomaly alarm (T001–T003 complete, R-1165 to R-1171 and R-1173 to R-1175 resolved; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1160, R-1162 and R-1172 open — owned by F297; accepted 2026-10-07 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f116r14e1001 · package remedy-review-20261007-203842-READY_FOR_REVIEW.zip · SHA-256 7925df03d6e95440742cd2831517afc45ca7adf333dcd317c7ed48a0f4fcc342 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e6950538b30420cb9f1c6ed3fb76ae5bf1be814d)
+
+<!-- operator amendment amend1007b-luna-api-upkeep (2026-10-07): the lines below are the next work, before every other unchecked line. Gate A, part two: what a client can rely on (F298), the public HTTP API as the one bridge (F253, moved here byte-identical from Luna gate C, where its split-off third task F303 now stands), and acceptance on a repository that is not Remedy's own (F299). Then the process as the product: the structure ledger with its ratchet (F300) and the upkeep job every fifth job of a mission (F301); the claude-cli worker's tokens per call (F302); and gate A, part three, a mission over several repositories (F205 and F206, moved here byte-identical from their Tier 13 block). Reversible by deleting the seven headings with the five new lines, moving F253 back in place of F303, moving F205 and F206 back above F208, removing the re-opened heading and lowering the counters. -->
+## Tier 12 — Luna gate A, part two: what a client can rely on, and the one bridge (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F298 — Machine client contract v1.1: what a client can rely on
+- [ ] F253 — Headless API contract
+
+## Tier 7 — Luna gate A, part two: acceptance on a repository that is not Remedy's own (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F299 — Acceptance checks on a repository that is not Remedy's own
+
+## Tier 2 — The process as the product: the structure ledger and its ratchet (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F300 — Structure ledger and size ratchet: what is large may only shrink, and nothing new grows large
+
+## Tier 7 — The process as the product: upkeep inside every mission (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F301 — Mission upkeep: every fifth job cleans up
+
+## Tier 3 — Token economy: the worker's tokens per call (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F302 — The claude-cli worker's tokens per call: measure, attribute, cut
+
+## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
+
+- [ ] F205 — Multi-repo missions
+- [ ] F206 — Repo dependency catalog
+
+## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane, continued)
+
 - [ ] F058 — Model failover chain
 
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
@@ -245,7 +275,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
 
-- [ ] F253 — Headless API contract
+- [ ] F303 — The cockpit on the public API
 
 ## Tier 3 — Routing v2: cheap first, evidence escalates (operator ruling amend1006-luna-control-plane)
 
@@ -382,8 +412,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 13 — Multi-Repo & Organization
 
-- [ ] F205 — Multi-repo missions
-- [ ] F206 — Repo dependency catalog
 - [ ] F208 — Monorepo workspaces
 
 ## Tier 16 — Cockpit v2
