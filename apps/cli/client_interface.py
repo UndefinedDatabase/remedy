@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D11).
+what a real run returns (DECISIONs F298 D8 to D12).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -246,7 +246,8 @@ EXECUTION_CONFIG_KEY_TREE: dict[str, Any] = {key: {} for key in (
 #: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
 #: tree under each of them; a key that maps to None holds an object whose keys the interface does
 #: not fix, which only a mission contract's check `spec` does: its keys are the arguments of the
-#: check's `kind`. An operation absent here has its nested keys named in a later part of F298.
+#: check's `kind`. An operation that maps to an empty dict answers no keys below its top level; an
+#: operation absent here has its nested keys named in a later part of F298.
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "do.run": {
         "contract": {
@@ -440,6 +441,42 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "post_test_passed": {},
         },
     },
+    "patch.hunks": {
+        "view": {
+            "version": {},
+            "scope": {},
+            "task_id": {},
+            "source": {},
+            "available": {},
+            "reason": {},
+            "truncated": {},
+            "files": {
+                "path": {},
+                "old_path": {},
+                "status": {},
+                "stats": {"added": {}, "deleted": {}},
+                "note": {},
+                "hunks": {
+                    "id": {},
+                    "header": {},
+                    "old_start": {},
+                    "new_start": {},
+                    "lines": {"kind": {}, "old_ln": {}, "new_ln": {}, "content": {}, "intraline": {}},
+                },
+            },
+            "task_run_ids": {},
+        },
+        "decision": {
+            "attempt_key": {},
+            "decided_at": {},
+            "hunks": {"id": {}, "state": {}, "reason": {}},
+        },
+    },
+    "patch.approve-hunks": {
+        "hunks": {"id": {}, "state": {}, "reason": {}, "landing": {}},
+    },
+    "patch.approve": {},
+    "patch.reject": {},
 }
 
 

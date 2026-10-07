@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D11): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D12): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -768,6 +768,45 @@ def test_the_status_and_proof_answer_trees_name_exactly_what_their_code_builds()
     assert set(proof["job_applies"]) == set(JOB_APPLY_PROOF_FIELDS)
 
 
+def test_the_patch_answer_trees_name_exactly_what_their_code_builds():
+    from packages.orchestration.hunk_ledger import _EXPORT_ENTRY_KEYS
+
+    parser = "packages/orchestration/diff_parser.py"
+    patch_cmd = "apps/cli/commands/patch.py"
+    view = ANSWER_KEY_TREES["patch.hunks"]["view"]
+    assert set(view) == _bound_dict_keys(
+        _function_def("packages/orchestration/diff_view_source.py", "build_diff_view"), "view")
+    files = view["files"]
+    assert set(files) == _expression_keys(parser, "files")
+    assert set(files["stats"]) == _dict_value_keys(parser, "parse_unified_diff_to_view", "stats")
+    assert set(files["hunks"]) == _expression_keys(parser, "hunks_out")
+    assert set(files["hunks"]["lines"]) == (_expression_keys(parser, "hunk['lines']")
+                                            | _stored_keys(parser, "_apply_intraline_spans", "entry"))
+    decision = ANSWER_KEY_TREES["patch.hunks"]["decision"]
+    assert _tree_names(decision) == _dict_literal_keys(
+        _REPO_ROOT / "packages/orchestration/hunk_decision_record.py", "recorded_hunk_decision")
+    assert set(decision) == _bound_dict_keys(_function_def(patch_cmd, "_cmd_show_hunks"), "decision")
+    assert set(ANSWER_KEY_TREES["patch.approve-hunks"]["hunks"]) == set(_EXPORT_ENTRY_KEYS)
+
+
+def test_the_patch_intent_answers_carry_no_keys_below_the_top_level():
+    from packages.orchestration.approval_queue import RISK_LEVELS, RISK_UNKNOWN
+
+    patch_cmd = "apps/cli/commands/patch.py"
+    for command_id, function in (("patch.approve", "_cmd_approve_patch_intent"),
+                                 ("patch.reject", "_cmd_reject_patch_intent")):
+        assert ANSWER_KEY_TREES[command_id] == {}
+        [answer] = [node for node in ast.walk(_function_def(patch_cmd, function))
+                    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "emit_ok"]
+        for keyword in answer.keywords:
+            value = ast.unparse(keyword.value)
+            assert (isinstance(keyword.value, ast.Constant) or value.startswith("bool(")
+                    or value in ("entry['intent_id']", "entry['target_path']", "entry['risk']")), (
+                f"{command_id}: {keyword.arg} answers {value}")
+    assert all(isinstance(level, str) for level in (*RISK_LEVELS, RISK_UNKNOWN))
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -798,7 +837,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     answer("job.evidence", ["job", "evidence", job_id], 0)
-    answer("patch.hunks", ["patch", "hunks", job_id], 0)
+    hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
     answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
     answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)
     answer("patch.reject", ["patch", "reject", job_id, "no-such-intent"], 1)
@@ -806,7 +845,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
-    # `remedy job apply`, `remedy status` and `remedy change proof`.
+    # `remedy job apply`, `remedy status`, `remedy change proof` and `remedy patch hunks`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -820,6 +859,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         _key_paths(_key_tree(status)))
     assert {("job_applies", "commit_sha"), ("next_safe_action_obj", "label")} <= (
         _key_paths(_key_tree(proved)))
+    assert {("view", "files", "hunks", "lines", "intraline"), ("view", "files", "stats", "added"),
+            ("decision", "attempt_key")} <= _key_paths(_key_tree(hunks))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
