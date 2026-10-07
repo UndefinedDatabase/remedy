@@ -169,17 +169,16 @@ from the command's code the same way, and a test that runs the path above and ea
 commands fails when an answer returns a key the document does not name (DECISIONs F298 D5, D6
 and D7). `remedy job resume` answers in several shapes, by what it finds, so its list is the
 union of all of them. Under `answer_trees` it names the keys under those keys, as trees in the
-form of the digest's, for each command whose answers F298 has reached so far, today
-`remedy do`, `remedy status`, `remedy job run`, `remedy job apply`, `remedy change proof`,
-`remedy job evidence`, `remedy mission abandon`, `remedy client interface` itself and the four
-`remedy patch` commands, two of which answer nothing below their top level; a key written `*`
+form of the digest's, for each command whose answers F298 has reached so far, today every command
+but `remedy job resume`, `remedy client interface` itself included, while two of the four
+`remedy patch` commands answer nothing below their top level; a key written `*`
 stands for keys that are data, such as a path, a job id or a job state, a mission contract check's
 `spec` is left open, because its keys are the arguments of the check's kind, and a key that maps
 to `^` holds again the tree of the object that holds it, because each earlier version of a
 mission's plan carries its own earlier versions, and this document's own `digest` and
 `answer_trees` hold a tree under every name. A test holds each tree to the code that builds it,
 and the run above fails when an answer returns a key below the top level that the trees do not
-name (DECISIONs F298 D8 to D15). Inside
+name (DECISIONs F298 D8 to D16). Inside
 one major version
 it only grows. The product calls this
 document the machine client interface, because "contract" names a mission's acceptance criteria
