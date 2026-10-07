@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8, D9 and D10): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D11): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -744,6 +744,30 @@ def test_the_job_apply_answer_trees_name_exactly_what_their_code_builds():
     assert sources == {"_export_execution_config(job.execution_config)", "ec or {}"}
 
 
+def test_the_status_and_proof_answer_trees_name_exactly_what_their_code_builds():
+    from packages.orchestration.job_apply import JOB_APPLY_PROOF_FIELDS
+
+    status_cmd = "apps/cli/commands/status_cmd.py"
+    proof_chain = "packages/orchestration/proof_chain.py"
+    status = ANSWER_KEY_TREES["status.run"]
+    # `jobs` maps each job state word to the jobs in that state.
+    assert set(status["jobs"]) == {"*"}
+    assert set(status["jobs"]["*"]) == _expression_keys(status_cmd, "by_state[state]")
+    # `client` is the digest, which the digest's own tests hold.
+    assert status["client"] is DIGEST_KEY_TREE
+    stored = {ast.unparse(node.value) for node in ast.walk(_function_def(status_cmd, "_cmd_status"))
+              if isinstance(node, ast.Assign)
+              and any(ast.unparse(target) == "result['client']" for target in node.targets)}
+    assert stored == {"build_client_digest()"}
+    proof = ANSWER_KEY_TREES["change.proof"]
+    next_action = _dict_literal_keys(_REPO_ROOT / proof_chain, "_export_next_action")
+    assert set(proof["next_safe_action_obj"]) == next_action == (
+        _returned_dict_keys(proof_chain, "_export_next_action"))
+    assert set(proof["changes"]) == _dict_value_keys(proof_chain, "export_proof_chain_json", "changes")
+    assert set(proof["changes"]["next_safe_action_obj"]) == next_action
+    assert set(proof["job_applies"]) == set(JOB_APPLY_PROOF_FIELDS)
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -772,7 +796,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
-    answer("change.proof", ["change", "proof", job_id], 0)
+    proved = answer("change.proof", ["change", "proof", job_id], 0)
     answer("job.evidence", ["job", "evidence", job_id], 0)
     answer("patch.hunks", ["patch", "hunks", job_id], 0)
     answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
@@ -781,8 +805,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
-    # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`
-    # and `remedy job apply`.
+    # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
+    # `remedy job apply`, `remedy status` and `remedy change proof`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -792,6 +816,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
             ("temporary_worktree_cleanup", "cleanup_status"), ("execution_config", "builder")} <= (
         _key_paths(_key_tree(applied)))
     assert applied["modes_applied"], "the approved apply names no path it applied"
+    assert {("jobs", "stopped", "short_id"), ("client", "jobs", "cost", "basis")} <= (
+        _key_paths(_key_tree(status)))
+    assert {("job_applies", "commit_sha"), ("next_safe_action_obj", "label")} <= (
+        _key_paths(_key_tree(proved)))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS

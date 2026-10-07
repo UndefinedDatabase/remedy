@@ -7,7 +7,7 @@ command catalog for the operations, their arguments and the exit codes each can 
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
 `JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
-`--json` answer wears. A change in any of those places changes the document. Four things are
+`--json` answer wears. A change in any of those places changes the document. The rest is
 declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`; the tree of the
 keys the digest returns, `DIGEST_KEY_TREE`, which `tests/cli/test_client_interface.py` holds equal
 to the keys `packages/orchestration/client_digest.py` writes and to what a real run's digest
@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8, D9 and D10).
+what a real run returns (DECISIONs F298 D8 to D11).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -171,6 +171,61 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
+#: each key maps to the tree of the object under it, or of every element of the list under it,
+#: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
+DIGEST_KEY_TREE: dict[str, Any] = {
+    "version": {},
+    "read_at": {},
+    "supervisor": {"answers": {}},
+    "projects": {
+        "project_id": {},
+        "slug": {},
+        "missions": {
+            "mission_id": {},
+            "status": {},
+            "goal": {},
+            "job_ids": {},
+            "order_source_path": {},
+            "order_source_sha256": {},
+        },
+        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {}},
+    },
+    "jobs": {
+        "job_id": {},
+        "project_id": {},
+        "mission_id": {},
+        "title": {},
+        "state": {},
+        "waits_for_apply": {},
+        "cost": {"value_usd": {}, "basis": {}},
+        "evidence": {
+            "evidence_dir": {},
+            "run_ids": {},
+            "postmortem_path": {},
+            "run_manifest_path": {},
+            "result_diff_path": {},
+            "result_diff_sha256": {},
+        },
+    },
+    "awaiting_apply": {},
+    "decisions": {
+        "job_id": {},
+        "project_id": {},
+        "decision_id": {},
+        "type": {},
+        "severity": {},
+        "question": {},
+        "default": {},
+        "options": {},
+        "clarifications": {"id": {}, "question": {}, "default": {}},
+        "created_at": {},
+        "age_seconds": {},
+    },
+    "degraded": {},
+    "skipped_files": {},
+}
+
 #: The keys of a job's execution configuration as its record exports them, a tree several answers
 #: carry under `execution_config` (DECISION F298 D9).
 EXECUTION_CONFIG_KEY_TREE: dict[str, Any] = {key: {} for key in (
@@ -251,6 +306,10 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "source": {},
             "open_blocking_criteria": {},
         },
+    },
+    "status.run": {
+        "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}}},
+        "client": DIGEST_KEY_TREE,
     },
     "job.run": {
         "tasks": {
@@ -351,61 +410,36 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "file_readiness": {"path": {}, "kind": {}, "baseline_status": {}, "workspace_status": {}},
         "execution_config": EXECUTION_CONFIG_KEY_TREE,
     },
-}
-
-#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
-#: each key maps to the tree of the object under it, or of every element of the list under it,
-#: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
-DIGEST_KEY_TREE: dict[str, Any] = {
-    "version": {},
-    "read_at": {},
-    "supervisor": {"answers": {}},
-    "projects": {
-        "project_id": {},
-        "slug": {},
-        "missions": {
-            "mission_id": {},
+    "change.proof": {
+        "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
+        "changes": {
+            "target_path": {},
+            "intent_id": {},
+            "task_id": {},
+            "task_title": {},
+            "artifact_id": {},
+            "approval_state": {},
+            "apply_state": {},
+            "test_state": {},
+            "test_link": {},
+            "proof_status": {},
+            "safe_summary": {},
+            "next_safe_action": {},
+            "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
+            "missing_links": {},
+        },
+        "job_applies": {
+            "job_apply_id": {},
             "status": {},
-            "goal": {},
-            "job_ids": {},
-            "order_source_path": {},
-            "order_source_sha256": {},
-        },
-        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {}},
-    },
-    "jobs": {
-        "job_id": {},
-        "project_id": {},
-        "mission_id": {},
-        "title": {},
-        "state": {},
-        "waits_for_apply": {},
-        "cost": {"value_usd": {}, "basis": {}},
-        "evidence": {
-            "evidence_dir": {},
-            "run_ids": {},
-            "postmortem_path": {},
-            "run_manifest_path": {},
-            "result_diff_path": {},
-            "result_diff_sha256": {},
+            "approved": {},
+            "dry_run": {},
+            "finished_at": {},
+            "files_applied": {},
+            "commit_sha": {},
+            "pushed": {},
+            "post_test_passed": {},
         },
     },
-    "awaiting_apply": {},
-    "decisions": {
-        "job_id": {},
-        "project_id": {},
-        "decision_id": {},
-        "type": {},
-        "severity": {},
-        "question": {},
-        "default": {},
-        "options": {},
-        "clarifications": {"id": {}, "question": {}, "default": {}},
-        "created_at": {},
-        "age_seconds": {},
-    },
-    "degraded": {},
-    "skipped_files": {},
 }
 
 
