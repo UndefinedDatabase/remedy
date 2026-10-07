@@ -1,0 +1,14 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 409.15s (measured wrapper); pytest's own reported wall time 408.27s (0:06:48)
+summary line: 21585 passed, 22 skipped, 1 warning in 408.27s (0:06:48)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 9abde970f (F116 R12 C1: book round 11, the plan, save the block)
+reflog before: 9abde970f HEAD@{2026-10-07 20:13:37 +0200}: commit: F116 R12 C1: book round 11, the plan, save the block
+reflog after: 9abde970f HEAD@{2026-10-07 20:13:37 +0200}: commit: F116 R12 C1: book round 11, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F116 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1048.32 CPU seconds, 408.28 wall seconds, 21607 tests collected, exit status 0, recorded 2026-10-07T18:20:45Z
+This closure's suite used 1048.32 CPU seconds, 4.6 percent less than F287's 1098.51, within the 10 percent limit.
