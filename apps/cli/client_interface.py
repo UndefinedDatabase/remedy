@@ -14,8 +14,8 @@ to the keys `packages/orchestration/client_digest.py` writes and to what a real 
 returns (DECISION F298 D3); the refusal tokens each operation can answer with,
 `OPERATION_REFUSAL_TOKENS`, which the same test file holds equal to a static reading of each
 operation's handler, the way the catalog's exit codes are held (DECISION F298 D4); and the
-top-level keys of the answers of the path's operations, `OPERATION_ANSWER_KEYS`, held equal to
-the same reading of each handler and to what a real run of the path returns (DECISION F298 D5).
+top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
+reading of each handler and to what a real run returns (DECISIONs F298 D5 and D6).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -100,9 +100,9 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.interface": (),
 }
 
-#: The top-level keys an answer of each operation of the path can carry beside the envelope's own,
-#: sorted, per catalog command id: its answer when it succeeds and its refusals' added keys
-#: (DECISION F298 D5). The other operations' answers are read in a later part of T001.
+#: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
+#: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5
+#: and D6). `job.resume`'s answers are read in a later part of T001.
 OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
@@ -141,6 +141,16 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "change.proof": (
         "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
         "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
+    ),
+    "job.evidence": ("files", "job_id", "manifest", "out_dir"),
+    "patch.hunks": ("decision", "job_id", "matches", "view"),
+    "patch.approve-hunks": ("attempt", "decided_at", "hunk_ids", "hunks", "matches", "task_id"),
+    "patch.approve": ("intent_id", "matches", "reason_recorded", "risk", "state", "target_path"),
+    "patch.reject": ("intent_id", "matches", "reason_recorded", "risk", "state", "target_path"),
+    "mission.abandon": ("mission", "unmet_blocking_criteria", "version"),
+    "client.interface": (
+        "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
+        "interface_version", "job_states", "mission_statuses", "operations",
     ),
 }
 

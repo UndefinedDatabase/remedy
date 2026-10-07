@@ -14,9 +14,10 @@ Each operation's refusal tokens are declared in the interface module too, and he
 reading of the operation's handler (DECISION F298 D4) that walks the code the way
 `tests/cli/test_exit_codes.py` walks it for exit codes.
 
-The top-level keys of the answers of the path's operations are declared there as well, and held
-the same two ways as the digest's (DECISION F298 D5): a static reading of each handler, the same
-walk, and a real run of the path, whose every answer returns no key the declaration does not name.
+The top-level keys of the operations' answers are declared there as well, and held the same two
+ways as the digest's (DECISIONs F298 D5 and D6): a static reading of each handler, the same walk,
+and a real run of the path and of the operations after it, whose every answer returns no key the
+declaration does not name.
 """
 from __future__ import annotations
 
@@ -328,7 +329,7 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
     assert hunk_codes == UNRESOLVED_TOKEN_SITES["apps.cli.commands.patch:_cmd_approve_hunks:result.code"][0]
 
 
-# The top-level keys of the answers (DECISION F298 D5).
+# The top-level keys of the answers (DECISIONs F298 D5 and D6).
 
 #: The calls that print or build an answer envelope; a keyword of any of them is an answer key.
 _ANSWER_CALLS = frozenset({"emit_ok", "build_ok", "fail", "emit_error", "build_error"})
@@ -386,6 +387,23 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         }),
         "the keys export_proof_chain_json in packages/orchestration/proof_chain.py returns",
     ),
+    "apps.cli.commands.do_cmd:_cmd_job_evidence:**result": (
+        frozenset({"files", "job_id", "manifest", "out_dir"}),
+        "the keys export_job_evidence in packages/orchestration/job_evidence.py returns; its "
+        "other return, a missing job, is answered as job_not_found and never printed",
+    ),
+    "apps.cli.commands.patch:_cmd_approve_hunks:**result.exported": (
+        frozenset({"attempt", "decided_at", "hunks", "task_id"}),
+        "a HunkDecisionRecord's exported record, whose keys are _RECORD_KEYS in "
+        "packages/orchestration/hunk_decision_record.py",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_interface:**interface": (
+        frozenset({
+            "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
+            "interface_version", "job_states", "mission_statuses", "operations",
+        }),
+        "the keys build_client_interface in apps/cli/client_interface.py returns",
+    ),
 }
 
 
@@ -395,9 +413,9 @@ def _bound_dict_keys(fn: ast.AST, name: str) -> set[str] | None:
     keys: set[str] = set()
     bound = False
     for node in ast.walk(fn):
-        if not isinstance(node, ast.Assign):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
             continue
-        for target in node.targets:
+        for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
             if isinstance(target, ast.Name) and target.id == name and isinstance(node.value, ast.Dict):
                 bound = True
                 keys |= {key.value for key in node.value.keys
@@ -471,6 +489,7 @@ def test_declared_answer_keys_equal_the_keys_the_handler_reaches(command_id):
 
 def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
     from apps.cli.commands import do_cmd
+    from packages.orchestration import hunk_decision_record
 
     [job_run] = [node for node in ast.walk(ast.parse(inspect.getsource(do_cmd)))
                  if isinstance(node, ast.FunctionDef) and node.name == "_cmd_job_run"]
@@ -485,9 +504,15 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         _returned_dict_keys("packages/orchestration/job_apply.py", "export_job_apply_json"))
     assert sites["apps.cli.commands.change:_cmd_change_proof:**export_proof_chain_json(chain)"] == (
         _returned_dict_keys("packages/orchestration/proof_chain.py", "export_proof_chain_json"))
+    assert sites["apps.cli.commands.do_cmd:_cmd_job_evidence:**result"] == (
+        _returned_dict_keys("packages/orchestration/job_evidence.py", "export_job_evidence"))
+    assert sites["apps.cli.commands.patch:_cmd_approve_hunks:**result.exported"] == (
+        set(hunk_decision_record._RECORD_KEYS))
+    assert sites["apps.cli.commands.client_cmd:_cmd_client_interface:**interface"] == (
+        _returned_dict_keys("apps/cli/client_interface.py", "build_client_interface"))
 
 
-def test_the_paths_answers_return_only_keys_the_interface_names(tmp_path):
+def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
     order_file.write_text(ORDER_FILE_TEXT, encoding="utf-8")
@@ -513,6 +538,13 @@ def test_the_paths_answers_return_only_keys_the_interface_names(tmp_path):
     answer("job.apply", ["job", "apply", job_id], 0)
     answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
     answer("change.proof", ["change", "proof", job_id], 0)
+    answer("job.evidence", ["job", "evidence", job_id], 0)
+    answer("patch.hunks", ["patch", "hunks", job_id], 0)
+    answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
+    answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)
+    answer("patch.reject", ["patch", "reject", job_id, "no-such-intent"], 1)
+    answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
+    answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     for command_id, bodies in answers.items():
         for body in bodies:
