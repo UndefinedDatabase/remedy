@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D17).
+what a real run returns (DECISIONs F298 D8 to D18).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -376,8 +376,8 @@ JOB_REPORT_KEY_TREES: dict[str, Any] = {
 #: not fix, which only a mission contract's check `spec` does: its keys are the arguments of the
 #: check's `kind`; a key that maps to `KEY_TREE_REPEAT_MARK` holds the tree of the object that holds
 #: it again, which a mission plan's `_versions` does and the key trees `client.interface` answers
-#: do. An operation that maps to an empty dict answers no keys below its top level; an operation
-#: absent here has its nested keys named in a later part of F298.
+#: do. Every operation has an entry here, and one that maps to an empty dict answers no keys below
+#: its top level (DECISION F298 D18).
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "do.run": {
         "contract": MISSION_CONTRACT_KEY_TREE,

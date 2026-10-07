@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D17): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D18): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -655,6 +655,7 @@ def _expression_keys(path: str, expression: str) -> set[str]:
 
 
 def test_every_answer_tree_hangs_under_a_declared_top_level_key():
+    assert sorted(ANSWER_KEY_TREES) == sorted(CLIENT_OPERATION_IDS), "an operation without an entry"
     repeated: set[tuple[str, ...]] = set()
     for command_id, trees in ANSWER_KEY_TREES.items():
         assert sorted(set(trees) - set(OPERATION_ANSWER_KEYS[command_id])) == [], command_id
@@ -791,6 +792,132 @@ def test_the_job_resume_answer_trees_name_exactly_what_their_code_builds():
         assert get_type_hints(function)["return"] is worktree_resume.WorktreeResumeOutcome
     assert get_type_hints(worktree_resume.prepare_job_worktrees)["return"] == (
         list[tuple[Any, worktree_resume.WorktreeResumeOutcome]])
+
+
+#: Every expression the functions `remedy job resume` answers through write each top-level key with
+#: that `ANSWER_KEY_TREES` gives no tree, per function, read by hand: each is a word, a number, a
+#: flag, a path, an id, None or a count, so it carries no keys below the top level. The keys of the
+#: job report the resume hands to `remedy job run`'s handler are that command's.
+_RESUME_PLAIN_SOURCES: dict[str, dict[str, set[str]]] = {
+    "_cmd_job_resume": {
+        "action": {"'noop'", "'stopped'"},
+        "decision_id": {"_decision_id"},
+        "job_id": {"jid"},
+        "reason": {"'all_green'"},
+        "resumed": {"False"},
+        "stop_reason": {"decision.reason"},
+    },
+    "_resume_preview": {
+        "action": {"'preview'"},
+        "checkpoint_index": {"getattr(checkpoint, 'cycle_index', None) if checkpoint else None"},
+        "job_id": {"jid"},
+        "pending_tasks": {"len(pending_tasks)"},
+        "plan_approval_gate": {"gate"},
+        "resumed": {"False"},
+        "state": {"state"},
+        "would_run": {"not stop['pending'] and head_outcome != 'drift' and (gate == 'open') and "
+                      "(state not in ('all_green', 'cancelled')) and (not budget_stopped)"},
+    },
+    "_cmd_run_next_task_local": {
+        "dry_run": {"dry_run_block or None"},
+        "elapsed_ms": {"round(elapsed_ms)"},
+        "file": {"str(mf.path)"},
+        "job_id": {"str(job.job_id)", "str(result.job.job_id)"},
+        "log": {"str(log.path)"},
+        "model": {"builder.model"},
+        "outcome": {"'no_pending_tasks'"},
+        "patch_intents": {"patch_intent_count"},
+        "remaining": {"pending_remaining"},
+        "repo": {"repo_applied[0] if repo_applied else None"},
+        "task_id": {"str(result.task_id)"},
+        "task_type": {"task_type"},
+        "verified": {"False", "True"},
+    },
+    "_cmd_resume": {
+        "blocked_reason": {"'ambiguous_recoverable_worktrees'", "'resume_mode_not_implemented'",
+                           "'worktree_recovery_blocked'"},
+        "checkpoint_kind": {"cp.kind"},
+        "resume_mode": {"cp.resume_mode"},
+        "resumed": {"False"},
+    },
+}
+
+#: The dicts those functions answer whole, by the expression they expand.
+_RESUME_EXPANDED: dict[str, set[str]] = {
+    "_cmd_job_resume": {"preview"},
+    "_cmd_job_run_cycles": {"result.to_json()"},
+    "_cmd_run_next_task_local": {"envelope_payload"},
+    "_cmd_resume": {"_payload", "export_dry_run_json(dr)"},
+}
+
+
+def _plain_hint(hint) -> bool:
+    """A type whose JSON value carries no keys: a word, a number, a flag, None, an optional one of
+    those, or a list or tuple of words."""
+    from typing import Union, get_args, get_origin
+
+    if hint in (str, int, float, bool, type(None)):
+        return True
+    if get_origin(hint) in (Union, __import__("types").UnionType):
+        return all(_plain_hint(arg) for arg in get_args(hint))
+    return get_origin(hint) in (list, tuple) and set(get_args(hint)) <= {str, Ellipsis}
+
+
+def test_the_job_resume_keys_without_a_tree_hold_no_object():
+    from typing import get_type_hints
+
+    from packages.orchestration.event_replay import ResumeDryRun, ResumeResult
+    from packages.orchestration.long_run_executor import CycleLoopResult
+
+    job_cmd = "apps/cli/commands/job.py"
+    trees = ANSWER_KEY_TREES["job.resume"]
+    for function in sorted(set(_RESUME_PLAIN_SOURCES) | set(_RESUME_EXPANDED)):
+        expected = _RESUME_PLAIN_SOURCES.get(function, {})
+        fn = _function_def(job_cmd, function)
+        sources: dict[str, set[str]] = {}
+        expanded: set[str] = set()
+        for node in ast.walk(fn):
+            if not isinstance(node, ast.Call):
+                continue
+            answered = isinstance(node.func, ast.Name) and node.func.id in _ANSWER_CALLS
+            if answered or ast.unparse(node.func) == "dict":
+                for keyword in node.keywords:
+                    if keyword.arg is None:
+                        expanded.add(ast.unparse(keyword.value))
+                    elif keyword.arg not in _NOT_ANSWER_KEYS | {"json_output", "exit_code"}:
+                        sources.setdefault(keyword.arg, set()).add(ast.unparse(keyword.value))
+        if function == "_resume_preview":
+            [returned] = [node.value for node in fn.body if isinstance(node, ast.Return)]
+            sources = {key.value: {ast.unparse(value)} for key, value in zip(returned.keys, returned.values)}
+        assert expanded == _RESUME_EXPANDED.get(function, set()), function
+        assert {key: below for key, below in sources.items() if key not in trees} == expected, function
+    # The dicts answered whole are exports of records whose fields are plain, but for the cycles,
+    # which `job.resume` gives a tree.
+    exports = (("packages/orchestration/event_replay.py", "export_resume_result_json", ResumeResult),
+               ("packages/orchestration/event_replay.py", "export_dry_run_json", ResumeDryRun),
+               ("packages/orchestration/long_run_executor.py", "CycleLoopResult.to_json", CycleLoopResult))
+    for path, function, record in exports:
+        fn = _function_def(path, function)
+        [returned] = [node.value for node in fn.body if isinstance(node, ast.Return)]
+        if isinstance(returned, ast.Name):
+            returned = _bound_dict_values(path, function, returned.id)
+        else:
+            returned = dict(zip((key.value for key in returned.keys), returned.values))
+        hints = get_type_hints(record)
+        for key, value in returned.items():
+            if key in trees and trees[key]:
+                continue
+            # A `str(...)` answers a word; a `list(...)` answers the elements of what it copies.
+            if isinstance(value, ast.Constant) or (
+                    isinstance(value, ast.Call) and ast.unparse(value.func) == "str"):
+                continue
+            if isinstance(value, ast.Call) and ast.unparse(value.func) == "list":
+                [value] = value.args
+            assert isinstance(value, ast.Attribute), f"{function}: {key} answers {ast.unparse(value)}"
+            field = value.attr
+            hint = (hints[field] if field in hints
+                    else get_type_hints(getattr(record, field).fget)["return"])
+            assert _plain_hint(hint), f"{function}: {key} answers a {hint}"
 
 
 def _bound_dict_values(path: str, function: str, name: str) -> dict[str, ast.AST]:
