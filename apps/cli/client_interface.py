@@ -7,13 +7,15 @@ command catalog for the operations, their arguments and the exit codes each can 
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
 `JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
-`--json` answer wears. A change in any of those places changes the document. Three things are
+`--json` answer wears. A change in any of those places changes the document. Four things are
 declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`; the tree of the
 keys the digest returns, `DIGEST_KEY_TREE`, which `tests/cli/test_client_interface.py` holds equal
 to the keys `packages/orchestration/client_digest.py` writes and to what a real run's digest
-returns (DECISION F298 D3); and the refusal tokens each operation can answer with,
+returns (DECISION F298 D3); the refusal tokens each operation can answer with,
 `OPERATION_REFUSAL_TOKENS`, which the same test file holds equal to a static reading of each
-operation's handler, the way the catalog's exit codes are held (DECISION F298 D4).
+operation's handler, the way the catalog's exit codes are held (DECISION F298 D4); and the
+top-level keys of the answers of the path's operations, `OPERATION_ANSWER_KEYS`, held equal to
+the same reading of each handler and to what a real run of the path returns (DECISION F298 D5).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -96,6 +98,50 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "patch.reject": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
     "mission.abandon": ("mission_error", "mission_not_found", "no_project"),
     "client.interface": (),
+}
+
+#: The top-level keys an answer of each operation of the path can carry beside the envelope's own,
+#: sorted, per catalog command id: its answer when it succeeds and its refusals' added keys
+#: (DECISION F298 D5). The other operations' answers are read in a later part of T001.
+OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
+    "do.run": (
+        "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
+        "mission_plan_path", "next", "push", "shape", "shape_source", "steps", "stopped_before_apply",
+        "unmet_blocking_criteria", "waiting_job_ids",
+    ),
+    "status.run": (
+        "client", "decisions_open", "degraded", "jobs", "project", "runtime", "runtime_warning",
+        "scope", "skipped_files", "stops_pending",
+    ),
+    "decision.resolve": (
+        "answer", "answers", "assumption_log", "budgets", "closed_decisions", "cross_references",
+        "decision_id", "follow_up_job_id", "follow_up_mission", "job_id", "matches", "mission_id",
+        "next_command", "next_step", "option", "outcome", "raised", "reason_code", "state", "stop_id",
+        "task_id",
+    ),
+    "job.run": (
+        "context_strategy", "cost_mirror", "created_at", "execution_config", "finished_at",
+        "handoff_available", "has_workspace_changes", "isolation_mode", "job_id", "job_title",
+        "job_workspace_path", "next_command", "pending_tasks", "postmortem", "repair_rounds_allowed",
+        "repair_rounds_source", "repo_path", "result_diff", "status", "target_guard", "tasks",
+        "warning", "worktree",
+    ),
+    "job.apply": (
+        "approved", "blocked_reason", "blocked_reasons", "commit_message_mode", "commit_sha",
+        "commit_with_history", "context_strategy", "dry_run", "execution_config", "file_readiness",
+        "files_applied", "files_blocked", "files_planned", "files_skipped", "finished_at",
+        "history_commits", "job_apply_id", "job_id", "job_status", "job_title", "job_workspace_path",
+        "merge_commit", "merge_conflicts", "merged_branch", "missing_source_files", "modes_applied",
+        "post_test_command_present", "post_test_passed", "post_test_summary", "push", "push_error",
+        "push_open_criteria", "push_ref", "push_remote", "pushed", "reviewed_task_files",
+        "skip_blocked", "source_changed_files", "started_at", "status", "target_branch",
+        "target_clean", "target_guard_ok", "target_repo", "task_summaries",
+        "temporary_worktree_cleanup", "unexpected_source_files",
+    ),
+    "change.proof": (
+        "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
+        "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
+    ),
 }
 
 #: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
@@ -211,4 +257,5 @@ def build_client_interface() -> dict[str, Any]:
         "contract_templates": list(list_contract_templates()),
         "budget_kinds": list(JobBudgets.model_fields),
         "digest": copy.deepcopy(DIGEST_KEY_TREE),
+        "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
     }
