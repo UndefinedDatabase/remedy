@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import locale
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -988,6 +989,10 @@ class StructuredCliOutcome:
     error_detail: str = ""
 
 
+#: Read back from run records on disk; must never become an option of the child's command line.
+_CLI_SESSION_REF_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z_-]{0,127}")
+
+
 def build_claude_cli_args(
     claude_path: str,
     prompt: str,
@@ -996,6 +1001,7 @@ def build_claude_cli_args(
     model: str = "",
     stream_evidence: bool = False,
     json_schema: str = "",
+    resume_session: str = "",
 ) -> list[str]:
     """Build safe CLI argv for claude invocation.
 
@@ -1010,6 +1016,7 @@ def build_claude_cli_args(
     json_schema: F005 native structured output. When non-empty, passed as
       ``--json-schema <schema>`` so the provider enforces the schema itself
       instead of relying on prompt prose. Kept compact by the caller.
+    resume_session: F287 DECISION D2. When non-empty, must fully match ``_CLI_SESSION_REF_PATTERN`` (else ``ValueError``), and is passed as ``--resume <ref>``.
     """
     if stream_evidence:
         argv = [claude_path, "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -1019,6 +1026,12 @@ def build_claude_cli_args(
         argv.extend(["--model", model])
     if json_schema:
         argv.extend(["--json-schema", json_schema])
+    if resume_session:
+        if _CLI_SESSION_REF_PATTERN.fullmatch(resume_session) is None:
+            raise ValueError(
+                "refusing to resume: the session reference is not a plain session id"
+            )
+        argv.extend(["--resume", resume_session])
     if write_mode == "allowed-tools":
         argv.extend(_ALLOWED_TOOLS_ARGS)
     elif write_mode == "dangerous-skip":
@@ -1278,7 +1291,7 @@ class ClaudeCliProvider:
 
     def _call_streamed(
         self, claude: str, prompt: str, *, timeout_sec: int, max_output_chars: int,
-        json_schema: str = "",
+        json_schema: str = "", resume: str = "",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """F004 opt-in path: run the CLI in stream-json and capture evidence.
 
@@ -1299,7 +1312,7 @@ class ClaudeCliProvider:
 
         argv = build_claude_cli_args(
             claude, prompt, write_mode=self._write_mode, model=self._model,
-            stream_evidence=True, json_schema=json_schema,
+            stream_evidence=True, json_schema=json_schema, resume_session=resume,
         )
         call_dir = self._allocate_stream_call_dir()
         run = run_streamed_command(
@@ -1363,7 +1376,7 @@ class ClaudeCliProvider:
 
     def _call(
         self, prompt: str, *, timeout_sec: int, max_output_chars: int,
-        json_schema: str = "",
+        json_schema: str = "", resume: str = "",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used, usage_actuals, actual_missing_reason).
 
@@ -1377,11 +1390,11 @@ class ClaudeCliProvider:
         if self._stream_evidence:
             return self._call_streamed(
                 claude, prompt, timeout_sec=timeout_sec,
-                max_output_chars=max_output_chars, json_schema=json_schema,
+                max_output_chars=max_output_chars, json_schema=json_schema, resume=resume,
             )
         argv = build_claude_cli_args(
             claude, prompt, write_mode=self._write_mode, model=self._model,
-            json_schema=json_schema,
+            json_schema=json_schema, resume_session=resume,
         )
         start = time.monotonic()
         try:
@@ -1434,6 +1447,7 @@ class ClaudeCliProvider:
 
     def _call_reviewer_structured(
         self, prompt: str, json_schema: str, *, timeout_sec: int, max_output_chars: int,
+        resume: str = "",
     ) -> StructuredCliOutcome:
         """One native structured reviewer call, classified from the envelope.
 
@@ -1453,7 +1467,7 @@ class ClaudeCliProvider:
             try:
                 text, dur, tokens, usage, _amr = self._call_streamed(
                     claude, prompt, timeout_sec=timeout_sec,
-                    max_output_chars=max_output_chars, json_schema=json_schema,
+                    max_output_chars=max_output_chars, json_schema=json_schema, resume=resume,
                 )
             except _StreamNonZeroExit as exc:
                 # A native structured-output failure stays a parse failure even
@@ -1507,7 +1521,7 @@ class ClaudeCliProvider:
 
         argv = build_claude_cli_args(
             claude, prompt, write_mode=self._write_mode, model=self._model,
-            json_schema=json_schema,
+            json_schema=json_schema, resume_session=resume,
         )
         start = time.monotonic()
         try:
@@ -1574,11 +1588,14 @@ class ClaudeCliProvider:
         resume: str | None = None,
     ) -> BuilderOutput:
         # F012: the CLI sends the builder prompt verbatim (no out-of-band schema).
+        options: dict[str, Any] = {"write_mode": self._write_mode}
+        if resume:
+            options["resume"] = resume
         _pi = prepare_call_input(
             prompt=prompt, model=self._model, mode="cli-legacy",
-            options={"write_mode": self._write_mode})
+            options=options)
         out = self._build_impl(prompt, timeout_sec=timeout_sec,
-                               max_output_chars=max_output_chars)
+                               max_output_chars=max_output_chars, resume=resume or "")
         out.prepared_input = _pi
         return out
 
@@ -1588,10 +1605,12 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str = "",
     ) -> BuilderOutput:
         try:
             text, dur, tokens, usage, amr = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                resume=resume,
             )
             files = []
             for line in text.splitlines():
@@ -1609,6 +1628,8 @@ class ClaudeCliProvider:
                 tokens_used=tokens,
                 usage_actuals=usage,
                 actual_missing_reason=amr,
+                resume_used=bool(resume),
+                resume_session_ref=resume,
                 stream_artifact_refs=self.last_stream_artifact_refs,
                 stream_call_id=self._last_stream_call_id,
             )
@@ -1641,19 +1662,22 @@ class ClaudeCliProvider:
         resume: str | None = None,
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
+        options: dict[str, Any] = {"write_mode": self._write_mode}
+        if resume:
+            options["resume"] = resume
         # F012: fingerprint exactly what the transport receives — the prompt bytes plus, in
         # native structured mode, the out-of-band ``--json-schema`` argument.
         if structured:
             _pi = prepare_call_input(
                 prompt=prompt, model=self._model, mode="cli-native",
                 schema=_to_json_schema_str(_ReviewVerdictSchema),
-                options={"write_mode": self._write_mode})
+                options=options)
         else:
             _pi = prepare_call_input(
                 prompt=prompt + "\n\n" + _REVIEWER_JSON_SCHEMA, model=self._model,
-                mode="cli-legacy", options={"write_mode": self._write_mode})
+                mode="cli-legacy", options=options)
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
-                                max_output_chars=max_output_chars)
+                                max_output_chars=max_output_chars, resume=resume or "")
         out.prepared_input = _pi
         return out
 
@@ -1663,6 +1687,7 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str = "",
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
         schema_v = _schema_v_of(_ReviewVerdictSchema)
@@ -1676,6 +1701,7 @@ class ClaudeCliProvider:
                 oc = self._call_reviewer_structured(
                     prompt, json_schema,
                     timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                    resume=resume,
                 )
                 if oc.error_class == "config":
                     return ReviewerOutput(
@@ -1717,17 +1743,24 @@ class ClaudeCliProvider:
                 out.actual_missing_reason = "" if oc.usage_actuals else "usage_missing"
                 out.stream_artifact_refs = self.last_stream_artifact_refs
                 out.stream_call_id = self._last_stream_call_id
+                if resume and not out.error:
+                    out.resume_used = True
+                    out.resume_session_ref = resume
                 return out
 
             full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
             text, dur, tokens, usage, amr = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                resume=resume,
             )
             out = _parse_reviewer_json(text, dur, tokens, provider="claude-cli")
             out.usage_actuals = usage
             out.actual_missing_reason = amr
             out.stream_artifact_refs = self.last_stream_artifact_refs
             out.stream_call_id = self._last_stream_call_id
+            if resume and not out.error:
+                out.resume_used = True
+                out.resume_session_ref = resume
             return out
         except _StreamCapReached as exc:
             return ReviewerOutput(
