@@ -7,11 +7,13 @@ command catalog for the operations, their arguments and the exit codes each can 
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
 `JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
-`--json` answer wears. A change in any of those places changes the document. Two things are
-declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`, and the tree of the
+`--json` answer wears. A change in any of those places changes the document. Three things are
+declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`; the tree of the
 keys the digest returns, `DIGEST_KEY_TREE`, which `tests/cli/test_client_interface.py` holds equal
 to the keys `packages/orchestration/client_digest.py` writes and to what a real run's digest
-returns (DECISION F298 D3).
+returns (DECISION F298 D3); and the refusal tokens each operation can answer with,
+`OPERATION_REFUSAL_TOKENS`, which the same test file holds equal to a static reading of each
+operation's handler, the way the catalog's exit codes are held (DECISION F298 D4).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -49,6 +51,52 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "mission.abandon",
     "client.interface",
 )
+
+#: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
+#: (DECISION F298 D4). An operation with none here answers no refusal envelope of its own.
+OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
+    "do.run": (
+        "invalid_argument", "invalid_budget", "order_file_empty", "order_file_invalid_header",
+        "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable", "step_failed",
+        "unsupported_contract_template", "unsupported_provider",
+    ),
+    "status.run": (),
+    "decision.resolve": (
+        "ambiguous_job_id", "answer_parse_error", "budget_limit_not_raisable",
+        "budget_limit_not_raised", "clarifications_already_resolved", "decision_already_answered",
+        "decision_not_found", "decision_not_resolvable", "follow_up_mission_error",
+        "invalid_argument", "invalid_budget", "invalid_job_id", "job_not_found",
+        "missing_argument", "mission_already_linked", "mission_error", "no_pending_plan_approval",
+        "no_project", "option_not_applicable", "proposed_task_invalid_state",
+        "proposed_task_not_found", "proposed_task_operation_failed", "stop_reason_not_found",
+    ),
+    "job.run": (
+        "invalid_argument", "invalid_budget", "job_not_resumable", "job_not_started", "job_stopped",
+        "serve_unreachable",
+    ),
+    "job.resume": (
+        "ambiguous_job_id", "budget_decision_open", "builder_error", "builder_unavailable",
+        "checkpoint_not_found", "checkpoint_not_resumable", "checkpoints_corrupt",
+        "configuration_error", "confirmation_required", "invalid_argument", "invalid_budget",
+        "invalid_builder_output", "invalid_job_id", "job_not_found", "job_not_resumable",
+        "job_not_started", "job_stopped", "missing_dependency", "permission_denied",
+        "plan_awaiting_approval", "plan_rejected", "resume_blocked", "serve_unreachable",
+        "verification_failed", "worktree_drift",
+    ),
+    "job.apply": (),
+    "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
+    "job.evidence": ("job_not_found", "unsafe_task_id"),
+    "patch.hunks": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
+    "patch.approve-hunks": (
+        "ambiguous_job_id", "duplicate_hunk", "empty_decision", "invalid_job_id", "job_not_found",
+        "missing_reason", "no_diff_available", "overlapping_sets", "unknown_hunk",
+        "untrustworthy_view",
+    ),
+    "patch.approve": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
+    "patch.reject": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
+    "mission.abandon": ("mission_error", "mission_not_found", "no_project"),
+    "client.interface": (),
+}
 
 #: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
 #: each key maps to the tree of the object under it, or of every element of the list under it,
@@ -119,7 +167,10 @@ def _argument_entry(arg: Any) -> dict[str, Any]:
 
 
 def _operation_entry(command_id: str) -> dict[str, Any]:
-    """One operation, read from its catalog entry; `KeyError` when the catalog has no such id."""
+    """One operation, read from its catalog entry and its refusal tokens.
+
+    `KeyError` when the catalog has no such id or `OPERATION_REFUSAL_TOKENS` no entry for it.
+    """
     from apps.cli.command_catalog import get_command
 
     entry = get_command(command_id)
@@ -129,6 +180,7 @@ def _operation_entry(command_id: str) -> dict[str, Any]:
         "description": entry.description,
         "arguments": [_argument_entry(arg) for arg in entry.args],
         "exit_codes": list(entry.exit_codes),
+        "refusal_tokens": list(OPERATION_REFUSAL_TOKENS[command_id]),
     }
 
 
