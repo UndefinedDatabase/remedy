@@ -168,3 +168,75 @@ R-1149, Low, owned by F297).
 | Gate 5 (open finding ids) | done | `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1153']` |
 | C5 handback commit | done | this file |
 | Push after C5 | pending | runs right after this commit, reported in the worker's final reply |
+
+## Reviewer verdict on round 19 and the end of session 4, added after the handback
+
+Written by the reviewer of F295's fourth session after it reviewed round 19, and applied by a
+worker as this file's one later commit. Under operator amendment amend0827-process-diet rule 1
+this committed and pushed handoff is the durable carrier of the verdict and of the paragraphs
+below; the next session does not review round 19 again, it books the texts and goes on.
+
+THE SESSION ENDS HERE, after four delegated rounds, 16 to 19, the floor of the target. Two
+reasons. First, the building rounds are finished, and the next step, the SLOW MODE hardening
+stage, starts with an acceptance audit that the rules give to a fresh worker who sees only the
+feature file; that stage is best begun from a cold start. Second, this reviewer's own slips
+accumulated: its round 17 block changed what `remedy change proof` answers and named no
+document (R-1153), and once it moved its own shell into a dry worktree and had to move it back.
+This sentence replaces the self-assessment above.
+
+VERDICT ON ROUND 19: PASS, verified by dry run, bytes identical. Every file C1 to C4 committed
+equals the reviewer's prepared file under `.remedy-wt/f295-r19/`, eight of eight, on the same base
+`c4878bd45`.
+
+THE TEXTS TO BOOK. The next round's FIRST commit appends to `.agent/live_review.md`, in this
+order, each paragraph preceded by one blank line, exactly the two paragraphs between the marker
+lines below (the marker lines themselves are not copied):
+
+BEGIN-R19-BOOKING
+Gate: F295 R19 — the F295 round 19 entry, T004's contract page and R-1153's repair, over `c4878bd45`..`881e4c90b` (5 commits, each single-parent; insertions by `git show --numstat`: `0620e6693` 143, `4b1fab0f1` 150, `7f8af0c03` 98, `e34128197` 11, `881e4c90b` 78). VERDICT PASS, verified by dry run, bytes identical: every file C1 to C4 committed equals the reviewer's prepared file under `.remedy-wt/f295-r19/`, eight of eight, on the same base `c4878bd45`, and the reviewer's dry run of the round's selection over those bytes in a disposable worktree read `3594 passed, 4 skipped`, the fourth skip being the UI toolchain a worktree lacks; the worker's one run in the primary checkout read `3595 passed, 3 skipped`. The handback `881e4c90b` was the one file the dry run did not hold, and the three selected files that name it read `43 passed, 1 skipped` at `881e4c90b`. `4b1fab0f1` and `7f8af0c03` land DECISION F295 D17, and with them T004 and the building rounds of F295 close. RED CONTROLS of the page's tests in that worktree, the unmutated control `5 passed` before and after, seven of seven red: the page dropping a flag the gate test uses, the page naming a key the gate test does not read, the gate test reading a key the page does not name, the page's order file differing from the gate test's, the page dropping an exit code, the page naming a command the gate test does not run, and the gate test passing a flag the page does not name. `remedy integrity check --json` read `"fail_count": 0`.
+
+Done: R-1153 — RESOLVED at F295 R19 by `e34128197`, proved by the reviewer's reading of the committed page at `881e4c90b`. `docs/system/proof-chain.md` carries the section "Job Applies": `remedy job apply` lands a result without a patch intent, the proof lists the job's apply records under `job_applies` in its JSON answer with their nine fields and as a `Job applies (<count>):` list in its text answer, `--path` keeps the applies that wrote that path, a job apply is never called verified, and the next action of a proof with no change and a landed apply says so.
+END-R19-BOOKING
+
+THE NEXT ROUND, in order: (1) the booking above, with `.agent/plan.md` advanced, as its first
+commit. (2) The SLOW MODE hardening stage of operator amendment amend0930b-slow-cap, rule (2):
+the reviewer delegates an acceptance audit to a fresh worker subagent given only
+`docs/roadmap/features/T12_F295.md` and the repository — no block, no handoff, no verdict — which
+names, for every statement under the feature file's Acceptance and Goal & Done headings, the test
+that turns red when that statement stops being true, and proves each by one mutation of the
+production code in a disposable worktree under `.remedy-wt/`, at least one proof reaching the
+feature through the command line; its report lands as `.agent/f295_acceptance_audit.md`, after the
+precedent of `.agent/f294_acceptance_audit.md`. Every gap becomes a finding owned by F295,
+repaired in reviewed rounds, at most three, and the feature file's Built State gains the
+paragraph rule (4) asks for. (3) Then the closure sequence, with the one full suite.
+
+OBSERVATIONS FOR THE HARDENING STAGE, measured by this reviewer and not yet registered: eleven
+local branches `remedy/<16 hex>` with prunable worktree entries, made on 2026-10-07 at
+`c2b9a817f` and `4ae5d4d33`, came from F295's round 13 and 14 tests, most likely while they ran
+inside a reviewer's linked worktree, since this session's selections, run in linked worktrees
+without those test files, left none; after an extended job completes, the contract remainder
+decision its budget stop raised stays open in the digest, its question still saying that the
+mission stopped at its budget; and one broad run of the whole `tests/cli/` directory together with
+other directories, in a dry worktree at `741ba4013` plus round 16's draft, failed six tests of
+`tests/cli/test_study_cmd.py` that passed when that file ran alone and when `tests/cli/` ran with
+`-k study`.
+
+LESSONS THIS SESSION TAUGHT ITS OWN BLOCKS, for the next reviewer: a block that changes what a
+command answers names the page under `docs/system/` that documents that command (R-1153);
+`remedy do` itself takes `--deadline`, and a deadline already past is the way a fake run on the
+`remedy do` path raises a budget decision; the digest lists jobs under `client.jobs`, not inside
+the projects; and a job `remedy do` ran shows its hunks only after `remedy job evidence <job>`.
+
+FOR THE OPERATOR, IN PLAIN SENTENCES: this session finished building the way a program can drive
+Remedy without a person at the keyboard. A program can now read the individual changes of a
+proposed edit and the decisions taken on them, read afterwards which files an approved change
+wrote, and follow one written page that lists every command and field it needs; one test plays
+that program from a written order to the final record and fails if the page and the behaviour
+ever disagree. What remains is a careful check that every promise of this feature is guarded by a
+test, then the closing steps. Nothing waits for the operator.
+
+Fortschritt: ~92 % (T001 to T004 landed; then the SLOW MODE hardening stage and the closure) —
+Schätzung.
+
+Open findings after the booking: 4 (R-1138, R-1139, R-1143 and R-1149, Low, owned by F297; R-1153
+resolved by the booking). Operator questions open: 0.
