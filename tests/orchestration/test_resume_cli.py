@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+import apps.cli.commands.do_cmd as do_cmd
 import apps.cli.commands.job as job_cmd
 import packages.orchestration.checkpoints as cp
 from packages.core.models import RunState
@@ -28,7 +29,12 @@ from packages.orchestration.checkpoints import (
     verify_digest_for,
     write_checkpoint,
 )
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+from packages.orchestration.pingpong_job import (
+    ExecutionConfig,
+    JobPlan,
+    TaskEntry,
+    save_job_plan,
+)
 from packages.orchestration.safe_points import request_stop, stop_requested
 
 
@@ -51,11 +57,30 @@ def handed_off(monkeypatch) -> list[tuple]:
     return calls
 
 
+@pytest.fixture
+def job_run_calls(monkeypatch) -> list[tuple]:
+    """Record every hand-off to `_cmd_job_run` instead of running it (DECISION F295 D13)."""
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        do_cmd, "_cmd_job_run",
+        lambda job_id, **kwargs: calls.append((job_id, kwargs)))
+    return calls
+
+
 def make_job(*, pending: int = 2, completed: int = 0) -> JobPlan:
     tasks = [TaskEntry(title="d", status=RunState.COMPLETED)
              for i in range(completed)]
     tasks += [TaskEntry(title="d") for i in range(pending)]
     job = JobPlan(job_title="resume-job", tasks=tasks)
+    save_job_plan(job)
+    return job
+
+
+def _pingpong_job(**kwargs) -> JobPlan:
+    """A job the ping-pong engine has already run: its record carries an
+    `execution_config` (DECISION F295 D13)."""
+    job = make_job(**kwargs)
+    job.execution_config = ExecutionConfig()
     save_job_plan(job)
     return job
 
@@ -857,3 +882,84 @@ class TestBudgetStopThroughTheCommandLine:
         payload = _json.loads(capsys.readouterr().out)
         assert payload["error"] == "budget_decision_open"
         assert payload["decision_id"] == expected_decision_id
+
+
+# ---------------------------------------------------------------------------
+# A job the ping-pong engine has run resumes through job run, not the cycle
+# executor, which has no persisted roles to give it (R-1147, DECISION F295 D13)
+# ---------------------------------------------------------------------------
+
+
+class TestResumeHandsAPingPongJobToJobRun:
+    """DECISION F295 D13 (1) to (3): a job whose record carries an
+    `execution_config` — the ping-pong engine has already run it, through
+    `remedy job run` or an earlier resume — hands off to `_cmd_job_run`
+    instead of the multi-cycle executor, which has no persisted roles to
+    continue such a job with."""
+
+    def test_a_job_the_ping_pong_engine_ran_goes_to_job_run(
+            self, handed_off, job_run_calls):
+        job = _pingpong_job()
+
+        resume(job, json_output=True)
+
+        assert job_run_calls == [(str(job.job_id), {"json_output": True})]
+        assert handed_off == []
+
+    def test_a_job_no_ping_pong_run_touched_keeps_the_cycle_executor(
+            self, handed_off, job_run_calls):
+        job = make_job()
+
+        resume(job)
+
+        assert len(handed_off) == 1
+        assert job_run_calls == []
+
+    def test_cycles_or_unattended_are_noted_on_stderr_for_a_ping_pong_job(
+            self, handed_off, job_run_calls, capsys):
+        job_a = _pingpong_job()
+        resume(job_a, cycles=3)
+        err_a = capsys.readouterr().err
+        assert "--cycles" in err_a and "--unattended" in err_a
+        assert "remedy job run" in err_a
+
+        job_b = _pingpong_job()
+        resume(job_b, unattended=True)
+        err_b = capsys.readouterr().err
+        assert "--cycles" in err_b and "--unattended" in err_b
+
+        assert job_run_calls == [
+            (str(job_a.job_id), {"json_output": False}),
+            (str(job_b.job_id), {"json_output": False}),
+        ]
+        assert handed_off == []
+
+    def test_under_json_the_progress_line_goes_to_stderr(
+            self, handed_off, job_run_calls, capsys):
+        job = make_job()
+        resume(job, json_output=True)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "no checkpoint found" in captured.err
+
+        job2 = make_job()
+        put_checkpoint(job2)
+        resume(job2, json_output=True)
+        captured2 = capsys.readouterr()
+        assert captured2.out == ""
+        assert "resuming from checkpoint" in captured2.err
+
+    def test_without_json_the_progress_line_stays_on_stdout(
+            self, handed_off, job_run_calls, capsys):
+        job = make_job()
+        resume(job)
+        captured = capsys.readouterr()
+        assert "no checkpoint found" in captured.out
+        assert captured.err == ""
+
+        job2 = make_job()
+        put_checkpoint(job2)
+        resume(job2)
+        captured2 = capsys.readouterr()
+        assert "resuming from checkpoint" in captured2.out
+        assert captured2.err == ""
