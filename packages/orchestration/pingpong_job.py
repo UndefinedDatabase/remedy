@@ -3125,14 +3125,34 @@ def run_job(
                     if _burn_record != job.burn_reading:
                         job.burn_reading = _burn_record
                         _persist_job(job)
+                        from packages.orchestration.job_burn import (
+                            job_approved_unattended as _job_approved_unattended,
+                        )
+                        _burn_unattended = _job_approved_unattended(job)
+                        # F116 T003, DECISION F116 D8 (1): one run-log event per NEW
+                        # trip, so the job's timeline names it. A ledger write must
+                        # never stop a healthy job: a failure is logged, the trip
+                        # stays recorded on the job, and the run goes on.
+                        try:
+                            from packages.orchestration.data_paths import (
+                                resolve_data_root as _burn_data_root,
+                            )
+                            from packages.orchestration.timeline import append_run_event
+
+                            append_run_event(
+                                _burn_data_root(), job.job_id, event="job_burn_tripped",
+                                metadata={**_burn_record, "unattended": _burn_unattended})
+                        except _TASK_LOG_ERRORS:
+                            import logging as _logging
+                            _logging.getLogger(__name__).error(
+                                "job_burn_tripped event write FAILED for job %r; the "
+                                "trip stays recorded on the job and the run continues",
+                                job.job_id, exc_info=True)
                         # F116 T002, DECISION F116 D5 (3): a NEW trip pauses a job
                         # approved to run with nobody watching, raising one
                         # [burn_alarm] decision carrying the arithmetic; an
                         # attended job keeps running on the recorded warning alone.
-                        from packages.orchestration.job_burn import (
-                            job_approved_unattended as _job_approved_unattended,
-                        )
-                        if _job_approved_unattended(job):
+                        if _burn_unattended:
                             from packages.orchestration import (
                                 pause_control as _burn_pause_control,
                             )

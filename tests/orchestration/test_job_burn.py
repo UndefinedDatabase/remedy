@@ -593,6 +593,74 @@ def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
     assert job.burn_reading["tripped"] is True
 
 
+# ── the job_burn_tripped run-log event ────────────────────────────────────────
+
+
+def _burn_events(job_id: str) -> list[dict[str, Any]]:
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import load_run_events
+
+    return [event for event in load_run_events(resolve_data_root(), job_id)
+            if event.get("event") == "job_burn_tripped"]
+
+
+def _run_attended_spike(tmp_path, monkeypatch):
+    """The round 4 spike run over a job a person started."""
+    _patch_burn_thresholds(
+        monkeypatch,
+        BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0))
+    repo = _burn_job_repo(tmp_path)
+    counter = [0]
+    sequence = [1500, 1500, 15000, 1500]
+    builder = _BurnSequenceProvider(sequence, counter, pass_on_round=1, fail_on_round=99)
+    reviewer = _BurnSequenceProvider(sequence, counter, pass_on_round=1, fail_on_round=99)
+    return _run_burn_job(
+        repo, builder_name=_BurnSequenceProvider.PROVIDER_NAME,
+        builder_provider=builder, reviewer_provider=reviewer)
+
+
+def test_a_new_trip_writes_one_job_burn_tripped_event(tmp_path, monkeypatch):
+    job = _run_attended_spike(tmp_path, monkeypatch)
+
+    events = _burn_events(job.job_id)
+    assert len(events) == 1
+    metadata = events[0]["metadata"]
+    assert metadata["since_label"] == 3
+    assert metadata["rate"] == 15000.0
+    assert metadata["expectation"] == 1500.0
+    assert metadata["basis"] == BASIS_TRAILING_BASELINE
+    assert metadata["unattended"] is False
+
+
+def test_an_unattended_trip_event_says_the_job_runs_unattended(tmp_path, monkeypatch):
+    job, _counter = _run_unattended_spike(tmp_path, monkeypatch)
+
+    events = _burn_events(job.job_id)
+    assert len(events) == 1
+    assert events[0]["metadata"]["unattended"] is True
+
+
+def test_a_failing_event_write_leaves_the_trip_recorded_and_the_job_running(
+        tmp_path, monkeypatch, caplog):
+    import logging
+
+    from packages.orchestration import timeline
+
+    def _refuse(*args, **kwargs):
+        raise OSError("run log unwritable")
+
+    monkeypatch.setattr(timeline, "append_run_event", _refuse)
+    with caplog.at_level(logging.ERROR, logger="packages.orchestration.pingpong_job"):
+        job = _run_attended_spike(tmp_path, monkeypatch)
+
+    assert job.state == JOB_COMPLETED
+    assert job.burn_reading is not None
+    assert job.burn_reading["tripped"] is True
+    records = [r for r in caplog.records
+               if "job_burn_tripped event write FAILED" in r.getMessage()]
+    assert len(records) == 1
+
+
 # ── recorded_burn_sentence ────────────────────────────────────────────────────
 
 
