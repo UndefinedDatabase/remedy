@@ -3,7 +3,7 @@
 A runaway between checkpoints burns quietly unless something compares what a
 run is spending NOW with what it was expected to spend. This module is that
 comparison, factored out of the watchdog's own tripwire (DECISION F116 D1) so
-every caller — the watchdog today, the job runner from T002 on — reads the
+every caller — the job runner from T002 on, the watchdog from T003 on — reads the
 same arithmetic rather than keeping its own copy.
 
 Two BASES, chosen by whether the caller supplies an hourly expectation:

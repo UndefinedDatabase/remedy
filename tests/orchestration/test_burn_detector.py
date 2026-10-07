@@ -89,6 +89,18 @@ def test_fewer_than_min_samples_plus_window_returns_none():
     assert evaluate_burn_rate(samples, BurnThresholds()) is None
 
 
+def test_trailing_basis_equality_boundary_does_not_trip():
+    """R-1165: rate EQUALS ``multiplier * expectation`` — the comparison is strict."""
+    samples = _samples([100, 100, 100, 100, 100, 300, 300, 300])
+
+    reading = evaluate_burn_rate(samples, BurnThresholds())
+
+    assert reading is not None
+    assert reading.tripped is False
+    assert reading.rate == 300.0
+    assert reading.expectation == 100.0
+
+
 def test_unmeasured_samples_interleaved_give_the_same_reading_as_without_them():
     clean = _samples([100, 100, 100, 100, 100, 400, 400, 400])
     noisy = [
@@ -187,6 +199,17 @@ def test_per_hour_basis_with_too_few_samples_returns_none():
     assert reading is None
 
 
+def test_per_hour_basis_equality_boundary_does_not_trip():
+    """R-1165: rate EQUALS ``multiplier * expectation`` — the comparison is strict."""
+    reading = evaluate_burn_rate(
+        _hour_samples(), BurnThresholds(expected_per_hour=1.0))
+
+    assert reading is not None
+    assert reading.tripped is False
+    assert reading.rate == 3.0
+    assert reading.expectation == 1.0
+
+
 # ── to_json ──────────────────────────────────────────────────────────────────
 
 
@@ -249,6 +272,41 @@ def test_the_trailing_basis_agrees_with_the_watchdogs_own_tripwire(tokens):
     thresholds = BurnThresholds(window=3, min_samples=0, multiplier=3.0)
 
     trip = evaluate_burn_anomaly(entries, window=3, min_samples=0, multiplier=3.0)
+    reading = evaluate_burn_rate(samples, thresholds)
+
+    assert (trip is None) == (reading is None or not reading.tripped)
+    if trip is not None:
+        assert reading.rate == trip.numbers["window_mean"]
+        assert reading.expectation == trip.numbers["baseline_mean"]
+        assert reading.baseline_samples == trip.numbers["baseline_samples"]
+        assert reading.since_label == trip.since_iteration
+
+
+#: R-1165: the first agreement table runs every case with ``min_samples=0``,
+#: so the watchdog's own default minimum, 5, is never exercised, and its
+#: ``zero_baseline`` case has an EMPTY baseline rather than one whose amounts
+#: are zero. This table runs at the watchdog's real default minimum and adds
+#: a zero-valued baseline followed by a positive window, plus the equality
+#: boundary both sides must refuse to trip on.
+_AGREEMENT_BOUNDARY_CASES = [
+    ("trips_at_the_window_floor", (100, 100, 100, 100, 100, 400, 400, 400)),
+    ("too_few_samples_returns_none", (100, 100, 100, 100, 100, 400, 400)),
+    ("zero_valued_baseline_trips_on_any_positive_window",
+     (0, 0, 0, 0, 0, 100, 100, 100)),
+    ("the_equality_boundary_does_not_trip", (100, 100, 100, 100, 100, 300, 300, 300)),
+]
+
+
+@pytest.mark.parametrize(
+    "tokens", [case[1] for case in _AGREEMENT_BOUNDARY_CASES],
+    ids=[case[0] for case in _AGREEMENT_BOUNDARY_CASES])
+def test_the_trailing_basis_agrees_with_the_watchdog_at_a_real_minimum(tokens):
+    entries = [_entry(i, tokens=t) for i, t in enumerate(tokens, start=1)]
+    samples = [BurnSample(amount=measured_tokens(entry), label=entry["iteration"])
+               for entry in entries]
+    thresholds = BurnThresholds(window=3, min_samples=5, multiplier=3.0)
+
+    trip = evaluate_burn_anomaly(entries, window=3, min_samples=5, multiplier=3.0)
     reading = evaluate_burn_rate(samples, thresholds)
 
     assert (trip is None) == (reading is None or not reading.tripped)
