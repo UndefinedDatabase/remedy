@@ -20,9 +20,9 @@ from packages.orchestration import pingpong_provider
 from packages.orchestration.call_identity import prepare_call_input
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
+    ClaudeCliProvider,
     _ReviewVerdictSchema,
     _to_json_schema_str,
-    ClaudeCliProvider,
     build_claude_cli_args,
 )
 
