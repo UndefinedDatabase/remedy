@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISION F298 D8).
+what a real run returns (DECISIONs F298 D8 and D9).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -171,6 +171,21 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+#: The keys of a job's execution configuration as its record exports them, a tree several answers
+#: carry under `execution_config` (DECISION F298 D9).
+EXECUTION_CONFIG_KEY_TREE: dict[str, Any] = {key: {} for key in (
+    "builder", "builder_source", "reviewer", "reviewer_source", "builder_model",
+    "builder_model_source", "builder_effort", "builder_effort_source", "reviewer_model",
+    "reviewer_model_source", "reviewer_effort", "reviewer_effort_source", "repair_provider",
+    "repair_provider_source", "repair_model", "repair_model_source", "repair_effort",
+    "repair_effort_source", "max_rounds", "max_rounds_source", "repair_rounds_allowed",
+    "repair_rounds_source", "test_command", "test_command_present", "test_command_source",
+    "claude_cli_write_mode", "claude_cli_write_mode_source", "context_strategy", "timeout_sec",
+    "timeout_sec_source", "timeout_profile", "timeout_profile_source", "max_output_chars",
+    "max_output_chars_source", "stream_evidence", "stream_evidence_source", "max_tasks",
+    "max_tasks_source",
+)}
+
 #: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
 #: the form of `DIGEST_KEY_TREE` (DECISION F298 D8). A top-level key absent here carries no keys
 #: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
@@ -236,6 +251,83 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "source": {},
             "open_blocking_criteria": {},
         },
+    },
+    "job.run": {
+        "tasks": {
+            "task_id": {},
+            "source_heading_number": {},
+            "title": {},
+            "status": {},
+            "run_id": {},
+            "final_status": {},
+            "test_passed": {},
+            "reviewer_verdict": {},
+            "repair_rounds_used": {},
+            "repair_rounds_allowed": {},
+            "safe_diff_files": {},
+            "error": {},
+            "apply_manifest": {
+                "task_id": {},
+                "run_id": {},
+                "applied_files": {},
+                "missing_files": {},
+                "unsupported_files": {},
+                "unexpected_files": {},
+                "duplicate_files": {},
+                "applied_file_proofs": {
+                    "path": {},
+                    "existed_before_job": {},
+                    "baseline_sha256": {},
+                    "final_workspace_sha256": {},
+                    "task_id": {},
+                    "run_id": {},
+                    "baseline_mode": {},
+                    "final_mode": {},
+                },
+                "status": {},
+            },
+            "proof_summary": {
+                "task_id": {},
+                "title": {},
+                "run_id": {},
+                "final_status": {},
+                "applied_files": {},
+                "test_passed": {},
+                "reviewer_verdict": {},
+                "repair_rounds_used": {},
+                "repair_rounds_allowed": {},
+                "tokens_estimated": {},
+            },
+            "veto": {"reason": {}, "actor": {}, "requested_at": {}, "unreachable_task_ids": {}},
+            "steering_not_consumed": {"message_id": {}, "text": {}, "received_at": {}},
+        },
+        "worktree": {
+            "branch": {},
+            "path": {},
+            "base_commit": {},
+            "head": {},
+            "cleanup_status": {},
+            "workspace_expected_present": {},
+        },
+        "result_diff": {"path": {}, "sha256": {}, "size_bytes": {}},
+        "target_guard": {
+            "target_mutated": {},
+            "target_content_mutated": {},
+            "target_operational_artifacts_changed": {},
+            "target_noise_changed": {},
+            "changed_target_files": {},
+            "ignored_operational_artifacts": {},
+            "ignored_target_noise_files": {},
+        },
+        "postmortem": {"path": {}, "error": {}},
+        "execution_config": EXECUTION_CONFIG_KEY_TREE,
+        "context_strategy": {
+            "strategy": {},
+            "previous_task_summary_limit": {},
+            "full_job_history_in_prompt": {},
+            "full_repo_in_prompt": {},
+        },
+        "cost_mirror": {"ledger_mirrored": {}, "out_dir": {}, "error": {}},
     },
 }
 

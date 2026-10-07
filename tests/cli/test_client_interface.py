@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISION F298 D8): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 and D9): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -40,6 +40,7 @@ from apps.cli.client_interface import (
     CLIENT_INTERFACE_VERSION,
     CLIENT_OPERATION_IDS,
     DIGEST_KEY_TREE,
+    EXECUTION_CONFIG_KEY_TREE,
     OPERATION_ANSWER_KEYS,
     OPERATION_REFUSAL_TOKENS,
     build_client_interface,
@@ -677,6 +678,49 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
                                   | _expression_keys(do_sequence, "ctx.push_outcome"))
 
 
+def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
+    """The string keys of every dict literal `function` in `path` puts under `key`, as the value of
+    a dict literal's entry or of a `name["key"] = ...` store, either branch of a conditional
+    expression included."""
+    values: list[ast.AST] = []
+    for node in ast.walk(_function_def(path, function)):
+        if isinstance(node, ast.Dict):
+            values += [value for name, value in zip(node.keys, node.values)
+                       if isinstance(name, ast.Constant) and name.value == key]
+        if isinstance(node, ast.Assign):
+            values += [node.value for target in node.targets
+                       if isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Constant)
+                       and target.slice.value == key]
+    keys: set[str] = set()
+    for value in values:
+        for branch in (value.body, value.orelse) if isinstance(value, ast.IfExp) else (value,):
+            keys |= _dict_display_keys(branch) or set()
+    assert keys, f"{function} puts no dict literal under {key}"
+    return keys
+
+
+def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
+    pingpong = "packages/orchestration/pingpong_job.py"
+    trees = ANSWER_KEY_TREES["job.run"]
+    tasks = trees["tasks"]
+    assert set(tasks) == _bound_dict_keys(_function_def(pingpong, "export_job_report"), "report")
+    assert set(tasks["apply_manifest"]) == _returned_dict_keys(pingpong, "_export_apply_manifest")
+    assert set(tasks["apply_manifest"]["applied_file_proofs"]) == (
+        _returned_dict_keys(pingpong, "_export_file_proof"))
+    assert set(tasks["proof_summary"]) == _returned_dict_keys(pingpong, "_export_proof_summary")
+    assert set(tasks["veto"]) == _dict_value_keys(pingpong, "export_job_report", "veto")
+    assert set(tasks["steering_not_consumed"]) == _dict_literal_keys(
+        _REPO_ROOT / pingpong, "_task_steering_not_consumed_map")
+    for key in ("worktree", "result_diff", "postmortem", "context_strategy"):
+        assert set(trees[key]) == _dict_value_keys(pingpong, "export_job_report", key), key
+    assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
+    assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(pingpong, "_export_execution_config")
+    assert not any(EXECUTION_CONFIG_KEY_TREE.values()), "an execution config key with keys below it"
+    assert set(trees["target_guard"]) == _returned_dict_keys(pingpong, "_export_target_guard")
+    assert set(trees["cost_mirror"]) == _dict_literal_keys(
+        _REPO_ROOT / "packages/orchestration/job_evidence.py", "mirror_job_run_into_ledger")
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -702,7 +746,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("job.resume", ["job", "resume", job_id], 3)
     answer("decision.resolve", ["decision", "resolve", job_id, budget["decision_id"], "--reason",
                                 "extend", "--answer", f"deadline={LATER_DEADLINE}"], 0)
-    answer("job.run", ["job", "run", job_id], 0)
+    ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
     answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
     answer("change.proof", ["change", "proof", job_id], 0)
@@ -714,9 +758,12 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
-    # The run reaches the levels the trees name under `remedy do`'s answer.
+    # The run reaches the levels the trees name under `remedy do`'s and `remedy job run`'s answers.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
+    assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
+            ("execution_config", "builder"), ("cost_mirror", "ledger_mirrored")} <= (
+        _key_paths(_key_tree(ran)))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
