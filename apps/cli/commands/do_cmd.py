@@ -768,6 +768,16 @@ def _cmd_job_run(
     if _refusal:
         fail("job_not_resumable", _refusal, json_output=json_output)
 
+    # DECISION F295 D12 (3): a cancelled job never runs again, beside the
+    # R-0913 refusal above and before anything runs or is forwarded.
+    from packages.core.models import RunState
+    if _recorded is not None and _recorded.state == RunState.CANCELLED:
+        fail(
+            "job_not_resumable",
+            f"job {job_id} is cancelled and never runs again.",
+            json_output=json_output,
+        )
+
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other
     # option, or a job this data root does not hold, runs here, as it always has.

@@ -2658,6 +2658,13 @@ def run_job(
             error=f"job_not_found: {job_id}",
         )
 
+    # DECISION F295 D12 (3): a cancelled job never runs again, whatever cancelled
+    # it. Checked HERE, before the F018 stopped-job guard and anything else, and
+    # not persisted — there is nothing to update on a terminal record.
+    if job.state == RunState.CANCELLED:
+        job.error = f"job_cancelled: job {job_id} is cancelled and never runs again"
+        return job
+
     # F018 Scope 6: a stopped job with a pending operator stop signal must not silently
     # resume.  Check HERE — before config resolution, budget setup, or any timestamp —
     # so the guard lives in the run_job boundary, not only in the CLI.

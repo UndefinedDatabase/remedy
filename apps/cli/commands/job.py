@@ -1353,6 +1353,8 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
     if job.tasks and not pending_tasks:
         state = "all_green"
+    elif job.state == RunState.CANCELLED:
+        state = "cancelled"
     elif checkpoint is None:
         state = "no_checkpoint"
     else:
@@ -1372,7 +1374,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
         "pending_tasks": len(pending_tasks),
         "would_run": (
             not stop["pending"] and head_outcome != "drift"
-            and gate == "open" and state != "all_green"
+            and gate == "open" and state not in ("all_green", "cancelled")
             and not budget_stopped
         ),
     }
@@ -1410,6 +1412,9 @@ def _print_resume_preview(preview: dict[str, Any]) -> None:
 
     if preview["state"] == "all_green":
         print("  state:         already all green — resume would be a no-op")
+    elif preview["state"] == "cancelled":
+        print("  state:         cancelled — resume would refuse because the "
+              "job is cancelled")
     elif preview["state"] == "no_checkpoint":
         print(f"  state:         no checkpoint found — would continue from the "
               f"persisted job state ({preview['pending_tasks']} task(s) pending)")
@@ -1533,6 +1538,12 @@ def _cmd_job_resume(
         fail(
             "plan_rejected",
             _plan_rejected_message(job_id_str),
+            json_output=json_output, exit_code=3,
+        )
+    if decision.reason == "job_cancelled":
+        fail(
+            "job_not_resumable",
+            f"job {job_id_str} is cancelled and never runs again.",
             json_output=json_output, exit_code=3,
         )
     if decision.reason == "budget_stopped":

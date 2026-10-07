@@ -473,7 +473,10 @@ def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
     2. the checkpoint's WORKTREE HEAD must match the live head (unknown is not
        a mismatch, and a checkpoint that recorded none is not compared);
     3. the PLAN-APPROVAL GATE is consulted, never bypassed;
-    4. a job whose open budget decision (DECISION F295 D11's
+    4. DECISION F295 D12 (3): a job in the terminal ``cancelled`` state is
+       refused — checked right after the all-green no-op, because a job that
+       is already all green is a no-op whether or not it is also cancelled;
+    5. a job whose open budget decision (DECISION F295 D11's
        ``open_budget_decision_id``) is non-empty is refused until that
        decision is answered — checked AFTER the all-green no-op below, because
        a job with nothing left to spend has nothing to refuse. An answered
@@ -513,6 +516,10 @@ def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
     if tasks and all(t.status == RunState.COMPLETED for t in tasks):
         return ResumeDecision(RESUME_NOOP, "all_green",
                               "already all green — nothing to resume")
+    if job.state == RunState.CANCELLED:
+        return ResumeDecision(
+            RESUME_REFUSED, "job_cancelled",
+            f"job {job.job_id} is cancelled and never runs again")
     decision_id = open_budget_decision_id(job)
     if decision_id:
         stop_reason = str(getattr(job, "stop_reason", "") or "")
