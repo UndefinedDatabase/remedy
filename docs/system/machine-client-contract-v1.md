@@ -178,7 +178,9 @@ to `^` holds again the tree of the object that holds it, because each earlier ve
 mission's plan carries its own earlier versions, and this document's own `digest` and
 `answer_trees` hold a tree under every name. A test holds each tree to the code that builds it,
 and the run above fails when an answer returns a key below the top level that the trees do not
-name (DECISIONs F298 D8 to D17). Inside
+name. Most shapes of `remedy job resume` lie off that run, so a test reads every value its code
+answers under a key without a tree and fails unless each is a word, a number, a flag, None or a
+list of words (DECISIONs F298 D8 to D18). Inside
 one major version
 it only grows. The product calls this
 document the machine client interface, because "contract" names a mission's acceptance criteria
