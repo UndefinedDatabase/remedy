@@ -6,19 +6,16 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 3, round 15: book round 14's FAIL verdict, register R-1151, and repair it — the exit-code
-guard's registry names the site `remedy job resume` now reaches through `remedy job run`'s
-handler, so the selection is green again over round 14's code.
+Session 4, round 16: book round 15's PASS and the resolutions of R-1147 and R-1151; then T003's
+last part under DECISION F295 D14 — `remedy patch hunks <job> [--task-run <task-id>] [--json]`,
+the command line's read of a job's hunk ids and of the hunk decision recorded for them, so a
+client without the cockpit can answer a hunk decision. T003 closes with this round.
 
 ## Next Steps
-1. Book round 15 and resolve R-1147 and R-1151; T003's last part: the hunk decision under
-   `--json`.
-2. T004: `docs/system/machine-client-contract-v1.md`, which also writes down the order file's
-   format and the unattended path, and the gate test.
-3. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
+1. T004: `docs/system/machine-client-contract-v1.md`, which also writes down the order file's
+   format, the unattended path and which command answers each kind of decision, and the gate
+   test.
+2. The SLOW MODE hardening stage (amend0930b-slow-cap), then the closure sequence.
 
 ## Risks
-- R-1147 (High) is repaired by round 14's code; until its resolution is booked,
-  `remedy integrity check` reads one failing check, `high_blockers_open`.
-- R-1151 (Low) is F295's own and is repaired this round.
 - R-1138, R-1139, R-1143 and R-1149 (Low) stay open, owned by F297.
