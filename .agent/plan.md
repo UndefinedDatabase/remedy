@@ -7,13 +7,13 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order.
 
 ## Current Step
-Round 1: claim F287, re-head `.agent/live_review.md`, book F295's round 31 and resolve R-1159,
-record DECISION F287 D1 and the slice order, and save the claim's measurement as
-`.agent/f287_inventory.md`. No production code.
+Round 2, T001 first half (DECISION F287 D2 (1)): `build_claude_cli_args` takes a validated
+`resume_session`; `ClaudeCliProvider` threads `resume` through every call path and records
+`resume_used` and `resume_session_ref` on a call that resumed. `supports_resume` stays false.
 
 ## Next Steps
-1. T001 — `claude-cli` resumes: the CLI argv carries the session, `resume` reaches every call
-   path, `supports_resume` true, `resume_used` and `resume_session_ref` set; the pin in
+1. Round 3, T001 second half (D2 (2)): a refused resume answers `resume_refused:` and falls back
+   with no transport retry; `supports_resume` true; the pin in
    `tests/orchestration/test_session_resume.py` changes with it.
 2. T002 — a relaunch through `run_job` on `claude-cli` resumes the parked sessions; first measure
    the relaunch's working directory.
