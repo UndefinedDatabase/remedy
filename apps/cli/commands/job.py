@@ -1317,6 +1317,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     (R-0146).
     """
     from packages.orchestration.checkpoints import resolve_live_worktree_head
+    from packages.orchestration.decision_queue import budget_decision_id
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import stop_requested
 
@@ -1341,6 +1342,13 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
 
     gate = task_plan_blocks_execution(job) or "open"
 
+    budget_stopped = str(getattr(job, "stop_source", "") or "") == "budget"
+    budget_stop = {
+        "stopped": budget_stopped,
+        "decision_id": (
+            budget_decision_id(job.stop_request_id) if budget_stopped else ""),
+    }
+
     pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
     if job.tasks and not pending_tasks:
         state = "all_green"
@@ -1356,6 +1364,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
         "stop_request": stop,
         "worktree_head": head,
         "plan_approval_gate": gate,
+        "budget_stop": budget_stop,
         "state": state,
         "checkpoint_index": (
             getattr(checkpoint, "cycle_index", None) if checkpoint else None),
@@ -1363,6 +1372,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
         "would_run": (
             not stop["pending"] and head_outcome != "drift"
             and gate == "open" and state != "all_green"
+            and not budget_stopped
         ),
     }
 
@@ -1406,6 +1416,13 @@ def _print_resume_preview(preview: dict[str, Any]) -> None:
         print(f"  state:         would resume from checkpoint "
               f"{preview['checkpoint_index']} "
               f"({preview['pending_tasks']} task(s) pending)")
+
+    budget = preview["budget_stop"]
+    if budget["stopped"]:
+        print(f"  budget stop:   OPEN — decision {budget['decision_id']}, "
+              f"resume would refuse")
+    else:
+        print("  budget stop:   none")
 
     print(f"  would run:     {'yes' if preview['would_run'] else 'no'}")
 
@@ -1455,7 +1472,7 @@ def _cmd_job_resume(
       * an all-green job -> friendly no-op, exit 0.
 
     Exit codes: 0 ok / no-op / stop consumed · 1 job or checkpoint problem ·
-    3 refused by a guard (head drift, plan-approval gate).
+    3 refused by a guard (head drift, plan-approval gate, budget decision open).
     """
     from packages.orchestration.checkpoints import (
         RESUME_NOOP,
@@ -1516,6 +1533,18 @@ def _cmd_job_resume(
             "plan_rejected",
             _plan_rejected_message(job_id_str),
             json_output=json_output, exit_code=3,
+        )
+    if decision.reason == "budget_stopped":
+        from packages.orchestration.decision_queue import budget_decision_id
+
+        _decision_id = budget_decision_id(job.stop_request_id)
+        fail(
+            "budget_decision_open",
+            f"job {job_id_str[:8]} was stopped by its budget "
+            f"({job.stop_reason or 'budget_exhausted'}) — it does not resume "
+            f"until the decision {_decision_id} is answered. Run: "
+            f"remedy decision list {job_id_str[:8]} --json",
+            json_output=json_output, exit_code=3, decision_id=_decision_id,
         )
 
     if decision.action == RESUME_NOOP:

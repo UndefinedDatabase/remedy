@@ -84,6 +84,12 @@ DECISION_TYPES = frozenset({
 })
 
 
+def budget_decision_id(request_id: str) -> str:
+    """The one spelling of a budget stop's decision id, named `budget:<request_id>`,
+    or `budget_exhausted` when the stop event carried no request id (DECISION F295 D9)."""
+    return f"budget:{request_id}" if request_id else "budget_exhausted"
+
+
 def list_decisions(
     job: JobPlan | Any,
     events: list[dict[str, Any]],
@@ -365,8 +371,7 @@ def list_decisions(
                 _budget_limit = str(
                     (ev.get("metadata") or {}).get("exhausted_limit", ""))
                 break
-        _decision_id = (f"budget:{_budget_request_id}"
-                        if _budget_request_id else "budget_exhausted")
+        _decision_id = budget_decision_id(_budget_request_id)
         # F032 T002a: the receipts behind the budget stop are built from what
         # this branch ALREADY read out of the stop event, so the card cites the
         # same evidence the guard acted on rather than a fresh derivation.  A
