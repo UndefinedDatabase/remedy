@@ -85,6 +85,7 @@ packages.orchestration.block_lint
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
 packages.orchestration.brain_viewer_theme
+packages.orchestration.budget_decision
 packages.orchestration.budget_guard
 packages.orchestration.budget_resolution
 packages.orchestration.builder_bridge

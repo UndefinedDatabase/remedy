@@ -82,6 +82,32 @@ def _pos_float(name: str, raw: Any) -> float | None:
     return raw
 
 
+#: DECISION F295 D11 (1): the five limits a budget decision may raise, each
+#: parsed through the same private parser the matching `remedy job run` flag
+#: already resolves through — `resolve_job_budgets` below uses the same five.
+_LIMIT_PARSERS: dict[str, Any] = {
+    "max_total_tokens": lambda raw: _pos_int("max_total_tokens", raw),
+    "max_provider_calls": lambda raw: _pos_int("max_provider_calls", raw),
+    "max_wall_clock_minutes": lambda raw: _pos_int("max_wall_clock_minutes", raw),
+    "max_cost_usd": lambda raw: _pos_float("max_cost_usd", raw),
+    "deadline": lambda raw: _parse_deadline(str(raw)),
+}
+
+
+def parse_budget_limit(name: str, raw: Any) -> int | float | datetime | None:
+    """Parse one of the D11 (1) budget limits through the private parser
+    `resolve_job_budgets` already uses for the matching CLI flag.
+
+    Raises :class:`BudgetConfigError` for any name other than the five D11 (1)
+    names — the same error every parser below already raises for a bad value.
+    """
+    try:
+        parser = _LIMIT_PARSERS[name]
+    except KeyError:
+        raise BudgetConfigError(f"unknown budget limit: {name!r}") from None
+    return parser(raw)
+
+
 # F104 predictive inputs, resolved separately from JobBudgets: these are not
 # limits, they are the arithmetic a prediction is made of.
 _PREDICTIVE_CONFIG_KEYS = {

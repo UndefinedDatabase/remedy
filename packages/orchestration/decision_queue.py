@@ -22,6 +22,7 @@ Public API::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 # F032 T001b: the import direction is ONE-WAY and stays that way —
@@ -88,6 +89,59 @@ def budget_decision_id(request_id: str) -> str:
     """The one spelling of a budget stop's decision id, named `budget:<request_id>`,
     or `budget_exhausted` when the stop event carried no request id (DECISION F295 D9)."""
     return f"budget:{request_id}" if request_id else "budget_exhausted"
+
+
+def _parse_budget_time(raw: str) -> datetime | None:
+    """A timezone-aware time parsed from ``raw``, or None when it does not parse —
+    the safe direction for :func:`budget_stop_answer`: a time that fails to parse
+    counts as NOT answered rather than as answered (DECISION F295 D11 (4))."""
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed
+
+
+def budget_stop_answer(job: JobPlan | Any) -> dict[str, Any] | None:
+    """DECISION F295 D11 (4): the job's latest record in
+    ``job.metadata["budget_decision_answers"]`` whose ``answered_at`` is not
+    earlier than the job's ``stopped_at`` — both read as times — or None when
+    no such record exists. A stop finalized after the answer (a later
+    ``stopped_at``) is open again, under the same request id or another;
+    reading a malformed time on either side counts as NOT answered."""
+    meta = getattr(job, "metadata", None)
+    records = meta.get("budget_decision_answers") if isinstance(meta, dict) else None
+    if not isinstance(records, list) or not records:
+        return None
+    stopped_at = _parse_budget_time(str(getattr(job, "stopped_at", "") or ""))
+    if stopped_at is None:
+        return None
+    latest: dict[str, Any] | None = None
+    latest_at: datetime | None = None
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        answered_at = _parse_budget_time(str(record.get("answered_at", "") or ""))
+        if answered_at is None or answered_at < stopped_at:
+            continue
+        if latest_at is None or answered_at > latest_at:
+            latest, latest_at = record, answered_at
+    return latest
+
+
+def open_budget_decision_id(job: JobPlan | Any) -> str:
+    """DECISION F295 D11 (4): the decision id while the job's ``stop_source`` is
+    ``budget`` and its stop is not answered — an answered stop no longer holds
+    the job — and the empty string otherwise."""
+    if str(getattr(job, "stop_source", "") or "") != "budget":
+        return ""
+    if budget_stop_answer(job) is not None:
+        return ""
+    return budget_decision_id(str(getattr(job, "stop_request_id", "") or ""))
 
 
 def list_decisions(
@@ -358,7 +412,11 @@ def list_decisions(
                     (ev.get("metadata") or {}).get("reason", "budget_exhausted"))
                 break
 
-    if budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error):
+    # DECISION F295 D11 (4): a budget stop answered since the job last stopped
+    # is left off the queue — `budget_stop_answer` is the one reader of that,
+    # shared with the resume guard, so the two can never disagree about it.
+    if (budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error)
+            and budget_stop_answer(job) is None):
         _budget_request_id = ""
         _budget_created_at = ""
         _budget_limit = ""
