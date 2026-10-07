@@ -7,10 +7,11 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order; T001 to T003 have landed.
 
 ## Current Step
-Round 8, the hardening stage (operator amendment amend0930b-slow-cap): the acceptance audit
+Round 9, the hardening stage (operator amendment amend0930b-slow-cap): the acceptance audit
 (`.agent/f287_acceptance_audit.md`) proved nine claims and found one gap, R-1163, no proof through
-the command line. This round repairs it with a test under `tests/cli/` that pauses with
-`remedy job pause`, relaunches with `remedy job run` and reads `remedy run show --json`.
+the command line. Round 8 saved the audit; this round lands the repair, a test under `tests/cli/`
+that pauses with `remedy job pause`, relaunches with `remedy job run` and reads
+`remedy run show --json`.
 
 ## Next Steps
 1. Repeat the audit for the gap's statement (the user-path proof) with a fresh worker; another
