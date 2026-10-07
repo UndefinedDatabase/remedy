@@ -158,3 +158,64 @@ Open findings: 4 (R-1145 Medium, owned by F295, repaired by this round; R-1138, 
 | Gate 5 (open finding ids) | done | `['R-1138', 'R-1139', 'R-1143', 'R-1145']` |
 | C5 handback commit | done | this file |
 | Push after C5 | pending | runs right after this commit, reported in the worker's final reply |
+
+## Reviewer verdict on round 9 and the end of session 2, added after the handback
+
+Written by the reviewer of F295's second session after it reviewed round 9, and applied by a
+worker as this file's one later commit. Under operator amendment amend0827-process-diet rule 1
+this committed and pushed handoff is the durable carrier of the verdict and the two finding drafts
+below; the next session does not review round 9 again, it books the texts and goes on.
+
+THE SESSION ENDS HERE, after three delegated rounds, below the floor of four, for this one reason:
+the next round needs fresh research — which code path `remedy job resume` takes for a job its
+budget stopped, and the design of the budget decision's answer — and this reviewer's context
+already holds three rounds of dry runs, mutations and two probes, so a fresh session does that
+research better. This sentence replaces the self-assessment above, which was written before the
+probes.
+
+VERDICT ON ROUND 9: PASS, verified by dry run, bytes identical. Every file C1 to C4 committed
+equals the reviewer's prepared file under `.remedy-wt/f295-r9/` at the commit that wrote it, ten of
+ten, and the four code and record files again at `0c3cdf9fd`; the reviewer's dry run used those
+same bytes in a disposable worktree at the same base `977e6e5e5`.
+
+THE TEXTS TO BOOK. The next round's FIRST commit appends to `.agent/live_review.md`, in this
+order, each paragraph preceded by one blank line, exactly the four paragraphs between the marker
+lines below (the marker lines themselves are not copied):
+
+BEGIN-R9-BOOKING
+Gate: F295 R9 — the F295 round 9 entry, R-1145's repair and T003's stdin proof, over `977e6e5e5`..`0c3cdf9fd` (5 commits, each single-parent; insertions by `git show --numstat`: `af749f212` 145, `927d233d3` 5, `ce552b87a` 78, `7d24833c8` 84, `0c3cdf9fd` 65). VERDICT PASS, verified by dry run, bytes identical: every file C1 to C4 committed equals the reviewer's prepared file under `.remedy-wt/f295-r9/` at the commit that wrote it, ten of ten, and the reviewer's dry run used those same bytes in a disposable worktree at the same base `977e6e5e5`. `927d233d3` gives the child of `run_guarded` and of `run_streamed_command` `stdin=subprocess.DEVNULL`; `ce552b87a` and `7d24833c8` add four tests, each starting a real process whose stdin is a pipe nobody writes to and nobody closes. The reviewer's dry run of the round's selection read `4133 passed, 4 skipped`, the extra skip being the vitest check a fresh worktree cannot run, and the worker's one run in the primary checkout read `4134 passed, 3 skipped`; `remedy integrity check --json` read `"fail_count": 0`. RED-PROOFS, in that worktree over the open-pipe tests of `tests/cli/test_do_flags.py`, `tests/cli/test_cost_preview_confirm.py`, `tests/orchestration/test_exec_guard.py` and `tests/orchestration/test_stream_evidence.py`, the unmutated control `5 passed` before and after, five of five red: the guarded child inheriting stdin 1, the streamed child inheriting stdin 1, the confirmation asking on a pipe 1, the confirmation ignoring `--yes` 1, and `remedy do` reading one line of stdin 1; the four that read the pipe blocked until their own timeout, which is the failure each of those tests exists to catch.
+
+Done: R-1145 — RESOLVED at F295 R9 by `927d233d3` and `ce552b87a`, under DECISION F295 D8, proved by the reviewer's red-proofs recorded in the F295 R9 gate entry above. `run_guarded` in `packages/orchestration/exec_guard.py`, which runs the operator's `claude` command line for the builder and the reviewer, and `run_streamed_command` in `packages/orchestration/stream_evidence.py`, which runs the streaming provider, start their child with `stdin=subprocess.DEVNULL`, so a child reads end-of-file at once even when the client that started Remedy holds its stdin open as a pipe. `test_a_guarded_child_reads_end_of_file_while_the_callers_stdin_is_an_open_pipe` and `test_a_streamed_child_reads_end_of_file_while_the_callers_stdin_is_an_open_pipe` run exactly that caller.
+
+- R-1146 — Medium, A JOB STOPPED BY ITS BUDGET RAISES A DECISION WITH THE OPTIONS `extend` AND `abandon` THAT NO COMMAND AND NO DOOR CAN ANSWER, WHILE TWO REFUSALS SEND THE OPERATOR TO EXACTLY THAT DECISION. Raised by the reviewer of F295's second session while measuring T003. SEARCHED BEFORE MINTING (checklist item 30): the open set at `0c3cdf9fd` is `['R-1138', 'R-1139', 'R-1143', 'R-1145']`, and none names a budget decision. MEASURED at `0c3cdf9fd` with `.remedy-wt/f295-r10/probe_stop.py`, on a scratch data root with the fake providers: a job planned by `remedy do <order> --plan-only` and run by `remedy job run <job> --deadline 2000-01-01T00:00:00+00:00` is listed by `remedy decision list <job> --json` and by the client digest with the decision `budget:budget_dd5d4ed727f982e2`, type `token_budget`, status `open`, options `extend` and `abandon`. Read in the code at `0c3cdf9fd`: `_cmd_decision_resolve` in `apps/cli/commands/decision.py` has no branch for a `budget:` id, so it answers `decision_not_resolvable`; the cockpit's `_answerable_by_decision_resolve` in `packages/orchestration/decision_inbox.py` reads it as not answerable; `run_job` in `packages/orchestration/pingpong_job.py` refuses new limits for a stopped job with "use the Decision workflow (extend/abandon)", and `remedy job budget <job> set max_cost_usd <value>` refuses with "a stopped job's limits change through its Decision". WHY MEDIUM: a job its budget stopped can never continue with a raised limit through any door that names the way, and the feature file names the budget raise as a decision a machine client must answer with `--json`. THE REPAIR is designed by the next round as a DECISION: answering `extend` with the raised limit and `abandon` from the command line under `--json`, recorded so that the decision reads resolved afterwards. Owner: F295. OPEN.
+
+- R-1147 — High, `remedy job resume` RUNS A JOB ITS BUDGET STOPPED TO COMPLETION WHILE THE EXHAUSTED LIMIT STILL STANDS, THROUGH A PROVIDER OTHER THAN THE JOB'S OWN BUILDER, AND LEAVES THE BUDGET DECISION OPEN. Raised by the reviewer of F295's second session while measuring T003. SEARCHED BEFORE MINTING (checklist item 30): the open set at `0c3cdf9fd` is `['R-1138', 'R-1139', 'R-1143', 'R-1145']`, R-1146 is drafted beside this paragraph and names the missing answer, not the resume, and none names `job resume`. MEASURED at `0c3cdf9fd`, continuing the run R-1146 measures: `remedy job resume <job> --yes --json` exited 0 after 44.6 seconds, reported the job's one task `verified` with `remaining` 0 and `"model": "muse-glimmer:latest"`, a local model, while the job's `execution_config` names the builder `fake` with source `cli`; afterwards the job record reads `status` `completed`, its `budgets.deadline` still `2000-01-01T00:00:00Z`, and `remedy decision list` still lists the budget decision as `open`. NOT MEASURED: which code path `job resume` took, and whether a job stopped by its cost cap behaves the same. WHY HIGH: the per-job cost cap is the rule every machine order rests on (`docs/roadmap/design/luna-control-plane-v1.md`, rule 5), and the command line itself tells a client to run `remedy job resume <job> --json` after it answers a task decision, so this path is the client's. THE REPAIR: the next round reads the resume path, makes `job resume` honour a budget stop until its decision is answered and run the job's own providers, and pins both with a test that resumes a job stopped by its budget. Owner: F295. OPEN.
+END-R9-BOOKING
+
+THE NEXT ROUND, in order: (1) the booking above, with `.agent/plan.md` advanced, as its first
+commit; (2) the reviewer reads `_cmd_job_resume` and the run path it calls, reproduces R-1147 with
+`python3 -B .remedy-wt/f295-r10/probe_stop.py <tree> <scratch dir> --deadline
+2000-01-01T00:00:00+00:00`, and writes DECISION F295 D9 for the budget decision's answer and the
+resume guard; (3) the repair lands in small commits with red-proofs. `remedy integrity check
+--json` reads one failing check once R-1147 is booked, `high_blockers_open`, until R-1147 is
+resolved; a block that orders that gate expects it. Then T004, the hardening stage and the closure.
+
+A SIDE EFFECT TO KNOW ABOUT: the reviewer's second probe made one call to the local model
+`muse-glimmer:latest` on this machine, through the resume R-1147 describes, on a scratch data root
+under `.remedy-wt/f295-r10/`. Nothing outside this machine was contacted and no repository but the
+probe's scratch one was touched.
+
+FOR THE OPERATOR, IN PLAIN SENTENCES, correcting the paragraph above: this session finished the
+status reading for a program and proved that Remedy never waits on an open input channel. While
+preparing the next step, the reviewer found two real problems with jobs that stop because they ran
+out of budget. First, there is no command that lets anyone, person or program, say "give it more
+budget" or "give up" for such a job, although Remedy's own messages point to exactly that choice.
+Second, the command that continues a stopped job ran such a job to the end anyway, ignoring the
+spent budget, and used a local AI model instead of the one the job was set up with. Both are the
+next session's first work. The main line is not affected, and nothing waits for the operator.
+
+Fortschritt: ~68 % (T001 and T002 landed · T003's stdin proof landed · R-1146 and R-1147 and the
+budget answer open · T004 open; then the hardening stage and the closure) — Schätzung.
+
+Open findings after the booking: 5 (R-1147 High and R-1146 Medium, owned by F295; R-1138, R-1139
+and R-1143 Low, owned by F297; R-1145 resolved by the booking). Operator questions open: 0.
