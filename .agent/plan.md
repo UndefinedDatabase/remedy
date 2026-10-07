@@ -8,19 +8,17 @@ every operation, field, word, token and exit code (docs/roadmap/features/T12_F29
 F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 4, round 17: T001's sixteenth part. The interface names the keys under
-`remedy job resume`'s answers, sharing `remedy job run`'s report trees (DECISION F298 D17), held
-to the code that builds each tree and to a real run; round 16's verdict is booked.
+Session 4, round 18: T001's seventeenth part. Every operation has an answer tree entry, and every
+key of `remedy job resume`'s answers without a tree is proved to hold a word, a number, a flag,
+None or a list of words (DECISION F298 D18, narrowing D17 (5)); round 17's verdict is booked.
 
 ## Next Steps
-1. T001, next part: every operation has an entry in the answer trees, and every key without a tree
-   is proved to hold no object, `remedy job resume`'s first (D17 (5)).
-2. T001, last part: `docs/system/machine-client-contract-v1.md` rendered from the interface, and
+1. T001, last part: `docs/system/machine-client-contract-v1.md` rendered from the interface, and
    the test that fails when page and interface differ.
-3. T002: an order runs in the repository of the project it names, or is refused before any step.
-4. T003: honest refusals under `--approve --json`, and one command that declines a result.
-5. T004: the second gate test — commit and push, two jobs, one order file started twice.
-6. T005, T006, T007; then the amend0930b-slow-cap hardening stage and the closure sequence.
+2. T002: an order runs in the repository of the project it names, or is refused before any step.
+3. T003: honest refusals under `--approve --json`, and one command that declines a result.
+4. T004: the second gate test — commit and push, two jobs, one order file started twice.
+5. T005, T006, T007; then the amend0930b-slow-cap hardening stage and the closure sequence.
 
 ## Risks
 - F298 is large for 25 rounds; D1 names the split point if the soft limit is reached.
