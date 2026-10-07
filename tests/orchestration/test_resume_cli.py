@@ -555,6 +555,14 @@ def _budget_stopped_job(**kwargs) -> JobPlan:
     return job
 
 
+def _cancelled_job(**kwargs) -> JobPlan:
+    """A job cancelled by `abandon` (DECISION F295 D12 (3))."""
+    job = make_job(**kwargs)
+    job.state = RunState.CANCELLED
+    save_job_plan(job)
+    return job
+
+
 class TestBudgetStop:
     def test_a_job_its_budget_stopped_is_refused_with_its_decision_id(
             self, handed_off, capsys):
@@ -640,6 +648,55 @@ class TestBudgetStop:
         assert decision.action == cp.RESUME_REFUSED
         assert decision.reason == "budget_stopped"
         assert "budget:budget_abc" in decision.detail
+
+    def test_a_cancelled_job_is_refused_with_exit_three(self, handed_off, capsys):
+        """DECISION F295 D12 (3): `remedy job resume` refuses a cancelled job."""
+        import json as _json
+
+        job = _cancelled_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "job_not_resumable"
+        assert handed_off == []
+
+    def test_an_all_green_cancelled_job_is_a_no_op(self, handed_off, capsys):
+        job = _cancelled_job(pending=0, completed=2)
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "already all green" in out
+        assert handed_off == []
+
+    def test_the_loops_guard_refuses_a_cancelled_job(self):
+        job = _cancelled_job()
+
+        decision = cp.decide_checkpoint_resume(job, None)
+
+        assert decision.action == cp.RESUME_REFUSED
+        assert decision.reason == "job_cancelled"
+
+    def test_the_preview_of_a_cancelled_job_would_not_run(self, handed_off, capsys):
+        import json as _json
+
+        job = _cancelled_job()
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["state"] == "cancelled"
+        assert payload["would_run"] is False
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "state:         cancelled" in out
+        assert "would run:     no" in out
+
+        assert handed_off == []
 
     def test_the_preview_reports_the_budget_stop_and_would_not_run(
             self, handed_off, capsys):

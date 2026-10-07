@@ -1,5 +1,7 @@
-"""F295 R12 — DECISION F295 D11: `answer_budget_decision`, its readers and the
-resume guard's fourth guard, over a job a budget stop left `stopped` (R-1146).
+"""F295 R12/R13 — DECISION F295 D11 and D12: `answer_budget_decision`, its
+readers, the resume guard's fourth guard and `run_job`'s cancelled-job guard,
+over a job a budget stop left `stopped` (R-1146) or `abandon` left
+`cancelled` (R-1146 part two).
 
 Every test here builds a `JobPlan` stopped by its budget the way
 `tests.orchestration.test_resume_cli._budget_stopped_job` builds one — with
@@ -13,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from packages.core.models import RunState
 from packages.orchestration.budget_decision import answer_budget_decision
 from packages.orchestration.budget_resolution import BudgetConfigError, parse_budget_limit
 from packages.orchestration.decision_queue import (
@@ -128,6 +131,29 @@ class TestExtendRecordsTheAnswer:
         assert any(i.startswith("budget") for i in ids_later)
 
 
+class TestAbandonCancelsTheJob:
+    def test_abandon_cancels_the_job_and_records_the_answer(self) -> None:
+        job = _budget_stopped_job()
+        decision_id = _open_decision_id(job)
+        budgets_before = copy.deepcopy(job.budgets)
+
+        result = answer_budget_decision(job, decision_id, "abandon", [], now=NOW)
+
+        assert result["outcome"] == "abandoned"
+        assert result["state"] == "cancelled"
+        assert job.state == RunState.CANCELLED
+        assert job.budgets == budgets_before
+
+        records = job.metadata["budget_decision_answers"]
+        assert len(records) == 1
+        record = records[0]
+        assert record["option"] == "abandon"
+        assert record["raised"] == {}
+        assert record["decision_id"] == decision_id
+
+        assert open_budget_decision_id(job) == ""
+
+
 def _case_unknown_decision():
     job = _budget_stopped_job()
     return job, "budget:does-not-exist", "extend", \
@@ -145,8 +171,14 @@ def _case_already_answered():
 
 def _case_bad_reason():
     job = _budget_stopped_job()
-    return job, _open_decision_id(job), "abandon", \
+    return job, _open_decision_id(job), "cancel", \
         ["deadline=2026-02-01T00:00:00+00:00"], "invalid_argument"
+
+
+def _case_abandon_with_answer():
+    job = _budget_stopped_job()
+    return job, _open_decision_id(job), "abandon", \
+        ["max_cost_usd=100"], "option_not_applicable"
 
 
 def _case_no_answers():
@@ -200,10 +232,24 @@ def _case_disk_floor_stop():
         "budget_limit_not_raisable"
 
 
+def _case_deadline_raised_but_not_past_the_current_deadline():
+    """R-1150: a deadline answer later than `now` but not later than the job's
+    current deadline is refused — pinning the `current.deadline` check of
+    `answer_budget_decision`, measured at `e44057b21` as untested."""
+    job = _budget_stopped_job(
+        stop_reason="budget_exhausted:max_cost_usd",
+        budgets={"max_cost_usd": 10.0, "deadline": (NOW + timedelta(days=10)).isoformat()})
+    new_deadline = NOW + timedelta(days=5)
+    return job, _open_decision_id(job), "extend", [
+        "max_cost_usd=20", f"deadline={new_deadline.isoformat()}"], \
+        "budget_limit_not_raised"
+
+
 _REFUSAL_CASES = (
     _case_unknown_decision,
     _case_already_answered,
     _case_bad_reason,
+    _case_abandon_with_answer,
     _case_no_answers,
     _case_unknown_limit,
     _case_bad_value,
@@ -213,6 +259,7 @@ _REFUSAL_CASES = (
     _case_cost_not_raised,
     _case_deadline_earlier_than_now,
     _case_disk_floor_stop,
+    _case_deadline_raised_but_not_past_the_current_deadline,
 )
 
 
@@ -254,3 +301,27 @@ def test_parse_budget_limit_parses_each_limit_and_refuses_others() -> None:
         parse_budget_limit("min_free_disk_bytes", "5")
     with pytest.raises(BudgetConfigError):
         parse_budget_limit("nope", "1")
+
+
+def test_run_job_returns_a_cancelled_job_untouched(tmp_path, monkeypatch) -> None:
+    """DECISION F295 D12 (3): `run_job` refuses a cancelled job at once, before
+    anything else is touched, and never persists it."""
+    from packages.orchestration.data_paths import job_record_path
+    from packages.orchestration.pingpong_job import run_job, save_job_plan
+
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+
+    job = JobPlan(job_title="cancelled-job", tasks=[TaskEntry(title="d")])
+    job.state = RunState.CANCELLED
+    save_job_plan(job)
+
+    record_path = job_record_path(str(job.job_id))
+    before = record_path.read_bytes()
+
+    result = run_job(str(job.job_id))
+
+    assert result.error.startswith("job_cancelled:")
+    assert result.tasks[0].status == RunState.PENDING
+    assert record_path.read_bytes() == before
