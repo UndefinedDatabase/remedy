@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D14).
+what a real run returns (DECISIONs F298 D8 to D15).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -286,7 +286,8 @@ MISSION_CONTRACT_KEY_TREE: dict[str, Any] = {
 #: The mark a key of a tree maps to when the object under it, or each element of the list under
 #: it, has the shape of the object that holds the key: a shape that repeats itself (DECISION F298
 #: D14). A mission plan's `_versions` holds each earlier version of the plan, and each of those
-#: carries its own `_versions`.
+#: carries its own `_versions`; a key tree this interface answers holds a key tree under each of
+#: its names (DECISION F298 D15).
 KEY_TREE_REPEAT_MARK = "^"
 
 #: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
@@ -295,9 +296,9 @@ KEY_TREE_REPEAT_MARK = "^"
 #: tree under each of them; a key that maps to None holds an object whose keys the interface does
 #: not fix, which only a mission contract's check `spec` does: its keys are the arguments of the
 #: check's `kind`; a key that maps to `KEY_TREE_REPEAT_MARK` holds the tree of the object that holds
-#: it again, which only a mission plan's `_versions` does. An operation that maps to an empty dict
-#: answers no keys below its top level; an operation absent here has its nested keys named in a
-#: later part of F298.
+#: it again, which a mission plan's `_versions` does and the key trees `client.interface` answers
+#: do. An operation that maps to an empty dict answers no keys below its top level; an operation
+#: absent here has its nested keys named in a later part of F298.
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "do.run": {
         "contract": MISSION_CONTRACT_KEY_TREE,
@@ -544,6 +545,28 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "order": {"text": {}, "source_path": {}, "source_sha256": {}},
             "contract": MISSION_CONTRACT_KEY_TREE,
         },
+    },
+    "client.interface": {
+        "envelope": {"schema_version": {}, "reserved_keys": {}, "error_keys": {}},
+        "operations": {
+            "command_id": {},
+            "command": {},
+            "description": {},
+            "arguments": {
+                "name": {},
+                "help": {},
+                "option": {},
+                "required": {},
+                "takes_value": {},
+                "repeatable": {},
+            },
+            "exit_codes": {},
+            "refusal_tokens": {},
+        },
+        "exit_codes": {"code": {}, "name": {}, "meaning": {}},
+        "digest": {"*": KEY_TREE_REPEAT_MARK},
+        "answers": {"*": {}},
+        "answer_trees": {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}},
     },
 }
 

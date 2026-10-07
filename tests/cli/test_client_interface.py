@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D14): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D15): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -653,15 +653,19 @@ def _expression_keys(path: str, expression: str) -> set[str]:
 
 
 def test_every_answer_tree_hangs_under_a_declared_top_level_key():
+    repeated: set[tuple[str, ...]] = set()
     for command_id, trees in ANSWER_KEY_TREES.items():
         assert sorted(set(trees) - set(OPERATION_ANSWER_KEYS[command_id])) == [], command_id
         for key, tree in trees.items():
             assert isinstance(tree, dict) and tree, f"{command_id} {key}: an empty or opaque tree"
             assert all(path[-2:] == ("check", "spec") for path in _leaf_paths(tree, None)), (
                 f"{command_id} {key}: a key the interface does not fix, other than a check's spec")
-            assert all(path[-2:] == ("mission_plan", "_versions")
-                       for path in _leaf_paths(tree, KEY_TREE_REPEAT_MARK)), (
-                f"{command_id} {key}: a shape that repeats itself, other than a plan's versions")
+            repeated |= {(command_id, key, *path) for path in _leaf_paths(tree, KEY_TREE_REPEAT_MARK)}
+    # The shapes that repeat themselves: a mission plan's earlier versions, and the key trees the
+    # interface itself answers.
+    assert repeated == {("mission.abandon", "mission", "mission_plan", "_versions"),
+                        ("client.interface", "digest", "*"),
+                        ("client.interface", "answer_trees", "*", "*", "*")}
 
 
 def test_the_do_answer_trees_name_exactly_what_their_code_builds():
@@ -923,6 +927,52 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     assert plan[PLAN_VERSION_KEY] == plan[MILESTONES_DONE_KEY] == {}
 
 
+def _tree_leaves(tree: dict) -> list:
+    """Every value in a key tree that is not a tree of its own."""
+    leaves: list = []
+    for below in tree.values():
+        leaves += _tree_leaves(below) if isinstance(below, dict) else [below]
+    return leaves
+
+
+def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
+    interface = "apps/cli/client_interface.py"
+    trees = ANSWER_KEY_TREES["client.interface"]
+    [returned] = [node.value for node in _function_def(interface, "build_client_interface").body
+                  if isinstance(node, ast.Return)]
+    values = {key.value: value for key, value in zip(returned.keys, returned.values)}
+    assert set(trees["envelope"]) == _dict_display_keys(values["envelope"])
+    # Each operation is `_operation_entry`'s answer, with `_argument_entry`'s under `arguments`.
+    assert ast.unparse(values["operations"]) == (
+        "[_operation_entry(command_id) for command_id in CLIENT_OPERATION_IDS]")
+    assert set(trees["operations"]) == _returned_dict_keys(interface, "_operation_entry")
+    [entry] = [node.value for node in _function_def(interface, "_operation_entry").body
+               if isinstance(node, ast.Return)]
+    arguments = {key.value: value for key, value in zip(entry.keys, entry.values)}["arguments"]
+    assert ast.unparse(arguments) == "[_argument_entry(arg) for arg in entry.args]"
+    assert set(trees["operations"]["arguments"]) == _returned_dict_keys(interface, "_argument_entry")
+    assert isinstance(values["exit_codes"], ast.ListComp)
+    assert set(trees["exit_codes"]) == _dict_display_keys(values["exit_codes"].elt)
+    # The digest and the answer trees are key trees: under each name stands a key tree again, so
+    # their names are data; `answers` maps each command id to a list of names.
+    assert trees["digest"] == {"*": KEY_TREE_REPEAT_MARK}
+    assert ast.unparse(values["digest"]) == "copy.deepcopy(DIGEST_KEY_TREE)"
+    assert trees["answer_trees"] == {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}}
+    assert ast.unparse(values["answer_trees"]) == "copy.deepcopy(ANSWER_KEY_TREES)"
+    assert trees["answers"] == {"*": {}}
+    assert ast.unparse(values["answers"]) == (
+        "{command_id: list(keys) for (command_id, keys) in OPERATION_ANSWER_KEYS.items()}")
+    # A key tree holds, under a name, a tree, None or the repeat mark, and nothing else.
+    assert _tree_leaves(DIGEST_KEY_TREE) == []
+    assert {leaf for tree in ANSWER_KEY_TREES.values() for leaf in _tree_leaves(tree)} == {
+        None, KEY_TREE_REPEAT_MARK}
+    # The other top-level keys hold a word or a list of words.
+    built = build_client_interface()
+    for key in sorted(set(built) - set(trees)):
+        assert isinstance(built[key], str) or (
+            isinstance(built[key], list) and all(isinstance(word, str) for word in built[key])), key
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -958,11 +1008,11 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)
     answer("patch.reject", ["patch", "reject", job_id, "no-such-intent"], 1)
     abandoned = answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
-    answer("client.interface", ["client", "interface"], 0)
+    interfaced = answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
-    # `remedy job evidence` and `remedy mission abandon`.
+    # `remedy job evidence`, `remedy mission abandon` and `remedy client interface`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -994,6 +1044,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
              [("mission", "mission_plan", "_versions", "_versions", "added_key")])):
         mission = {**abandoned["mission"], "mission_plan": {**plan, "_versions": versions}}
         assert _undeclared_paths(_key_tree({"mission": mission}), declared) == undeclared
+    assert {("envelope", "error_keys"), ("operations", "arguments", "takes_value"),
+            ("exit_codes", "meaning"), ("digest", "projects", "missions", "mission_id"),
+            ("answer_trees", "mission.abandon", "mission", "mission_plan", "_versions")} <= (
+        _key_paths(_key_tree(interfaced)))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
