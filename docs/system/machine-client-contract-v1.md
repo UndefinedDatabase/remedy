@@ -163,7 +163,12 @@ and fails when either differs from that tree (DECISION F298 D3). Each command al
 codes are read, and fails when the code can answer a token the document does not name, or the
 document names one the code cannot answer (DECISION F298 D4). Today `remedy status` and
 `remedy job apply` name none: an apply that does not land still answers `"ok": true`, which F298
-changes. Inside one major version it only grows. The product calls this document the machine
-client interface, because "contract" names a mission's acceptance criteria and nothing else
+changes. Under `answers` it names, for `remedy do`, `remedy status`, `remedy decision resolve`,
+`remedy job run`, `remedy job apply` and `remedy change proof`, every top-level key an answer of
+that command can carry beside the envelope's own, whether it succeeds or refuses; a test reads
+them from the command's code the same way, and a test that runs the path above fails when an
+answer returns a key the document does not name (DECISION F298 D5). The keys under those keys,
+and the answers of the other commands, are named in later parts of F298. Inside one major version
+it only grows. The product calls this document the machine client interface, because "contract" names a mission's acceptance criteria and nothing else
 (DECISION F298 D2). The tables above are still the ones F295 wrote; F298 renders them from that
 document.
