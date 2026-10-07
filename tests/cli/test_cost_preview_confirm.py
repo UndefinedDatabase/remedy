@@ -140,3 +140,49 @@ class TestJsonOutputKeepsStdoutTheOneParseableObject:
         assert body["ok"] is False
         assert body["error"] == "confirmation_required"
         assert "do" in body["message"]
+
+
+# ── F295 T003: on a real open pipe, the confirmation never reads stdin ───────
+
+#: Run as its own process whose stdin is an open pipe: the confirmation for an
+#: unavailable estimate, which always asks, with `--yes` given or not (argv[1]).
+_CONFIRM_ON_AN_OPEN_PIPE = (
+    "import sys\n"
+    "from apps.cli.cost_preview_confirm import confirm_cost_preview\n"
+    "from packages.orchestration.cost_preview import CostBandEstimate\n"
+    "proceed = confirm_cost_preview(CostBandEstimate(None, None, 'estimate_unavailable', {}),\n"
+    "                               confirm_above_usd=0.5, yes=sys.argv[1] == 'yes',\n"
+    "                               command_name='job rerun-subtree', json_output=True)\n"
+    "print('proceed' if proceed else 'declined')\n"
+)
+
+
+@pytest.mark.parametrize(("yes", "exit_code", "marker"), [
+    ("yes", 0, "proceed"),
+    ("no", cpc.EXIT_USAGE, '"error": "confirmation_required"'),
+], ids=["with-yes-it-proceeds", "without-yes-it-refuses"])
+def test_on_an_open_pipe_the_confirmation_answers_without_reading_stdin(
+        tmp_path, yes, exit_code, marker):
+    """F295 T003: the F114 confirmation in a real process whose stdin is a pipe nobody
+    writes to and nobody closes. A read would block until the timeout below;
+    `communicate()` is never used, because it closes the pipe."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    out_path = tmp_path / "confirm.out"
+    with open(out_path, "wb") as out:
+        proc = subprocess.Popen([sys.executable, "-c", _CONFIRM_ON_AN_OPEN_PIPE, yes],
+                                cwd=str(repo), stdin=subprocess.PIPE, stdout=out,
+                                stderr=subprocess.DEVNULL)
+        try:
+            proc.wait(timeout=60)
+        finally:
+            proc.stdin.close()
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+    assert proc.returncode == exit_code
+    assert marker in out_path.read_text()
