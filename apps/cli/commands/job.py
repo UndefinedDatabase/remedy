@@ -2158,6 +2158,11 @@ def _cmd_job_budget(
     # The arithmetic a predictive stop already recorded, if this job took one.
     _recorded_prediction = (
         getattr(_plan, "budget_prediction", None) if _plan is not None else None)
+    # DECISION F116 D4 (5): the newest burn-monitor trip `run_job` recorded,
+    # shown whatever limits the job has — a burn alarm is not a money-limit
+    # feature.
+    _burn_reading = (
+        getattr(_plan, "burn_reading", None) if _plan is not None else None)
 
     if json_output:
         out: dict = {
@@ -2175,6 +2180,7 @@ def _cmd_job_budget(
             # Null, never an invented number, when no prediction could be made.
             "prediction": _prediction.to_json() if _prediction is not None else None,
             "recorded_prediction": _recorded_prediction,
+            "burn_reading": _burn_reading,
         }
         emit_ok(**out)
     else:
@@ -2225,6 +2231,22 @@ def _cmd_job_budget(
                   f"{_recorded_prediction.get('estimate_basis', '')}")
             print(f"    arithmetic:          "
                   f"{_recorded_prediction.get('arithmetic', '')}")
+        # DECISION F116 D4 (5): shown whatever limits the job has, each value
+        # read with `.get` so a hand-edited record prints a gap, never a crash.
+        if isinstance(_burn_reading, dict):
+            print("  recorded burn alarm:")
+            _burn_per = ("call" if _burn_reading.get("rate_unit") == "per_sample"
+                         else "hour")
+            print(f"    rate:                "
+                  f"{_burn_reading.get('rate')} {_burn_reading.get('unit')} per "
+                  f"{_burn_per} against an expected "
+                  f"{_burn_reading.get('expectation')} "
+                  f"({_burn_reading.get('basis')})")
+            print(f"    window:              "
+                  f"{_burn_reading.get('window_samples')} calls from call "
+                  f"{_burn_reading.get('since_label')} on, "
+                  f"{_burn_reading.get('window_spend')} {_burn_reading.get('unit')} "
+                  f"spent, multiplier {_burn_reading.get('multiplier')}")
         if evaluation is not None:
             print(f"  exhausted:             {evaluation.exhausted}")
             if evaluation.first_exhausted_limit:
