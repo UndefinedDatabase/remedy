@@ -1,31 +1,31 @@
-# Live Review — F287 Provider session continuity across relaunch
+# Live Review — F116 Cost anomaly alarm
 
-> Round-by-round review record, re-headed at the F287 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F295, whose STATUS
-> line went `[x]` on its own branch and whose pull request 311 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `7c91c3b69`. Hosted CI run 37594899789
-> on `f65c55890`, the pull request's last commit, passed both its Python 3.10 and its Python 3.12
-> job. `f65c55890` is the second parent of `7c91c3b69`, and the two trees are identical. F295's
-> round 31, its last round, was reviewed after its own handback, so operator amendment
+> Round-by-round review record, re-headed at the F116 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F287, whose STATUS
+> line went `[x]` on its own branch and whose pull request 312 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `e80b95467`. Hosted CI run 37628365732
+> on `2c860ddcb`, the pull request's last commit, passed both its Python 3.10 and its Python 3.12
+> job. `2c860ddcb` is the second parent of `e80b95467`, and the two trees are identical. F287's
+> round 17, its last round, was reviewed after its own handback, so operator amendment
 > amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
-> is happening anyway, together with the resolution of R-1159; both are appended at the end of this
-> record by this claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything from the Findings heading to the end of the file as it stood at `7c91c3b69` is carried
-> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> The open set at `7c91c3b69`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157',
-> 'R-1158', 'R-1159', 'R-1160']`; F297 owns all of them except R-1159, which F295 owned and this
-> claim resolves; F287 owns none.
+> is happening anyway; it is appended at the end of this record by this claim. Only the heading,
+> this paragraph and the Steps section below are rewritten; everything from the Findings heading to
+> the end of the file as it stood at `e80b95467` is carried forward BYTE-IDENTICAL, and finding ids
+> continue the monotonic R-XXXX series across the re-head. The open set at `e80b95467`, computed
+> with `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
+> 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162']`; F297 owns all of them, and F116
+> owns none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F287 D1's, which also writes the feature file's slice order. The first
-round claims F287, re-heads this record, books F295's round 31, resolves R-1159, and records the
-claim's measurement in `.agent/f287_inventory.md`. Then T001, the `claude-cli` provider resumes a
-session; then T002, a relaunch through `run_job` resumes the parked builder and reviewer sessions;
-then T003, every other production provider records that it did not resume, and the operator guide
-names which providers resume; then the amend0930b-slow-cap hardening stage this SLOW MODE session
-orders before the closure sequence; then closure.
+THE ORDER BELOW IS DECISION F116 D1's, which also writes the feature file's slice order. The first
+round claims F116, re-heads this record, books F287's round 17, and records the claim's measurement
+in `.agent/f116_inventory.md`. Then T001, the burn detector as a pure evaluator with its window
+math, floors, multiplier and table tests; then T002, the job runner calls it at its safe point and
+acts on a trip, a warning when attended and a pause decision when unattended; then T003, the
+watchdog's burn tripwire becomes a caller of the detector and its private check is deleted, with
+the docs; then the amend0930b-slow-cap hardening stage this SLOW MODE session orders before the
+closure sequence; then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -201,3 +201,5 @@ Gate: F287 R14 — the F287 round 14 entry, the closure's evidence round, over `
 Gate: F287 R15 — the F287 round 15 entry, a docs repair inside the closure sequence, over `90a8aeac2`..`ad3328537` (3 commits, each single-parent; insertions by `git show --numstat`: `ee5323f46` 114, `b363391ef` 16, `ad3328537` 136). VERDICT PASS. Re-derived with `.remedy-wt/f287-r15/review15.py`: `.agent/authored/f287-r15.md`, `.agent/live_review.md`, `.agent/plan.md`, `docs/system/semantic-dedupe-v1.md`, `README.md` and `docs/roadmap/features/T3_F287.md` equal the reviewer's prepared files, six of six, and `ad3328537` touches only `.agent/handoff.md`; every reflog entry after `90a8aeac2` is one of the round's commits, the local tip equalled the pushed branch and the tree was clean. The reviewer re-ran the round's selection in the primary checkout, `400 passed in 55.09s` at exit 0 with no FAILED, ERROR or SKIPPED line; the worker's run had read `400 passed in 55.59s`, and the worker declared that it read that run's exit code from the output instead of capturing it. The worker also declared that it signed its commits with the model it runs on, Claude Sonnet 5, where the block named another model; that is a line in `.agent/prose_slips.md`. Round 14's package no longer covers the head, so round 16 builds the evidence job and the package again.
 
 Gate: F287 R16 — the F287 round 16 entry, the closure's evidence round run again, over `ad3328537`..`332af0e68` (2 commits, each single-parent; insertions by `git show --numstat`: `ee90eaa09` 368, `332af0e68` 212). VERDICT PASS. Re-derived by the planner and reviewer of F287's third session with `.remedy-wt/f287-r16/review16.py`: the saved block `.agent/authored/f287-r16.md`, the evidence script `.agent/authored/f287-r16-create_f287_evidence.py`, `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/plan.md` equal the reviewer's prepared files under `.remedy-wt/f287-r16/`, five of five, and `332af0e68` touches only `.agent/handoff.md`. The evidence script differs from round 14's only in its round, evidence directory, job id, job title, run id and one docstring sentence; its test files, deselection and base are the same. The staging reclaim previewed `Would free 0 B in 0 paths` with one path refused as `class_not_job_keyed`, so no `--apply` ran. Evidence job `f287r16e1001` at `ee90eaa09`: the ancestry-path and plain counts from the fork point `7c91c3b69` read 53 and 53, 1879 node ids with 15 deselected, no unsafe id, pytest exit 0 at 1876 passed and 3 skipped, an empty `validate_verification_tests` problem list and `is_valid_current_run` True. The package `remedy-review-20261007-150840-READY_FOR_REVIEW.zip` reads `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; its manifest's `committed_review_subject` spans `7c91c3b69` to `ee90eaa09` over 53 commits, `testzip()` reads None, and the reviewer re-hashed the archived file in `/home/decodeux/Repos/remedy-history/zips` to the SHA-256 the tool printed, `90554c5598fb14a5804bd34b241802a7d6006473a4006c5b3b502ce5305a781b`. It replaces round 14's package, which no longer covers the head. Every reflog entry after `ad3328537` is one of the round's commits, the local tip equalled the pushed branch and the tree was clean. The evidence run is the round's one selection, on `ee90eaa09`, so the reviewer re-ran no test. The worker declared no slip. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162']`.
+
+Gate: F287 R17 — the F287 round 17 entry, the closing round, over `332af0e68`..`2c860ddcb` (3 commits, each single-parent; insertions by `git show --numstat`: `33b124749` 239, `8aa6ef25d` 80, `2c860ddcb` 205). VERDICT PASS. Re-derived by the planner and reviewer of F116's first session with `.remedy-wt/f116-r1/review_f287_r17.py`: the saved block `.agent/authored/f287-r17.md`, `.agent/authored/f287-r17-status_line.txt`, `.agent/authored/f287-r17-pr_body.md`, `.agent/live_review.md` and `.agent/plan.md` at `33b124749`, `.agent/live_review.md` and `.agent/live_review_archive.md` at `8aa6ef25d`, and `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` at `2c860ddcb` equal the files F287's reviewer prepared under `.remedy-wt/f287-r17/`, ten of ten. `2c860ddcb` touches `.agent/handoff.md`, `README.md`, `docs/roadmap/STATUS.md` and `scripts/self_use_queue.json` and nothing else. The rotation moved 31 gate records, 4 finding pairs and 1 resolved-text record and left the open set unchanged at nine. The reviewer read the diff of `2c860ddcb` bottom-up: F287's STATUS line is the one `[~]` line turned `[x]` with no other line touched, the README counts read 128 of 297 and Tier 3 at 7 of 28, and `SU-046`'s `consumed_by` reads `F287`. The reviewer re-ran no test: the round changed no file under `packages/`, `apps/` or `tests/`, its one selection read `555 passed` at exit 0 on the worker's run, and hosted CI ran the suite on the same bytes. Pull request 312's hosted CI run 37628365732 passed on Python 3.10 and Python 3.12, and the Open PR Gate of F116's first session merged it into `main` as `e80b95467`, whose tree equals `2c860ddcb`'s. The worker declared no slip. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162']`.
