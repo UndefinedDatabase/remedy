@@ -8,14 +8,14 @@ every operation, field, word, token and exit code (docs/roadmap/features/T12_F29
 F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 1, round 3: T001's second part. The interface carries the digest's key tree under
-`digest` (DECISION F298 D3), held to the digest's code by its syntax tree and to a real run's
-digest by a live test; round 2's verdict is booked.
+Session 1, round 4: T001's third part. Each operation of the interface carries its refusal tokens
+(DECISION F298 D4), held to a static reading of its handler with four dynamic sites verified by
+hand; round 3's verdict is booked.
 
 ## Next Steps
-1. T001, next part: the keys of the answers of the path's commands (`remedy do`, `status`,
-   `decision resolve`, `job run`, `job apply`, `change proof`) and the refusal tokens, held to the
-   real commands the same way.
+1. T001, next part: the top-level keys of the answers of the path's commands (`remedy do`,
+   `status`, `decision resolve`, `job run`, `job apply`, `change proof`), held to the real
+   commands.
 2. T001, last part: `docs/system/machine-client-contract-v1.md` rendered from the interface, and
    the test that fails when page and interface differ.
 3. T002: an order runs in the repository of the project it names, or is refused before any step.
