@@ -32,9 +32,15 @@ from packages.orchestration.pingpong_loop import (
     export_pingpong_json,
     load_run,
     parked_session_refs,
+    resume_declined_reasons,
     run_pingpong,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider import (
+    ClaudeCliProvider,
+    ClaudeProvider,
+    FakeProvider,
+    OllamaPingPongProvider,
+)
 from packages.orchestration.safe_points import request_stop
 from tests.orchestration.test_job_stop_integration import (  # noqa: F401
     _ONE_TASK_JOB,
@@ -382,3 +388,84 @@ class TestAParkedClaudeCliTaskResumesOnRelaunch:
         record = load_run(resumed.tasks[0].run_id)
         assert record["rounds"][0]["builder"]["resume_fallback"] is True
         assert record["rounds"][0]["builder"]["resume_used"] is False
+
+
+class TestAnOfferedSessionAProviderCannotResumeIsNamed:
+    """F287 T003 (DECISION F287 D7): a relaunch that offers a parked session to
+    a provider that cannot resume it names the role and the reason under
+    `resume_declined`, instead of dropping the offer without a trace."""
+
+    def test_each_offered_role_names_its_providers_own_reason(self):
+        assert resume_declined_reasons(
+            {"builder": "b", "reviewer": "r"},
+            builder=ClaudeProvider(), reviewer=OllamaPingPongProvider(),
+        ) == {
+            "builder": "the Anthropic API keeps no conversation between calls",
+            "reviewer": "an Ollama chat call keeps no conversation between calls",
+        }
+
+    def test_a_provider_that_actually_supports_resume_declines_nothing(self):
+        assert resume_declined_reasons(
+            {"builder": "b", "reviewer": "r"},
+            builder=ClaudeCliProvider(), reviewer=ClaudeCliProvider(),
+        ) == {}
+
+    def test_a_role_offered_no_session_is_absent_even_when_it_cannot_resume(self):
+        assert resume_declined_reasons(
+            {"builder": "b"},
+            builder=FakeProvider(supports_resume=True), reviewer=FakeProvider(),
+        ) == {}
+
+    def test_run_pingpong_records_the_declined_roles_in_its_export_and_on_disk(
+            self, isolate_data_root, demo_repo):
+        p = FakeProvider(pass_on_round=1, fail_on_round=99, fake_session_id="sess-new")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=p, reviewer_provider=p,
+            resume_sessions={"builder": "sess-parked-b", "reviewer": "sess-parked-r"},
+            resumed_from_run_id="parked-run",
+        )
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[0].builder_output.resume_used is False
+        assert result.rounds[0].reviewer_output.resume_used is False
+        expected = {
+            "builder": "the fake provider cannot resume a session",
+            "reviewer": "the fake provider cannot resume a session",
+        }
+        assert export_pingpong_json(result)["resume_declined"] == expected
+        assert load_run(result.run_id)["resume_declined"] == expected
+
+    def test_a_run_offered_nothing_exports_an_empty_mapping(
+            self, isolate_data_root, demo_repo):
+        provider = _resuming("sess-1")
+        result = run_pingpong("Fix README", str(demo_repo),
+                              builder_provider=provider, reviewer_provider=provider)
+        assert export_pingpong_json(result)["resume_declined"] == {}
+
+    def test_the_relaunch_names_the_role_and_reason_the_provider_declined_to_resume(
+            self, isolate_data_root, demo_repo):
+        job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
+        builder = PauseTriggerProvider(
+            on_build=1,
+            trigger=lambda: pc.request_pause(job.job_id, "mid-build pause", "cli"),
+            pass_on_round=1, fail_on_round=99,
+            supports_resume=True, fake_session_id="sess-parked")
+        parked = run_job(job.job_id, builder_provider=builder,
+                         reviewer_provider=_resuming("sess-parked-review"), repair_rounds=0)
+        assert parked.state == JOB_PAUSED
+        parked_run_id = parked.tasks[0].run_id
+        assert parked_run_id
+
+        resumed = run_job(
+            job.job_id,
+            builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+            reviewer_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+            repair_rounds=0,
+        )
+        assert resumed.state == JOB_COMPLETED
+        record = load_run(resumed.tasks[0].run_id)
+        assert record["resumed_from_run_id"] == parked_run_id
+        assert record["rounds"][0]["builder"]["resume_used"] is False
+        assert record["resume_declined"] == {
+            "builder": "the fake provider cannot resume a session",
+        }

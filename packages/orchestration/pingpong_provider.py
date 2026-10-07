@@ -550,6 +550,12 @@ class ClaudeProvider:
     def supports_resume(self) -> bool:
         return False
 
+    @property
+    def resume_unsupported_reason(self) -> str:
+        # WHY: DECISION F287 D7 — names, for an offered relaunch session, why
+        # this provider never resumes one.
+        return "the Anthropic API keeps no conversation between calls"
+
     def _get_client(self) -> Any:
         if self._client is not None:
             return self._client
@@ -1860,6 +1866,12 @@ class OllamaPingPongProvider:
     def supports_resume(self) -> bool:
         # No server-side session to resume: each chat call is stateless.
         return False
+
+    @property
+    def resume_unsupported_reason(self) -> str:
+        # WHY: DECISION F287 D7 — names, for an offered relaunch session, why
+        # this provider never resumes one.
+        return "an Ollama chat call keeps no conversation between calls"
 
     @property
     def model(self) -> str:
