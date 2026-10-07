@@ -1,46 +1,42 @@
-# Handoff — F298 session 2, round 7: T001's sixth part, the top-level answer keys of `job resume`
+# Handoff — F298 session 3, round 8: T001's seventh part, the keys under `remedy do`'s top-level answer keys
 
 ## Session
 
-SESSION 2 of feature F298 · round 7 · rounds so far 7
+SESSION 3 of feature F298 · round 8 · rounds so far 8
 
-Context self-assessment: the reviewer's context is heavily used after reviewing round 4 and three
-full rounds of dry runs. The next part, the keys under the answers' top-level keys, needs a scope
-decision that first measures every nested key of all fourteen answers: about 270 below the path's
-answers alone, built in many helper functions. The session therefore ends after round 7, below the
-target of six to eight rounds, so that this design starts in a fresh session.
+Context self-assessment: the reviewer's context is fresh after one round in this session, and the session continues.
 
-Fortschritt: ~26 % (claim · T001 six parts landed · T001 nested answer keys and page, T002 to T007 open) — Schätzung
+Fortschritt: ~28 % (claim · T001 seven parts landed · T001 other answer trees and page, T002 to T007 open) — Schätzung
 
 ## Range
 
-Review of `257afdb845d8f5489119a72061afa6c766823441`..HEAD (HEAD is C4 below).
+Review of `0c3b8a91d9cb9653349e56e07395be62d852d0db`..HEAD (HEAD is C4 below).
 
 ## Commits
 
-### 9e786c1b7 F298 R7 C1: book round 6, DECISION F298 D7, the plan
+### bffe03c19 F298 R8 C1: book round 7, DECISION F298 D8, the plan
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f298-r7.md` | 119/0 (new) | byte copy of the reviewer's `block.md` (119 lines, sha256 `5601077cf6063ab81de620cbae5cdee70978b949310aa32ce0929fa74732b305`) |
-| `.agent/decisions.md` | 10/0 | base blob at `257afdb84` followed by `append-decisions.txt` (DECISION F298 D7) |
-| `.agent/live_review.md` | 2/0 | base blob at `257afdb84` followed by `append-live_review.txt` (books round 6's PASS) |
-| `.agent/plan.md` | 9/11 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f298-r8.md` | 119/0 (new) | byte copy of the reviewer's `block.md` (119 lines, sha256 `b31e55afe499909075d22fa36dfae3d29803a87e7a3aef2fa139bf3913332cd4`) |
+| `.agent/decisions.md` | 10/0 | base blob at `0c3b8a91d` followed by `append-decisions.txt` (DECISION F298 D8) |
+| `.agent/live_review.md` | 2/0 | base blob at `0c3b8a91d` followed by `append-live_review.txt` (books round 7's PASS) |
+| `.agent/plan.md` | 4/4 | `dry-plan.md`, byte for byte |
 
-### 9be78d9e0 F298 R7 C2: the top-level answer keys of job resume in the machine client interface (T001, DECISION F298 D7)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `apps/cli/client_interface.py` | 18/3 | byte copy of `dry-client_interface.py`: `OPERATION_ANSWER_KEYS` also names `job.resume`, the union of its shapes |
-| `tests/cli/test_client_interface.py` | 86/18 | byte copy of `dry-test_client_interface.py`: four more hand-verified answer sites held to their code, keyword-only `dict(...)` bindings read by the static walk, every operation required to be declared, and the real run extended to answer `job resume` twice |
-
-### fa079e7cb F298 R7 C3: the machine client page names the answer keys of every command
+### 2599aefa2 F298 R8 C2: the keys under remedy do's answer keys in the machine client interface (T001, DECISION F298 D8)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/machine-client-contract-v1.md` | 7/6 | byte copy of `dry-machine-client-contract-v1.md`: the page names the answer keys of every command, `job resume` included, as the union of its shapes |
+| `apps/cli/client_interface.py` | 74/3 | byte copy of `dry-client_interface.py`: `ANSWER_KEY_TREES` names `remedy do`'s six trees, carried by the interface under `answer_trees` |
+| `tests/cli/test_client_interface.py` | 110/2 | byte copy of `dry-test_client_interface.py`: each tree held to the code that builds it, and the real run checked at every depth |
 
-### F298 R7 C4: handback (self-reference exception: the handoff is committed by this same commit)
+### 0e69a2942 F298 R8 C3: the machine client page names the answer trees
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/system/machine-client-contract-v1.md` | 7/2 | byte copy of `dry-machine-client-contract-v1.md`: the page names `answer_trees` |
+
+### F298 R8 C4: handback (self-reference exception: the handoff is committed by this same commit)
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -57,26 +53,26 @@ Review of `257afdb845d8f5489119a72061afa6c766823441`..HEAD (HEAD is C4 below).
 
 0. Before any write: `block.md` and every `append-*` and `dry-*` file named in the prompt matched
    its sha256 digest (7 of 7, Python `hashlib.sha256` over the bytes); `block.md` is 119 lines.
-   `git rev-parse HEAD` read `257afdb845d8f5489119a72061afa6c766823441`, equal to
+   `git rev-parse HEAD` read `0c3b8a91d9cb9653349e56e07395be62d852d0db`, equal to
    `origin/feature/f298-machine-client-contract-v1-1`; `git branch --show-current` read
    `feature/f298-machine-client-contract-v1-1`; `git status --porcelain` empty.
 1. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before every commit
-   below (the commit scripts assert it).
+   below (the commit script asserts it).
 2. C1: four byte-equality proofs all `True` (block copy; `.agent/live_review.md` and
-   `.agent/decisions.md` each equal to their base blob at `257afdb84` plus the matching
+   `.agent/decisions.md` each equal to their base blob at `0c3b8a91d` plus the matching
    `append-*.txt`; `.agent/plan.md` equal to `dry-plan.md`). Numstat before commit: `119 0` block
-   copy, `10 0` decisions.md, `2 0` live_review.md, `9 11` plan.md, matching the block exactly.
-3. C2: two byte-equality proofs, one per path against its `dry-*` file, all `True`. Numstat before
-   commit: `18 3` client_interface.py, `86 18` test_client_interface.py, matching the block exactly.
-   `git diff --cached` read as self-review before commit.
-4. C3: one byte-equality proof, `True`. Numstat before commit: `7 6` the page, matching the block
+   copy, `10 0` decisions.md, `2 0` live_review.md, `4 4` plan.md, matching the block exactly.
+3. C2: two byte-equality proofs, all `True`. Numstat before commit: `74 3` client_interface.py,
+   `110 2` test_client_interface.py, matching the block exactly. `git diff --cached` read as
+   self-review before commit.
+4. C3: one byte-equality proof, `True`. Numstat before commit: `7 2` the page, matching the block
    exactly. `git diff --cached` read before commit.
 5. **Gate 1**: `git -C /home/decodeux/Repos/remedy status --porcelain` — empty, captured exit code
    `0`. All 7 byte proofs of C1, C2 and C3 re-run against the committed blobs, all `True`.
 6. **Gate 2**:
    `python3 -m pytest -q -rfEs tests/cli/test_client_interface.py tests/cli/test_exit_codes.py tests/cli/test_machine_client_contract.py tests/cli/test_golden_path.py tests/docs/ tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py`
    — captured exit code `0`, no FAILED, ERROR or SKIPPED line, last line verbatim
-   `830 passed in 66.58s (0:01:06)`. Run once, as the round's one test selection.
+   `832 passed in 64.60s (0:01:04)`. Run once, as the round's one test selection.
 7. **Gate 3**: `python3 -m ruff check apps/cli/client_interface.py tests/cli/test_client_interface.py`
    — captured exit code `0`, whole output `All checks passed!`.
 8. **Gate 4**: `python3 -m apps.cli.main integrity check --json` — captured exit code `0`:
@@ -93,12 +89,12 @@ Review of `257afdb845d8f5489119a72061afa6c766823441`..HEAD (HEAD is C4 below).
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f298-r7.md`: 119 lines, byte-equal (`True`), sha256
-  `5601077cf6063ab81de620cbae5cdee70978b949310aa32ce0929fa74732b305`.
+- `block.md` → `.agent/authored/f298-r8.md`: 119 lines, byte-equal (`True`), sha256
+  `b31e55afe499909075d22fa36dfae3d29803a87e7a3aef2fa139bf3913332cd4`.
 - `dry-plan.md` → `.agent/plan.md`: byte-equal (`True`).
-- base `.agent/live_review.md` blob at `257afdb84` + `append-live_review.txt` →
+- base `.agent/live_review.md` blob at `0c3b8a91d` + `append-live_review.txt` →
   `.agent/live_review.md`: byte-equal (`True`).
-- base `.agent/decisions.md` blob at `257afdb84` + `append-decisions.txt` → `.agent/decisions.md`:
+- base `.agent/decisions.md` blob at `0c3b8a91d` + `append-decisions.txt` → `.agent/decisions.md`:
   byte-equal (`True`).
 - `dry-client_interface.py` → `apps/cli/client_interface.py`: byte-equal (`True`).
 - `dry-test_client_interface.py` → `tests/cli/test_client_interface.py`: byte-equal (`True`).
@@ -117,27 +113,18 @@ worker runs on.
 
 ## For the operator, in plain sentences
 
-The description that `remedy client interface` prints now lists every top-level name an answer can
-carry for all fourteen commands a program uses, including the command that resumes a stopped job,
-whose list covers every kind of answer it can give. A test reads those names from each command's
-code. A second test runs the commands and fails when an answer carries a name the list does not
-have. The names inside the answers follow in the next piece.
+The description that `remedy client interface` prints now also lists the names inside the answer of
+`remedy do`, the command that starts an order, down to the last level. Where an answer uses data
+such as a job id as a name, the description says so instead of listing names. One test reads those
+names from the code that builds each part of the answer. A second test runs the command and fails
+when the answer carries a name at any level that the description does not have. The other commands'
+inner names follow, a few commands at a time.
 
 ## Round verdicts
 
-Round 6's PASS is booked by this round's C1, in `.agent/live_review.md`.
+Round 7's PASS is booked by this round's C1, in `.agent/live_review.md`.
 
-Round 7: VERDICT PASS, verified by dry run, bytes identical, given by the reviewer of session 2
-after this handback. `.remedy-wt/f298-r7/review7.py`, whose readings are saved beside it as
-`review7-readings.txt`, read the saved block and `.agent/plan.md` at `9e786c1b7`, the two appended
-records there, the two files of `9be78d9e0` and the page of `fa079e7cb` equal to the prepared files
-of the reviewer's dry run on `257afdb84`, seven of seven; `3fd542782` touches only this file. The
-dry run's readings, saved as `.remedy-wt/f298-r7/build-readings-b.txt`: the round's selection
-`830 passed` at exit 0, ruff clean on the two touched Python files, integrity six of six `pass`, and
-the open set unchanged. The reviewer's seven mutation red-proofs, saved as
-`.remedy-wt/f298-r7/mutations.txt`, each turned `tests/cli/test_client_interface.py` red, with the
-unmutated control green before and after. The worker's one run read `830 passed`. The next session
-books this verdict into `.agent/live_review.md` in its first round's first commit.
+Round 8's verdict is the reviewer's; the reviewer books it in the next round's first commit.
 
 ## Next
 
@@ -145,11 +132,8 @@ books this verdict into `.agent/live_review.md` in its first round's first commi
    and stop.
 2. Then rule 2, the Open PR Gate.
 3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then book round 7's verdict in the next round's first commit.
-5. Then T001, next part: the keys under the answers' top-level keys. First measure every nested
-   key of the fourteen answers and how each is built; then fix in a DECISION, in the same round as
-   its patch, how they are declared (including maps whose keys are data, such as `modes_applied`
-   of `remedy job apply`) and how they are held to the code.
+4. Then book round 8's verdict in the next round's first commit.
+5. Then T001, next part: the answer trees of the next few operations.
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162,
@@ -159,11 +143,10 @@ R-1172 and R-1176, Low; all owned by F297).
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 6, DECISION F298 D7, the plan | done | `9e786c1b7` |
-| C2: the top-level answer keys of job resume in the machine client interface | done | `9be78d9e0` |
-| C3: the machine client page names the answer keys of every command | done | `fa079e7cb` |
-| C4: handback | done | `3fd542782` |
-| Session close: round 7's verdict and the session's end | done | this commit |
+| C1: book round 7, DECISION F298 D8, the plan | done | `bffe03c19` |
+| C2: the keys under remedy do's answer keys in the machine client interface | done | `2599aefa2` |
+| C3: the machine client page names the answer trees | done | `0e69a2942` |
+| C4: handback | done | this commit |
 | Gates 1 to 5 | done | all green, see Verification |
-| Push | done | `257afdb84..3fd542782`, first attempt |
-| Gate 6 | done | tree clean, HEAD equal to the pushed branch at `3fd542782` |
+| Push | done | outcome in the worker's final reply |
+| Gate 6 | done | reported in the worker's final reply |
