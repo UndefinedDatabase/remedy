@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D12): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D13): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -43,6 +43,7 @@ from apps.cli.client_interface import (
     EXECUTION_CONFIG_KEY_TREE,
     OPERATION_ANSWER_KEYS,
     OPERATION_REFUSAL_TOKENS,
+    TARGET_GUARD_KEY_TREE,
     build_client_interface,
 )
 from apps.cli.command_catalog import ArgDef, get_command
@@ -718,7 +719,9 @@ def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
     assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(pingpong, "_export_execution_config")
     assert not any(EXECUTION_CONFIG_KEY_TREE.values()), "an execution config key with keys below it"
-    assert set(trees["target_guard"]) == _returned_dict_keys(pingpong, "_export_target_guard")
+    assert trees["target_guard"] is TARGET_GUARD_KEY_TREE
+    assert set(TARGET_GUARD_KEY_TREE) == _returned_dict_keys(pingpong, "_export_target_guard")
+    assert not any(TARGET_GUARD_KEY_TREE.values()), "a target guard key with keys below it"
     assert set(trees["cost_mirror"]) == _dict_literal_keys(
         _REPO_ROOT / "packages/orchestration/job_evidence.py", "mirror_job_run_into_ledger")
 
@@ -766,6 +769,33 @@ def test_the_status_and_proof_answer_trees_name_exactly_what_their_code_builds()
     assert set(proof["changes"]) == _dict_value_keys(proof_chain, "export_proof_chain_json", "changes")
     assert set(proof["changes"]["next_safe_action_obj"]) == next_action
     assert set(proof["job_applies"]) == set(JOB_APPLY_PROOF_FIELDS)
+
+
+def test_the_job_evidence_answer_trees_name_exactly_what_their_code_builds():
+    from packages.orchestration import job_evidence, pingpong_job
+
+    evidence = "packages/orchestration/job_evidence.py"
+    trees = ANSWER_KEY_TREES["job.evidence"]
+    # `files` maps the path of each file written into the bundle to where it was written.
+    assert trees["files"] == {"*": {}}
+    [written] = [node for node in ast.walk(_function_def(evidence, "export_job_evidence"))
+                 if isinstance(node, ast.AnnAssign) and ast.unparse(node.target) == "written"]
+    assert ast.unparse(written.annotation) == "dict[str, str]"
+    manifest = trees["manifest"]
+    assert set(manifest) == (_returned_dict_keys(evidence, "_build_job_manifest")
+                             | _stored_keys(evidence, "export_job_evidence", "manifest"))
+    [returned] = [node.value for node in _function_def(evidence, "_build_job_manifest").body
+                  if isinstance(node, ast.Return)]
+    values = {key.value: value for key, value in zip(returned.keys, returned.values)}
+    # The two maps are keyed by task id, each holding a word.
+    for key in ("task_statuses", "task_run_ids"):
+        assert manifest[key] == {"*": {}} and isinstance(values[key], ast.DictComp), key
+    assert manifest["execution_config"] is EXECUTION_CONFIG_KEY_TREE
+    assert ast.unparse(values["execution_config"]) == "_export_execution_config(job.execution_config)"
+    assert job_evidence._export_execution_config is pingpong_job._export_execution_config
+    assert manifest["target_guard"] is TARGET_GUARD_KEY_TREE
+    assert ast.unparse(values["target_guard"]) == "_export_target_guard(job.target_guard)"
+    assert job_evidence._export_target_guard is pingpong_job._export_target_guard
 
 
 def test_the_patch_answer_trees_name_exactly_what_their_code_builds():
@@ -836,7 +866,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("job.apply", ["job", "apply", job_id], 0)
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
     proved = answer("change.proof", ["change", "proof", job_id], 0)
-    answer("job.evidence", ["job", "evidence", job_id], 0)
+    exported = answer("job.evidence", ["job", "evidence", job_id], 0)
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
     answer("patch.approve-hunks", ["patch", "approve-hunks", job_id], 1)
     answer("patch.approve", ["patch", "approve", job_id, "no-such-intent"], 1)
@@ -845,7 +875,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
-    # `remedy job apply`, `remedy status`, `remedy change proof` and `remedy patch hunks`.
+    # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks` and
+    # `remedy job evidence`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -861,6 +892,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         _key_paths(_key_tree(proved)))
     assert {("view", "files", "hunks", "lines", "intraline"), ("view", "files", "stats", "added"),
             ("decision", "attempt_key")} <= _key_paths(_key_tree(hunks))
+    assert {("manifest", "execution_config", "builder"),
+            ("manifest", "target_guard", "target_mutated")} <= _key_paths(_key_tree(exported))
+    assert exported["files"] and exported["manifest"]["task_statuses"], "no path or task was named"
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS

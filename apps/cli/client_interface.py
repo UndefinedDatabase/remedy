@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D12).
+what a real run returns (DECISIONs F298 D8 to D13).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -241,6 +241,14 @@ EXECUTION_CONFIG_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "max_tasks_source",
 )}
 
+#: The keys of a job's target guard as its record exports them, a tree several answers carry
+#: under `target_guard` (DECISION F298 D13).
+TARGET_GUARD_KEY_TREE: dict[str, Any] = {key: {} for key in (
+    "target_mutated", "target_content_mutated", "target_operational_artifacts_changed",
+    "target_noise_changed", "changed_target_files", "ignored_operational_artifacts",
+    "ignored_target_noise_files",
+)}
+
 #: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
 #: the form of `DIGEST_KEY_TREE` (DECISION F298 D8). A top-level key absent here carries no keys
 #: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
@@ -370,15 +378,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "workspace_expected_present": {},
         },
         "result_diff": {"path": {}, "sha256": {}, "size_bytes": {}},
-        "target_guard": {
-            "target_mutated": {},
-            "target_content_mutated": {},
-            "target_operational_artifacts_changed": {},
-            "target_noise_changed": {},
-            "changed_target_files": {},
-            "ignored_operational_artifacts": {},
-            "ignored_target_noise_files": {},
-        },
+        "target_guard": TARGET_GUARD_KEY_TREE,
         "postmortem": {"path": {}, "error": {}},
         "execution_config": EXECUTION_CONFIG_KEY_TREE,
         "context_strategy": {
@@ -474,6 +474,30 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     },
     "patch.approve-hunks": {
         "hunks": {"id": {}, "state": {}, "reason": {}, "landing": {}},
+    },
+    "job.evidence": {
+        "files": {"*": {}},
+        "manifest": {
+            "bundle_version": {},
+            "bundle_type": {},
+            "job_id": {},
+            "job_title": {},
+            "job_file_sha256": {},
+            "status": {},
+            "repo_identity": {},
+            "job_workspace_path": {},
+            "created_at": {},
+            "finished_at": {},
+            "task_count": {},
+            "task_ids": {},
+            "task_statuses": {"*": {}},
+            "task_run_ids": {"*": {}},
+            "execution_config": EXECUTION_CONFIG_KEY_TREE,
+            "context_strategy": {},
+            "target_guard": TARGET_GUARD_KEY_TREE,
+            "error": {},
+            "bundle_generated_at": {},
+        },
     },
     "patch.approve": {},
     "patch.reject": {},
