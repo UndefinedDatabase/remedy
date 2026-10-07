@@ -77,8 +77,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "the sole token_policy_applied emitter, kept by DECISION F275 D18 as that event's test vehicle"),
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
-    ("packages/orchestration/burn_detector.py",
-     "F116 T001's burn detector; T002 wires it into the job runner's safe point (DECISION F116 D2)"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),
@@ -88,6 +86,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "F080's feature-to-mission adapter; its consumer is the self-build loop F248 registers"),
     ("packages/orchestration/hunk_apply.py",
      "F033's hunk apply seam, unwired by design (F033 D4); forbidden by name in the command-channel guard"),
+    ("packages/orchestration/job_burn.py",
+     "F116 T002's job burn monitor; the next round wires it into run_job's safe point (DECISION F116 D3)"),
     ("packages/orchestration/self_use_findings.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T003)"),
     ("packages/orchestration/self_use_generator.py",
