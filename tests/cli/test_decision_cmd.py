@@ -383,3 +383,124 @@ class TestTheTokenVocabularyJoinsTheProduct:
         assert tokens == self._PINNED_TOKENS, (
             f"decision.py's fail() token vocabulary changed: {tokens ^ self._PINNED_TOKENS}"
         )
+
+
+class _CliResult:
+    """`main()`'s captured output plus the exit code it raised, or 0."""
+
+    def __init__(self, out: str, err: str, code: int) -> None:
+        self.out = out
+        self.err = err
+        self.code = code
+
+
+class TestABudgetDecisionAnsweredThroughTheCommandLine:
+    """In-process through `apps.cli.grouped.main`, in a temporary git repository, exactly
+    as `tests.orchestration.test_resume_cli.TestBudgetStopThroughTheCommandLine` drives
+    it — its tripwires and its `OllamaBuilder` stand-in included. DECISION F295 D11: a
+    client answers a budget decision with `extend` and runs the job to its end (R-1146)."""
+
+    def _stopped_job(self, tmp_path, monkeypatch, capsys):
+        import subprocess
+
+        from apps.cli.grouped import main
+
+        def _git(repo, *args: str) -> None:
+            subprocess.run(["git", *args], cwd=str(repo), capture_output=True,
+                           text=True, check=True)
+
+        target = tmp_path / "target"
+        target.mkdir()
+        _git(target, "init", "-q")
+        _git(target, "config", "user.email", "t@e.com")
+        _git(target, "config", "user.name", "T")
+        _git(target, "config", "commit.gpgsign", "false")
+        (target / "README.md").write_text("# target\n")
+        _git(target, "add", "-A")
+        _git(target, "commit", "-qm", "init")
+        monkeypatch.chdir(target.resolve())
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError(
+                "answering a budget decision reached a model-call factory")
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn", tripwire)
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_structured_call_fn", tripwire)
+        monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
+
+        class _FakeOllamaBuilder:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError(
+                    "the fake providers must never reach the Ollama builder")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_builder.provider.OllamaBuilder",
+            _FakeOllamaBuilder)
+
+        fake_roles = ("--builder-provider", "fake", "--reviewer-provider", "fake")
+
+        def run(*args: str) -> _CliResult:
+            code = 0
+            try:
+                main(list(args))
+            except SystemExit as exc:
+                code = exc.code if isinstance(exc.code, int) else 1
+            captured = capsys.readouterr()
+            return _CliResult(captured.out, captured.err, code)
+
+        plan = json.loads(run(
+            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--yes",
+            "--no-llm", *fake_roles, "--max-cost-usd", "1", "--plan-only").out)
+        [job_id] = plan["job_ids"]
+
+        run("job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+            *fake_roles, "--json")
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        [decision_id] = [d["id"] for d in decisions if d["id"].startswith("budget")]
+
+        return run, job_id, decision_id, fake_roles
+
+    def test_extend_records_the_answer_and_the_job_runs_to_its_end(
+            self, tmp_path, monkeypatch, capsys):
+        from datetime import datetime, timedelta, timezone
+
+        run, job_id, decision_id, fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        new_deadline = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", f"deadline={new_deadline}", "--json")
+        body = json.loads(result.out)
+        assert body["ok"] is True
+        assert body["outcome"] == "extended"
+        assert body["next_command"] == f"remedy job run {job_id} --json"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert not [d for d in decisions if d["id"].startswith("budget")]
+
+        status = json.loads(run("status", "--json").out)
+        client_decisions = status["client"]["decisions"]
+        assert not [d for d in client_decisions if d["job_id"] == job_id]
+
+        job_record = json.loads(run("job", "run", job_id, *fake_roles, "--json").out)
+        assert job_record["status"] == "completed"
+
+    def test_a_refusal_reaches_the_client_as_an_envelope(
+            self, tmp_path, monkeypatch, capsys):
+        run, job_id, decision_id, _fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", "max_cost_usd=2", "--json")
+        assert result.code == 1
+        body = json.loads(result.out)
+        assert body["ok"] is False
+        assert body["error"] == "budget_limit_not_raised"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert [d for d in decisions if d["id"].startswith("budget")]
