@@ -1098,7 +1098,9 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "burn window the job burn monitor compares against the job's own "
             "baseline (F116). Conservative by default: three calls smooths a "
             "single expensive call without hiding a sustained run-away. The "
-            "monitor stays inert below job_burn.min_samples."
+            "monitor stays inert below job_burn.min_samples while no hourly "
+            "expectation is set; with job_burn.expected_tokens_per_hour set, "
+            "it needs one call more than this window instead (R-1167)."
         ),
         value_type=int,
         default=3,
@@ -1110,8 +1112,11 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "How many measured provider calls must sit BEFORE the window "
             "before the job burn monitor is allowed to trip at all (F116). "
             "Conservative by default: a baseline of five calls is the "
-            "smallest one worth comparing to. Below it the monitor is "
-            "inert — thin data produces no trip, never a trip on thin data."
+            "smallest one worth comparing to. This minimum applies only "
+            "while no hourly expectation is set — below it the monitor is "
+            "inert, thin data produces no trip, never a trip on thin data; "
+            "with job_burn.expected_tokens_per_hour set, the monitor needs "
+            "one call more than job_burn.window instead (R-1167)."
         ),
         value_type=int,
         default=5,
@@ -1124,7 +1129,10 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "exceed before the job burn monitor trips (F116). Conservative "
             "by default: 3x tolerates the normal spread between a cheap and "
             "an expensive call, so a trip means something. The monitor is "
-            "inert below job_burn.min_samples whatever this reads."
+            "inert below job_burn.min_samples whatever this reads, but only "
+            "while no hourly expectation is set; with "
+            "job_burn.expected_tokens_per_hour set, it needs one call more "
+            "than job_burn.window instead (R-1167)."
         ),
         value_type=float,
         default=3.0,
