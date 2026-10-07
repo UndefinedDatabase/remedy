@@ -18,6 +18,10 @@ The top-level keys of the operations' answers are declared there as well, and he
 ways as the digest's (DECISIONs F298 D5, D6 and D7): a static reading of each handler, the same walk,
 and a real run of the path and of the operations after it, whose every answer returns no key the
 declaration does not name.
+
+The keys under those top-level keys are declared there as trees, and held the same two ways
+(DECISION F298 D8): each tree's names equal what the code that builds it names, and the real run's
+answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
 
@@ -32,6 +36,7 @@ import pytest
 
 from apps.cli import command_catalog
 from apps.cli.client_interface import (
+    ANSWER_KEY_TREES,
     CLIENT_INTERFACE_VERSION,
     CLIENT_OPERATION_IDS,
     DIGEST_KEY_TREE,
@@ -120,6 +125,7 @@ def test_the_vocabularies_are_the_products_own():
     assert interface["digest"] == DIGEST_KEY_TREE
     assert interface["answers"] == {command_id: list(keys)
                                     for command_id, keys in OPERATION_ANSWER_KEYS.items()}
+    assert interface["answer_trees"] == ANSWER_KEY_TREES
 
 
 def test_the_command_prints_the_document_as_one_envelope(capsys):
@@ -399,8 +405,8 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_interface:**interface": (
         frozenset({
-            "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
-            "interface_version", "job_states", "mission_statuses", "operations",
+            "answer_trees", "answers", "budget_kinds", "contract_templates", "digest", "envelope",
+            "exit_codes", "interface_version", "job_states", "mission_statuses", "operations",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -577,6 +583,100 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         _returned_dict_keys("packages/orchestration/event_replay.py", "export_dry_run_json"))
 
 
+# The keys under the answers' top-level keys (DECISION F298 D8).
+
+def _tree_names(tree: dict | None) -> set[str]:
+    """Every key a tree names at any depth, without the data key `*`."""
+    names: set[str] = set()
+    for key, below in (tree or {}).items():
+        if key != "*":
+            names.add(key)
+        names |= _tree_names(below)
+    return names
+
+
+def _opaque_paths(tree: dict, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
+    """Every path in a tree whose key maps to None."""
+    paths: set[tuple[str, ...]] = set()
+    for key, below in tree.items():
+        if below is None:
+            paths.add((*prefix, key))
+        else:
+            paths |= _opaque_paths(below, (*prefix, key))
+    return paths
+
+
+def _undeclared_paths(returned: dict, declared: dict | None,
+                      prefix: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+    """Every path of a returned key tree that a declared tree does not name; `*` names any key, and
+    a declared None admits everything under it."""
+    if declared is None:
+        return []
+    undeclared: list[tuple[str, ...]] = []
+    for key, below in returned.items():
+        if key not in declared and "*" not in declared:
+            undeclared.append((*prefix, key))
+            continue
+        undeclared += _undeclared_paths(below, declared.get(key, declared.get("*")), (*prefix, key))
+    return undeclared
+
+
+def _expression_keys(path: str, expression: str) -> set[str]:
+    """Every key the module in `path` adds to `expression`: the keys of the dict literal it appends,
+    the keywords of its `update(...)` and every `expression["key"] = ...` store."""
+    keys: set[str] = set()
+    for node in ast.walk(ast.parse((_REPO_ROOT / path).read_text(encoding="utf-8"))):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and ast.unparse(node.func.value) == expression):
+            if node.func.attr == "append":
+                [appended] = node.args
+                assert isinstance(appended, ast.Dict), f"{expression}.append of no dict literal"
+                keys |= {key.value for key in appended.keys if isinstance(key, ast.Constant)}
+            if node.func.attr == "update":
+                assert not node.args and all(k.arg is not None for k in node.keywords), (
+                    f"{expression}.update with keys no reader resolves")
+                keys |= {keyword.arg for keyword in node.keywords}
+        if isinstance(node, ast.Assign):
+            keys |= {target.slice.value for target in node.targets
+                     if isinstance(target, ast.Subscript)
+                     and ast.unparse(target.value) == expression
+                     and isinstance(target.slice, ast.Constant)}
+    return keys
+
+
+def test_every_answer_tree_hangs_under_a_declared_top_level_key():
+    for command_id, trees in ANSWER_KEY_TREES.items():
+        assert sorted(set(trees) - set(OPERATION_ANSWER_KEYS[command_id])) == [], command_id
+        for key, tree in trees.items():
+            assert isinstance(tree, dict) and tree, f"{command_id} {key}: an empty or opaque tree"
+            assert all(path[-2:] == ("check", "spec") for path in _opaque_paths(tree)), (
+                f"{command_id} {key}: a key the interface does not fix, other than a check's spec")
+
+
+def test_the_do_answer_trees_name_exactly_what_their_code_builds():
+    from packages.orchestration import mission_contract
+    from packages.orchestration.dod_schema import DoDCheck
+
+    do_sequence = "packages/orchestration/do_sequence.py"
+    contracts = "packages/orchestration/mission_contract.py"
+    trees = ANSWER_KEY_TREES["do.run"]
+    contract = trees["contract"]
+    assert set(contract) == set(mission_contract._CONTRACT_FIELDS) == (
+        _returned_dict_keys(contracts, "MissionContract.to_json"))
+    assert set(contract["criteria"]) == set(mission_contract._CRITERION_FIELDS) == (
+        _returned_dict_keys(contracts, "ContractCriterion.to_json"))
+    assert set(contract["amendments"]) == set(mission_contract._AMENDMENT_FIELDS)
+    assert set(contract["criteria"]["check"]) == set(DoDCheck.model_fields)
+    assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
+                                                            "do_cost_summary")
+    assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
+                                                            "do_job_task_listing")
+    assert set(trees["steps"]) == _returned_dict_keys(do_sequence, "DoStepResult.to_json")
+    assert set(trees["landed"]) == _expression_keys(do_sequence, "ctx.landed")
+    assert set(trees["push"]) == (_returned_dict_keys(do_sequence, "_do_push_record")
+                                  | _expression_keys(do_sequence, "ctx.push_outcome"))
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -614,7 +714,15 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
+    # The run reaches the levels the trees name under `remedy do`'s answer.
+    assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
+            ("steps", "detail")} <= _key_paths(_key_tree(done))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
             assert sorted(returned - set(OPERATION_ANSWER_KEYS[command_id])) == [], command_id
+            if command_id in ANSWER_KEY_TREES:
+                declared = {key: ANSWER_KEY_TREES[command_id].get(key, {})
+                            for key in OPERATION_ANSWER_KEYS[command_id]}
+                payload = {key: value for key, value in body.items() if key not in _ENVELOPE_KEYS}
+                assert _undeclared_paths(_key_tree(payload), declared) == [], command_id

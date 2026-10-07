@@ -15,7 +15,9 @@ returns (DECISION F298 D3); the refusal tokens each operation can answer with,
 `OPERATION_REFUSAL_TOKENS`, which the same test file holds equal to a static reading of each
 operation's handler, the way the catalog's exit codes are held (DECISION F298 D4); and the
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
-reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7).
+reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
+keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
+what a real run returns (DECISION F298 D8).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -102,7 +104,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
 #: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5,
-#: D6 and D7).
+#: D6 and D7); `ANSWER_KEY_TREES` names the keys under them.
 OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
@@ -164,9 +166,77 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "patch.reject": ("intent_id", "matches", "reason_recorded", "risk", "state", "target_path"),
     "mission.abandon": ("mission", "unmet_blocking_criteria", "version"),
     "client.interface": (
-        "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
+        "answer_trees", "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
         "interface_version", "job_states", "mission_statuses", "operations",
     ),
+}
+
+#: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
+#: the form of `DIGEST_KEY_TREE` (DECISION F298 D8). A top-level key absent here carries no keys
+#: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
+#: tree under each of them; a key that maps to None holds an object whose keys the interface does
+#: not fix, which only a mission contract's check `spec` does: its keys are the arguments of the
+#: check's `kind`. An operation absent here has its nested keys named in a later part of F298.
+ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
+    "do.run": {
+        "contract": {
+            "schema": {},
+            "template": {},
+            "criteria": {
+                "id": {},
+                "text": {},
+                "blocking": {},
+                "origin": {},
+                "milestones": {},
+                "check": {
+                    "id": {},
+                    "kind": {},
+                    "spec": None,
+                    "blocking": {},
+                    "acceptance_refs": {},
+                    "description": {},
+                    "source": {},
+                },
+                "status": {},
+                "evidence_ref": {},
+            },
+            "amendments": {
+                "id": {},
+                "text": {},
+                "received_at": {},
+                "applies_from": {},
+                "criteria": {},
+                "understood": {},
+                "acknowledged_in": {},
+            },
+        },
+        "cost": {
+            "roles": {
+                "role": {},
+                "calls": {},
+                "tokens_in": {},
+                "tokens_out": {},
+                "cache_read": {},
+                "cost_usd": {},
+            },
+            "cost_usd": {},
+            "job_ids": {},
+            "mirror_failed_job_ids": {},
+            "mirror_errors": {"*": {}},
+        },
+        "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}},
+        "steps": {"name": {}, "status": {}, "detail": {}},
+        "landed": {"job_id": {}, "sha": {}, "branch": {}},
+        "push": {
+            "pushed": {},
+            "sha": {},
+            "remote": {},
+            "ref": {},
+            "error": {},
+            "source": {},
+            "open_blocking_criteria": {},
+        },
+    },
 }
 
 #: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
@@ -283,4 +353,5 @@ def build_client_interface() -> dict[str, Any]:
         "budget_kinds": list(JobBudgets.model_fields),
         "digest": copy.deepcopy(DIGEST_KEY_TREE),
         "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
+        "answer_trees": copy.deepcopy(ANSWER_KEY_TREES),
     }
