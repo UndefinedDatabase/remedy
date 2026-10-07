@@ -7,19 +7,18 @@ arithmetic in the decision, and the watchdog's burn tripwire uses the same detec
 (docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 4: book round 3, resolve R-1165 and R-1166, register R-1167 and repair it; then
-T002's wiring, DECISION F116 D4: `run_job` records every counted provider call in the monitor,
-reads it at each safe point where no stop fired, keeps the newest trip on the job as
-`burn_reading`, and `remedy job budget` shows it, with its documentation.
+Session 1, round 5: book round 4, resolve R-1167, register R-1168 and R-1169 and repair both; then
+T002's unattended half, DECISION F116 D5: a job whose plan was approved unattended is paused at the
+safe point that reads a new trip, with one `[burn_alarm]` decision carrying the arithmetic and the
+options resume and abandon, while an attended job keeps running.
 
 ## Next Steps
-1. T002, unattended: a trip pauses an unattended job with one decision carrying the arithmetic,
-   and a re-trip updates that decision's evidence; the job report names the trip.
-2. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; docs.
-3. The amend0930b-slow-cap hardening stage, then the closure sequence.
+1. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; the
+   job report names a recorded trip; the documentation of the whole alarm.
+2. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
 - The trailing baseline needs eight measured calls in one run before it can trip, and samples do
   not survive a stop and relaunch, so a short run is never judged.
-- R-1167 (Low) is F116's own, repaired this round. R-1160 (Medium) and R-1138, R-1139, R-1143,
-  R-1149, R-1156, R-1157, R-1158, R-1162 (Low) stay open, owned by F297.
+- R-1168 and R-1169 (Low) are F116's own, repaired this round. R-1160 (Medium) and R-1138, R-1139,
+  R-1143, R-1149, R-1156, R-1157, R-1158, R-1162 (Low) stay open, owned by F297.
