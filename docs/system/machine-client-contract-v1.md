@@ -155,8 +155,10 @@ for them, and `remedy patch approve-hunks <job> --approve-hunk <id> --reject-hun
 `remedy client interface --json` prints what a client can rely on, read from the code at the
 moment it runs: every command a client uses with its arguments and the exit codes it can reach,
 what each exit code means, the envelope every answer wears, the job states, the mission status
-words, the contract templates and the budget kinds, under its own `interface_version`, which is
-`1.1`. Inside one major version it only grows. The product calls this document the machine
+words, the contract templates, the budget kinds, and under `digest` the tree of every key the
+`client` object of `remedy status --json` can return, under its own `interface_version`, which is
+`1.1`. A test reads the keys the digest's code writes and the keys a real run's digest returns,
+and fails when either differs from that tree (DECISION F298 D3). Inside one major version it only grows. The product calls this document the machine
 client interface, because "contract" names a mission's acceptance criteria and nothing else
 (DECISION F298 D2). The tables above are still the ones F295 wrote; F298 renders them from that
 document.
