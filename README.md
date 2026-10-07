@@ -26,14 +26,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-128 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+129 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 42 | 43 |
-| 3 | Full Token Economy & Autonomy | 7 | 28 |
+| 3 | Full Token Economy & Autonomy | 8 | 28 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -348,6 +348,20 @@ prompt with an audited line, and a non-tty pipe with neither flag exits
 with the estimate and the `--yes` hint rather than hanging. Real cost
 bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
+
+F116 cost anomaly alarm (one burn detector decides what spending is expected —
+an hourly token expectation when one is configured, otherwise the job's own
+earlier provider calls — and trips only when a window of calls spends more
+than a floor at more than a set multiple of that expectation, so a tiny run or
+a steadily expensive one never trips; a job approved unattended with
+`remedy do run --yes` is paused before its next provider call and gets one
+decision that shows the arithmetic and offers resume or abandon, and
+`remedy job run` continues it; a job a person started keeps running; either
+way the alarm shows in `remedy job show`, in the report of
+`remedy job show --full` and in `remedy job budget`; the mission watchdog's
+burn tripwire now calls the same detector instead of keeping its own
+arithmetic; the page `docs/system/cost-anomaly-alarm-v1.md` describes the whole
+alarm).
 
 F287 provider session continuity (when a task that a pause or a stop interrupted
 runs again on the `claude-cli` provider, its builder and reviewer continue the

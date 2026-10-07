@@ -473,6 +473,9 @@ class JobPlan:
     # F104: the prediction that justified a predictive stop — its arithmetic is
     # what a human reads to see WHY the job stopped before doing any work.
     budget_prediction: dict | None = None
+    # F116 T002, DECISION F116 D4 (4): the newest TRIPPED burn-monitor record
+    # `run_job` has read — evidence of a spend anomaly, not itself a stop.
+    burn_reading: dict | None = None
     # F112 T003: durable escalation/decision state (e.g. `enqueue_task_decision`'s
     # `job.metadata["escalations"]` list) — a plain dict, exported and imported
     # verbatim like `input_snapshot` above so a cannot_fit decision survives a
@@ -940,6 +943,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
+        # F116 T002, DECISION F116 D4 (4): the newest tripped burn reading.
+        "burn_reading": job.burn_reading,
         "metadata": job.metadata,
         # F025 S1: wired explicitly, like every field above — a missing key (every
         # job file written before this round) loads as `{}`, not as an error.
@@ -1067,6 +1072,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         budget_actuals=data.get("budget_actuals"),
         # Absent in job files written before F104 — loads as None, unchanged.
         budget_prediction=data.get("budget_prediction"),
+        # Absent in job files written before F116 D4 — loads as None, unchanged.
+        burn_reading=data.get("burn_reading"),
         metadata=dict(data.get("metadata") or {}),
         # F025 S1: absent in every job file written before this round — loads as
         # `{}`, meaning "no operator pause holds this job", not an error.
@@ -2932,6 +2939,30 @@ def run_job(
             )
             _predictive_config = None
 
+    # F116 T002, DECISION F116 D4 (1): the job's own burn monitor — ONE per
+    # run, resolved once here rather than once per safe point, exactly like
+    # the predictive config just above it. A configuration mistake must never
+    # stop a healthy job, so a failure here leaves no monitor and every other
+    # check (reactive, predictive) still enforces.
+    _burn_monitor = None
+    try:
+        from packages.orchestration.job_burn import (
+            JobBurnMonitor as _BurnMonitorCls,
+        )
+        from packages.orchestration.job_burn import (
+            job_burn_thresholds_from_config as _resolve_burn_thresholds,
+        )
+        _burn_monitor = _BurnMonitorCls(_resolve_burn_thresholds())
+    except (ValueError, OSError):
+        import logging as _logging
+        _logging.getLogger(__name__).error(
+            "job burn monitor config read FAILED for job %r; burn-rate alarms "
+            "are disabled for this run and the token/call/time and budget "
+            "checks continue to enforce every limit",
+            job.job_id, exc_info=True,
+        )
+        _burn_monitor = None
+
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens
         nonlocal _accumulated_measured, _accumulated_unmeasured
@@ -2953,6 +2984,14 @@ def run_job(
             _own_cost_usd = (_own_cost_usd or 0.0) + _cost
         if getattr(attempt, "provider", "fake") == "fake":
             return
+        # F116 T002, DECISION F116 D4 (2): sample every call this job runner
+        # COUNTS into the burn monitor, exactly here — a `fake` attempt is
+        # already excluded above and never sampled either.
+        if _burn_monitor is not None:
+            _burn_monitor.record_call(
+                getattr(attempt, "usage_actuals", None),
+                at=datetime.now(timezone.utc),
+            )
         _accumulated_provider_calls += 1
         ua = getattr(attempt, "usage_actuals", None)
         if ua is not None:
@@ -3070,6 +3109,111 @@ def run_job(
             control_root_path=_control,
         )
         if not result.should_stop:
+            # F116 T002, DECISION F116 D4 (3): read the burn monitor BEFORE the
+            # predictive check below, on every safe point that reaches here.
+            # This round only RECORDS a trip — it never stops or pauses the
+            # job — and a reading that does not trip changes nothing, so the
+            # newest TRIPPED record stays the job's evidence even once a later,
+            # untripped reading would otherwise erase it.
+            if _burn_monitor is not None:
+                _burn_reading = _burn_monitor.reading()
+                if _burn_reading is not None and _burn_reading.tripped:
+                    from packages.orchestration.job_burn import (
+                        job_burn_record as _record_burn_reading,
+                    )
+                    _burn_record = _record_burn_reading(_burn_reading)
+                    if _burn_record != job.burn_reading:
+                        job.burn_reading = _burn_record
+                        _persist_job(job)
+                        from packages.orchestration.job_burn import (
+                            job_approved_unattended as _job_approved_unattended,
+                        )
+                        _burn_unattended = _job_approved_unattended(job)
+                        # F116 T003, DECISION F116 D8 (1): one run-log event per NEW
+                        # trip, so the job's timeline names it. A ledger write must
+                        # never stop a healthy job: a failure is logged, the trip
+                        # stays recorded on the job, and the run goes on.
+                        try:
+                            from packages.orchestration.data_paths import (
+                                resolve_data_root as _burn_data_root,
+                            )
+                            from packages.orchestration.timeline import append_run_event
+
+                            append_run_event(
+                                _burn_data_root(), job.job_id, event="job_burn_tripped",
+                                metadata={**_burn_record, "unattended": _burn_unattended})
+                        except _TASK_LOG_ERRORS:
+                            import logging as _logging
+                            _logging.getLogger(__name__).error(
+                                "job_burn_tripped event write FAILED for job %r; the "
+                                "trip stays recorded on the job and the run continues",
+                                job.job_id, exc_info=True)
+                        # F116 T002, DECISION F116 D5 (3): a NEW trip pauses a job
+                        # approved to run with nobody watching, raising one
+                        # [burn_alarm] decision carrying the arithmetic; an
+                        # attended job keeps running on the recorded warning alone.
+                        if _burn_unattended:
+                            from packages.orchestration import (
+                                pause_control as _burn_pause_control,
+                            )
+                            from packages.orchestration.job_burn import (
+                                BURN_DECISION_MARKER as _burn_marker,
+                            )
+                            from packages.orchestration.job_burn import (
+                                BURN_PAUSE_SOURCE as _burn_pause_source,
+                            )
+                            from packages.orchestration.job_burn import (
+                                job_burn_sentence as _burn_sentence,
+                            )
+                            _sentence = _burn_sentence(_burn_record)
+                            try:
+                                _burn_pause_control.request_pause(
+                                    job.job_id,
+                                    reason=f"burn_alarm: {_sentence}",
+                                    source=_burn_pause_source,
+                                    control_root_path=_control,
+                                )
+                            except _burn_pause_control.PauseControlError as exc:
+                                return _PauseSignal(
+                                    job_id=job.job_id,
+                                    reason=f"{_PAUSE_ERROR_REASON_PREFIX}{exc}",
+                                    is_error=True)
+                            from packages.orchestration.escalation import (
+                                enqueue_task_decision as _enqueue_burn_decision,
+                            )
+                            from packages.orchestration.escalation import (
+                                open_task_decisions as _open_burn_decisions,
+                            )
+                            _question = f"{_burn_marker} {_sentence}"
+                            # DECISION F116 D9 (1): the park consumes the pause request,
+                            # so `remedy job unpause` has nothing to lift; the relaunch
+                            # is what continues the job, and answering only records.
+                            _impact = (
+                                f"job {job.job_id} is paused; `remedy job run "
+                                f"{job.job_id}` continues it, and answering "
+                                f"this question only records your choice")
+                            _open_burn = next(
+                                (r for r in _open_burn_decisions(job)
+                                 if str(r.get("question", ""))
+                                 .startswith(_burn_marker)),
+                                None)
+                            if _open_burn is not None:
+                                _open_burn["question"] = _question
+                                _open_burn["impact"] = _impact
+                            else:
+                                _burn_target = next(
+                                    (t for t in job.tasks
+                                     if t.status in (TASK_PENDING, TASK_RUNNING)),
+                                    job.tasks[0])
+                                _enqueue_burn_decision(
+                                    job,
+                                    task_id=_burn_target.task_id,
+                                    question=_question,
+                                    options=("resume", "abandon"),
+                                    safe_default="",
+                                    impact=_impact,
+                                    now=datetime.now(timezone.utc))
+                            _persist_job(job)
             # F104: neither the operator stop nor the REACTIVE budget check fired,
             # so — and only so — ask whether the NEXT task would breach the money
             # limit. The predictive check runs LAST on purpose: it never replaces
@@ -3769,6 +3913,12 @@ def run_job(
                     if _fresh is not None:
                         _persist_budget_actuals()
                         return _park_job(job, _fresh, task=task, control_root_path=_control)
+                    # F116 D5 (3): a pause request that FAILED to be written leaves
+                    # nothing on disk to re-read, so the halt's own error reason is
+                    # what blocks the job — it must never fall through to a stop.
+                    if _reason_is_pause_error(_halt_reason):
+                        return _block_for_pause_error(_PauseSignal(
+                            job_id=job.job_id, reason=_halt_reason, is_error=True))
                     # The pause was lifted or released between the in-task halt and
                     # now: nothing left to park for. Fall through and record the
                     # halted round as an ordinary stop rather than silently

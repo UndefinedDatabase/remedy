@@ -121,12 +121,17 @@ never disagree about it.
 Without `set`, read-only. For a job with a money limit it prints the configured limits, the
 spend, what remains, the next task's expected cost with its `estimate_basis` and
 one-line arithmetic, and — if a predictive stop already happened — the recorded
-arithmetic that justified it. `--json` adds `prediction` (the live estimate, or
-`null`) and `recorded_prediction` (the persisted one, or `null`) alongside
-`limits`, `counters` and `evaluation`. The estimate is computed live and purely:
-the command writes nothing, persists nothing and mutates no job, and any failure
-in the estimate degrades to a single `unavailable (...)` line rather than
-failing the inspection.
+arithmetic that justified it. Whatever limits the job has, it also prints the
+recorded burn alarm, if `run_job`'s own burn monitor (F116,
+`packages/orchestration/burn_detector.py` and
+`packages/orchestration/job_burn.py`) recorded a trip: its rate against what
+was expected and the window and multiplier behind it. `--json` adds
+`prediction` (the live estimate, or `null`), `recorded_prediction` (the
+persisted one, or `null`) and `burn_reading` (the persisted burn-alarm record,
+or `null`) alongside `limits`, `counters` and `evaluation`. The estimate is
+computed live and purely: the command writes nothing, persists nothing and
+mutates no job, and any failure in the estimate degrades to a single
+`unavailable (...)` line rather than failing the inspection.
 
 `remedy job budget <job_id> set <field> <value>` is the command's one write
 (DECISION F280 D3): one field of the job's run contract or token budget profile. It never
@@ -134,5 +139,8 @@ writes the F018 limits above, which `remedy job run <job_id>` takes as budget fl
 
 ## Deliberately not built
 
-Calibration of expected cost from run history, per-task-class caps and burn-rate
-anomaly detection are out of scope for F104 and exist nowhere in the code.
+Calibration of expected cost from run history and per-task-class caps are out of
+scope for F104 and exist nowhere in the code. Burn-rate anomaly detection is
+F116's, not F104's: it lives in `packages/orchestration/burn_detector.py` and
+`packages/orchestration/job_burn.py`, and `remedy job budget` shows its newest
+recorded trip (above).

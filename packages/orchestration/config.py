@@ -1091,6 +1091,80 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=3.0,
     ),
     ConfigKeySpec(
+        key="job_burn.window",
+        env_var="REMEDY_JOB_BURN_WINDOW",
+        description=(
+            "How many of a job's most recent MEASURED provider calls form the "
+            "burn window the job burn monitor compares against the job's own "
+            "baseline (F116). Conservative by default: three calls smooths a "
+            "single expensive call without hiding a sustained run-away. The "
+            "monitor stays inert below job_burn.min_samples while no hourly "
+            "expectation is set; with job_burn.expected_tokens_per_hour set, "
+            "it needs one call more than this window instead."
+        ),
+        value_type=int,
+        default=3,
+    ),
+    ConfigKeySpec(
+        key="job_burn.min_samples",
+        env_var="REMEDY_JOB_BURN_MIN_SAMPLES",
+        description=(
+            "How many measured provider calls must sit BEFORE the window "
+            "before the job burn monitor is allowed to trip at all (F116). "
+            "Conservative by default: a baseline of five calls is the "
+            "smallest one worth comparing to. This minimum applies only "
+            "while no hourly expectation is set — below it the monitor is "
+            "inert, thin data produces no trip, never a trip on thin data; "
+            "with job_burn.expected_tokens_per_hour set, the monitor needs "
+            "one call more than job_burn.window instead."
+        ),
+        value_type=int,
+        default=5,
+    ),
+    ConfigKeySpec(
+        key="job_burn.multiplier",
+        env_var="REMEDY_JOB_BURN_MULTIPLIER",
+        description=(
+            "How many times the baseline mean the window mean must STRICTLY "
+            "exceed before the job burn monitor trips (F116). Conservative "
+            "by default: 3x tolerates the normal spread between a cheap and "
+            "an expensive call, so a trip means something. The monitor is "
+            "inert below job_burn.min_samples whatever this reads, but only "
+            "while no hourly expectation is set; with "
+            "job_burn.expected_tokens_per_hour set, it needs one call more "
+            "than job_burn.window instead."
+        ),
+        value_type=float,
+        default=3.0,
+    ),
+    ConfigKeySpec(
+        key="job_burn.min_spend_tokens",
+        env_var="REMEDY_JOB_BURN_MIN_SPEND_TOKENS",
+        description=(
+            "The fewest tokens a burn window must spend before the job burn "
+            "monitor is allowed to trip on it (F116). A mission iteration "
+            "and a provider call differ in size by an order of magnitude, so "
+            "the watchdog's own floor does not fit a job; 20000 tokens "
+            "across a window of three calls is what keeps a tiny run from "
+            "ever tripping on noise."
+        ),
+        value_type=int,
+        default=20000,
+    ),
+    ConfigKeySpec(
+        key="job_burn.expected_tokens_per_hour",
+        env_var="REMEDY_JOB_BURN_EXPECTED_TOKENS_PER_HOUR",
+        description=(
+            "An outside, configured hourly token expectation for a job "
+            "(F116). Set at all, it switches the job burn monitor from its "
+            "own trailing baseline to this class default; unset by default "
+            "because a job's own earlier calls are the only basis available "
+            "until F074 supplies class bands."
+        ),
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="doctor.dead_models",
         env_var="REMEDY_DOCTOR_DEAD_MODELS",
         description=(

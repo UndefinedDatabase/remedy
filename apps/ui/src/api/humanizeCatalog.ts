@@ -28,6 +28,7 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "diff_repair_applied": "A diff repair was applied.",
   "diff_repair_not_used": "A diff repair was not used for this cycle.",
   "final_audit_completed": "The final audit finished.",
+  "job_burn_tripped": "The job's recent provider calls cost far more than expected, so its burn alarm tripped.",
   "job_created": "The job was created.",
   "job_evidence_exported": "The job's evidence bundle was exported.",
   "job_flow_started": "The job flow started.",

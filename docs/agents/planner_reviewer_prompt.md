@@ -457,6 +457,20 @@ end the response with:
   the order reaches; and a worker that made one commit through a compound command with `cd`, which
   the block's own constraints already forbade, is a slip in following a block, which no item about
   a block's text can prevent. The list stays at 34 items.
+  Consolidated again at F116's closure on 2026-10-07: nothing joined and no two items were merged,
+  because none of F116's three lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  handback that left out a section its block ordered, and two worker commands that began with `cd`
+  although their blocks' constraints forbade it, are all slips in following a block, which no item
+  about a block's text can prevent. Its authoring defects that left something on disk wrong or
+  unguarded were registered as findings, and each is the reading of an existing item: R-1165,
+  R-1168, R-1171 and R-1173, tests that did not hold a promise their own block or decision made,
+  are item 18's reading of an ordered recipe, here a list of tests, against the property it must
+  establish; R-1166, R-1167 and R-1175, sentences the code they describe contradicted, are item
+  8's reading of the code that produces what a sentence asserts; R-1174, a command that returned
+  before the alarm its decision promised it shows, is item 34's reading of the code the order
+  reaches; and R-1169, a finding id left in a sentence a person reads, is governed by operator
+  amendment amend0921-operator-feedback rule 3, which already states it. The list stays at 34
+  items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

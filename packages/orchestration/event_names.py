@@ -76,6 +76,7 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "cycle_repair_round",
         "diff_repair_applied",
         "diff_repair_not_used",
+        "job_burn_tripped",
         "job_created",
         "job_final",
         "job_paused",

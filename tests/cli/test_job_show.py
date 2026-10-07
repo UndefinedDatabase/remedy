@@ -26,6 +26,7 @@ import apps.cli.commands.job as job_commands
 from apps.cli.grouped import build_parser, main
 from packages.core.models import RunState
 from packages.orchestration import data_paths
+from packages.orchestration.job_burn import job_burn_sentence
 from packages.orchestration.pingpong_job import (
     TASK_APPLIED,
     TASK_BLOCKED,
@@ -509,3 +510,34 @@ class TestTourSection:
         section = json.loads(shown.out)["sections"]["tour"]
         assert section["ok"] is False
         assert section["error"]["code"] == "tour_unreadable"
+
+
+_TRIPPED_BURN_READING = {
+    "tripped": True, "rate_unit": "per_sample", "window_samples": 1, "rate": 15000.0,
+    "expectation": 1500.0, "multiplier": 3.0, "since_label": 3}
+
+
+class TestBurnAlarm:
+    """F116 (DECISION F116 D7 (2)): a recorded burn alarm is printed beside the findings."""
+
+    def _job(self, burn_reading) -> JobPlan:
+        job = JobPlan(job_title="burn", state=RunState.RUNNING)
+        job.burn_reading = burn_reading
+        save_job_plan(job)
+        return job
+
+    def test_a_recorded_trip_prints_its_sentence_and_where_the_numbers_are(
+            self, data_root, capsys) -> None:
+        job = self._job(dict(_TRIPPED_BURN_READING))
+
+        shown = _show(capsys, str(job.job_id))
+
+        assert "\n--- Burn alarm ---\n" in shown.err
+        assert f"  {job_burn_sentence(_TRIPPED_BURN_READING)}\n" in shown.err
+        assert f"  remedy job budget {job.job_id} shows the numbers.\n" in shown.err
+        assert json.loads(shown.out)["burn_reading"] == _TRIPPED_BURN_READING
+
+    def test_a_job_with_no_recorded_trip_prints_no_block(self, data_root, capsys) -> None:
+        job = self._job(None)
+
+        assert "Burn alarm" not in _show(capsys, str(job.job_id)).err

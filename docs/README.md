@@ -28,6 +28,7 @@
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
 | contract templates | [website.md](contracts/website.md), [api-service.md](contracts/api-service.md), [cli-tool.md](contracts/cli-tool.md), [python-library.md](contracts/python-library.md) | contracts |
+| cost anomaly / burn alarm | [cost-anomaly-alarm-v1.md](system/cost-anomaly-alarm-v1.md) | system |
 | cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
 | cost report | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | guide |
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
@@ -87,6 +88,7 @@ Specifications and design documents for the built system.
 | [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
+| [cost-anomaly-alarm-v1.md](system/cost-anomaly-alarm-v1.md) | The burn alarm: the one burn detector, what it compares, when a job's alarm trips, the unattended pause, and where a person sees a trip |
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |

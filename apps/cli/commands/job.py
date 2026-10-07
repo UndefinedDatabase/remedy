@@ -223,6 +223,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
+    _print_burn_alarm(job)
     for line in section_text:
         print(line, file=sys.stderr)
 
@@ -239,6 +240,18 @@ def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
         if entry["findings_omitted"]:
             print(f"  {entry['task_id']} \u2026 {entry['findings_omitted']} more "
                   f"(job show {job_id} --full)", file=sys.stderr)
+
+
+def _print_burn_alarm(job: JobPlan) -> None:
+    """F116 (DECISION F116 D7 (2)): a recorded burn alarm, on stderr beside the findings block."""
+    from packages.orchestration.job_burn import recorded_burn_sentence
+
+    sentence = recorded_burn_sentence(job.burn_reading)
+    if sentence is None:
+        return
+    print("\n--- Burn alarm ---", file=sys.stderr)
+    print(f"  {sentence}", file=sys.stderr)
+    print(f"  remedy job budget {job.job_id} shows the numbers.", file=sys.stderr)
 
 
 #: DECISION amend0905-vocab D4: the read views of a job are sections of
@@ -508,6 +521,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
     import json
     from dataclasses import asdict
 
+    from packages.orchestration.job_burn import recorded_burn_sentence
     from packages.orchestration.long_run_executor import REPORTED_TERMINALS
     from packages.orchestration.run_report import (
         MODE_FINAL,
@@ -546,6 +560,8 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         "patch_intent_ids": truth["patch_intent_ids"],
         "approval_required": truth["approval_required"],
         "latest_stop_reason": truth["latest_stop_reason"],
+        # F116 (DECISION F116 D7 (3)): the recorded burn alarm's sentence, or None.
+        "burn_alarm": recorded_burn_sentence(job.burn_reading),
         "code_applied": truth["code_applied"],
         # F051: a blocked run's next action is the command that answers its
         # most urgent open decision — that is what unblocks it.
@@ -568,6 +584,8 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         lines.append("  Approval:  REQUIRED")
     if truth["latest_stop_reason"]:
         lines.append(f"  Stop:      {truth['latest_stop_reason']}")
+    if report["burn_alarm"] is not None:
+        lines.append(f"  Burn alarm: {report['burn_alarm']}")
     lines.append(f"  Applied:   {'Yes' if truth['code_applied'] else 'No'}")
     if task_details:
         lines.append("  Task details:")
@@ -1977,6 +1995,28 @@ def _format_remaining_usd(limit_usd: float, counters) -> str:
     return f"{prefix}${max(0.0, limit_usd - spent):.4f}"
 
 
+#: DECISION F116 D4 (5) and D9 (2): the `recorded burn alarm` lines of `remedy job budget`,
+#: printed whatever limits the job has, none included, because a burn alarm is not a
+#: money-limit feature. Each value is read with `.get`, so a hand-edited record prints a
+#: gap, never a crash.
+def _print_recorded_burn_alarm(burn_reading: Any) -> None:
+    """The recorded burn alarm's heading, rate and window lines, or nothing without a record."""
+    if not isinstance(burn_reading, dict):
+        return
+    print("  recorded burn alarm:")
+    _burn_per = "call" if burn_reading.get("rate_unit") == "per_sample" else "hour"
+    print(f"    rate:                "
+          f"{burn_reading.get('rate')} {burn_reading.get('unit')} per "
+          f"{_burn_per} against an expected "
+          f"{burn_reading.get('expectation')} "
+          f"({burn_reading.get('basis')})")
+    print(f"    window:              "
+          f"{burn_reading.get('window_samples')} calls from call "
+          f"{burn_reading.get('since_label')} on, "
+          f"{burn_reading.get('window_spend')} {burn_reading.get('unit')} "
+          f"spent, multiplier {burn_reading.get('multiplier')}")
+
+
 def _cmd_job_budget(
     job_id: str,
     *,
@@ -2050,10 +2090,14 @@ def _cmd_job_budget(
             )
 
     if _budgets is None and _budgets_dict is None:
+        # DECISION F116 D9 (2): a job with no limits still shows the trip its run recorded.
+        _no_budget_burn = (
+            getattr(_plan, "burn_reading", None) if _plan is not None else None)
         if json_output:
-            emit_ok(job_id=_job_display_id, budgets=None)
+            emit_ok(job_id=_job_display_id, budgets=None, burn_reading=_no_budget_burn)
         else:
             print(f"Job {_job_display_id[:8]}: no budgets configured.")
+            _print_recorded_burn_alarm(_no_budget_burn)
         return
 
     _has_cost_limit = _budgets is not None and _budgets.max_cost_usd is not None
@@ -2158,6 +2202,11 @@ def _cmd_job_budget(
     # The arithmetic a predictive stop already recorded, if this job took one.
     _recorded_prediction = (
         getattr(_plan, "budget_prediction", None) if _plan is not None else None)
+    # DECISION F116 D4 (5): the newest burn-monitor trip `run_job` recorded,
+    # shown whatever limits the job has — a burn alarm is not a money-limit
+    # feature.
+    _burn_reading = (
+        getattr(_plan, "burn_reading", None) if _plan is not None else None)
 
     if json_output:
         out: dict = {
@@ -2175,6 +2224,7 @@ def _cmd_job_budget(
             # Null, never an invented number, when no prediction could be made.
             "prediction": _prediction.to_json() if _prediction is not None else None,
             "recorded_prediction": _recorded_prediction,
+            "burn_reading": _burn_reading,
         }
         emit_ok(**out)
     else:
@@ -2225,6 +2275,7 @@ def _cmd_job_budget(
                   f"{_recorded_prediction.get('estimate_basis', '')}")
             print(f"    arithmetic:          "
                   f"{_recorded_prediction.get('arithmetic', '')}")
+        _print_recorded_burn_alarm(_burn_reading)
         if evaluation is not None:
             print(f"  exhausted:             {evaluation.exhausted}")
             if evaluation.first_exhausted_limit:

@@ -1059,6 +1059,22 @@ Acceptance:
 
 _CLI_LEDGER_PROJECT_ID = "99999999-8888-7777-6666-555555555555"
 
+# DECISION F116 D4 (5): the shape `job_burn_record` returns — the detector's
+# ten `BurnReading` keys plus the one unit job burn always reads in.
+_BURN_RECORD = {
+    "tripped": True,
+    "basis": "trailing_baseline",
+    "rate_unit": "per_sample",
+    "rate": 15000.0,
+    "expectation": 1500.0,
+    "multiplier": 3.0,
+    "window_samples": 1,
+    "baseline_samples": 2,
+    "window_spend": 15000.0,
+    "since_label": 3,
+    "unit": "tokens",
+}
+
 
 @pytest.fixture
 def budget_cli_repo(tmp_path, monkeypatch):
@@ -1526,6 +1542,99 @@ class TestJobBudgetCliRendersPredictions:
         data = self._json(job.job_id, capsys)
         assert data["counters"]["measured_cost_usd"] is None
         assert data["counters"]["unpriced_call_count"] == 1
+
+
+class TestJobBudgetCliRendersBurnReading:
+    """DECISION F116 D4 (5): `remedy job budget` shows the recorded burn alarm.
+
+    Beside ``TestJobBudgetCliRendersPredictions`` and reusing its helpers
+    (``_save_budget_job``, ``_cmd_job_budget``) — the burn alarm is a sibling
+    of the recorded stop prediction, not a money-limit feature, so it is
+    exercised against both a money-limited and an unlimited job.
+    """
+
+    def _run(self, job_id, *, json_output=False):
+        from apps.cli.commands.job import _cmd_job_budget
+        _cmd_job_budget(job_id, json_output=json_output)
+
+    def _text(self, job_id, capsys):
+        self._run(job_id)
+        return capsys.readouterr().out
+
+    def _json(self, job_id, capsys):
+        import json as _json
+        self._run(job_id, json_output=True)
+        return _json.loads(capsys.readouterr().out)
+
+    def _save_with_burn_reading(self, repo, *, budgets, burn_reading):
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = _save_budget_job(repo, budgets=budgets)
+        job.burn_reading = dict(burn_reading) if burn_reading is not None else None
+        save_job_plan(job)
+        return job
+
+    def test_json_burn_reading_is_the_persisted_record_verbatim(
+            self, budget_cli_repo, capsys):
+        job = self._save_with_burn_reading(
+            budget_cli_repo, budgets={"max_cost_usd": 1.0}, burn_reading=_BURN_RECORD)
+        data = self._json(job.job_id, capsys)
+        assert data["burn_reading"] == _BURN_RECORD
+
+    def test_json_burn_reading_is_null_when_none_was_recorded(
+            self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0})
+        data = self._json(job.job_id, capsys)
+        assert data["burn_reading"] is None
+
+    def test_text_prints_the_recorded_burn_alarm_heading_and_rate_line(
+            self, budget_cli_repo, capsys):
+        job = self._save_with_burn_reading(
+            budget_cli_repo, budgets={"max_cost_usd": 1.0}, burn_reading=_BURN_RECORD)
+        out = self._text(job.job_id, capsys)
+        assert "recorded burn alarm:" in out
+        assert "15000.0 tokens per call against an expected 1500.0 (trailing_baseline)" in out
+
+    def test_no_recorded_burn_reading_prints_no_heading_with_a_money_limit(
+            self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0})
+        assert "recorded burn alarm:" not in self._text(job.job_id, capsys)
+
+    def test_no_recorded_burn_reading_prints_no_heading_without_a_money_limit(
+            self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_total_tokens": 1000})
+        assert "recorded burn alarm:" not in self._text(job.job_id, capsys)
+
+    def _save_without_budgets(self, repo, *, burn_reading):
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = _save_budget_job(repo, budgets={})
+        job.budgets = None
+        job.burn_reading = dict(burn_reading) if burn_reading is not None else None
+        save_job_plan(job)
+        return job
+
+    def test_a_job_with_no_budgets_still_prints_its_recorded_burn_alarm(
+            self, budget_cli_repo, capsys):
+        # R-1174: the no-budget answer used to return before the burn alarm.
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=_BURN_RECORD)
+        out = self._text(job.job_id, capsys)
+        assert "no budgets configured." in out
+        assert "recorded burn alarm:" in out
+        assert "15000.0 tokens per call against an expected 1500.0 (trailing_baseline)" in out
+
+    def test_a_job_with_no_budgets_carries_its_burn_reading_in_json(
+            self, budget_cli_repo, capsys):
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=_BURN_RECORD)
+        data = self._json(job.job_id, capsys)
+        assert data["budgets"] is None
+        assert data["burn_reading"] == _BURN_RECORD
+
+    def test_a_job_with_no_budgets_and_no_trip_prints_no_heading(
+            self, budget_cli_repo, capsys):
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=None)
+        out = self._text(job.job_id, capsys)
+        assert "no budgets configured." in out
+        assert "recorded burn alarm:" not in out
+        assert self._json(job.job_id, capsys)["burn_reading"] is None
 
 
 class TestEveryConfiguredLimitIsNamedInTheTextOutput:

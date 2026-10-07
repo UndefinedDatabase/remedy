@@ -369,6 +369,14 @@
       "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/do_cmd.py:184\n\n## Task 1\nLine 184 of `apps/cli/commands/do_cmd.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The handler at line 184 of `apps/cli/commands/do_cmd.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/do_cmd.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
       "consumed_by": "F287",
       "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/do_cmd.py:1:except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read)"
+    },
+    {
+      "id": "SU-047",
+      "title": "Narrow the excused handler at apps/cli/commands/do_cmd.py:967",
+      "why": "except Exception:  # noqa: BLE001 — index evidence is optional; fall back to another changed-file source",
+      "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/do_cmd.py:967\n\n## Task 1\nLine 967 of `apps/cli/commands/do_cmd.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception:  # noqa: BLE001 — index evidence is optional; fall back to another changed-file source\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The handler at line 967 of `apps/cli/commands/do_cmd.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/do_cmd.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
+      "consumed_by": "F116",
+      "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/do_cmd.py:1:except Exception:  # noqa: BLE001 — index evidence is optional; fall back to another changed-file source)"
     }
   ]
 }
