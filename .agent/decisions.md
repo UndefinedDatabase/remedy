@@ -27768,3 +27768,23 @@ CHOSEN: (1) No production change in T002. (2) Copy mode keeps offering the parke
 ALTERNATIVES: Recording the parked run's directory and skipping the offer when it differs, REJECTED for now: it touches the relaunch hand-over F285 built, for a saving of one short failed process. Proving T002 with a stand-in that never refuses, REJECTED: it would hide the copy-mode limit the measurement found.
 
 HOW TO REVERSE: Delete this paragraph; T002 is then re-planned.
+
+## DECISION F295 D25 — the operator confirms Q7 via remedy-answer: round 31 repairs the live pause-door test on F295's own branch and the pull request merges only if GitHub's next run is green (2026-10-07)
+
+CONTEXT: Operator question Q7, written at F295 round 30, asked whether the loop may repair `tests/ui_server/test_pause_door_live.py` on `feature/f295-machine-client-contract-v1` after pull request 311's second red hosted run and merge it if GitHub's next run is green, under DECISION F295 D22 (3)-(5)'s recommendation: the pretend model inside the test waits until the pause has really been received instead of sleeping a fixed time, the runner prints every task's status and the job's stop reason, no assertion is weakened, and a run that again ends `FINAL:blocked` is still treated as a product defect, not test timing. The operator answered via remedy-answer, quoted in full: "Passt".
+
+CHOSEN: DECISION F295 D22 (3)-(5)'s recommendation stands exactly as written and is now confirmed rather than merely defaulted-to: the repair proceeds on the feature's own branch, weakens no assertion, GitHub runs the suite once more, and the Open PR Gate merges pull request 311 only on a green run; a run again ending `FINAL:blocked` is still a product defect in the pause path and reopens an operator question.
+
+ALTERNATIVES: none — the operator's answer confirms the standing recommendation without amendment.
+
+HOW TO REVERSE: Delete this paragraph; DECISION F295 D22's recommendation would then again await operator confirmation.
+
+## DECISION F287 D6 — the operator confirms Q8 via remedy-answer: repair rounds and relaunched jobs on claude-cli both continue the earlier conversation (2026-10-07)
+
+CONTEXT: Operator question Q8, written at F287 round 5, asked whether a repair round may continue the earlier Claude command-line tool conversation, sending only the parts of the change that are new, the way DECISION F287 D4 already lets a relaunch of a paused or stopped job do, or whether only a restarted job should continue its conversation; DECISION F287 D4's recommendation was to let both continue, since the feature was built and reviewed for exactly this case and a refused resume falls back once to a fresh conversation at full context. The operator answered via remedy-answer, quoted in full: "take the way that is best for both!".
+
+CHOSEN: DECISION F287 D4's recommendation stands exactly as written and is now confirmed: from this step on, both a repair round and a restarted job on the claude-cli provider continue their earlier conversation, with the existing fallback-once rule on a refused resume and the existing setting to turn the shortening off for a run.
+
+ALTERNATIVES: Restricting continuation to restarted jobs only, REJECTED: the operator's answer asks for the way that is best for both cases, matching the standing recommendation rather than narrowing it.
+
+HOW TO REVERSE: Delete this paragraph; a later step would then separate repair-round continuation from relaunch continuation, as Q8's body described as the alternative.
