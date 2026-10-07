@@ -1,0 +1,16 @@
+Job ID: f146c82a6d8e42ca
+Job State: stopped
+Stop Reason: budget_exhausted:max_cost_usd
+Stop Source: budget
+Error: 
+Run Manifest Error: 
+Budgets: {"deadline": null, "max_cost_usd": 10.0, "max_provider_calls": 40, "max_total_tokens": null, "max_wall_clock_minutes": null, "min_free_disk_bytes": null}
+Budget Actuals: {"actual_call_count": 11, "actual_sources": ["pingpong_live"], "measured_cost_usd": 10.1519466, "priced_call_count": 11, "provider_call_count": 12, "schema_version": "2.0.0", "started_at": "2026-10-07T04:49:38.564024+00:00", "total_tokens": 118025, "unmeasured_call_count": 1, "unpriced_call_count": 1}
+Job Workspace: /home/decodeux/Repos/remedy/.remedy-wt/job-f146c82a6d8e42ca
+
+Task States:
+  T001: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed; repair_rounds_used: 2; run_id: f080dc41b7d04cd3)
+  T002: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed; repair_rounds_used: 0; run_id: 667704af8db3434b)
+  T003: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed; repair_rounds_used: 0; run_id: b6c76e7122ad4f4a)
+  T004: pending (verdict: ; final_status: stopped; repair_rounds_used: 0; run_id: a4b62cc776f541a9)
+  T005: pending (verdict: ; final_status: ; repair_rounds_used: 0; run_id: )
