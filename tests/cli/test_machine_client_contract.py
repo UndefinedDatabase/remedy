@@ -14,16 +14,25 @@ The decision the path answers is the budget decision: the order's run is given a
 already passed, so its budget stops it before any task runs and raises `budget:<request id>`, the
 one decision a fake run raises on its own. Answering it `extend` with a later deadline lets
 `remedy job run` finish the job (DECISIONs F295 D11 and D13).
+
+The second half of this file holds the contract page, `docs/system/machine-client-contract-v1.md`,
+to the gate test (DECISION F295 D17): the tables of the page's section "The path, step by step"
+name exactly the commands, flags, JSON keys and exit codes the gate test uses, read from this
+file's own syntax tree, and the page carries the gate test's order file byte for byte.
 """
 from __future__ import annotations
 
+import ast
 import contextlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 #: The deadline that has passed before the run starts, and the one the answer raises it to.
 PAST_DEADLINE = "2000-01-01T00:00:00+00:00"
@@ -177,3 +186,92 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     code, status = _remedy(["status"], repo, env)
     assert _digest_job(status["client"], job_id)["waits_for_apply"] is False
     assert job_id not in status["client"]["awaiting_apply"]
+
+
+# The contract page and the gate test name the same things (DECISION F295 D17).
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+CONTRACT_PAGE = _REPO_ROOT / "docs" / "system" / "machine-client-contract-v1.md"
+
+#: The section of the page whose tables are held to the gate test, and those tables by kind.
+PATH_SECTION_HEADING = "## The path, step by step"
+PAGE_TABLES = {"commands": "Commands", "flags": "Flags", "keys": "JSON keys",
+               "exit codes": "Exit codes"}
+
+#: The functions that make up the gate test: the test and the two helpers it calls.
+GATE_FUNCTIONS = (
+    "test_a_program_drives_an_order_file_to_its_proof_through_the_command_line",
+    "_remedy",
+    "_digest_job",
+)
+
+
+def _gate_names() -> dict[str, set[str]]:
+    """The commands, flags, JSON keys and exit codes the gate test uses, read from its syntax.
+
+    A command is `remedy` and the leading words of a list `_remedy` is called with; a flag is a
+    string that starts with `--`; a JSON key is a string a subscript reads; an exit code is an
+    integer `code` is compared with.
+    """
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    functions = [node for node in tree.body
+                 if isinstance(node, ast.FunctionDef) and node.name in GATE_FUNCTIONS]
+    assert sorted(function.name for function in functions) == sorted(GATE_FUNCTIONS)
+    names: dict[str, set[str]] = {kind: set() for kind in PAGE_TABLES}
+    for function in functions:
+        for node in ast.walk(function):
+            if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                    and node.value.startswith("--")):
+                names["flags"].add(node.value)
+            if (isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant)
+                    and isinstance(node.slice.value, str)):
+                names["keys"].add(node.slice.value)
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "_remedy" and node.args
+                    and isinstance(node.args[0], ast.List)):
+                words = []
+                for element in node.args[0].elts:
+                    if (not isinstance(element, ast.Constant) or not isinstance(element.value, str)
+                            or element.value.startswith("--")):
+                        break
+                    words.append(element.value)
+                names["commands"].add(" ".join(["remedy", *words]))
+            if (isinstance(node, ast.Compare) and isinstance(node.left, ast.Name)
+                    and node.left.id == "code"):
+                for comparator in node.comparators:
+                    if isinstance(comparator, ast.Constant) and isinstance(comparator.value, int):
+                        names["exit codes"].add(str(comparator.value))
+    return names
+
+
+def _page_table(title: str) -> set[str]:
+    """The backticked first cell of every row of the table under `### <title>` in the path section."""
+    text = CONTRACT_PAGE.read_text(encoding="utf-8")
+    section = text[text.index(PATH_SECTION_HEADING) + len(PATH_SECTION_HEADING):]
+    section_end = section.find("\n## ")
+    section = section if section_end < 0 else section[:section_end]
+    marker = f"\n### {title}\n"
+    table = section[section.index(marker) + len(marker):]
+    table_end = table.find("\n### ")
+    table = table if table_end < 0 else table[:table_end]
+    cells = []
+    for line in table.splitlines():
+        if line.startswith("|"):
+            match = re.fullmatch(r"`([^`]+)`", line.split("|")[1].strip())
+            if match:
+                cells.append(match.group(1))
+    assert len(cells) == len(set(cells)), f"the page's {title} table names an entry twice"
+    return set(cells)
+
+
+@pytest.mark.parametrize("kind", sorted(PAGE_TABLES))
+def test_the_contract_page_names_exactly_what_the_gate_test_uses(kind):
+    used = _gate_names()[kind]
+    assert used, f"no {kind} read from the gate test: the reading of its syntax is broken"
+    named = _page_table(PAGE_TABLES[kind])
+    assert sorted(named - used) == [], f"the page names {kind} the gate test does not use"
+    assert sorted(used - named) == [], f"the gate test uses {kind} the page does not name"
+
+
+def test_the_contract_page_carries_the_gate_tests_order_file():
+    assert f"```\n{ORDER_FILE_TEXT}```\n" in CONTRACT_PAGE.read_text(encoding="utf-8")
