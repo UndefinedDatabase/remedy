@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 and D9).
+what a real run returns (DECISIONs F298 D8, D9 and D10).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -328,6 +328,28 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "full_repo_in_prompt": {},
         },
         "cost_mirror": {"ledger_mirrored": {}, "out_dir": {}, "error": {}},
+    },
+    "job.apply": {
+        "modes_applied": {"*": {}},
+        "temporary_worktree_cleanup": {
+            "temporary_worktree_removed": {},
+            "temporary_registration_removed": {},
+            "cleanup_status": {},
+            "cleanup_error": {},
+        },
+        "task_summaries": {
+            "task_id": {},
+            "title": {},
+            "status": {},
+            "run_id": {},
+            "reviewer_verdict": {},
+            "test_passed": {},
+            "repair_rounds_used": {},
+            "repair_rounds_allowed": {},
+            "applied_files": {},
+        },
+        "file_readiness": {"path": {}, "kind": {}, "baseline_status": {}, "workspace_status": {}},
+        "execution_config": EXECUTION_CONFIG_KEY_TREE,
     },
 }
 

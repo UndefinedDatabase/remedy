@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 and D9): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8, D9 and D10): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -681,7 +681,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
 def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
     """The string keys of every dict literal `function` in `path` puts under `key`, as the value of
     a dict literal's entry or of a `name["key"] = ...` store, either branch of a conditional
-    expression included."""
+    expression and the element of a list comprehension included."""
     values: list[ast.AST] = []
     for node in ast.walk(_function_def(path, function)):
         if isinstance(node, ast.Dict):
@@ -694,6 +694,8 @@ def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
     keys: set[str] = set()
     for value in values:
         for branch in (value.body, value.orelse) if isinstance(value, ast.IfExp) else (value,):
+            if isinstance(branch, ast.ListComp):
+                branch = branch.elt
             keys |= _dict_display_keys(branch) or set()
     assert keys, f"{function} puts no dict literal under {key}"
     return keys
@@ -719,6 +721,27 @@ def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     assert set(trees["target_guard"]) == _returned_dict_keys(pingpong, "_export_target_guard")
     assert set(trees["cost_mirror"]) == _dict_literal_keys(
         _REPO_ROOT / "packages/orchestration/job_evidence.py", "mirror_job_run_into_ledger")
+
+
+def test_the_job_apply_answer_trees_name_exactly_what_their_code_builds():
+    from typing import get_type_hints
+
+    from packages.orchestration.job_apply import JobApplyResult
+
+    job_apply = "packages/orchestration/job_apply.py"
+    trees = ANSWER_KEY_TREES["job.apply"]
+    for key in ("temporary_worktree_cleanup", "task_summaries", "file_readiness"):
+        assert set(trees[key]) == _dict_value_keys(job_apply, "export_job_apply_json", key), key
+    # The paths a job changed are the keys of `modes_applied`, each mapped to its file mode.
+    assert trees["modes_applied"] == {"*": {}}
+    assert get_type_hints(JobApplyResult)["modes_applied"] == dict[str, str]
+    # The apply's execution configuration is the job's, through the exporter `job run` answers.
+    assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
+    module = ast.parse((_REPO_ROOT / job_apply).read_text(encoding="utf-8"))
+    sources = {ast.unparse(node.value) for node in ast.walk(module) if isinstance(node, ast.Assign)
+               and any(ast.unparse(target) in ("result.execution_config", "ec")
+                       for target in node.targets)}
+    assert sources == {"_export_execution_config(job.execution_config)", "ec or {}"}
 
 
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
@@ -748,7 +771,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
                                 "extend", "--answer", f"deadline={LATER_DEADLINE}"], 0)
     ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
-    answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
+    applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
     answer("change.proof", ["change", "proof", job_id], 0)
     answer("job.evidence", ["job", "evidence", job_id], 0)
     answer("patch.hunks", ["patch", "hunks", job_id], 0)
@@ -758,12 +781,17 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     answer("client.interface", ["client", "interface"], 0)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
-    # The run reaches the levels the trees name under `remedy do`'s and `remedy job run`'s answers.
+    # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`
+    # and `remedy job apply`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
             ("execution_config", "builder"), ("cost_mirror", "ledger_mirrored")} <= (
         _key_paths(_key_tree(ran)))
+    assert {("task_summaries", "applied_files"), ("file_readiness", "workspace_status"),
+            ("temporary_worktree_cleanup", "cleanup_status"), ("execution_config", "builder")} <= (
+        _key_paths(_key_tree(applied)))
+    assert applied["modes_applied"], "the approved apply names no path it applied"
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
