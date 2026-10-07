@@ -4,8 +4,9 @@ DECISION F287 D2 (round 2, T001 first half): `build_claude_cli_args` gains a
 validated `resume_session` keyword, and `ClaudeCliProvider` threads `resume`
 through `build`/`review`, `_build_impl`/`_review_impl` and every `_call*`
 seam, recording `resume_used`/`resume_session_ref` on a call that actually
-resumed. `supports_resume` stays False this round: no production call passes
-a resume yet. No real `claude` process runs here — the JSON paths patch
+resumed. `supports_resume` answers True since DECISION F287 D4 (round 5): a
+repair round's Builder and Reviewer calls, and a relaunch's first calls, now
+actually resume on this provider. No real `claude` process runs here — the JSON paths patch
 `packages.orchestration.pingpong_provider._guarded_cli_run` and the streamed
 paths patch `packages.orchestration.stream_evidence.run_streamed_command`.
 """
@@ -189,9 +190,9 @@ class TestPreparedInputFingerprintChangesOnlyWithResume:
         assert fresh1.prepared_input.fingerprint == fresh2.prepared_input.fingerprint
 
 
-class TestSupportsResumeStaysFalse:
-    def test_supports_resume_is_false(self) -> None:
-        assert ClaudeCliProvider().supports_resume is False
+class TestSupportsResumeIsTrue:
+    def test_supports_resume_is_true(self) -> None:
+        assert ClaudeCliProvider().supports_resume is True
 
 
 class TestAFreshCallsFingerprintIsUnchangedByF287:

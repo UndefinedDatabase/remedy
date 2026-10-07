@@ -1256,7 +1256,9 @@ class ClaudeCliProvider:
 
     @property
     def supports_resume(self) -> bool:
-        return False
+        # WHY: DECISION F287 D4 — the checked session reference and the refused-resume
+        # fallback (D2, D3) are proven; F106's repair-round resume and F109's dedupe now go live.
+        return True
 
     @property
     def write_mode(self) -> str:
