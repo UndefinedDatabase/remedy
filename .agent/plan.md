@@ -7,17 +7,17 @@ arithmetic in the decision, and the watchdog's burn tripwire uses the same detec
 (docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
 
 ## Current Step
-Session 1, round 1: the claim. Branch from `main` at `e80b95467`, mark F116 `[~]` in STATUS,
-re-head the review record and book F287's round 17, record DECISION F116 D1 and the slice order,
-and save the claim's measurement as `.agent/f116_inventory.md`. No production code.
+Session 1, round 2: T001. Book round 1, then build `packages/orchestration/burn_detector.py` as
+DECISION F116 D2 specifies, a pure function with a per-sample trailing basis and a per-hour class
+basis, with its table tests in `tests/orchestration/test_burn_detector.py` and its entry in the
+orphan-module guard's `ALLOWED_UNWIRED`.
 
 ## Next Steps
-1. T001: `packages/orchestration/burn_detector.py`, the pure detector with its window math, floors,
-   multiplier and basis labels, and its table tests in `tests/orchestration/test_burn_detector.py`.
-2. T002: the job runner calls the detector at its safe point; attended warning, unattended pause
-   decision with the arithmetic, one open trip decision per job.
-3. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; docs.
-4. The amend0930b-slow-cap hardening stage, then the closure sequence.
+1. T002: the job runner calls the detector at its safe point; attended warning, unattended pause
+   decision with the arithmetic, one open trip decision per job; the configuration keys; the
+   `ALLOWED_UNWIRED` entry removed.
+2. T003: the watchdog's burn tripwire calls the detector and its own arithmetic is deleted; docs.
+3. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
 - The ledger gives every call of one task run the same timestamp, so a window spans whole task
