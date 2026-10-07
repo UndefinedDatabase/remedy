@@ -3,23 +3,26 @@
 ## Goal
 What a program relies on when it drives Remedy is true and written down once: an order runs in the
 repository of the project it names, a refused apply says so, a result can be declined, an order of
-several jobs and an order started twice behave, and one contract document generated from the code
-names every operation, field, word, token and exit code (docs/roadmap/features/T12_F298.md).
-DECISION F298 D1 fixes the slices and their order.
+several jobs and an order started twice behave, and one document generated from the code names
+every operation, field, word, token and exit code (docs/roadmap/features/T12_F298.md). DECISION
+F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 1, round 1: the claim. Branch from `main` at `77493e0f9`, mark F298 `[~]` in STATUS,
-re-head the review record and book F116's round 15, record DECISION F298 D1 and the slice order,
-and save the claim's measurement as `.agent/f298_inventory.md`. No production code.
+Session 1, round 2: T001's first part. `apps/cli/client_interface.py` builds the interface from
+the code (operations with arguments and exit codes, exit-code meanings, envelope, job states,
+mission status words, contract templates, budget kinds, version 1.1), `remedy client interface`
+prints it, the page names the command; round 1's verdict is booked.
 
 ## Next Steps
-1. T001: the contract as data, one command that prints it, the page rendered from it, and the test
-   that fails when code and document differ.
-2. T002: an order runs in the repository of the project it names, or is refused before any step.
-3. T003: honest refusals under `--approve --json`, and one command that declines a result.
-4. T004: the second gate test — commit and push, two jobs, one order file started twice.
-5. T005, T006, T007: the approval card, tokens and calls, the bounded digest.
-6. The amend0930b-slow-cap hardening stage, then the closure sequence.
+1. T001, next part: the keys every operation's answer and the digest return, and the refusal
+   tokens, added to the interface, with a test that drives the real commands and fails when the
+   code returns a key the interface does not name or the interface names one the code does not.
+2. T001, last part: `docs/system/machine-client-contract-v1.md` rendered from the interface, and
+   the test that fails when page and interface differ.
+3. T002: an order runs in the repository of the project it names, or is refused before any step.
+4. T003: honest refusals under `--approve --json`, and one command that declines a result.
+5. T004: the second gate test — commit and push, two jobs, one order file started twice.
+6. T005, T006, T007; then the amend0930b-slow-cap hardening stage and the closure sequence.
 
 ## Risks
 - F298 is large for 25 rounds; D1 names the split point if the soft limit is reached.
