@@ -7,15 +7,15 @@ other production provider records that it did not resume (docs/roadmap/features/
 DECISION F287 D1 fixes the slices and their order; T001 to T003 have landed.
 
 ## Current Step
-Round 15, a docs repair inside the closure sequence: book round 14 and register R-1164 (two
-built-state texts still say no production provider resumes), then correct
-`docs/system/semantic-dedupe-v1.md`, the README's F109 entry and the feature file's Built State.
+Round 16, the closure's evidence round again (docs/roadmap/STATUS_closure_protocol.md algorithm
+steps 1 and 2), because round 15's docs repair moved the head past round 14's package: book round
+15, resolve R-1164, one prose slip, then at the accepted head the staging reclaim, the evidence job
+`f287r16e1001` over 47 test files, and the review package from the clean, pushed tree.
 
 ## Next Steps
-1. Round 16, the evidence round again, because round 14's package no longer covers the head:
-   resolve R-1164, the staging reclaim, a new evidence job and a new review package.
-2. Round 17, the closing round: the ledger rotation, the STATUS line with its README sync and
-   SU-046's `consumed_by`, and the pull request, left unmerged.
+1. Round 17, the closing round: book round 16, the ledger rotation, the STATUS line with its
+   README sync and the self-use queue's `consumed_by` for SU-046, and the pull request, left
+   unmerged.
 
 ## Risks
 - Repair rounds on `claude-cli` now send shortened prompts to a continued session (F106, F109,
