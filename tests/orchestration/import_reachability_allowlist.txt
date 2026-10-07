@@ -3,6 +3,7 @@
 # tests/orchestration/test_import_reachability.py computes; never typed by hand.
 # A deletion round removes an entry in the same commit that removes its module.
 # Blank lines and lines beginning with a hash are ignored by the reader.
+apps.cli.client_interface
 apps.cli.command_catalog
 apps.cli.commands
 apps.cli.commands.absorb_cmd
@@ -12,6 +13,7 @@ apps.cli.commands.brain
 apps.cli.commands.change
 apps.cli.commands.chat_cmd
 apps.cli.commands.ci_cmd
+apps.cli.commands.client_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.contract_cmd
 apps.cli.commands.data_cmd
