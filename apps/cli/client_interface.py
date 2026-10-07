@@ -7,8 +7,11 @@ command catalog for the operations, their arguments and the exit codes each can 
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
 `JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
-`--json` answer wears. A change in any of those places changes the document. The one thing
-declared here is which catalog commands a client uses, `CLIENT_OPERATION_IDS`.
+`--json` answer wears. A change in any of those places changes the document. Two things are
+declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`, and the tree of the
+keys the digest returns, `DIGEST_KEY_TREE`, which `tests/cli/test_client_interface.py` holds equal
+to the keys `packages/orchestration/client_digest.py` writes and to what a real run's digest
+returns (DECISION F298 D3).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -20,6 +23,7 @@ removes one.
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 #: The document's own version. Its major number changes only when a name is removed or changes
@@ -45,6 +49,61 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "mission.abandon",
     "client.interface",
 )
+
+#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
+#: each key maps to the tree of the object under it, or of every element of the list under it,
+#: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
+DIGEST_KEY_TREE: dict[str, Any] = {
+    "version": {},
+    "read_at": {},
+    "supervisor": {"answers": {}},
+    "projects": {
+        "project_id": {},
+        "slug": {},
+        "missions": {
+            "mission_id": {},
+            "status": {},
+            "goal": {},
+            "job_ids": {},
+            "order_source_path": {},
+            "order_source_sha256": {},
+        },
+        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {}},
+    },
+    "jobs": {
+        "job_id": {},
+        "project_id": {},
+        "mission_id": {},
+        "title": {},
+        "state": {},
+        "waits_for_apply": {},
+        "cost": {"value_usd": {}, "basis": {}},
+        "evidence": {
+            "evidence_dir": {},
+            "run_ids": {},
+            "postmortem_path": {},
+            "run_manifest_path": {},
+            "result_diff_path": {},
+            "result_diff_sha256": {},
+        },
+    },
+    "awaiting_apply": {},
+    "decisions": {
+        "job_id": {},
+        "project_id": {},
+        "decision_id": {},
+        "type": {},
+        "severity": {},
+        "question": {},
+        "default": {},
+        "options": {},
+        "clarifications": {"id": {}, "question": {}, "default": {}},
+        "created_at": {},
+        "age_seconds": {},
+    },
+    "degraded": {},
+    "skipped_files": {},
+}
 
 
 def _argument_entry(arg: Any) -> dict[str, Any]:
@@ -99,4 +158,5 @@ def build_client_interface() -> dict[str, Any]:
         "mission_statuses": list(MISSION_STATUSES),
         "contract_templates": list(list_contract_templates()),
         "budget_kinds": list(JobBudgets.model_fields),
+        "digest": copy.deepcopy(DIGEST_KEY_TREE),
     }

@@ -33,6 +33,7 @@ def _cmd_client_interface(*, json_output: bool = False) -> None:
     print(f"Budget kinds: {', '.join(interface['budget_kinds'])}")
     codes = ", ".join(f"{entry['code']} {entry['name']}" for entry in interface["exit_codes"])
     print(f"Exit codes: {codes}")
+    print(f"Digest (remedy status --json, under client): {', '.join(interface['digest'])}")
     print("A program reads the whole interface with: remedy client interface --json")
 
 
