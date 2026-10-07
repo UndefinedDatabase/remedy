@@ -6,17 +6,14 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 7, round 26: book round 25's PASS and register R-1158 (the cost limit lies inside the
-spread of repeated runs; owned by F297) with one prose slip; the feature file's Built State names
-the three lines F295 added to the reachability allowlist (closure precondition 7); the checklist's
-once-per-feature consolidation pass for F295. These are the last content commits before the
-evidence.
+Session 7, round 27: the closure's evidence round. Book round 26's PASS; that commit is the
+ACCEPTED HEAD. Then the staging reclaim, the evidence job built by
+`.agent/authored/f295-r27-create_f295_evidence.py`, and the review package from the clean, pushed
+tree at that head.
 
 ## Next Steps
-1. Round 27: book round 26; the staging reclaim, the evidence job and the review package at the
-   accepted head.
-2. Round 28: the ledger rotation, the open findings re-assigned to F297, the STATUS line with the
-   README and the self-use entry's `consumed_by`, and the pull request.
+1. Round 28: book round 27; the ledger rotation, the open findings re-assigned to F297, the STATUS
+   line with the README and the self-use entry's `consumed_by`, and the pull request.
 
 ## Risks
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157 and R-1158 (Low) stay open, owned by F297.
