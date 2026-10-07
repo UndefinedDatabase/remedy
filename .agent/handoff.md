@@ -4,7 +4,12 @@
 
 SESSION 3 of feature F298 · round 13 · rounds so far 13
 
-Context self-assessment: the reviewer's context is still comfortable after six rounds in this session.
+Context self-assessment: the reviewer's context is still comfortable after six rounds in this
+session. The session ends after round 13, inside the target of six to eight rounds, because every
+part of T001 still open needs a design decision first: the trees that remain contain shapes that
+repeat themselves (a mission plan's earlier versions each carry their own earlier versions, and
+the interface's own answer holds trees whose keys are data), or answers of many shapes
+(`remedy decision resolve` and `remedy job resume`), and that decision is better started fresh.
 
 Fortschritt: ~38 % (claim · T001 twelve parts landed · T001 last answer trees and page, T002 to T007 open) — Schätzung
 
@@ -127,7 +132,22 @@ a job, the one that abandons a mission, and the description's own command.
 
 Round 12's PASS is booked by this round's C1, in `.agent/live_review.md`.
 
-Round 13's verdict is the reviewer's; the reviewer books it in the next round's first commit.
+Round 13: VERDICT PASS, verified by dry run, bytes identical, given by the reviewer of session 3
+after this handback. `.remedy-wt/f298-r13/review13.py`, whose readings are saved beside it as
+`review13-readings.txt`, read the saved block and `.agent/plan.md` at `d99480ba8`, the two
+appended records there, the two files of `5ea3daa96` and the page of `3568a7f1b` equal to the
+prepared files of the reviewer's dry run on `b18ca3ce5`, and the three records unchanged by
+`e41f5c012`, ten of ten; `e41f5c012` touches only this file. The dry run's readings, saved as
+`.remedy-wt/f298-r13/build-readings-b.txt`: the round's selection `838 passed` at exit 0, ruff
+clean on the two touched Python files, integrity six of six `pass`, and the open set unchanged.
+The reviewer's eight mutation red-proofs, saved as `.remedy-wt/f298-r13/mutations.txt`, each
+turned `tests/cli/test_client_interface.py` red, with the unmutated control green before and
+after. The worker's one run read `838 passed`. The next session books this verdict into
+`.agent/live_review.md` in its first round's first commit, together with one prose slip for
+`.agent/prose_slips.md`: "2026-10-08, F298 round 13 — the worker's reply says it committed the
+handback without reading its staged diff, while the handback says the whole diff was read before
+every commit; the handback is the commit's only file and the reviewer read it, so nothing on
+disk differs."
 
 ## Next
 
@@ -135,8 +155,23 @@ Round 13's verdict is the reviewer's; the reviewer books it in the next round's 
    and stop.
 2. Then rule 2, the Open PR Gate.
 3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then book round 13's verdict in the next round's first commit.
-5. Then T001, next part: the answer trees of the operations still missing.
+4. Then book round 13's verdict and its prose slip, quoted above, in the next round's first
+   commit.
+5. Then T001, next part: the answer trees of the operations still missing, `remedy mission
+   abandon`, `remedy decision resolve`, `remedy job resume` and `remedy client interface`. First
+   fix in a DECISION, in the same round as its patch, how a tree names a shape that repeats
+   itself: `mission_plan._versions` in `packages/orchestration/mission_compiler.py` appends the
+   previous plan body, which still holds its own `_versions`, and the interface's `digest` and
+   `answer_trees` are trees whose keys are data. The mission's `contract` is the tree `remedy do`
+   already declares and can become a shared named tree, as the execution configuration and the
+   target guard did. `remedy decision resolve` and `remedy job resume` answer in many shapes,
+   so measure every nested key their handlers can answer before declaring.
+6. Then the part that requires a tree, or an empty entry, for every operation, and the last part
+   of T001: the page rendered from the interface, with the test that fails when page and
+   interface differ.
+7. The soft limit is 25 rounds or 7 sessions, and F298 stands at 13 rounds and 3 sessions with
+   T002 to T007 open, so the split that DECISION F298 D1 names will be needed; the session that
+   reaches the limit writes the scope report and executes the split-and-close default.
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low; all owned by F297).
@@ -152,3 +187,4 @@ Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 | Gates 1 to 5 | done | all green, see Verification |
 | Push | done | outcome in the worker's final reply |
 | Gate 6 | done | reported in the worker's final reply |
+| Session close: round 13's verdict and the session's end | done | this commit |
