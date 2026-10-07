@@ -26,14 +26,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-127 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+128 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 42 | 43 |
-| 3 | Full Token Economy & Autonomy | 6 | 28 |
+| 3 | Full Token Economy & Autonomy | 7 | 28 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -348,6 +348,16 @@ prompt with an audited line, and a non-tty pipe with neither flag exits
 with the estimate and the `--yes` hint rather than hanging. Real cost
 bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
+
+F287 provider session continuity (when a task that a pause or a stop interrupted
+runs again on the `claude-cli` provider, its builder and reviewer continue the
+sessions they last used instead of paying again for the context those sessions
+already held; a resume the CLI refuses falls back once to a fresh session and
+records that; a job in copy mode gets a new working folder on every run, so its
+relaunch always takes that fallback; the Anthropic API and Ollama providers
+cannot resume, and the run record names the role and the reason under
+`resume_declined` instead of starting fresh silently; the page
+`docs/system/session-resume-v1.md` names which providers resume).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —
