@@ -8,10 +8,13 @@ their own.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 
 from packages.orchestration.burn_detector import (
+    BASIS_CLASS_DEFAULT,
     BASIS_TRAILING_BASELINE,
+    RATE_UNIT_PER_HOUR,
     RATE_UNIT_PER_SAMPLE,
     BurnReading,
     BurnSample,
@@ -19,6 +22,8 @@ from packages.orchestration.burn_detector import (
     evaluate_burn_rate,
 )
 from packages.orchestration.job_burn import (
+    BURN_DECISION_MARKER,
+    BURN_PAUSE_SOURCE,
     CONFIG_KEY_JOB_BURN_EXPECTED_TOKENS_PER_HOUR,
     CONFIG_KEY_JOB_BURN_MIN_SAMPLES,
     CONFIG_KEY_JOB_BURN_MIN_SPEND_TOKENS,
@@ -26,8 +31,16 @@ from packages.orchestration.job_burn import (
     CONFIG_KEY_JOB_BURN_WINDOW,
     JOB_BURN_UNIT,
     JobBurnMonitor,
+    job_approved_unattended,
     job_burn_record,
+    job_burn_sentence,
     job_burn_thresholds_from_config,
+)
+from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
+from packages.orchestration.pingpong_job import (
+    JOB_BLOCKED,
+    JOB_COMPLETED,
+    JOB_PAUSED,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
 
@@ -264,7 +277,8 @@ def _burn_job_repo(tmp_path):
     return repo
 
 
-def _run_burn_job(repo, *, builder_name, builder_provider, reviewer_provider):
+def _run_burn_job(repo, *, builder_name, builder_provider, reviewer_provider,
+                  prepare=None):
     """A real, SINGLE, un-capped `run_job` over the two-task job above.
 
     As `_run_and_mirror` (`tests/orchestration/test_job_digest.py`) runs one,
@@ -272,6 +286,7 @@ def _run_burn_job(repo, *, builder_name, builder_provider, reviewer_provider):
     limit, so both tasks' four provider calls land inside this ONE `run_job`
     call — the shape the trip-persistence behaviour needs: the fourth call's
     own safe-point reading must see the third call's trip already recorded.
+    *prepare*, when given, is called with the parsed plan before it is saved.
     """
     from packages.orchestration.pingpong_job import (
         load_job_plan,
@@ -281,6 +296,8 @@ def _run_burn_job(repo, *, builder_name, builder_provider, reviewer_provider):
     )
 
     plan = parse_job_file(_BURN_TWO_TASK_JOB, str(repo))
+    if prepare is not None:
+        prepare(plan)
     save_job_plan(plan)
     run_job(
         plan.job_id,
@@ -325,6 +342,8 @@ def test_run_job_keeps_the_trip_read_before_the_fourth_call(tmp_path, monkeypatc
     assert job.burn_reading["since_label"] == 3
     assert job.burn_reading["basis"] == BASIS_TRAILING_BASELINE
     assert job.burn_reading["unit"] == JOB_BURN_UNIT
+    # D5: an attended job only records the warning and runs to its end.
+    assert job.state == JOB_COMPLETED
 
 
 def test_run_job_leaves_burn_reading_none_when_nothing_trips(tmp_path, monkeypatch):
@@ -388,3 +407,183 @@ def test_run_job_leaves_burn_reading_none_and_logs_one_error_when_the_resolver_r
     ]
     assert len(records) == 1, [r.getMessage() for r in caplog.records]
     assert records[0].exc_info is not None
+
+
+class _DiskReadingProvider(_BurnSequenceProvider):
+    """A burn-sequence stand-in that, when its FOURTH call starts, reads the job
+    back from disk and keeps the ``burn_reading`` it finds there (R-1168)."""
+
+    def __init__(self, *args: Any, job_id_holder: list[str], seen: list[Any],
+                 **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._job_id_holder = job_id_holder
+        self._seen = seen
+
+    def _read_disk_at_fourth_call(self) -> None:
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        if self._counter[0] == 3:
+            self._seen.append(load_job_plan(self._job_id_holder[0]).burn_reading)
+
+    def build(self, prompt, **kwargs):
+        self._read_disk_at_fourth_call()
+        return super().build(prompt, **kwargs)
+
+    def review(self, prompt, **kwargs):
+        self._read_disk_at_fourth_call()
+        return super().review(prompt, **kwargs)
+
+
+def test_the_trip_is_on_disk_when_the_fourth_provider_call_starts(tmp_path, monkeypatch):
+    _patch_burn_thresholds(
+        monkeypatch,
+        BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0))
+    repo = _burn_job_repo(tmp_path)
+    counter = [0]
+    holder: list[str] = []
+    seen: list[Any] = []
+    sequence = [1500, 1500, 15000, 1500]
+    kwargs = dict(pass_on_round=1, fail_on_round=99, job_id_holder=holder, seen=seen)
+    builder = _DiskReadingProvider(sequence, counter, **kwargs)
+    reviewer = _DiskReadingProvider(sequence, counter, **kwargs)
+
+    job = _run_burn_job(
+        repo, builder_name=_BurnSequenceProvider.PROVIDER_NAME,
+        builder_provider=builder, reviewer_provider=reviewer,
+        prepare=lambda plan: holder.append(plan.job_id))
+
+    assert len(seen) == 1
+    assert seen[0] is not None
+    assert seen[0] == job.burn_reading
+
+
+# ── job_approved_unattended ───────────────────────────────────────────────────
+
+
+def test_job_approved_unattended_is_true_for_the_auto_approval_audit():
+    job = SimpleNamespace(task_plan={"_approval_audit": {"mode": AUTO_APPROVAL_MODE}})
+
+    assert job_approved_unattended(job) is True
+
+
+def test_job_approved_unattended_is_false_for_every_other_plan_shape():
+    for task_plan in (
+        None,
+        {},
+        {"_approval_audit": {"mode": "interactive"}},
+        {"_approval_audit": "auto_yes"},
+    ):
+        assert job_approved_unattended(SimpleNamespace(task_plan=task_plan)) is False
+
+
+# ── job_burn_sentence ─────────────────────────────────────────────────────────
+
+
+def test_job_burn_sentence_for_a_per_sample_record():
+    record = {
+        "rate_unit": RATE_UNIT_PER_SAMPLE, "window_samples": 1, "rate": 15000.0,
+        "expectation": 1500.0, "multiplier": 3.0, "since_label": 3}
+
+    assert job_burn_sentence(record) == (
+        "The last 1 provider calls spent 15000.0 tokens each on average, more "
+        "than 3 times the 1500.0 tokens per call this job spent before them "
+        "(from call 3 on).")
+
+
+def test_job_burn_sentence_for_a_per_hour_record():
+    record = {
+        "rate_unit": RATE_UNIT_PER_HOUR, "window_samples": 5, "rate": 90000.0,
+        "expectation": 30000.0, "multiplier": 2.5, "since_label": 4}
+
+    assert job_burn_sentence(record) == (
+        "The last 5 provider calls spent 90000.0 tokens per hour, more than "
+        "2.5 times the 30000.0 tokens per hour set in configuration "
+        "(from call 4 on).")
+
+
+# ── the unattended run: a trip pauses the job with one decision ──────────────
+
+
+def _approve_unattended(plan) -> None:
+    plan.task_plan = {"_approval_audit": {"mode": AUTO_APPROVAL_MODE}}
+
+
+def _run_unattended_spike(tmp_path, monkeypatch, *, prepare=None):
+    """The round 4 spike run over an unattended job; returns the reloaded job
+    and the shared provider-call counter."""
+    _patch_burn_thresholds(
+        monkeypatch,
+        BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0))
+    repo = _burn_job_repo(tmp_path)
+    counter = [0]
+    sequence = [1500, 1500, 15000, 1500]
+    builder = _BurnSequenceProvider(sequence, counter, pass_on_round=1, fail_on_round=99)
+    reviewer = _BurnSequenceProvider(sequence, counter, pass_on_round=1, fail_on_round=99)
+
+    def _prepare(plan) -> None:
+        _approve_unattended(plan)
+        if prepare is not None:
+            prepare(plan)
+
+    job = _run_burn_job(
+        repo, builder_name=_BurnSequenceProvider.PROVIDER_NAME,
+        builder_provider=builder, reviewer_provider=reviewer, prepare=_prepare)
+    return job, counter
+
+
+def test_an_unattended_trip_pauses_the_job_before_the_next_call(tmp_path, monkeypatch):
+    from packages.orchestration.escalation import open_task_decisions
+
+    job, counter = _run_unattended_spike(tmp_path, monkeypatch)
+
+    assert job.state == JOB_PAUSED
+    assert job.pause["source"] == BURN_PAUSE_SOURCE == "burn_alarm"
+    assert job.pause["reason"].startswith("burn_alarm: ")
+    assert counter[0] == 3
+    open_decisions = open_task_decisions(job)
+    assert len(open_decisions) == 1
+    decision = open_decisions[0]
+    assert decision["question"].startswith(BURN_DECISION_MARKER + " ")
+    assert decision["options"] == ["resume", "abandon"]
+    assert decision["safe_default"] == ""
+    assert decision["task_id"] == job.tasks[1].task_id
+
+
+def test_a_second_trip_updates_the_open_burn_decision_in_place(tmp_path, monkeypatch):
+    from packages.orchestration.escalation import (
+        enqueue_task_decision,
+        open_task_decisions,
+    )
+
+    def _seed_open_decision(plan) -> None:
+        enqueue_task_decision(
+            plan, task_id=plan.tasks[0].task_id,
+            question=f"{BURN_DECISION_MARKER} an older sentence",
+            options=("resume", "abandon"), safe_default="", impact="older",
+            now=_AT)
+
+    job, _counter = _run_unattended_spike(
+        tmp_path, monkeypatch, prepare=_seed_open_decision)
+
+    open_decisions = [
+        r for r in open_task_decisions(job)
+        if r["question"].startswith(BURN_DECISION_MARKER)]
+    assert len(open_decisions) == 1
+    assert open_decisions[0]["question"] == (
+        f"{BURN_DECISION_MARKER} {job_burn_sentence(job.burn_reading)}")
+
+
+def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
+        tmp_path, monkeypatch):
+    from packages.orchestration import pause_control
+
+    def _refuse(*args, **kwargs):
+        raise pause_control.PauseControlError("control area unusable")
+
+    monkeypatch.setattr(pause_control, "request_pause", _refuse)
+
+    job, _counter = _run_unattended_spike(tmp_path, monkeypatch)
+
+    assert job.state == JOB_BLOCKED
+    assert job.burn_reading is not None
+    assert job.burn_reading["tripped"] is True

@@ -3125,6 +3125,72 @@ def run_job(
                     if _burn_record != job.burn_reading:
                         job.burn_reading = _burn_record
                         _persist_job(job)
+                        # F116 T002, DECISION F116 D5 (3): a NEW trip pauses a job
+                        # approved to run with nobody watching, raising one
+                        # [burn_alarm] decision carrying the arithmetic; an
+                        # attended job keeps running on the recorded warning alone.
+                        from packages.orchestration.job_burn import (
+                            job_approved_unattended as _job_approved_unattended,
+                        )
+                        if _job_approved_unattended(job):
+                            from packages.orchestration import (
+                                pause_control as _burn_pause_control,
+                            )
+                            from packages.orchestration.job_burn import (
+                                BURN_DECISION_MARKER as _burn_marker,
+                            )
+                            from packages.orchestration.job_burn import (
+                                BURN_PAUSE_SOURCE as _burn_pause_source,
+                            )
+                            from packages.orchestration.job_burn import (
+                                job_burn_sentence as _burn_sentence,
+                            )
+                            _sentence = _burn_sentence(_burn_record)
+                            try:
+                                _burn_pause_control.request_pause(
+                                    job.job_id,
+                                    reason=f"burn_alarm: {_sentence}",
+                                    source=_burn_pause_source,
+                                    control_root_path=_control,
+                                )
+                            except _burn_pause_control.PauseControlError as exc:
+                                return _PauseSignal(
+                                    job_id=job.job_id,
+                                    reason=f"{_PAUSE_ERROR_REASON_PREFIX}{exc}",
+                                    is_error=True)
+                            from packages.orchestration.escalation import (
+                                enqueue_task_decision as _enqueue_burn_decision,
+                            )
+                            from packages.orchestration.escalation import (
+                                open_task_decisions as _open_burn_decisions,
+                            )
+                            _question = f"{_burn_marker} {_sentence}"
+                            _impact = (
+                                f"job {job.job_id} is paused until this is "
+                                f"answered; continue it with `remedy job "
+                                f"unpause {job.job_id}`")
+                            _open_burn = next(
+                                (r for r in _open_burn_decisions(job)
+                                 if str(r.get("question", ""))
+                                 .startswith(_burn_marker)),
+                                None)
+                            if _open_burn is not None:
+                                _open_burn["question"] = _question
+                                _open_burn["impact"] = _impact
+                            else:
+                                _burn_target = next(
+                                    (t for t in job.tasks
+                                     if t.status in (TASK_PENDING, TASK_RUNNING)),
+                                    job.tasks[0])
+                                _enqueue_burn_decision(
+                                    job,
+                                    task_id=_burn_target.task_id,
+                                    question=_question,
+                                    options=("resume", "abandon"),
+                                    safe_default="",
+                                    impact=_impact,
+                                    now=datetime.now(timezone.utc))
+                            _persist_job(job)
             # F104: neither the operator stop nor the REACTIVE budget check fired,
             # so — and only so — ask whether the NEXT task would breach the money
             # limit. The predictive check runs LAST on purpose: it never replaces
@@ -3824,6 +3890,12 @@ def run_job(
                     if _fresh is not None:
                         _persist_budget_actuals()
                         return _park_job(job, _fresh, task=task, control_root_path=_control)
+                    # F116 D5 (3): a pause request that FAILED to be written leaves
+                    # nothing on disk to re-read, so the halt's own error reason is
+                    # what blocks the job — it must never fall through to a stop.
+                    if _reason_is_pause_error(_halt_reason):
+                        return _block_for_pause_error(_PauseSignal(
+                            job_id=job.job_id, reason=_halt_reason, is_error=True))
                     # The pause was lifted or released between the in-task halt and
                     # now: nothing left to park for. Fall through and record the
                     # halted round as an ordinary stop rather than silently

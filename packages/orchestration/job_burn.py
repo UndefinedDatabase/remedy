@@ -15,11 +15,13 @@ module calls and never reimplements, and that module's own deliberate
 absences (no clock, no config, no file) hold here too.
 
 Imports from ``burn_detector`` and the standard library only;
-``get_config`` is imported INSIDE :func:`job_burn_thresholds_from_config`, so
-this module stays importable — and testable — with no config layer present.
-``run_job`` calls this module from its own safe point (DECISION F116 D4 (1)
-to (4)): one ``JobBurnMonitor`` per run, a sample recorded for every counted
-provider call, and the newest tripped reading kept on the job.
+``get_config`` is imported INSIDE :func:`job_burn_thresholds_from_config` and
+``AUTO_APPROVAL_MODE`` is imported INSIDE :func:`job_approved_unattended`, so
+this module stays importable — and testable — with no config layer and no
+``job_plan`` import present. ``run_job`` calls this module from its own safe
+point (DECISION F116 D4 (1) to (4)): one ``JobBurnMonitor`` per run, a sample
+recorded for every counted provider call, and the newest tripped reading kept
+on the job.
 """
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ from packages.orchestration.burn_detector import (
     BurnReading,
     BurnSample,
     BurnThresholds,
+    RATE_UNIT_PER_HOUR,
     evaluate_burn_rate,
 )
 
@@ -100,6 +103,52 @@ def job_burn_record(reading: BurnReading) -> dict[str, Any]:
     record = reading.to_json()
     record["unit"] = JOB_BURN_UNIT
     return record
+
+
+#: DECISION F116 D5 (1): unattended is exactly the audit `auto_approve_task_plan`
+#: already stamps, never a guess about who is watching the run.
+def job_approved_unattended(job: Any) -> bool:
+    """True when *job*'s plan was approved with no person watching it."""
+    from packages.orchestration.job_plan import AUTO_APPROVAL_MODE
+
+    task_plan = getattr(job, "task_plan", None)
+    if not isinstance(task_plan, dict):
+        return False
+    audit = task_plan.get("_approval_audit")
+    if not isinstance(audit, dict):
+        return False
+    return audit.get("mode") == AUTO_APPROVAL_MODE
+
+
+#: DECISION F116 D5 (2): the one marker a trip's decision question starts
+#: with, so a re-trip finds and updates the same open record instead of
+#: raising a second one.
+BURN_DECISION_MARKER = "[burn_alarm]"
+
+#: DECISION F116 D5 (2): the pause source an unattended trip's pause request
+#: carries, read back off the job the same way every other pause source is.
+BURN_PAUSE_SOURCE = "burn_alarm"
+
+
+#: DECISION F116 D5 (2): the one sentence a person reads in the pause reason
+#: and the decision question — plain, so it names no internal basis label.
+def job_burn_sentence(record: dict[str, Any]) -> str:
+    """The sentence for a TRIPPED ``job_burn_record`` — call only on one that trips."""
+    if record["rate_unit"] == RATE_UNIT_PER_HOUR:
+        return (
+            f"The last {record['window_samples']} provider calls spent "
+            f"{record['rate']:.1f} tokens per hour, more than "
+            f"{record['multiplier']:g} times the {record['expectation']:.1f} "
+            f"tokens per hour set in configuration (from call "
+            f"{record['since_label']} on)."
+        )
+    return (
+        f"The last {record['window_samples']} provider calls spent "
+        f"{record['rate']:.1f} tokens each on average, more than "
+        f"{record['multiplier']:g} times the {record['expectation']:.1f} "
+        f"tokens per call this job spent before them (from call "
+        f"{record['since_label']} on)."
+    )
 
 
 #: The job runner's own accumulator: one sample per counted provider call,
