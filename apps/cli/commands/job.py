@@ -1463,7 +1463,17 @@ def _cmd_job_resume(
       3. the PLAN-APPROVAL GATE is consulted through the same check
          ``remedy job resume`` uses — resume is not a second door around it.
 
-    Only then does it hand off to the multi-cycle executor.
+    Only then does it hand off to an executor — and which one depends on what
+    already ran this job (DECISION F295 D13). A job whose record carries an
+    ``execution_config`` — meaning `remedy job run` or an earlier resume has
+    already run it through the ping-pong engine — goes to ``_cmd_job_run``
+    with its full id, so it continues through that SAME handler, with its own
+    persisted builder, reviewer and limits, exactly as ``remedy job run
+    <job>`` runs it. A job no ping-pong run ever touched has no persisted
+    roles to continue with, so it keeps going to the multi-cycle executor,
+    ``_cmd_job_run_cycles``, unchanged. ``--cycles`` and ``--unattended`` are
+    multi-cycle-executor controls; for a job routed to ``_cmd_job_run`` they
+    do not apply, and one stderr line says so before the hand-off.
 
     ``dry_run`` makes the whole thing a READ-ONLY PREVIEW: it reports what
     each of those checks would decide, consumes nothing — a pending stop
@@ -1566,13 +1576,32 @@ def _cmd_job_resume(
             print(f"Job {jid} | already all green — nothing to resume")
         return
 
+    # DECISION F295 D13 (3): under `--json` this line is progress, not the
+    # answer — a client reading stdout as one envelope must not read prose
+    # first. Without `--json` it stays on stdout, byte for byte.
+    progress_out = sys.stderr if json_output else sys.stdout
     if checkpoint is None:
         print(f"Job {jid} | no checkpoint found — continuing from persisted "
-              f"job state")
+              f"job state", file=progress_out)
     else:
         print(f"Job {jid} | resuming from checkpoint {checkpoint.cycle_index} "
               f"(spent={checkpoint.budget_spent_tokens} tokens, "
-              f"verify={checkpoint.verify_result or 'not_run'})")
+              f"verify={checkpoint.verify_result or 'not_run'})", file=progress_out)
+
+    # DECISION F295 D13 (1): a job the ping-pong engine has already run — its
+    # record carries an `execution_config` — continues through `_cmd_job_run`,
+    # with its own persisted builder, reviewer and limits, exactly as `remedy
+    # job run <job>` runs it. Every other job keeps the multi-cycle executor.
+    if job.execution_config is not None:
+        if cycles is not None or unattended:
+            print(
+                "Note: --cycles and --unattended do not apply to a job the "
+                "ping-pong engine runs; it runs as `remedy job run` runs it.",
+                file=sys.stderr,
+            )
+        from apps.cli.commands.do_cmd import _cmd_job_run
+        _cmd_job_run(str(job.job_id), json_output=json_output)
+        return
 
     _cmd_job_run_cycles(
         job_id_str,
