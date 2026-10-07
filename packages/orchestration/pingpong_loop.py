@@ -245,6 +245,10 @@ class PingPongResult:
     #: its first call, or "" when it is not the relaunch of an interrupted task.
     #: Whether a session was really resumed is each round's ``resume_used``.
     resumed_from_run_id: str = ""
+    #: F287 T003 (DECISION F287 D7): the role an offered parked session was not
+    #: resumed for, mapped to why — empty for a run offered nothing, or whose
+    #: offered provider(s) actually resumed.
+    resume_declined: dict[str, str] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -3178,6 +3182,11 @@ def run_pingpong(
         except RuntimeError as exc:
             return _fail_early(exc)
 
+    # F287 T003 (DECISION F287 D7): name, once, why a role's offered parked
+    # session was not resumed by a provider that cannot resume one.
+    result.resume_declined = resume_declined_reasons(
+        resume_sessions, builder=builder_provider, reviewer=reviewer_provider)
+
     # Build context
     # F107: the COMPILED context replaces the whole-file context pack's SELECTION —
     # never its formatting — and only when the caller hands in BOTH the task's fenced
@@ -5079,6 +5088,23 @@ def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
         block["stderr_tail"] = getattr(out, "stderr_tail", "")
 
 
+# F287 T003 (DECISION F287 D7): names, for the run record, why a role's
+# offered parked session was not resumed by a provider that cannot resume one.
+def resume_declined_reasons(
+    resume_sessions: dict[str, str], *, builder: Any, reviewer: Any,
+) -> dict[str, str]:
+    """The role each offered parked session was not resumed for, and why."""
+    declined: dict[str, str] = {}
+    for role, provider in (("builder", builder), ("reviewer", reviewer)):
+        if resume_sessions.get(role) and not getattr(provider, "supports_resume", False):
+            reason = getattr(provider, "resume_unsupported_reason", "")
+            if not (isinstance(reason, str) and reason):
+                name = getattr(provider, "name", "") or "unnamed"
+                reason = f"the {name} provider cannot resume a session"
+            declined[role] = reason
+    return declined
+
+
 def _session_fields(out: Any) -> dict[str, Any]:
     """R-1055: the provider session a call reported, and whether it resumed one.
 
@@ -5175,6 +5201,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "max_rounds": result.max_rounds,
         "total_rounds": len(result.rounds),
         "resumed_from_run_id": result.resumed_from_run_id,
+        "resume_declined": dict(result.resume_declined),
         "final_status": result.final_status,
         "staged_files": result.staged_files,
         "changed_target_files": result.changed_target_files,

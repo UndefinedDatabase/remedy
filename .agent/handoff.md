@@ -1,94 +1,249 @@
-# Handoff — F295 session 9, round 31: repair R-1159 on the pull request's branch, register R-1160, DECISION F295 D24
+# Handoff — F287 session 3, round 17: the closing round — round 16 booked, the ledger rotated,
+# F287 accepted in STATUS with its README sync and the self-use queue's `consumed_by`, the pull
+# request opened
 
 ## Session
 
-SESSION 9 of feature F295 · round 31 · rounds so far 31
+SESSION 3 of feature F287 · round 17 · rounds so far 17
 
-Context self-assessment: the reviewer's context is comfortable; the session waits for the one hosted run this round's push starts.
+Context self-assessment, quoted: "the reviewer's context is comfortable; the session ends here
+because F287 is closed and the next feature starts in a fresh session."
 
 ## Range
 
-Review of `b1a2e989d`..HEAD (HEAD is C3 below, the commit that carries this handback).
+Review of `332af0e68`..HEAD (HEAD is this commit, C3 below).
 
 ## Commits
 
-### cd4cda2b5 F295 R31 C1: book round 30, register R-1160, DECISION F295 D24
+### 33b124749 F287 R17 C1: book round 16, save the round 17 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f295-r31.md` | 105/0 (new) | byte copy of this round's block |
-| `.agent/decisions.md` | 10/0 | append DECISION F295 D24, exactly as prepared |
-| `.agent/live_review.md` | 4/0 | append round 30's PASS entry and R-1160's registration, exactly as prepared |
-| `.agent/plan.md` | 12/9 | rewrite to round 31's current step |
+| `.agent/authored/f287-r17-pr_body.md` | 103/0 (new) | byte copy of the reviewer's prepared PR body |
+| `.agent/authored/f287-r17-status_line.txt` | 1/0 (new) | byte copy of the reviewer's prepared STATUS line |
+| `.agent/authored/f287-r17.md` | 127/0 (new) | byte copy of `block.md` |
+| `.agent/live_review.md` | 2/0 | append: books the F287 R16 gate entry (VERDICT PASS) |
+| `.agent/plan.md` | 6/7 | rewrite to round 17's current step, replaced with `dry-plan.md` |
 
-### a06dd701d F295 R31 C2: hold the live pause test's second build call until the pause exists (R-1159)
+### 8aa6ef25d F287 R17 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/ui_server/test_pause_door_live.py` | 50/23 | replaced with the prepared file: runner template holds build call 2 open until a pause request exists on disk, prints a DETAIL line; job-scope test waits on an in-flight marker instead of task 1's status and carries the DETAIL+stderr line on every downstream assertion; task-scope test's FINAL assertion also carries stderr; one comment line above `_CALL_SLEEP_S` notes the job-scope test no longer relies on it |
+| `.agent/live_review.md` | 0/80 | `python3 scripts/rotate_live_review.py`: 31 gate records, 4 finding pairs (8 records) and 1 resolved-text record moved out |
+| `.agent/live_review_archive.md` | 80/0 | the same records appended, byte-verbatim |
 
-### F295 R31 C3: handback (self-reference exception — the handoff is committed by this same commit)
+### F287 R17 C3: accept F287 in STATUS with its README sync and the self-use queue (self-reference exception — the handoff is committed by this same commit)
 
 Measured before the handoff joined it (`git diff --cached --numstat`):
 
 | Path | +/- | Reason |
 |---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 | F287's `[~]` line becomes the `[x]` STATUS line (`status_line.txt`, verbatim) |
+| `README.md` | 12/2 | `128 of 297`; Tier 3 row `7 \| 28`; F287's paragraph follows F114's under "Accepted in Tier 3 so far" |
+| `scripts/self_use_queue.json` | 1/1 | `SU-046`'s `consumed_by` set to `F287` (precondition 6) |
 | `.agent/handoff.md` | this commit | this file, rewritten in full per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git push origin feature/f295-machine-client-contract-v1` after C3: outcome in the worker's final reply (write-once rule; not known when this file is written).
-- No merge, no `git checkout` or `git switch`, no branch created, moved or deleted, no force-push, no pull, no `gh run rerun`, no `gh pr merge`, no `gh pr close`, no `gh run cancel`.
+- `git push origin feature/f287-provider-session-continuity` after C3 (with the handoff): outcome
+  reported in the worker's final reply (write-once rule; not known when this file is written).
+- `gh pr create --base main --head feature/f287-provider-session-continuity --title "F287 —
+  Provider session continuity across relaunch" --body-file
+  /home/decodeux/Repos/remedy/.agent/authored/f287-r17-pr_body.md`: outcome (number and URL)
+  reported in the worker's final reply only — it does not exist while this file is written.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft`: reported in the
+  worker's final reply.
+- No merge, no `git checkout` or `git switch`, no branch created, moved or deleted, no
+  force-push, no pull, no worktree add/remove.
 
 ## Verification
 
-1. Before any write: digests of `block.md`, `append-live_review.txt`, `append-decisions.txt`, `dry-plan.md` and `test_pause_door_live.py`, computed by a worker-written Python sha256 script, all matched the prompt's sha256 lines exactly (5/5 MATCH). `block.md` read 105 lines, sha256 `acb47a68c8bb39c56b8d4ad9133824b46b86d1463f0e55240ca6055f2c904277`. `HEAD` and `origin/feature/f295-machine-client-contract-v1` both read `b1a2e989d4198a2e7014bf9954d071128ae0488b`; `git status --porcelain` was empty; `git branch --show-current` read `feature/f295-machine-client-contract-v1`.
-2. C1: `git diff --cached --numstat` (before commit) read `105 0`, `10 0`, `4 0`, `12 9` for the four paths, in the exact set the block names — no fifth path. Byte proofs, all True: `.agent/authored/f295-r31.md` equals `block.md` (105 lines, sha256 `acb47a68c8bb39c56b8d4ad9133824b46b86d1463f0e55240ca6055f2c904277`); `.agent/live_review.md` equals its pre-write base blob (`git show HEAD:.agent/live_review.md`) + `append-live_review.txt`; `.agent/decisions.md` equals its pre-write base blob + `append-decisions.txt`; `.agent/plan.md` equals `dry-plan.md` (25 lines, sha256 `3779bfade67ae3b62538443803622155b53fd0a88b47e1220aab6992207b637b`).
-3. C2: `git diff --cached --numstat` (before commit) read `50 23` for the single path. Byte proof True: `tests/ui_server/test_pause_door_live.py` equals the prepared `test_pause_door_live.py` byte for byte (22820 bytes). Diff read whole before committing: it touched only the runner template (`_RUNNER`: `HOLD_BUILD`, the held `build()` branch, the DETAIL print line), the two live classes' `script.write_text(...).format(...)` calls (job-scope: `hold_build=2`, task-scope: `hold_build=0`), the job-scope test's wait loop (now waits on `in_flight.is_file()` instead of task 1's status) and its assertion messages (the `why` string carrying stdout+stderr), the task-scope test's FINAL assertion message, and one comment line above `_CALL_SLEEP_S`. Nothing else.
-4. Gate 1: `git -C /home/decodeux/Repos/remedy status --porcelain` — empty, after C2. `git -C /home/decodeux/Repos/remedy show --numstat --format= cd4cda2b5` — exactly the four C1 paths, cells `105 0`, `10 0`, `4 0`, `12 9`. `git -C /home/decodeux/Repos/remedy show --numstat --format= a06dd701d` — exactly the one C2 path, cell `50 23`.
-5. Gate 2: all C1 and C2 byte proofs True (see items 2 and 3 above).
-6. Gate 3: `python3 -m pytest -q -rfEs tests/ui_server/test_pause_door_live.py tests/docs/ tests/cli/test_golden_path.py`, from the primary checkout: exit 0, last line `378 passed in 60.12s (0:01:00)`; no `FAILED`, `ERROR` or `SKIPPED` line anywhere in the captured output. Deviation: this selection was run twice this round (see Deviations below), both runs green with the same count.
-7. Gate 4: `python3 -m ruff check tests/ui_server/test_pause_door_live.py` — exit 0, `All checks passed!`.
-8. Gate 5: `python3 .remedy-wt/f295-r15/run.py /home/decodeux/Repos/remedy 3 python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"` — exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1159', 'R-1160']`, matching the block's expected list exactly. The same wrapper with `python3 -m apps.cli.main integrity check --json` — exit 0, `"check_count": 6`, `handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`, `repo_root_hygiene` and `high_blockers_open` all `pass`, `"fail_count": 0`, `"ok": true`.
-9. Gate 6 (after the push): reported in the worker's final reply (write-once rule; not known when this file is written).
+0. Before any write: both reviewer digests (`block.md`, `digests.txt`) verified by a
+   worker-written Python sha256 script (`.remedy-wt/f287-r17-worker/verify_digests.py`): both
+   matched the prompt's sha256 lines exactly (`block.md` 127 lines / 9985 bytes; `digests.txt`
+   sha256 `a60e1665f9092362adbfc41955b090c39512879ae089bf0aba2bb6885488c907`), then every one of the
+   nine digest-bearing lines in `digests.txt` (`status_line.txt`, `pr_body.md`, `dry-plan.md`,
+   `sim-C1-live_review.md`, `sim-C2-live_review.md`, `sim-C2-live_review_archive.md`,
+   `sim-STATUS.md`, `sim-README.md`, `sim-self_use_queue.json`) matched its listed sha256, line
+   count and byte count (9/9 OK, `.remedy-wt/f287-r17-worker/verify_all_digests.py`). `HEAD` read
+   `332af0e68`, equal to `origin/feature/f287-provider-session-continuity`, and `git status
+   --porcelain` was empty before any write. `git branch --show-current` read
+   `feature/f287-provider-session-continuity` before C1.
+1. C1 copy step (`.remedy-wt/f287-r17-worker/c1_apply.py`): `.agent/authored/f287-r17.md` read
+   byte_eq=True against `block.md` (sha256
+   `f464444be81ea52a9db59423e649c7a6928a3a23c6a83c368ead985003cd45a3` on both sides; 127 lines,
+   9985 bytes). `.agent/authored/f287-r17-status_line.txt` read byte_eq=True against
+   `status_line.txt` (sha256 `042fb5ef8b66d999530e61d509876198c69d2b3a555647b56734b754b6ff186a`;
+   1 line, 563 bytes). `.agent/authored/f287-r17-pr_body.md` read byte_eq=True against `pr_body.md`
+   (sha256 `c25b5620cd695262f0b0b8e778d68705da8dd37c6feb275fb640f7cade9e0228`; 103 lines, 6336
+   bytes). `.agent/live_review.md` read byte_eq=True against `sim-C1-live_review.md` (sha256
+   `2dbbed6c4bc19e0824993de850777d73aa9146103f843b123ebafd6ff1a2a67f`; 283 lines, 223862 bytes).
+   `.agent/plan.md` read byte_eq=True against `dry-plan.md` (sha256
+   `d4346cdf62e577fbea9cffbebdb01c2ce8315158a04b4d2dcdd14012094c1632`; 24 lines, 1328 bytes).
+   `git diff --cached --numstat` (`.remedy-wt/f287-r17-worker/c1_stage.py`) read exactly the five
+   cells `digests.txt` lists: `103 0 .agent/authored/f287-r17-pr_body.md`, `1 0
+   .agent/authored/f287-r17-status_line.txt`, `127 0 .agent/authored/f287-r17.md`, `2 0
+   .agent/live_review.md`, `6 7 .agent/plan.md`. The full cached diff was read before committing
+   (self-review): the plan rewrite advanced the current step to round 17 exactly as prepared, and
+   the `live_review.md` diff is a pure two-line append (round 16's gate entry, VERDICT PASS); no
+   unrelated edit found. Committed as `33b124749621d28e96973d560de534bd2d75a84c`.
+2. **C2 — the ledger rotation** (`.remedy-wt/f287-r17-worker/c2_rotate.py`, `python3
+   scripts/rotate_live_review.py`, exit 0). Whole output:
+   ```
+   gate records moved: 31
+   finding pairs moved: 4 (8 records)
+   resolved-text records moved: 1
+   old ledger size: 223862 bytes
+   new ledger size: 157310 bytes
+   old archive size: 6029259 bytes
+   new archive size: 6095811 bytes
+   open findings before: 9
+   open findings after: 9
+   written: /home/decodeux/Repos/remedy/.agent/live_review.md and
+     /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+   ```
+   Matches the block's expected reading exactly. Re-verified
+   (`.remedy-wt/f287-r17-worker/c2_verify.py`): `.agent/live_review.md` byte_eq=True against
+   `sim-C2-live_review.md` (sha256
+   `1e5deeb1f163aa2a3eb9952e979ce9a501d4bb587a61e339b28e00b77c1c4621`; 203 lines, 157310 bytes).
+   `.agent/live_review_archive.md` byte_eq=True against `sim-C2-live_review_archive.md` (sha256
+   `9a029e29d6b09c34b52836fa7140b6132f3e6cf70d037fac5118490e0497f72b`; 7155 lines, 6095811 bytes).
+   `git status --porcelain` showed only the two ledger files modified. `git diff --cached
+   --numstat` (`.remedy-wt/f287-r17-worker/c2_stage.py`) read exactly the two cells `digests.txt`
+   lists: `0 80 .agent/live_review.md`, `80 0 .agent/live_review_archive.md`. Committed as
+   `8aa6ef25da84564b7f49552a641f1d4076c7696f`.
+3. **C3 copy step** (`.remedy-wt/f287-r17-worker/c3_copy.py`): `docs/roadmap/STATUS.md` read
+   byte_eq=True against `sim-STATUS.md` (sha256
+   `aafe5d08893b04a5613c371e1dc225f5a215cb3fd837a92a0a2219162acb3b91`; 480 lines, 66047 bytes).
+   `README.md` read byte_eq=True against `sim-README.md` (sha256
+   `2238034839a51297fcbdae9bb6d8b1bd5bd22eb656cbb5ef854c5e8e511c3a7f`; 807 lines, 54479 bytes).
+   `scripts/self_use_queue.json` read byte_eq=True against `sim-self_use_queue.json` (sha256
+   `95a2e31eac5416e797709424cac2f3848a91918f6f0fb460c7d84ed285898618`; 374 lines, 161500 bytes).
+   `git diff --numstat` (unstaged) read exactly the three cells `digests.txt` lists: `12 2
+   README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`. The full diff was
+   read before staging (self-review): the STATUS line flip is exactly the `[~]` → `[x]` line
+   swap with no other line touched; the README diff is exactly the `127 of 297` → `128 of 297`
+   count, the Tier 3 row `6 \| 28` → `7 \| 28`, and F287's new paragraph inserted directly after
+   F114's and before "Accepted in Tier 4 so far:"; the queue diff is exactly `SU-046`'s
+   `consumed_by` from `""` to `"F287"`. No unrelated edit found.
+4. **Gate 1** (`.remedy-wt/f287-r17-worker/gate1.py`): `git status --porcelain` read exactly three
+   modified paths (`README.md`, `docs/roadmap/STATUS.md`, `scripts/self_use_queue.json`) after
+   C3's copy step and before staging. Every file copied this round re-checked byte-equal against
+   its prepared file (9/9 True): the three `.agent/authored/f287-r17*` files, `.agent/live_review.md`
+   and `.agent/live_review_archive.md` (against their post-rotation sim files),
+   `.agent/plan.md` (against `dry-plan.md`), and the three C3 files. `ALL BYTE COMPARISONS EQUAL:
+   True`. PASS.
+5. **Gate 2** (`.remedy-wt/f287-r17-worker/gate2.py`): the content of `status_line.txt` without
+   its trailing newline occurs exactly once (`count=1`) in `docs/roadmap/STATUS.md`, and no line
+   of it begins `- [~]`. PASS.
+6. **Gate 3** (`.remedy-wt/f287-r17-worker/gate3.py`, run once):
+   `python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
+   tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+   tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+   tests/cli/test_golden_path.py` — exit 0, `555 passed in 61.92s`, no FAILED, ERROR or SKIPPED
+   line. PASS.
+7. **Gate 4** (`.remedy-wt/f287-r17-worker/gate4.py`, `python3 -m apps.cli.main integrity check
+   --json`, exit 0): `{"check_count": 6, "checks": [{"message": "handlers=175", "name":
+   "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name":
+   "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False",
+   "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name":
+   "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or
+   archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open
+   blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0,
+   "ok": true, "passed": true, "schema_version": 1, "version": 1}`; six of six checks `pass`,
+   `fail_count: 0`. PASS.
+8. **Gate 5** (`.remedy-wt/f287-r17-worker/gate5.py`, `python3 -c "import
+   scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`):
+   `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162']` —
+   exact match to the block's ordered list. PASS.
+9. **Gate 6** (after the push and the pull request): reported in the worker's final reply (not
+   known when this file is written).
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f295-r31.md`: 105 / 105 lines, sha256 `acb47a68c8bb39c56b8d4ad9133824b46b86d1463f0e55240ca6055f2c904277` / same.
-- `append-live_review.txt` → `.agent/live_review.md`: append proof True (base blob + slice, byte for byte).
-- `append-decisions.txt` → `.agent/decisions.md`: append proof True (base blob + slice, byte for byte).
-- `dry-plan.md` → `.agent/plan.md`: byte-equal, True.
-- `test_pause_door_live.py` → `tests/ui_server/test_pause_door_live.py`: byte-equal, True (22820 bytes).
+- `block.md` → `.agent/authored/f287-r17.md`: 127 / 127 lines, sha256
+  `f464444be81ea52a9db59423e649c7a6928a3a23c6a83c368ead985003cd45a3` / same.
+- `pr_body.md` → `.agent/authored/f287-r17-pr_body.md`: 103 / 103 lines, sha256
+  `c25b5620cd695262f0b0b8e778d68705da8dd37c6feb275fb640f7cade9e0228` / same.
+- `status_line.txt` → `.agent/authored/f287-r17-status_line.txt`: 1 / 1 line, sha256
+  `042fb5ef8b66d999530e61d509876198c69d2b3a555647b56734b754b6ff186a` / same. The same bytes, minus
+  their one trailing newline, occur exactly once inside `docs/roadmap/STATUS.md` (gate 2 above) —
+  the STATUS line is byte-identical to the authored file with its trailing newline (count 1)
+  stripped.
+- `dry-plan.md` → `.agent/plan.md`: byte-equal, `True`.
+- `sim-STATUS.md` → `docs/roadmap/STATUS.md`: byte-equal, `True`.
+- `sim-README.md` → `README.md`: byte-equal, `True`.
+- `sim-self_use_queue.json` → `scripts/self_use_queue.json`: byte-equal, `True`.
+- `sim-C2-live_review.md` / `sim-C2-live_review_archive.md` → the post-rotation
+  `.agent/live_review.md` / `.agent/live_review_archive.md`: byte-equal, `True` / `True`.
 
 ## Deviations & assumptions
 
-1. The C1 commit was issued through a single Bash call that began with `cd /home/decodeux/Repos/remedy &&` before the `git commit` — a violation of the hard rule "never `cd`; use absolute paths and `git -C`". The commit itself was correct (verified after the fact by `git -C ... log`/`show`), and every other git operation this round used `git -C /home/decodeux/Repos/remedy` without `cd`. Flagging it here as the rule requires; no repeat.
-2. Gate 3's test selection (`tests/ui_server/test_pause_door_live.py tests/docs/ tests/cli/test_golden_path.py`) was run twice, not once as the block orders: a first run piped through `tail` with absolute paths (to be safe before confirming the shell's cwd), then a second run, via a worker script, with the exact relative-path command the block specifies and its exit code captured directly. Both runs passed with the identical count (378 passed) and no FAILED/ERROR/SKIPPED line; the second run's transcript is the one recorded in Verification item 6. No `-n`, no `REMEDY_TEST_MAX_WORKERS`, no full-suite run, no mutation, either time.
-3. No other deviation. The sequence C1, C2, gates 1 to 5, handback, push ran exactly as the block ordered otherwise. Both commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Helper scripts under `.remedy-wt/f295-r31-worker/` (not gitignored by name but left untracked and outside the round's tracked path set) did the digest checks, the copy/append operations and their proofs; none of them touched any path outside the five the block names plus this handoff.
+1. **Commit attribution trailer.** The block's Constraints order "Every commit ends with a
+   `Co-Authored-By:` trailer naming the model you run on" — this worker runs on Claude Sonnet 5,
+   and a standing harness attribution instruction names `Co-Authored-By: Claude Sonnet 5
+   <noreply@anthropic.com>` for commits this session makes. `33b124749` and `8aa6ef25d` both
+   carry that trailer; this handback's own closing commit will too. Not a deviation — the block
+   names "the model you run on", not a fixed string.
+2. From the block's ordered commit/action sequence: none — C1 landed exactly as ordered (five
+   files, five numstat cells matching `digests.txt`), C2 ran the rotation script once and its
+   output matched the block's expected reading exactly, before committing exactly the two ledger
+   files, C3's three files were copied and byte-verified before gates 1-5 ran (in that order,
+   all green) and before this handoff was written. No extra commit, none dropped, no reordering.
+3. Helper scripts under `.remedy-wt/f287-r17-worker/` (gitignored, left untracked) did the digest
+   checks, the HEAD/branch checks, the C1 copy/stage/commit, the rotation run and its
+   re-verification, the C3 copy/stage, and gates 1 through 5; none touched any path outside the
+   one named per commit, and none touched `.remedy-wt/f287-r17/` (the reviewer's prepared files,
+   read-only throughout, re-verified unmodified by never writing to that directory).
+4. No `cd` command of any kind was run this round, compound or standalone, no-op or otherwise —
+   every command used `git -C /home/decodeux/Repos/remedy` or an absolute-path Python script with
+   `cwd="/home/decodeux/Repos/remedy"`.
+5. `.agent/STOP` was not present at any point in the round (checked before C1 and again before
+   writing this handback).
+6. No mutation red-proof and no full suite ran. Gate 3 is the round's one test selection and the
+   round's one pytest invocation; no two test commands ran at the same time; `REMEDY_TEST_MAX_WORKERS`
+   was not set and `-n` was not passed.
+7. The tracked path set this round is exactly the three `.agent/authored/f287-r17*` files,
+   `.agent/live_review.md`, `.agent/plan.md` (C1); `.agent/live_review.md` and
+   `.agent/live_review_archive.md` (C2); `docs/roadmap/STATUS.md`, `README.md`,
+   `scripts/self_use_queue.json` and `.agent/handoff.md` (C3) — matching the block's Constraints
+   path set exactly.
+8. No other departure.
 
-## Round verdicts
-
-Round 30 PASS is booked by C1 (carried in the `append-live_review.txt` slice, over `43959ca83`..`d72f38852`, re-derived by the planner/reviewer on `b1a2e989d`). Round 31's verdict is the reviewer's to give and book in the next session's first commit.
+ANY DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE BELONGS HERE: none beyond item 1 above
+(a continuity note, not an actual deviation).
 
 ## For the operator, in plain sentences
 
-The shaky test that blocked the merge was repaired as the open question proposed: the pretend model now waits until the pause has really arrived, so the pause always lands at the same moment, and a failure now prints the state of every step and the reason the job stopped. While checking this repair, the reviewer found the cause of the first, unexplained failure, and it is a real fault in Remedy that is older than this feature: if a pause arrives in the short moment while a finished step is being saved, the job is marked as blocked with a wrong reason about the budget, instead of paused. The fix is small and already proven, it is recorded as a finding of medium weight for the next clean-up feature, and it is kept out of this pull request so that the finished feature's final test run still matches what is merged. GitHub now runs the tests once more, and the pull request is merged only if that run is green.
+The feature that lets a paused or stopped task continue its earlier conversation with the Claude
+command-line tool, instead of paying again for what that conversation already knew, is finished
+and accepted. A pull request is open for it and will be merged at the start of the next session
+unless the operator merges it earlier. Nine smaller problems — one found during this feature and
+eight carried from earlier ones — are written down for the next clean-up feature. Nothing waits
+for the operator.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handoff and stop. (Not present as of this handback.)
-2. The reviewer's verdict on round 31.
-3. The one fresh hosted run decides per DECISION F295 D22 (4): green → R-1159 is booked resolved in the next feature's first commit, the Open PR Gate merges, Rule A5 claims F287 (SLOW MODE: hardening stage before its closure). Red → nothing is merged, an operator question is written and the session stops.
+1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
+   and stop. (Not present as of this handback.)
+2. Then the Open PR Gate, which merges F287's pull request in the NEXT session and never in this
+   one.
+3. Then the booking of round 17's verdict, in the next feature's first commit.
+4. Then Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` is F116.
 
-Operator questions open: 1.
-Open findings: 9 (R-1160, Medium, owned by F297; R-1159, Low, owned by F295; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157 and R-1158, Low, owned by F297).
+Operator questions open: 0.
+Open findings: 9 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158 and
+R-1162, Low; all owned by F297).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 (book round 30, register R-1160, DECISION F295 D24) | done | `cd4cda2b5` |
-| C2 (repair the live pause test, R-1159) | done | `a06dd701d` |
-| Gates 1 to 5 | done | status clean, numstats exact, 378 passed, ruff clean, nine open ids, integrity 6/6 pass |
-| C3 handback commit | done | this file |
-| Push, gate 6 | pending | run right after this commit, reported in the worker's final reply |
+| C1: book round 16, save the round 17 block, the STATUS line and the PR body | done | `33b124749` |
+| C2: rotate the finding ledger into its archive | done | `8aa6ef25d`; output matched the block's expected reading exactly |
+| Gates 1-5 | done | all PASS, before the handoff was written |
+| C3: copy the three files, accept F287 in STATUS with its README sync and the self-use queue | done | this commit |
+| Handoff rewrite | done | this file |
+| Push | pending | run right after this commit, reported in the worker's final reply |
+| Pull request create | pending | run right after the push, reported in the worker's final reply |
+| Gate 6 | pending | run after the pull request, reported in the worker's final reply |

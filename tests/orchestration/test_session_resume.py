@@ -2,8 +2,9 @@
 repair-path wiring (T002a, T002b-i, T002c-i, T002c-ii).
 
 T001 covers: every concrete provider (`FakeProvider`, `ClaudeProvider`,
-`ClaudeCliProvider`) exposes `supports_resume` and reads `False` by
-construction this round; `build`/`review` accept an additive `resume`
+`ClaudeCliProvider`) exposes `supports_resume`; `ClaudeCliProvider` reads
+`True` since DECISION F287 D4, while `FakeProvider` (by default) and
+`ClaudeProvider` read `False`. `build`/`review` accept an additive `resume`
 keyword on all three without changing behavior; `BuilderOutput`/
 `ReviewerOutput` default `resume_used`/`resume_session_ref` to `False`/"".
 `ClaudeProvider`/`ClaudeCliProvider` are checked by signature only — no
@@ -73,8 +74,8 @@ class TestSupportsResumeDefaultsFalse:
     def test_claude_provider_false(self):
         assert ClaudeProvider().supports_resume is False
 
-    def test_claude_cli_provider_false(self):
-        assert ClaudeCliProvider().supports_resume is False
+    def test_claude_cli_provider_true(self):
+        assert ClaudeCliProvider().supports_resume is True
 
 
 class TestResumeParameterIsAdditive:

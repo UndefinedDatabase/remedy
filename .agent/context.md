@@ -1,23 +1,23 @@
-# Context — F295 Machine client contract v1
+# Context — F287 Provider session continuity across relaunch
 
 ## Active Branch
-feature/f295-machine-client-contract-v1, cut from `main` at `9a8431ea9`
-(the merge commit of pull request 310, F290 Findings paydown v6).
+feature/f287-provider-session-continuity, cut from `main` at `7c91c3b69`
+(the merge commit of pull request 311, F295 Machine client contract v1).
 
 ## Scope
-F295 (Tier 12, Luna gate A): the machine client contract — order files for `remedy do`, the
-digest in `remedy status --json`, decisions and approvals without a terminal, and the contract
-page with its gate test, as `docs/roadmap/features/T12_F295.md` lists them; DECISION F295 D1
-fixes the slices and their order.
+F287 (Tier 3, Luna gate B): a relaunch of an interrupted task resumes the provider sessions it
+last used on `claude-cli`, and every other production provider says in the run's evidence that it
+did not, as `docs/roadmap/features/T3_F287.md` lists them; DECISION F287 D1 fixes the slices and
+their order.
 
 ## Do not touch
-The HTTP transport and the shipped UI's migration (F253); anything on Luna's side; any
-time-of-day mechanic; the approval gate — a machine order ends where a human order ends.
+The persisted session fields and the relaunch hand-over F285 built (DECISION F285 D2); the
+fallback-once rule; the prompt, which stays at full context on a resumed call.
 
 ## Active assumptions
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation.
-- Every value the digest carries is read from the records; no word of it comes from a model.
+- No test starts a real `claude` process; the CLI is replaced by a recorded stand-in.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-a4cfeca74efa42d8  (exit 0)
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 1a5841cf4..425af31f1 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -181,7 +181,7 @@ def _resolve_do_commit_flags(
+         top = None                     # not a repository: the init step fails and says so
+     try:
+         key = push_after_mission_enabled(load_config(Path(top or repo) / "remedy.toml"))
+-    except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read
++    except ValueError:
+         key = False                    # Remedy never pushes on a value it cannot read
+     source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
+     if key and not mode:
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

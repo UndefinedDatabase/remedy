@@ -12,8 +12,9 @@ Every concrete provider adapter in `packages/orchestration/pingpong_provider.py`
 exposes a `supports_resume: bool` property and accepts an additive
 `resume: str | None = None` keyword on both `build` and `review`. `FakeProvider`
 takes it as a constructor override (`supports_resume=True`, test-only);
-`ClaudeProvider` and `ClaudeCliProvider` both read `False` by construction —
-no adapter resumes in production yet. `BuilderOutput`/`ReviewerOutput` default
+`ClaudeCliProvider` reads `True` since F287 (DECISION F287 D4); `ClaudeProvider`
+and `OllamaPingPongProvider` read `False` and say why in a
+`resume_unsupported_reason` property. `BuilderOutput`/`ReviewerOutput` default
 `resume_used`/`resume_session_ref` to `False`/`""`; passing `resume=` to an
 adapter that does not support it changes nothing observable.
 
@@ -103,10 +104,34 @@ session never saw the new run's staging, so no prompt shrink is gated on it.
 `tests/orchestration/test_relaunch_session_resume.py` parks a job mid-build
 and relaunches it through `run_job`.
 
+## Which providers resume (F287)
+
+`claude-cli` is the one production provider that resumes. Its builder and
+reviewer calls pass the CLI's `--resume <session>` option, in a repair round
+and in round 1 of a relaunch; the session reference is checked against a plain
+session-id shape before it reaches the child's argument list, and a refused
+resume answers `resume_refused:`, which is never transport-retried, so the
+fallback-once rule above runs on the first failure (DECISIONS F287 D2 to D4).
+
+The `claude` CLI keeps a session under the directory it ran in. A job on a git
+target runs in its own worktree, and its relaunch runs in that same worktree,
+so the parked session is found. A job on a target that is not a git repository
+(copy mode) gets a new staging directory for every run, so its relaunch's
+resume is always refused and falls back once to a fresh session at full
+context; that costs one short child process and no tokens (DECISION F287 D5).
+
+The Anthropic API provider (`claude`) and the Ollama provider (`ollama`) keep
+no conversation between calls and never resume. When a relaunch offers one of
+them a parked session, the run proceeds with a fresh session and its
+`result.json` names the role and the reason under `resume_declined`, for
+example `{"builder": "an Ollama chat call keeps no conversation between
+calls"}`; a run that was offered nothing records an empty object there
+(DECISION F287 D7).
+
 ## What this does NOT do
 
-- No adapter's `supports_resume` returns `True` in production yet — only
-  `FakeProvider`'s test-only constructor override ever does.
+- Only `claude-cli` resumes in production; the Anthropic API and Ollama
+  providers start every call fresh.
 - The reviewer's bounded parse-retry call never resumes.
 - New-file creation, deletion, and any diff-APPLY path stay entirely outside
   this feature — see [diff-only-repair-v1.md](diff-only-repair-v1.md) for
@@ -116,6 +141,8 @@ and relaunches it through `run_job`.
 ## Related
 
 - `docs/roadmap/features/T3_F106.md` — the target spec and its decisions.
+- `docs/roadmap/features/T3_F287.md` — the provider session continuity the
+  "Which providers resume" section describes.
 - [diff-only-repair-v1.md](diff-only-repair-v1.md) — the module this
   feature's hunk selection is shared with, and the apply-side path it does
   NOT route through.
