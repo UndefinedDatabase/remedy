@@ -31,6 +31,7 @@ Deliberate absences (searched-for behavior that is NOT here):
 Public API::
 
     JOB_DIGEST_VERSION — int, payload version of the digest envelope
+    cost_exactness_basis(measured_cost_usd, unpriced_call_count) -> str
     build_job_digest(job, events=None) -> dict
 """
 
@@ -168,11 +169,19 @@ def _cost_section(counters: Any | None) -> dict[str, str]:
     if counters is None:
         return {"value": COST_NOT_MEASURED, "basis": COST_BASIS_ABSENT}
     value = str(counters.cost_description())
-    if counters.measured_cost_usd is None:
-        return {"value": value, "basis": COST_BASIS_ABSENT}
-    if counters.unpriced_call_count > 0:
-        return {"value": value, "basis": COST_BASIS_LOWER_BOUND}
-    return {"value": value, "basis": COST_BASIS_ACTUAL}
+    return {"value": value, "basis": cost_exactness_basis(
+        counters.measured_cost_usd, counters.unpriced_call_count)}
+
+
+# DECISION F040 D4's exactness rule for one job's cost; the job digest and the client digest share it.
+def cost_exactness_basis(measured_cost_usd: float | None, unpriced_call_count: int) -> str:
+    """``absent`` when no cost was measured, ``lower_bound`` when a provider call
+    went unpriced, ``actual`` otherwise (DECISION F040 D4)."""
+    if measured_cost_usd is None:
+        return COST_BASIS_ABSENT
+    if unpriced_call_count > 0:
+        return COST_BASIS_LOWER_BOUND
+    return COST_BASIS_ACTUAL
 
 
 def _peak_urgency(job: Any, events: list[dict[str, Any]] | None) -> int:

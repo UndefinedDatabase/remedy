@@ -265,3 +265,41 @@ def test_a_flag_removed_from_do_exits_2_and_runs_nothing(repo, capsys, removed):
     assert data["error"] == "unrecognized_arguments"
     assert list_job_plans() == []
     assert resolve_project(repo) is None
+
+
+# ── F295 T003: an unattended `do` on an open pipe never reads stdin ──────────
+
+
+def test_an_unattended_do_on_an_open_pipe_finishes_without_reading_stdin(tmp_path):
+    """F295 T003: a machine client's own command line, `--json --no-ui --yes` with the
+    fake providers, run as a real process whose stdin is a pipe nobody writes to and
+    nobody closes. A read of stdin anywhere on the path would block until the timeout
+    below; `communicate()` is never used, because it closes the pipe."""
+    import os
+    import sys
+
+    source_root = Path(__file__).resolve().parents[2]
+    target = _git_repo(tmp_path / "piped")
+    env = dict(os.environ)
+    env["REMEDY_DATA_DIR"] = str(tmp_path / "data")
+    env["PYTHONPATH"] = os.pathsep.join(
+        p for p in (str(source_root), env.get("PYTHONPATH", "")) if p)
+    out_path = tmp_path / "do.out"
+    with open(out_path, "wb") as out:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "apps.cli.main", "do", ORDER, "--json", "--no-ui", "--yes",
+             "--no-llm", *FAKE_ROLES, "--max-cost-usd", "1"],
+            cwd=str(target), env=env, stdin=subprocess.PIPE, stdout=out,
+            stderr=subprocess.DEVNULL)
+        try:
+            proc.wait(timeout=180)
+        finally:
+            proc.stdin.close()
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+    assert proc.returncode == 0, out_path.read_text()
+    data = json.loads(out_path.read_text())
+    assert data["ok"] is True
+    assert data["stopped_before_apply"] is True

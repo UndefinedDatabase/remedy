@@ -74,6 +74,13 @@ UNRESOLVED_SITES: dict[str, tuple[frozenset[int], str]] = {
         "alone; or 1 when following stops, a signal ended the run or its end was lost "
         "(DECISION F200 D5).",
     ),
+    "job.resume": (
+        frozenset({0, 1, 2}),
+        "sys.exit(code) in apps/cli/commands/do_cmd.py, code = follow_run(body), "
+        "reached through `_cmd_job_run`, to which `remedy job resume` hands a job the "
+        "ping-pong engine has run (DECISION F295 D13): the same site, and the same codes, "
+        "as job.run's entry above.",
+    ),
 }
 
 

@@ -1314,9 +1314,11 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     Every lookup here is read-only.  In particular the stop request is
     *observed* (``stop_requested``), never consumed: a preview that swallowed
     an operator's pending stop would be worse than the bug it replaced
-    (R-0146).
+    (R-0146). The budget stop it reports is DECISION F295 D11's
+    ``open_budget_decision_id`` — an answered stop no longer holds the job.
     """
     from packages.orchestration.checkpoints import resolve_live_worktree_head
+    from packages.orchestration.decision_queue import open_budget_decision_id
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import stop_requested
 
@@ -1341,9 +1343,18 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
 
     gate = task_plan_blocks_execution(job) or "open"
 
+    budget_open_decision_id = open_budget_decision_id(job)
+    budget_stopped = bool(budget_open_decision_id)
+    budget_stop = {
+        "stopped": budget_stopped,
+        "decision_id": budget_open_decision_id,
+    }
+
     pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
     if job.tasks and not pending_tasks:
         state = "all_green"
+    elif job.state == RunState.CANCELLED:
+        state = "cancelled"
     elif checkpoint is None:
         state = "no_checkpoint"
     else:
@@ -1356,13 +1367,15 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
         "stop_request": stop,
         "worktree_head": head,
         "plan_approval_gate": gate,
+        "budget_stop": budget_stop,
         "state": state,
         "checkpoint_index": (
             getattr(checkpoint, "cycle_index", None) if checkpoint else None),
         "pending_tasks": len(pending_tasks),
         "would_run": (
             not stop["pending"] and head_outcome != "drift"
-            and gate == "open" and state != "all_green"
+            and gate == "open" and state not in ("all_green", "cancelled")
+            and not budget_stopped
         ),
     }
 
@@ -1399,6 +1412,9 @@ def _print_resume_preview(preview: dict[str, Any]) -> None:
 
     if preview["state"] == "all_green":
         print("  state:         already all green — resume would be a no-op")
+    elif preview["state"] == "cancelled":
+        print("  state:         cancelled — resume would refuse because the "
+              "job is cancelled")
     elif preview["state"] == "no_checkpoint":
         print(f"  state:         no checkpoint found — would continue from the "
               f"persisted job state ({preview['pending_tasks']} task(s) pending)")
@@ -1406,6 +1422,13 @@ def _print_resume_preview(preview: dict[str, Any]) -> None:
         print(f"  state:         would resume from checkpoint "
               f"{preview['checkpoint_index']} "
               f"({preview['pending_tasks']} task(s) pending)")
+
+    budget = preview["budget_stop"]
+    if budget["stopped"]:
+        print(f"  budget stop:   OPEN — decision {budget['decision_id']}, "
+              f"resume would refuse")
+    else:
+        print("  budget stop:   none")
 
     print(f"  would run:     {'yes' if preview['would_run'] else 'no'}")
 
@@ -1440,7 +1463,17 @@ def _cmd_job_resume(
       3. the PLAN-APPROVAL GATE is consulted through the same check
          ``remedy job resume`` uses — resume is not a second door around it.
 
-    Only then does it hand off to the multi-cycle executor.
+    Only then does it hand off to an executor — and which one depends on what
+    already ran this job (DECISION F295 D13). A job whose record carries an
+    ``execution_config`` — meaning `remedy job run` or an earlier resume has
+    already run it through the ping-pong engine — goes to ``_cmd_job_run``
+    with its full id, so it continues through that SAME handler, with its own
+    persisted builder, reviewer and limits, exactly as ``remedy job run
+    <job>`` runs it. A job no ping-pong run ever touched has no persisted
+    roles to continue with, so it keeps going to the multi-cycle executor,
+    ``_cmd_job_run_cycles``, unchanged. ``--cycles`` and ``--unattended`` are
+    multi-cycle-executor controls; for a job routed to ``_cmd_job_run`` they
+    do not apply, and one stderr line says so before the hand-off.
 
     ``dry_run`` makes the whole thing a READ-ONLY PREVIEW: it reports what
     each of those checks would decide, consumes nothing — a pending stop
@@ -1455,7 +1488,7 @@ def _cmd_job_resume(
       * an all-green job -> friendly no-op, exit 0.
 
     Exit codes: 0 ok / no-op / stop consumed · 1 job or checkpoint problem ·
-    3 refused by a guard (head drift, plan-approval gate).
+    3 refused by a guard (head drift, plan-approval gate, budget decision open).
     """
     from packages.orchestration.checkpoints import (
         RESUME_NOOP,
@@ -1517,6 +1550,24 @@ def _cmd_job_resume(
             _plan_rejected_message(job_id_str),
             json_output=json_output, exit_code=3,
         )
+    if decision.reason == "job_cancelled":
+        fail(
+            "job_not_resumable",
+            f"job {job_id_str} is cancelled and never runs again.",
+            json_output=json_output, exit_code=3,
+        )
+    if decision.reason == "budget_stopped":
+        from packages.orchestration.decision_queue import open_budget_decision_id
+
+        _decision_id = open_budget_decision_id(job)
+        fail(
+            "budget_decision_open",
+            f"job {job_id_str[:8]} was stopped by its budget "
+            f"({job.stop_reason or 'budget_exhausted'}) — it does not resume "
+            f"until the decision {_decision_id} is answered. Run: "
+            f"remedy decision list {job_id_str[:8]} --json",
+            json_output=json_output, exit_code=3, decision_id=_decision_id,
+        )
 
     if decision.action == RESUME_NOOP:
         if json_output:
@@ -1525,13 +1576,32 @@ def _cmd_job_resume(
             print(f"Job {jid} | already all green — nothing to resume")
         return
 
+    # DECISION F295 D13 (3): under `--json` this line is progress, not the
+    # answer — a client reading stdout as one envelope must not read prose
+    # first. Without `--json` it stays on stdout, byte for byte.
+    progress_out = sys.stderr if json_output else sys.stdout
     if checkpoint is None:
         print(f"Job {jid} | no checkpoint found — continuing from persisted "
-              f"job state")
+              f"job state", file=progress_out)
     else:
         print(f"Job {jid} | resuming from checkpoint {checkpoint.cycle_index} "
               f"(spent={checkpoint.budget_spent_tokens} tokens, "
-              f"verify={checkpoint.verify_result or 'not_run'})")
+              f"verify={checkpoint.verify_result or 'not_run'})", file=progress_out)
+
+    # DECISION F295 D13 (1): a job the ping-pong engine has already run — its
+    # record carries an `execution_config` — continues through `_cmd_job_run`,
+    # with its own persisted builder, reviewer and limits, exactly as `remedy
+    # job run <job>` runs it. Every other job keeps the multi-cycle executor.
+    if job.execution_config is not None:
+        if cycles is not None or unattended:
+            print(
+                "Note: --cycles and --unattended do not apply to a job the "
+                "ping-pong engine runs; it runs as `remedy job run` runs it.",
+                file=sys.stderr,
+            )
+        from apps.cli.commands.do_cmd import _cmd_job_run
+        _cmd_job_run(str(job.job_id), json_output=json_output)
+        return
 
     _cmd_job_run_cycles(
         job_id_str,

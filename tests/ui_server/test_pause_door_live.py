@@ -59,23 +59,41 @@ Acceptance:
 #: How long each of SlowProvider's calls sleeps for — long enough that an HTTP
 #: POST issued the instant the metafile appears reliably lands while a call is
 #: in flight, short enough that the ten runs G5's mutation tool makes stay fast.
+#: The job-scope test does not rely on it: R-1159 holds its call open instead.
 _CALL_SLEEP_S = 0.3
 
 _RUNNER = """\
-import sys, time
+import json, sys, time
 from pathlib import Path
 sys.path.insert(0, {repo!r})
+from packages.orchestration.pause_control import PAUSE_REQUEST_FILENAME
 from packages.orchestration.pingpong_job import parse_job_file, run_job
 from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.safe_points import job_control_dir
+
+#: R-1159: the build call (counted from 1) held open until a job pause request
+#: exists on disk; 0 holds none. Holding it makes "the pause lands while that
+#: call is in flight" true by construction, not by a race against the sleep.
+HOLD_BUILD = {hold_build!r}
 
 
 class SlowProvider(FakeProvider):
     '''A provider whose calls take real time, like the real ones do. Nothing here
-    knows anything about a pause: the runner has to notice it on its own, exactly
-    the way it notices a stop.'''
+    tells the runner about a pause: the runner has to notice it on its own, exactly
+    the way it notices a stop. The held call only WAITS until the request file
+    exists, never reads it, and then returns exactly what any other call returns.'''
+
+    build_calls = 0
 
     def build(self, prompt, **kwargs):
+        self.build_calls += 1
         time.sleep({sleep!r})
+        if self.build_calls == HOLD_BUILD:
+            pause_file = job_control_dir(job.job_id) / PAUSE_REQUEST_FILENAME
+            Path({in_flight!r}).write_text("in flight" + chr(10))
+            deadline = time.monotonic() + 60.0
+            while not pause_file.is_file() and time.monotonic() < deadline:
+                time.sleep(0.02)
         return super().build(prompt, **kwargs)
 
     def review(self, prompt, **kwargs):
@@ -97,6 +115,12 @@ def provider():
 final = run_job(job.job_id, builder_provider=provider(),
                 reviewer_provider=provider(), repair_rounds=0)
 print("FINAL:" + final.state, flush=True)
+# R-1159: why the job ended where it did, so that a red run explains itself.
+print("DETAIL:" + json.dumps(dict(
+    error=final.error, pause=final.pause,
+    tasks=[dict(status=t.status, final_status=t.final_status,
+                detail=t.final_status_detail, error=t.error) for t in final.tasks]),
+    default=str), flush=True)
 """
 
 
@@ -216,10 +240,13 @@ class TestJobScopeLiveDoor:
         job_file = tmp_path / "job.md"
         job_file.write_text(_THREE_TASK_JOB)
         metafile = tmp_path / "meta.txt"
+        in_flight = tmp_path / "in_flight.txt"
         script = tmp_path / "runner.py"
+        # Build call 2 is task 2's build call: task 1 took build call 1.
         script.write_text(textwrap.dedent(_RUNNER).format(
             repo=str(repo_root), job_file=str(job_file), target=str(target),
-            metafile=str(metafile), sleep=_CALL_SLEEP_S))
+            metafile=str(metafile), sleep=_CALL_SLEEP_S, hold_build=2,
+            in_flight=str(in_flight)))
 
         env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir), PYTHONPATH=str(repo_root))
         baseline = {c.pid for c in psutil.Process().children(recursive=True)}
@@ -238,21 +265,17 @@ class TestJobScopeLiveDoor:
             lines = metafile.read_text().splitlines()
             job_id = lines[0]
 
-            # Wait for task 1 to complete (durably applied) before pausing, so the
-            # pause lands during task 2's build call — a call ALREADY IN FLIGHT —
-            # rather than racing task 1's own first call.
+            # Wait until task 2's build call is in flight before pausing. R-1159:
+            # that call is HELD until the pause request exists, so the pause lands
+            # during a call ALREADY IN FLIGHT however slow the server is to start.
             deadline = time.monotonic() + 60.0
             while time.monotonic() < deadline:
-                job_json = job_record_path(job_id, data_dir)
-                if job_json.is_file():
-                    statuses = [t["status"] for t in json.loads(job_json.read_text() or "{}")
-                               .get("tasks", [])]
-                    if statuses and statuses[0] == "applied_to_job_workspace":
-                        break
-                assert proc.poll() is None, "the runner exited before task 1 completed"
+                if in_flight.is_file():
+                    break
+                assert proc.poll() is None, "the runner exited before task 2's build call"
                 time.sleep(0.02)
             else:
-                pytest.fail("task 1 never completed within 60s")
+                pytest.fail("task 2's build call never started within 60s")
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
@@ -269,19 +292,22 @@ class TestJobScopeLiveDoor:
 
             out, err = proc.communicate(timeout=120)
             assert proc.returncode == 0, f"runner exited {proc.returncode}: {err}"
-            assert "FINAL:paused" in out, out
+            # R-1159: the runner's DETAIL line and standard error ride on every
+            # assertion below, so a red run names each task's status and the stop reason.
+            why = f"{out}\nstderr:\n{err}"
+            assert "FINAL:paused" in out, why
         finally:
             if proc.poll() is None:
                 proc.kill()
                 proc.wait(timeout=30)
 
         data = _job_data(data_dir, job_id)
-        assert data["status"] == "paused"
-        assert data["pause"]["scope"] == "job"
+        assert data["status"] == "paused", why
+        assert data["pause"]["scope"] == "job", why
         statuses = [t["status"] for t in data["tasks"]]
-        assert statuses[0] == "applied_to_job_workspace"    # task 1's work is durable
-        assert statuses[1] == "pending"                     # task 2's call finished; it never applied
-        assert statuses[2] == "pending"
+        assert statuses[0] == "applied_to_job_workspace", why  # task 1's work is durable
+        assert statuses[1] == "pending", why    # task 2's call finished; it never applied
+        assert statuses[2] == "pending", why
 
         assert not psutil.pid_exists(proc.pid) or \
             psutil.Process(proc.pid).status() == psutil.STATUS_ZOMBIE
@@ -333,7 +359,8 @@ class TestTaskScopeLiveDoor:
         script = tmp_path / "runner.py"
         script.write_text(textwrap.dedent(_RUNNER).format(
             repo=str(repo_root), job_file=str(job_file), target=str(target),
-            metafile=str(metafile), sleep=_CALL_SLEEP_S))
+            metafile=str(metafile), sleep=_CALL_SLEEP_S, hold_build=0,
+            in_flight=str(tmp_path / "in_flight.txt")))
 
         env = dict(os.environ, REMEDY_DATA_DIR=str(data_dir), PYTHONPATH=str(repo_root))
         proc = subprocess.Popen([sys.executable, str(script)], env=env,
@@ -368,7 +395,7 @@ class TestTaskScopeLiveDoor:
 
             out, err = proc.communicate(timeout=120)
             assert proc.returncode == 0, f"runner exited {proc.returncode}: {err}"
-            assert "FINAL:paused" in out, out
+            assert "FINAL:paused" in out, f"{out}\nstderr:\n{err}"
         finally:
             if proc.poll() is None:
                 proc.kill()

@@ -664,6 +664,8 @@ def run_streamed_command(
         cwd=cwd if plan is None else plan.cwd,
         env=None if plan is None else plan.env,
         preexec_fn=None if plan is None else plan.preexec_fn,
+        # R-1145: the provider reads end-of-file, never the caller's stdin.
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, bufsize=1,
         start_new_session=True,  # own process group: we can stop the whole tree

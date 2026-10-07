@@ -350,11 +350,13 @@ class TestTheTokenVocabularyJoinsTheProduct:
         "answer_parse_error", "clarifications_already_resolved",
         "decision_already_answered", "decision_not_found",
         "decision_not_resolvable",
-        "follow_up_mission_error", "invalid_argument", "invalid_list_option",
+        "follow_up_mission_error", "invalid_argument", "invalid_budget",
+        "invalid_list_option",
         "job_not_found", "missing_argument", "mission_already_linked",
         "mission_error", "no_pending_plan_approval", "no_project",
         "option_not_applicable", "proposed_task_invalid_state",
         "proposed_task_not_found", "proposed_task_operation_failed",
+        "budget_limit_not_raisable", "budget_limit_not_raised",
         "stop_reason_not_found",
     })
 
@@ -381,3 +383,181 @@ class TestTheTokenVocabularyJoinsTheProduct:
         assert tokens == self._PINNED_TOKENS, (
             f"decision.py's fail() token vocabulary changed: {tokens ^ self._PINNED_TOKENS}"
         )
+
+
+class _CliResult:
+    """`main()`'s captured output plus the exit code it raised, or 0."""
+
+    def __init__(self, out: str, err: str, code: int) -> None:
+        self.out = out
+        self.err = err
+        self.code = code
+
+
+class TestABudgetDecisionAnsweredThroughTheCommandLine:
+    """In-process through `apps.cli.grouped.main`, in a temporary git repository, exactly
+    as `tests.orchestration.test_resume_cli.TestBudgetStopThroughTheCommandLine` drives
+    it — its tripwires and its `OllamaBuilder` stand-in included. DECISION F295 D11: a
+    client answers a budget decision with `extend` and runs the job to its end (R-1146)."""
+
+    def _stopped_job(self, tmp_path, monkeypatch, capsys):
+        import subprocess
+
+        from apps.cli.grouped import main
+
+        def _git(repo, *args: str) -> None:
+            subprocess.run(["git", *args], cwd=str(repo), capture_output=True,
+                           text=True, check=True)
+
+        target = tmp_path / "target"
+        target.mkdir()
+        _git(target, "init", "-q")
+        _git(target, "config", "user.email", "t@e.com")
+        _git(target, "config", "user.name", "T")
+        _git(target, "config", "commit.gpgsign", "false")
+        (target / "README.md").write_text("# target\n")
+        _git(target, "add", "-A")
+        _git(target, "commit", "-qm", "init")
+        monkeypatch.chdir(target.resolve())
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError(
+                "answering a budget decision reached a model-call factory")
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn", tripwire)
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_structured_call_fn", tripwire)
+        monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
+
+        class _FakeOllamaBuilder:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError(
+                    "the fake providers must never reach the Ollama builder")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_builder.provider.OllamaBuilder",
+            _FakeOllamaBuilder)
+
+        fake_roles = ("--builder-provider", "fake", "--reviewer-provider", "fake")
+
+        def run(*args: str) -> _CliResult:
+            code = 0
+            try:
+                main(list(args))
+            except SystemExit as exc:
+                code = exc.code if isinstance(exc.code, int) else 1
+            captured = capsys.readouterr()
+            return _CliResult(captured.out, captured.err, code)
+
+        plan = json.loads(run(
+            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--yes",
+            "--no-llm", *fake_roles, "--max-cost-usd", "1", "--plan-only").out)
+        [job_id] = plan["job_ids"]
+
+        run("job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+            *fake_roles, "--json")
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        [decision_id] = [d["id"] for d in decisions if d["id"].startswith("budget")]
+
+        return run, job_id, decision_id, fake_roles
+
+    def test_extend_records_the_answer_and_the_job_runs_to_its_end(
+            self, tmp_path, monkeypatch, capsys):
+        from datetime import datetime, timedelta, timezone
+
+        run, job_id, decision_id, fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        new_deadline = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", f"deadline={new_deadline}", "--json")
+        body = json.loads(result.out)
+        assert body["ok"] is True
+        assert body["outcome"] == "extended"
+        assert body["next_command"] == f"remedy job run {job_id} --json"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert not [d for d in decisions if d["id"].startswith("budget")]
+
+        status = json.loads(run("status", "--json").out)
+        client_decisions = status["client"]["decisions"]
+        assert not [d for d in client_decisions if d["job_id"] == job_id]
+
+        job_record = json.loads(run("job", "run", job_id, *fake_roles, "--json").out)
+        assert job_record["status"] == "completed"
+
+    def test_extend_then_resume_runs_the_job_through_its_own_providers(
+            self, tmp_path, monkeypatch, capsys):
+        """DECISION F295 D13: `job run` persisted this job's `execution_config`
+        with `builder` and `reviewer` `fake` (R-1147's own fixture) when it
+        first stopped it on budget; resuming it after `extend` must run it
+        through THAT config, via `_cmd_job_run`, not the multi-cycle
+        executor, which has no persisted roles to give it."""
+        from datetime import datetime, timedelta, timezone
+
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        run, job_id, decision_id, _fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        new_deadline = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", f"deadline={new_deadline}", "--json")
+
+        result = run("job", "resume", job_id, "--yes", "--json")
+        assert result.code == 0
+        body = json.loads(result.out)
+        assert body["status"] == "completed"
+
+        record = load_job_plan(job_id)
+        assert record.state == "completed"
+        assert record.execution_config.builder == "fake"
+
+    def test_a_refusal_reaches_the_client_as_an_envelope(
+            self, tmp_path, monkeypatch, capsys):
+        run, job_id, decision_id, _fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", "max_cost_usd=2", "--json")
+        assert result.code == 1
+        body = json.loads(result.out)
+        assert body["ok"] is False
+        assert body["error"] == "budget_limit_not_raised"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert [d for d in decisions if d["id"].startswith("budget")]
+
+    def test_abandon_cancels_the_job_and_nothing_runs_it_again(
+            self, tmp_path, monkeypatch, capsys):
+        """DECISION F295 D12: a client answers `abandon` and the job never runs
+        again, through `job run`, `job resume` or a plain `status`."""
+        run, job_id, decision_id, fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "abandon", "--json")
+        body = json.loads(result.out)
+        assert body["ok"] is True
+        assert body["outcome"] == "abandoned"
+        assert body["state"] == "cancelled"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert not [d for d in decisions if d["id"].startswith("budget")]
+
+        run_result = run("job", "run", job_id, *fake_roles, "--json")
+        assert run_result.code == 1
+        assert json.loads(run_result.out)["error"] == "job_not_resumable"
+
+        resume_result = run("job", "resume", job_id, "--yes", "--json")
+        assert resume_result.code == 3
+        assert json.loads(resume_result.out)["error"] == "job_not_resumable"
+
+        status = json.loads(run("status", "--json").out)
+        [client_job] = [j for j in status["client"]["jobs"] if j["job_id"] == job_id]
+        assert client_job["state"] == "cancelled"

@@ -798,6 +798,54 @@ def raise_contract_remainder_decision(project_id: str, mission_id: str, *,
     return str(record.get("decision_id", "")) or None
 
 
+def answer_contract_remainder_on_extend(job_id: str, budget_decision_id: str, *,
+                                        root: Path | None = None,
+                                        now: datetime | None = None) -> list[str]:
+    """Answer ``no`` to the open remainder decision once its budget stop is extended.
+
+    R-1155, DECISION F295 D19: a remainder decision asks whether to start a
+    follow-up mission because the mission stopped at its budget (D9 (1)).  An
+    operator who answers the budget decision *budget_decision_id* ``extend``
+    chose to run the job on instead, so every OPEN remainder decision on the
+    jobs of the mission *job_id* belongs to is answered ``no`` by that same
+    choice, with the budget decision named in the answer.  Nothing is started,
+    every other decision stays as it is, and a later budget stop raises a fresh
+    remainder decision.  Returns the answered ids in chain order; a job that
+    belongs to no mission answers nothing.
+    """
+    from packages.orchestration.data_paths import normalize_job_id
+    from packages.orchestration.escalation import answer_task_decision, open_task_decisions
+    from packages.orchestration.mission_state import mission_for_job
+    from packages.orchestration.pingpong_job import (
+        JobNotFoundError,
+        JobStoreError,
+        require_job_plan,
+        save_job_plan,
+    )
+
+    mission = mission_for_job(str(job_id), root)
+    if mission is None:
+        return []
+    answer = (f"no: {budget_decision_id} was answered extend, so the job runs on "
+              "and no follow-up mission is started")
+    when = now or datetime.now(timezone.utc)
+    answered: list[str] = []
+    for link in mission.job_links:
+        try:
+            job = require_job_plan(normalize_job_id(link.job_id))
+        except (JobNotFoundError, JobStoreError):
+            # An unreadable job holds no decision this answer can reach.
+            continue
+        ids = [str(record.get("decision_id", "")) for record in open_task_decisions(job)
+               if str(record.get("question", "") or "").startswith(CONTRACT_REMAINDER_MARKER)]
+        for decision_id in ids:
+            if answer_task_decision(job, decision_id, answer=answer, now=when) is not None:
+                answered.append(decision_id)
+        if ids:
+            save_job_plan(job)
+    return answered
+
+
 def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
                                       root: Path | None = None,
                                       now: datetime | None = None) -> str | None:

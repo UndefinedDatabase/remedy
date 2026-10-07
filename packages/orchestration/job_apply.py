@@ -1997,6 +1997,59 @@ def load_job_apply_record(job_id: str, job_apply_id: str) -> dict[str, Any] | No
         return None
 
 
+# DECISION F295 D4 (3): the client digest's `waits_for_apply` reader — this module owns the records.
+def job_apply_landed(job_id: str) -> bool:
+    """True when any apply record of ``job_id`` reads ``"status": "applied"``.
+
+    A missing records directory is False. A record file that cannot be read or
+    parsed is skipped, not an error — one corrupt record must not hide another.
+    """
+    record_dir = _job_apply_records_dir() / job_id
+    if not record_dir.is_dir():
+        return False
+    for record_file in record_dir.glob("*.json"):
+        try:
+            data = json.loads(record_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and data.get("status") == "applied":
+            return True
+    return False
+
+
+#: DECISION F295 D15: the fields of an apply record that `change proof` repeats. Facts the record
+#: states and nothing it ran: no test summary, no path outside the target repository's own.
+JOB_APPLY_PROOF_FIELDS = (
+    "job_apply_id", "status", "approved", "dry_run", "finished_at",
+    "files_applied", "commit_sha", "pushed", "post_test_passed",
+)
+
+
+def list_job_apply_records(job_id: str, data_dir: str | Path | None = None) -> list[dict[str, Any]]:
+    """Every apply record of ``job_id``, reduced to ``JOB_APPLY_PROOF_FIELDS``, oldest first.
+
+    DECISION F295 D15: the read `change proof` lists a job's applies with. Ordered by
+    ``finished_at``, then by ``job_apply_id``, so two reads of the same records agree. A missing
+    records directory is no record; a file that cannot be read or parsed, or that is not an
+    object, is skipped, as ``job_apply_landed`` skips it. ``data_dir`` names the data root;
+    None reads the one this process resolves.
+    """
+    base = Path(data_dir) / "job_apply_records" if data_dir is not None else _job_apply_records_dir()
+    record_dir = base / job_id
+    if not record_dir.is_dir():
+        return []
+    records: list[dict[str, Any]] = []
+    for record_file in record_dir.glob("*.json"):
+        try:
+            data = json.loads(record_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            records.append({field: data.get(field) for field in JOB_APPLY_PROOF_FIELDS})
+    records.sort(key=lambda r: (str(r.get("finished_at") or ""), str(r.get("job_apply_id") or "")))
+    return records
+
+
 # ---------------------------------------------------------------------------
 # Export / summary (redacted, baseline-aware)
 # ---------------------------------------------------------------------------

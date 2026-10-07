@@ -1019,3 +1019,42 @@ def test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names()
 
     assert reached.returncode == 0, reached.stderr
     assert _SERVED_BODY in reached.stdout
+
+
+# ── R-1145: a guarded child never reads the caller's stdin ───────────────────
+
+#: Run as its own process whose stdin is an open pipe: one guarded child that reads all
+#: of its stdin, under a wall timeout, then the trip and what the child read.
+_GUARDED_READER_ON_AN_OPEN_PIPE = (
+    "import sys\n"
+    "from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded\n"
+    "result = run_guarded([sys.executable, '-c', 'import sys; print(len(sys.stdin.read()))'],\n"
+    "                     ExecGuardPolicy(wall_timeout_seconds=20))\n"
+    "print(result.tripped_limit, result.stdout.decode().strip())\n"
+)
+
+
+@pytest.mark.subprocess
+def test_a_guarded_child_reads_end_of_file_while_the_callers_stdin_is_an_open_pipe(tmp_path):
+    """R-1145: an unattended client holds Remedy's stdin open as a pipe it never writes to.
+
+    The caller below is a real process with exactly that stdin. A guarded child that
+    inherited it would wait on the pipe until its wall timeout; with its own end-of-file
+    it reads nothing at once. `communicate()` is never used, because it closes the pipe.
+    """
+    repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    out_path = tmp_path / "caller.out"
+    with open(out_path, "wb") as out:
+        caller = subprocess.Popen([sys.executable, "-c", _GUARDED_READER_ON_AN_OPEN_PIPE],
+                                  cwd=repo, stdin=subprocess.PIPE, stdout=out,
+                                  stderr=subprocess.STDOUT)
+        try:
+            caller.wait(timeout=60)
+        finally:
+            caller.stdin.close()
+            if caller.poll() is None:
+                caller.kill()
+                caller.wait()
+
+    assert caller.returncode == 0, out_path.read_text()
+    assert out_path.read_text().strip() == "None 0"

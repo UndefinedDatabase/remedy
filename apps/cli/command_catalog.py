@@ -205,7 +205,8 @@ _PLAN_VERSION_OPT = ArgDef(
 _PLAN_TASK_ID = ArgDef("task_id", "The task's id, as `remedy job plan-show` prints it")
 _ANSWER_OPT = ArgDef(
     "--answer",
-    'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
+    'Answer one bundled clarification (--answer q1="use PostgreSQL") or raise a '
+    "budget decision's limit (--answer max_cost_usd=2.5); repeatable",
     required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
 #: F033: names ONE task run whose diff to decide hunks over. Deliberately NOT
@@ -217,6 +218,13 @@ _TASK_RUN_OPT = ArgDef(
     "--task-run",
     "Task run to decide over, exactly as it is named under task_runs/ (T001); "
     "omit it to decide over the job-level diff",
+    required=False, is_option=True)
+#: DECISION F295 D14: the same option for `patch.hunks`, which shows a diff
+#: rather than deciding over one, so its help says so.
+_TASK_RUN_SHOW_OPT = ArgDef(
+    "--task-run",
+    "Task run whose hunks to show, exactly as it is named under task_runs/ (T001); "
+    "omit it for the job-level diff",
     required=False, is_option=True)
 #: F033: repeatable, one hunk id per occurrence.
 _APPROVE_HUNK_OPT = ArgDef(
@@ -1097,6 +1105,21 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # repository, and this table is the one place the UI reads capability
         # from, so claiming otherwise would misdescribe the decision.
         related=("patch.approve", "patch.apply"),
+    ),
+    CommandEntry(
+        command_id="patch.hunks",
+        group_id="patch",
+        subcommand="hunks",
+        description=(
+            "Show the hunks of a job's diff, or of one of its tasks, with their ids "
+            "and the answer recorded for them."
+        ),
+        action_class="read_only",
+        args=(_JOB_ID, _TASK_RUN_SHOW_OPT, _JSON_OPT),
+        supports_json=True,
+        # DECISION F295 D14: the read side of `patch.approve-hunks`, so a client
+        # that never sees the cockpit reads the hunk ids it answers with.
+        related=("patch.approve-hunks",),
     ),
 
     # ── test ─────────────────────────────────────────────────────────────
@@ -2106,7 +2129,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show", "change.proof"),
         args=(
-            ArgDef("goal", "Goal to accomplish", required=False),
+            ArgDef("goal", "What you ask, as text, or one path ending in .md to an order file", required=False),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--project", "Select a registered project by slug or id instead of the repository's own", required=False, is_option=True),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),

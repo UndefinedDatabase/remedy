@@ -547,6 +547,30 @@ def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
     assert data["stopped_before_apply"] is True
 
 
+def test_with_no_ui_the_cockpit_launcher_is_never_called_and_the_ui_step_says_so(
+        repo, capsys, monkeypatch):
+    """R-1154: `--no-ui` opens no cockpit, which a machine client relies on (F295).
+
+    A cockpit that does not come up is a skipped ui step too, so the step's status alone cannot
+    tell `--no-ui` from a launch that was tried; the stand-in launcher must never be called.
+    """
+    launched: list[str] = []
+
+    def launcher(job_id: str) -> str:
+        launched.append(job_id)
+        return f"http://127.0.0.1:43210/?job={job_id}&token=t"
+
+    _stand_in_for_the_cockpit(monkeypatch, launcher)
+
+    data = _do_json(capsys)
+
+    assert launched == []
+    ui = _step(data, "ui")
+    assert (ui["status"], ui["detail"]) == (
+        "skipped", "--no-ui given; the cockpit was not opened")
+    assert [line for line in data["next"] if line.startswith("remedy ui ")] == []
+
+
 def _track(repo: Path, *paths: str) -> None:
     """Commit each path into the target, so the fake builder's writes change tracked content."""
     for rel in paths:
@@ -1137,3 +1161,91 @@ def test_a_job_its_budget_stops_with_blockers_raises_the_remainder_and_names_its
     assert all(f"{ident}: " in record["question"]
                for ident in data["unmet_blocking_criteria"])
     assert f"remedy decision resolve {job_id} {decision_id} --reason yes" in data["next"]
+
+
+# ── F295 R11: a job `remedy do` plans records its order digest (R-1148, DECISION F295 D10) ──
+
+
+def test_a_do_jobs_run_manifest_is_written_and_named_in_the_digest(repo, capsys):
+    """DECISION F295 D10 (1): `job_file_sha256` is the sha256 of the job's own
+    `mission`, so the run manifest's job-input check is met and written."""
+    import hashlib
+    import json as _json
+
+    from packages.orchestration.data_paths import job_record_path
+
+    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1"))
+
+    for job_id in data["job_ids"]:
+        record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
+        assert record["job_file_sha256"] == hashlib.sha256(
+            record["mission"].encode("utf-8")).hexdigest()
+        assert record["run_manifest"]["path"]
+        assert record["run_manifest"]["error"] == ""
+
+    main(["status", "--json"])
+    status = json.loads(capsys.readouterr().out)
+    client_jobs = {j["job_id"]: j for j in status["client"]["jobs"]}
+    for job_id in data["job_ids"]:
+        manifest_path = client_jobs[job_id]["evidence"]["run_manifest_path"]
+        assert manifest_path and Path(manifest_path).is_file()
+
+
+def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
+    """DECISION F295 D10 (2): a job's digest is written before it ever runs, so a
+    budget stop of it — here, a deadline already past — ends `stopped` with the
+    run manifest's job-input check still met, never an empty `job_file_sha256`."""
+    import json as _json
+
+    from packages.orchestration.data_paths import job_record_path
+
+    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1", "--plan-only"))
+    [job_id] = data["job_ids"]
+
+    try:
+        main(["job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+              "--builder-provider", "fake", "--reviewer-provider", "fake", "--json"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    capsys.readouterr()
+
+    record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
+    assert record["status"] == "stopped"
+    assert record["stop"]["source"] == "budget"
+    assert record["run_manifest"]["error"] == ""
+
+    main(["status", "--json"])
+    status = json.loads(capsys.readouterr().out)
+    client_jobs = {j["job_id"]: j for j in status["client"]["jobs"]}
+    assert client_jobs[job_id]["state"] == "stopped"
+
+
+# ── F295 R21: an extend answers the remainder its budget stop raised (R-1155, DECISION F295 D19) ──
+
+
+def test_an_extend_answers_the_remainder_and_says_so_in_its_text(repo, capsys):
+    """D19: the operator at a terminal reads which remainder decision the extend answered."""
+    from packages.orchestration.escalation import find_task_decision
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    with pytest.raises(SystemExit):
+        _do(capsys, "--json", "--contract", "cli-tool",
+            "--deadline", "2000-01-01T00:00:00+00:00")
+    data = json.loads(capsys.readouterr().out)
+    [job_id] = data["job_ids"]
+    [remainder_id] = re.findall(r"remainder decision (td:\S+) was raised",
+                                _step(data, "run")["detail"])
+    main(["decision", "list", job_id, "--json"])
+    [budget_id] = [d["id"] for d in json.loads(capsys.readouterr().out)["decisions"]
+                   if d["id"].startswith("budget")]
+
+    main(["decision", "resolve", job_id, budget_id, "--reason", "extend",
+          "--answer", "deadline=2999-01-01T00:00:00+00:00"])
+
+    out = capsys.readouterr().out
+    assert (f"  Remainder decision {remainder_id} answered no: the job runs on "
+            "instead of a follow-up mission") in out.splitlines()
+    record = find_task_decision(load_job_plan(job_id), remainder_id)
+    assert (record["status"], record["answer"]) == (
+        "answered", f"no: {budget_id} was answered extend, so the job runs on "
+        "and no follow-up mission is started")

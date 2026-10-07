@@ -55,6 +55,7 @@ walk and asks every job of the walk to stop through `safe_points.request_stop`.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import subprocess
@@ -105,6 +106,10 @@ class DoContext:
     """Everything one `remedy do` walk carries from step to step."""
 
     order: str
+    #: The order file's resolved absolute path (DECISION F295 D3); "" for an order given as text.
+    order_source_path: str = ""
+    #: sha256 (hex) of the order file's exact bytes (DECISION F295 D3); "" for an order given as text.
+    order_source_sha256: str = ""
     repo: str = "."
     builder_provider: str | None = None
     reviewer_provider: str | None = None
@@ -398,6 +403,10 @@ def plan_order_job(
     )
 
     mission = order
+    # The run manifest's job-input check requires job_file_sha256 as a REQUIRED
+    # fact (DECISION F295 D10): a job planned from an order is defined by that
+    # order text, so its digest is taken once, here, from that text.
+    job_file_sha256 = hashlib.sha256(mission.encode("utf-8")).hexdigest()
     repo = repo_path
     target_repo_path = str(Path(repo_path).resolve()) if repo_path else ""
 
@@ -510,6 +519,7 @@ def plan_order_job(
             job_budgets, job_fences = order_job_limits(merged_budgets, merged_fences)
             job = JobPlan(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
+                job_file_sha256=job_file_sha256,
                 project_id=str(project.id),
                 repo_path=target_repo_path,
                 intake=intake_result.value.model_dump(),
@@ -550,6 +560,7 @@ def plan_order_job(
         else:
             job = JobPlan(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
+                job_file_sha256=job_file_sha256,
                 project_id=str(project.id),
                 repo_path=target_repo_path,
                 intake=intake_result.value.model_dump(),
@@ -594,6 +605,7 @@ def plan_order_job(
             raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
         job = JobPlan(
             job_title=mission[:80], mission=mission, user_prompt=mission,
+            job_file_sha256=job_file_sha256,
             project_id=str(project.id),
             repo_path=target_repo_path,
             intake=intake_result.value.model_dump(),
@@ -736,7 +748,9 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     project_id = str(ctx.project.id)
     try:
         mission = create_mission(project_id, ctx.order)
-        set_mission_order(project_id, mission.id, MissionOrder(text=ctx.order))
+        set_mission_order(project_id, mission.id, MissionOrder(
+            text=ctx.order, source_path=ctx.order_source_path,
+            source_sha256=ctx.order_source_sha256))
     except MissionError as exc:
         return DO_STEP_FAILED, f"no mission created: {exc}"
     ctx.mission_id = mission.id

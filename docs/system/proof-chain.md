@@ -63,6 +63,17 @@ The proof chain reports what's missing:
 - `test_order_unknown` — generic sole-change test exists, but timestamp ordering is missing or invalid
 - `no_test_after_apply` — generic sole-change test exists, but it happened before apply
 
+## Job Applies
+
+`remedy job apply` lands a job's reviewed result without a patch intent, so none of the changes
+above shows it. The proof lists the job's apply records beside them, oldest first: under
+`job_applies` in the JSON output, each with `job_apply_id`, `status`, `approved`, `dry_run`,
+`finished_at`, `files_applied`, `commit_sha`, `pushed` and `post_test_passed`, and as a
+`Job applies (<count>):` list in the text output. With `--path`, only the applies that wrote
+that path are listed. A job apply is never called verified: the statuses above still need a
+patch intent's links. When the proof holds no change and an apply landed, the next action says
+that the apply is listed and has no patch intent to verify.
+
 ## File Provenance
 
 `remedy file why <job_id> <path>` includes `proof_status` derived from the same proof chain.

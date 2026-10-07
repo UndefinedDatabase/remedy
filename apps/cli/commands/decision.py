@@ -18,6 +18,13 @@ if TYPE_CHECKING:
 _ESCALATION_PREFIX = "td:"
 
 
+def _is_budget_decision_id(decision_id: str) -> bool:
+    """DECISION F295 D11 (1): a budget decision's id, exactly as
+    `decision_queue.budget_decision_id` builds it — `budget:<request id>`, or
+    `budget_exhausted` when the stop carried no request id."""
+    return decision_id.startswith("budget:") or decision_id == "budget_exhausted"
+
+
 def _load_job_events(job_id_str: str, *, json_output: bool = False):
     """Load job and events. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
@@ -242,13 +249,14 @@ def _cmd_decision_resolve(
     as_mission: bool = False,
     json_output: bool = False,
 ) -> None:
-    # ``--answer`` bundles the task plan's clarification questions; a task
+    # ``--answer`` bundles the task plan's clarification questions, or — DECISION
+    # F295 D11 (1) — raises one or more of a budget decision's limits; a task
     # decision carries exactly one question, answered through --reason.
-    if answer and not decision_id.startswith("plan:"):
+    if answer and not (decision_id.startswith("plan:") or _is_budget_decision_id(decision_id)):
         fail(
             "option_not_applicable",
-            f"--answer is only valid for the task-plan approval "
-            f"decision, not {decision_id!r}.",
+            f"--answer is only valid for the task-plan approval decision or a "
+            f"budget decision, not {decision_id!r}.",
             json_output=json_output,
         )
     # F056: same rule for the mission opt-in — it belongs to the plan approval.
@@ -580,6 +588,84 @@ def _cmd_decision_resolve(
             emit_ok(
                 decision_id=decision_id, job_id=job_id_str, outcome="answered",
                 option=answered_option, follow_up_job_id=follow_up_job_id,
+            )
+    elif _is_budget_decision_id(decision_id):
+        # DECISION F295 D11: a budget decision answered `extend` raises one or
+        # more of the job's limits and records the answer. `--reason` carries
+        # the OPTION, exactly as the `veto:` branch above reads it — the model
+        # for this branch.
+        from datetime import datetime, timezone
+
+        from packages.orchestration.budget_decision import answer_budget_decision
+        from packages.orchestration.mission_contract import answer_contract_remainder_on_extend
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
+
+        job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+        try:
+            job = require_job_plan(job_id)
+        except JobNotFoundError as exc:
+            fail("job_not_found", str(exc), json_output=json_output)
+
+        result = answer_budget_decision(
+            job, decision_id, str(reason or ""), list(answer or []),
+            now=datetime.now(timezone.utc),
+        )
+
+        if result["outcome"] == "refused":
+            code = result["code"]
+            detail = result["detail"]
+            if code == "decision_not_found":
+                fail("decision_not_found", f"decision not found: {decision_id}",
+                     json_output=json_output)
+            if code == "decision_already_answered":
+                fail("decision_already_answered", detail, json_output=json_output)
+            if code == "option_not_applicable":
+                fail("option_not_applicable", detail, json_output=json_output)
+            if code == "invalid_argument":
+                fail(
+                    "invalid_argument",
+                    f"{detail}\n  remedy decision resolve {job_id_str} {decision_id} "
+                    "--reason extend --answer <limit>=<value>",
+                    json_output=json_output,
+                )
+            if code == "missing_argument":
+                fail("missing_argument", detail, json_output=json_output)
+            if code == "invalid_budget":
+                fail("invalid_budget", detail, json_output=json_output)
+            if code == "budget_limit_not_raised":
+                fail("budget_limit_not_raised", detail, json_output=json_output)
+            fail("budget_limit_not_raisable", detail, json_output=json_output)
+
+        save_job_plan(job)
+        if result["outcome"] == "abandoned":
+            if not json_output:
+                print(f"Answered {decision_id} for job {job_id_str}: abandoned")
+                print(f"  Job {job_id_str} is cancelled and will never run again.")
+            if json_output:
+                emit_ok(
+                    decision_id=decision_id, job_id=job_id_str, outcome="abandoned",
+                    state=result["state"],
+                )
+            return
+
+        # R-1155, DECISION F295 D19: the extend also answers the contract remainder
+        # decision this budget stop raised, because the job now runs on instead.
+        closed = answer_contract_remainder_on_extend(job_id, decision_id)
+        raised = result["raised"]
+        next_command = f"remedy job run {job_id_str} --json"
+        if not json_output:
+            print(f"Answered {decision_id} for job {job_id_str}: extended")
+            for name, value in raised.items():
+                print(f"  {name} raised to {value}")
+            for closed_id in closed:
+                print(f"  Remainder decision {closed_id} answered no: the job runs on "
+                      "instead of a follow-up mission")
+            print(f"Run the job: {next_command}")
+        if json_output:
+            emit_ok(
+                decision_id=decision_id, job_id=job_id_str, outcome="extended",
+                raised=raised, budgets=result["budgets"], closed_decisions=closed,
+                next_command=next_command,
             )
     else:
         _message = (

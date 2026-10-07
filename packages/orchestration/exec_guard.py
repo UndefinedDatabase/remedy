@@ -440,6 +440,9 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     started = time.monotonic()
     proc = subprocess.Popen(
         argv,
+        # R-1145: the child reads end-of-file, never the caller's stdin, which an
+        # unattended client may hold open as a pipe nobody writes to.
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=plan.cwd,

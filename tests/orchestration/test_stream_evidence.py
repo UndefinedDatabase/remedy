@@ -511,3 +511,42 @@ class TestDegradations:
         assert run.returncode == 0
         assert run.capture.degradations == [{"step": "stderr_close", "error_type": "OSError"}]
         assert run.events[-1]["event_type"] == "stream_degraded"
+
+
+# ── R-1145: a streamed provider never reads the caller's stdin ───────────────
+
+#: Run as its own process whose stdin is an open pipe: one streamed child that reads all
+#: of its stdin, under a 20-second deadline, then whether the deadline fired.
+_STREAMED_READER_ON_AN_OPEN_PIPE = (
+    "import sys\n"
+    "from packages.orchestration.stream_evidence import run_streamed_command\n"
+    "run = run_streamed_command([sys.executable, '-c', 'import sys; sys.stdin.read()'],\n"
+    "                           sys.argv[1], timeout_sec=20)\n"
+    "print(run.timed_out, run.returncode)\n"
+)
+
+
+@pytest.mark.subprocess
+def test_a_streamed_child_reads_end_of_file_while_the_callers_stdin_is_an_open_pipe(tmp_path):
+    """R-1145: the provider process `run_streamed_command` starts must not wait on a pipe
+    an unattended client holds open as Remedy's stdin; it reads end-of-file at once.
+    `communicate()` is never used, because it closes the pipe."""
+    import subprocess
+    import sys
+
+    repo = Path(__file__).resolve().parents[2]
+    out_path = tmp_path / "caller.out"
+    with open(out_path, "wb") as out:
+        caller = subprocess.Popen(
+            [sys.executable, "-c", _STREAMED_READER_ON_AN_OPEN_PIPE, str(tmp_path / "run")],
+            cwd=str(repo), stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT)
+        try:
+            caller.wait(timeout=60)
+        finally:
+            caller.stdin.close()
+            if caller.poll() is None:
+                caller.kill()
+                caller.wait()
+
+    assert caller.returncode == 0, out_path.read_text()
+    assert out_path.read_text().strip() == "False 0"

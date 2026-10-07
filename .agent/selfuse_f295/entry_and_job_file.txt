@@ -1,0 +1,5 @@
+Entry ID: SU-045
+Entry Title: Refresh the pinned toolchain
+Entry Provenance: generated (self-use-generator order tier, docs/orders/toolchain-refresh.md, 2026-10-07)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f295-r23-selfuse/SU-045.md

@@ -1080,3 +1080,95 @@ class TestTheRemainderAnswer:
 
         assert start_remainder_follow_up_mission(job_id, record, root=tmp_path) is None
         assert self._missions(tmp_path) == [mission_id]
+
+
+class TestAnExtendAnswersTheRemainder:
+    """R-1155, DECISION F295 D19: answering the budget stop `extend` answers the open
+    remainder decision `no`, naming the budget decision, and starts nothing."""
+
+    BUDGET_ID = "budget:budget_0123456789abcdef"
+
+    def test_the_open_remainder_is_answered_no_naming_the_budget_decision(
+            self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import (
+            answer_contract_remainder_on_extend,
+            raise_contract_remainder_decision,
+            start_remainder_follow_up_mission,
+        )
+        from packages.orchestration.mission_state import list_missions
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        decision_id = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+
+        answered = answer_contract_remainder_on_extend(job_id, self.BUDGET_ID, root=tmp_path)
+
+        assert answered == [decision_id]
+        record = _decision(job_id, decision_id)
+        assert (record["status"], record["answer_source"]) == ("answered", "human")
+        assert record["answer"] == (
+            f"no: {self.BUDGET_ID} was answered extend, so the job runs on "
+            "and no follow-up mission is started")
+        assert start_remainder_follow_up_mission(job_id, record, root=tmp_path) is None
+        assert [m.id for m in list_missions(PROJECT, tmp_path)] == [mission_id]
+
+    def test_another_open_decision_of_the_job_stays_open(self, tmp_path, monkeypatch):
+        from datetime import datetime, timezone
+
+        from packages.orchestration.escalation import enqueue_task_decision
+        from packages.orchestration.mission_contract import (
+            answer_contract_remainder_on_extend,
+            raise_contract_remainder_decision,
+        )
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        remainder_id = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+        job = load_job_plan(job_id)
+        other = enqueue_task_decision(job, task_id=job.tasks[0].task_id,
+                                      question="Which database?", options=("yes", "no"),
+                                      now=datetime.now(timezone.utc))
+        save_job_plan(job)
+
+        answered = answer_contract_remainder_on_extend(job_id, self.BUDGET_ID, root=tmp_path)
+
+        assert answered == [remainder_id]
+        assert _decision(job_id, other["decision_id"])["status"] == "open"
+
+    def test_an_answered_remainder_keeps_its_answer(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import (
+            answer_contract_remainder_on_extend,
+            raise_contract_remainder_decision,
+        )
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        decision_id = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+        _answer(job_id, decision_id, "no, not now")
+
+        assert answer_contract_remainder_on_extend(
+            job_id, self.BUDGET_ID, root=tmp_path) == []
+        assert _decision(job_id, decision_id)["answer"] == "no, not now"
+
+    def test_a_later_budget_stop_raises_a_fresh_remainder(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import (
+            answer_contract_remainder_on_extend,
+            raise_contract_remainder_decision,
+        )
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        first = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+        answer_contract_remainder_on_extend(job_id, self.BUDGET_ID, root=tmp_path)
+
+        second = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+
+        assert second and second != first
+        assert _decision(job_id, second)["status"] == "open"
+
+    def test_a_job_that_belongs_to_no_mission_answers_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import answer_contract_remainder_on_extend
+        from packages.orchestration.pingpong_job import TaskEntry
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        plan = JobPlan(job_title="alone", tasks=[TaskEntry(title="Write the tool")])
+        save_job_plan(plan)
+
+        assert answer_contract_remainder_on_extend(
+            str(plan.job_id), self.BUDGET_ID, root=tmp_path) == []

@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+import apps.cli.commands.do_cmd as do_cmd
 import apps.cli.commands.job as job_cmd
 import packages.orchestration.checkpoints as cp
 from packages.core.models import RunState
@@ -28,7 +29,12 @@ from packages.orchestration.checkpoints import (
     verify_digest_for,
     write_checkpoint,
 )
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+from packages.orchestration.pingpong_job import (
+    ExecutionConfig,
+    JobPlan,
+    TaskEntry,
+    save_job_plan,
+)
 from packages.orchestration.safe_points import request_stop, stop_requested
 
 
@@ -51,11 +57,30 @@ def handed_off(monkeypatch) -> list[tuple]:
     return calls
 
 
+@pytest.fixture
+def job_run_calls(monkeypatch) -> list[tuple]:
+    """Record every hand-off to `_cmd_job_run` instead of running it (DECISION F295 D13)."""
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        do_cmd, "_cmd_job_run",
+        lambda job_id, **kwargs: calls.append((job_id, kwargs)))
+    return calls
+
+
 def make_job(*, pending: int = 2, completed: int = 0) -> JobPlan:
     tasks = [TaskEntry(title="d", status=RunState.COMPLETED)
              for i in range(completed)]
     tasks += [TaskEntry(title="d") for i in range(pending)]
     job = JobPlan(job_title="resume-job", tasks=tasks)
+    save_job_plan(job)
+    return job
+
+
+def _pingpong_job(**kwargs) -> JobPlan:
+    """A job the ping-pong engine has already run: its record carries an
+    `execution_config` (DECISION F295 D13)."""
+    job = make_job(**kwargs)
+    job.execution_config = ExecutionConfig()
     save_job_plan(job)
     return job
 
@@ -538,3 +563,403 @@ class TestHandOff:
         job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
         assert seen == [("abcdef12", {"checkpoint_id": "cp-7", "dry_run": True,
                                       "json_output": False})]
+
+
+# ---------------------------------------------------------------------------
+# A budget stop holds resume until its decision is answered (R-1147, DECISION F295 D9)
+# ---------------------------------------------------------------------------
+
+
+def _budget_stopped_job(**kwargs) -> JobPlan:
+    """A job whose budget stopped it, with the request id R-1147's repair keys on."""
+    job = make_job(**kwargs)
+    job.stop_source = "budget"
+    job.stop_reason = "budget_exhausted:deadline"
+    job.stop_request_id = "budget_abc"
+    save_job_plan(job)
+    return job
+
+
+def _cancelled_job(**kwargs) -> JobPlan:
+    """A job cancelled by `abandon` (DECISION F295 D12 (3))."""
+    job = make_job(**kwargs)
+    job.state = RunState.CANCELLED
+    save_job_plan(job)
+    return job
+
+
+class TestBudgetStop:
+    def test_a_job_its_budget_stopped_is_refused_with_its_decision_id(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "budget_decision_open"
+        assert payload["decision_id"] == "budget:budget_abc"
+        assert "budget_exhausted:deadline" in payload["message"]
+        assert "remedy decision list" in payload["message"]
+        assert handed_off == []
+
+    def test_the_text_refusal_names_the_decision(self, handed_off, capsys):
+        job = _budget_stopped_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job)
+
+        assert exc.value.code == 3
+        err = capsys.readouterr().err
+        assert "budget:budget_abc" in err
+        assert handed_off == []
+
+    def test_a_stop_without_a_request_id_names_the_fallback_decision(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+        job.stop_request_id = ""
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["decision_id"] == "budget_exhausted"
+        assert handed_off == []
+
+    def test_a_job_the_operator_stopped_still_resumes(self, handed_off):
+        job = make_job()
+        job.stop_source = "operator"
+        job.stop_reason = "operator stop"
+        job.stop_request_id = "op_1"
+        save_job_plan(job)
+
+        resume(job)
+
+        assert len(handed_off) == 1
+
+    def test_a_pending_stop_request_is_consumed_before_the_budget_guard(
+            self, handed_off, capsys):
+        job = _budget_stopped_job()
+        request_stop(str(job.job_id), reason="operator changed their mind")
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "stop request consumed" in out
+        assert handed_off == []
+
+    def test_an_all_green_job_its_budget_stopped_is_a_no_op(self, handed_off, capsys):
+        job = _budget_stopped_job(pending=0, completed=2)
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "already all green" in out
+        assert handed_off == []
+
+    def test_the_loops_guard_refuses_a_job_its_budget_stopped(self):
+        job = _budget_stopped_job()
+
+        decision = cp.decide_checkpoint_resume(job, None)
+
+        assert decision.action == cp.RESUME_REFUSED
+        assert decision.reason == "budget_stopped"
+        assert "budget:budget_abc" in decision.detail
+
+    def test_a_cancelled_job_is_refused_with_exit_three(self, handed_off, capsys):
+        """DECISION F295 D12 (3): `remedy job resume` refuses a cancelled job."""
+        import json as _json
+
+        job = _cancelled_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "job_not_resumable"
+        assert handed_off == []
+
+    def test_an_all_green_cancelled_job_is_a_no_op(self, handed_off, capsys):
+        job = _cancelled_job(pending=0, completed=2)
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "already all green" in out
+        assert handed_off == []
+
+    def test_the_loops_guard_refuses_a_cancelled_job(self):
+        job = _cancelled_job()
+
+        decision = cp.decide_checkpoint_resume(job, None)
+
+        assert decision.action == cp.RESUME_REFUSED
+        assert decision.reason == "job_cancelled"
+
+    def test_the_preview_of_a_cancelled_job_would_not_run(self, handed_off, capsys):
+        import json as _json
+
+        job = _cancelled_job()
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["state"] == "cancelled"
+        assert payload["would_run"] is False
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "state:         cancelled" in out
+        assert "would run:     no" in out
+
+        assert handed_off == []
+
+    def test_the_preview_reports_the_budget_stop_and_would_not_run(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {
+            "stopped": True, "decision_id": "budget:budget_abc"}
+        assert payload["would_run"] is False
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "budget stop:   OPEN" in out
+        assert "would run:     no" in out
+
+        assert handed_off == []
+
+    def test_the_preview_of_a_job_no_budget_stopped(self, handed_off, capsys):
+        import json as _json
+
+        job = make_job()
+
+        resume(job, dry_run=True, json_output=True)
+
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {"stopped": False, "decision_id": ""}
+        assert payload["would_run"] is True
+        assert handed_off == []
+
+    def test_an_answered_budget_stop_resumes(self, handed_off):
+        """DECISION F295 D11 (4): an answered stop no longer holds the job —
+        the resume guard's fourth guard reads `open_budget_decision_id`, not
+        `stop_source` alone, so the stub executor below is reached."""
+        from datetime import datetime
+
+        from packages.orchestration.budget_decision import answer_budget_decision
+
+        job = _budget_stopped_job()
+        job.stopped_at = "2026-07-26T12:00:00+00:00"
+        decision_id = f"budget:{job.stop_request_id}"
+        now = datetime.fromisoformat("2026-07-26T13:00:00+00:00")
+
+        result = answer_budget_decision(
+            job, decision_id, "extend",
+            ["deadline=2026-07-27T00:00:00+00:00"], now=now)
+        assert result["outcome"] == "extended"
+        save_job_plan(job)
+
+        resume(job)
+
+        assert len(handed_off) == 1
+
+    def test_the_preview_of_an_answered_budget_stop_would_run(self, handed_off, capsys):
+        import json as _json
+        from datetime import datetime
+
+        from packages.orchestration.budget_decision import answer_budget_decision
+
+        job = _budget_stopped_job()
+        job.stopped_at = "2026-07-26T12:00:00+00:00"
+        decision_id = f"budget:{job.stop_request_id}"
+        now = datetime.fromisoformat("2026-07-26T13:00:00+00:00")
+
+        result = answer_budget_decision(
+            job, decision_id, "extend",
+            ["deadline=2026-07-27T00:00:00+00:00"], now=now)
+        assert result["outcome"] == "extended"
+        save_job_plan(job)
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {"stopped": False, "decision_id": ""}
+        assert payload["would_run"] is True
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "budget stop:   none" in out
+        assert "would run:     yes" in out
+
+        assert handed_off == []
+
+
+class TestBudgetStopThroughTheCommandLine:
+    """In-process through `apps.cli.grouped.main`, as `tests/cli/test_do_order_file.py`
+    drives it — the one proof that a MACHINE CLIENT, not just the guard function in
+    isolation, is refused."""
+
+    def test_a_client_cannot_resume_a_job_its_budget_stopped(
+            self, tmp_path, monkeypatch, capsys):
+        import json as _json
+        import subprocess
+
+        from apps.cli.grouped import main
+
+        def _git(repo, *args: str) -> None:
+            subprocess.run(["git", *args], cwd=str(repo), capture_output=True,
+                           text=True, check=True)
+
+        target = tmp_path / "target"
+        target.mkdir()
+        _git(target, "init", "-q")
+        _git(target, "config", "user.email", "t@e.com")
+        _git(target, "config", "user.name", "T")
+        _git(target, "config", "commit.gpgsign", "false")
+        (target / "README.md").write_text("# target\n")
+        _git(target, "add", "-A")
+        _git(target, "commit", "-qm", "init")
+        monkeypatch.chdir(target.resolve())
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError("resume reached a model-call factory")
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn", tripwire)
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_structured_call_fn", tripwire)
+        monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
+
+        class _FakeOllamaBuilder:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError(
+                    "resume must refuse before reaching the Ollama builder")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_builder.provider.OllamaBuilder",
+            _FakeOllamaBuilder)
+
+        fake_roles = ("--builder-provider", "fake", "--reviewer-provider", "fake")
+
+        def run(*args: str):
+            try:
+                main(list(args))
+            except SystemExit:
+                pass
+            return capsys.readouterr()
+
+        captured = run(
+            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--yes",
+            "--no-llm", *fake_roles, "--max-cost-usd", "1", "--plan-only")
+        plan = _json.loads(captured.out)
+        [job_id] = plan["job_ids"]
+
+        run("job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+            *fake_roles, "--json")
+
+        captured = run("decision", "list", job_id, "--json")
+        decisions = _json.loads(captured.out)["decisions"]
+        [expected_decision_id] = [
+            d["id"] for d in decisions if d["id"].startswith("budget")]
+
+        with pytest.raises(SystemExit) as exc:
+            main(["job", "resume", job_id, "--yes", "--json"])
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["error"] == "budget_decision_open"
+        assert payload["decision_id"] == expected_decision_id
+
+
+# ---------------------------------------------------------------------------
+# A job the ping-pong engine has run resumes through job run, not the cycle
+# executor, which has no persisted roles to give it (R-1147, DECISION F295 D13)
+# ---------------------------------------------------------------------------
+
+
+class TestResumeHandsAPingPongJobToJobRun:
+    """DECISION F295 D13 (1) to (3): a job whose record carries an
+    `execution_config` — the ping-pong engine has already run it, through
+    `remedy job run` or an earlier resume — hands off to `_cmd_job_run`
+    instead of the multi-cycle executor, which has no persisted roles to
+    continue such a job with."""
+
+    def test_a_job_the_ping_pong_engine_ran_goes_to_job_run(
+            self, handed_off, job_run_calls):
+        job = _pingpong_job()
+
+        resume(job, json_output=True)
+
+        assert job_run_calls == [(str(job.job_id), {"json_output": True})]
+        assert handed_off == []
+
+    def test_a_job_no_ping_pong_run_touched_keeps_the_cycle_executor(
+            self, handed_off, job_run_calls):
+        job = make_job()
+
+        resume(job)
+
+        assert len(handed_off) == 1
+        assert job_run_calls == []
+
+    def test_cycles_or_unattended_are_noted_on_stderr_for_a_ping_pong_job(
+            self, handed_off, job_run_calls, capsys):
+        job_a = _pingpong_job()
+        resume(job_a, cycles=3)
+        err_a = capsys.readouterr().err
+        assert "--cycles" in err_a and "--unattended" in err_a
+        assert "remedy job run" in err_a
+
+        job_b = _pingpong_job()
+        resume(job_b, unattended=True)
+        err_b = capsys.readouterr().err
+        assert "--cycles" in err_b and "--unattended" in err_b
+
+        assert job_run_calls == [
+            (str(job_a.job_id), {"json_output": False}),
+            (str(job_b.job_id), {"json_output": False}),
+        ]
+        assert handed_off == []
+
+    def test_under_json_the_progress_line_goes_to_stderr(
+            self, handed_off, job_run_calls, capsys):
+        job = make_job()
+        resume(job, json_output=True)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "no checkpoint found" in captured.err
+
+        job2 = make_job()
+        put_checkpoint(job2)
+        resume(job2, json_output=True)
+        captured2 = capsys.readouterr()
+        assert captured2.out == ""
+        assert "resuming from checkpoint" in captured2.err
+
+    def test_without_json_the_progress_line_stays_on_stdout(
+            self, handed_off, job_run_calls, capsys):
+        job = make_job()
+        resume(job)
+        captured = capsys.readouterr()
+        assert "no checkpoint found" in captured.out
+        assert captured.err == ""
+
+        job2 = make_job()
+        put_checkpoint(job2)
+        resume(job2)
+        captured2 = capsys.readouterr()
+        assert "resuming from checkpoint" in captured2.out
+        assert captured2.err == ""

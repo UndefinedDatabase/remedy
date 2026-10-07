@@ -403,3 +403,118 @@ def test_a_traversing_path_is_refused_as_an_envelope_under_json(capsys):
     assert exc.value.code == 1
     body = json.loads(capsys.readouterr().out)
     assert body["ok"] is False and body["error"] == "invalid_path"
+
+
+class TestTheProofListsTheJobsApplies:
+    """DECISION F295 D15 (R-1152) — `remedy job apply` records no patch intent, so the proof a
+    client reads after it, `remedy change proof <job> --json`, lists the job's apply records
+    beside the changes: what each record states, reduced to `JOB_APPLY_PROOF_FIELDS`, oldest
+    first, and none of it called verified. Driven through the real parser over a real job and
+    real records on an isolated data root, with nothing patched."""
+
+    @pytest.fixture
+    def data_root(self, tmp_path, monkeypatch):
+        root = tmp_path / "data"
+        root.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+        return root
+
+    def _job(self):
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        job = JobPlan(job_title="applied job", user_prompt="add a line")
+        save_job_plan(job)
+        return job
+
+    def _record(self, root, job, apply_id, *, finished_at, status="applied",
+                files=("docs/README.md",)):
+        record_dir = root / "job_apply_records" / str(job.job_id)
+        record_dir.mkdir(parents=True, exist_ok=True)
+        (record_dir / f"{apply_id}.json").write_text(json.dumps({
+            "job_id": str(job.job_id), "job_apply_id": apply_id, "status": status,
+            "approved": True, "dry_run": False, "finished_at": finished_at,
+            "files_applied": list(files), "commit_sha": "", "pushed": False,
+            "post_test_passed": None, "post_test_summary": "3 passed in 0.1s",
+        }), encoding="utf-8")
+
+    def _proof(self, capsys, job, *extra):
+        from apps.cli.grouped import main
+
+        main(["change", "proof", str(job.job_id), *extra, "--json"])
+        return json.loads(capsys.readouterr().out)
+
+    def test_an_applied_job_lists_its_apply_and_says_so(self, data_root, capsys):
+        job = self._job()
+        self._record(data_root, job, "a1", finished_at="2026-10-07T02:00:00+00:00")
+
+        body = self._proof(capsys, job)
+
+        assert body["ok"] is True
+        assert body["changes"] == []
+        assert body["overall_status"] == "not_applicable"
+        assert body["job_applies"] == [{
+            "job_apply_id": "a1", "status": "applied", "approved": True, "dry_run": False,
+            "finished_at": "2026-10-07T02:00:00+00:00", "files_applied": ["docs/README.md"],
+            "commit_sha": "", "pushed": False, "post_test_passed": None,
+        }]
+        assert body["next_safe_action"] == (
+            "The job's apply is listed under job applies; it has no patch intent to verify.")
+        assert body["next_safe_action_obj"]["reason"] == "remedy job apply records no patch intent."
+        assert "post_test_summary" not in json.dumps(body)
+
+    def test_records_are_oldest_first_and_an_unreadable_one_is_skipped(self, data_root, capsys):
+        job = self._job()
+        # The id that sorts last finished first, so an order by id alone reads the other way.
+        self._record(data_root, job, "a1", finished_at="2026-10-07T03:00:00+00:00")
+        self._record(data_root, job, "z9", status="blocked",
+                     finished_at="2026-10-07T01:00:00+00:00", files=())
+        record_dir = data_root / "job_apply_records" / str(job.job_id)
+        (record_dir / "c3.json").write_text("{not json", encoding="utf-8")
+        (record_dir / "d4.json").write_text("[1, 2]", encoding="utf-8")
+
+        body = self._proof(capsys, job)
+
+        assert [record["job_apply_id"] for record in body["job_applies"]] == ["z9", "a1"]
+
+    def test_a_job_whose_only_apply_was_blocked_keeps_the_no_change_answer(
+        self, data_root, capsys,
+    ):
+        job = self._job()
+        self._record(data_root, job, "a1", status="blocked",
+                     finished_at="2026-10-07T01:00:00+00:00", files=())
+
+        body = self._proof(capsys, job)
+
+        assert [record["status"] for record in body["job_applies"]] == ["blocked"]
+        assert body["next_safe_action"] == "No changes to verify."
+
+    def test_a_path_filter_keeps_the_applies_that_wrote_that_path(self, data_root, capsys):
+        job = self._job()
+        self._record(data_root, job, "a1", finished_at="2026-10-07T01:00:00+00:00",
+                     files=("a.txt",))
+        self._record(data_root, job, "b2", finished_at="2026-10-07T02:00:00+00:00",
+                     files=("b.txt",))
+
+        body = self._proof(capsys, job, "--path", "b.txt")
+
+        assert [record["job_apply_id"] for record in body["job_applies"]] == ["b2"]
+
+    def test_a_job_without_records_lists_none(self, data_root, capsys):
+        job = self._job()
+
+        body = self._proof(capsys, job)
+
+        assert body["job_applies"] == []
+        assert body["next_safe_action"] == "No changes to verify."
+
+    def test_the_text_answer_names_each_apply(self, data_root, capsys):
+        from apps.cli.grouped import main
+
+        job = self._job()
+        self._record(data_root, job, "a1", finished_at="2026-10-07T02:00:00+00:00")
+
+        main(["change", "proof", str(job.job_id)])
+        out = capsys.readouterr().out
+
+        assert "Job applies (1):" in out
+        assert "  a1: applied, 1 file(s), finished 2026-10-07T02:00:00+00:00" in out

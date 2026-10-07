@@ -1,21 +1,23 @@
-# Context — F290 Findings paydown v6
+# Context — F295 Machine client contract v1
 
 ## Active Branch
-feature/f290-findings-paydown-v6, cut from `main` at `31542dbfd`
-(the merge commit of pull request 308, F200 Daemon mode).
+feature/f295-machine-client-contract-v1, cut from `main` at `9a8431ea9`
+(the merge commit of pull request 310, F290 Findings paydown v6).
 
 ## Scope
-F290 (Tier 2): the rolling findings paydown. It takes the seven findings open at its claim, one
-slice per finding, as `docs/roadmap/features/T2_F290.md` lists them; DECISION F290 D1 fixes the
-slices and their order.
+F295 (Tier 12, Luna gate A): the machine client contract — order files for `remedy do`, the
+digest in `remedy status --json`, decisions and approvals without a terminal, and the contract
+page with its gate test, as `docs/roadmap/features/T12_F295.md` lists them; DECISION F295 D1
+fixes the slices and their order.
 
 ## Do not touch
-The resolutions earlier paydowns landed; the record is append-only. A repair changes only what its
-finding's own text names.
+The HTTP transport and the shipped UI's migration (F253); anything on Luna's side; any
+time-of-day mechanic; the approval gate — a machine order ends where a human order ends.
 
 ## Active assumptions
-- Every repair lands with a test that is red without it, proved by the reviewer's mutation.
-- A finding that cannot be repaired in one round keeps its owner line and is carried by name.
+- Every production change lands with a test that is red without it, proved by the reviewer's
+  mutation.
+- Every value the digest carries is read from the records; no word of it comes from a model.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

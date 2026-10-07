@@ -142,6 +142,8 @@ def _cmd_status(
         if degraded:
             result["degraded"] = True
             result["skipped_files"] = skipped_files
+        from packages.orchestration.client_digest import build_client_digest
+        result["client"] = build_client_digest()
         emit_ok(**result)
         return
 

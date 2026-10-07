@@ -442,6 +442,14 @@ end the response with:
   the build that keeps the server from rebuilding `apps/ui/dist` inside a test's timing window, is
   item 33's reading of a sound recipe that only its environment defeats. The list stays at 34
   items.
+  Consolidated again at F295's closure on 2026-10-07: nothing joined and no two items were merged,
+  because none of F295's three lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  handback that counted eight tests in a row that lists nine is item 16's reading of a quantifying
+  sentence against the list it names; a block that named the closure the cost script compares
+  with, without reading how the script picks it, is item 8's reading of the code that produces the
+  value a sentence asserts; and a block that called the cost script's exit 1 a reading without
+  ordering the finding that exit requires is governed by `docs/roadmap/STATUS_closure_protocol.md`,
+  whose precondition 2 already states it. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

@@ -466,18 +466,28 @@ class ResumeDecision:
 
 def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
                              ) -> ResumeDecision:
-    """Run the three resume guards, in their contract order (F047 T002).
+    """Run the resume guards, in their contract order (F047 T002; DECISION F295 D9
+    added the fourth).
 
     1. a PENDING STOP REQUEST is consumed first and wins;
     2. the checkpoint's WORKTREE HEAD must match the live head (unknown is not
        a mismatch, and a checkpoint that recorded none is not compared);
-    3. the PLAN-APPROVAL GATE is consulted, never bypassed.
+    3. the PLAN-APPROVAL GATE is consulted, never bypassed;
+    4. DECISION F295 D12 (3): a job in the terminal ``cancelled`` state is
+       refused — checked right after the all-green no-op, because a job that
+       is already all green is a no-op whether or not it is also cancelled;
+    5. a job whose open budget decision (DECISION F295 D11's
+       ``open_budget_decision_id``) is non-empty is refused until that
+       decision is answered — checked AFTER the all-green no-op below, because
+       a job with nothing left to spend has nothing to refuse. An answered
+       stop no longer holds the job.
 
-    Then an all-green job is a no-op. ``remedy job resume`` and the
-    orchestrator loop's ``resume_job`` move both call this, so the two doors
-    cannot disagree about when a job may continue.
+    An all-green job is a no-op, decided between guards 3 and 4. ``remedy job
+    resume`` and the orchestrator loop's ``resume_job`` move both call this,
+    so the two doors cannot disagree about when a job may continue.
     """
     from packages.core.models import RunState
+    from packages.orchestration.decision_queue import open_budget_decision_id
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import consume_stop, stop_requested
 
@@ -506,6 +516,17 @@ def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
     if tasks and all(t.status == RunState.COMPLETED for t in tasks):
         return ResumeDecision(RESUME_NOOP, "all_green",
                               "already all green — nothing to resume")
+    if job.state == RunState.CANCELLED:
+        return ResumeDecision(
+            RESUME_REFUSED, "job_cancelled",
+            f"job {job.job_id} is cancelled and never runs again")
+    decision_id = open_budget_decision_id(job)
+    if decision_id:
+        stop_reason = str(getattr(job, "stop_reason", "") or "")
+        return ResumeDecision(
+            RESUME_REFUSED, "budget_stopped",
+            f"job stopped by its budget ({stop_reason or 'budget_exhausted'}) — "
+            f"the decision {decision_id} must be answered before this job resumes")
     return ResumeDecision(RESUME_PROCEED)
 
 
