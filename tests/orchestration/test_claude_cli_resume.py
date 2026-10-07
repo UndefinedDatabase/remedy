@@ -12,12 +12,14 @@ paths patch `packages.orchestration.stream_evidence.run_streamed_command`.
 from __future__ import annotations
 
 import json
+import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from packages.orchestration import pingpong_provider
 from packages.orchestration.call_identity import prepare_call_input
+from packages.orchestration.pingpong_loop import PingPongResult, _call_with_retry
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
     ClaudeCliProvider,
@@ -25,6 +27,8 @@ from packages.orchestration.pingpong_provider import (
     _to_json_schema_str,
     build_claude_cli_args,
 )
+from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
+from packages.orchestration.rate_governor import is_rate_limit_error
 
 #: The resume reference every test below resumes with.
 REF = "5f0c2a1e-7b3d-4c9a-9e21-0d6f4b8a3c11"
@@ -257,3 +261,103 @@ class TestAReviewerErrorOutputNeverClaimsAResume:
         assert out.error
         assert out.resume_used is False
         assert out.resume_session_ref == ""
+
+
+class TestARefusedResumeIsNotRetried:
+    """DECISION F287 D3: a failed claude-cli call that was given a resume answers
+    `resume_refused:` instead of `provider_error:` — a string none of the transport
+    retry predicates match — so `_call_with_retry` returns it at once instead of
+    spending the 30s/120s backoff on a conversation the CLI already refused to
+    continue. A call with no resume keeps its old `provider_error:` text and its
+    old retry count, unchanged."""
+
+    #: The stderr a real `claude --resume <ref>` call prints for a dead session.
+    _REFUSAL_STDERR = "No conversation found with session ID: " + REF
+
+    def test_builder_nonzero_exit_with_resume_answers_resume_refused_and_matches_no_retry_predicate(
+        self,
+    ) -> None:
+        with _json_child("", rc=1, stderr=self._REFUSAL_STDERR):
+            out = _provider().build("B", resume=REF)
+        assert out.error.startswith("resume_refused:")
+        assert is_timeout_error(out.error) is False
+        assert is_nonzero_exit_error(out.error) is False
+        assert is_rate_limit_error(out.error) is False
+        assert out.exit_code == 1
+        assert "No conversation found" in out.stderr_tail
+
+    def test_builder_timeout_with_resume_answers_resume_refused_and_matches_no_timeout_predicate(
+        self,
+    ) -> None:
+        with patch.object(
+            pingpong_provider, "_guarded_cli_run",
+            side_effect=subprocess.TimeoutExpired(["claude"], 5),
+        ):
+            out = _provider().build("B", resume=REF)
+        assert out.error.startswith("resume_refused:")
+        assert is_timeout_error(out.error) is False
+
+    def test_structured_reviewer_nonzero_exit_with_resume_answers_resume_refused(
+        self, monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        with _json_child("", rc=1, stderr=self._REFUSAL_STDERR):
+            out = _provider().review("R", resume=REF)
+        assert out.error.startswith("resume_refused:")
+
+    def test_builder_nonzero_exit_without_resume_keeps_provider_error_unchanged(self) -> None:
+        with _json_child("", rc=1, stderr=self._REFUSAL_STDERR):
+            out = _provider().build("B")
+        assert out.error.startswith("provider_error:")
+        assert is_nonzero_exit_error(out.error) is True
+
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_call_with_retry_runs_a_resumed_builder_failure_once_but_retries_a_plain_one(
+        self, _sleep,
+    ) -> None:
+        calls = {"n": 0}
+
+        def _stand_in(cmd, timeout_sec, cwd):
+            calls["n"] += 1
+            return MagicMock(returncode=1, stdout="", stderr=self._REFUSAL_STDERR)
+
+        with patch.object(pingpong_provider, "_guarded_cli_run", side_effect=_stand_in):
+            result = PingPongResult(job_id="J1", task_id="T001")
+            out = _call_with_retry(
+                lambda: _provider().build("B", resume=REF),
+                result=result, role="builder", provider="claude-cli",
+            )
+        assert calls["n"] == 1
+        assert result.retries_used == 0
+        assert out.error.startswith("resume_refused:")
+
+        calls["n"] = 0
+        with patch.object(pingpong_provider, "_guarded_cli_run", side_effect=_stand_in):
+            result2 = PingPongResult(job_id="J1", task_id="T001")
+            out2 = _call_with_retry(
+                lambda: _provider().build("B"),
+                result=result2, role="builder", provider="claude-cli",
+            )
+        assert calls["n"] == 3
+        assert result2.retries_used == 2
+        assert out2.error.startswith("provider_error:")
+
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_call_with_retry_runs_a_resumed_reviewer_failure_once(
+        self, _sleep, monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        calls = {"n": 0}
+
+        def _stand_in(cmd, timeout_sec, cwd):
+            calls["n"] += 1
+            return MagicMock(returncode=1, stdout="", stderr=self._REFUSAL_STDERR)
+
+        with patch.object(pingpong_provider, "_guarded_cli_run", side_effect=_stand_in):
+            result = PingPongResult(job_id="J1", task_id="T001")
+            out = _call_with_retry(
+                lambda: _provider().review("R", resume=REF),
+                result=result, role="reviewer", provider="claude-cli",
+            )
+        assert calls["n"] == 1
+        assert out.error.startswith("resume_refused:")
