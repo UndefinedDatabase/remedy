@@ -15,6 +15,7 @@ Public API::
     NO_REPO_FIX_IT — str template, a project with no folder attached
     projects_view(cwd=".") -> dict
     find_project(selector) -> RemyProject | None
+    project_cost_of_day(project_id, moment) -> dict
     project_summary(project, now=None) -> dict
 """
 
@@ -147,6 +148,35 @@ def job_project_view(job: Any) -> dict[str, Any]:
     }
 
 
+# The one reader of a project's cost on one UTC day; the cockpit card and the client digest share it.
+def project_cost_of_day(project_id: Any, moment: datetime) -> dict[str, Any]:
+    """The project's ledger cost on *moment*'s UTC day, with its exactness basis.
+
+    ``value_usd`` is the ledger's own sum, None when no call of the day reported
+    a price; ``basis`` is ``absent`` when there is no ledger, no call or no
+    figure, ``lower_bound`` when a call of the day was not measured, and
+    ``actual`` otherwise. *moment* must be timezone-aware UTC.
+    """
+    from packages.orchestration.token_ledger import query_cost
+
+    since = moment.date().isoformat()
+    until = (moment.date() + timedelta(days=1)).isoformat()
+    report = query_cost(project_id=project_id, since=since, until=until)
+    total_row = report.total
+    if not report.ledger_exists or not total_row.calls or total_row.cost_usd is None:
+        basis = COST_BASIS_ABSENT
+    elif total_row.unmeasured_calls > 0:
+        basis = COST_BASIS_LOWER_BOUND
+    else:
+        basis = COST_BASIS_ACTUAL
+    return {
+        "day": since,
+        "value_usd": total_row.cost_usd,
+        "basis": basis,
+        "calls": total_row.calls,
+    }
+
+
 def project_summary(project: Any, now: datetime | None = None) -> dict[str, Any]:
     """One project's card: its scoped jobs, newest result, open decisions summed
     across those jobs, and today's cost, all through readers that already exist
@@ -198,32 +228,13 @@ def project_summary(project: Any, now: datetime | None = None) -> dict[str, Any]
     else:
         last_result = None
 
-    from packages.orchestration.token_ledger import query_cost
-
-    since = moment.date().isoformat()
-    until = (moment.date() + timedelta(days=1)).isoformat()
-    report = query_cost(project_id=project.id, since=since, until=until)
-    total_row = report.total
-    if not report.ledger_exists or not total_row.calls or total_row.cost_usd is None:
-        basis = COST_BASIS_ABSENT
-    elif total_row.unmeasured_calls > 0:
-        basis = COST_BASIS_LOWER_BOUND
-    else:
-        basis = COST_BASIS_ACTUAL
-    cost_today = {
-        "day": since,
-        "value_usd": total_row.cost_usd,
-        "basis": basis,
-        "calls": total_row.calls,
-    }
-
     return {
         "version": PROJECT_COCKPIT_VERSION,
         "project_id": str(project.id),
         "slug": project.slug,
         "jobs": {"active": active, "total": total},
         "last_result": last_result,
-        "cost_today": cost_today,
+        "cost_today": project_cost_of_day(project.id, moment),
         "decisions": {"open_count": open_count, "peak_urgency": peak_urgency},
         "degraded": degraded,
     }
