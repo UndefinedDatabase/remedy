@@ -220,7 +220,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 <!-- operator amendment amend1007b-luna-api-upkeep (2026-10-07): the lines below are the next work, before every other unchecked line. Gate A, part two: what a client can rely on (F298), the public HTTP API as the one bridge (F253, moved here byte-identical from Luna gate C, where its split-off third task F303 now stands), and acceptance on a repository that is not Remedy's own (F299). Then the process as the product: the structure ledger with its ratchet (F300) and the upkeep job every fifth job of a mission (F301); the claude-cli worker's tokens per call (F302); and gate A, part three, a mission over several repositories (F205 and F206, moved here byte-identical from their Tier 13 block). Reversible by deleting the seven headings with the five new lines, moving F253 back in place of F303, moving F205 and F206 back above F208, removing the re-opened heading and lowering the counters. -->
 ## Tier 12 — Luna gate A, part two: what a client can rely on, and the one bridge (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F298 — Machine client contract v1.1: what a client can rely on
+- [~] F298 — Machine client contract v1.1: what a client can rely on
 - [ ] F253 — Headless API contract
 
 ## Tier 7 — Luna gate A, part two: acceptance on a repository that is not Remedy's own (operator amendment amend1007b-luna-api-upkeep)

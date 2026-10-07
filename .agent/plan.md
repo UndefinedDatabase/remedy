@@ -1,23 +1,28 @@
-# Plan — F116 Cost anomaly alarm
+# Plan — F298 Machine client contract v1.1: what a client can rely on
 
 ## Goal
-A runaway between checkpoints can no longer burn quietly: one burn detector compares a run's spend
-rate with what is expected, a trip warns an attended job and pauses an unattended one with the
-arithmetic in the decision, and the watchdog's burn tripwire uses the same detector
-(docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
+What a program relies on when it drives Remedy is true and written down once: an order runs in the
+repository of the project it names, a refused apply says so, a result can be declined, an order of
+several jobs and an order started twice behave, and one contract document generated from the code
+names every operation, field, word, token and exit code (docs/roadmap/features/T12_F298.md).
+DECISION F298 D1 fixes the slices and their order.
 
 ## Current Step
-Session 4, round 15, the closing round: book round 14, rotate the finding ledger, flip F116's
-STATUS line to accepted with the README sync and the self-use item SU-047's `consumed_by`, and
-open the pull request, left unmerged.
+Session 1, round 1: the claim. Branch from `main` at `77493e0f9`, mark F298 `[~]` in STATUS,
+re-head the review record and book F116's round 15, record DECISION F298 D1 and the slice order,
+and save the claim's measurement as `.agent/f298_inventory.md`. No production code.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F116's pull request, then the
-   next feature's first commit books round 15's verdict, then Rule A5 claims the next unchecked
-   line, F058 — Model failover chain.
+1. T001: the contract as data, one command that prints it, the page rendered from it, and the test
+   that fails when code and document differ.
+2. T002: an order runs in the repository of the project it names, or is refused before any step.
+3. T003: honest refusals under `--approve --json`, and one command that declines a result.
+4. T004: the second gate test — commit and push, two jobs, one order file started twice.
+5. T005, T006, T007: the approval card, tokens and calls, the bounded digest.
+6. The amend0930b-slow-cap hardening stage, then the closure sequence.
 
 ## Risks
-- The trailing baseline needs eight measured calls in one run before it can trip, and samples do
-  not survive a stop and relaunch, so a short run is never judged.
-- F116 owns no open finding. R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
-  R-1158, R-1162, R-1172 (Low) stay open, owned by F297.
+- F298 is large for 25 rounds; D1 names the split point if the soft limit is reached.
+- The operator's data root holds 11,652 jobs and 13,480 open decisions, so T007's default matters.
+- R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
+  R-1176 (Low) stay open, owned by F297.
