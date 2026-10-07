@@ -6,15 +6,14 @@ order file, one digest, decisions answered with `--json`, an approved apply and 
 (docs/roadmap/features/T12_F295.md). DECISION F295 D1 fixes the slices and their order.
 
 ## Current Step
-Session 7, round 28: the closing round. Book round 27's PASS, rotate the ledger, accept F295 in
-STATUS with its README sync and the self-use entry SU-045's `consumed_by`, push, and open the
-pull request. F295 owns no open finding; the seven open findings are owned by F297.
+Round 29, at the Open PR Gate of pull request 311: the first hosted CI run failed one node on
+Python 3.12. Book round 28's PASS, register that node as R-1159 (Low, owned by F297) and land
+DECISION F295 D21, then push; the push's fresh hosted run is the one re-run.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F295's pull
-   request; round 28's verdict is booked in the next feature's first commit.
-2. Then Rule A5: the next unchecked feature in `docs/roadmap/STATUS.md`, F287.
+1. Green fresh run: the Open PR Gate merges pull request 311, then Rule A5 claims F287.
+2. Red fresh run: nothing is merged; an operator question is written and the session stops.
 
 ## Risks
-- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157 and R-1158 (Low) stay open, owned by F297.
+- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158 and R-1159 (Low) stay open, owned by F297.
 - Another actor switched the primary checkout during round 24 (operator question Q6).
