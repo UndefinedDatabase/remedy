@@ -128,7 +128,14 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: after F199, the fifth unaccepted line below F290 in that amendment's order,
 #: under its own Tier 2 heading with the Tier 12 list re-opened after it; see
 #: T2_F297.md.
-TOTAL_FEATURES = 297
+#: Six more, F298 (machine client contract v1.1: what a client can rely on), F299
+#: (acceptance checks on a repository that is not Remedy's own), F300 (structure
+#: ledger and size ratchet), F301 (mission upkeep: every fifth job cleans up), F302
+#: (the claude-cli worker's tokens per call) and F303 (the cockpit on the public
+#: API), were registered on 2026-10-07 by operator amendment
+#: amend1007b-luna-api-upkeep, which also moved F253, F205 and F206 forward; see
+#: their feature files.
+TOTAL_FEATURES = 303
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

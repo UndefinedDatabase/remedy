@@ -26,23 +26,23 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-129 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+129 of 303 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 42 | 43 |
-| 3 | Full Token Economy & Autonomy | 8 | 28 |
+| 2 | Minimal Self-Build Runtime | 42 | 44 |
+| 3 | Full Token Economy & Autonomy | 8 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
-| 7 | Quality & Trust | 0 | 15 |
+| 7 | Quality & Trust | 0 | 17 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 2 | 10 |
+| 12 | Observability & Operations | 2 | 12 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |

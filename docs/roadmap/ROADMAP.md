@@ -6,6 +6,7 @@
 > **Feature detail files:** `docs/roadmap/features/T{tier}_F{nnn}.md` (one per feature)
 > **Amendment 2026-08-10 (operator decision):** STATUS.md is organized in two packages — Package 1 "Self-Use" (the active execution order) and Package 2 "Parked: Product & Governance". See rule A5 and Part C.
 > **Amendment 2026-10-06 (operator decision amend1006-luna-control-plane):** Remedy's strategic position is the evidence-driven engineering control plane whose first client is Luna, decodeux's assistant; Package 1 of STATUS.md is ordered into three Luna gates (Part C and the STATUS introduction), F295 (machine client contract v1) and F296 (evidence-triggered tier escalation) are registered, and the strategy with its gates stands in `docs/roadmap/design/luna-control-plane-v1.md`. The clock stays outside Remedy (A9, Part J): Luna decides when an order is sent; Remedy takes it whenever it comes.
+> **Amendment 2026-10-07 (operator decision amend1007b-luna-api-upkeep):** a client talks to Remedy through the public HTTP API (F253, moved forward; its third task is F303), after F298 made what a client relies on true; F299 gives a repository that is not Remedy's own acceptance checks that can pass; the process becomes the product (F300, the structure ledger and ratchet, and F301, an upkeep job every fifth job of a mission); F302 cuts the claude-cli worker's tokens per call; F205 and F206 move forward; the operator reads tokens and calls, not USD; see `docs/roadmap/design/luna-control-plane-v1.md`, section "Gate A, part two".
 
 **Prime objective of this reordering:** reach *self-build capability* as fast as
 possible. Tier 0 and Tier 1 are built conventionally (human + coding agent).
@@ -444,6 +445,8 @@ mission; a malformed STATUS.md line is rejected with a precise error.
 ### TIER 2 — MINIMAL SELF-BUILD RUNTIME (13 features)
 *First self-build tier, deliberately slim: just enough economy (ledger, hard budgets, cache ordering, context compiler, diff-only repair, cost report), just enough safety (loops, rate governor, watchdog, sandbox stage 1) and just enough measurement (self-benchmark, CI, release capability) for cheap, safe, measurable unattended self-build. The full token economy follows in Tier 3.*
 
+*Registered later: F300 structure ledger and size ratchet — what is large may only shrink and nothing new grows large, with the measure as a product command and the first structural step in `run_job` (amend1007b-luna-api-upkeep; detail: features/T2_F300.md).*
+
 **F103 Token ledger (SQLite)** — calls table per project (job, task, role,
 model, tokens, cache counters, cost, basis) fed by F003; views per job/class;
 `remedy stats cost`. → Ledger sum == token_truth == ticker (triangle test);
@@ -510,10 +513,10 @@ logged; no security claims beyond tests.
 semver + changelog gate, `remedy --version` with build info. → Fresh venv:
 install → demo runs; versions consistent everywhere.
 
-### TIER 3 — FULL TOKEN ECONOMY & AUTONOMY EXTENSION (28 features)
+### TIER 3 — FULL TOKEN ECONOMY & AUTONOMY EXTENSION (29 features)
 *Self-built. The remaining economy (resume, tiered summaries, dedupe, routing, per-class budgets, local side roles, cost previews, anomaly alarms) plus the autonomy extension: parallelism, failover, notifications, certificates, the idea engine, calibration, vision planning, autonomy levels, demo mode.*
 
-*Registered later: F287 provider session continuity across relaunch (amend0926-decisions-selfuse; detail: features/T3_F287.md) and F296 evidence-triggered tier escalation — routing v2: one tier up for the next repair round on classified failures, never on availability, never down, recorded in evidence, report, event stream and ledger, default off until a benchmark (amend1006-luna-control-plane; detail: features/T3_F296.md).*
+*Registered later: F287 provider session continuity across relaunch (amend0926-decisions-selfuse; detail: features/T3_F287.md) and F296 evidence-triggered tier escalation — routing v2: one tier up for the next repair round on classified failures, never on availability, never down, recorded in evidence, report, event stream and ledger, default off until a benchmark (amend1006-luna-control-plane; detail: features/T3_F296.md); F302 the claude-cli worker's tokens per call — measured from the records, attributed to their sources and cut by the configuration the worker is started with (amend1007b-luna-api-upkeep; detail: features/T3_F302.md).*
 
 **F106 Session resume instead of rebuild** — Repair rounds resume the provider
 session instead of resending full context; honest fallback flag when a session
@@ -976,9 +979,11 @@ visible.
 
 ---
 
-### TIER 7 — QUALITY & TRUST (15 features)
+### TIER 7 — QUALITY & TRUST (17 features)
 *Self-built. From "tests green" to "provably robust" — ending in the Genesis
 flagship.*
+
+*Registered later: F299 acceptance checks on a repository that is not Remedy's own — the project's own test command in the project's own environment, and a project without tests told so instead of judged red (amend1007b-luna-api-upkeep; detail: features/T7_F299.md), and F301 mission upkeep — an upkeep job after every fifth job of a mission, planned from open findings, the structure measure and what was replaced and not deleted (amend1007b-luna-api-upkeep; detail: features/T7_F301.md).*
 
 **F129 TDD gate (optional per job)** — `--tdd` enforces test-task-before-
 impl-task pairs with a red proof in evidence; DoD requires green. → Order
@@ -1087,7 +1092,7 @@ safety ritual (F191), performance budgets for product code (F192),
 accessibility gate (F193), i18n checks (F194), budgeted fuzzing (F195),
 flake-resistant E2E discipline (F196).*
 
-### TIER 12 — OBSERVABILITY & OPERATIONS (10 features)
+### TIER 12 — OBSERVABILITY & OPERATIONS (12 features)
 *OpenTelemetry export per the GenAI semantic conventions (F197), Prometheus
 metrics (F198), self-health & local-only crash reports (F199), daemon mode
 `remedy serve` with the direct mode staying first-class (F200), remote access
@@ -1097,6 +1102,8 @@ update channel — check only, never auto-update (F204), headless API contract
 — every shipped-UI capability through a public, versioned, localhost-first
 HTTP API; the shipped UI consumes only that API (F253, operator decision
 2026-08-03; detail: features/T12_F253.md), machine client contract v1 — order files, one digest for a machine client, decisions and approvals without a terminal, the contract page and the gate test, the Luna bridge over the CLI's JSON envelope before any HTTP transport (F295, operator decision 2026-10-06; detail: features/T12_F295.md).*
+
+*Registered later: F298 machine client contract v1.1 — what a client can rely on: an order runs in the repository of the project it names, honest refusals, declining a result, commit and push, approval cards from records, tokens and calls, and one contract document generated from the code (amend1007b-luna-api-upkeep; detail: features/T12_F298.md), and F303 the cockpit on the public API, F253's third task split off so that F253 serves a machine client first (amend1007b-luna-api-upkeep; detail: features/T12_F303.md).*
 
 ### TIER 13 — MULTI-REPO & ORGANIZATION (8 features)
 *Multi-repo missions with strictly per-project evidence (F205), repo

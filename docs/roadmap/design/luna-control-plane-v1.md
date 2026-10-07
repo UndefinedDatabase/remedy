@@ -36,10 +36,11 @@ never starts a command line and never reads the operator's home.
 
 ## The decisions that shape the plan
 
-1. The transport is the file mailbox plus a runner working as the operator, the way Luna's family
-   already works. Remedy's side of it is a machine client contract over the command line's JSON
-   envelope (F295); the HTTP API (F253) follows for real time and for a replaceable cockpit, it is
-   not a precondition.
+1. The transport is Remedy's public HTTP API (F253), served on localhost by the supervisor, with
+   a client token that carries the operator's policy. Remedy ships the interface and its contract
+   document; a client builds on that document and never on a description of its own. (Until
+   2026-10-07 this item named a file mailbox and a runner on Luna's side; the operator withdrew
+   it before a real order ran, DECISION amend1007b D2.)
 2. Luna's night stays Luna's. Remedy's job model is built for software changes in a repository;
    her night is a state process with its own rules. The night's ENGINEERING consequences reach
    Remedy as reports, then tasks, then missions — the path that exists today, with Remedy
@@ -66,6 +67,36 @@ builds Luna's side against `docs/system/machine-client-contract-v1.md`: the cont
 `remedy-bridge v1` in universe-kit, a runner and a path unit in universe-engine, the digest in the
 status export, the executor `remedy` on improvement tasks, Remedy's decisions through the
 existing questions mechanism.
+
+## Gate A, part two and part three — one bridge, and the process as the product (2026-10-07)
+
+F295's gate test proves one path. On the day F295 closed, the universe workspace built Luna's
+whole side against its page as a file mailbox, and a review drove Luna's real runner against
+Remedy. No order could complete: Remedy refused the template Luna's orders name, an order runs in
+the folder the client stands in and not in the repository of the project it names, an accepted
+result was copied and never committed because the page names no commit flag, a declined result
+cannot be told to Remedy, and the approval card had nothing to show. Two descriptions of one
+interface, kept in two repositories, had drifted on their first day.
+
+So the operator ruled: one bridge, and Remedy ships it. F298 makes true what a client relies on
+and turns the contract into one document generated from the code. F253, moved forward, serves
+those operations over HTTP on the handler and the door that exist, with a call that tells a client
+what this Remedy can do and a call that tells it what changed; Luna's mailbox is deleted on her
+side when her client of this API is built. F299 gives a repository that is not Remedy's own
+acceptance checks that can pass there.
+
+Then the process becomes the product. What kept two large projects workable over weeks was a
+process around the sessions, and where a piece was missing the damage was measured. F300 gives
+Remedy a structure ledger and a ratchet, with the measure as a product command; F301 gives every
+mission an upkeep job after every fifth job, planned from open findings, the structure measure
+and what was replaced and not deleted. F302 cuts the tokens a claude-cli call spends before it
+works. Part three: F205 and F206, because the universe workspace is nine repositories and most of
+its features change several in a fixed order. The operator reads tokens and calls; a cost in USD
+is not reported to him. Luna's side waits for F253. Proof: F298's second gate test with a client
+standing in the wrong folder, the same tests driven through HTTP alone, F299's three scratch
+targets, F301's fixture mission whose sixth job is an upkeep job, and F205's fixture mission over
+two repositories.
+
 
 ## Gate B — unattended missions
 

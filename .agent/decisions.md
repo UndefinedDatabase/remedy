@@ -27888,3 +27888,103 @@ CHOSEN: (1) The impact reads "job <job_id> is paused; `remedy job run <job_id>` 
 ALTERNATIVES: Wiring the decision's answers to the pause, so that `resume` relaunches and `abandon` stops the job, REJECTED for this feature: D5 rejected a second resolve route beside the existing job pause, and a relaunch started from a decision answer would be a new way to start a run, which belongs to a feature that owns decision routes. Making `remedy job unpause` relaunch a parked job, REJECTED: it would change the meaning of an existing command for every pause source, which this feature's Do-not-touch spirit and scope do not reach. Saying in the budget page that the burn alarm needs a limit, REJECTED: the alarm is not a money-limit feature, and a person who set no limit is exactly the one an alarm protects.
 
 HOW TO REVERSE: Delete this paragraph; restore the impact sentence in `_stop_check` of `packages/orchestration/pingpong_job.py`, `_cmd_job_budget` in `apps/cli/commands/job.py`, the two tests of `tests/orchestration/test_job_burn.py`, the three tests and helper added to `tests/orchestration/test_job_budgets.py` and the two sentences of `docs/system/cost-anomaly-alarm-v1.md` from `ddcedb336`. The round's bookkeeping files are deliberately left out: reversing a decision does not delete the record that it was made.
+
+## DECISION amend1007b D1 — F298, machine client contract v1.1, is registered thin in Tier 12 as the first unchecked line (2026-10-07)
+
+CONTEXT: The measurements in `docs/roadmap/features/T12_F298.md`, taken by the operator's orchestrator on 2026-10-07 on `main` at `e80b9546`, three of them with the universe workspace's real runner driving Remedy: an order runs in the folder the client stands in and not in the repository of the project it names, a blocked apply answers `"ok": true` and exits 0, no command declines a result, the page names too little, and a second start of one order file starts a second mission.
+
+CHOSEN: The semantics a client relies on, repaired on the command line that F253 will call, and one contract document generated from the code, of which `docs/system/machine-client-contract-v1.md` becomes the rendering.
+
+ALTERNATIVES: A longer hand-written page, REJECTED because a page written by hand had drifted from the code on its first day.
+
+HOW TO REVERSE: Delete the feature file and its STATUS line, and lower `TOTAL_FEATURES`, the README counter and the Tier 12 total by one.
+
+## DECISION amend1007b D2 — one bridge, and Remedy ships it: the file mailbox named by DECISION amend1006 D2's annex is withdrawn as Luna's transport, and a client uses the public HTTP API (2026-10-07)
+
+CONTEXT: The operator's ruling R2 of 2026-10-07; his own ruling of 2026-08-03 that registered F253; and the review's five failures, when the universe workspace's runner drove Remedy through the mailbox and no real order could complete.
+
+CHOSEN: A client talks to Remedy through Remedy's public HTTP API (F253) and learns from Remedy itself what Remedy can do and what changed. Item 1 of "The decisions that shape the plan" in `docs/roadmap/design/luna-control-plane-v1.md` says so, and F253's file carries the amendment section D3 names.
+
+ALTERNATIVES: Repairing the mailbox first and moving to HTTP later, REJECTED because that builds one structure to replace it with another (ruling R3). An adapter library on Luna's side, REJECTED because it would again describe Remedy outside Remedy.
+
+HOW TO REVERSE: Restore item 1 of the annex from the commit before this amendment and delete the amendment section at the end of `docs/roadmap/features/T12_F253.md`.
+
+## DECISION amend1007b D3 — F253 moves to directly behind F298 and keeps its first two tasks for the machine client; its third task is split off as F303 in its old place (2026-10-07)
+
+CONTEXT: F253 bundles the operations a machine client needs with the migration of the shipped interface onto the API, which a machine client does not need first.
+
+CHOSEN: F253's STATUS line moves byte-identical behind F298; its third task and the capabilities only the shipped interface uses become F303, whose line stands where F253 stood in Luna gate C. F253's file gets an amendment section that names the operations and the binding additions.
+
+ALTERNATIVES: A new API feature beside F253, REJECTED because that would be a second structure.
+
+HOW TO REVERSE: Move F253's line back in place of F303's, delete F303's file and its line, delete the amendment section of F253's file, and lower the counters by one.
+
+## DECISION amend1007b D4 — F299, acceptance checks on a repository that is not Remedy's own, is registered thin in Tier 7 behind F253 (2026-10-07)
+
+CONTEXT: Measured on `e80b9546`: on a scratch repository with no `tests` folder the compiled default check is `pytest tests`, run with the interpreter Remedy runs in, so the criterion ends unmet and the push is refused; on a project with its own environment the default check is red by construction.
+
+CHOSEN: The project says how its tests run, the check runs in the project's environment, and a project without tests is told so instead of judged red.
+
+ALTERNATIVES: Leaving each order to name its own checks, REJECTED because the default is what an order without that knowledge meets, and the default is red there.
+
+HOW TO REVERSE: Delete the feature file and its STATUS line and heading, and lower `TOTAL_FEATURES`, the README counter and the Tier 7 total by one.
+
+## DECISION amend1007b D5 — the process is the product: F300, the structure ledger and ratchet with the measure as a product command, and F301, an upkeep job after every fifth job of a mission, are registered thin (2026-10-07)
+
+CONTEXT: The operator's rulings R4 and R5; the sizes measured on `e80b9546` (148 functions above 100 lines, `run_job` at 1,522 lines, 11 modules above 2,000 lines); and the universe workspace's structure ledger, whose debtors all grew on its first day because no ratchet held them.
+
+CHOSEN: A cadence of five for Remedy's own rolling paydown and for a mission's upkeep; the measure as one product command that F301 uses on every project; the mission, job and task model unchanged.
+
+ALTERNATIVES: One large rewrite of the job runner, REJECTED because a structural step must change no behaviour and be proven by unchanged tests. A second planning model beside the mission plan, REJECTED as a second structure (ruling R3).
+
+HOW TO REVERSE: Delete the two feature files with their STATUS lines and headings, and lower `TOTAL_FEATURES` and the README counter by two and the Tier 2 and Tier 7 totals by one each.
+
+## DECISION amend1007b D6 — F302, the claude-cli worker's tokens per call, is registered thin in Tier 3 (2026-10-07)
+
+CONTEXT: In the closure self-use runs of F293, F294, F292, F200, F290, F295 and F287 a change of two lines took 2 to 6 provider calls and 5,505 to 25,099 tokens by `total_tokens`, a figure without the cache tokens; the worker is started with everything the operator's account and the project load.
+
+CHOSEN: Measure from the records first, attribute with at most 40 provider calls, then cut by the configuration the worker is started with, each cut source with a key that turns it back on.
+
+ALTERNATIVES: Cutting by assumption without measuring, REJECTED because a cut that makes a builder worse on the gauntlet is no cut.
+
+HOW TO REVERSE: Delete the feature file and its STATUS line and heading, and lower `TOTAL_FEATURES`, the README counter and the Tier 3 total by one.
+
+## DECISION amend1007b D7 — the operator reads tokens and provider calls; a cost in USD is not reckoned or reported to him (2026-10-07)
+
+CONTEXT: The operator's ruling R1: he works on subscriptions, so a cost in USD is a notional figure for him.
+
+CHOSEN: Every operator-facing text of the build loop and every new client surface names tokens and calls; USD stays in the records and in the existing budget, unshown to him.
+
+ALTERNATIVES: Removing USD from the records, REJECTED because the records and the existing budget are not his reading surface and other users may read them.
+
+HOW TO REVERSE: A new operator ruling.
+
+## DECISION amend1007b D8 — F205 and F206 are moved to directly behind F302 as Luna gate A, part three, and F205's file gets an amendment section (2026-10-07)
+
+CONTEXT: The universe workspace is nine git repositories inside one folder, most of its features change two to four of them in a fixed order, and Remedy's job works in one repository.
+
+CHOSEN: The two STATUS lines move byte-identical from their Tier 13 block into a new Tier 13 heading behind F302; F205's file gets a section that says how a mission over several repositories plans, applies and reports its jobs.
+
+ALTERNATIVES: Leaving them in their Tier 13 block, REJECTED because Luna's normal work spans several repositories and would wait behind every remaining tier.
+
+HOW TO REVERSE: Move the two lines back above F208, delete the new heading and the amendment section at the end of `docs/roadmap/features/T13_F205.md`.
+
+## DECISION amend1007b D9 — ROADMAP.md and the design annex are edited in the places Part D names, on the operator's explicit request (2026-10-07)
+
+CONTEXT: AGENTS.md lets ROADMAP.md be edited only on an explicit operator request; the amendment makes that request for named places.
+
+CHOSEN: One amendment header line; the feature counts of the Tier 12, Tier 7 and Tier 3 headings raised by two, two and one; one sentence naming the new features under each of the four tier headings; item 1 of the annex's decisions replaced; and the section "Gate A, part two and part three" inserted before "Gate B". The Tier 2 heading's count is left as it stands, because it has not followed the ledger since the registrations of August and September.
+
+ALTERNATIVES: Correcting the Tier 2 heading's count as well, REJECTED because the amendment names that heading as one to leave alone and its count needs its own reconciliation.
+
+HOW TO REVERSE: Revert the commit "amend1007b: the roadmap and the design annex name the one bridge and the upkeep".
+
+## DECISION amend1007b D10 — the loop's own state files are not touched; the one finding is appended to the ledger (2026-10-07)
+
+CONTEXT: The loop's state files belong to the loop, and an amendment that edits them would leave the next session a state it did not write.
+
+CHOSEN: `.agent/plan.md`, `.agent/handoff.md`, `.agent/context.md`, `.agent/operator_questions.md` and `scripts/self_use_queue.json` are unchanged; R-1176, the supervisor's run registry finding, was measured again before minting and appended to `.agent/live_review.md`, owned by the rolling findings paydown.
+
+ALTERNATIVES: Writing the new order into `.agent/plan.md`, REJECTED because the next session reads the first unchecked STATUS line on its own.
+
+HOW TO REVERSE: Delete the R-1176 paragraph from `.agent/live_review.md`.
