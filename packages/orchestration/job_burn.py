@@ -29,10 +29,10 @@ from datetime import datetime
 from typing import Any
 
 from packages.orchestration.burn_detector import (
+    RATE_UNIT_PER_HOUR,
     BurnReading,
     BurnSample,
     BurnThresholds,
-    RATE_UNIT_PER_HOUR,
     evaluate_burn_rate,
 )
 

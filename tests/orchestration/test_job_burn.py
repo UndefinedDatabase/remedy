@@ -12,7 +12,6 @@ from types import SimpleNamespace
 from typing import Any
 
 from packages.orchestration.burn_detector import (
-    BASIS_CLASS_DEFAULT,
     BASIS_TRAILING_BASELINE,
     RATE_UNIT_PER_HOUR,
     RATE_UNIT_PER_SAMPLE,
