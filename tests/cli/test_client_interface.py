@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D15): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D16): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -41,6 +41,7 @@ from apps.cli.client_interface import (
     CLIENT_OPERATION_IDS,
     DIGEST_KEY_TREE,
     EXECUTION_CONFIG_KEY_TREE,
+    JOB_BUDGETS_KEY_TREE,
     KEY_TREE_REPEAT_MARK,
     MISSION_CONTRACT_KEY_TREE,
     OPERATION_ANSWER_KEYS,
@@ -927,6 +928,69 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     assert plan[PLAN_VERSION_KEY] == plan[MILESTONES_DONE_KEY] == {}
 
 
+#: Every expression `_cmd_decision_resolve` answers each key with, over all its answer shapes, read
+#: by hand: the three keys `ANSWER_KEY_TREES` names hold objects, and the others hold a word, an
+#: id, a path, None or a list of ids (`closed` and the cross references are decision ids), so they
+#: carry no keys below the top level. `outcome` is a word written as a literal at every site.
+_DECISION_ANSWER_SOURCES: dict[str, set[str]] = {
+    "answer": {"answered['answer']"},
+    "answers": {"answer_records"},
+    "assumption_log": {"log_path"},
+    "budgets": {"result['budgets']"},
+    "closed_decisions": {"closed"},
+    "cross_references": {"list(answered.get('cross_references', []))"},
+    "decision_id": {"decision_id"},
+    "follow_up_job_id": {"follow_up_job_id"},
+    "follow_up_mission": {"follow_up"},
+    "job_id": {"job_id_str"},
+    "mission_id": {"mission_id"},
+    "next_command": {"next_command"},
+    "next_step": {"REJECTED_PLAN_NEXT_STEP"},
+    "option": {"answered_option"},
+    "raised": {"raised"},
+    "reason_code": {"sr.reason_code"},
+    "state": {"result['state']"},
+    "stop_id": {"sr.id"},
+    "task_id": {"task_id"},
+}
+
+
+def test_the_decision_answer_trees_name_exactly_what_their_code_builds():
+    from packages.core.models import JobBudgets
+
+    decision = "apps/cli/commands/decision.py"
+    budget = "packages/orchestration/budget_decision.py"
+    trees = ANSWER_KEY_TREES["decision.resolve"]
+    resolve = _function_def(decision, "_cmd_decision_resolve")
+    sources: dict[str, set[str]] = {}
+    for node in ast.walk(resolve):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "emit_ok":
+            for keyword in node.keywords:
+                sources.setdefault(keyword.arg, set()).add(ast.unparse(keyword.value))
+    outcomes = sources.pop("outcome")
+    assert all(ast.literal_eval(source) for source in outcomes)
+    assert sources == _DECISION_ANSWER_SOURCES
+    # A plan approval answers one record per bundled question.
+    [records] = [node.value for node in ast.walk(resolve) if isinstance(node, ast.Assign)
+                 and any(ast.unparse(target) == "answer_records" for target in node.targets)]
+    assert isinstance(records, ast.ListComp)
+    assert set(trees["answers"]) == _dict_display_keys(records.elt)
+    # An extend answers the job's budgets after it, and the limits it raised by their names.
+    assert trees["budgets"] is trees["raised"] is JOB_BUDGETS_KEY_TREE
+    assert JOB_BUDGETS_KEY_TREE == _model_tree(JobBudgets)
+    assert _bound_sources(decision, "_cmd_decision_resolve", "raised") == {"result['raised']"}
+    [extended] = [node.value for node in _function_def(budget, "answer_budget_decision").body
+                  if isinstance(node, ast.Return)]
+    values = {key.value: ast.unparse(value) for key, value in zip(extended.keys, extended.values)}
+    assert (values["raised"], values["budgets"]) == ("dict(raised)", "budgets_json")
+    assert _bound_sources(budget, "answer_budget_decision", "budgets_json") == {
+        "merged.model_dump(mode='json')"}
+    assert _bound_sources(budget, "answer_budget_decision", "merged") == {
+        "JobBudgets(**{**current.model_dump(mode='python'), **parsed})"}
+    assert _bound_sources(budget, "answer_budget_decision", "raised") == {
+        "{name: budgets_json[name] for name in parsed}"}
+
+
 def _tree_leaves(tree: dict) -> list:
     """Every value in a key tree that is not a tree of its own."""
     leaves: list = []
@@ -996,8 +1060,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # While its budget decision is open, the job's resume previews and refuses.
     answer("job.resume", ["job", "resume", job_id, "--dry-run"], 0)
     answer("job.resume", ["job", "resume", job_id], 3)
-    answer("decision.resolve", ["decision", "resolve", job_id, budget["decision_id"], "--reason",
-                                "extend", "--answer", f"deadline={LATER_DEADLINE}"], 0)
+    resolved = answer("decision.resolve", ["decision", "resolve", job_id, budget["decision_id"],
+                                           "--reason", "extend", "--answer",
+                                           f"deadline={LATER_DEADLINE}"], 0)
     ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
@@ -1012,7 +1077,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
-    # `remedy job evidence`, `remedy mission abandon` and `remedy client interface`.
+    # `remedy job evidence`, `remedy mission abandon`, `remedy client interface` and
+    # `remedy decision resolve`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -1048,6 +1114,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
             ("exit_codes", "meaning"), ("digest", "projects", "missions", "mission_id"),
             ("answer_trees", "mission.abandon", "mission", "mission_plan", "_versions")} <= (
         _key_paths(_key_tree(interfaced)))
+    assert {("raised", "deadline"), ("budgets", "max_cost_usd"), ("budgets", "deadline")} <= (
+        _key_paths(_key_tree(resolved)))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS

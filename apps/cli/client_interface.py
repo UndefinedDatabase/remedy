@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D15).
+what a real run returns (DECISIONs F298 D8 to D16).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -283,6 +283,13 @@ MISSION_CONTRACT_KEY_TREE: dict[str, Any] = {
     },
 }
 
+#: The keys of a job's budgets as its record exports them, the budget kinds, a tree answers carry
+#: wherever they name budget limits (DECISION F298 D16).
+JOB_BUDGETS_KEY_TREE: dict[str, Any] = {key: {} for key in (
+    "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "max_cost_usd", "deadline",
+    "min_free_disk_bytes",
+)}
+
 #: The mark a key of a tree maps to when the object under it, or each element of the list under
 #: it, has the shape of the object that holds the key: a shape that repeats itself (DECISION F298
 #: D14). A mission plan's `_versions` holds each earlier version of the plan, and each of those
@@ -545,6 +552,11 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "order": {"text": {}, "source_path": {}, "source_sha256": {}},
             "contract": MISSION_CONTRACT_KEY_TREE,
         },
+    },
+    "decision.resolve": {
+        "answers": {"id": {}, "source": {}, "answer": {}},
+        "raised": JOB_BUDGETS_KEY_TREE,
+        "budgets": JOB_BUDGETS_KEY_TREE,
     },
     "client.interface": {
         "envelope": {"schema_version": {}, "reserved_keys": {}, "error_keys": {}},
