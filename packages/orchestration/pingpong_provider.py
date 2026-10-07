@@ -945,6 +945,14 @@ def _exit_detail(exc: BaseException) -> dict[str, Any]:
     return {"exit_code": code, "stderr_tail": _stderr_tail(getattr(exc, "stderr_tail", "") or "")}
 
 
+# WHY: must never match is_timeout_error, is_nonzero_exit_error or is_rate_limit_error, so a refused resume is returned at once and never transport-retried (DECISION F287 D3).
+def _resume_refused_error(exc: BaseException, resume: str) -> str:
+    """The error text for a call given a resume whose claude CLI attempt failed."""
+    if isinstance(exc, ValueError):
+        return f"resume_refused: {exc}"
+    return f"resume_refused: the claude CLI did not continue session {resume}"
+
+
 class _StreamNonZeroExit(RuntimeError):
     """The streamed CLI exited nonzero, carrying what it still produced.
 
@@ -1645,7 +1653,10 @@ class ClaudeCliProvider:
             )
         except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return BuilderOutput(
-                error=f"provider_error: {type(exc).__name__}: {exc}",
+                error=(
+                    _resume_refused_error(exc, resume) if resume
+                    else f"provider_error: {type(exc).__name__}: {exc}"
+                ),
                 provider="claude-cli",
                 actual_missing_reason="provider_error",
                 stream_artifact_refs=self._persisted_stream_refs(),
@@ -1774,7 +1785,10 @@ class ClaudeCliProvider:
             )
         except Exception as exc:  # noqa: BLE001 — a provider failure becomes a typed error, not a crash
             return ReviewerOutput(
-                error=f"provider_error: {type(exc).__name__}: {exc}",
+                error=(
+                    _resume_refused_error(exc, resume) if resume
+                    else f"provider_error: {type(exc).__name__}: {exc}"
+                ),
                 provider="claude-cli",
                 actual_missing_reason="provider_error",
                 stream_artifact_refs=self._persisted_stream_refs(),
