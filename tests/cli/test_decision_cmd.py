@@ -504,3 +504,32 @@ class TestABudgetDecisionAnsweredThroughTheCommandLine:
 
         decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
         assert [d for d in decisions if d["id"].startswith("budget")]
+
+    def test_abandon_cancels_the_job_and_nothing_runs_it_again(
+            self, tmp_path, monkeypatch, capsys):
+        """DECISION F295 D12: a client answers `abandon` and the job never runs
+        again, through `job run`, `job resume` or a plain `status`."""
+        run, job_id, decision_id, fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        result = run(
+            "decision", "resolve", job_id, decision_id, "--reason", "abandon", "--json")
+        body = json.loads(result.out)
+        assert body["ok"] is True
+        assert body["outcome"] == "abandoned"
+        assert body["state"] == "cancelled"
+
+        decisions = json.loads(run("decision", "list", job_id, "--json").out)["decisions"]
+        assert not [d for d in decisions if d["id"].startswith("budget")]
+
+        run_result = run("job", "run", job_id, *fake_roles, "--json")
+        assert run_result.code == 1
+        assert json.loads(run_result.out)["error"] == "job_not_resumable"
+
+        resume_result = run("job", "resume", job_id, "--yes", "--json")
+        assert resume_result.code == 3
+        assert json.loads(resume_result.out)["error"] == "job_not_resumable"
+
+        status = json.loads(run("status", "--json").out)
+        [client_job] = [j for j in status["client"]["jobs"] if j["job_id"] == job_id]
+        assert client_job["state"] == "cancelled"
