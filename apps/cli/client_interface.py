@@ -17,7 +17,7 @@ operation's handler, the way the catalog's exit codes are held (DECISION F298 D4
 top-level keys of the operations' answers, `OPERATION_ANSWER_KEYS`, held equal to the same
 reading of each handler and to what a real run returns (DECISIONs F298 D5, D6 and D7); and the
 keys under those keys, `ANSWER_KEY_TREES`, each tree held equal to the code that builds it and to
-what a real run returns (DECISIONs F298 D8 to D16).
+what a real run returns (DECISIONs F298 D8 to D17).
 
 The feature file calls this document the contract. The product calls it the machine client
 interface, because `docs/system/vocabulary.md` reserves "contract" for a mission's acceptance
@@ -297,6 +297,78 @@ JOB_BUDGETS_KEY_TREE: dict[str, Any] = {key: {} for key in (
 #: its names (DECISION F298 D15).
 KEY_TREE_REPEAT_MARK = "^"
 
+#: The keys under the top-level keys of a job's report, the answer of `remedy job run` and of a
+#: `remedy job resume` that hands the job to it (DECISIONs F298 D9 and D17).
+JOB_REPORT_KEY_TREES: dict[str, Any] = {
+    "tasks": {
+        "task_id": {},
+        "source_heading_number": {},
+        "title": {},
+        "status": {},
+        "run_id": {},
+        "final_status": {},
+        "test_passed": {},
+        "reviewer_verdict": {},
+        "repair_rounds_used": {},
+        "repair_rounds_allowed": {},
+        "safe_diff_files": {},
+        "error": {},
+        "apply_manifest": {
+            "task_id": {},
+            "run_id": {},
+            "applied_files": {},
+            "missing_files": {},
+            "unsupported_files": {},
+            "unexpected_files": {},
+            "duplicate_files": {},
+            "applied_file_proofs": {
+                "path": {},
+                "existed_before_job": {},
+                "baseline_sha256": {},
+                "final_workspace_sha256": {},
+                "task_id": {},
+                "run_id": {},
+                "baseline_mode": {},
+                "final_mode": {},
+            },
+            "status": {},
+        },
+        "proof_summary": {
+            "task_id": {},
+            "title": {},
+            "run_id": {},
+            "final_status": {},
+            "applied_files": {},
+            "test_passed": {},
+            "reviewer_verdict": {},
+            "repair_rounds_used": {},
+            "repair_rounds_allowed": {},
+            "tokens_estimated": {},
+        },
+        "veto": {"reason": {}, "actor": {}, "requested_at": {}, "unreachable_task_ids": {}},
+        "steering_not_consumed": {"message_id": {}, "text": {}, "received_at": {}},
+    },
+    "worktree": {
+        "branch": {},
+        "path": {},
+        "base_commit": {},
+        "head": {},
+        "cleanup_status": {},
+        "workspace_expected_present": {},
+    },
+    "result_diff": {"path": {}, "sha256": {}, "size_bytes": {}},
+    "target_guard": TARGET_GUARD_KEY_TREE,
+    "postmortem": {"path": {}, "error": {}},
+    "execution_config": EXECUTION_CONFIG_KEY_TREE,
+    "context_strategy": {
+        "strategy": {},
+        "previous_task_summary_limit": {},
+        "full_job_history_in_prompt": {},
+        "full_repo_in_prompt": {},
+    },
+    "cost_mirror": {"ledger_mirrored": {}, "out_dir": {}, "error": {}},
+}
+
 #: The keys under the top-level answer keys, per catalog command id and top-level key, as trees in
 #: the form of `DIGEST_KEY_TREE` (DECISION F298 D8). A top-level key absent here carries no keys
 #: under it. The key `*` stands for keys that are data, such as a path or a job id, and maps to the
@@ -340,74 +412,26 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}}},
         "client": DIGEST_KEY_TREE,
     },
-    "job.run": {
-        "tasks": {
-            "task_id": {},
-            "source_heading_number": {},
-            "title": {},
-            "status": {},
-            "run_id": {},
-            "final_status": {},
-            "test_passed": {},
-            "reviewer_verdict": {},
-            "repair_rounds_used": {},
-            "repair_rounds_allowed": {},
-            "safe_diff_files": {},
-            "error": {},
-            "apply_manifest": {
-                "task_id": {},
-                "run_id": {},
-                "applied_files": {},
-                "missing_files": {},
-                "unsupported_files": {},
-                "unexpected_files": {},
-                "duplicate_files": {},
-                "applied_file_proofs": {
-                    "path": {},
-                    "existed_before_job": {},
-                    "baseline_sha256": {},
-                    "final_workspace_sha256": {},
-                    "task_id": {},
-                    "run_id": {},
-                    "baseline_mode": {},
-                    "final_mode": {},
-                },
-                "status": {},
-            },
-            "proof_summary": {
-                "task_id": {},
-                "title": {},
-                "run_id": {},
-                "final_status": {},
-                "applied_files": {},
-                "test_passed": {},
-                "reviewer_verdict": {},
-                "repair_rounds_used": {},
-                "repair_rounds_allowed": {},
-                "tokens_estimated": {},
-            },
-            "veto": {"reason": {}, "actor": {}, "requested_at": {}, "unreachable_task_ids": {}},
-            "steering_not_consumed": {"message_id": {}, "text": {}, "received_at": {}},
-        },
-        "worktree": {
-            "branch": {},
-            "path": {},
-            "base_commit": {},
-            "head": {},
-            "cleanup_status": {},
-            "workspace_expected_present": {},
-        },
-        "result_diff": {"path": {}, "sha256": {}, "size_bytes": {}},
-        "target_guard": TARGET_GUARD_KEY_TREE,
-        "postmortem": {"path": {}, "error": {}},
-        "execution_config": EXECUTION_CONFIG_KEY_TREE,
-        "context_strategy": {
-            "strategy": {},
-            "previous_task_summary_limit": {},
-            "full_job_history_in_prompt": {},
-            "full_repo_in_prompt": {},
-        },
-        "cost_mirror": {"ledger_mirrored": {}, "out_dir": {}, "error": {}},
+    "job.run": JOB_REPORT_KEY_TREES,
+    "job.resume": {
+        **JOB_REPORT_KEY_TREES,
+        "stop_request": {"pending": {}, "reason": {}},
+        "worktree_head": {"outcome": {}, "checkpoint_head": {}, "live_head": {}},
+        "budget_stop": {"stopped": {}, "decision_id": {}},
+        "failures": {"check": {}, "message": {}},
+        "cycles": {key: {} for key in (
+            "cycle_index", "tasks_attempted", "tasks_completed", "tasks_failed", "tasks_escalated",
+            "verify_result", "verify_command", "tokens_so_far", "started_at", "ended_at", "errors",
+            "executed_task_ids", "skipped_blocked_task_ids", "awaiting_task_ids",
+            "awaiting_downstream_task_ids", "paused_task_ids", "paused_downstream_task_ids",
+            "open_decision_ids", "verify_failure_class", "repair_rounds_used", "healed_after_repair",
+            "healed_without_changes", "repair_summary",
+        )},
+        "worktrees": {key: {} for key in (
+            "run_id", "applicable", "prepared", "recovered", "blocked", "blocked_reason", "branch",
+            "worktree_path", "base_commit", "head", "result_diff_sha256", "result_diff_size_bytes",
+            "cleanup_status", "branch_kept", "notes",
+        )},
     },
     "job.apply": {
         "modes_applied": {"*": {}},

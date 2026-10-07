@@ -20,7 +20,7 @@ and a real run of the path and of the operations after it, whose every answer re
 declaration does not name.
 
 The keys under those top-level keys are declared there as trees, and held the same two ways
-(DECISIONs F298 D8 to D16): each tree's names equal what the code that builds it names, and the real run's
+(DECISIONs F298 D8 to D17): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
 """
 from __future__ import annotations
@@ -42,6 +42,7 @@ from apps.cli.client_interface import (
     DIGEST_KEY_TREE,
     EXECUTION_CONFIG_KEY_TREE,
     JOB_BUDGETS_KEY_TREE,
+    JOB_REPORT_KEY_TREES,
     KEY_TREE_REPEAT_MARK,
     MISSION_CONTRACT_KEY_TREE,
     OPERATION_ANSWER_KEYS,
@@ -720,6 +721,7 @@ def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
 def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     pingpong = "packages/orchestration/pingpong_job.py"
     trees = ANSWER_KEY_TREES["job.run"]
+    assert trees is JOB_REPORT_KEY_TREES
     tasks = trees["tasks"]
     assert set(tasks) == _bound_dict_keys(_function_def(pingpong, "export_job_report"), "report")
     assert set(tasks["apply_manifest"]) == _returned_dict_keys(pingpong, "_export_apply_manifest")
@@ -739,6 +741,64 @@ def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     assert not any(TARGET_GUARD_KEY_TREE.values()), "a target guard key with keys below it"
     assert set(trees["cost_mirror"]) == _dict_literal_keys(
         _REPO_ROOT / "packages/orchestration/job_evidence.py", "mirror_job_run_into_ledger")
+
+
+def test_the_job_resume_answer_trees_name_exactly_what_their_code_builds():
+    from typing import Any, get_type_hints
+
+    from packages.orchestration import worktree_resume
+    from packages.orchestration.long_run_executor import CycleLoopResult, CycleRecord
+
+    job_cmd = "apps/cli/commands/job.py"
+    trees = ANSWER_KEY_TREES["job.resume"]
+    # A job the ping-pong engine already ran is handed to `remedy job run`'s handler, so the
+    # answer is that job's report, under the same trees.
+    [handoff] = [ast.unparse(node) for node in ast.walk(_function_def(job_cmd, "_cmd_job_resume"))
+                 if isinstance(node, ast.Call) and ast.unparse(node.func) == "_cmd_job_run"]
+    assert handoff == "_cmd_job_run(str(job.job_id), json_output=json_output)"
+    assert all(trees[key] is below for key, below in JOB_REPORT_KEY_TREES.items())
+    # The preview answers what each of its checks would decide.
+    preview = _function_def(job_cmd, "_resume_preview")
+    [returned] = [node.value for node in preview.body if isinstance(node, ast.Return)]
+    values = {key.value: ast.unparse(value) for key, value in zip(returned.keys, returned.values)}
+    for key, name in (("stop_request", "stop"), ("worktree_head", "head"), ("budget_stop", "budget_stop")):
+        assert values[key] == name and set(trees[key]) == _bound_dict_keys(preview, name), key
+    # The single pass answers each check its verification failed.
+    [failures] = [keyword.value for node in ast.walk(_function_def(job_cmd, "_cmd_run_next_task_local"))
+                  if isinstance(node, ast.Call) and ast.unparse(node.func) == "dict"
+                  for keyword in node.keywords if keyword.arg == "failures"]
+    assert isinstance(failures, ast.ListComp)
+    assert set(trees["failures"]) == _dict_display_keys(failures.elt)
+    # The multi-cycle executor answers one record per cycle it ran.
+    long_run = "packages/orchestration/long_run_executor.py"
+    assert set(trees["cycles"]) == _returned_dict_keys(long_run, "CycleRecord.to_json")
+    assert ast.unparse(_bound_dict_values(long_run, "CycleLoopResult.to_json", "payload")["cycles"]) == (
+        "[c.to_json() for c in self.cycles]")
+    assert get_type_hints(CycleLoopResult)["cycles"] == tuple[CycleRecord, ...]
+    # A replay resume answers each worktree it prepared, as each worktree's outcome.
+    assert set(trees["worktrees"]) == _returned_dict_keys(
+        "packages/orchestration/worktree_resume.py", "WorktreeResumeOutcome.to_json")
+    resume = _function_def(job_cmd, "_cmd_resume")
+    assert {ast.unparse(keyword.value) for node in ast.walk(resume) if isinstance(node, ast.Call)
+            for keyword in node.keywords if keyword.arg == "worktrees"} == {
+        "[o.to_json() for o in wt_outcomes]", "wt_json"}
+    assert _bound_sources(job_cmd, "_cmd_resume", "wt_json") == {"[o.to_json() for o in wt_outcomes]"}
+    assert _subscript_stores(job_cmd, "_cmd_resume", "_payload") == {"'worktrees'"}
+    assert _subscript_stores(job_cmd, "_cmd_resume", "wt_json") == {"idx"}
+    assert _bound_sources(job_cmd, "_cmd_resume", "out") == {
+        "_wtr.finalize_worktree_resume(s)", "_wtr.retain_worktree_resume(s, reason)"}
+    for function in (worktree_resume.finalize_worktree_resume, worktree_resume.retain_worktree_resume):
+        assert get_type_hints(function)["return"] is worktree_resume.WorktreeResumeOutcome
+    assert get_type_hints(worktree_resume.prepare_job_worktrees)["return"] == (
+        list[tuple[Any, worktree_resume.WorktreeResumeOutcome]])
+
+
+def _bound_dict_values(path: str, function: str, name: str) -> dict[str, ast.AST]:
+    """The values of the dict literal `function` in `path` binds `name` to, by key."""
+    [bound] = [node.value for node in ast.walk(_function_def(path, function))
+               if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
+               and any(isinstance(target, ast.Name) and target.id == name for target in node.targets)]
+    return {key.value: value for key, value in zip(bound.keys, bound.values)}
 
 
 def test_the_job_apply_answer_trees_name_exactly_what_their_code_builds():
@@ -1058,7 +1118,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     [budget] = [d for d in status["client"]["decisions"]
                 if d["job_id"] == job_id and d["type"] == "token_budget"]
     # While its budget decision is open, the job's resume previews and refuses.
-    answer("job.resume", ["job", "resume", job_id, "--dry-run"], 0)
+    previewed = answer("job.resume", ["job", "resume", job_id, "--dry-run"], 0)
     answer("job.resume", ["job", "resume", job_id], 3)
     resolved = answer("decision.resolve", ["decision", "resolve", job_id, budget["decision_id"],
                                            "--reason", "extend", "--answer",
@@ -1077,8 +1137,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
-    # `remedy job evidence`, `remedy mission abandon`, `remedy client interface` and
-    # `remedy decision resolve`.
+    # `remedy job evidence`, `remedy mission abandon`, `remedy client interface`,
+    # `remedy decision resolve` and `remedy job resume`'s preview.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -1116,6 +1176,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         _key_paths(_key_tree(interfaced)))
     assert {("raised", "deadline"), ("budgets", "max_cost_usd"), ("budgets", "deadline")} <= (
         _key_paths(_key_tree(resolved)))
+    assert {("stop_request", "pending"), ("worktree_head", "outcome"),
+            ("budget_stop", "decision_id")} <= _key_paths(_key_tree(previewed))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS
