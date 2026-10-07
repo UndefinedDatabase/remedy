@@ -4,7 +4,11 @@
 
 SESSION 2 of feature F298 · round 7 · rounds so far 7
 
-Context self-assessment: the reviewer's context is well used after three rounds of dry runs in this session, and the session continues.
+Context self-assessment: the reviewer's context is heavily used after reviewing round 4 and three
+full rounds of dry runs. The next part, the keys under the answers' top-level keys, needs a scope
+decision that first measures every nested key of all fourteen answers: about 270 below the path's
+answers alone, built in many helper functions. The session therefore ends after round 7, below the
+target of six to eight rounds, so that this design starts in a fresh session.
 
 Fortschritt: ~26 % (claim · T001 six parts landed · T001 nested answer keys and page, T002 to T007 open) — Schätzung
 
@@ -121,8 +125,19 @@ have. The names inside the answers follow in the next piece.
 
 ## Round verdicts
 
-Round 6's PASS is booked by this round's C1, in `.agent/live_review.md`. Round 7's verdict is the
-reviewer's to give and book in the next round's first commit.
+Round 6's PASS is booked by this round's C1, in `.agent/live_review.md`.
+
+Round 7: VERDICT PASS, verified by dry run, bytes identical, given by the reviewer of session 2
+after this handback. `.remedy-wt/f298-r7/review7.py`, whose readings are saved beside it as
+`review7-readings.txt`, read the saved block and `.agent/plan.md` at `9e786c1b7`, the two appended
+records there, the two files of `9be78d9e0` and the page of `fa079e7cb` equal to the prepared files
+of the reviewer's dry run on `257afdb84`, seven of seven; `3fd542782` touches only this file. The
+dry run's readings, saved as `.remedy-wt/f298-r7/build-readings-b.txt`: the round's selection
+`830 passed` at exit 0, ruff clean on the two touched Python files, integrity six of six `pass`, and
+the open set unchanged. The reviewer's seven mutation red-proofs, saved as
+`.remedy-wt/f298-r7/mutations.txt`, each turned `tests/cli/test_client_interface.py` red, with the
+unmutated control green before and after. The worker's one run read `830 passed`. The next session
+books this verdict into `.agent/live_review.md` in its first round's first commit.
 
 ## Next
 
@@ -131,7 +146,10 @@ reviewer's to give and book in the next round's first commit.
 2. Then rule 2, the Open PR Gate.
 3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
 4. Then book round 7's verdict in the next round's first commit.
-5. Then T001, next part: the keys under the answers' top-level keys.
+5. Then T001, next part: the keys under the answers' top-level keys. First measure every nested
+   key of the fourteen answers and how each is built; then fix in a DECISION, in the same round as
+   its patch, how they are declared (including maps whose keys are data, such as `modes_applied`
+   of `remedy job apply`) and how they are held to the code.
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162,
@@ -144,7 +162,8 @@ R-1172 and R-1176, Low; all owned by F297).
 | C1: book round 6, DECISION F298 D7, the plan | done | `9e786c1b7` |
 | C2: the top-level answer keys of job resume in the machine client interface | done | `9be78d9e0` |
 | C3: the machine client page names the answer keys of every command | done | `fa079e7cb` |
-| C4: handback | done | this commit |
+| C4: handback | done | `3fd542782` |
+| Session close: round 7's verdict and the session's end | done | this commit |
 | Gates 1 to 5 | done | all green, see Verification |
-| Push | pending | run right after this commit, reported in the worker's final reply |
-| Gate 6 | pending | reported in the worker's final reply |
+| Push | done | `257afdb84..3fd542782`, first attempt |
+| Gate 6 | done | tree clean, HEAD equal to the pushed branch at `3fd542782` |
