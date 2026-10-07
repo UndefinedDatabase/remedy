@@ -47,7 +47,9 @@ argument that holds whitespace is planned as text, never read as a file.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
-   the builder and reviewer it started with.
+   the builder and reviewer it started with. An `extend` also answers `no` to the contract
+   remainder decision the same budget stop raised, because the job runs on instead of a
+   follow-up mission, and names it under `closed_decisions`.
 4. **Approve and apply.** `remedy job apply <job> --approve --json` copies the reviewed result
    into the repository. Then `remedy change proof <job> --json` lists that apply under
    `job_applies`.
@@ -103,6 +105,7 @@ argument that holds whitespace is planned as text, never read as a file.
 | `type` | digest decisions | the kind of decision, `token_budget` for a budget stop |
 | `options` | digest decisions | the answers it accepts, `extend` and `abandon` for a budget stop |
 | `outcome` | `remedy decision resolve` | what the answer did, `extended` for an extend |
+| `closed_decisions` | `remedy decision resolve` | the decisions an `extend` answered with it: the contract remainder decision of the same budget stop |
 | `budgets` | `remedy decision resolve` | the job's limits after the answer, the order file's cap among them |
 | `max_cost_usd` | `budgets` | the cost cap in USD |
 | `next_command` | `remedy decision resolve` | the command that runs the job on |
