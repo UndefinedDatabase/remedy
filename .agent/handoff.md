@@ -172,3 +172,73 @@ Open findings: 6 (R-1138, R-1139, R-1143, R-1149, R-1156 and R-1157, Low, owned 
 | Gate 4 (open finding ids) | done | six ids, read again on the right branch |
 | C3 handback commit | done | this file |
 | Push after C3 | pending | runs right after this commit, reported in the worker's final reply |
+
+## Reviewer's verdict on round 24 and the end of session 6
+
+Written by the reviewer of F295's sixth session after reading `6c7ee8a68`..`1eb844db4` and
+re-checking it with `.remedy-wt/f295-r24/review24.py`; applied by a worker as this commit,
+because the reviewer writes no work-tree file. This section supersedes `## Round verdicts` and
+`## Next` above wherever they differ.
+
+VERDICT ON ROUND 24 — PASS ON C1, C3 AND THE GATES; C2'S TRANSCRIPT NOT ACCEPTED AS THE SHIPPED
+TREE'S ONE RUN. Measured by the reviewer: the three files C1 wrote equal the prepared files under
+`.remedy-wt/f295-r24/`, three of three; C1, C2 and C3 each touch only their named paths and are
+single-parent; `c465f8198` carries the same transcript blob as the stray `b203e182d`, which no
+branch contains any more; `origin` holds `1eb844db4`; the worker's log
+`.remedy-wt/f295-r24-worker/suite.txt` ends `21479 passed, 22 skipped, 1 warning in 330.49s
+(0:05:30)` with no FAILED or ERROR line, as the transcript says. But the HEAD reflog shows
+`checkout: moving from feature/f295-machine-client-contract-v1 to main` at 08:15:18 and
+`moving from main to feature/document-claude-abo-binding` at 08:15:20, both from outside this
+session, while the suite ended at 08:15:32. For its last 14 seconds the working tree held main's
+`9a8431ea9`, which lacks this branch's 101 commits, and a test that started a subprocess or read
+a file in that span ran against main's bytes. The run is green, but it is not wholly a run of
+the tree that ships. Ruling, to be booked as a dated DECISION in the next round's first commit:
+read in the spirit of amend0921-operator-feedback rule 1 ("the one run belongs to the shipped
+tree"), the next round runs the full suite once more on the shipped tree, in a quiet checkout, and
+its transcript replaces `.agent/authored/f295-closure-suite.txt` at the same path; this
+transcript stays in git history. That round's worker reads `git reflog -n 3` before and after
+the run and records both, so a second foreign switch would be seen.
+
+THE WORKER'S RECOVERY is accepted as declared: it cherry-picked its own commit back onto this
+branch and moved the local ref `feature/document-claude-abo-binding` back to `9a8431ea9`, the
+point that branch's own reflog shows it was created at 08:15:20, so that branch lost nothing and
+was never pushed. It was still a move of a branch ref this session does not own, and the
+operator is told so in operator question Q6.
+
+WHY THE SESSION ENDS HERE (G8). Another actor used this primary checkout while a round ran. No
+other Claude session was listed afterwards, and nothing has touched the checkout since 08:16:45,
+but the rules do not say whether the checkout is shared now, and the rest of the closure (the
+suite re-run, the evidence bundle, the review package from a clean tree) is exactly the work a
+second switch would spoil. The session therefore ends cleanly after one round, below the round
+target, and the operator is asked in Q6.
+
+Prose slip of the reviewer, to be booked into `.agent/prose_slips.md` in the next round's first
+commit: the round 24 block called the previous closure "F294's" in C2 step 3, but
+`scripts/closure_suite_cost.py` compares with the closure recorded last, which is F290's; the
+worker recorded what the script printed.
+
+Soft limit: round 25 reaches F295's limit of 25 rounds (session 7 of at most 7 begins next). The
+scope report is short: T001 to T004 and the hardening stage are finished, nothing in scope is
+missing, and the remaining closure steps (the suite re-run, the evidence bundle and package, the
+rotation, the STATUS line, the pull request) are the self-consistent close, so no split is
+proposed. The next session's output carries the banner line
+`SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE`.
+
+Context self-assessment: the reviewer's context is comfortable; the session ends for the reason
+above, not for context.
+
+### Next (supersedes the list above)
+
+1. Phase 1 rule 1 (`.agent/STOP`); then rule 2 (Open PR Gate; no pull request is open for this
+   branch).
+2. Confirm that `git branch --show-current` reads `feature/f295-machine-client-contract-v1`, that
+   `origin`'s tip equals `1eb844db4` plus this commit, and that `git reflog -n 5` shows no new
+   foreign entry; if it does, hand off again.
+3. Round 25: book round 24 (the verdict above), the DECISION on the re-run and the prose slip in
+   C1; run the full suite once on the shipped tree, with the reflog read before and after, and
+   commit its transcript at `.agent/authored/f295-closure-suite.txt`.
+4. Then the evidence bundle and the review package; then the rotation, the re-assignment of the
+   open findings to F297, the STATUS line and the pull request.
+
+Operator questions open: 1.
+Open findings: 6 (R-1138, R-1139, R-1143, R-1149, R-1156 and R-1157, Low, owned by F297).
