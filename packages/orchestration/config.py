@@ -1100,7 +1100,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "single expensive call without hiding a sustained run-away. The "
             "monitor stays inert below job_burn.min_samples while no hourly "
             "expectation is set; with job_burn.expected_tokens_per_hour set, "
-            "it needs one call more than this window instead (R-1167)."
+            "it needs one call more than this window instead."
         ),
         value_type=int,
         default=3,
@@ -1116,7 +1116,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "while no hourly expectation is set — below it the monitor is "
             "inert, thin data produces no trip, never a trip on thin data; "
             "with job_burn.expected_tokens_per_hour set, the monitor needs "
-            "one call more than job_burn.window instead (R-1167)."
+            "one call more than job_burn.window instead."
         ),
         value_type=int,
         default=5,
@@ -1132,7 +1132,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "inert below job_burn.min_samples whatever this reads, but only "
             "while no hourly expectation is set; with "
             "job_burn.expected_tokens_per_hour set, it needs one call more "
-            "than job_burn.window instead (R-1167)."
+            "than job_burn.window instead."
         ),
         value_type=float,
         default=3.0,
