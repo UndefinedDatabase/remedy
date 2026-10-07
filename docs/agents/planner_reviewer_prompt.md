@@ -450,6 +450,13 @@ end the response with:
   value a sentence asserts; and a block that called the cost script's exit 1 a reading without
   ordering the finding that exit requires is governed by `docs/roadmap/STATUS_closure_protocol.md`,
   whose precondition 2 already states it. The list stays at 34 items.
+  Consolidated again at F287's closure on 2026-10-07: nothing joined and no two items were merged,
+  because neither of F287's two lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  block that ordered a relaunch through `remedy job run` without `--repair-rounds`, while `run_job`
+  reads an omitted value back from the job's saved configuration, is item 34's reading of the code
+  the order reaches; and a worker that made one commit through a compound command with `cd`, which
+  the block's own constraints already forbade, is a slip in following a block, which no item about
+  a block's text can prevent. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
