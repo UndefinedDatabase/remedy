@@ -1,0 +1,5 @@
+Entry ID: SU-046
+Entry Title: Narrow the excused handler at apps/cli/commands/do_cmd.py:184
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/do_cmd.py:1:except Exception:  # noqa: BLE001 — never pushes based on a config value it cannot read)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f287-r11-selfuse/SU-046.md
