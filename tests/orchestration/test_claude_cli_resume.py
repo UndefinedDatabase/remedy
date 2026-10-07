@@ -17,7 +17,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from packages.orchestration import pingpong_provider
-from packages.orchestration.pingpong_provider import ClaudeCliProvider, build_claude_cli_args
+from packages.orchestration.call_identity import prepare_call_input
+from packages.orchestration.pingpong_provider import (
+    _REVIEWER_JSON_SCHEMA,
+    _ReviewVerdictSchema,
+    _to_json_schema_str,
+    ClaudeCliProvider,
+    build_claude_cli_args,
+)
 
 #: The resume reference every test below resumes with.
 REF = "5f0c2a1e-7b3d-4c9a-9e21-0d6f4b8a3c11"
@@ -181,3 +188,72 @@ class TestPreparedInputFingerprintChangesOnlyWithResume:
 class TestSupportsResumeStaysFalse:
     def test_supports_resume_is_false(self) -> None:
         assert ClaudeCliProvider().supports_resume is False
+
+
+class TestAFreshCallsFingerprintIsUnchangedByF287:
+    """R-1161: a call with no `resume` fingerprints exactly as it did before DECISION
+    F287 D2 added `resume` threading — the new keyword must never become a silent
+    extra material input for the ordinary, non-resuming call."""
+
+    def test_a_fresh_build_fingerprint_equals_the_direct_formula(self) -> None:
+        proc = MagicMock(returncode=0, stdout=_envelope(result="done"), stderr="")
+        with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
+            out = _provider().build("B")
+        expected = prepare_call_input(
+            prompt="B", model="", mode="cli-legacy", options={"write_mode": "none"})
+        assert out.prepared_input.fingerprint == expected.fingerprint
+
+    def test_a_fresh_structured_review_fingerprint_equals_the_direct_formula(
+        self, monkeypatch,
+    ) -> None:
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        proc = MagicMock(returncode=0, stdout=_envelope(structured_output=_SO), stderr="")
+        with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
+            out = _provider().review("R")
+        expected = prepare_call_input(
+            prompt="R", model="", mode="cli-native",
+            schema=_to_json_schema_str(_ReviewVerdictSchema),
+            options={"write_mode": "none"})
+        assert out.prepared_input.fingerprint == expected.fingerprint
+
+    def test_a_fresh_freetext_review_fingerprint_equals_the_direct_formula(
+        self, monkeypatch,
+    ) -> None:
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+        passing = json.dumps(
+            {"verdict": "pass", "findings": [], "confidence": "high", "summary": "ok"})
+        proc = MagicMock(returncode=0, stdout=_envelope(result=passing), stderr="")
+        with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
+            out = _provider().review("R")
+        expected = prepare_call_input(
+            prompt="R" + "\n\n" + _REVIEWER_JSON_SCHEMA, model="", mode="cli-legacy",
+            options={"write_mode": "none"})
+        assert out.prepared_input.fingerprint == expected.fingerprint
+
+
+class TestAReviewerErrorOutputNeverClaimsAResume:
+    """R-1161: a reviewer call that asked to resume but came back unparseable must
+    never report that it continued an earlier conversation — `resume_used` and
+    `resume_session_ref` stay at their honest defaults on every error path."""
+
+    def test_freetext_malformed_output_never_claims_a_resume(self, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+        proc = MagicMock(returncode=0, stdout=_envelope(result="no json here"), stderr="")
+        with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
+            out = _provider().review("R", resume=REF)
+        assert out.error
+        assert out.resume_used is False
+        assert out.resume_session_ref == ""
+
+    def test_structured_malformed_verdict_never_claims_a_resume(self, monkeypatch) -> None:
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        proc = MagicMock(
+            returncode=0,
+            stdout=_envelope(structured_output={"schema_v": "rv1", "verdict": "nope"}),
+            stderr="",
+        )
+        with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
+            out = _provider().review("R", resume=REF)
+        assert out.error
+        assert out.resume_used is False
+        assert out.resume_session_ref == ""
