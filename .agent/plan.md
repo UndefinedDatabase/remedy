@@ -7,15 +7,14 @@ arithmetic in the decision, and the watchdog's burn tripwire uses the same detec
 (docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
 
 ## Current Step
-Session 4, round 14, the closure sequence's evidence round: book round 13, then from the clean,
-pushed tree the staging-copy reclaim, the evidence job and the fresh review package
-(docs/roadmap/STATUS_closure_protocol.md, algorithm steps 1 and 2). This round's first commit is
-the accepted head the package covers.
+Session 4, round 15, the closing round: book round 14, rotate the finding ledger, flip F116's
+STATUS line to accepted with the README sync and the self-use item SU-047's `consumed_by`, and
+open the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: book round 14, the ledger rotation, the STATUS line, the README sync, the
-   self-use item SU-047's `consumed_by`, and the pull request, which the next feature's Open PR
-   Gate merges.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F116's pull request, then the
+   next feature's first commit books round 15's verdict, then Rule A5 claims the next unchecked
+   line, F058 — Model failover chain.
 
 ## Risks
 - The trailing baseline needs eight measured calls in one run before it can trip, and samples do
