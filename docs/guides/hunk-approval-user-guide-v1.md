@@ -19,12 +19,22 @@ commands. Both hunk options are repeatable: give one occurrence per hunk.
 ## Where hunk ids come from
 
 A hunk id is 16 lowercase hex characters. You do not invent one — read it from the diff
-view, either in the UI's diff viewer or from the HTTP API:
+view, on the command line, in the UI's diff viewer or from the HTTP API:
 
+    remedy patch hunks <job-id> [--task-run <task-id>] [--json]
     GET /api/jobs/<job-id>/diff                             the job-level diff
     GET /api/jobs/<job-id>/task-runs/<task-id>/diff         one task run's diff
 
 Each file entry of that view carries a `hunks` list, and each hunk carries its `id`.
+
+`remedy patch hunks` writes nothing. Without `--json` it prints which diff it read, each
+file's path, one line per hunk with its id, its state and its header, and the decision
+recorded for that diff, or `Decision: none recorded`. With `--json` it prints, beside the
+envelope's `ok` and `schema_version`, `job_id`, `view` — the same diff view the UI reads —
+and `decision`, the decision recorded for that diff as the UI reads it, with
+`attempt_key`, `decided_at` and one row per hunk carrying `id`, `state` and `reason`. A
+diff that is not there is not a refusal: `view.available` is false, `view.reason` names
+why, and the command exits 0.
 
 The id is CONTENT-DERIVED and carries no position. It is computed over the file's path,
 the hunk's OLD side — its context and deleted lines, never its added lines — and the
