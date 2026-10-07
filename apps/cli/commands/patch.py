@@ -404,6 +404,64 @@ def _cmd_approve_hunks(
     print("Note: the decision is metadata only — no files have been modified.")
 
 
+def _cmd_show_hunks(
+    job_id_str: str,
+    *,
+    task_run: str | None = None,
+    json_output: bool = False,
+) -> None:
+    """Show the hunks of one of a job's diffs and the hunk decision recorded for them.
+
+    DECISION F295 D14: the read side of `patch approve-hunks`, so a client that never sees
+    the cockpit reads the hunk ids it answers with. It answers what the cockpit's two reads
+    answer — `build_diff_view`'s envelope, and `recorded_hunk_decision` for the attempt that
+    envelope shows, keyed as `_cmd_approve_hunks` keys the decision it records — and it writes
+    nothing. A diff that is not there is named by the envelope's `available` and `reason`, as
+    the cockpit names it, and is not a refusal.
+    """
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+    try:
+        job = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output)
+
+    from packages.orchestration import diff_view_source, evidence_index
+    from packages.orchestration.hunk_decision_record import recorded_hunk_decision
+    from packages.orchestration.hunk_ledger import HUNK_STATE_PENDING
+
+    evidence_dir = evidence_index.resolve_job_evidence_dir(str(job_id))
+    view = diff_view_source.build_diff_view(evidence_dir, task_id=task_run)
+    # A view with no `source` shows no attempt, so there is no key and no row to read.
+    if view["source"] is None:
+        decision = {"attempt_key": "", "decided_at": "", "hunks": []}
+    else:
+        view_task_id = view["task_id"]
+        decision = recorded_hunk_decision(
+            job.metadata,
+            task_id=view_task_id if view_task_id is not None else diff_view_source.DIFF_SCOPE_JOB,
+            attempt=view["source"],
+        )
+
+    if json_output:
+        emit_ok(job_id=str(job_id), view=view, decision=decision)
+        return
+
+    states = {row["id"]: row["state"] for row in decision["hunks"]}
+    print(f"Diff: {view['source'] or 'none'} ({view['scope']})")
+    if not view["available"]:
+        print(f"  not available: {view['reason']}")
+    if view["truncated"]:
+        print("  truncated: not every hunk is shown, so no decision can be recorded over it")
+    for file_view in view["files"]:
+        print(f"  {file_view['path']}")
+        for hunk in file_view["hunks"]:
+            print(f"    {hunk['id']}  {states.get(hunk['id'], HUNK_STATE_PENDING)}  {hunk['header']}")
+    if decision["decided_at"]:
+        print(f"Decision: {decision['attempt_key']}, recorded {decision['decided_at']}")
+    else:
+        print("Decision: none recorded")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "patch.list": lambda args: _cmd_list_patch_intents(
         args.job_id,
@@ -433,6 +491,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         task_run=getattr(args, "task_run", None),
         approve=getattr(args, "approve_hunk", None),
         reject=getattr(args, "reject_hunk", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "patch.hunks": lambda args: _cmd_show_hunks(
+        args.job_id,
+        task_run=getattr(args, "task_run", None),
         json_output=getattr(args, "json", False),
     ),
 }

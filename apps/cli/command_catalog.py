@@ -219,6 +219,13 @@ _TASK_RUN_OPT = ArgDef(
     "Task run to decide over, exactly as it is named under task_runs/ (T001); "
     "omit it to decide over the job-level diff",
     required=False, is_option=True)
+#: DECISION F295 D14: the same option for `patch.hunks`, which shows a diff
+#: rather than deciding over one, so its help says so.
+_TASK_RUN_SHOW_OPT = ArgDef(
+    "--task-run",
+    "Task run whose hunks to show, exactly as it is named under task_runs/ (T001); "
+    "omit it for the job-level diff",
+    required=False, is_option=True)
 #: F033: repeatable, one hunk id per occurrence.
 _APPROVE_HUNK_OPT = ArgDef(
     "--approve-hunk", "Approve one hunk by id (repeatable)",
@@ -1098,6 +1105,21 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # repository, and this table is the one place the UI reads capability
         # from, so claiming otherwise would misdescribe the decision.
         related=("patch.approve", "patch.apply"),
+    ),
+    CommandEntry(
+        command_id="patch.hunks",
+        group_id="patch",
+        subcommand="hunks",
+        description=(
+            "Show the hunks of a job's diff, or of one of its tasks, with their ids "
+            "and the answer recorded for them."
+        ),
+        action_class="read_only",
+        args=(_JOB_ID, _TASK_RUN_SHOW_OPT, _JSON_OPT),
+        supports_json=True,
+        # DECISION F295 D14: the read side of `patch.approve-hunks`, so a client
+        # that never sees the cockpit reads the hunk ids it answers with.
+        related=("patch.approve-hunks",),
     ),
 
     # ── test ─────────────────────────────────────────────────────────────
