@@ -538,3 +538,213 @@ class TestHandOff:
         job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
         assert seen == [("abcdef12", {"checkpoint_id": "cp-7", "dry_run": True,
                                       "json_output": False})]
+
+
+# ---------------------------------------------------------------------------
+# A budget stop holds resume until its decision is answered (R-1147, DECISION F295 D9)
+# ---------------------------------------------------------------------------
+
+
+def _budget_stopped_job(**kwargs) -> JobPlan:
+    """A job whose budget stopped it, with the request id R-1147's repair keys on."""
+    job = make_job(**kwargs)
+    job.stop_source = "budget"
+    job.stop_reason = "budget_exhausted:deadline"
+    job.stop_request_id = "budget_abc"
+    save_job_plan(job)
+    return job
+
+
+class TestBudgetStop:
+    def test_a_job_its_budget_stopped_is_refused_with_its_decision_id(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "budget_decision_open"
+        assert payload["decision_id"] == "budget:budget_abc"
+        assert "budget_exhausted:deadline" in payload["message"]
+        assert "remedy decision list" in payload["message"]
+        assert handed_off == []
+
+    def test_the_text_refusal_names_the_decision(self, handed_off, capsys):
+        job = _budget_stopped_job()
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job)
+
+        assert exc.value.code == 3
+        err = capsys.readouterr().err
+        assert "budget:budget_abc" in err
+        assert handed_off == []
+
+    def test_a_stop_without_a_request_id_names_the_fallback_decision(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+        job.stop_request_id = ""
+        save_job_plan(job)
+
+        with pytest.raises(SystemExit) as exc:
+            resume(job, json_output=True)
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["decision_id"] == "budget_exhausted"
+        assert handed_off == []
+
+    def test_a_job_the_operator_stopped_still_resumes(self, handed_off):
+        job = make_job()
+        job.stop_source = "operator"
+        job.stop_reason = "operator stop"
+        job.stop_request_id = "op_1"
+        save_job_plan(job)
+
+        resume(job)
+
+        assert len(handed_off) == 1
+
+    def test_a_pending_stop_request_is_consumed_before_the_budget_guard(
+            self, handed_off, capsys):
+        job = _budget_stopped_job()
+        request_stop(str(job.job_id), reason="operator changed their mind")
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "stop request consumed" in out
+        assert handed_off == []
+
+    def test_an_all_green_job_its_budget_stopped_is_a_no_op(self, handed_off, capsys):
+        job = _budget_stopped_job(pending=0, completed=2)
+
+        resume(job)
+
+        out = capsys.readouterr().out
+        assert "already all green" in out
+        assert handed_off == []
+
+    def test_the_loops_guard_refuses_a_job_its_budget_stopped(self):
+        job = _budget_stopped_job()
+
+        decision = cp.decide_checkpoint_resume(job, None)
+
+        assert decision.action == cp.RESUME_REFUSED
+        assert decision.reason == "budget_stopped"
+        assert "budget:budget_abc" in decision.detail
+
+    def test_the_preview_reports_the_budget_stop_and_would_not_run(
+            self, handed_off, capsys):
+        import json as _json
+
+        job = _budget_stopped_job()
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {
+            "stopped": True, "decision_id": "budget:budget_abc"}
+        assert payload["would_run"] is False
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "budget stop:   OPEN" in out
+        assert "would run:     no" in out
+
+        assert handed_off == []
+
+    def test_the_preview_of_a_job_no_budget_stopped(self, handed_off, capsys):
+        import json as _json
+
+        job = make_job()
+
+        resume(job, dry_run=True, json_output=True)
+
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {"stopped": False, "decision_id": ""}
+        assert payload["would_run"] is True
+        assert handed_off == []
+
+
+class TestBudgetStopThroughTheCommandLine:
+    """In-process through `apps.cli.grouped.main`, as `tests/cli/test_do_order_file.py`
+    drives it — the one proof that a MACHINE CLIENT, not just the guard function in
+    isolation, is refused."""
+
+    def test_a_client_cannot_resume_a_job_its_budget_stopped(
+            self, tmp_path, monkeypatch, capsys):
+        import json as _json
+        import subprocess
+
+        from apps.cli.grouped import main
+
+        def _git(repo, *args: str) -> None:
+            subprocess.run(["git", *args], cwd=str(repo), capture_output=True,
+                           text=True, check=True)
+
+        target = tmp_path / "target"
+        target.mkdir()
+        _git(target, "init", "-q")
+        _git(target, "config", "user.email", "t@e.com")
+        _git(target, "config", "user.name", "T")
+        _git(target, "config", "commit.gpgsign", "false")
+        (target / "README.md").write_text("# target\n")
+        _git(target, "add", "-A")
+        _git(target, "commit", "-qm", "init")
+        monkeypatch.chdir(target.resolve())
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError("resume reached a model-call factory")
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn", tripwire)
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_structured_call_fn", tripwire)
+        monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
+
+        class _FakeOllamaBuilder:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError(
+                    "resume must refuse before reaching the Ollama builder")
+
+        monkeypatch.setattr(
+            "packages.providers.ollama_builder.provider.OllamaBuilder",
+            _FakeOllamaBuilder)
+
+        fake_roles = ("--builder-provider", "fake", "--reviewer-provider", "fake")
+
+        def run(*args: str):
+            try:
+                main(list(args))
+            except SystemExit:
+                pass
+            return capsys.readouterr()
+
+        captured = run(
+            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--yes",
+            "--no-llm", *fake_roles, "--max-cost-usd", "1", "--plan-only")
+        plan = _json.loads(captured.out)
+        [job_id] = plan["job_ids"]
+
+        run("job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+            *fake_roles, "--json")
+
+        captured = run("decision", "list", job_id, "--json")
+        decisions = _json.loads(captured.out)["decisions"]
+        [expected_decision_id] = [
+            d["id"] for d in decisions if d["id"].startswith("budget")]
+
+        with pytest.raises(SystemExit) as exc:
+            main(["job", "resume", job_id, "--yes", "--json"])
+
+        assert exc.value.code == 3
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["error"] == "budget_decision_open"
+        assert payload["decision_id"] == expected_decision_id
