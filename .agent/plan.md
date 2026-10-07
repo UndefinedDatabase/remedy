@@ -8,14 +8,13 @@ every operation, field, word, token and exit code (docs/roadmap/features/T12_F29
 F298 D1 fixes the slices and their order; D2 names the document the machine client interface.
 
 ## Current Step
-Session 4, round 15: T001's fourteenth part. The interface names the keys under
-`remedy client interface`'s own answer, whose digest and answer trees hold a key tree under every
-name (DECISION F298 D15), held to the code that builds each tree and to a real run; round 14's
-verdict is booked.
+Session 4, round 16: T001's fifteenth part. The interface names the keys under
+`remedy decision resolve`'s answers in every shape, with the job budgets as a fourth shared tree
+(DECISION F298 D16), held to the code that builds each tree and to a real run; round 15's verdict
+and its prose slip are booked.
 
 ## Next Steps
-1. T001, next parts: the answer trees of `remedy decision resolve` and `remedy job resume`, one
-   operation at a time.
+1. T001, next part: the answer trees of `remedy job resume`, the last operation without them.
 2. T001, last part: `docs/system/machine-client-contract-v1.md` rendered from the interface, and
    the test that fails when page and interface differ.
 3. T002: an order runs in the repository of the project it names, or is refused before any step.
