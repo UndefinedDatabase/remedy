@@ -214,7 +214,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane)
 
-- [ ] F287 — Provider session continuity across relaunch
+- [~] F287 — Provider session continuity across relaunch
 - [ ] F116 — Cost anomaly alarm
 - [ ] F058 — Model failover chain
 

@@ -1,28 +1,31 @@
-# Live Review — F295 Machine client contract v1
+# Live Review — F287 Provider session continuity across relaunch
 
-> Round-by-round review record, re-headed at the F295 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F290, whose STATUS
-> line went `[x]` on its own branch and whose pull request 310 merged into `main` at the reviewer's
-> Open PR Gate under docs/agents/self_drive_protocol.md, as `9a8431ea9`. Hosted CI run 37533024027
-> on `a21ed75a1`, the pull request's last commit, passed both its Python 3.10 and its Python 3.12
-> job. `a21ed75a1` is the second parent of `9a8431ea9`, and the two trees are identical. F290's
-> round 14, its closing round, was reviewed after its own handback, so operator amendment
+> Round-by-round review record, re-headed at the F287 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F295, whose STATUS
+> line went `[x]` on its own branch and whose pull request 311 merged into `main` at the reviewer's
+> Open PR Gate under docs/agents/self_drive_protocol.md, as `7c91c3b69`. Hosted CI run 37594899789
+> on `f65c55890`, the pull request's last commit, passed both its Python 3.10 and its Python 3.12
+> job. `f65c55890` is the second parent of `7c91c3b69`, and the two trees are identical. F295's
+> round 31, its last round, was reviewed after its own handback, so operator amendment
 > amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
-> is happening anyway; its gate entry is appended at the end of this record by this claim. Only the
-> heading, this paragraph and the Steps section below are rewritten; everything from the Findings
-> heading to the end of the file as it stood at `9a8431ea9` is carried forward BYTE-IDENTICAL, and
-> finding ids continue the monotonic R-XXXX series across the re-head. The open set at
-> `9a8431ea9`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, is
-> `['R-1138', 'R-1139']`; F297 owns both, and F295 owns none.
+> is happening anyway, together with the resolution of R-1159; both are appended at the end of this
+> record by this claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything from the Findings heading to the end of the file as it stood at `7c91c3b69` is carried
+> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> The open set at `7c91c3b69`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157',
+> 'R-1158', 'R-1159', 'R-1160']`; F297 owns all of them except R-1159, which F295 owned and this
+> claim resolves; F287 owns none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F295 D1's, which also writes the feature file's slice order. The first
-round claims F295, re-heads this record, books F290's round 14, and records the claim's measurement
-in `.agent/f295_inventory.md`. Then T001, the order file; then T002, the digest in `remedy status
---json`; then T003, decisions and approvals without a terminal; then T004, the contract page and
-the gate test; then the amend0930b-slow-cap hardening stage this SLOW MODE session orders before
-the closure sequence; then closure.
+THE ORDER BELOW IS DECISION F287 D1's, which also writes the feature file's slice order. The first
+round claims F287, re-heads this record, books F295's round 31, resolves R-1159, and records the
+claim's measurement in `.agent/f287_inventory.md`. Then T001, the `claude-cli` provider resumes a
+session; then T002, a relaunch through `run_job` resumes the parked builder and reviewer sessions;
+then T003, every other production provider records that it did not resume, and the operator guide
+names which providers resume; then the amend0930b-slow-cap hardening stage this SLOW MODE session
+orders before the closure sequence; then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -228,3 +231,7 @@ Recurrence: R-1159 — THE LIVE PAUSE-DOOR TEST FAILED AGAIN ON THE ONE RE-RUN, 
 Gate: F295 R30 — the F295 round 30 entry, the stop after the second red run, over `75a7c4f19`..`d72f38852` (2 commits, each single-parent; insertions by `git show --numstat`: `43959ca83` 148, `d72f38852` 30). VERDICT PASS. Re-derived by the planner and reviewer of F295's ninth session with `.remedy-wt/f295-r30/review30.py`: the block copy and `.agent/plan.md` equal the prepared files, and `.agent/live_review.md`, `.agent/decisions.md` and `.agent/operator_questions.md` each equal the base blob followed by the prepared slice, five of five; `d72f38852` touches only `.agent/handoff.md`; HEAD equalled the pushed branch and the tree was clean. The operator's own commit `b1a2e989d` followed, recording the answer to Q6 as DECISION F295 D23 and deleting the Q6 entry. No file outside `.agent/` changed since round 29's verified selection, so the reviewer re-ran only `tests/docs/` and `tests/cli/test_golden_path.py` once on `b1a2e989d`, for the operator questions file the docs tests read: `372 passed in 43.20s`, exit 0. Hosted CI runs 37592733456 and 37593228896, started by the pushes of `d72f38852` and `b1a2e989d`, ran on the unrepaired test and are no merge basis (DECISION F295 D22 (4)). The open set is unchanged: `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1159']`.
 
 - R-1160 — Medium, A JOB PAUSE THAT ARRIVES WHILE A TASK IS BEING APPLIED BLOCKS THE JOB AS A BUDGET STOP INSTEAD OF PARKING IT; THIS IS THE CAUSE OF R-1159'S FIRST, UNEXPLAINED INSTANCE. Raised by the planner and reviewer of F295's ninth session, in the dry run of round 31's repair of R-1159. SEARCHED BEFORE MINTING (checklist item 30): the open set at `b1a2e989d` names no safe point of `run_job`; R-1159 names only the test's timing and its silent output. READ: `run_job` in `packages/orchestration/pingpong_job.py` reads `_stop_check()` at four safe points. The pre-work point (`_pre_stop`) and the pre-task point each test `isinstance(..., _PauseSignal)` first and park; the in-task point passes the pause through `pingpong_loop` by its `_PAUSE_REASON_PREFIX`; the AFTER-TASK point, the one under the comment "SAFE POINT — the task is durably APPLIED", tests only `isinstance(_stop, _StopSignal)`, so a `_PauseSignal` falls into its `else` branch, which sets `job.state = JOB_BLOCKED` and `job.error = "budget_exhausted: operator_pause: <reason>"`. A pause request that appears after a task's last in-task safe point and before that after-task point, which is the whole of the task's apply, commit, proof and lesson steps, therefore ends the job `blocked`. MEASURED, in disposable worktrees under `.remedy-wt/` (G5), on `b1a2e989d`'s production bytes: (1) a scratch in-process test that runs `_TWO_TASK_JOB` with `_pass_provider()` fakes and requests a job pause from inside a monkeypatched `pingpong_job._teach_task_lesson`, the last call before the after-task point, failed with `(<RunState.BLOCKED: 'blocked'>, 'budget_exhausted: operator_pause: pause while task 1 applies')`, `1 failed in 0.97s`; (2) adding to the after-task point the same branch the pre-task point has (`if isinstance(_stop, _PauseSignal): if _stop.is_error: return _block_for_pause_error(_stop)`, then `_persist_budget_actuals()` and `return _park_job(job, _stop, task=None, control_root_path=_control)`, placed before the existing `_persist_budget_actuals()`) turned the same test green, `1 passed in 0.80s`, with the job `paused`, the pause scope `job`, task statuses `[applied, pending]`, one build call and one `job_paused` event; (3) with round 31's repaired live test and the in-task safe point mutated to ignore every pause, the live job ended `FINAL:blocked` with the DETAIL line `"error": "budget_exhausted: operator_pause: unknown"` and tasks 1 and 2 applied, which is R-1159's first hosted instance (`FINAL:blocked` after the door answered `requested`). WHY MEDIUM: a user's pause, in a window as long as a task's apply, leaves the job blocked with a false budget reason instead of paused and resumable; the applied work stays durable. WHY NOT ON F295'S BRANCH: DECISION F295 D24. THE REPAIR, one round: the branch in (2), and the test in (1) committed in `tests/orchestration/test_pause_resume.py` as its red-proof, red on the current bytes and green with the branch. Owner: F297, the next findings paydown (amend0911-feedback rule A's default). OPEN.
+
+Gate: F295 R31 — the F295 round 31 entry, the repair of R-1159 on pull request 311's branch, over `b1a2e989d`..`f65c55890` (3 commits, each single-parent; insertions by `git show --numstat`: `cd4cda2b5` 131, `a06dd701d` 50, `f65c55890` 42). VERDICT PASS, verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3): `tests/ui_server/test_pause_door_live.py` at `a06dd701d` equals the reviewer's dry-run copy byte for byte, on the same base `b1a2e989d`, where the reviewer ran both live classes, `2 passed`, and three mutations in disposable worktrees under `.remedy-wt/`. M1, the in-task safe point's task-mask read disabled alone, stayed green, because that safe point reads the job pause through `_stop_check` first; M2, the in-task safe point blind to every pause, turned the job-scope test red with `FINAL:blocked`; M3, the job pause never read, turned it red with `FINAL:completed`; each red run printed the new DETAIL line. Re-derived with `.remedy-wt/f295-r31/review31.py`: the block copy and `.agent/plan.md` equal the prepared files, and `.agent/live_review.md` and `.agent/decisions.md` each equal the base blob followed by the prepared slice; no production path changed in the range; HEAD equalled the pushed branch, the tree was clean, and no `.agent/STOP` existed. The worker's selection read `378 passed in 60.12s` at exit 0, and ruff was clean. The worker declared two process slips that changed no byte: one commit was issued after a `cd` into the primary checkout, and the selection ran twice on the same bytes, both times `378 passed`. The push started hosted CI run 37594899789 on `f65c55890`, the one fresh run of DECISION F295 D22 (4); both its jobs, Python 3.10 and Python 3.12, passed, and the Open PR Gate merged pull request 311 into `main` as `7c91c3b69`.
+
+Done: R-1159 — RESOLVED at F295 R31 by `a06dd701d` under DECISIONS F295 D22 and D24, proved by the reviewer's dry run recorded in the F295 R31 gate entry above and by hosted CI run 37594899789 on `f65c55890`, green on Python 3.10 and Python 3.12. The live job-scope test in `tests/ui_server/test_pause_door_live.py` holds task 2's build call open until the job pause request exists on disk, so the pause lands while that call is in flight by construction, not by a fixed sleep; the runner prints a DETAIL line with the job's error, its pause record and every task's status, and every assertion of the job-scope test shows it together with the runner's standard error; no assertion was weakened. The cause of the first instance, a pause read at the after-task safe point and treated as a budget stop, is R-1160, open, owned by F297.
