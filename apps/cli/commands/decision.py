@@ -618,6 +618,8 @@ def _cmd_decision_resolve(
                      json_output=json_output)
             if code == "decision_already_answered":
                 fail("decision_already_answered", detail, json_output=json_output)
+            if code == "option_not_applicable":
+                fail("option_not_applicable", detail, json_output=json_output)
             if code == "invalid_argument":
                 fail(
                     "invalid_argument",
@@ -634,6 +636,17 @@ def _cmd_decision_resolve(
             fail("budget_limit_not_raisable", detail, json_output=json_output)
 
         save_job_plan(job)
+        if result["outcome"] == "abandoned":
+            if not json_output:
+                print(f"Answered {decision_id} for job {job_id_str}: abandoned")
+                print(f"  Job {job_id_str} is cancelled and will never run again.")
+            if json_output:
+                emit_ok(
+                    decision_id=decision_id, job_id=job_id_str, outcome="abandoned",
+                    state=result["state"],
+                )
+            return
+
         raised = result["raised"]
         next_command = f"remedy job run {job_id_str} --json"
         if not json_output:

@@ -1,10 +1,13 @@
-"""F295 R12 — DECISION F295 D11: a budget decision answered `extend`.
+"""F295 R13 — DECISION F295 D12: a budget decision answered `extend` or `abandon`.
 
 `remedy decision resolve <job> <decision> --reason extend --answer <limit>=<value>`
 raises one or more of a job's budget limits and records the answer, so the
 job's open budget decision and the resume guard of DECISION F295 D9 read the
-stop as answered until the job stops again (D11 (4)). `abandon` is ruled and
-landed by the next round (D11 (7)).
+stop as answered until the job stops again (D11 (4)). `remedy decision resolve
+<job> <decision> --reason abandon` cancels the job instead: its state becomes
+`cancelled`, the answer is recorded the same way, and D12 (3) makes a
+cancelled job refuse to run again through `run_job`, `remedy job run` or
+`remedy job resume`.
 
 Public API::
 
@@ -15,7 +18,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from packages.core.models import JobBudgets
+from packages.core.models import JobBudgets, RunState
 from packages.orchestration.budget_resolution import BudgetConfigError, parse_budget_limit
 from packages.orchestration.decision_queue import budget_decision_id, budget_stop_answer
 
@@ -77,8 +80,29 @@ def answer_budget_decision(
             f"decision {decision_id} is already answered since the job last stopped",
         )
 
-    if option != "extend":
-        return _refuse("invalid_argument", "--reason must be 'extend'.")
+    if option not in ("extend", "abandon"):
+        return _refuse("invalid_argument", "--reason must be 'extend' or 'abandon'.")
+
+    if option == "abandon":
+        if answers:
+            return _refuse(
+                "option_not_applicable",
+                "--answer is not valid with --reason abandon; abandon cancels "
+                "the job outright and raises nothing.",
+            )
+        record = {
+            "decision_id": decision_id,
+            "request_id": str(getattr(job, "stop_request_id", "") or ""),
+            "option": "abandon",
+            "raised": {},
+            "answered_at": now.isoformat(),
+            "actor": _ACTOR,
+        }
+        if not isinstance(getattr(job, "metadata", None), dict):
+            job.metadata = {}
+        job.metadata.setdefault("budget_decision_answers", []).append(record)
+        job.state = RunState.CANCELLED
+        return {"outcome": "abandoned", "state": "cancelled", "record": record}
 
     if not answers:
         return _refuse(
