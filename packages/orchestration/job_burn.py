@@ -17,8 +17,9 @@ absences (no clock, no config, no file) hold here too.
 Imports from ``burn_detector`` and the standard library only;
 ``get_config`` is imported INSIDE :func:`job_burn_thresholds_from_config`, so
 this module stays importable — and testable — with no config layer present.
-Nothing calls this module yet: the next round wires ``JobBurnMonitor`` into
-``run_job``'s safe point (DECISION F116 D3 (5)).
+``run_job`` calls this module from its own safe point (DECISION F116 D4 (1)
+to (4)): one ``JobBurnMonitor`` per run, a sample recorded for every counted
+provider call, and the newest tripped reading kept on the job.
 """
 from __future__ import annotations
 
@@ -102,8 +103,8 @@ def job_burn_record(reading: BurnReading) -> dict[str, Any]:
 
 
 #: The job runner's own accumulator: one sample per counted provider call,
-#: wired into nothing yet — the next round calls this from ``run_job``'s
-#: safe point (DECISION F116 D3 (5)).
+#: built once per run and read at ``run_job``'s safe point (DECISION F116
+#: D4 (1) to (3)).
 class JobBurnMonitor:
     """Appends ``BurnSample`` records and evaluates them with the detector."""
 
