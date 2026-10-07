@@ -489,6 +489,34 @@ class TestABudgetDecisionAnsweredThroughTheCommandLine:
         job_record = json.loads(run("job", "run", job_id, *fake_roles, "--json").out)
         assert job_record["status"] == "completed"
 
+    def test_extend_then_resume_runs_the_job_through_its_own_providers(
+            self, tmp_path, monkeypatch, capsys):
+        """DECISION F295 D13: `job run` persisted this job's `execution_config`
+        with `builder` and `reviewer` `fake` (R-1147's own fixture) when it
+        first stopped it on budget; resuming it after `extend` must run it
+        through THAT config, via `_cmd_job_run`, not the multi-cycle
+        executor, which has no persisted roles to give it."""
+        from datetime import datetime, timedelta, timezone
+
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        run, job_id, decision_id, _fake_roles = self._stopped_job(
+            tmp_path, monkeypatch, capsys)
+
+        new_deadline = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        run(
+            "decision", "resolve", job_id, decision_id, "--reason", "extend",
+            "--answer", f"deadline={new_deadline}", "--json")
+
+        result = run("job", "resume", job_id, "--yes", "--json")
+        assert result.code == 0
+        body = json.loads(result.out)
+        assert body["status"] == "completed"
+
+        record = load_job_plan(job_id)
+        assert record.state == "completed"
+        assert record.execution_config.builder == "fake"
+
     def test_a_refusal_reaches_the_client_as_an_envelope(
             self, tmp_path, monkeypatch, capsys):
         run, job_id, decision_id, _fake_roles = self._stopped_job(
