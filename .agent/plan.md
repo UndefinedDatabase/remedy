@@ -7,16 +7,16 @@ arithmetic in the decision, and the watchdog's burn tripwire uses the same detec
 (docs/roadmap/features/T3_F116.md). DECISION F116 D1 fixes the slices and their order.
 
 ## Current Step
-Session 3, round 12, the closure sequence's integration gate: book round 11; build `apps/ui` once,
-because this branch changed `apps/ui/src`; then the feature's one full suite,
-`python3 -m pytest -n auto -q`, and `scripts/closure_suite_cost.py`, committed as
-`.agent/authored/f116-closure-suite.txt`.
+Session 3, round 13, the closure sequence's last content round: book round 12, whose one full
+suite was green, and the once-per-feature consolidation pass of the pre-emission checklist in
+`docs/agents/planner_reviewer_prompt.md`, which stays at 34 items. The session ends after this
+round, so that the evidence round starts in a fresh one.
 
 ## Next Steps
-1. Review the transcript: a green suite goes on to the checklist consolidation pass; a red one
-   gets a repair round naming every bad node id (amend0917-throughput rule 2).
-2. The evidence bundle and the review zip, the ledger rotation, the STATUS line and the pull
-   request.
+1. The evidence round: the feature's evidence bundle, the staging-copy reclaim and the fresh
+   review zip (docs/roadmap/STATUS_closure_protocol.md, algorithm steps 1 and 2).
+2. The closing round: the ledger rotation, the STATUS line, the README sync, the self-use item's
+   `consumed_by`, and the pull request, which the next feature's Open PR Gate merges.
 
 ## Risks
 - The trailing baseline needs eight measured calls in one run before it can trip, and samples do
