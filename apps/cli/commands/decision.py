@@ -597,6 +597,7 @@ def _cmd_decision_resolve(
         from datetime import datetime, timezone
 
         from packages.orchestration.budget_decision import answer_budget_decision
+        from packages.orchestration.mission_contract import answer_contract_remainder_on_extend
         from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
         job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
@@ -647,17 +648,24 @@ def _cmd_decision_resolve(
                 )
             return
 
+        # R-1155, DECISION F295 D19: the extend also answers the contract remainder
+        # decision this budget stop raised, because the job now runs on instead.
+        closed = answer_contract_remainder_on_extend(job_id, decision_id)
         raised = result["raised"]
         next_command = f"remedy job run {job_id_str} --json"
         if not json_output:
             print(f"Answered {decision_id} for job {job_id_str}: extended")
             for name, value in raised.items():
                 print(f"  {name} raised to {value}")
+            for closed_id in closed:
+                print(f"  Remainder decision {closed_id} answered no: the job runs on "
+                      "instead of a follow-up mission")
             print(f"Run the job: {next_command}")
         if json_output:
             emit_ok(
                 decision_id=decision_id, job_id=job_id_str, outcome="extended",
-                raised=raised, budgets=result["budgets"], next_command=next_command,
+                raised=raised, budgets=result["budgets"], closed_decisions=closed,
+                next_command=next_command,
             )
     else:
         _message = (
