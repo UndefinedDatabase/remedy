@@ -1,19 +1,12 @@
-"""F287 R9 — a relaunch through `remedy job run` resumes the parked `claude-cli`
-session, and names a declined resume (R-1163).
+"""R-1163 (F287): a relaunch typed as `remedy job run` resumes the parked `claude-cli`
+session, and names a resume that a provider declined.
 
-Round 8's block ordered this same test without `--repair-rounds` on the
-fake-provider relaunch; that relaunch inherited the parked run's persisted
-`repair_rounds=0` (`packages/orchestration/pingpong_job.py::run_job`'s
-``if repair_rounds is not None:`` branch), and the fake reviewer's
-`pass_on_round=2` default could never pass within that budget, so the job
-ended `blocked` instead of `completed` (full account in `.agent/handoff.md`,
-round 8). This round's block adds `--repair-rounds 1` to that one call;
-everything else is unchanged.
-
-Both tests here drive Remedy the way an operator does: by typing
-`remedy job run`, which pauses mid-build, and then `remedy job run` again,
-which resumes. Every call goes through `run_cli_in_process` — the real CLI
-dispatcher, never `run_job` directly and never a subprocess.
+The hardening stage's acceptance audit found that every proof of F287 called `run_job`,
+`run_pingpong` or `resume_declined_reasons` from test code. These tests use Remedy the way an
+operator does, through the command-line dispatcher (`run_cli_in_process`, never `run_job` and
+never a subprocess): `remedy job run` starts a `claude-cli` job on a git target; the stand-in for
+the `claude` child types `remedy job pause` during the first builder call, so the job parks; a
+second `remedy job run` relaunches it; and `remedy run show --json` reads the relaunch's record.
 """
 from __future__ import annotations
 
@@ -114,9 +107,9 @@ class TestARelaunchThroughJobRunResumesTheParkedSession:
             assert parked_payload["status"] == JOB_PAUSED
             parked_run_id = parked_payload["tasks"][0]["run_id"]
 
-            # No model flags; an omitted --repair-rounds would read the parked
-            # run's persisted 0 back (R-1163's round-8 failure) — the fake
-            # reviewer needs a second round to pass by default.
+            # No model flags. An omitted --repair-rounds would read the parked
+            # run's 0 back from the job's saved config, and the `fake` reviewer
+            # passes only on its second call.
             relaunch = run_cli_in_process(
                 ["job", "run", job.job_id,
                  "--builder-provider", "fake", "--reviewer-provider", "fake",
