@@ -77,6 +77,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "the sole token_policy_applied emitter, kept by DECISION F275 D18 as that event's test vehicle"),
     ("packages/orchestration/bench_run.py",
      "F082's on-demand bench run; never implicit by DECISION F082 D9, the one caller its guard permits"),
+    ("packages/orchestration/burn_detector.py",
+     "F116 T001's burn detector; T002 wires it into the job runner's safe point (DECISION F116 D2)"),
     ("packages/orchestration/ci_budgets.py",
      "the zero-findings lint rule the `budgets` CI stage's tests/orchestration/test_ci_budgets.py applies "
      "(DECISION amend0911-feedback D7)"),
