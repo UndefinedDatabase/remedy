@@ -39,3 +39,34 @@ as a real fault in the product and asks you again.
 say otherwise: this session has stopped as the rules require, and the next session repairs the
 test, lets GitHub run once more, and merges only on a green run. If you want something else, say
 so before the next session starts, or merge or close the pull request yourself.
+
+### Q8 — Claude continues conversations during repairs (2026-10-07, F287, round 5)
+
+**What needs deciding.** When Remedy works on a task, one model call writes the change and a second
+call checks it. If the check finds problems, Remedy runs a repair round. Until now, every call to
+the Claude command-line tool started a brand-new conversation, so each repair round sent the whole
+task description again and paid for it again. With this step, a repair round continues the
+conversation of the round before it instead of starting a new one, and the repair request leaves
+out the parts that conversation has already seen and shows only the parts of the change that are
+new. The same applies when a paused or stopped job is started again. Please decide whether
+repair rounds may continue the earlier conversation this way, or whether only a restarted job
+should continue its conversation.
+
+**Why it matters.** Continuing the conversation makes repair rounds cheaper, because the model does
+not have to read the same task text and the same earlier changes a second time. Remedy already had
+this ability, but no real model connection could use it, so it has only been tested with a pretend
+model. If the Claude tool refuses to continue a conversation, Remedy starts
+a fresh one once, with the full text, and records that it did so. The risk is that a shortened
+repair request could leave out something the model has in fact forgotten. There is a setting that
+turns the shortening off for a run.
+
+**My recommendation.** Let repair rounds continue the earlier conversation. Saving tokens is your
+first priority, the feature was built and reviewed for exactly this case, and the fallback to a
+fresh conversation protects against a conversation the tool can no longer find. The feature's
+final self-test runs one real job on the Claude tool, and its evidence records for every call
+whether an earlier conversation was continued.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise: from this step on, repair rounds and restarted jobs on the Claude command-line tool
+continue their earlier conversation. If you want only restarted jobs to continue, say so, and a
+later step will separate the two.
