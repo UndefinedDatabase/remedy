@@ -1137,3 +1137,60 @@ def test_a_job_its_budget_stops_with_blockers_raises_the_remainder_and_names_its
     assert all(f"{ident}: " in record["question"]
                for ident in data["unmet_blocking_criteria"])
     assert f"remedy decision resolve {job_id} {decision_id} --reason yes" in data["next"]
+
+
+# ── F295 R11: a job `remedy do` plans records its order digest (R-1148, DECISION F295 D10) ──
+
+
+def test_a_do_jobs_run_manifest_is_written_and_named_in_the_digest(repo, capsys):
+    """DECISION F295 D10 (1): `job_file_sha256` is the sha256 of the job's own
+    `mission`, so the run manifest's job-input check is met and written."""
+    import hashlib
+    import json as _json
+
+    from packages.orchestration.data_paths import job_record_path
+
+    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1"))
+
+    for job_id in data["job_ids"]:
+        record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
+        assert record["job_file_sha256"] == hashlib.sha256(
+            record["mission"].encode("utf-8")).hexdigest()
+        assert record["run_manifest"]["path"]
+        assert record["run_manifest"]["error"] == ""
+
+    main(["status", "--json"])
+    status = json.loads(capsys.readouterr().out)
+    client_jobs = {j["job_id"]: j for j in status["client"]["jobs"]}
+    for job_id in data["job_ids"]:
+        manifest_path = client_jobs[job_id]["evidence"]["run_manifest_path"]
+        assert manifest_path and Path(manifest_path).is_file()
+
+
+def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
+    """DECISION F295 D10 (2): a job's digest is written before it ever runs, so a
+    budget stop of it — here, a deadline already past — ends `stopped` with the
+    run manifest's job-input check still met, never an empty `job_file_sha256`."""
+    import json as _json
+
+    from packages.orchestration.data_paths import job_record_path
+
+    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1", "--plan-only"))
+    [job_id] = data["job_ids"]
+
+    try:
+        main(["job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
+              "--builder-provider", "fake", "--reviewer-provider", "fake", "--json"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    capsys.readouterr()
+
+    record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
+    assert record["status"] == "stopped"
+    assert record["stop"]["source"] == "budget"
+    assert record["run_manifest"]["error"] == ""
+
+    main(["status", "--json"])
+    status = json.loads(capsys.readouterr().out)
+    client_jobs = {j["job_id"]: j for j in status["client"]["jobs"]}
+    assert client_jobs[job_id]["state"] == "stopped"
