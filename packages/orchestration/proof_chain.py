@@ -101,6 +101,8 @@ class ProofChain:
     next_safe_action_obj: NextSafeAction | None = None
     missing_links: list[str] = field(default_factory=list)
     generated_at: str = ""
+    # DECISION F295 D15: the job's apply records, as `job_apply.list_job_apply_records` reads them.
+    job_applies: tuple[dict[str, Any], ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -717,6 +719,22 @@ def build_proof_chain(
 
     overall_label, overall_obj = derive_next_safe_action_from_changes(proof_changes, job_id_str)
 
+    # DECISION F295 D15: an apply through `remedy job apply` records no patch intent, so the
+    # changes above never show it. Its records are listed beside them as they state themselves,
+    # and none is called verified: the truth rule above still needs a patch intent's links.
+    from packages.orchestration.job_apply import list_job_apply_records
+    job_applies = tuple(
+        record for record in list_job_apply_records(job_id_str, data_dir)
+        if not path or path in (record.get("files_applied") or []))
+    if not proof_changes and any(r.get("status") == "applied" for r in job_applies):
+        overall_obj = NextSafeAction(
+            label="The job's apply is listed under job applies; it has no patch intent to verify.",
+            command="",
+            reason="remedy job apply records no patch intent.",
+            available=True,
+        )
+        overall_label = overall_obj.label
+
     return ProofChain(
         job_id=job_id_str,
         goal=goal,
@@ -727,6 +745,7 @@ def build_proof_chain(
         next_safe_action_obj=overall_obj,
         missing_links=all_missing,
         generated_at=datetime.now(timezone.utc).isoformat(),
+        job_applies=job_applies,
     )
 
 
@@ -778,6 +797,8 @@ def export_proof_chain_json(chain: ProofChain) -> dict[str, Any]:
             }
             for c in chain.changes
         ],
+        # DECISION F295 D15: each record as `list_job_apply_records` reduced it.
+        "job_applies": [dict(record) for record in chain.job_applies],
     }
 
 
@@ -817,5 +838,12 @@ def summarize_proof_chain(chain: ProofChain) -> str:
             lines.append(f"       next: {c.next_safe_action}")
     else:
         lines.append("\nNo changes found.")
+
+    if chain.job_applies:
+        lines.append(f"\nJob applies ({len(chain.job_applies)}):")
+        for record in chain.job_applies:
+            files = record.get("files_applied") or []
+            lines.append(f"  {record.get('job_apply_id')}: {record.get('status')}, "
+                         f"{len(files)} file(s), finished {record.get('finished_at')}")
 
     return "\n".join(lines)
