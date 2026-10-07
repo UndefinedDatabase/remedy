@@ -672,6 +672,58 @@ class TestBudgetStop:
         assert payload["would_run"] is True
         assert handed_off == []
 
+    def test_an_answered_budget_stop_resumes(self, handed_off):
+        """DECISION F295 D11 (4): an answered stop no longer holds the job —
+        the resume guard's fourth guard reads `open_budget_decision_id`, not
+        `stop_source` alone, so the stub executor below is reached."""
+        from datetime import datetime
+
+        from packages.orchestration.budget_decision import answer_budget_decision
+
+        job = _budget_stopped_job()
+        job.stopped_at = "2026-07-26T12:00:00+00:00"
+        decision_id = f"budget:{job.stop_request_id}"
+        now = datetime.fromisoformat("2026-07-26T13:00:00+00:00")
+
+        result = answer_budget_decision(
+            job, decision_id, "extend",
+            ["deadline=2026-07-27T00:00:00+00:00"], now=now)
+        assert result["outcome"] == "extended"
+        save_job_plan(job)
+
+        resume(job)
+
+        assert len(handed_off) == 1
+
+    def test_the_preview_of_an_answered_budget_stop_would_run(self, handed_off, capsys):
+        import json as _json
+        from datetime import datetime
+
+        from packages.orchestration.budget_decision import answer_budget_decision
+
+        job = _budget_stopped_job()
+        job.stopped_at = "2026-07-26T12:00:00+00:00"
+        decision_id = f"budget:{job.stop_request_id}"
+        now = datetime.fromisoformat("2026-07-26T13:00:00+00:00")
+
+        result = answer_budget_decision(
+            job, decision_id, "extend",
+            ["deadline=2026-07-27T00:00:00+00:00"], now=now)
+        assert result["outcome"] == "extended"
+        save_job_plan(job)
+
+        resume(job, dry_run=True, json_output=True)
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["budget_stop"] == {"stopped": False, "decision_id": ""}
+        assert payload["would_run"] is True
+
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "budget stop:   none" in out
+        assert "would run:     yes" in out
+
+        assert handed_off == []
+
 
 class TestBudgetStopThroughTheCommandLine:
     """In-process through `apps.cli.grouped.main`, as `tests/cli/test_do_order_file.py`
