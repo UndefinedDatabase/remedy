@@ -473,16 +473,18 @@ def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
     2. the checkpoint's WORKTREE HEAD must match the live head (unknown is not
        a mismatch, and a checkpoint that recorded none is not compared);
     3. the PLAN-APPROVAL GATE is consulted, never bypassed;
-    4. a job whose ``stop_source`` is exactly ``"budget"`` is refused until its
-       budget decision is answered — checked AFTER the all-green no-op below,
-       because a job with nothing left to spend has nothing to refuse.
+    4. a job whose open budget decision (DECISION F295 D11's
+       ``open_budget_decision_id``) is non-empty is refused until that
+       decision is answered — checked AFTER the all-green no-op below, because
+       a job with nothing left to spend has nothing to refuse. An answered
+       stop no longer holds the job.
 
     An all-green job is a no-op, decided between guards 3 and 4. ``remedy job
     resume`` and the orchestrator loop's ``resume_job`` move both call this,
     so the two doors cannot disagree about when a job may continue.
     """
     from packages.core.models import RunState
-    from packages.orchestration.decision_queue import budget_decision_id
+    from packages.orchestration.decision_queue import open_budget_decision_id
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import consume_stop, stop_requested
 
@@ -511,10 +513,9 @@ def decide_checkpoint_resume(job: Any, checkpoint: Checkpoint | None
     if tasks and all(t.status == RunState.COMPLETED for t in tasks):
         return ResumeDecision(RESUME_NOOP, "all_green",
                               "already all green — nothing to resume")
-    stop_source = str(getattr(job, "stop_source", "") or "")
-    if stop_source == "budget":
+    decision_id = open_budget_decision_id(job)
+    if decision_id:
         stop_reason = str(getattr(job, "stop_reason", "") or "")
-        decision_id = budget_decision_id(str(getattr(job, "stop_request_id", "") or ""))
         return ResumeDecision(
             RESUME_REFUSED, "budget_stopped",
             f"job stopped by its budget ({stop_reason or 'budget_exhausted'}) — "

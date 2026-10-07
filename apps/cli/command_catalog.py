@@ -205,7 +205,8 @@ _PLAN_VERSION_OPT = ArgDef(
 _PLAN_TASK_ID = ArgDef("task_id", "The task's id, as `remedy job plan-show` prints it")
 _ANSWER_OPT = ArgDef(
     "--answer",
-    'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
+    'Answer one bundled clarification (--answer q1="use PostgreSQL") or raise a '
+    "budget decision's limit (--answer max_cost_usd=2.5); repeatable",
     required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
 #: F033: names ONE task run whose diff to decide hunks over. Deliberately NOT

@@ -350,11 +350,13 @@ class TestTheTokenVocabularyJoinsTheProduct:
         "answer_parse_error", "clarifications_already_resolved",
         "decision_already_answered", "decision_not_found",
         "decision_not_resolvable",
-        "follow_up_mission_error", "invalid_argument", "invalid_list_option",
+        "follow_up_mission_error", "invalid_argument", "invalid_budget",
+        "invalid_list_option",
         "job_not_found", "missing_argument", "mission_already_linked",
         "mission_error", "no_pending_plan_approval", "no_project",
         "option_not_applicable", "proposed_task_invalid_state",
         "proposed_task_not_found", "proposed_task_operation_failed",
+        "budget_limit_not_raisable", "budget_limit_not_raised",
         "stop_reason_not_found",
     })
 

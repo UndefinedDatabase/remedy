@@ -1314,10 +1314,11 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     Every lookup here is read-only.  In particular the stop request is
     *observed* (``stop_requested``), never consumed: a preview that swallowed
     an operator's pending stop would be worse than the bug it replaced
-    (R-0146).
+    (R-0146). The budget stop it reports is DECISION F295 D11's
+    ``open_budget_decision_id`` — an answered stop no longer holds the job.
     """
     from packages.orchestration.checkpoints import resolve_live_worktree_head
-    from packages.orchestration.decision_queue import budget_decision_id
+    from packages.orchestration.decision_queue import open_budget_decision_id
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import stop_requested
 
@@ -1342,11 +1343,11 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
 
     gate = task_plan_blocks_execution(job) or "open"
 
-    budget_stopped = str(getattr(job, "stop_source", "") or "") == "budget"
+    budget_open_decision_id = open_budget_decision_id(job)
+    budget_stopped = bool(budget_open_decision_id)
     budget_stop = {
         "stopped": budget_stopped,
-        "decision_id": (
-            budget_decision_id(job.stop_request_id) if budget_stopped else ""),
+        "decision_id": budget_open_decision_id,
     }
 
     pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
@@ -1535,9 +1536,9 @@ def _cmd_job_resume(
             json_output=json_output, exit_code=3,
         )
     if decision.reason == "budget_stopped":
-        from packages.orchestration.decision_queue import budget_decision_id
+        from packages.orchestration.decision_queue import open_budget_decision_id
 
-        _decision_id = budget_decision_id(job.stop_request_id)
+        _decision_id = open_budget_decision_id(job)
         fail(
             "budget_decision_open",
             f"job {job_id_str[:8]} was stopped by its budget "
