@@ -1995,6 +1995,28 @@ def _format_remaining_usd(limit_usd: float, counters) -> str:
     return f"{prefix}${max(0.0, limit_usd - spent):.4f}"
 
 
+#: DECISION F116 D4 (5) and D9 (2): the `recorded burn alarm` lines of `remedy job budget`,
+#: printed whatever limits the job has, none included, because a burn alarm is not a
+#: money-limit feature. Each value is read with `.get`, so a hand-edited record prints a
+#: gap, never a crash.
+def _print_recorded_burn_alarm(burn_reading: Any) -> None:
+    """The recorded burn alarm's heading, rate and window lines, or nothing without a record."""
+    if not isinstance(burn_reading, dict):
+        return
+    print("  recorded burn alarm:")
+    _burn_per = "call" if burn_reading.get("rate_unit") == "per_sample" else "hour"
+    print(f"    rate:                "
+          f"{burn_reading.get('rate')} {burn_reading.get('unit')} per "
+          f"{_burn_per} against an expected "
+          f"{burn_reading.get('expectation')} "
+          f"({burn_reading.get('basis')})")
+    print(f"    window:              "
+          f"{burn_reading.get('window_samples')} calls from call "
+          f"{burn_reading.get('since_label')} on, "
+          f"{burn_reading.get('window_spend')} {burn_reading.get('unit')} "
+          f"spent, multiplier {burn_reading.get('multiplier')}")
+
+
 def _cmd_job_budget(
     job_id: str,
     *,
@@ -2068,10 +2090,14 @@ def _cmd_job_budget(
             )
 
     if _budgets is None and _budgets_dict is None:
+        # DECISION F116 D9 (2): a job with no limits still shows the trip its run recorded.
+        _no_budget_burn = (
+            getattr(_plan, "burn_reading", None) if _plan is not None else None)
         if json_output:
-            emit_ok(job_id=_job_display_id, budgets=None)
+            emit_ok(job_id=_job_display_id, budgets=None, burn_reading=_no_budget_burn)
         else:
             print(f"Job {_job_display_id[:8]}: no budgets configured.")
+            _print_recorded_burn_alarm(_no_budget_burn)
         return
 
     _has_cost_limit = _budgets is not None and _budgets.max_cost_usd is not None
@@ -2249,22 +2275,7 @@ def _cmd_job_budget(
                   f"{_recorded_prediction.get('estimate_basis', '')}")
             print(f"    arithmetic:          "
                   f"{_recorded_prediction.get('arithmetic', '')}")
-        # DECISION F116 D4 (5): shown whatever limits the job has, each value
-        # read with `.get` so a hand-edited record prints a gap, never a crash.
-        if isinstance(_burn_reading, dict):
-            print("  recorded burn alarm:")
-            _burn_per = ("call" if _burn_reading.get("rate_unit") == "per_sample"
-                         else "hour")
-            print(f"    rate:                "
-                  f"{_burn_reading.get('rate')} {_burn_reading.get('unit')} per "
-                  f"{_burn_per} against an expected "
-                  f"{_burn_reading.get('expectation')} "
-                  f"({_burn_reading.get('basis')})")
-            print(f"    window:              "
-                  f"{_burn_reading.get('window_samples')} calls from call "
-                  f"{_burn_reading.get('since_label')} on, "
-                  f"{_burn_reading.get('window_spend')} {_burn_reading.get('unit')} "
-                  f"spent, multiplier {_burn_reading.get('multiplier')}")
+        _print_recorded_burn_alarm(_burn_reading)
         if evaluation is not None:
             print(f"  exhausted:             {evaluation.exhausted}")
             if evaluation.first_exhausted_limit:

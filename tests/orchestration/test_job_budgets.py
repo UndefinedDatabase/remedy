@@ -1604,6 +1604,38 @@ class TestJobBudgetCliRendersBurnReading:
         job = _save_budget_job(budget_cli_repo, budgets={"max_total_tokens": 1000})
         assert "recorded burn alarm:" not in self._text(job.job_id, capsys)
 
+    def _save_without_budgets(self, repo, *, burn_reading):
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = _save_budget_job(repo, budgets={})
+        job.budgets = None
+        job.burn_reading = dict(burn_reading) if burn_reading is not None else None
+        save_job_plan(job)
+        return job
+
+    def test_a_job_with_no_budgets_still_prints_its_recorded_burn_alarm(
+            self, budget_cli_repo, capsys):
+        # R-1174: the no-budget answer used to return before the burn alarm.
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=_BURN_RECORD)
+        out = self._text(job.job_id, capsys)
+        assert "no budgets configured." in out
+        assert "recorded burn alarm:" in out
+        assert "15000.0 tokens per call against an expected 1500.0 (trailing_baseline)" in out
+
+    def test_a_job_with_no_budgets_carries_its_burn_reading_in_json(
+            self, budget_cli_repo, capsys):
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=_BURN_RECORD)
+        data = self._json(job.job_id, capsys)
+        assert data["budgets"] is None
+        assert data["burn_reading"] == _BURN_RECORD
+
+    def test_a_job_with_no_budgets_and_no_trip_prints_no_heading(
+            self, budget_cli_repo, capsys):
+        job = self._save_without_budgets(budget_cli_repo, burn_reading=None)
+        out = self._text(job.job_id, capsys)
+        assert "no budgets configured." in out
+        assert "recorded burn alarm:" not in out
+        assert self._json(job.job_id, capsys)["burn_reading"] is None
+
 
 class TestEveryConfiguredLimitIsNamedInTheTextOutput:
     """R-1006 — the labelled limits block lists the disk floor too.
