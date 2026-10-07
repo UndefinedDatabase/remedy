@@ -570,6 +570,10 @@ def test_a_second_trip_updates_the_open_burn_decision_in_place(tmp_path, monkeyp
     assert len(open_decisions) == 1
     assert open_decisions[0]["question"] == (
         f"{BURN_DECISION_MARKER} {job_burn_sentence(job.burn_reading)}")
+    # R-1171: the re-trip replaces the seeded impact as well as the question.
+    assert open_decisions[0]["impact"] == (
+        f"job {job.job_id} is paused until this is answered; continue it "
+        f"with `remedy job unpause {job.job_id}`")
 
 
 def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
