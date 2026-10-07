@@ -210,7 +210,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate A: the machine client (operator ruling amend1006-luna-control-plane)
 
-- [~] F295 — Machine client contract v1: order files, the digest and decisions for a machine
+- [x] F295 — Machine client contract v1: order files, the digest and decisions for a machine (T001–T004 complete, R-1140 to R-1142, R-1144 to R-1148 and R-1150 to R-1155 resolved; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157 and R-1158 open — owned by F297; accepted 2026-10-07 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f295r27e1001 · package remedy-review-20261007-084539-READY_FOR_REVIEW.zip · SHA-256 f577772b647ff223cc2c4a22e4a13a4a1387880a5ed07939fa8704cf9defeea4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2ba602db48c478bdbca6234605c6a4b4b0e60b76)
 
 ## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane)
 

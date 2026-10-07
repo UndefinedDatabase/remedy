@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-126 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+127 of 297 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 1 | 10 |
+| 12 | Observability & Operations | 2 | 10 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -716,6 +716,17 @@ and print exactly what they print without it; when the supervisor is killed and 
 runs again every job it was running and each task still runs once; a systemd user unit and a
 container entrypoint ship with it; and without a supervisor every command runs directly, as
 before).
+
+F295 machine client contract (a program can now drive Remedy from an order to its proof through the
+command line's JSON answers alone, with no cockpit and nobody at a terminal: `remedy do order.md`
+reads the order from a Markdown file whose header can name the project, the contract and a cost
+cap, and refuses an order file that sets no cost cap; `remedy status --json` carries one section a
+program can read every minute, listing every project's missions and jobs with their cost, every open
+decision with its question and its default, and the jobs that wait for approval; every kind of
+decision can be answered with `--json`, including raising or ending the budget of a job that stopped
+at its limit; a run with `--yes --no-ui --json` never waits for typed input; and the page
+`docs/system/machine-client-contract-v1.md` names every command, flag, answer field and exit code of
+that path, which a test keeps equal to a second test that drives the whole path).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
