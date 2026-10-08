@@ -4,18 +4,26 @@
 temporary directory for every test, and ``pytest_sessionfinish`` there fails the
 run when the configured data root changed. These tests pin the per-test half:
 without the fixture, ``resolve_data_root()`` falls through to the configured
-root and every assertion below goes red.
+root and every assertion below goes red. The last two pin the import-time root
+of DECISION F253 D8: an environment copied before any fixture runs names a
+temporary folder, never the operator's data root.
 """
 
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from packages.orchestration import data_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_DEFAULT_ROOT = Path(data_paths.__file__).resolve().parents[2] / ".data"
+#: The environment as this module saw it while being imported, before any fixture ran: the kind of
+#: copy that sent a seeding ``remedy do`` of F253 round 4 to the operator's data root.
+ENVIRONMENT_AT_IMPORT = dict(os.environ)
 
 
 def test_the_resolved_root_is_under_the_pytest_temp_base(tmp_path_factory):
@@ -92,3 +100,42 @@ def test_a_cli_subprocess_inherits_the_isolated_root():
     ).stdout.strip()
     assert Path(out) == data_paths.resolve_data_root()
     assert Path(out).resolve() != REPO_DEFAULT_ROOT
+
+
+def _child_data_root(environment: dict) -> Path:
+    """The data root a child process started with ENVIRONMENT resolves; it writes nothing."""
+    code = "from packages.orchestration.data_paths import resolve_data_root; print(resolve_data_root())"
+    out = subprocess.run(
+        [sys.executable, "-c", code], cwd=REPO_ROOT, env=environment,
+        capture_output=True, text=True, timeout=60, check=True,
+    ).stdout.strip()
+    return Path(out).resolve()
+
+
+@pytest.fixture(scope="module")
+def environment_copied_by_a_module_fixture():
+    """An environment copied between two tests, where a module-scoped fixture would copy it."""
+    return dict(os.environ)
+
+
+def test_an_environment_copied_at_import_sends_a_child_to_a_temporary_root():
+    """DECISION F253 D8: a module's import-time copy names the import-time root."""
+    assert ENVIRONMENT_AT_IMPORT.get("REMEDY_DATA_DIR")
+    root = _child_data_root(ENVIRONMENT_AT_IMPORT)
+    assert root == Path(ENVIRONMENT_AT_IMPORT["REMEDY_DATA_DIR"]).resolve()
+    assert root != REPO_DEFAULT_ROOT
+    assert root.is_relative_to(Path(tempfile.gettempdir()).resolve())
+
+
+def test_an_environment_copied_between_tests_sends_a_child_to_a_temporary_root(
+        environment_copied_by_a_module_fixture):
+    """DECISION F253 D8: after a test, ``_isolated_data_root`` puts the import-time root back.
+
+    This module's earlier tests ran before the fixture copied the environment, so the copy was
+    taken after their teardown, the moment a module-scoped fixture of a later module copies it.
+    """
+    copied = environment_copied_by_a_module_fixture
+    assert copied.get("REMEDY_DATA_DIR") == ENVIRONMENT_AT_IMPORT.get("REMEDY_DATA_DIR")
+    root = _child_data_root(copied)
+    assert root != REPO_DEFAULT_ROOT
+    assert root.is_relative_to(Path(tempfile.gettempdir()).resolve())
