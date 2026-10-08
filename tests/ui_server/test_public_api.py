@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -20,6 +21,7 @@ from dataclasses import replace
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -36,6 +38,7 @@ SERVER_TOKEN = "f253-public-api-test-token"
 PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
+    ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
 }
 
 
@@ -138,6 +141,23 @@ def _status_json_client(extra_args: tuple[str, ...] = ()) -> dict:
     return json.loads(result.stdout)["client"]
 
 
+def _change_proof_command_answer(job_id: str, *, ok: bool = True) -> dict:
+    """`remedy change proof <job_id> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `ok` only selects which exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "change", "proof", job_id, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
 #: Git identity for the scratch repository the seed below commits into.
 _SEED_GIT_IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                       "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -170,6 +190,11 @@ def _seed_project_job_and_decision(tmp_path: Path) -> None:
          "--reviewer-provider", "fake", "--deadline", _SEED_PAST_DEADLINE],
         cwd=str(repo), capture_output=True, text=True, env=env, timeout=120)
     assert result.returncode == 1, result.stdout + result.stderr
+
+
+def _without_generated_at(answer: dict) -> dict:
+    """`answer` without its own `generated_at`, stamped fresh by each call to `build_proof_chain`."""
+    return {k: v for k, v in answer.items() if k != "generated_at"}
 
 
 def _without_volatile_digest_fields(digest: dict) -> dict:
@@ -266,9 +291,16 @@ def test_every_route_is_pinned_by_name():
 
 
 def test_every_route_is_well_formed():
-    from apps.cli.client_interface import CLIENT_OPERATION_IDS, OPERATION_ANSWER_KEYS
+    import re
+
+    from apps.cli.client_interface import (
+        CLIENT_OPERATION_IDS,
+        OPERATION_ANSWER_KEYS,
+        OPERATION_REFUSAL_TOKENS,
+    )
     from apps.cli.command_catalog import get_command
 
+    segment_re = re.compile(r"^[A-Za-z0-9_-]+$")
     for route in public_api.PUBLIC_API_ROUTES:
         assert route.path.startswith(public_api.PUBLIC_API_PREFIX + "/")
         assert route.method == "GET"
@@ -277,6 +309,12 @@ def test_every_route_is_well_formed():
         assert not public_api.command_is_excluded(route.twin)
         if route.twin_key is not None:
             assert route.twin_key in OPERATION_ANSWER_KEYS[route.twin]
+        for segment in route.path.split("/")[1:]:
+            is_named = segment.startswith("{") and segment.endswith("}")
+            assert is_named or segment_re.match(segment), segment
+        for token, status in route.refusals:
+            assert token in OPERATION_REFUSAL_TOKENS[route.twin], (route.twin, token)
+            assert status in (400, 404, 409), (route.twin, token, status)
         option_flags = {arg.name for arg in entry.args if arg.is_option}
         for key in route.query:
             assert "--" + key.replace("_", "-") in option_flags
@@ -394,6 +432,76 @@ def test_digest_route_answers_the_status_commands_client_object(tcp_server, tmp_
     reference_all = _status_json_client(("--all-ended-jobs",))
     assert (_without_volatile_digest_fields(digest_all)
             == _without_volatile_digest_fields(reference_all))
+
+
+# -- H2: the proof route, twinned with change.proof ----------------------------
+
+
+def test_proof_route_answers_the_change_proof_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+    reference = _without_generated_at(_change_proof_command_answer(job_id))
+
+    for candidate in (job_id, job_id[:8]):
+        status, body, _headers = _tcp_request(
+            tcp_server, "GET", f"/api/v1/jobs/{candidate}/proof", headers=_bearer(SERVER_TOKEN))
+        assert status == 200, body
+        assert _without_generated_at(body) == reference
+
+
+def test_proof_route_refusals_match_the_change_proof_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/not-a-job/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "invalid_job_id"
+    assert body == _change_proof_command_answer("not-a-job", ok=False)
+
+    missing = str(uuid4())
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{missing}/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "job_not_found"
+    assert body == _change_proof_command_answer(missing, ok=False)
+
+    # An ambiguous prefix: a second job id that shares the first eight hex characters.
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    source = data_root / "jobs" / job_id
+    last = job_id[-1]
+    twin_id = job_id[:-1] + ("0" if last != "0" else "1")
+    shutil.copytree(source, data_root / "jobs" / twin_id)
+    prefix = job_id[:8]
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{prefix}/proof", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "ambiguous_job_id"
+    assert body == _change_proof_command_answer(prefix, ok=False)
+
+
+def test_the_proof_route_has_no_route_beneath_or_above_it(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+    client = _status_json_client()
+    job_id = client["jobs"][0]["job_id"]
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}/proof/extra", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "api_route_not_found"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{job_id}/proof?path=README.md",
+        headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
 
 
 # -- I: query refusals ----------------------------------------------------------

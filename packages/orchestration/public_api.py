@@ -2,10 +2,13 @@
 
 A route under `PUBLIC_API_PREFIX` answers exactly what its twin command answers with `--json`: the
 same envelope `apps/cli/json_envelope.py` builds, read from `PUBLIC_API_ROUTES` at call time so a
-test can replace the registry and see the handler follow it. The version rule: the major number is
-in the path; inside `/api/v1` a route, an answer key or a refusal token is only ever added, and
-each addition raises the minor number of `PUBLIC_API_VERSION`; a route that is to go is first
-marked `deprecated`, which makes it answer the header `Deprecation: true` and shows it in the
+test can replace the registry and see the handler follow it. A route's path may carry named
+segments, written `{name}`, each matching exactly one non-empty path segment and passed to the
+twin's function as a keyword argument of that name; a route also declares, in `refusals`, the HTTP
+status of each refusal it shares with its twin (DECISION F253 D3). The version rule: the major
+number is in the path; inside `/api/v1` a route, an answer key or a refusal token is only ever
+added, and each addition raises the minor number of `PUBLIC_API_VERSION`; a route that is to go is
+first marked `deprecated`, which makes it answer the header `Deprecation: true` and shows it in the
 page's table, and it is removed only under a new major path.
 
 Every request under this namespace, a refused one included, appends one line to the data root's
@@ -31,7 +34,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.1"
+PUBLIC_API_VERSION = "1.2"
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,9 @@ class PublicApiRoute:
     twin_key: str | None = None
     #: The query keys this route accepts, each a `true`/`false` flag (DECISION F253 D2 (2)).
     query: tuple[str, ...] = ()
+    #: The refusal tokens this route shares with its twin, each with the HTTP status it answers
+    #: with (DECISION F253 D3 (2)); `()` for a route that never refuses.
+    refusals: tuple[tuple[str, int], ...] = ()
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -75,6 +81,17 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "the jobs that still need something and the last ended ones, every open decision and "
             "the jobs waiting for their apply, as the `client` object of `remedy status --json` "
             "holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/jobs/{job}/proof",
+        twin="change.proof",
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
+        description=(
+            "The proof of one job: what each change rests on and where its evidence is, as "
+            "`remedy change proof <job> --json` prints it; a job id prefix is accepted, as on the "
+            "command line, and the command's `--path` filter is not offered over HTTP."
         ),
     ),
 )
@@ -116,6 +133,28 @@ def is_public_api_path(path: str) -> bool:
     return path == PUBLIC_API_PREFIX or path.startswith(PUBLIC_API_PREFIX + "/")
 
 
+def _match_route_path(template: str, path: str) -> dict[str, str] | None:
+    """Bind `template`'s `{name}` segments against `path`, or None when they do not match.
+
+    Both split on `/`; the same number of segments is required. A template segment written
+    `{name}` matches exactly one non-empty path segment and binds it under `name`; every other
+    segment must be equal (DECISION F253 D3 (1)).
+    """
+    template_parts = template.split("/")
+    path_parts = path.split("/")
+    if len(template_parts) != len(path_parts):
+        return None
+    bound: dict[str, str] = {}
+    for template_part, path_part in zip(template_parts, path_parts):
+        if template_part.startswith("{") and template_part.endswith("}"):
+            if not path_part:
+                return None
+            bound[template_part[1:-1]] = path_part
+        elif template_part != path_part:
+            return None
+    return bound
+
+
 def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
     """The 401 a caller gets for a missing or wrong bearer token."""
     from apps.cli.json_envelope import build_error
@@ -147,12 +186,56 @@ def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
     return build_ok(**build_client_digest(every_ended_job=all_ended_jobs))
 
 
+def _change_proof_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/proof` sends: what `change.proof --json` prints with no
+    `--path` (DECISION F253 D3 (3)).
+
+    Reproduces `apps.cli.commands.change._cmd_change_proof`'s own resolution, refusal messages
+    included, rather than calling `apps.cli.job_id_arg.resolve_job_id_or_fail` or `fail()`
+    directly: both exit the process, which a route handler must never do. The messages below are
+    therefore held equal to the command's by test, not shared by import.
+    """
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.data_paths import (
+        JobIdAmbiguous,
+        JobIdError,
+        lookup_job_id,
+        resolve_data_root,
+    )
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+    from packages.orchestration.proof_chain import build_proof_chain, export_proof_chain_json
+    from packages.orchestration.timeline import load_run_events
+
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdAmbiguous as exc:
+        matches = exc.matches
+        listed = "\n".join(f"  {m[:8]}" for m in matches)
+        return build_error(
+            "ambiguous_job_id",
+            f"ambiguous job id prefix '{job}' matches {len(matches)} jobs:\n{listed}",
+            matches=matches,
+        )
+    except JobIdError:
+        return build_error("invalid_job_id", f"No job matches {job!r}. Try: remedy job list.")
+
+    try:
+        plan = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        return build_error("job_not_found", str(exc))
+
+    data_dir = resolve_data_root()
+    chain = build_proof_chain(plan, load_run_events(data_dir, job_id), path=None, data_dir=data_dir)
+    return build_ok(**export_proof_chain_json(chain))
+
+
 #: Twin command id to the function that builds its answer, called with the route's own query
-#: flags as keyword arguments, read at call time so a test that monkeypatches `PUBLIC_API_ROUTES`
-#: sees the real handler behind whichever routes it leaves.
+#: flags and bound path segments as keyword arguments, read at call time so a test that
+#: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
 _TWIN_ANSWERS: dict[str, Any] = {
     "client.interface": _client_interface_answer,
     "status.run": _status_digest_answer,
+    "change.proof": _change_proof_answer,
 }
 
 
@@ -163,27 +246,39 @@ def answer_public_api_get(
 
     Reads `PUBLIC_API_ROUTES` at call time, never at import time, so a test that replaces the
     registry sees the replacement. An unknown path answers 404 and names the page that lists the
-    routes, never a hint at what the right path might be. Once a route is found, the RAW query
-    string is parsed against that route's own `query` keys (DECISION F253 D2 (2)): a key the route
-    does not declare, a key given more than once, or a value other than `true`/`false` answers 400
-    `api_query_invalid` before the twin is ever asked.
+    routes, never a hint at what the right path might be. Once a route's template matches the
+    path (DECISION F253 D3 (1)), the RAW query string is parsed against that route's own `query`
+    keys (DECISION F253 D2 (2)): a key the route does not declare, a key given more than once, or
+    a value other than `true`/`false` answers 400 `api_query_invalid` before the twin is ever
+    asked. The twin's bound path segments and query flags are then passed as keyword arguments; a
+    body with `ok` true answers 200, a body with `ok` false answers the HTTP status `refusals`
+    declares for its `error` — raising `KeyError` for a token the route never declared, which a
+    test catches before it ships.
     """
     from apps.cli.json_envelope import build_error
 
     for route in PUBLIC_API_ROUTES:
-        if route.method == "GET" and route.path == path:
-            flags: dict[str, bool] = {}
-            for key, values in parse_qs(query, keep_blank_values=True).items():
-                if key not in route.query or len(values) != 1 or values[0] not in ("true", "false"):
-                    accepted = ", ".join(f"'{k}'" for k in route.query) or "none"
-                    return 400, build_error(
-                        "api_query_invalid",
-                        f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
-                    ), {}
-                flags[key] = values[0] == "true"
-            body = _TWIN_ANSWERS[route.twin](**flags)
-            headers = {"Deprecation": "true"} if route.deprecated else {}
-            return 200, body, headers
+        if route.method != "GET":
+            continue
+        segments = _match_route_path(route.path, path)
+        if segments is None:
+            continue
+        flags: dict[str, bool] = {}
+        for key, values in parse_qs(query, keep_blank_values=True).items():
+            if key not in route.query or len(values) != 1 or values[0] not in ("true", "false"):
+                accepted = ", ".join(f"'{k}'" for k in route.query) or "none"
+                return 400, build_error(
+                    "api_query_invalid",
+                    f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
+                ), {}
+            flags[key] = values[0] == "true"
+        body = _TWIN_ANSWERS[route.twin](**flags, **segments)
+        if body.get("ok"):
+            status = 200
+        else:
+            status = dict(route.refusals)[body.get("error", "")]
+        headers = {"Deprecation": "true"} if route.deprecated else {}
+        return status, body, headers
 
     return 404, build_error(
         "api_route_not_found",
@@ -258,8 +353,8 @@ def render_public_api_markdown() -> str:
         "",
         f"API version: `{PUBLIC_API_VERSION}`.",
         "",
-        "| Method | Path | Query | Answers as | Deprecated | Description |",
-        "|---|---|---|---|---|---|",
+        "| Method | Path | Query | Answers as | Refusals | Deprecated | Description |",
+        "|---|---|---|---|---|---|---|",
     ]
     for route in PUBLIC_API_ROUTES:
         deprecated = "yes" if route.deprecated else "no"
@@ -269,9 +364,12 @@ def render_public_api_markdown() -> str:
             f"`{command_line}`, its `{route.twin_key}` object" if route.twin_key
             else f"`{command_line}`"
         )
+        refusals_cell = ", ".join(
+            f"`{token}` {status}" for token, status in route.refusals
+        ) or "—"
         lines.append(
             f"| `{route.method}` | `{route.path}` | {query_cell} | {answers_as} "
-            f"| {deprecated} | {route.description} |"
+            f"| {refusals_cell} | {deprecated} | {route.description} |"
         )
     lines += [
         "",
