@@ -132,8 +132,22 @@ from the description.
 Round 17's PASS and its prose slip are booked by this round's C1, in `.agent/live_review.md` and
 `.agent/prose_slips.md`.
 
-Round 18: the verdict is the reviewer's, given after this handback; the reviewer books it in the next
-round's first commit.
+Round 18: VERDICT PASS, verified by dry run, bytes identical, given by the reviewer of session 4
+after this handback. `.remedy-wt/f298-r18/review18.py`, whose readings are saved beside it as
+`review18-readings.txt`, read the saved block and `.agent/plan.md` at `5f2c93fd6`, the three
+appended records there, the two files of `3bf4ccd25` and the page of `301a2cd2b` equal to the
+prepared files of the reviewer's dry run on `f27eac67a`, and the four records and the saved block
+unchanged by `c8d83ffb5`, thirteen of thirteen; `c8d83ffb5` touches only this file. The dry run's
+readings, saved as `.remedy-wt/f298-r18/build-readings-b.txt`: the round's selection `843 passed`
+at exit 0, ruff clean on the two touched Python files, integrity six of six `pass`, and the open
+set unchanged. The dry run's copy of the saved block differed from the committed one only in this
+file's context self-assessment sentence, which the reviewer corrected before delegating, and no
+test of the selection reads a saved block. The reviewer's ten mutation red-proofs, saved as
+`.remedy-wt/f298-r18/mutations.txt`, each turned `tests/cli/test_client_interface.py` red, with
+the unmutated control green before and after. The worker's one run read `843 passed`. The worker
+declared its one deviation, gates 3 to 5 issued together, none of them a test command. The next
+session books this verdict into `.agent/live_review.md` in its first round's first commit; there
+is no prose slip for round 18.
 
 ## Next
 
@@ -141,8 +155,18 @@ round's first commit.
    and stop.
 2. Then rule 2, the Open PR Gate.
 3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then book round 18's verdict in the next round's first commit.
-5. Then T001, last part: the page rendered from the interface.
+4. Then book round 18's verdict, quoted above, in the next round's first commit.
+5. Then T001, last part: `docs/system/machine-client-contract-v1.md` rendered from
+   `build_client_interface` in `apps/cli/client_interface.py`, with the test that fails when page
+   and interface differ. First fix in a DECISION, in the same round as its patch, what happens to
+   the page's tables that F295 wrote by hand, which `tests/cli/test_machine_client_contract.py`
+   holds equal to what that gate test uses: rendered, kept beside the rendering, or replaced, and
+   how the rendering is produced (a script, or the command itself) so that no part is written by
+   hand. Read that test's page checks before deciding.
+6. The soft limit is 25 rounds or 7 sessions. F298 stands at 18 rounds and 4 sessions with the
+   page part and T002 to T007 open, so the split DECISION F298 D1 names will be needed: the session
+   that reaches the limit writes the scope report and executes the split-and-close default, which
+   moves the remaining slices of T005 to T007 to a feature placed directly behind this one.
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low; all owned by F297).
@@ -158,3 +182,4 @@ Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 | Gates 1 to 5 | done | all green, see Verification |
 | Push | done | outcome in the worker's final reply |
 | Gate 6 | done | reported in the worker's final reply |
+| Session close: round 18's verdict and the session's end | done | this commit |
