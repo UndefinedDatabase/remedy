@@ -16,6 +16,14 @@ The four paths of F304 driven here are the apply with its history and a push, th
 jobs, the order naming its project, and the decline. The fifth, one order file started twice, is
 absent on purpose: a client sends an order's text, not a file, and two orders sent over HTTP never
 share a file, so `order_already_running` has no HTTP form (R-1207, DECISION F253 D19 (4)).
+
+A test waits for the end of each run it starts (R-1208, DECISION F253 D20): the digest can read a
+job `completed` and waiting for its apply a moment before the run that finished it has ended, so a
+client that applies at the first such reading may apply while the run is still writing. After
+every `start_run` a test calls `Supervisor.ended_run`, which polls `GET /api/v1/jobs/{job}/run`
+until its `state` is not `running`, and only then reads the digest or applies. R-1208 was raised
+by one failure of the order of two jobs in five runs whose output was not kept, so every assertion
+on an HTTP answer here carries that answer as its message: a failing step shows what the server said.
 """
 from __future__ import annotations
 
@@ -145,7 +153,7 @@ class Supervisor:
         order = f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n{text}\n"
         status, created = self.post("/api/v1/orders", {"order": order, **ORDER_FLAGS, **more})
         assert status == 202, created
-        assert created["state"] == "running"
+        assert created["state"] == "running", created
         return created
 
     def ended_order(self, created: dict) -> dict:
@@ -170,8 +178,21 @@ class Supervisor:
     def start_run(self, job_id: str) -> dict:
         status, record = self.post(f"/api/v1/jobs/{job_id}/run", RUN_BODY)
         assert status == 202, record
-        assert record["job_id"] == job_id
+        assert record["job_id"] == job_id, record
         return record
+
+    def ended_run(self, job_id: str) -> dict:
+        """Poll the run of JOB_ID until it is no longer running, and hold it to a clean end."""
+        def read() -> dict:
+            status, polled = self.get(f"/api/v1/jobs/{job_id}/run")
+            assert status == 200, polled
+            return polled
+
+        polled = _poll(f"the run of job {job_id} to end", read,
+                       lambda run: run["state"] != "running")
+        assert polled["state"] == "ended", polled
+        assert polled["exit_code"] == 0, polled
+        return polled
 
     def apply(self, job_id: str, **flags: Any) -> dict:
         status, applied = self.post(f"/api/v1/jobs/{job_id}/apply", flags)
@@ -234,64 +255,66 @@ def test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone(superv
     ended = supervisor.ended_order(created)
     assert ended["exit_code"] == 1, ended
     done = ended["answer"]
-    assert len(done["job_ids"]) == 1
+    assert len(done["job_ids"]) == 1, ended
     [job_id] = done["job_ids"]
 
     # 2. Read: the digest names the mission, the job stopped, the budget and the remainder.
     digest = supervisor.digest()
-    assert digest["version"] == 1
+    assert digest["version"] == 1, digest
     missions = [m for project in digest["projects"] for m in project["missions"]
                 if m["mission_id"] == done["mission_id"]]
-    assert len(missions) == 1
-    assert missions[0]["job_ids"] == [job_id]
+    assert len(missions) == 1, digest
+    assert missions[0]["job_ids"] == [job_id], digest
     job = _digest_job(digest, job_id)
-    assert job["mission_id"] == done["mission_id"]
-    assert job["state"] == "stopped"
-    assert set(job["cost"]) == {"basis", "value_usd"}
-    assert Path(job["evidence"]["run_manifest_path"]).is_file()
+    assert job["mission_id"] == done["mission_id"], job
+    assert job["state"] == "stopped", job
+    assert set(job["cost"]) == {"basis", "value_usd"}, job
+    assert Path(job["evidence"]["run_manifest_path"]).is_file(), job
     budget = [d for d in digest["decisions"]
               if d["job_id"] == job_id and d["type"] == "token_budget"]
-    assert len(budget) == 1
-    assert budget[0]["options"] == ["extend", "abandon"]
+    assert len(budget) == 1, digest
+    assert budget[0]["options"] == ["extend", "abandon"], budget
     remainder = [d for d in digest["decisions"]
                  if d["job_id"] == job_id and d["type"] == "task_decision"]
-    assert len(remainder) == 1
-    assert job_id not in digest["awaiting_apply"]
+    assert len(remainder) == 1, digest
+    assert job_id not in digest["awaiting_apply"], digest
 
     # 3. Answer: the budget decision, extended past the deadline that stopped it.
     status, answered = supervisor.post(
         f"/api/v1/jobs/{job_id}/decisions/{quote(budget[0]['decision_id'], safe='')}",
         {"reason": "extend", "answer": [f"deadline={LATER_DEADLINE}"]})
     assert status == 200, answered
-    assert answered["outcome"] == "extended"
-    assert answered["closed_decisions"] == [remainder[0]["decision_id"]]
-    assert answered["budgets"]["max_cost_usd"] == 1.0
+    assert answered["outcome"] == "extended", answered
+    assert answered["closed_decisions"] == [remainder[0]["decision_id"]], answered
+    assert answered["budgets"]["max_cost_usd"] == 1.0, answered
 
-    # 4. Run: the answered job's run is started, and the digest is followed to its end.
+    # 4. Run: the answered job's run is started, and followed to its end before the digest is read.
     supervisor.start_run(job_id)
+    supervisor.ended_run(job_id)
     supervisor.completed_job(job_id)
     digest = supervisor.digest()
-    assert job_id in digest["awaiting_apply"]
-    assert not [d for d in digest["decisions"] if d["job_id"] == job_id]
+    assert job_id in digest["awaiting_apply"], digest
+    assert not [d for d in digest["decisions"] if d["job_id"] == job_id], digest
 
     # 5. Approve and apply: the reviewed result lands in the repository.
     applied = supervisor.apply(job_id)
-    assert applied["files_applied"]
+    assert applied["files_applied"], applied
     for path in applied["files_applied"]:
-        assert (repo / path).is_file(), path
+        assert (repo / path).is_file(), applied
 
     # 6. The proof names the apply that was approved, and calls nothing verified.
     status, proof = supervisor.get(f"/api/v1/jobs/{job_id}/proof")
     assert status == 200, proof
-    assert [record["job_apply_id"] for record in proof["job_applies"]] == [applied["job_apply_id"]]
-    assert proof["job_applies"][0]["status"] == "applied"
-    assert proof["job_applies"][0]["files_applied"] == applied["files_applied"]
-    assert proof["overall_status"] != "verified"
+    assert [record["job_apply_id"] for record in proof["job_applies"]] == [
+        applied["job_apply_id"]], proof
+    assert proof["job_applies"][0]["status"] == "applied", proof
+    assert proof["job_applies"][0]["files_applied"] == applied["files_applied"], proof
+    assert proof["overall_status"] != "verified", proof
 
     # 7. The digest no longer lists the job as waiting for its apply.
     digest = supervisor.digest()
-    assert _digest_job(digest, job_id)["waits_for_apply"] is False
-    assert job_id not in digest["awaiting_apply"]
+    assert _digest_job(digest, job_id)["waits_for_apply"] is False, digest
+    assert job_id not in digest["awaiting_apply"], digest
 
 
 def test_a_result_is_applied_with_its_history_and_pushed_to_the_upstream_over_http(
@@ -308,12 +331,13 @@ def test_a_result_is_applied_with_its_history_and_pushed_to_the_upstream_over_ht
     applied = supervisor.apply(job_id, commit_with_history=True, push=True)
 
     head = _git(repo, "rev-parse", "HEAD")
-    assert applied["commit_sha"] == applied["merge_commit"] == head
-    assert applied["target_branch"] == branch
+    assert applied["commit_sha"] == applied["merge_commit"] == head, applied
+    assert applied["target_branch"] == branch, applied
     assert (applied["pushed"], applied["push_remote"], applied["push_ref"]) == (
-        True, "origin", f"refs/heads/{branch}")
+        True, "origin", f"refs/heads/{branch}"), applied
     assert _git(upstream, "rev-parse", f"refs/heads/{branch}") == head
-    assert _digest_job(supervisor.digest(), job_id)["waits_for_apply"] is False
+    digest = supervisor.digest()
+    assert _digest_job(digest, job_id)["waits_for_apply"] is False, digest
 
 
 def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone_over_http(
@@ -324,21 +348,23 @@ def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone_over_h
     ended = supervisor.ended_order(supervisor.send_order(registered["slug"], force_mission=True))
     assert ended["exit_code"] == 0, ended
     first, second = ended["answer"]["job_ids"]
-    assert ended["answer"]["waiting_job_ids"] == [second]
+    assert ended["answer"]["waiting_job_ids"] == [second], ended
 
     # The first job ran. Each later job runs on what the one before it committed, so the client
-    # applies and commits the first, runs the second, and applies and commits that one too.
+    # applies and commits the first, runs the second and waits for the end of that run, and
+    # applies and commits that one too.
     applied_first = supervisor.apply(first, commit_auto=True)
     supervisor.start_run(second)
+    supervisor.ended_run(second)
     supervisor.completed_job(second)
     applied_second = supervisor.apply(second, commit_auto=True)
 
-    assert _git(repo, "rev-parse", "HEAD") == applied_second["commit_sha"]
-    assert _git(repo, "rev-parse", "HEAD~1") == applied_first["commit_sha"]
+    assert _git(repo, "rev-parse", "HEAD") == applied_second["commit_sha"], applied_second
+    assert _git(repo, "rev-parse", "HEAD~1") == applied_first["commit_sha"], applied_first
     digest = supervisor.digest()
     assert [_digest_job(digest, job_id)["state"] for job_id in (first, second)] == [
-        "completed", "completed"]
-    assert digest["awaiting_apply"] == []
+        "completed", "completed"], digest
+    assert digest["awaiting_apply"] == [], digest
 
 
 def test_an_order_naming_its_project_is_applied_in_that_projects_repository_over_http(
@@ -349,7 +375,8 @@ def test_an_order_naming_its_project_is_applied_in_that_projects_repository_over
     ended = supervisor.ended_order(supervisor.send_order(registered["slug"]))
     assert ended["exit_code"] == 0, ended
     [job_id] = ended["answer"]["job_ids"]
-    assert _digest_job(supervisor.digest(), job_id)["project_id"] == registered["project_id"]
+    digest = supervisor.digest()
+    assert _digest_job(digest, job_id)["project_id"] == registered["project_id"], digest
 
     supervisor.apply(job_id)
 
@@ -363,7 +390,8 @@ def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervis
     ended = supervisor.ended_order(supervisor.send_order(registered["slug"]))
     assert ended["exit_code"] == 0, ended
     [job_id] = ended["answer"]["job_ids"]
-    assert supervisor.digest()["awaiting_apply"] == [job_id]
+    before = supervisor.digest()
+    assert before["awaiting_apply"] == [job_id], before
 
     status, declined = supervisor.post(f"/api/v1/jobs/{job_id}/decline", {"reason": "not wanted"})
 
@@ -371,7 +399,7 @@ def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervis
     assert (declined["ok"], declined["reason"]) == (True, "not wanted"), declined
     digest = supervisor.digest()
     job = _digest_job(digest, job_id)
-    assert (job["state"], job["waits_for_apply"]) == ("completed", False)
-    assert digest["awaiting_apply"] == []
+    assert (job["state"], job["waits_for_apply"]) == ("completed", False), digest
+    assert digest["awaiting_apply"] == [], digest
     # Nothing was applied: the repository is as the client left it.
     assert not (repo / "docs" / "README.md").exists()

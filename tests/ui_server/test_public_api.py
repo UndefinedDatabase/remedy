@@ -51,6 +51,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
+    ("GET", "/api/v1/jobs/{job}/run"):
+        "test_the_run_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/jobs/{job}/run"):
         "test_the_run_route_is_pinned_with_its_body_and_its_statuses",
 }
@@ -804,7 +806,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.9"
+    assert public_api.PUBLIC_API_VERSION == "1.10"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1100,7 +1102,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.9"
+    assert public_api.PUBLIC_API_VERSION == "1.10"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1822,7 +1824,8 @@ def _post_run(job: str, body: object, start, client=None) -> tuple[int, dict, di
 
 
 def test_the_run_route_is_pinned_with_its_body_and_its_statuses():
-    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == RUN_PATH)
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                 if r.path == RUN_PATH and r.method == "POST")
     assert (route.method, route.twin) == ("POST", "job.run")
     assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
     assert route.refusals == ()
@@ -1836,10 +1839,13 @@ def test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_recor
     calls, start = _recording_run_starter()
     status, body, headers = _post_run(full, {}, start)
     assert (status, headers) == (202, {})
-    assert body == {"schema_version": 1, "ok": True, **_run_record(full).to_json()}
+    # The stand-in record names a process no run of this job owns and a log that does not exist,
+    # so the poll's two added keys read `lost` and no answer (DECISION F253 D20 (4)).
+    assert body == {"schema_version": 1, "ok": True, **_run_record(full).to_json(),
+                    "state": "lost", "answer": None}
     assert sorted(body) == sorted(
         ["schema_version", "ok", "job_id", "pid", "started_at", "out_log", "err_log",
-         "exit_code", "ended_at"])
+         "exit_code", "ended_at", "state", "answer"])
     assert calls == [(full, [])]
 
 
@@ -2007,3 +2013,66 @@ def test_the_rendering_of_the_run_route_names_the_runs_record_not_the_twins_comm
     assert len(rows) == 1
     assert "the run's record, as the supervisor's `RunLauncher` writes it" in rows[0]
     assert "remedy job run --json" not in rows[0]
+
+
+# -- the read route that polls a run (R-1208, DECISION F253 D20) --
+
+
+def _run_command_answer(job: str, *, ok: bool = True) -> dict:
+    """`remedy client run <job> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout, so `ok` only selects which
+    exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "run", job, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_the_run_poll_route_is_pinned_with_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                 if r.path == RUN_PATH and r.method == "GET")
+    assert (route.method, route.twin) == ("GET", "client.run")
+    assert route.refusals == (("run_not_found", 404),)
+    assert public_api.PUBLIC_API_VERSION == "1.10"
+
+
+def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
+    from tests.cli.test_client_run_cmd import _start_ended_run
+
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    full = _saved_job_in("")
+    _start_ended_run(data_root, full)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full}/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body["state"] == "ended" and body["exit_code"] == 0
+    assert body["answer"] == {"ok": True, "job_id": full, "stand_in": True}
+    assert body == _run_command_answer(full)
+    prefix_status, prefix_body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full[:8]}/run", headers=_bearer(SERVER_TOKEN))
+    assert prefix_status == 200, prefix_body
+    assert prefix_body == body
+
+
+def test_the_run_poll_route_refuses_a_job_with_no_run_record(tcp_server):
+    full = _saved_job_in("")
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/jobs/{full}/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body == _run_command_answer(full, ok=False)
+    assert body["error"] == "run_not_found"
+
+
+def test_the_run_poll_route_refuses_a_value_that_is_no_id(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/..%2Fx/run", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "run_not_found"
