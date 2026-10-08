@@ -190,19 +190,23 @@ def _golden_ledger() -> dict[str, Any]:
         _entry("plan_rejected", record_ref="plan_rejected",
               actor=_actor(recorded_as="human"),
               consequence={"kind": "plan_rejected", "task_ids": [], "ref": ""}),
+        _entry("result_declined", record_ref="result_declined",
+              actor=_actor(door="cli", recorded_as="cli"),
+              text="the page is no longer needed",
+              consequence={"kind": "declined", "task_ids": [], "ref": ""}),
     ]
     return {"schema": "remedy.ownership.v1", "job_id": "golden-job", "entries": entries}
 
 
 def test_the_golden_ledger_covers_every_action_and_consequence_kind():
-    """29 entries: one per S3 action (19), plus one per extra consequence kind of
-    `task_vetoed` (+1) and `task_injected` (+2), plus one per named `plan_edited` command
-    S1's round 4 table adds (+6), plus one `task_vetoed` `unreachable` veto with no
-    downstream id, R-1084's repair (+1)."""
+    """30 entries: one per S3 action (20, the decline of DECISION F304 D5 among them), plus one
+    per extra consequence kind of `task_vetoed` (+1) and `task_injected` (+2), plus one per
+    named `plan_edited` command S1's round 4 table adds (+6), plus one `task_vetoed`
+    `unreachable` veto with no downstream id, R-1084's repair (+1)."""
     ledger = _golden_ledger()
-    assert len(ledger["entries"]) == 29
+    assert len(ledger["entries"]) == 30
     actions = {e["action"] for e in ledger["entries"]}
-    assert len(actions) == 19
+    assert len(actions) == 20
 
 
 def test_the_golden_ledger_s_sentences_match_byte_for_byte():

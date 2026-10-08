@@ -19,8 +19,13 @@ def _cmd_status(
     project_flag: str | None = None,
     all_projects: bool = False,
     json_output: bool = False,
+    all_ended_jobs: bool = False,
 ) -> None:
-    """Golden-path: project status overview. Always exits 0."""
+    """Golden-path: project status overview. Always exits 0.
+
+    *all_ended_jobs* widens the JSON answer's `client` digest to every ended job (DECISION F304
+    D16); the text overview does not read it.
+    """
     from packages.orchestration.project_registry import resolve_project
 
     project = resolve_project(repo)
@@ -143,7 +148,7 @@ def _cmd_status(
             result["degraded"] = True
             result["skipped_files"] = skipped_files
         from packages.orchestration.client_digest import build_client_digest
-        result["client"] = build_client_digest()
+        result["client"] = build_client_digest(every_ended_job=all_ended_jobs)
         emit_ok(**result)
         return
 
@@ -195,5 +200,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project_flag=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
+        all_ended_jobs=getattr(args, "all_ended_jobs", False),
     ),
 }

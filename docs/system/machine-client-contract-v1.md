@@ -4,9 +4,11 @@
 > Remedy through its command line — Luna's runner first
 > (`docs/roadmap/design/luna-control-plane-v1.md`, "Gate A" and "Gate B").
 > `tests/cli/test_machine_client_contract.py` drives the path below end to end and fails when the
-> tables of the path and that test name different things. The last section, "The interface", is
-> generated from the code and names everything a client can rely on; the rest of the page is
-> written by hand and walks through the path.
+> tables of the path and that test name different things. `tests/cli/test_machine_client_paths.py`
+> (F304) drives three more paths the same way: an apply merged with its history and pushed to an
+> upstream, an order of two jobs carried to its end, and one order file started twice. The last
+> section, "The interface", is generated from the code and names everything a client can rely
+> on; the rest of the page is written by hand and walks through the path.
 
 A machine client is a program that never sees a terminal. It writes an order file, starts
 Remedy, reads one digest, answers the decisions a run raises, approves the apply and reads the
@@ -21,9 +23,16 @@ exits non-zero.
 ## The order file
 
 An order is a Markdown file whose path ends in `.md` and holds no whitespace. An optional header
-sits between two `---` lines and names `project`, `contract`, `max-cost-usd` and any number of
-`constraint` lines; the order text follows it. A flag given on the command line wins over the
-header. This is the order file the gate test writes:
+sits between two `---` lines and names `project`, `contract`, the caps `max-cost-usd`,
+`max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes`, and any number of
+`constraint` lines; the order text follows it. Each cap is the job budget the flag of the same
+name sets, and an order needs at least one of the four, from its header or its flag. A flag
+given on the command line wins over the header. An order that names a project, in its header or with `--project`, runs in that
+project's registered repository wherever the client stands; an order that names none runs in
+`--repo`, by default the current directory. A client registers such a repository once with
+`remedy project register --repo <path> --json`, which answers the project's `project_id` and
+`slug` and writes nothing that `git status` shows. This is the order file the gate test
+writes:
 
 ```
 ---
@@ -34,8 +43,32 @@ Add a line saying hello to README.md
 
 Remedy refuses an order file before any step, with exit code 2: `order_file_not_found`,
 `order_file_unreadable`, `order_file_empty`, `order_file_invalid_header`, and
-`order_file_no_cost_cap` when neither the header nor `--max-cost-usd` sets a cost cap. An order
-argument that holds whitespace is planned as text, never read as a file.
+`order_file_no_cost_cap` when neither the header nor a flag sets any of the four caps; the token
+keeps the name it had when the cost was the only cap. An order
+that names a project is refused before any step with `project_has_no_repo` and exit code 3
+when the project has no registered repository, and with `repo_not_in_project` and exit code 2
+when `--repo` names a repository that is not the project's. An order file that a mission which
+has not ended already records — a mission that is neither achieved nor abandoned — is refused
+before any step with `order_already_running` and exit code 2, and the refusal names that mission
+under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
+holds whitespace is planned as text, never read as a file.
+
+With the deterministic planner of `--no-llm`, an order is held to one blocking criterion of the
+planner's own, that the mission goal is met in full, checked by running the repository's tests
+under `tests`; a model planner writes criteria of its own. A contract template, named by the
+header's `contract` or by `--contract`, adds its criteria before the planner's and never removes
+one, and each shipped template is for building something new and asks for tests of its own. A
+small change to an existing repository therefore needs no template: it meets the planner's
+criterion when the repository's tests pass, and in a repository without tests that criterion
+reads `unmet`, so the approval card says `hold` and a push is refused.
+
+A run checks its budgets before each call of its builder and its reviewer, never during one,
+and stops at the first check that finds a budget reached; a stopped run answers as step 1 below
+says. `max-provider-calls` counts every call the builder and the reviewer make, a retry
+included. `max-total-tokens` counts the input and output tokens those calls report, and never
+their cache-read or cache-creation tokens; a call that reports no tokens adds none, and the last
+call before a check can carry a run past the cap. Neither cap counts a call to the fake
+provider, which spends nothing, although the digest's `calls` still counts it.
 
 ## The path, step by step
 
@@ -45,17 +78,58 @@ argument that holds whitespace is planned as text, never read as a file.
    budget stops the job and raises one decision. A run that does not finish answers `ok` false
    with `error` `step_failed` and still carries `mission_id` and `job_ids`, and exits 1.
 2. **Read.** `remedy status --json` carries the digest under `client`: every project with its
-   missions, every job with its state, cost and evidence, every open decision, and the jobs that
-   wait for their apply. Read it as often as once a minute.
+   missions, the jobs with their state, cost and evidence, every open decision, and the jobs
+   that wait for their apply. Read it as often as once a minute. By default `jobs` lists every
+   job that still needs something and the 20 ended jobs that ended last, by the time each
+   finished, or was created when its record holds no finish. A job has ended when its state is
+   `completed`, `failed` or `cancelled`, it does not wait for its apply and none of its
+   decisions is open; a job whose decisions could not be read has not. `job_window` names the
+   limit under `ended_limit` and how many ended jobs it left out under `left_out`.
+   `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
+   null. Beside its `cost`, each job carries
+   `calls` and `tokens`, and each project's `cost_today` carries `tokens` beside its `calls`:
+   the provider calls and the tokens by kind, `input`, `output`, `cache_read` and
+   `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
+   kind no call reported is null, never 0; a job no ledger names reads 0 calls, or null calls
+   when a ledger could not be read. Each completed job also carries
+   `approval_card`, what an operator approves its result on, read from the job's record and its
+   mission's contract alone: how many files its tasks changed and the first twenty of them by
+   name, the test command the job ran with, and each task's title, reviewer's verdict and repair
+   rounds, and whether its test ran and passed. It also carries every blocking criterion of the
+   job's mission's contract with its id, text and status, `open`, `met` or `unmet`, under
+   `blocking_criteria`, which is null when that contract cannot be read; and `checks_ran`, false
+   when no check ran on the job: no task's test command ran and no gate evaluated a blocking
+   criterion to `met` or `unmet`. Every other job's `approval_card` is null.
+   The card ends with two words that follow from those facts by fixed rules, never from a model.
+   `recommendation` is `hold` when a record says no: a test that ran and failed, a reviewer's
+   verdict other than `pass`, or an `unmet` blocking criterion; else `review` when something is
+   unverified: no check ran, a task without a reviewer's verdict, a blocking criterion still
+   `open`, or a contract that cannot be read; else `apply`. `risk` is `high` when no check ran
+   or more than 20 files changed; else `medium` when a task took a repair round or more than 5
+   files changed; else `low`.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
    the builder and reviewer it started with. An `extend` also answers `no` to the contract
    remainder decision the same budget stop raised, because the job runs on instead of a
-   follow-up mission, and names it under `closed_decisions`.
+   follow-up mission, and names it under `closed_decisions`. A run that ends `blocked`,
+   `failed` or stopped by its budget answers `ok` false with `job_blocked`, `job_failed` or
+   `job_stopped_by_budget`, still carries every key of the job's report, and exits 1; a run
+   that completes, pauses at the operator's request or at `--tasks`, or stops at the operator's
+   request answers as before.
 4. **Approve and apply.** `remedy job apply <job> --approve --json` copies the reviewed result
    into the repository. Then `remedy change proof <job> --json` lists that apply under
-   `job_applies`.
+   `job_applies`. An approved apply that did not land answers `ok` false with one token for
+   its first cause — among them `target_dirty`, `target_detached_head`, `merge_conflict`,
+   `blocked_paths`, `push_no_upstream` and `push_refused_by_contract`; the interface below
+   lists them all — still carries every key of the apply's answer, and exits 1, or 3 when the
+   job is absent or not ready to apply; flags that clash exit 2 with `invalid_argument` before
+   the job is read. A preview, without `--approve` or with `--dry-run`, answers `ok` true and
+   exits 0, whatever it found. A client that does not want a completed job's result declines
+   it instead with `remedy job decline <job> --reason <text> --json`: nothing is applied, the
+   job no longer waits for its apply, and `remedy job ownership <job>` names the decline as the
+   operator's own act. A job that is not completed, or whose result already landed, is
+   refused with exit 3. A job of an abandoned mission no longer waits for its apply either.
 
 ### Commands
 
@@ -191,8 +265,25 @@ Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `c
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
+Approval recommendations: `apply`, `review`, `hold`.
+Approval risks: `low`, `medium`, `high`.
 
 ### Operations
+
+#### `remedy project register`
+
+Command id: `project.register`.
+Description: Register a repository as a project's repo, writing nothing its git status shows; a repo already registered answers its project.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--repo` | yes | yes | yes | no | Path to the repository |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `4`.
+Refusal tokens: `not_a_git_repo`.
+Answer keys: `created`, `project_id`, `repo_path`, `slug`.
+Keys under the answer keys: none.
 
 #### `remedy do run`
 
@@ -202,7 +293,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | Argument | Option | Required | Takes a value | Repeatable | Help |
 |---|---|---|---|---|---|
 | `goal` | no | no | yes | no | What you ask, as text, or one path ending in .md to an order file |
-| `--repo` | yes | no | yes | no | Path to target repository |
+| `--repo` | yes | no | yes | no | Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory) |
 | `--project` | yes | no | yes | no | Select a registered project by slug or id instead of the repository's own |
 | `--json` | yes | no | no | no | Output JSON |
 | `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or ollama (default: the builder role config) |
@@ -221,6 +312,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--no-llm` | yes | no | no | no | Force heuristic intake (no LLM provider call) |
 | `--force-job` | yes | no | no | no | One job for what you ask, its tasks under the mission, whatever shape the planner chose |
 | `--force-mission` | yes | no | no | no | Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose |
+| `--new-mission` | yes | no | no | no | Start a new mission for an order file that a mission which has not ended already records; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
@@ -230,8 +322,8 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--commit-with-history` | yes | no | no | no | Implies --apply: merge each job's commits, one per applied task step, onto your current branch with git merge --no-ff instead of copying, as `remedy job apply --approve --commit-with-history` does; each job runs only after the one before it is merged |
 | `--push` | yes | no | no | no | With a commit flag only: push your branch to its configured upstream once, after the mission's last job, never forced; refused alone and, before any step, without an upstream; refused while any blocking criteria of the mission contract are unmet, naming those still open. The config key apply.push_after_mission does the same |
 
-Exit codes: `0`, `1`, `2`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `order_already_running`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
 Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.
 
@@ -258,20 +350,27 @@ Description: Show project status overview, across its repos and missions.
 | `--project` | yes | no | yes | no | Scope to a project's repo (slug or UUID) |
 | `--all-projects` | yes | no | no | no | Show jobs from all projects |
 | `--json` | yes | no | no | no | Output as JSON |
+| `--all-ended-jobs` | yes | no | no | no | List all ended jobs in the JSON digest, not only those that ended last |
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
 Answer keys: `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime`, `runtime_warning`, `scope`, `skipped_files`, `stops_pending`.
 Keys under the answer keys: see below.
 
-- `client`: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
+- `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
-  - `jobs`: `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+  - `job_window`: `ended_limit`, `left_out`
+  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+    - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
+      - `blocking_criteria`: `id`, `status`, `text`
+      - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
+    - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-    - `cost_today`: `basis`, `calls`, `day`, `value_usd`
+    - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+      - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
     - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`
   - `supervisor`: `answers`
 - `jobs`: `*`
@@ -335,7 +434,7 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `job_not_resumable`, `job_not_started`, `job_stopped`, `serve_unreachable`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `serve_unreachable`.
 Answer keys: `context_strategy`, `cost_mirror`, `created_at`, `execution_config`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_title`, `job_workspace_path`, `next_command`, `pending_tasks`, `postmortem`, `repair_rounds_allowed`, `repair_rounds_source`, `repo_path`, `result_diff`, `status`, `target_guard`, `tasks`, `warning`, `worktree`.
 Keys under the answer keys: see below.
 
@@ -369,7 +468,7 @@ Description: Resume a job. Without --checkpoint: continue from the newest valid 
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
-Refusal tokens: `ambiguous_job_id`, `budget_decision_open`, `builder_error`, `builder_unavailable`, `checkpoint_not_found`, `checkpoint_not_resumable`, `checkpoints_corrupt`, `configuration_error`, `confirmation_required`, `invalid_argument`, `invalid_budget`, `invalid_builder_output`, `invalid_job_id`, `job_not_found`, `job_not_resumable`, `job_not_started`, `job_stopped`, `missing_dependency`, `permission_denied`, `plan_awaiting_approval`, `plan_rejected`, `resume_blocked`, `serve_unreachable`, `verification_failed`, `worktree_drift`.
+Refusal tokens: `ambiguous_job_id`, `budget_decision_open`, `builder_error`, `builder_unavailable`, `checkpoint_not_found`, `checkpoint_not_resumable`, `checkpoints_corrupt`, `configuration_error`, `confirmation_required`, `invalid_argument`, `invalid_budget`, `invalid_builder_output`, `invalid_job_id`, `job_blocked`, `job_failed`, `job_not_found`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `missing_dependency`, `permission_denied`, `plan_awaiting_approval`, `plan_rejected`, `resume_blocked`, `serve_unreachable`, `verification_failed`, `worktree_drift`.
 Answer keys: `action`, `awaiting_checks`, `blocked_reason`, `budget_stop`, `can_resume`, `checkpoint_id`, `checkpoint_index`, `checkpoint_kind`, `context_strategy`, `cost_mirror`, `created_at`, `cycles`, `cycles_run`, `decision_id`, `dry_run`, `elapsed_ms`, `execution_config`, `failures`, `file`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `log`, `matches`, `model`, `next_command`, `open_decision_ids`, `outcome`, `output_truncated`, `patch_intents`, `pending_tasks`, `persisted_output_bytes`, `plan_approval_gate`, `postmortem`, `reason`, `redaction`, `remaining`, `repair_rounds_allowed`, `repair_rounds_source`, `repo`, `repo_path`, `required_approvals`, `required_capabilities`, `result_diff`, `resume_mode`, `resumed`, `safety_summary`, `stage`, `state`, `status`, `stop_reason`, `stop_request`, `target_guard`, `task_id`, `task_type`, `tasks`, `terminal_status`, `test_run_id`, `tests_passed`, `verified`, `warning`, `worktree`, `worktree_head`, `worktrees`, `would_run`, `would_run_stage`.
 Keys under the answer keys: see below.
 
@@ -412,8 +511,8 @@ Description: Review and apply job workspace changes to target repo, under its mi
 | `--push` | yes | no | no | no | After --commit, --commit-auto or --commit-with-history lands, push that branch to its configured upstream, never forced; refused alone, without an upstream, or while any blocking criteria of the mission contract are unmet, and naming those still open, which no check has evaluated yet |
 | `--json` | yes | no | no | no | Output as JSON |
 
-Exit codes: `0`, `1`, `2`.
-Refusal tokens: none.
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed`, `target_detached_head`, `target_dirty`.
 Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
 Keys under the answer keys: see below.
 
@@ -422,6 +521,22 @@ Keys under the answer keys: see below.
 - `modes_applied`: `*`
 - `task_summaries`: `applied_files`, `repair_rounds_allowed`, `repair_rounds_used`, `reviewer_verdict`, `run_id`, `status`, `task_id`, `test_passed`, `title`
 - `temporary_worktree_cleanup`: `cleanup_error`, `cleanup_status`, `temporary_registration_removed`, `temporary_worktree_removed`
+
+#### `remedy job decline`
+
+Command id: `job.decline`.
+Description: Decline a completed job's result under its mission, with your reason: nothing is applied, the job no longer waits for its apply, and the decline is kept on the job and named in its ownership record (F304).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | UUID of the job (under its mission) |
+| `--reason` | yes | yes | yes | no | Why you decline the result, in your own words; kept with the decline |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_already_applied`, `job_not_declinable`, `job_not_found`, `missing_argument`.
+Answer keys: `already_declined`, `declined_at`, `job_id`, `matches`, `reason`, `source`.
+Keys under the answer keys: none.
 
 #### `remedy change proof`
 
@@ -584,7 +699,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -601,15 +716,21 @@ Keys under the answer keys: see below.
 
 The keys of the `client` object of `remedy status --json`.
 
-Keys: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
+Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
 
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+- `job_window`: `ended_limit`, `left_out`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
+    - `blocking_criteria`: `id`, `status`, `text`
+    - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
+  - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-  - `cost_today`: `basis`, `calls`, `day`, `value_usd`
+  - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+    - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`
 - `supervisor`: `answers`
 <!-- END GENERATED by render_client_interface_markdown() -->

@@ -1202,12 +1202,13 @@ def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
     data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1", "--plan-only"))
     [job_id] = data["job_ids"]
 
-    try:
+    # R-1184 (DECISION F304 D8): a run its budget stopped answers as a refusal, report beside it.
+    with pytest.raises(SystemExit) as exc:
         main(["job", "run", job_id, "--deadline", "2000-01-01T00:00:00+00:00",
               "--builder-provider", "fake", "--reviewer-provider", "fake", "--json"])
-    except SystemExit as exc:
-        assert exc.code == 0
-    capsys.readouterr()
+    assert exc.value.code == 1
+    body = json.loads(capsys.readouterr().out)
+    assert (body["ok"], body["error"], body["status"]) == (False, "job_stopped_by_budget", "stopped")
 
     record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
     assert record["status"] == "stopped"

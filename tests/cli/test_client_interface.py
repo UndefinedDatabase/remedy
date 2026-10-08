@@ -74,6 +74,7 @@ from apps.cli.exit_codes import CLI_EXIT_CODES
 from apps.cli.grouped import _DEFAULT_COMMAND, build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
 from packages.core.models import JobBudgets, RunState
+from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
 from packages.orchestration.contract_templates import list_contract_templates
 from packages.orchestration.mission_state import MISSION_STATUSES
 from tests.cli.test_exit_codes import _module_info
@@ -175,6 +176,8 @@ def test_the_vocabularies_are_the_products_own():
     assert interface["mission_statuses"] == list(MISSION_STATUSES)
     assert interface["contract_templates"] == list(list_contract_templates())
     assert interface["budget_kinds"] == list(JobBudgets.model_fields)
+    assert interface["approval_recommendations"] == list(APPROVAL_RECOMMENDATIONS)
+    assert interface["approval_risks"] == list(APPROVAL_RISKS)
     assert interface["envelope"] == {"schema_version": SCHEMA_VERSION,
                                      "reserved_keys": list(RESERVED_KEYS),
                                      "error_keys": ["error", "message"]}
@@ -295,6 +298,15 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         "a HunkApprovalRefusal's code; record_hunk_decision_from_view returns the two of "
         "packages/orchestration/hunk_decision_record.py and the five of decide_hunk_approval",
     ),
+    "apps.cli.commands.do_cmd:_cmd_job_apply:error": (
+        frozenset({"apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
+                   "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
+                   "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
+                   "target_changed", "target_detached_head", "target_dirty"}),
+        "the token apply_refusal in packages/orchestration/job_apply.py returns, one of its "
+        "APPLY_REFUSAL_TOKENS, which tests/cli/test_job_apply_refusals.py drives to every one "
+        "(DECISION F304 D4)",
+    ),
 }
 
 def _token_sites(fn: ast.AST, modname: str) -> tuple[set[str], set[str], set[str]]:
@@ -389,6 +401,10 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
                   | {value for name, value in vars(hunk_decision_record).items()
                      if name.startswith("HUNK_RECORD_REFUSAL_")})
     assert hunk_codes == UNRESOLVED_TOKEN_SITES["apps.cli.commands.patch:_cmd_approve_hunks:result.code"][0]
+    from packages.orchestration.job_apply import APPLY_REFUSAL_TOKENS
+
+    assert frozenset(APPLY_REFUSAL_TOKENS) == UNRESOLVED_TOKEN_SITES[
+        "apps.cli.commands.do_cmd:_cmd_job_apply:error"][0]
 
 
 # The top-level keys of the answers (DECISIONs F298 D5, D6 and D7).
@@ -461,8 +477,9 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_interface:**interface": (
         frozenset({
-            "answer_trees", "answers", "budget_kinds", "contract_templates", "digest", "envelope",
-            "exit_codes", "interface_version", "job_states", "mission_statuses", "operations",
+            "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
+            "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
+            "job_states", "mission_statuses", "operations",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -1013,7 +1030,7 @@ def test_the_status_and_proof_answer_trees_name_exactly_what_their_code_builds()
     stored = {ast.unparse(node.value) for node in ast.walk(_function_def(status_cmd, "_cmd_status"))
               if isinstance(node, ast.Assign)
               and any(ast.unparse(target) == "result['client']" for target in node.targets)}
-    assert stored == {"build_client_digest()"}
+    assert stored == {"build_client_digest(every_ended_job=all_ended_jobs)"}
     proof = ANSWER_KEY_TREES["change.proof"]
     next_action = _dict_literal_keys(_REPO_ROOT / proof_chain, "_export_next_action")
     assert set(proof["next_safe_action_obj"]) == next_action == (
@@ -1289,6 +1306,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         answers.setdefault(command_id, []).append(body)
         return body
 
+    answer("project.register", ["project", "register", "--repo", str(repo)], 0)
     done = answer("do.run", ["do", str(order_file), "--no-ui", "--yes", "--no-llm",
                              "--builder-provider", "fake", "--reviewer-provider", "fake",
                              "--deadline", PAST_DEADLINE], 1)
@@ -1305,6 +1323,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
+    # A result that landed cannot be declined (DECISION F304 D5).
+    refused = answer("job.decline", ["job", "decline", job_id, "--reason", "not needed"], 3)
+    assert refused["error"] == "job_already_applied"
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     exported = answer("job.evidence", ["job", "evidence", job_id], 0)
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
@@ -1417,7 +1438,9 @@ def _read_page_section(section: str) -> dict:
     read: dict = {"envelope": {}, "exit_codes": [], "operations": [], "answers": {},
                   "answer_trees": {}}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
-              "Contract templates": "contract_templates", "Budget kinds": "budget_kinds"}
+              "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
+              "Approval recommendations": "approval_recommendations",
+              "Approval risks": "approval_risks"}
     place, operation, bullets = "", None, []
     for line in [*section.splitlines(), "### End"]:
         if line.startswith(("#### ", "### ")) and bullets:

@@ -7,7 +7,8 @@ command catalog for the operations, their arguments and the exit codes each can 
 command line's parser for whether an argument takes a value and may be repeated (R-1178);
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
-`JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
+`JobBudgets` for the budget kinds; `packages/orchestration/client_digest.py` for the words of an
+approval card's recommendation and risk; and `apps/cli/json_envelope.py` for the envelope every
 `--json` answer wears. A change in any of those places changes the document. The rest is
 declared here: which catalog commands a client uses, `CLIENT_OPERATION_IDS`; the tree of the
 keys the digest returns, `DIGEST_KEY_TREE`, which `tests/cli/test_client_interface.py` holds equal
@@ -46,14 +47,17 @@ CLIENT_INTERFACE_VERSION = "1.1"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
-#: budget refusal of `job resume`, abandoning a mission, and this document's own command.
+#: budget refusal of `job resume`, declining a result, abandoning a mission, and this document's
+#: own command.
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
+    "project.register",
     "do.run",
     "status.run",
     "decision.resolve",
     "job.run",
     "job.resume",
     "job.apply",
+    "job.decline",
     "change.proof",
     "job.evidence",
     "patch.hunks",
@@ -67,9 +71,11 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
 #: (DECISION F298 D4). An operation with none here answers no refusal envelope of its own.
 OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
+    "project.register": ("not_a_git_repo",),
     "do.run": (
-        "invalid_argument", "invalid_budget", "order_file_empty", "order_file_invalid_header",
-        "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable", "step_failed",
+        "invalid_argument", "invalid_budget", "order_already_running", "order_file_empty",
+        "order_file_invalid_header", "order_file_no_cost_cap", "order_file_not_found",
+        "order_file_unreadable", "project_has_no_repo", "repo_not_in_project", "step_failed",
         "unsupported_contract_template", "unsupported_provider",
     ),
     "status.run": (),
@@ -83,19 +89,28 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "proposed_task_not_found", "proposed_task_operation_failed", "stop_reason_not_found",
     ),
     "job.run": (
-        "invalid_argument", "invalid_budget", "job_not_resumable", "job_not_started", "job_stopped",
-        "serve_unreachable",
+        "invalid_argument", "invalid_budget", "job_blocked", "job_failed", "job_not_resumable",
+        "job_not_started", "job_stopped", "job_stopped_by_budget", "serve_unreachable",
     ),
     "job.resume": (
         "ambiguous_job_id", "budget_decision_open", "builder_error", "builder_unavailable",
         "checkpoint_not_found", "checkpoint_not_resumable", "checkpoints_corrupt",
         "configuration_error", "confirmation_required", "invalid_argument", "invalid_budget",
-        "invalid_builder_output", "invalid_job_id", "job_not_found", "job_not_resumable",
-        "job_not_started", "job_stopped", "missing_dependency", "permission_denied",
-        "plan_awaiting_approval", "plan_rejected", "resume_blocked", "serve_unreachable",
-        "verification_failed", "worktree_drift",
+        "invalid_builder_output", "invalid_job_id", "job_blocked", "job_failed", "job_not_found",
+        "job_not_resumable", "job_not_started", "job_stopped", "job_stopped_by_budget",
+        "missing_dependency", "permission_denied", "plan_awaiting_approval", "plan_rejected",
+        "resume_blocked", "serve_unreachable", "verification_failed", "worktree_drift",
     ),
-    "job.apply": (),
+    "job.apply": (
+        "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
+        "invalid_argument", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
+        "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
+        "target_changed", "target_detached_head", "target_dirty",
+    ),
+    "job.decline": (
+        "ambiguous_job_id", "invalid_job_id", "job_already_applied", "job_not_declinable",
+        "job_not_found", "missing_argument",
+    ),
     "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
     "job.evidence": ("job_not_found", "unsafe_task_id"),
     "patch.hunks": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
@@ -114,6 +129,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
 #: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5,
 #: D6 and D7); `ANSWER_KEY_TREES` names the keys under them.
 OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
+    "project.register": ("created", "project_id", "repo_path", "slug"),
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
         "mission_plan_path", "next", "push", "shape", "shape_source", "steps", "stopped_before_apply",
@@ -163,6 +179,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "target_clean", "target_guard_ok", "target_repo", "task_summaries",
         "temporary_worktree_cleanup", "unexpected_source_files",
     ),
+    "job.decline": ("already_declined", "declined_at", "job_id", "matches", "reason", "source"),
     "change.proof": (
         "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
         "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
@@ -174,12 +191,21 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "patch.reject": ("intent_id", "matches", "reason_recorded", "risk", "state", "target_path"),
     "mission.abandon": ("mission", "unmet_blocking_criteria", "version"),
     "client.interface": (
-        "answer_trees", "answers", "budget_kinds", "contract_templates", "digest", "envelope", "exit_codes",
-        "interface_version", "job_states", "mission_statuses", "operations",
+        "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
+        "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
+        "mission_statuses", "operations",
     ),
 }
 
-#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
+#: The tokens by kind a project ledger holds, a tree the digest carries for each job and each
+#: project's day (DECISION F304 D13).
+TOKENS_BY_KIND_KEY_TREE: dict[str, Any] = {key: {} for key in (
+    "input", "output", "cache_read", "cache_creation",
+)}
+
+#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7; DECISION
+#: F304 D10 adds a job's `approval_card`, D11 its mission's blocking criteria, D12 its two words,
+#: D13 the calls and tokens of each job and each project's day, D16 the `job_window`), as a tree:
 #: each key maps to the tree of the object under it, or of every element of the list under it,
 #: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
 DIGEST_KEY_TREE: dict[str, Any] = {
@@ -197,7 +223,8 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "order_source_path": {},
             "order_source_sha256": {},
         },
-        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {}},
+        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {},
+                       "tokens": TOKENS_BY_KIND_KEY_TREE},
     },
     "jobs": {
         "job_id": {},
@@ -207,6 +234,8 @@ DIGEST_KEY_TREE: dict[str, Any] = {
         "state": {},
         "waits_for_apply": {},
         "cost": {"value_usd": {}, "basis": {}},
+        "calls": {},
+        "tokens": TOKENS_BY_KIND_KEY_TREE,
         "evidence": {
             "evidence_dir": {},
             "run_ids": {},
@@ -215,7 +244,25 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "result_diff_path": {},
             "result_diff_sha256": {},
         },
+        "approval_card": {
+            "changed_file_count": {},
+            "changed_files": {},
+            "test_command": {},
+            "tasks": {
+                "task_id": {},
+                "title": {},
+                "reviewer_verdict": {},
+                "repair_rounds_used": {},
+                "test_ran": {},
+                "test_passed": {},
+            },
+            "blocking_criteria": {"id": {}, "text": {}, "status": {}},
+            "checks_ran": {},
+            "recommendation": {},
+            "risk": {},
+        },
     },
+    "job_window": {"ended_limit": {}, "left_out": {}},
     "awaiting_apply": {},
     "decisions": {
         "job_id": {},
@@ -387,6 +434,7 @@ JOB_REPORT_KEY_TREES: dict[str, Any] = {
 #: do. Every operation has an entry here, and one that maps to an empty dict answers no keys below
 #: its top level (DECISION F298 D18).
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
+    "project.register": {},
     "do.run": {
         "contract": MISSION_CONTRACT_KEY_TREE,
         "cost": {
@@ -463,6 +511,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "file_readiness": {"path": {}, "kind": {}, "baseline_status": {}, "workspace_status": {}},
         "execution_config": EXECUTION_CONFIG_KEY_TREE,
     },
+    "job.decline": {},
     "change.proof": {
         "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
         "changes": {
@@ -667,6 +716,7 @@ def build_client_interface() -> dict[str, Any]:
     from apps.cli.exit_codes import CLI_EXIT_CODES
     from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
     from packages.core.models import JobBudgets, RunState
+    from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
     from packages.orchestration.contract_templates import list_contract_templates
     from packages.orchestration.mission_state import MISSION_STATUSES
 
@@ -686,6 +736,8 @@ def build_client_interface() -> dict[str, Any]:
         "mission_statuses": list(MISSION_STATUSES),
         "contract_templates": list(list_contract_templates()),
         "budget_kinds": list(JobBudgets.model_fields),
+        "approval_recommendations": list(APPROVAL_RECOMMENDATIONS),
+        "approval_risks": list(APPROVAL_RISKS),
         "digest": copy.deepcopy(DIGEST_KEY_TREE),
         "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
         "answer_trees": copy.deepcopy(ANSWER_KEY_TREES),
@@ -777,6 +829,8 @@ def render_client_interface_markdown(interface: dict[str, Any]) -> str:
         f"Mission statuses: {_listed(interface['mission_statuses'])}.",
         f"Contract templates: {_listed(interface['contract_templates'])}.",
         f"Budget kinds: {_listed(interface['budget_kinds'])}.",
+        f"Approval recommendations: {_listed(interface['approval_recommendations'])}.",
+        f"Approval risks: {_listed(interface['approval_risks'])}.",
         "",
         "### Operations",
     ]

@@ -2528,3 +2528,30 @@ class TestOneRowPerProviderCall:
         [record] = call_records_from_evidence(tmp_path, "job-old", "T001")
         assert record.call_id == "job-old:T001"
         assert (record.tokens_in, record.tokens_out) == (7, 3)
+
+
+# ── ledger_usage_by_job: every job's totals in one read (DECISION F304 D13) ──
+
+
+def test_ledger_usage_by_job_groups_by_job_keeps_nulls_and_never_creates_a_ledger(
+        tmp_path, monkeypatch):
+    from packages.orchestration.token_ledger import ledger_usage_by_job
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    project_id = uuid4()
+    assert ledger_usage_by_job(project_id=project_id) == {}
+    assert token_ledger_path_for(project_id).is_file() is False
+    for call_id, job_id, tokens in (("a1", "job-a", {"tokens_in": 10, "cache_write": 2}),
+                                    ("a2", "job-a", {"tokens_in": 5}),
+                                    ("b1", "job-b", {}),
+                                    ("x1", None, {"tokens_in": 99})):
+        assert record_call(CallRecord(call_id=call_id, job_id=job_id,
+                                      ts_utc="2026-01-01T00:00:00+00:00", **tokens),
+                           project_id=project_id)
+
+    usage = ledger_usage_by_job(project_id=project_id)
+
+    assert sorted(usage) == ["job-a", "job-b"]
+    assert (usage["job-a"].calls, usage["job-a"].tokens_in, usage["job-a"].tokens_out,
+            usage["job-a"].cache_write) == (2, 15, None, 2)
+    assert (usage["job-b"].calls, usage["job-b"].tokens_in) == (1, None)

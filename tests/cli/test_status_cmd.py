@@ -113,6 +113,151 @@ def test_a_full_do_without_apply_completes_the_job_and_it_awaits_apply(repo, cap
     assert client["awaiting_apply"] == [job_id]
 
 
+# ── 2b: the completed job's approval card, read through the command line (DECISION F304 D10) ──
+
+
+def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo, capsys):
+    from apps.cli.client_interface import DIGEST_KEY_TREE
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    done = _do_json(capsys, ORDER)
+    [job_id] = done["job_ids"]
+
+    [job] = _status_json(capsys)["client"]["jobs"]
+
+    record = load_job_plan(job_id)
+    card = job["approval_card"]
+    assert set(card) == set(DIGEST_KEY_TREE["jobs"]["approval_card"])
+    # The fake builder writes one file; the job's result diff, a record of its own, names the same.
+    diff = Path(job["evidence"]["result_diff_path"]).read_text(encoding="utf-8")
+    assert card["changed_files"] == ["docs/README.md"]
+    assert [line[len("+++ b/"):] for line in diff.splitlines()
+            if line.startswith("+++ b/")] == card["changed_files"]
+    assert card["changed_file_count"] == 1
+    assert card["test_command"] is None
+    assert card["tasks"] == [
+        {"task_id": task.task_id, "title": task.title, "reviewer_verdict": task.reviewer_verdict,
+         "repair_rounds_used": task.repair_rounds_used, "test_ran": False, "test_passed": None}
+        for task in record.tasks
+    ]
+    assert [task["reviewer_verdict"] for task in card["tasks"]] == ["pass"]
+    # The planner's one criterion, unmet in a repository without tests, as `remedy do` answered.
+    assert card["blocking_criteria"] == [
+        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "unmet"}]
+    assert [criterion["id"] for criterion in card["blocking_criteria"]
+            if criterion["status"] != "met"] == done["unmet_blocking_criteria"]
+    assert card["checks_ran"] is True
+    # An unmet blocking criterion holds the result, and the one repair round makes it medium.
+    assert (card["recommendation"], card["risk"]) == ("hold", "medium")
+
+
+# ── 2c: a job's calls and tokens, read through the command line (DECISION F304 D13) ──
+
+
+def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake_never_reported(
+        repo, capsys):
+    from packages.orchestration.token_ledger import query_cost
+
+    [job_id] = _do_json(capsys, ORDER)["job_ids"]
+
+    client = _status_json(capsys)["client"]
+
+    [project] = client["projects"]
+    [job] = client["jobs"]
+    ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
+    assert job["calls"] == ledger.calls == 4
+    no_tokens = {"input": None, "output": None, "cache_read": None, "cache_creation": None}
+    assert job["tokens"] == no_tokens
+    assert project["cost_today"]["tokens"] == no_tokens
+
+
+# ── 2d: 1,000 settled jobs, the default window and the flag (F304 T007, DECISION F304 D16) ──
+
+#: The size DECISION F298 D1 fixed for the default digest of a scratch root of 1,000 settled jobs.
+DIGEST_SIZE_BOUND = 65_536
+SETTLED_JOBS = 1_000
+
+
+def _settle_jobs(repo: Path, count: int) -> list[str]:
+    """*count* completed jobs whose results were declined, each card naming 25 changed files."""
+    from datetime import datetime, timedelta, timezone
+
+    from packages.orchestration.job_apply import decline_job_result
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        save_job_plan,
+    )
+
+    files = [f"src/module_{index:02d}.py" for index in range(25)]
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    titles = []
+    for index in range(count):
+        task = TaskEntry(task_id="T001", title="Write the modules", reviewer_verdict="pass",
+                         repair_rounds_used=1,
+                         apply_manifest=ApplyManifest(task_id="T001", applied_files=files,
+                                                      status="applied"))
+        finished = start + timedelta(minutes=index)
+        job = JobPlan(job_title=f"settled {index:04d}", project_id="proj-1", state=JOB_COMPLETED,
+                      metadata={"target_repo": str(repo)}, tasks=[task],
+                      finished_at=finished.isoformat())
+        decline_job_result(job, reason="not needed", source="cli", now=finished)
+        save_job_plan(job)
+        titles.append(job.job_title)
+    return titles
+
+
+def test_with_1000_settled_jobs_the_default_digest_stays_small_and_counts_what_it_left_out(
+        repo, capsys):
+    from packages.orchestration.client_digest import CLIENT_DIGEST_ENDED_JOB_LIMIT
+
+    titles = _settle_jobs(repo, SETTLED_JOBS)
+
+    client = _status_json(capsys)["client"]
+
+    assert len(json.dumps(client).encode("utf-8")) < DIGEST_SIZE_BOUND
+    assert client["job_window"] == {"ended_limit": CLIENT_DIGEST_ENDED_JOB_LIMIT,
+                                    "left_out": SETTLED_JOBS - CLIENT_DIGEST_ENDED_JOB_LIMIT}
+    # The jobs that ended last, by their finish; the rest are counted, never listed.
+    assert sorted(job["title"] for job in client["jobs"]) == titles[-CLIENT_DIGEST_ENDED_JOB_LIMIT:]
+    assert client["awaiting_apply"] == [] and client["decisions"] == []
+
+
+def test_all_ended_jobs_lists_every_settled_job_and_names_no_limit(repo, capsys):
+    titles = _settle_jobs(repo, 30)
+
+    main(["status", "--json", "--all-ended-jobs"])
+    client = json.loads(capsys.readouterr().out)["client"]
+
+    assert sorted(job["title"] for job in client["jobs"]) == titles
+    assert client["job_window"] == {"ended_limit": None, "left_out": 0}
+
+
+# ── 2e: a small change needs no template of its own (F304 T007, DECISION F304 D17) ──
+
+
+def test_a_small_change_to_a_repository_whose_tests_pass_meets_its_one_criterion_and_reads_apply(
+        repo, capsys):
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_readme.py").write_text(
+        "from pathlib import Path\n\n\ndef test_the_readme_exists():\n"
+        "    assert Path('README.md').is_file()\n", encoding="utf-8")
+    _git(repo, "add", "tests")
+    _git(repo, "commit", "-qm", "Add a test")
+
+    done = _do_json(capsys, ORDER)
+
+    [job] = _status_json(capsys)["client"]["jobs"]
+    card = job["approval_card"]
+    assert done["unmet_blocking_criteria"] == []
+    assert card["blocking_criteria"] == [
+        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "met"}]
+    # Every check passed; the one repair round of the fake reviewer makes the risk medium.
+    assert (card["recommendation"], card["risk"]) == ("apply", "medium")
+
+
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
 
 

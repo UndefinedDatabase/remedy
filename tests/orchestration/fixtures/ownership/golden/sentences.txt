@@ -27,3 +27,4 @@ The default policy (you accepted at plan approval) answered “Which database?�
 Remedy's planner (under this job's configuration) answered the plan question “Which auth provider?”: “Auth0”.
 You (auto-approved via --yes) approved the plan.
 You rejected the plan.
+You (command line) declined the job's result; it was not applied — reason: “the page is no longer needed”.

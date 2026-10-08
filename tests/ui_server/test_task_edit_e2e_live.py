@@ -169,7 +169,9 @@ class TestTaskEditE2ELive:
              "--builder-provider", "fake", "--reviewer-provider", "fake",
              "--max-rounds", "1", "--repair-rounds", "0"],
             cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
-        assert run1.returncode == 0, f"run 1 exited {run1.returncode}: {run1.stderr}"
+        # A run that ends blocked answers exit 1 (R-1184, DECISION F304 D8).
+        assert run1.returncode == 1, f"run 1 exited {run1.returncode}: {run1.stderr}"
+        assert "ended blocked" in run1.stderr, run1.stderr
 
         blocked = _job_data(data_dir, job_id)
         assert blocked["status"] == "blocked"

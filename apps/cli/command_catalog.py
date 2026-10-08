@@ -357,6 +357,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
+            ArgDef("--all-ended-jobs", "List all ended jobs in the JSON digest, not only those "
+                   "that ended last", required=False, is_option=True, is_flag=True),
         ),
         supports_json=True,
     ),
@@ -1023,6 +1025,20 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("project.attach-job", "job.list"),
         exit_codes=(0, 1, 2, 3),
+    ),
+    CommandEntry(
+        command_id="project.register",
+        group_id="project",
+        subcommand="register",
+        description="Register a repository as a project's repo, writing nothing its git status shows; a repo already registered answers its project.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("do.run", "project.show"),
+        exit_codes=(0, 1, 2, 4),
     ),
 
     # ── patch ────────────────────────────────────────────────────────────
@@ -2131,7 +2147,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show", "change.proof"),
         args=(
             ArgDef("goal", "What you ask, as text, or one path ending in .md to an order file", required=False),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory)", required=False, is_option=True, default=None),
             ArgDef("--project", "Select a registered project by slug or id instead of the repository's own", required=False, is_option=True),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--builder-provider", "Builder provider for `do`: claude, claude-cli, fake or ollama (default: the builder role config)", required=False, is_option=True, default=None),
@@ -2150,6 +2166,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
             ArgDef("--force-job", "One job for what you ask, its tasks under the mission, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
             ArgDef("--force-mission", "Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
+            ArgDef("--new-mission", "Start a new mission for an order file that a mission which has not ended already records; without it such an order file is refused before any step, naming that mission", required=False, is_option=True, is_flag=True),
             ArgDef("--step-by-step", "Halt after each step that did work: print what happened and what comes next; Enter continues, q stops", required=False, is_option=True, is_flag=True),
             ArgDef("--plan-only", "Stop after the shape step: nothing is executed, and the output lists every deliverable", required=False, is_option=True, is_flag=True),
             ArgDef("--apply", "Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied", required=False, is_option=True, is_flag=True),
@@ -2165,6 +2182,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # R-0965: a bare `remedy do "<order>"` runs its job through the same
         # runner as `job.run`, so it declares the same execution metadata.
         may_execute_commands=True,
+        # R-1183: an order whose project has no registered repository names a project the
+        # walk cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="run.show",
@@ -2488,6 +2508,31 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=True,
         may_execute_commands=True,
+        # DECISION F304 D4: an approved apply whose job is absent or not ready to apply names a
+        # job the command cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
+    ),
+    # ── job decline (F304 T003, DECISION F304 D5) ──────────────────────────
+    CommandEntry(
+        command_id="job.decline",
+        group_id="job",
+        subcommand="decline",
+        description="Decline a completed job's result under its mission, with your reason: "
+                    "nothing is applied, the job no longer waits for its apply, and the decline "
+                    "is kept on the job and named in its ownership record (F304).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--reason", "Why you decline the result, in your own words; kept with the "
+                   "decline", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.apply", "job.ownership"),
+        may_mutate_repo=False,
+        # A job that is not completed, or whose result already landed, names a job the command
+        # cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── self (self-dogfood planner — read/metadata-only) ──────────────────

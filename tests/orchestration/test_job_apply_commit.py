@@ -529,17 +529,22 @@ class TestTheConfigKey:
 
 
 class TestThroughTheCli:
-    def test_a_clash_is_a_blocked_apply_and_a_commit_lands(self, repo, monkeypatch, data_root):
+    def test_a_clash_exits_2_before_the_job_and_a_commit_lands(self, repo, monkeypatch, data_root):
         from tests.cli.runtime_helpers import run_grouped_cli
 
         job = _completed(repo, monkeypatch)
         base = ["job", "apply", job.job_id, "--repo", str(repo), "--approve", "--json"]
         clash = run_grouped_cli(base + ["--commit", "Add the page", "--commit-auto"],
                                 data_root, timeout=120)
-        assert clash.returncode == 0, clash.stderr          # a blocked apply exits 0
-        assert json.loads(clash.stdout)["blocked_reason"].startswith(f"{COMMIT_REFUSED}: ")
+        assert clash.returncode == 2, clash.stderr          # DECISION F304 D4
+        data = json.loads(clash.stdout)
+        assert (data["ok"], data["error"]) == (False, "invalid_argument")
+        assert "only one of them may be given" in data["message"]
         alone = run_grouped_cli(base + ["--push"], data_root, timeout=120)
-        assert json.loads(alone.stdout)["blocked_reason"].startswith(f"{PUSH_REFUSED}: ")
+        assert alone.returncode == 2, alone.stderr
+        data = json.loads(alone.stdout)
+        assert (data["ok"], data["error"]) == (False, "invalid_argument")
+        assert "refused alone" in data["message"]
 
         landed = run_grouped_cli(base + ["--commit", "Add the contact page"],
                                  data_root, timeout=120)

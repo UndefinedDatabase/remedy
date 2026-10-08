@@ -4,6 +4,8 @@ In-process through `apps.cli.grouped.main`, against a temporary git repository
 holding one committed file, with the data root under `tmp_path`, the fake
 builder and reviewer and `--no-ui` always, exactly as `tests/cli/test_do_flags.py`
 drives it. A tripwire fails the test if any model-call factory is reached.
+Section 14's runs name `ollama`, whose provider a fixture replaces with the
+fake one reporting token usage, so that the run counts its calls.
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from apps.cli.grouped import main
+from packages.orchestration.pingpong_provider import FakeProvider
 
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 
@@ -197,6 +200,71 @@ def test_the_same_file_with_max_cost_usd_flag_and_plan_only_is_ok(repo, capsys):
     assert data["ok"] is True
 
 
+# ── 8a-8c: any one job budget is the order's cap (DECISION F304 D14) ─────────
+
+
+def test_the_refusal_names_every_cap_an_order_may_carry(repo, capsys):
+    order_path = _write_order(repo, "Write a CONTRIBUTING.md\n")
+
+    code, out, err = _exit_code_and_output(capsys, str(order_path))
+
+    assert code == 2
+    message = json.loads(out)["message"]
+    for cap in ("max-cost-usd", "max-total-tokens", "max-provider-calls",
+                "max-wall-clock-minutes"):
+        assert f"`{cap}:`" in message and f"--{cap}" in message, cap
+
+
+@pytest.mark.parametrize(("key", "budget", "value"), [
+    ("max-total-tokens", "max_total_tokens", 50000),
+    ("max-provider-calls", "max_provider_calls", 40),
+    ("max-wall-clock-minutes", "max_wall_clock_minutes", 30),
+], ids=["total-tokens", "provider-calls", "wall-clock-minutes"])
+def test_a_header_with_only_another_cap_runs_and_records_that_budget(
+        repo, capsys, key, budget, value):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(repo, f"---\n{key}: {value}\n---\nWrite a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path))
+
+    assert _step(data, "run")["status"] == "done"
+    [job_id] = data["job_ids"]
+    budgets = load_job_plan(job_id).budgets
+    assert budgets[budget] == value
+    assert budgets["max_cost_usd"] is None
+
+
+@pytest.mark.parametrize(("flag", "budget"), [
+    ("--max-total-tokens", "max_total_tokens"),
+    ("--max-provider-calls", "max_provider_calls"),
+    ("--max-wall-clock-minutes", "max_wall_clock_minutes"),
+], ids=["total-tokens", "provider-calls", "wall-clock-minutes"])
+def test_a_flag_alone_is_the_cap_and_wins_over_the_headers_value(repo, capsys, flag, budget):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    key = flag.removeprefix("--")
+    bare = _write_order(repo, "Write a CONTRIBUTING.md\n", name="bare.md")
+    assert _do_json(capsys, str(bare), flag, "7", "--plan-only")["ok"] is True
+    headed = _write_order(repo, f"---\n{key}: 3\n---\nWrite a CONTRIBUTING.md\n",
+                          name="headed.md")
+
+    data = _do_json(capsys, str(headed), flag, "9")
+
+    [job_id] = data["job_ids"]
+    assert load_job_plan(job_id).budgets[budget] == 9
+
+
+def test_a_header_cap_that_is_no_number_is_refused_as_an_invalid_budget(repo, capsys):
+    order_path = _write_order(repo, "---\nmax-provider-calls: many\n---\nWrite a CONTRIBUTING.md\n")
+
+    code, out, err = _exit_code_and_output(capsys, str(order_path))
+
+    assert code == 2
+    assert json.loads(out)["error"] == "invalid_budget"
+    assert not _missions_dir_exists(repo)
+
+
 # ── 9: a header contract, and a flag that wins over it ───────────────────────
 
 
@@ -208,8 +276,31 @@ def test_a_header_contract_gives_that_template_and_a_contract_flag_wins_over_it(
     data = _do_json(capsys, str(order_path), "--plan-only")
     assert data["contract"]["template"] == "website"
 
-    data = _do_json(capsys, str(order_path), "--plan-only", "--contract", "cli-tool")
+    # The first start's mission still runs, so the second asks for its own (DECISION F304 D6).
+    data = _do_json(capsys, str(order_path), "--plan-only", "--contract", "cli-tool",
+                    "--new-mission")
     assert data["contract"]["template"] == "cli-tool"
+
+
+def test_a_template_adds_its_criteria_and_keeps_the_planners_own(repo, capsys):
+    """A template is the floor of a contract, never its ceiling (DECISION F304 D17): its criteria
+    come first and the planner's own goal criterion stays beside them."""
+    from packages.orchestration.contract_templates import (
+        compile_contract_template,
+        load_contract_template,
+    )
+
+    order_path = _write_order(
+        repo, "---\nmax-cost-usd: 1\ncontract: cli-tool\n---\nWrite a CONTRIBUTING.md\n")
+
+    criteria = _do_json(capsys, str(order_path), "--plan-only")["contract"]["criteria"]
+
+    template_texts = [criterion.text for criterion in
+                      compile_contract_template(load_contract_template("cli-tool"))]
+    assert [(c["origin"], c["text"]) for c in criteria] == [
+        *(("template", text) for text in template_texts),
+        ("planner", "The mission goal is met in full: Write a CONTRIBUTING.md"),
+    ]
 
 
 # ── 9a-9d: the header's max-cost-usd and project reach the job, flags win (R-1140) ──
@@ -364,3 +455,163 @@ def test_a_text_order_leaves_the_missions_order_source_path_and_digest_empty(
     assert mission is not None
     assert mission.order.source_path == ""
     assert mission.order.source_sha256 == ""
+
+
+# ── 13: one order file, one running mission (F304 T004, DECISION F304 D6) ────
+
+
+def _mission_ids() -> list[str]:
+    from packages.orchestration.mission_state import list_missions, project_ids_with_missions
+
+    return sorted(mission.id for project_id in project_ids_with_missions()
+                  for mission in list_missions(project_id))
+
+
+ORDER_TEXT = "---\nmax-cost-usd: 1\n---\nWrite a CONTRIBUTING.md\n"
+
+
+def test_a_second_start_of_an_order_file_exits_2_naming_the_running_mission(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+
+    code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
+
+    body = json.loads(out)
+    assert (code, body["ok"], body["error"]) == (2, False, "order_already_running")
+    assert body["mission_id"] == first["mission_id"]
+    assert first["mission_id"] in body["message"] and "--new-mission" in body["message"]
+    assert _mission_ids() == [first["mission_id"]]
+
+
+def test_new_mission_starts_a_second_mission_for_the_same_order_file(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+
+    second = _do_json(capsys, str(order_path), "--plan-only", "--new-mission")
+
+    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
+    assert _mission_ids() == sorted([first["mission_id"], second["mission_id"]])
+    # A third start without the flag names the newer of the two running missions.
+    code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
+    assert (code, json.loads(out)["mission_id"]) == (2, second["mission_id"])
+
+
+def test_an_order_file_whose_mission_was_abandoned_starts_again(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+    main(["mission", "abandon", first["mission_id"], "--json"])
+    capsys.readouterr()
+
+    second = _do_json(capsys, str(order_path), "--plan-only")
+
+    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
+
+
+def test_another_order_file_starts_beside_a_running_mission(repo, capsys):
+    first = _do_json(capsys, str(_write_order(repo, ORDER_TEXT)), "--plan-only")
+
+    other = _do_json(capsys, str(_write_order(repo, ORDER_TEXT, "other.md")), "--plan-only")
+
+    assert other["ok"] is True and other["mission_id"] != first["mission_id"]
+
+
+# ── 14: a provider that reports usage, stopped by a call or token cap (DECISION F304 D15) ──
+
+#: What the stand-in reports for every call: the token budget counts its 15 input and output
+#: tokens and never its 1,200 cache tokens.
+REPORTED_USAGE = {"input_tokens": 10, "output_tokens": 5, "cache_read": 1000,
+                  "cache_creation": 200, "total_cost_usd": None}
+REPORTING_ROLES = ("--builder-provider", "ollama", "--reviewer-provider", "ollama")
+
+
+class _UsageReportingProvider(FakeProvider):
+    """The fake builder and reviewer, reporting `REPORTED_USAGE` for every call as a real provider does."""
+
+    def build(self, prompt, **kwargs):
+        out = super().build(prompt, **kwargs)
+        out.usage_actuals = dict(REPORTED_USAGE)
+        return out
+
+    def review(self, prompt, **kwargs):
+        out = super().review(prompt, **kwargs)
+        out.usage_actuals = dict(REPORTED_USAGE)
+        return out
+
+
+@pytest.fixture
+def usage_reporting_ollama(monkeypatch):
+    """`ollama` names the stand-in, so the run counts its calls as a real provider's; no model runs."""
+    from packages.orchestration import pingpong_loop
+
+    real_create_provider = pingpong_loop.create_provider
+
+    def create_provider(name, **kwargs):
+        if name == "ollama":
+            return _UsageReportingProvider()
+        return real_create_provider(name, **kwargs)
+
+    monkeypatch.setattr(pingpong_loop, "create_provider", create_provider)
+
+
+def _reporting_do(capsys, order_path: Path) -> tuple[int, dict]:
+    code = 0
+    try:
+        main(["do", str(order_path), "--json", "--no-llm", "--no-ui", *REPORTING_ROLES])
+    except SystemExit as exc:
+        code = exc.code
+    return code, json.loads(capsys.readouterr().out)
+
+
+@pytest.mark.parametrize(("cap", "budget"), [
+    ("max-provider-calls: 2", "max_provider_calls"),
+    ("max-total-tokens: 20", "max_total_tokens"),
+], ids=["provider-calls", "total-tokens"])
+def test_an_order_capped_only_by_calls_or_tokens_is_stopped_at_its_cap(
+        repo, capsys, usage_reporting_ollama, cap, budget):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(repo, f"---\n{cap}\n---\nWrite a CONTRIBUTING.md\n")
+
+    code, data = _reporting_do(capsys, order_path)
+
+    assert (code, data["ok"], data["error"], data["failed_step"]) == (1, False, "step_failed", "run")
+    assert "its budget stopped it" in data["message"]
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert job.state == "stopped"
+    assert [name for name, value in job.budgets.items() if value is not None] == [budget]
+    # The builder's call counts 15 tokens and the run goes on; the reviewer's reaches either cap.
+    # Counting the cache tokens would have stopped the token cap after the builder's call.
+    actuals = job.budget_actuals
+    assert (actuals["provider_call_count"], actuals["total_tokens"]) == (2, 30)
+
+
+def test_the_digest_names_the_calls_and_tokens_by_kind_a_reporting_provider_ran(
+        repo, capsys, usage_reporting_ollama):
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.token_ledger import query_cost
+
+    code, data = _reporting_do(capsys, _write_order(repo, ORDER_TEXT))
+    assert (code, data["ok"]) == (0, True)
+    [job_id] = data["job_ids"]
+
+    main(["status", "--json"])
+    client = json.loads(capsys.readouterr().out)["client"]
+
+    [project] = client["projects"]
+    [job] = client["jobs"]
+    ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
+    budget_calls = load_job_plan(job_id).budget_actuals["provider_call_count"]
+    assert job["calls"] == ledger.calls == budget_calls == 4
+    assert job["tokens"] == {"input": 40, "output": 20, "cache_read": 4000, "cache_creation": 800}
+
+
+def test_the_page_says_what_the_call_and_token_caps_count():
+    page = Path(__file__).resolve().parents[2] / "docs/system/machine-client-contract-v1.md"
+    text = " ".join(page.read_text(encoding="utf-8").split())
+
+    assert ("`max-provider-calls` counts every call the builder and the reviewer make, a retry "
+            "included.") in text
+    assert ("`max-total-tokens` counts the input and output tokens those calls report, and never "
+            "their cache-read or cache-creation tokens;") in text
+    assert "Neither cap counts a call to the fake provider" in text

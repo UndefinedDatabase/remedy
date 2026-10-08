@@ -1,6 +1,7 @@
 """F268 — `remedy do`'s flags as DECISION F268 D16 rules them.
 
-`--project` selects the project the init step uses; the budget flags are resolved
+`--project` selects the project and the repository the walk runs in (DECISION F304 D2);
+the budget flags are resolved
 before the first step and reach the job; `--builder-model` and `--reviewer-model`
 reach the job and every `remedy job run` Next line; `--planner-model` reaches every
 structured planner call (D16 (4) to (7)). An explicit `remedy do run` walks the same
@@ -109,7 +110,7 @@ def test_project_of_a_project_init_registered_walks_and_the_job_is_that_projects
     [job_id] = data["job_ids"]
     job = load_job_plan(job_id)
     assert job.project_id == str(project.id)
-    assert job.repo_path == str(repo)
+    assert job.repo_path == str(other)
     assert resolve_project(repo) is None
 
 

@@ -154,6 +154,7 @@ export const OWNERSHIP_CHIP_WORDS: Record<string, string> = {
   clarification_answered: "Plan question",
   plan_approved: "Approval",
   plan_rejected: "Rejection",
+  result_declined: "Declined",
 };
 
 /** The chip word for one entry's action, or the generic fallback. */

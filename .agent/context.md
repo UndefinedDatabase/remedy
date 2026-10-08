@@ -1,14 +1,14 @@
-# Context — F298 Machine client contract v1.1: what a client can rely on
+# Context — F304 Machine client contract v1.1, part two: what a client can rely on
 
 ## Active Branch
-feature/f298-machine-client-contract-v1-1, cut from `main` at `77493e0f9`
-(the merge commit of pull request 314, operator amendment amend1007b-luna-api-upkeep).
+feature/f304-machine-client-contract-v1-1-part-two, cut from `main` at `4eda924c5`
+(the merge commit of pull request 315, F298).
 
 ## Scope
-F298 (Tier 12, Luna gate A, part two): the semantics a machine client relies on, repaired on the
-command line that F253's HTTP API will call, and one contract document generated from the code,
-as `docs/roadmap/features/T12_F298.md` lists them; DECISION F298 D1 fixes the slices and their
-order.
+F304 (Tier 12, Luna gate A, part two): T002 to T007 carried word for word from F298 — the
+semantics a machine client relies on, repaired on the command line that F253's HTTP API will call,
+each added to the interface F298's T001 generates from the code, as
+`docs/roadmap/features/T12_F304.md` lists them; DECISION F304 D1 fixes the order.
 
 ## Do not touch
 The approval gate (nothing applied without `--approve`, nothing committed or pushed without its

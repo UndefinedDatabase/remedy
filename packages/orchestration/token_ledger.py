@@ -88,6 +88,7 @@ Public API::
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
     query_cost(*, project_id=None, path=None, since=None, until=None,
                job_id=None, by=None) -> CostReport
+    ledger_usage_by_job(*, project_id) -> dict[str, CostRow]
     prior_report_period(since, until) -> PriorReportPeriod
     merge_cost_reports(reports) -> CostReport
     query_segment_shares(*, project_id=None, path=None, since=None, until=None,
@@ -1255,6 +1256,25 @@ def query_cost(
     finally:
         conn.close()
     return report
+
+
+# WHY: the machine client's digest names every job's calls and tokens, and one grouped read per
+# project ledger is what keeps that one query instead of one per job (DECISION F304 D13).
+def ledger_usage_by_job(*, project_id: UUID | str) -> dict[str, CostRow]:
+    """Each job's totals in the project's ledger, by job id; READ-ONLY, empty without a ledger.
+
+    The same aggregation as ``query_cost``, NULLS INTACT, grouped by the rows' ``job_id``; rows
+    without a job id are left out. Never creates the ledger.
+    """
+    target = _resolve_ledger_path(project_id=project_id, path=None)
+    if not target.is_file():
+        return {}
+    conn = _connect_readonly(target)
+    try:
+        rows = _cost_bucket_rows(conn, " WHERE job_id IS NOT NULL", [], group_expr="job_id")
+    finally:
+        conn.close()
+    return {row.bucket: row for row in rows if row.bucket is not None}
 
 
 # The four honest answers to "why is there no previous period to compare with".

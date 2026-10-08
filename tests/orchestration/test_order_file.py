@@ -45,6 +45,9 @@ def test_every_header_key_is_read():
         "project: demo\n"
         "contract: website\n"
         "max-cost-usd: 5\n"
+        "max-total-tokens: 20000\n"
+        "max-provider-calls: 12\n"
+        "max-wall-clock-minutes: 30\n"
         "constraint: never edit README.md\n"
         "---\n"
         "Write a CONTRIBUTING.md.\n"
@@ -53,8 +56,28 @@ def test_every_header_key_is_read():
     assert order.project == "demo"
     assert order.contract == "website"
     assert order.max_cost_usd == "5"
+    # DECISION F304 D14: the other three job budgets are caps an order file may carry.
+    assert (order.max_total_tokens, order.max_provider_calls,
+            order.max_wall_clock_minutes) == ("20000", "12", "30")
     assert order.constraints == ("never edit README.md",)
     assert order.text.startswith("Write a CONTRIBUTING.md.")
+
+
+def test_a_file_without_the_other_caps_reads_none_for_each():
+    order = parse_order_file_text("---\nmax-cost-usd: 1\n---\nOrder text.\n", "order.md")
+    assert (order.max_total_tokens, order.max_provider_calls,
+            order.max_wall_clock_minutes) == (None, None, None)
+
+
+@pytest.mark.parametrize("key", ["max-total-tokens", "max-provider-calls",
+                                 "max-wall-clock-minutes"])
+def test_a_repeated_cap_key_names_its_line_number(key):
+    raw = f"---\n{key}: 1\n{key}: 2\n---\nOrder text.\n"
+    with pytest.raises(OrderFileError) as exc_info:
+        parse_order_file_text(raw, "order.md")
+    exc = exc_info.value
+    assert exc.error == "order_file_invalid_header"
+    assert "line 3" in str(exc)
 
 
 def test_a_repeated_constraint_keeps_order_and_builds_the_d2_3_text_exactly():

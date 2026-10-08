@@ -1,94 +1,148 @@
-# Handoff — F298 session 7, round 30: the Open PR Gate's repair, round 29 booked, R-1182 registered and repaired
+# Handoff — F304 round 24: round 23 booked, the ledger rotated, F304 accepted
 
 ## Session
 
-SESSION 7 of feature F298 · round 30 · rounds so far 30
+SESSION 5 of feature F304 · round 24 · rounds so far 24
 
-Context self-assessment: the reviewer's context is comfortable; the session continues at the Open PR Gate after this round.
+Context self-assessment: the reviewer's context is comfortable; the session ends here because F304 is closed and the next feature starts in a fresh session.
 
-Fortschritt: 100 % (F298 is accepted; its pull request waits for the hosted run this round's push starts) — Schätzung
+Fortschritt: 100 % (F304 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `ad6081d74c3ce59001904277368ced441b4feedc`..HEAD (HEAD is C3 below, which carries this handback).
+Review of `15b3894c0eb02f607acf9b046c0bd84f47669db8`..HEAD (HEAD is C3 below, which carries this
+handback and is the last commit on the branch).
 
 ## Commits
 
-### 39184b37d F298 R30 C1: book round 29, register R-1182, DECISION F298 D24, the plan and the block
+### 8125376f8 F304 R24 C1: book round 23, save the round 24 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f298-r30.md` | 120/0 (new) | byte copy of `block.md` (120 lines, sha256 `d56f8ffbf684299d7e34d24ab8693d6157e50130220b4df548e118e43c9104cb`) |
-| `.agent/decisions.md` | 10/0 | its bytes at `ad6081d74` followed by `append-decisions.txt` (DECISION F298 D24) |
-| `.agent/live_review.md` | 4/0 | its bytes at `ad6081d74` followed by `append-live_review.txt` (round 29's gate entry, R-1182) |
-| `.agent/plan.md` | 10/8 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f304-r24.md` | 152/0 | new file, byte copy of `block.md` |
+| `.agent/authored/f304-r24-status_line.txt` | 1/0 | new file, byte copy of `status_line.txt` |
+| `.agent/authored/f304-r24-pr_body.md` | 137/0 | new file, byte copy of `pr_body.md` |
+| `.agent/live_review.md` | 2/0 | `sim-C1-live_review.md`, byte for byte: the blob at `15b3894c0` with round 23's gate entry appended |
+| `.agent/plan.md` | 9/7 | `dry-plan.md`, byte for byte |
 
-### 553f9f4d7 F298 R30 C2: the answer-trees test reads the expected source through the running interpreter (R-1182)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `tests/cli/test_client_interface.py` | 4/2 | `sim-test_client_interface.py`, byte for byte: one two-line assertion becomes a two-line comment and a two-line assertion that unparses the expected source with the running interpreter |
-
-### C3 F298 R30 C3: handback
-
-C3's hash is not known when this file is written (a handoff cannot table the commit that writes it).
+### 28f148a73 F304 R24 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | this file, rewritten per `docs/agents/handback_template.md` |
+| `.agent/live_review.md` | 0/86 | the rotation moved 86 records out, byte-equal to `sim-C2-live_review.md` |
+| `.agent/live_review_archive.md` | 86/0 | the same 86 records appended, byte-equal to `sim-C2-live_review_archive.md` |
+
+### F304 R24 C3: accept F304 in STATUS with its README sync and the self-use queue (self-reference, one grouped table)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 | F304's `[~]` line becomes the one line of `status_line.txt` (`sim-STATUS.md`, byte for byte); measured before the handoff joined |
+| `README.md` | 15/2 | `131 of 304`, Tier 12 row reading 4 and 13, F304's paragraph after F298's (`sim-README.md`, byte for byte); measured before the handoff joined |
+| `scripts/self_use_queue.json` | 1/1 | `SU-049`'s `consumed_by` becomes `F304` (`sim-self_use_queue.json`, byte for byte); measured before the handoff joined |
+| `.agent/handoff.md` | this commit | this file; a handoff cannot table the commit that writes it |
 
 ## External actions
 
-- None before this file is committed. The push of the branch and its outcome (every attempt) are in the worker's final reply (write-once rule; not known when this file is written).
-- No `gh` command, no full suite, no mutation, no worktree, no merge, no branch switch, no new branch, no force-push, no pull.
+- `git push origin feature/f304-machine-client-contract-v1-1-part-two` after C3, and then
+  `gh pr create` and `gh pr list --state open`: reported by the worker's reply, not here (Rule A4:
+  this file is written before them, and no pull request number exists yet).
+- The rotation: `python3 scripts/rotate_live_review.py`, once, exit 0 (output below).
+- No full suite, no mutation, no other pytest command, no worktree, no merge, no new branch, no
+  force-push, no pull, no checkout or switch.
 
 ## Verification
 
-0. Before any write: `block.md` (120 lines), `sim-readings.txt` and `digests.txt` matched the prompt's sha256 digests, and the four other prepared files matched `digests.txt` (Python `hashlib.sha256`). `git rev-parse HEAD` and `git rev-parse origin/feature/f298-machine-client-contract-v1-1` both read `ad6081d74c3ce59001904277368ced441b4feedc`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before each commit (checked inside the commit script).
-1. C1: post equals pre plus slice in bytes, `.agent/live_review.md` (195307 + 2842 = 198149) and `.agent/decisions.md` (3038974 + 2687 = 3041661), both True; the plan copy equal. `git diff --cached --numstat` read `120 0` block copy, `10 0` decisions, `4 0` live_review, `10 8` plan, the cells of `sim-readings.txt`. The staged diff was written to `c1.diff` and read whole.
-2. C2: the byte comparison with `sim-test_client_interface.py` read equal; `git diff --cached --numstat` read `4 2`, the cell of `sim-readings.txt`. The staged diff was written to `c2.diff` and read whole.
-3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, exit 0): empty. Byte comparison of every file this round copied or appended against its prepared file: block copy, plan and test file equal; both ledger files end with their slice.
-4. **Gate 2** (`python3 -m ruff check tests/cli/test_client_interface.py`): exit 0, `All checks passed!`.
-5. **Gate 3** (`python3 -m pytest -q -rfEs tests/cli/test_client_interface.py tests/cli/test_golden_path.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py`, run once through a Python wrapper): exit 0, last line `160 passed in 63.58s (0:01:03)`; no FAILED, ERROR or SKIPPED line. `sim-readings.txt` lists 160 passed.
-6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six `pass` (`handler_import`, `live_review_verdict` "last Gate verdict PASS", `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`), `"fail_count": 0`, `"ok": true`.
-7. **Gate 5** (`open_finding_ids`): exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1182']`, the twelve ids of `sim-readings.txt`. `git status --porcelain` empty after the gates.
-8. **Gate 6** (after the push): reported in the worker's final reply.
+0. Before any write: all twelve prepared files matched their sha256 (Python `hashlib`, 12 of 12 True;
+   `block.md` 152 lines, `48b5977453579bd6dd0541a319210ee6aa32e83d55f61b921a1cd4a6945d9289`).
+   `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read
+   `15b3894c0eb02f607acf9b046c0bd84f47669db8`, `git status --porcelain` was empty, `.agent/STOP`
+   was absent. `git branch --show-current` read the feature branch before each commit.
+1. C1: every copy byte-equal to its prepared file (5 of 5 True); `git diff --cached --numstat` read
+   `137 0`, `1 0`, `152 0`, `2 0`, `9 7`, the cells of `sim-readings.txt`. The staged diff was
+   written to a file and read whole.
+2. C2: the rotation's whole output, exit 0:
+
+       gate records moved: 30
+       finding pairs moved: 5 (10 records)
+       resolved-text records moved: 3
+       old ledger size: 261805 bytes
+       new ledger size: 183214 bytes
+       old archive size: 6193064 bytes
+       new archive size: 6271655 bytes
+       open findings before: 11
+       open findings after: 11
+       written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+
+   Both ledger files byte-equal to `sim-C2-live_review.md` and `sim-C2-live_review_archive.md`
+   (True, True); `git diff --cached --numstat` read `0 86` and `86 0`. The staged diff (225 lines)
+   was written to a file and read whole; its 86 removed lines equal its 86 added lines as a
+   multiset (a script reading).
+3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain` after the three C3 files
+   were put in place): ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`
+   and nothing else; `git diff --numstat` read `15 2`, `1 1`, `1 1`. The byte comparison of every
+   copied file against its prepared file: 9 of 9 True (the three authored copies, the plan, the two
+   ledger files, STATUS, README, the queue).
+4. **Gate 2**: the content of `status_line.txt` without its trailing newline occurs 1 time in
+   `docs/roadmap/STATUS.md`; lines beginning `- [~]`: 0.
+5. **Gate 3** (`python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
+   tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+   tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+   tests/cli/test_golden_path.py`, run once through a Python wrapper): exit 0, `555 passed in
+   37.57s`, no FAILED, ERROR or SKIPPED line.
+6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`,
+   `handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`,
+   `repo_root_hygiene` and `high_blockers_open` all `pass`, `"fail_count": 0`, `"ok": true`.
+7. **Gate 5** (`python3 -c "import scripts.rotate_live_review as r;
+   print(r.open_finding_ids(open('.agent/live_review.md').read()))"`): exit 0,
+   `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162',
+   'R-1172', 'R-1176']`.
+8. Gate 6 (after the push and the pull request): reported in the worker's reply, not here.
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f298-r30.md`: 120 lines, byte-equal, sha256 `d56f8ffbf684299d7e34d24ab8693d6157e50130220b4df548e118e43c9104cb`.
-- `append-live_review.txt` and `append-decisions.txt`: post equals pre plus slice in bytes, once each (item 1 above).
-- `dry-plan.md` to `.agent/plan.md` and `sim-test_client_interface.py` to `tests/cli/test_client_interface.py`: byte-equal.
+- `block.md` to `.agent/authored/f304-r24.md`: 152 lines, byte-equal, sha256
+  `48b5977453579bd6dd0541a319210ee6aa32e83d55f61b921a1cd4a6945d9289`.
+- `status_line.txt` to `.agent/authored/f304-r24-status_line.txt` and `pr_body.md` to
+  `.agent/authored/f304-r24-pr_body.md`: byte-equal.
+- The STATUS line in `docs/roadmap/STATUS.md` is byte-identical to
+  `.agent/authored/f304-r24-status_line.txt` without its trailing newline, count 1 (Verification
+  item 4).
+- `sim-C1-live_review.md` to `.agent/live_review.md` and `dry-plan.md` to `.agent/plan.md`:
+  byte-equal after C1; the two ledger files byte-equal to their `sim-C2-*` files after C2.
+- `sim-STATUS.md`, `sim-README.md` and `sim-self_use_queue.json` to their three paths: byte-equal.
 
 ## Deviations & assumptions
 
-- Gates 3, 4 and 5 ran one after the other inside one script (`g3.py`), gate 3 first and alone as a test command; gates 1 and 2 ran in an earlier script. No two commands ran at the same time and no byte of any commit changed because of the grouping.
-- The commit script also wrote each commit message from a file with `git commit -F`; the subjects and trailer are the block's.
+None.
 
 ## Round verdicts
 
-Rounds 1 to 29 are booked in the ledger (round 29 by this round's C1: PASS). Round 30's verdict is the reviewer's, booked in the next feature's first commit.
+Rounds 1 to 23 are booked in the ledger (round 23 by this round's C1: PASS). Round 24's verdict
+is the reviewer's, written into the pull request and booked in the next feature's first commit.
 
 ## For the operator, in plain sentences
 
-GitHub's check of the finished first part of the machine client contract failed on the newer of its two Python versions, in one test only. The test compared a piece of program text with the exact way the older Python version prints it, while the newer one prints it without two brackets. The product itself was right and is unchanged. The test now lets the running Python print both sides, and still fails when the product line is wrong. The push of this repair starts GitHub's check once more, and the pull request is merged only if that check is green. Nothing waits for you.
+The second part of the machine client contract is finished and accepted. A program that drives Remedy through its command line can now rely on what it is told: a job runs in the repository of the project it names, a change that could not be made is reported as refused and never as a success, a finished result can be turned down with a reason, and the same work order cannot start twice by accident. The overview shows what each finished job changed, what it cost in money, calls and tokens, and whether to apply it, while staying small. The page a program reads says all of this and is checked against the code by tests. A pull request is open for it and will be merged at the start of the next session unless you merge it earlier. The next work is the public web interface for programs. Eleven smaller problems carried from earlier features stay written down for the next clean-up feature. Nothing waits for you.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
-2. Then the Open PR Gate, waiting for the hosted run this round's push started, merging pull request 315 only if it is green and writing an operator question and stopping if it is red (DECISION F298 D24 (4)).
-3. Then the booking of round 30's verdict and R-1182's resolution in the next feature's first commit.
-4. Then Rule A5: the next unchecked line is F304 — Machine client contract v1.1, part two.
+1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
+   and stop.
+2. Then the Open PR Gate, which merges F304's pull request in the NEXT session and never in this
+   one, after reading its hosted checks.
+3. Then the booking of round 24's verdict in the next feature's first commit.
+4. Then Rule A5 (the next unchecked line is F253 — Headless API contract).
 
-Operator questions open: 1.
-Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low, owned by F297; R-1182, Low, owned by F298).
+Operator questions open: 0.
+Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
+R-1162, R-1172 and R-1176, Low; all owned by F297).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 29, register R-1182, DECISION F298 D24, the plan and the block | done | `39184b37d` |
-| C2: the answer-trees test reads the expected source through the running interpreter | done | `553f9f4d7` |
-| C3: handback | done | this commit |
-| Gates 1 to 5 | done | all green, before this file was written |
-| Push, gate 6 | pending at write time | outcomes in the worker's final reply |
+| C1: book round 23, save the block, the STATUS line and the PR body | done | `8125376f8` |
+| C2: rotate the finding ledger | done | `28f148a73`, 30 gate records and 5 finding pairs moved, 11 open before and after |
+| C3: accept F304 in STATUS, README sync, self-use queue | done | this commit |
+| Gates 1 to 5 | done | all green, run before this file was written |
+| Push, pull request, `gh pr list`, gate 6 | pending | reported in the worker's reply |
