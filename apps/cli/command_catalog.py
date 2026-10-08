@@ -2876,6 +2876,23 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("client.interface", "status.run"),
     ),
+    # F253 S5a (DECISION F253 D13): read an order the supervisor started as a record of its own.
+    CommandEntry(
+        command_id="client.order",
+        group_id="client",
+        subcommand="order",
+        description="Read an order (an order file or text) the supervisor started, as a record of its own: its state, its exit code and the answer remedy do printed (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("order", "The order id the supervisor answered when it started your order "
+                  "file or text"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "client.changes"),
+        # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
+        exit_codes=(0, 1, 2, 3),
+    ),
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
