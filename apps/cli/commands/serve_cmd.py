@@ -26,6 +26,8 @@ def _cmd_serve_start(*, json_output: bool = False) -> None:
         else:
             print(f"Remedy serve supervisor answering on {state.socket} "
                   f"(process {state.pid}). Press Ctrl-C to stop.")
+            if state.api_port is not None:
+                print(f"Also answering the public HTTP API on 127.0.0.1:{state.api_port}.")
         sys.stdout.flush()
 
     try:
@@ -45,6 +47,8 @@ def _cmd_serve_status(*, json_output: bool = False) -> None:
         return
     if state.running:
         print(f"Serve supervisor: running (process {state.pid}) on {state.socket}")
+        if state.api_port is not None:
+            print(f"Also answering the public HTTP API on 127.0.0.1:{state.api_port}.")
     else:
         print(f"Serve supervisor: not running (no answer on {state.socket})")
 

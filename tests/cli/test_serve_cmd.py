@@ -46,6 +46,7 @@ def test_status_with_no_supervisor_reports_not_running(root):
     body = _envelope(proc)
     assert (body["ok"], body["running"], body["pid"]) == (True, False, None)
     assert body["socket"] == str(serve_paths(root).socket)
+    assert body["api_port"] is None
 
 
 def test_stop_with_no_supervisor_stops_nothing_and_succeeds(root):
