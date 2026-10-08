@@ -229,6 +229,7 @@ packages.orchestration.proof_chain
 packages.orchestration.proposed_tasks
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
+packages.orchestration.public_api
 packages.orchestration.rate_governor
 packages.orchestration.real_test_execution
 packages.orchestration.repair_attest

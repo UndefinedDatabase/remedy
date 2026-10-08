@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from packages.orchestration.public_api import is_public_api_path
+
 # ---------------------------------------------------------------------------
 # Path sanitization (no absolute path leaks in dashboard JSON)
 # ---------------------------------------------------------------------------
@@ -2992,6 +2994,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._serve_static(path)
             return
 
+        # F253: the public HTTP API namespace. It takes its token in the
+        # Authorization header, never the query, and answers in the command line's
+        # envelope rather than the cockpit's own shape.
+        if is_public_api_path(path):
+            self._send_public_api_get(path)
+            return
+
         # API routes — token required
         token = (qs.get("token") or [""])[0]
         if not server_token_matches(token, self.server_token):
@@ -4308,6 +4317,23 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return False
         return server_token_matches(supplied, self.server_token)
 
+    def _send_public_api_get(self, path: str) -> None:
+        """Answer a GET under the public HTTP API namespace (F253, DECISION F253 D1).
+
+        Authentication is decided BEFORE the route, the same order the write door
+        uses: an unauthenticated caller must learn nothing about which paths exist.
+        """
+        from packages.orchestration.public_api import (
+            answer_public_api_get,
+            public_api_token_refusal,
+        )
+
+        if not self._bearer_token_accepted():
+            self._send_json(*public_api_token_refusal())
+            return
+        status, body, headers = answer_public_api_get(path)
+        self._send_json(status, body, headers=headers)
+
     def _read_command_payload(self) -> tuple[Any, Any]:
         """Return `(payload, None)` for a well-formed body, else `(None, error)`."""
         try:
@@ -4456,12 +4482,15 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         self._send_json(*_safe_error(405, "method not allowed"))
 
-    def _send_json(self, code: int, data: dict[str, Any]) -> None:
+    def _send_json(self, code: int, data: dict[str, Any],
+                   headers: dict[str, str] | None = None) -> None:
         body = json.dumps(data, default=str).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
