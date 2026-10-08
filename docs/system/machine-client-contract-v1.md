@@ -53,6 +53,14 @@ before any step with `order_already_running` and exit code 2, and the refusal na
 under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
 holds whitespace is planned as text, never read as a file.
 
+A run checks its budgets before each call of its builder and its reviewer, never during one,
+and stops at the first check that finds a budget reached; a stopped run answers as step 1 below
+says. `max-provider-calls` counts every call the builder and the reviewer make, a retry
+included. `max-total-tokens` counts the input and output tokens those calls report, and never
+their cache-read or cache-creation tokens; a call that reports no tokens adds none, and the last
+call before a check can carry a run past the cap. Neither cap counts a call to the fake
+provider, which spends nothing, although the digest's `calls` still counts it.
+
 ## The path, step by step
 
 1. **Propose.** `remedy do <order file> --json --no-ui --yes` plans the order and runs its first

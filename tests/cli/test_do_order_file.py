@@ -4,6 +4,8 @@ In-process through `apps.cli.grouped.main`, against a temporary git repository
 holding one committed file, with the data root under `tmp_path`, the fake
 builder and reviewer and `--no-ui` always, exactly as `tests/cli/test_do_flags.py`
 drives it. A tripwire fails the test if any model-call factory is reached.
+Section 14's runs name `ollama`, whose provider a fixture replaces with the
+fake one reporting token usage, so that the run counts its calls.
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from apps.cli.grouped import main
+from packages.orchestration.pingpong_provider import FakeProvider
 
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 
@@ -489,3 +492,105 @@ def test_another_order_file_starts_beside_a_running_mission(repo, capsys):
     other = _do_json(capsys, str(_write_order(repo, ORDER_TEXT, "other.md")), "--plan-only")
 
     assert other["ok"] is True and other["mission_id"] != first["mission_id"]
+
+
+# ── 14: a provider that reports usage, stopped by a call or token cap (DECISION F304 D15) ──
+
+#: What the stand-in reports for every call: the token budget counts its 15 input and output
+#: tokens and never its 1,200 cache tokens.
+REPORTED_USAGE = {"input_tokens": 10, "output_tokens": 5, "cache_read": 1000,
+                  "cache_creation": 200, "total_cost_usd": None}
+REPORTING_ROLES = ("--builder-provider", "ollama", "--reviewer-provider", "ollama")
+
+
+class _UsageReportingProvider(FakeProvider):
+    """The fake builder and reviewer, reporting `REPORTED_USAGE` for every call as a real provider does."""
+
+    def build(self, prompt, **kwargs):
+        out = super().build(prompt, **kwargs)
+        out.usage_actuals = dict(REPORTED_USAGE)
+        return out
+
+    def review(self, prompt, **kwargs):
+        out = super().review(prompt, **kwargs)
+        out.usage_actuals = dict(REPORTED_USAGE)
+        return out
+
+
+@pytest.fixture
+def usage_reporting_ollama(monkeypatch):
+    """`ollama` names the stand-in, so the run counts its calls as a real provider's; no model runs."""
+    from packages.orchestration import pingpong_loop
+
+    real_create_provider = pingpong_loop.create_provider
+
+    def create_provider(name, **kwargs):
+        if name == "ollama":
+            return _UsageReportingProvider()
+        return real_create_provider(name, **kwargs)
+
+    monkeypatch.setattr(pingpong_loop, "create_provider", create_provider)
+
+
+def _reporting_do(capsys, order_path: Path) -> tuple[int, dict]:
+    code = 0
+    try:
+        main(["do", str(order_path), "--json", "--no-llm", "--no-ui", *REPORTING_ROLES])
+    except SystemExit as exc:
+        code = exc.code
+    return code, json.loads(capsys.readouterr().out)
+
+
+@pytest.mark.parametrize(("cap", "budget"), [
+    ("max-provider-calls: 2", "max_provider_calls"),
+    ("max-total-tokens: 20", "max_total_tokens"),
+], ids=["provider-calls", "total-tokens"])
+def test_an_order_capped_only_by_calls_or_tokens_is_stopped_at_its_cap(
+        repo, capsys, usage_reporting_ollama, cap, budget):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(repo, f"---\n{cap}\n---\nWrite a CONTRIBUTING.md\n")
+
+    code, data = _reporting_do(capsys, order_path)
+
+    assert (code, data["ok"], data["error"], data["failed_step"]) == (1, False, "step_failed", "run")
+    assert "its budget stopped it" in data["message"]
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert job.state == "stopped"
+    assert [name for name, value in job.budgets.items() if value is not None] == [budget]
+    # The builder's call counts 15 tokens and the run goes on; the reviewer's reaches either cap.
+    # Counting the cache tokens would have stopped the token cap after the builder's call.
+    actuals = job.budget_actuals
+    assert (actuals["provider_call_count"], actuals["total_tokens"]) == (2, 30)
+
+
+def test_the_digest_names_the_calls_and_tokens_by_kind_a_reporting_provider_ran(
+        repo, capsys, usage_reporting_ollama):
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.token_ledger import query_cost
+
+    code, data = _reporting_do(capsys, _write_order(repo, ORDER_TEXT))
+    assert (code, data["ok"]) == (0, True)
+    [job_id] = data["job_ids"]
+
+    main(["status", "--json"])
+    client = json.loads(capsys.readouterr().out)["client"]
+
+    [project] = client["projects"]
+    [job] = client["jobs"]
+    ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
+    budget_calls = load_job_plan(job_id).budget_actuals["provider_call_count"]
+    assert job["calls"] == ledger.calls == budget_calls == 4
+    assert job["tokens"] == {"input": 40, "output": 20, "cache_read": 4000, "cache_creation": 800}
+
+
+def test_the_page_says_what_the_call_and_token_caps_count():
+    page = Path(__file__).resolve().parents[2] / "docs/system/machine-client-contract-v1.md"
+    text = " ".join(page.read_text(encoding="utf-8").split())
+
+    assert ("`max-provider-calls` counts every call the builder and the reviewer make, a retry "
+            "included.") in text
+    assert ("`max-total-tokens` counts the input and output tokens those calls report, and never "
+            "their cache-read or cache-creation tokens;") in text
+    assert "Neither cap counts a call to the fake provider" in text
