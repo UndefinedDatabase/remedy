@@ -32,6 +32,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 import threading
@@ -502,7 +503,10 @@ class OrderLauncher:
         """Write ORDER_TEXT to a new order's own folder and run it there; return its record.
 
         OPTIONS are the caller's own flags (`--no-llm`, `--builder-provider=fake`, ...); this
-        method adds only `ORDER_RUN_ALWAYS_OPTIONS` and the trailing `-- order.md`.
+        method adds only `ORDER_RUN_ALWAYS_OPTIONS` and the trailing `-- order.md`. When the
+        child cannot be started, `subprocess.Popen` raises `OSError`: the order's folder is
+        removed whole and the error is raised again, so no half-made order is left on disk
+        (R-1201).
         """
         order_id = secrets.token_hex(8)
         self._paths.orders_dir.mkdir(parents=True, exist_ok=True)
@@ -514,9 +518,13 @@ class OrderLauncher:
         err_log = order_dir / "err.log"
         env = child_environment(self._paths)
         argv = [*self._prefix, "do", "run", *options, *ORDER_RUN_ALWAYS_OPTIONS, "--", "order.md"]
-        with open(out_log, "wb") as out, open(err_log, "wb") as err:
-            child = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
-                                     cwd=str(order_dir), env=env, start_new_session=True)
+        try:
+            with open(out_log, "wb") as out, open(err_log, "wb") as err:
+                child = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
+                                         cwd=str(order_dir), env=env, start_new_session=True)
+        except OSError:
+            shutil.rmtree(order_dir)
+            raise
         record = OrderRecord(order_id=order_id, pid=child.pid, started_at=_now(),
                              order_file=str(order_md.resolve()), out_log=str(out_log),
                              err_log=str(err_log))

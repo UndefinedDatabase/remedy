@@ -671,7 +671,9 @@ def answer_public_api_post(
     runner does; otherwise its body is checked, `_order_text_and_options` builds the order's text
     and options or raises `PublicApiWriteRefusal`, START_ORDER is called with them, and the
     order it started is answered 202 with `order_record_payload` — the same answer `GET
-    /api/v1/orders/{order}` and `remedy client order` give it.
+    /api/v1/orders/{order}` and `remedy client order` give it. An `OSError` from START_ORDER —
+    the order could not be started — answers 500 `api_command_failed` and nothing runs
+    (R-1201).
 
     Every other route's body, not a JSON object holding only its declared keys each of its kind,
     answers 400 `api_body_invalid`; a `PublicApiWriteRefusal` from the twin's argument builder
@@ -711,7 +713,12 @@ def answer_public_api_post(
                 order_text, options = _order_text_and_options(checked)
             except PublicApiWriteRefusal as refusal:
                 return refusal.status, build_error(refusal.error, refusal.message), {}
-            record = start_order(order_text, options)
+            try:
+                record = start_order(order_text, options)
+            except OSError:
+                return 500, build_error(
+                    "api_command_failed",
+                    f"the order for '{path}' could not be started; nothing runs"), {}
             return 202, build_ok(**order_record_payload(serve_paths(), record)), {}
         try:
             argv = _TWIN_ARGV[route.twin](segments, checked)

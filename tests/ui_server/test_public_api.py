@@ -115,10 +115,11 @@ def _tcp_request(port: int, method: str, path: str,
 
 
 def _unix_request(sock_path: Path, method: str, path: str,
-                   headers: dict[str, str] | None = None) -> tuple[int, dict, dict[str, str]]:
+                   headers: dict[str, str] | None = None,
+                   body: bytes | None = None) -> tuple[int, dict, dict[str, str]]:
     conn = UnixHTTPConnection(sock_path, timeout=10)
     try:
-        conn.request(method, path, headers=headers or {})
+        conn.request(method, path, body=body, headers=headers or {})
         resp = conn.getresponse()
         raw = resp.read()
         status = resp.status
@@ -1310,6 +1311,73 @@ def test_an_order_create_post_whose_project_is_not_registered_is_409_and_starts_
     status, answer, _headers = _post_order(body, start)
     assert (status, answer["error"]) == (409, "api_order_project_unknown")
     assert calls == []
+
+
+def test_an_order_create_post_whose_header_names_no_project_is_refused_with_remedy_project_set(
+        monkeypatch, registered_project_slug):
+    """R-1202: `_order_text_and_options` refuses an order whose header names no project before
+    `select_project` is ever consulted. With `REMEDY_PROJECT` naming a registered project, a
+    fall-through to `select_project`'s own environment fallback would otherwise accept such an
+    order; this test fails if that fall-through replaces the explicit refusal."""
+    monkeypatch.setenv("REMEDY_PROJECT", registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_starter_raises_oserror_is_500_and_starts_nothing(
+        registered_project_slug):
+    """R-1201: an `OSError` from the order starter (the child could not be started) is answered
+    500 `api_command_failed` rather than left to propagate unanswered and unledgered."""
+    def start(order_text: str, options: list[str]):
+        raise OSError("cannot start")
+
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text}, start)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+
+
+def test_an_order_create_post_through_the_socket_handler_when_the_child_cannot_start(
+        tmp_path, registered_project_slug):
+    """R-1201: through a real handler made by `socket_handler_class` holding an `OrderLauncher`
+    whose child cannot start, `POST /api/v1/orders` answers 500 `api_command_failed`, the call
+    ledger holds one line for it with that status and token, and `orders_dir` is left holding
+    no folder."""
+    import socketserver
+
+    from packages.orchestration.serve_paths import serve_paths
+
+    paths = serve_paths()
+    launcher = SR.OrderLauncher(paths, argv_prefix=[str(tmp_path / "no-such-program")])
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "order-500.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=SR.CommandRunner(paths), orders=launcher))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        text = _order_text(registered_project_slug)
+        status, body, _headers = _unix_request(
+            sock_path, "POST", ORDER_CREATE_PATH, headers=_bearer(SERVER_TOKEN),
+            body=json.dumps({"order": text}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (500, "api_command_failed")
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+    matches = [r for r in records if r["path"] == ORDER_CREATE_PATH]
+    assert len(matches) == 1
+    assert matches[0]["status"] == 500
+    assert matches[0]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+    assert list(paths.orders_dir.glob("*")) == []
 
 
 def test_an_order_create_post_with_no_starter_is_405():

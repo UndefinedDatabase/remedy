@@ -540,6 +540,17 @@ def test_two_starts_get_two_different_ids_and_folders(order_setup):
     launcher.wait(second.order_id, timeout=30)
 
 
+def test_start_removes_the_orders_folder_and_reraises_when_the_child_cannot_start(tmp_path):
+    """R-1201: when `subprocess.Popen` cannot start the child, `OrderLauncher.start` removes
+    the order's own folder whole and raises `OSError` again, leaving no half-made order."""
+    paths = serve_paths(tmp_path)
+    missing_program = tmp_path / "no-such-program"
+    launcher = SR.OrderLauncher(paths, argv_prefix=[str(missing_program)])
+    with pytest.raises(OSError):
+        launcher.start("x", [])
+    assert list(paths.orders_dir.glob("*")) == []
+
+
 @pytest.mark.parametrize("bad_id", [
     "../../x", "0123456789ABCDEF", "0123456789abcde", "0123456789abcdef"])
 def test_read_order_record_refuses_a_malformed_or_unknown_id(tmp_path, bad_id):

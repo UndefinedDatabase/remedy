@@ -100,7 +100,8 @@ parser's own token, `order_file_invalid_header` or `order_file_empty`; `no_llm`,
 no project, or one that names a project this machine does not register as exactly one, is refused
 before anything starts, with 409 `api_order_project_unknown` — because the order would otherwise
 run in a folder nobody chose; every other refusal is `remedy do`'s own, read back only once the
-order is polled.
+order is polled. When the order's child process cannot be started at all, nothing is left behind:
+the order's folder is removed and the call answers 500 with `api_command_failed`.
 
 ## Staying current
 
