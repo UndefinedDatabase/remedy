@@ -408,6 +408,19 @@ def test_ending_removes_the_api_port_file_and_the_port_no_longer_answers(root):
     assert not _tcp_answers(port)
 
 
+def test_ending_stops_the_thread_that_served_the_api_port(root):
+    """R-1191: closing the listener is not enough; the thread serving it ends with the supervisor."""
+    before = set(threading.enumerate())
+    supervisor = _Running(root, api_port=0)
+    try:
+        serving = [t for t in threading.enumerate()
+                   if t not in before and t.name == "remedy-serve-api" and t.is_alive()]
+        assert serving, "no thread named remedy-serve-api serves the port"
+    finally:
+        supervisor.close()
+    assert [t for t in serving if t.is_alive()] == []
+
+
 def test_with_api_port_none_no_port_file_exists_and_api_port_is_null(root):
     supervisor = _Running(root, api_port=None)
     try:
