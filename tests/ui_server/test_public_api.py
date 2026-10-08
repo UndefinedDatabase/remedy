@@ -882,3 +882,35 @@ def test_the_cockpits_own_server_answers_a_decision_post_405_and_ledgers_it(tcp_
     assert "remedy serve start" in body["message"]
     records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
     assert [(r["method"], r["path"], r["status"]) for r in records] == [("POST", path, 405)]
+
+
+def test_a_percent_encoded_path_value_reaches_the_command_decoded():
+    """R-1192: `encodeURIComponent` and `urllib.parse.quote` both send `:` as `%3A`."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "percent-encoded" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    calls, run = _recording_runner()
+    status, _body, _headers = _post("/api/v1/jobs/j1/decisions/td%3Aabc%3A1", {}, run)
+    assert status == 200
+    assert calls == [("j1", ["decision", "resolve", "--json", "--", "j1", "td:abc:1"])]
+
+
+def test_a_path_value_that_decodes_to_a_dash_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/%2Dh/decisions/d1", {}, run)
+    assert (status, answer["error"]) == (400, "api_path_invalid")
+    assert calls == []
+
+
+def test_a_job_prefix_and_its_full_id_lock_on_the_same_job():
+    """R-1193: the runner's one-command-per-job lock is keyed by the job, not by its spelling."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="lock-key-job", user_prompt="Lock key prompt",
+                  tasks=[TaskEntry(title="Pick a database")])
+    save_job_plan(job)
+    full = str(job.job_id)
+    calls, run = _recording_runner()
+    for spelling in (full, full[:8]):
+        assert _post(f"/api/v1/jobs/{spelling}/decisions/d1", {}, run)[0] == 200
+    assert [key for key, _argv in calls] == [full, full]
+    assert [argv[-2] for _key, argv in calls] == [full, full[:8]]
