@@ -25,7 +25,10 @@ sits between two `---` lines and names `project`, `contract`, `max-cost-usd` and
 `constraint` lines; the order text follows it. A flag given on the command line wins over the
 header. An order that names a project, in its header or with `--project`, runs in that
 project's registered repository wherever the client stands; an order that names none runs in
-`--repo`, by default the current directory. This is the order file the gate test writes:
+`--repo`, by default the current directory. A client registers such a repository once with
+`remedy project register --repo <path> --json`, which answers the project's `project_id` and
+`slug` and writes nothing that `git status` shows. This is the order file the gate test
+writes:
 
 ```
 ---
@@ -198,6 +201,21 @@ Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
 
 ### Operations
+
+#### `remedy project register`
+
+Command id: `project.register`.
+Description: Register a repository as a project's repo, writing nothing its git status shows; a repo already registered answers its project.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--repo` | yes | yes | yes | no | Path to the repository |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `4`.
+Refusal tokens: `not_a_git_repo`.
+Answer keys: `created`, `project_id`, `repo_path`, `slug`.
+Keys under the answer keys: none.
 
 #### `remedy do run`
 

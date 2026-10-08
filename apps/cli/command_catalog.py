@@ -1024,6 +1024,20 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("project.attach-job", "job.list"),
         exit_codes=(0, 1, 2, 3),
     ),
+    CommandEntry(
+        command_id="project.register",
+        group_id="project",
+        subcommand="register",
+        description="Register a repository as a project's repo, writing nothing its git status shows; a repo already registered answers its project.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("do.run", "project.show"),
+        exit_codes=(0, 1, 2, 4),
+    ),
 
     # ── patch ────────────────────────────────────────────────────────────
     CommandEntry(

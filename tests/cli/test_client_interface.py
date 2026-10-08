@@ -1289,6 +1289,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         answers.setdefault(command_id, []).append(body)
         return body
 
+    answer("project.register", ["project", "register", "--repo", str(repo)], 0)
     done = answer("do.run", ["do", str(order_file), "--no-ui", "--yes", "--no-llm",
                              "--builder-provider", "fake", "--reviewer-provider", "fake",
                              "--deadline", PAST_DEADLINE], 1)

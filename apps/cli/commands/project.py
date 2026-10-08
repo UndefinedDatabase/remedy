@@ -492,6 +492,41 @@ def _cmd_project_adopt(
         print(f"Adopted {resolved_id[:8]} into project {project.slug or project.id}.")
 
 
+# WHY: a client registers the repository an order will name without leaving files in its working
+# copy, which `remedy init`'s two configuration files do (F298's claim measurement, DECISION F304 D3).
+def _cmd_project_register(repo_path_str: str, *, json_output: bool = False) -> None:
+    """Register a repository as a project's, writing nothing that `git status` shows.
+
+    The project's slug is the repository's folder name, as `remedy init` makes it; an already
+    registered repository answers its project with `created` false. Only the ignore entries
+    `remedy init` adds go into `.git/info/exclude`, which git does not track. A path that is no git
+    repository exits 4 with `not_a_git_repo`.
+    """
+    from pathlib import Path
+
+    from packages.orchestration.project_registry import register_project_repo, resolve_project
+    from packages.orchestration.repo_ignore import ensure_ignore_entry, ignore_entries
+    from packages.orchestration.worktrees import is_git_repo, repo_root
+
+    if not is_git_repo(repo_path_str):
+        fail("not_a_git_repo",
+             f"{Path(repo_path_str).resolve()} is not a git repository; run `git init` there first. "
+             "Nothing was registered.", json_output=json_output, exit_code=4)
+    root = Path(repo_root(repo_path_str)).resolve()
+    project = resolve_project(root)
+    created = project is None
+    if project is None:
+        project = register_project_repo(root.name, root)
+    for entry in ignore_entries(root):
+        ensure_ignore_entry(root, entry)
+    if json_output:
+        emit_ok(project_id=str(project.id), slug=project.slug, repo_path=str(root), created=created)
+    elif created:
+        print(f"Registered {root} as project {project.slug} ({project.id}).")
+    else:
+        print(f"{root} is already project {project.slug} ({project.id}); nothing changed.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(
         args.name, getattr(args, "description", None), json_output=args.json,
@@ -526,6 +561,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.adopt": lambda args: _cmd_project_adopt(
         args.job_id,
         project_flag=getattr(args, "project", None),
+        json_output=args.json,
+    ),
+    "project.register": lambda args: _cmd_project_register(
+        args.repo,
         json_output=args.json,
     ),
 }

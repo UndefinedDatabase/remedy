@@ -48,6 +48,7 @@ CLIENT_INTERFACE_VERSION = "1.1"
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
 #: budget refusal of `job resume`, abandoning a mission, and this document's own command.
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
+    "project.register",
     "do.run",
     "status.run",
     "decision.resolve",
@@ -67,6 +68,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
 #: (DECISION F298 D4). An operation with none here answers no refusal envelope of its own.
 OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
+    "project.register": ("not_a_git_repo",),
     "do.run": (
         "invalid_argument", "invalid_budget", "order_file_empty", "order_file_invalid_header",
         "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable",
@@ -115,6 +117,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
 #: catalog command id: its answer when it succeeds and its refusals' added keys (DECISIONs F298 D5,
 #: D6 and D7); `ANSWER_KEY_TREES` names the keys under them.
 OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
+    "project.register": ("created", "project_id", "repo_path", "slug"),
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
         "mission_plan_path", "next", "push", "shape", "shape_source", "steps", "stopped_before_apply",
@@ -388,6 +391,7 @@ JOB_REPORT_KEY_TREES: dict[str, Any] = {
 #: do. Every operation has an entry here, and one that maps to an empty dict answers no keys below
 #: its top level (DECISION F298 D18).
 ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
+    "project.register": {},
     "do.run": {
         "contract": MISSION_CONTRACT_KEY_TREE,
         "cost": {
