@@ -1261,8 +1261,10 @@ def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
     assert trees["answer_trees"] == {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}}
     assert ast.unparse(values["answer_trees"]) == "copy.deepcopy(ANSWER_KEY_TREES)"
     assert trees["answers"] == {"*": {}}
-    assert ast.unparse(values["answers"]) == (
-        "{command_id: list(keys) for (command_id, keys) in OPERATION_ANSWER_KEYS.items()}")
+    # `ast.unparse` writes a comprehension's tuple target in brackets on Python 3.10 and without
+    # them on 3.12, so the expected source is unparsed by the running interpreter too (R-1182).
+    assert ast.unparse(values["answers"]) == ast.unparse(ast.parse(
+        "{command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()}", mode="eval").body)
     # A key tree holds, under a name, a tree, None or the repeat mark, and nothing else.
     assert _tree_leaves(DIGEST_KEY_TREE) == []
     assert {leaf for tree in ANSWER_KEY_TREES.values() for leaf in _tree_leaves(tree)} == {
