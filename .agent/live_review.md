@@ -1,35 +1,31 @@
-# Live Review — F304 Machine client contract v1.1, part two: what a client can rely on
+# Live Review — F253 Headless API contract: the public HTTP API
 
-> Round-by-round review record, re-headed at the F304 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F298, whose STATUS
-> line went `[x]` on its own branch. The first hosted CI run of its pull request 315, run
-> 37716986653 on `ad6081d74`, failed one node on Python 3.12 only, registered as R-1182; F298's
-> round 30 repaired that assertion on the branch under DECISION F298 D24, and the fresh run
-> 37720250821 on `9704396c3` passed both its Python 3.10 and its Python 3.12 job. The Open PR Gate
-> merged pull request 315 into `main` as `4eda924c5`, whose second parent is `9704396c3`, and the
-> two trees are identical. F298's round 30 was reviewed after its own handback, so operator amendment
-> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
-> is happening anyway, together with R-1182's resolution; both are appended at the end of this
-> record by this claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything from the Findings heading to the end of the file as it stood at `4eda924c5` is carried
-> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> The open set at `4eda924c5`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156',
-> 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1182']`; this claim resolves
-> R-1182, and F297, the rolling findings paydown, owns the other eleven, so F304 owns none.
+> Round-by-round review record, re-headed at the F253 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F304, whose STATUS
+> line went `[x]` on its own branch. Both hosted CI jobs of its pull request 316, Python 3.10 and
+> Python 3.12 of run 37766558683 on `c96af2115`, passed, and the Open PR Gate merged pull request
+> 316 into `main` as `1474a65ea`, whose second parent is `c96af2115`. F304's round 24 was reviewed
+> after its own handback and its verdict was written into that pull request, so operator amendment
+> amend0827-process-diet rule 1 books it here, in the first commit of the next round that is
+> happening anyway; it is appended at the end of this record by this claim. Only the heading, this
+> paragraph and the Steps section below are rewritten; everything from the Findings heading to the
+> end of the file as it stood at `1474a65ea` is carried forward BYTE-IDENTICAL, and finding ids
+> continue the monotonic R-XXXX series across the re-head. The open set at `1474a65ea`, computed
+> with `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
+> 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`; F297, the
+> rolling findings paydown, owns all eleven, so F253 owns none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F304 D1's, which carries DECISION F298 D1's order for the six slices
-F298 handed over. The first round claims F304, re-heads this record, books F298's round 30 and
-R-1182's resolution, and records that F298's claim measurement still holds. Then T002, an order
-runs in the repository of the project it names; T003, honest refusals under `--approve --json` and
-a command that declines a result; T004, the second gate test (commit and push to a local bare
-upstream, an order of two jobs, one order file started twice); then T005, the approval card from
-records; T006, tokens and calls beside the cost and a cap of any budget kind; T007, a bounded
-digest and the template question. Every slice adds what it changes to the interface in
-`apps/cli/client_interface.py` in the same round. Then the amend0930b-slow-cap hardening stage,
-then closure.
+THE ORDER BELOW IS DECISION F253 D1's. The first round claims F253, re-heads this record, books
+F304's round 24, and lands S1: the namespace `/api/v1` on the request handler the cockpit and the
+supervisor share, the route registry, the published page with its version rule and exclusion
+list, and `GET /api/v1/interface`. Then S2, a ledger entry for every call with the digest and the
+proof; S3, what changed since a cursor; S4, answering a decision, approving an apply and declining
+a result through the F009 door; S5, submitting an order; S6, the supervisor's localhost port and
+client tokens with the operator's policy; S7, the gate tests driven through HTTP alone. Every slice
+adds its routes to the registry, the page and the pinned contract tests in the same round. Then
+the amend0930b-slow-cap hardening stage, then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -223,3 +219,5 @@ Gate: F304 R21 — the F304 round 21 entry, the closure suite's repair, over `54
 Gate: F304 R22 — the F304 round 22 entry, the checklist's consolidation pass, over `52d125ffe`..`3e914de2e` (3 commits, each single-parent; insertions by `git show --numstat`: `756df12e5` 118, `4540425cd` 28, `3e914de2e` 55). VERDICT PASS, verified by dry run, bytes identical, compared at `756df12e5` and `4540425cd` against the prepared files of the reviewer's dry run on `52d125ffe`. `.remedy-wt/f304-r22/review22.py`, whose readings are saved beside it as `review22-readings.txt`, read the saved block, the ledger equal to its blob at `52d125ffe` followed by the prepared slice and `.agent/plan.md` at `756df12e5`, and `docs/agents/planner_reviewer_prompt.md` at `4540425cd`, each equal to its prepared file and unchanged at the tip, four of four; `3e914de2e` touches only `.agent/handoff.md`. The dry run's readings, saved as `.remedy-wt/f304-r22/dry-readings.txt`: the round's selection `542 passed, 1 skipped, 2 deselected` at exit 0, the one skip the F252 quarantine at `tests/test_agent_tooling.py:43`, every integrity check `pass`, and the open set of eleven. Its red control, saved as `red-readings.txt`, renamed the plan's `## Next Steps` heading and turned exactly the three plan tests red; a first control, a misspelt test path in the item 34 paragraph, stayed green because `tests/docs/test_named_source_paths.py` leaves `docs/agents/` out of its sweep by design, so that path was checked by reading it, and its readings are kept as `red-readings-path.txt`. The consolidation keeps the list at 34 items: R-1186 joined item 34, and the paragraph names where each of F304's six prose-slip lines and four findings already belongs. The worker's gates read the same selection at `542 passed, 1 skipped`, the same integrity reading and the same open set. Every reflog entry after `52d125ffe` is one of the round's commits, the local tip equalled the pushed branch, which the reviewer read with `git ls-remote` as `3e914de2e`, and the tree was clean. The worker declared no deviation. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`, all owned by F297.
 
 Gate: F304 R23 — the F304 round 23 entry, the closure's evidence round, over `3e914de2e`..`15b3894c0` (2 commits, each single-parent; insertions by `git show --numstat`: `95f3421e7` 382, `15b3894c0` 83). VERDICT PASS, the bookkeeping verified by bytes identical to the reviewer's prepared files at `95f3421e7`, the accepted head; the evidence job and the package have no dry run, by design, so the reviewer read their outputs instead of running them again. `.remedy-wt/f304-r23/review23.py`, whose readings are saved beside it as `review23-readings.txt`, read the saved block, the saved evidence script, the ledger equal to its blob at `3e914de2e` followed by the prepared slice, and `.agent/plan.md` at `95f3421e7`, each equal to its prepared file and unchanged at the tip, four of four; `15b3894c0` touches only `.agent/handoff.md`. The evidence script, whose function bodies differ from F298's in run id, job id, job title, step range and feature id only, was pre-checked read-only at `3e914de2e` (`precheck-readings.txt`): 54 test files, existing, unique and sorted, `2607/2621 tests collected (14 deselected)`, no unsafe node id, ruff clean, counts 73 and 73 from the fork point `4eda924c5`. The worker's log `.remedy-wt/f304-r23-worker/evidence.log`: head `95f3421e7`, ancestry-path and plain counts 74 and 74, 2607 node ids with 14 deselected, no unsafe id and the planted id answering `a local absolute path`, pytest exit 0 at 2604 passed, 0 failed and 3 skipped, the same three skips F298's evidence run read on the same standard set, `validate_verification_tests` with no problem, `is_valid_current_run True` and no validation error; the bundle's `verification_tests.json` names `vr-1304`, 2607 node ids for 2607 selected and sorted test files. The package `remedy-review-20261008-124310-READY_FOR_REVIEW.zip`, read by the reviewer in `/home/decodeux/Repos/remedy-history/zips`: SHA-256 `d30f2486853690405637598957c25cabac8bd65f0455c66385bb014df5207945`, a valid zip whose `testzip()` is None, and its `.review_zip_manifest.json` with `package_status` `READY_FOR_REVIEW` and a committed review subject from `4eda924c5b28662e1136b25fb703d594b0d7046c` to `95f3421e787555e1381f9eb143fbb61cbd357553` over 74 commits; the zip log read `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. The staging reclaim previewed nothing to free and refused one 1.5 MB review staging copy that no job owns, so `--apply` was rightly skipped. Every reflog entry after `3e914de2e` is one of the round's commits, the local tip equalled the pushed branch, which the reviewer read with `git ls-remote` as `15b3894c0`, and the tree was clean. The worker declared no deviation in the handback; its reply said that after changing one phrase of the operator paragraph it committed the handback without reading the regenerated staged diff again, and the reviewer read the committed handback whole and found it accurate. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`, all owned by F297.
+
+Gate: F304 R24 — the F304 round 24 entry, the closing round, over `15b3894c0`..`c96af2115` (3 commits, each single-parent: `8125376f8`, `28f148a73`, `c96af2115`). VERDICT PASS, booked here from the reviewer's verdict on pull request 316, which the claim of F253 read at `1474a65ea`. The reviewer verified the round against its own simulation on the base `15b3894c0`: every committed file equalled the simulated file, ten of ten, saved as `.remedy-wt/f304-r24/review24-readings.txt`. The rotation moved 30 gate records, 5 finding pairs and 3 resolved-text records, the ledger from 261,805 to 183,214 bytes, 11 open findings before and after. The STATUS line occurred once with no line left in progress, README read 131 of 304 and the Tier 12 row 4 of 13, SU-049 was consumed by F304, and the last commit touched exactly those three files and `.agent/handoff.md`. The simulation's selection read `555 passed` at exit 0 with six integrity checks `pass`, its red control turned `test_the_readme_accepted_count_equals_the_status_count` red, and the worker's one run read `555 passed`. The closure's preconditions held: rounds 1 to 24 passed review, the one full suite on the shipped tree read `21810 passed, 22 skipped` (`.agent/authored/f304-closure-suite.txt`), the hardening stage is recorded with no gap remaining, and the package `remedy-review-20261008-124310-READY_FOR_REVIEW.zip` is READY with head `95f3421e7`. Both hosted CI jobs of run 37766558683 passed on `c96af2115` before the merge. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`, all owned by F297.
