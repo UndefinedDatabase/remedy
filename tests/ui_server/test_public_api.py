@@ -412,6 +412,12 @@ def test_the_page_states_the_ledger_file_and_the_query_refusal_token():
     assert "api_query_invalid" in page
 
 
+def test_the_page_states_the_changes_route_and_the_value_query_key():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1/changes" in page
+    assert "since=<value>" in page
+
+
 def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalog():
     """R-1187: a `remedy <group> <subcommand>` span above the generated marker is real.
 
