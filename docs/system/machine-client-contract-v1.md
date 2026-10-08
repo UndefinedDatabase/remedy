@@ -59,7 +59,11 @@ holds whitespace is planned as text, never read as a file.
    with `error` `step_failed` and still carries `mission_id` and `job_ids`, and exits 1.
 2. **Read.** `remedy status --json` carries the digest under `client`: every project with its
    missions, every job with its state, cost and evidence, every open decision, and the jobs that
-   wait for their apply. Read it as often as once a minute.
+   wait for their apply. Read it as often as once a minute. Each completed job also carries
+   `approval_card`, what an operator approves its result on, read from the job's record alone:
+   how many files its tasks changed and the first twenty of them by name, the test command the
+   job ran with, and each task's title, reviewer's verdict and repair rounds, and whether its
+   test ran and passed. Every other job's `approval_card` is null.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
@@ -310,7 +314,9 @@ Keys under the answer keys: see below.
 - `client`: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
-  - `jobs`: `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+    - `approval_card`: `changed_file_count`, `changed_files`, `tasks`, `test_command`
+      - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
@@ -664,7 +670,9 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, 
 
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
+  - `approval_card`: `changed_file_count`, `changed_files`, `tasks`, `test_command`
+    - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`

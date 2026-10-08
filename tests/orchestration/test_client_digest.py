@@ -12,11 +12,19 @@ from pathlib import Path
 
 import pytest
 
+from packages.core.models import RunState
 from packages.orchestration.client_digest import _decision_entry, build_client_digest
 from packages.orchestration.decision_queue import HumanDecision
 from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
 from packages.orchestration.job_apply import job_apply_landed
-from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, save_job_plan
+from packages.orchestration.pingpong_job import (
+    JOB_COMPLETED,
+    ApplyManifest,
+    ExecutionConfig,
+    JobPlan,
+    TaskEntry,
+    save_job_plan,
+)
 
 NOW = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -489,6 +497,72 @@ def test_a_job_of_an_abandoned_mission_no_longer_waits_for_its_apply(root, tmp_p
     waits = {entry["job_id"]: entry["waits_for_apply"] for entry in digest["jobs"]}
     assert waits == {str(kept.job_id): True, str(dropped.job_id): False}
     assert digest["awaiting_apply"] == [str(kept.job_id)]
+
+
+# ── a completed job's approval card (F304 T005, DECISION F304 D10) ──────────
+
+
+def _task(task_id: str, applied_files: list[str], *, manifest_status: str = "applied",
+          **fields) -> TaskEntry:
+    manifest = ApplyManifest(task_id=task_id, applied_files=applied_files, status=manifest_status)
+    return TaskEntry(task_id=task_id, apply_manifest=manifest, **fields)
+
+
+def test_a_completed_jobs_card_names_its_changed_files_test_command_and_tasks(root):
+    job = JobPlan(job_title="carded", project_id="proj-1", state=JOB_COMPLETED,
+                  execution_config=ExecutionConfig(test_command="pytest -q"),
+                  tasks=[_task("T001", ["src/b.py", "README.md"], title="Write b",
+                               reviewer_verdict="approve", repair_rounds_used=1,
+                               test_passed=True),
+                         _task("T002", ["src/b.py"], title="Fix b", reviewer_verdict="approve",
+                               test_passed=False),
+                         _task("T003", ["blocked.py"], manifest_status="blocked",
+                               title="Not applied")])
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["approval_card"] == {
+        "changed_file_count": 2,
+        "changed_files": ["README.md", "src/b.py"],
+        "test_command": "pytest -q",
+        "tasks": [
+            {"task_id": "T001", "title": "Write b", "reviewer_verdict": "approve",
+             "repair_rounds_used": 1, "test_ran": True, "test_passed": True},
+            {"task_id": "T002", "title": "Fix b", "reviewer_verdict": "approve",
+             "repair_rounds_used": 0, "test_ran": True, "test_passed": False},
+            {"task_id": "T003", "title": "Not applied", "reviewer_verdict": None,
+             "repair_rounds_used": 0, "test_ran": False, "test_passed": None},
+        ],
+    }
+
+
+def test_a_card_counts_every_changed_file_and_names_only_the_first_by_the_limit(root):
+    from packages.orchestration.client_digest import APPROVAL_CARD_FILE_LIMIT
+
+    paths = [f"f{index:03d}.txt" for index in range(APPROVAL_CARD_FILE_LIMIT + 5)]
+    job = JobPlan(job_title="many-files", project_id="proj-1", state=JOB_COMPLETED,
+                  tasks=[_task("T001", list(reversed(paths)))])
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    card = entry["approval_card"]
+    assert card["changed_file_count"] == APPROVAL_CARD_FILE_LIMIT + 5
+    assert card["changed_files"] == paths[:APPROVAL_CARD_FILE_LIMIT]
+    assert card["test_command"] is None
+
+
+@pytest.mark.parametrize("state", [state for state in RunState if state != JOB_COMPLETED],
+                         ids=lambda state: state.value)
+def test_a_job_that_is_not_completed_carries_a_null_card(root, state):
+    job = JobPlan(job_title="not-completed", project_id="proj-1", state=state,
+                  tasks=[_task("T001", ["a.py"], reviewer_verdict="approve")])
+    save_job_plan(job)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["approval_card"] is None
 
 
 # ── the digest reads and never writes (R-1144) ──────────────────────────────

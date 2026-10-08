@@ -195,7 +195,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7), as a tree:
+#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7; DECISION
+#: F304 D10 adds a job's `approval_card`), as a tree:
 #: each key maps to the tree of the object under it, or of every element of the list under it,
 #: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
 DIGEST_KEY_TREE: dict[str, Any] = {
@@ -230,6 +231,19 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "run_manifest_path": {},
             "result_diff_path": {},
             "result_diff_sha256": {},
+        },
+        "approval_card": {
+            "changed_file_count": {},
+            "changed_files": {},
+            "test_command": {},
+            "tasks": {
+                "task_id": {},
+                "title": {},
+                "reviewer_verdict": {},
+                "repair_rounds_used": {},
+                "test_ran": {},
+                "test_passed": {},
+            },
         },
     },
     "awaiting_apply": {},

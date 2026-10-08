@@ -113,6 +113,35 @@ def test_a_full_do_without_apply_completes_the_job_and_it_awaits_apply(repo, cap
     assert client["awaiting_apply"] == [job_id]
 
 
+# ── 2b: the completed job's approval card, read through the command line (DECISION F304 D10) ──
+
+
+def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo, capsys):
+    from apps.cli.client_interface import DIGEST_KEY_TREE
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    [job_id] = _do_json(capsys, ORDER)["job_ids"]
+
+    [job] = _status_json(capsys)["client"]["jobs"]
+
+    record = load_job_plan(job_id)
+    card = job["approval_card"]
+    assert set(card) == set(DIGEST_KEY_TREE["jobs"]["approval_card"])
+    # The fake builder writes one file; the job's result diff, a record of its own, names the same.
+    diff = Path(job["evidence"]["result_diff_path"]).read_text(encoding="utf-8")
+    assert card["changed_files"] == ["docs/README.md"]
+    assert [line[len("+++ b/"):] for line in diff.splitlines()
+            if line.startswith("+++ b/")] == card["changed_files"]
+    assert card["changed_file_count"] == 1
+    assert card["test_command"] is None
+    assert card["tasks"] == [
+        {"task_id": task.task_id, "title": task.title, "reviewer_verdict": task.reviewer_verdict,
+         "repair_rounds_used": task.repair_rounds_used, "test_ran": False, "test_passed": None}
+        for task in record.tasks
+    ]
+    assert [task["reviewer_verdict"] for task in card["tasks"]] == ["pass"]
+
+
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
 
 

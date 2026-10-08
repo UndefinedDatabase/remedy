@@ -4,7 +4,9 @@ Version 1 carries every registered project with its missions and its cost of
 the day, every job on the data root with its measured cost and its evidence
 references (DECISION F295 D7), which of those jobs wait for an operator's
 apply, whether the supervisor answers, and every job's open decisions
-(DECISION F295 D5).
+(DECISION F295 D5). Each completed job carries its approval card, what an
+operator approves its result on, read from the job's record only (DECISION
+F304 D10).
 """
 from __future__ import annotations
 
@@ -20,7 +22,13 @@ from packages.orchestration.escalation import DECISION_TYPE_TASK_DECISION
 from packages.orchestration.job_apply import job_apply_landed, job_result_decline
 from packages.orchestration.job_digest import cost_exactness_basis
 from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
-from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, list_job_plans_safe
+from packages.orchestration.pingpong_job import (
+    JOB_COMPLETED,
+    JobPlan,
+    TaskEntry,
+    _reviewed_task_files,
+    list_job_plans_safe,
+)
 from packages.orchestration.project_cockpit import project_cost_of_day
 from packages.orchestration.project_registry import _list_projects_readonly
 from packages.orchestration.serve_daemon import socket_answers
@@ -38,6 +46,9 @@ _DECISION_READ_ERRORS = (OSError, ValueError, AttributeError, TypeError)
 #: What one project's ledger read raises (DECISION F295 D7): a file that cannot be opened, and a
 #: database SQLite cannot read.
 _LEDGER_READ_ERRORS = (OSError, sqlite3.Error)
+
+#: How many changed files an approval card names; its count names them all (DECISION F304 D10).
+APPROVAL_CARD_FILE_LIMIT = 20
 
 
 def _job_cost(plan: JobPlan) -> dict[str, Any]:
@@ -75,6 +86,38 @@ def _job_evidence(plan: JobPlan) -> dict[str, Any]:
         "result_diff_path": (_existing_file(job_dir(job_id) / plan.result_diff_path)
                              if plan.result_diff_path else None),
         "result_diff_sha256": plan.result_diff_sha256 or None,
+    }
+
+
+def _card_task(task: TaskEntry) -> dict[str, Any]:
+    """One task of an approval card; a task whose test command never ran reads `test_ran` false."""
+    return {
+        "task_id": task.task_id,
+        "title": task.title,
+        "reviewer_verdict": task.reviewer_verdict or None,
+        "repair_rounds_used": task.repair_rounds_used,
+        "test_ran": task.test_passed is not None,
+        "test_passed": task.test_passed,
+    }
+
+
+# WHY: a client approves a result on what the records hold, never on a model's summary
+# (F304 T005, DECISION F304 D10).
+def _approval_card(plan: JobPlan) -> dict[str, Any] | None:
+    """A completed job's approval card, read from its record only; None for any other job.
+
+    The changed files are the paths its tasks' applied manifests name, sorted, the first
+    `APPROVAL_CARD_FILE_LIMIT` of them by name and all of them by count.
+    """
+    if plan.state != JOB_COMPLETED:
+        return None
+    changed_files = _reviewed_task_files(plan)
+    test_command = plan.execution_config.test_command if plan.execution_config else ""
+    return {
+        "changed_file_count": len(changed_files),
+        "changed_files": changed_files[:APPROVAL_CARD_FILE_LIMIT],
+        "test_command": test_command or None,
+        "tasks": [_card_task(task) for task in plan.tasks],
     }
 
 
@@ -149,7 +192,8 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     decision of every job, sorted by job id then decision id (DECISION
     F295 D5). Each project carries ``cost_today`` for the UTC day of
     ``read_at`` and each job its ``cost`` and ``evidence`` (DECISION F295
-    D7). ``degraded`` and ``skipped_files`` gather what the listing
+    D7), and its ``approval_card``, null unless the job is completed
+    (DECISION F304 D10). ``degraded`` and ``skipped_files`` gather what the listing
     functions and the per-job and per-project reads could not read, named
     exactly as they return them, plus ``decisions of job <job_id>``,
     ``cost of job <job_id>`` and ``cost of the day of project
@@ -223,6 +267,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
             "waits_for_apply": waits_for_apply,
             "cost": cost,
             "evidence": _job_evidence(plan),
+            "approval_card": _approval_card(plan),
         })
         try:
             events = load_run_events(resolve_data_root(), plan.job_id)
