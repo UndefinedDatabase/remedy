@@ -478,6 +478,11 @@ _OPERATION_HEADS = (("CHERRY_PICK_HEAD", "a cherry-pick"), ("REVERT_HEAD", "a re
 #: The directories git keeps while a rebase (or ``git am``) is unfinished.
 _REBASE_DIRS = ("rebase-merge", "rebase-apply")
 
+#: The opening words of the two checkout refusals a client tells apart by token; `apply_refusal`
+#: reads them back (DECISION F304 D4).
+DETACHED_HEAD_OPENING = "The target is on a detached HEAD"
+DIRTY_TREE_OPENING = "The target has uncommitted changes"
+
 
 def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[str], bool]:
     """The operator checkout's refusals every ``--commit…`` flag shares; ``(sentences, stop)``.
@@ -495,7 +500,7 @@ def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[st
                 f"branch to {what}; a plain --approve copies the files."], True
     refusals: list[str] = []
     if _history_git(target, "symbolic-ref", "-q", "HEAD")[0] != 0:
-        refusals.append(f"The target is on a detached HEAD; check out the branch "
+        refusals.append(f"{DETACHED_HEAD_OPENING}; check out the branch "
                         f"{landing} should land on and re-run.")
     if _history_git(target, "rev-parse", "-q", "--verify", "MERGE_HEAD")[0] == 0:
         # Remedy's abort must only ever abort Remedy's own merge.
@@ -517,7 +522,7 @@ def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[st
         refusals.append(f"git status failed in the target ({err.strip()[:150]}), so "
                         f"its tree cannot be shown clean.")
     elif dirty:
-        refusals.append(f"The target has uncommitted changes in {_named_paths(dirty)}; "
+        refusals.append(f"{DIRTY_TREE_OPENING} in {_named_paths(dirty)}; "
                         f"commit or stash them and re-run.")
     return refusals, False
 
@@ -808,6 +813,12 @@ def _branch_upstream(target: Path) -> tuple[str, str, str]:
     return branch, remote, merge
 
 
+#: The words that mark the two upstream refusals of --push; `apply_refusal` reads them back
+#: (DECISION F304 D4).
+NO_UPSTREAM_WORDS = "has no upstream to push to"
+LOCAL_UPSTREAM_WORDS = "--push never writes another branch of this repository"
+
+
 def upstream_push_refusals(target: Path) -> list[str]:
     """The sentences refusing a push of the target's current branch by its upstream; reads only.
 
@@ -820,12 +831,18 @@ def upstream_push_refusals(target: Path) -> list[str]:
         remotes = _history_git(target, "remote")[1].split()
         name = (remotes[0] if len(remotes) == 1
                 else "origin" if "origin" in remotes else "<remote>")
-        return [f"The branch {branch} has no upstream to push to; "
+        return [f"The branch {branch} {NO_UPSTREAM_WORDS}; "
                 f"`git push --set-upstream {name} {branch}` sets one."]
     if branch and remote == ".":
         return [f"The upstream of {branch} is the local branch {merge}, and "
-                f"--push never writes another branch of this repository."]
+                f"{LOCAL_UPSTREAM_WORDS}."]
     return []
+
+
+#: The opening words of the two refusals of a push by the mission's contract; `apply_refusal`
+#: reads them back (DECISION F304 D4).
+CONTRACT_UNREADABLE_OPENING = "The mission's contract cannot be read"
+CONTRACT_UNMET_OPENING = "The mission's blocking contract criteria"
 
 
 def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], list[str]]:
@@ -844,14 +861,14 @@ def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], l
         mission = read_mission()
         contract = read_mission_contract(mission) if mission else None
     except Exception as exc:  # noqa: BLE001 — an unreadable contract must refuse the push, not allow it
-        return [f"The mission's contract cannot be read "
+        return [f"{CONTRACT_UNREADABLE_OPENING} "
                 f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
                 f"shown safe."], []
     blocking = [c for c in (contract.criteria if contract else ()) if c.blocking]
     unmet = [c.id for c in blocking if c.status == "unmet"]
     still_open = [c.id for c in blocking if c.status not in ("met", "unmet")]
     if unmet:
-        return [f"The mission's blocking contract criteria {', '.join(unmet)} are "
+        return [f"{CONTRACT_UNMET_OPENING} {', '.join(unmet)} are "
                 f"unmet, so nothing is pushed."], still_open
     return [], still_open
 
@@ -1964,6 +1981,86 @@ def _apply_from_workspace(
     result.finished_at = datetime.now(timezone.utc).isoformat()
     _persist_outcome(applied)
     return result
+
+
+# ---------------------------------------------------------------------------
+# DECISION F304 D4: the token of an approved apply that did not land
+# ---------------------------------------------------------------------------
+
+#: Every `error` token `apply_refusal` answers with, sorted. A client branches on the token and a
+#: person reads the sentence beside it (DECISION F304 D4).
+APPLY_REFUSAL_TOKENS: tuple[str, ...] = (
+    "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused", "job_not_found",
+    "job_not_ready", "merge_conflict", "post_test_failed", "push_failed", "push_no_upstream",
+    "push_refused", "push_refused_by_contract", "target_changed", "target_detached_head",
+    "target_dirty",
+)
+
+#: The tokens of a job that is absent or not ready to apply; they exit 3 and the rest exit 1.
+APPLY_NOT_READY_TOKENS: tuple[str, ...] = ("job_not_found", "job_not_ready")
+
+#: The reason prefixes of a job that is not ready to apply.
+_JOB_NOT_READY_REASONS = frozenset({
+    "job_not_completed", "task_not_applied", "task_missing_run_id", "reviewer_not_pass",
+    "tests_failed", "missing_apply_manifest", "apply_manifest_not_applied",
+    "no_files_in_apply_manifests",
+})
+
+#: The reason prefixes of a target that changed since the job's baseline.
+_TARGET_CHANGED_REASONS = frozenset({"baseline_check_failed", "baseline_check_before_apply_failed"})
+
+
+def _flag_refusal_token(prefix: str, sentence: str) -> str:
+    """The token of one refusal of a ``--commit…`` or ``--push`` flag, read from its sentence."""
+    if sentence.startswith(DETACHED_HEAD_OPENING):
+        return "target_detached_head"
+    if sentence.startswith(DIRTY_TREE_OPENING):
+        return "target_dirty"
+    if prefix == PUSH_REFUSED and (NO_UPSTREAM_WORDS in sentence or LOCAL_UPSTREAM_WORDS in sentence):
+        return "push_no_upstream"
+    if prefix == PUSH_REFUSED and sentence.startswith((CONTRACT_UNMET_OPENING,
+                                                        CONTRACT_UNREADABLE_OPENING)):
+        return "push_refused_by_contract"
+    return {COMMIT_REFUSED: "commit_refused", HISTORY_REFUSED: "history_merge_refused"}.get(
+        prefix, "push_refused")
+
+
+# WHY: a program branches on a token, never on a sentence, and an apply that did not land must
+# never read as a success (T003 of docs/roadmap/features/T12_F304.md, DECISION F304 D4).
+def apply_refusal(result: JobApplyResult) -> tuple[str, str] | None:
+    """``(token, sentence)`` for an approved apply that did not land, or None.
+
+    None for a preview, ``--dry-run`` included, and for an apply whose status is ``applied``.
+    Otherwise the token is one of :data:`APPLY_REFUSAL_TOKENS` and names the first cause the
+    apply met, read from the result's status, its ``merge_conflicts``, and the reason prefixes
+    and sentence openings this module writes; the sentence is the reason a person reads.
+    """
+    if not result.approved or result.dry_run or result.status == "applied":
+        return None
+    reason = result.blocked_reason
+    sentence = reason or (result.blocked_reasons[-1] if result.blocked_reasons
+                          else f"The apply ended with status {result.status}.")
+    if result.status == "applied_test_failed":
+        return "post_test_failed", f"The post-apply test failed ({result.post_test_summary})."
+    if result.status == "applied_push_failed":
+        return "push_failed", sentence
+    if result.status != "blocked":
+        return "apply_failed", sentence
+    if result.merge_conflicts:
+        return "merge_conflict", sentence
+    prefix, _sep, rest = reason.partition(": ")
+    if prefix in (COMMIT_REFUSED, HISTORY_REFUSED, PUSH_REFUSED):
+        return _flag_refusal_token(prefix, rest), sentence
+    cause = reason.split(":", 1)[0]
+    if cause == "job_not_found":
+        return "job_not_found", sentence
+    if cause in _JOB_NOT_READY_REASONS:
+        return "job_not_ready", sentence
+    if cause == "blocked_paths" or (cause == "no_files_to_apply" and result.files_blocked):
+        return "blocked_paths", sentence
+    if cause in _TARGET_CHANGED_REASONS:
+        return "target_changed", sentence
+    return "apply_failed", sentence
 
 
 # ---------------------------------------------------------------------------

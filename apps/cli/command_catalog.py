@@ -2505,6 +2505,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=True,
         may_execute_commands=True,
+        # DECISION F304 D4: an approved apply whose job is absent or not ready to apply names a
+        # job the command cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
     ),
 
     # ── self (self-dogfood planner — read/metadata-only) ──────────────────

@@ -295,6 +295,15 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         "a HunkApprovalRefusal's code; record_hunk_decision_from_view returns the two of "
         "packages/orchestration/hunk_decision_record.py and the five of decide_hunk_approval",
     ),
+    "apps.cli.commands.do_cmd:_cmd_job_apply:error": (
+        frozenset({"apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
+                   "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
+                   "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
+                   "target_changed", "target_detached_head", "target_dirty"}),
+        "the token apply_refusal in packages/orchestration/job_apply.py returns, one of its "
+        "APPLY_REFUSAL_TOKENS, which tests/cli/test_job_apply_refusals.py drives to every one "
+        "(DECISION F304 D4)",
+    ),
 }
 
 def _token_sites(fn: ast.AST, modname: str) -> tuple[set[str], set[str], set[str]]:
@@ -389,6 +398,10 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
                   | {value for name, value in vars(hunk_decision_record).items()
                      if name.startswith("HUNK_RECORD_REFUSAL_")})
     assert hunk_codes == UNRESOLVED_TOKEN_SITES["apps.cli.commands.patch:_cmd_approve_hunks:result.code"][0]
+    from packages.orchestration.job_apply import APPLY_REFUSAL_TOKENS
+
+    assert frozenset(APPLY_REFUSAL_TOKENS) == UNRESOLVED_TOKEN_SITES[
+        "apps.cli.commands.do_cmd:_cmd_job_apply:error"][0]
 
 
 # The top-level keys of the answers (DECISIONs F298 D5, D6 and D7).

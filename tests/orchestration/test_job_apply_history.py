@@ -385,7 +385,7 @@ def _one_task_job(repo: Path, monkeypatch, rel: str):
 
 
 class TestThroughTheCli:
-    def test_a_refused_and_a_merging_run_exit_zero_with_their_record_keys(
+    def test_a_refused_run_exits_1_and_a_merging_run_0_with_their_record_keys(
         self, repo, monkeypatch, data_root,
     ):
         from tests.cli.runtime_helpers import run_grouped_cli
@@ -395,8 +395,9 @@ class TestThroughTheCli:
                 "--commit-with-history", "--json"]
         (repo / "scratch.txt").write_text("wip\n")
         refused = run_grouped_cli(argv, data_root, timeout=120)
-        assert refused.returncode == 0, refused.stderr      # a blocked apply exits 0
+        assert refused.returncode == 1, refused.stderr      # DECISION F304 D4
         data = json.loads(refused.stdout)
+        assert (data["ok"], data["error"]) == (False, "target_dirty")
         assert data["status"] == "blocked"
         assert data["blocked_reason"].startswith(f"{HISTORY_REFUSED}: ")
         assert all(key in data for key in HISTORY_KEYS)

@@ -964,16 +964,30 @@ def _cmd_job_apply(
     ``commit_with_history`` (DECISION F270 D2) merges the job branch instead of
     copying; ``commit`` and ``commit_auto`` (DECISION F270 D3) copy and then
     commit exactly the copied files; ``push`` pushes what landed. Without
-    ``--approve`` they preview, and a refusal or a clash is a blocked apply.
+    ``--approve``, or with ``--dry-run``, they preview, a refusal or a clash is
+    a blocked apply, and the answer is a success with exit 0. With ``--approve``
+    (DECISION F304 D4), a clash of the flags is refused with `invalid_argument`
+    and exit 2 before the job is read, and an apply that did not land is refused
+    with the token `apply_refusal` names, every key of its answer beside it, and
+    exit 3 when the job is absent or not ready to apply, else exit 1.
     """
     from packages.orchestration.job_apply import (
+        APPLY_NOT_READY_TOKENS,
         apply_job,
+        apply_refusal,
+        commit_flags_refusal,
         export_job_apply_json,
         summarize_job_apply,
     )
 
     if not approve and not dry_run:
         dry_run = True
+
+    if not dry_run:
+        _mode, clash = commit_flags_refusal(commit, commit_auto, commit_with_history, push)
+        if clash:
+            fail("invalid_argument", clash.split(": ", 1)[1], json_output=json_output,
+                 exit_code=2)
 
     result = apply_job(
         job_id,
@@ -988,10 +1002,18 @@ def _cmd_job_apply(
         push=push,
     )
 
-    if json_output:
-        emit_ok(**export_job_apply_json(result))
-    else:
+    if not json_output:
         print(summarize_job_apply(result))
+    refusal = apply_refusal(result)
+    if refusal is None:
+        if json_output:
+            emit_ok(**export_job_apply_json(result))
+        return
+    error, message = refusal
+    if error in APPLY_NOT_READY_TOKENS:
+        fail(error, message, json_output=json_output, exit_code=3,
+             **export_job_apply_json(result))
+    fail(error, message, json_output=json_output, **export_job_apply_json(result))
 
 
 def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> None:

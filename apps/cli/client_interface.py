@@ -98,7 +98,12 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "plan_awaiting_approval", "plan_rejected", "resume_blocked", "serve_unreachable",
         "verification_failed", "worktree_drift",
     ),
-    "job.apply": (),
+    "job.apply": (
+        "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
+        "invalid_argument", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
+        "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
+        "target_changed", "target_detached_head", "target_dirty",
+    ),
     "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
     "job.evidence": ("job_not_found", "unsafe_task_id"),
     "patch.hunks": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),

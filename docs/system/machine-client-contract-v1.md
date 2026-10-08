@@ -63,7 +63,13 @@ whitespace is planned as text, never read as a file.
    follow-up mission, and names it under `closed_decisions`.
 4. **Approve and apply.** `remedy job apply <job> --approve --json` copies the reviewed result
    into the repository. Then `remedy change proof <job> --json` lists that apply under
-   `job_applies`.
+   `job_applies`. An approved apply that did not land answers `ok` false with one token for
+   its first cause — among them `target_dirty`, `target_detached_head`, `merge_conflict`,
+   `blocked_paths`, `push_no_upstream` and `push_refused_by_contract`; the interface below
+   lists them all — still carries every key of the apply's answer, and exits 1, or 3 when the
+   job is absent or not ready to apply; flags that clash exit 2 with `invalid_argument` before
+   the job is read. A preview, without `--approve` or with `--dry-run`, answers `ok` true and
+   exits 0, whatever it found.
 
 ### Commands
 
@@ -435,8 +441,8 @@ Description: Review and apply job workspace changes to target repo, under its mi
 | `--push` | yes | no | no | no | After --commit, --commit-auto or --commit-with-history lands, push that branch to its configured upstream, never forced; refused alone, without an upstream, or while any blocking criteria of the mission contract are unmet, and naming those still open, which no check has evaluated yet |
 | `--json` | yes | no | no | no | Output as JSON |
 
-Exit codes: `0`, `1`, `2`.
-Refusal tokens: none.
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed`, `target_detached_head`, `target_dirty`.
 Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
 Keys under the answer keys: see below.
 

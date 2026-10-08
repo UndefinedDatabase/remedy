@@ -1548,7 +1548,7 @@ class TestGroupedCLIJobApply:
         assert (target / rel_path).read_text() == "modified\n"
 
     def test_blocked_job_via_grouped_cli(self, isolate_data_root, tmp_path):
-        """Grouped CLI returns blocked status for tampered target."""
+        """Grouped CLI refuses a tampered target with exit 1 and its blocked record (DECISION F304 D4)."""
         from tests.cli.runtime_helpers import run_grouped_cli
 
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
@@ -1559,8 +1559,9 @@ class TestGroupedCLIJobApply:
             isolate_data_root,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert result.returncode == 1, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
+        assert (data["ok"], data["error"]) == (False, "target_changed")
         assert data["status"] == "blocked"
         assert "target_changed_since_job" in data["blocked_reason"]
 
@@ -1934,8 +1935,9 @@ class TestGroupedCLINewFailureModes:
             isolate_data_root,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert result.returncode == 1, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
+        assert (data["ok"], data["error"]) == (False, "blocked_paths")
         assert data["status"] == "blocked"
         assert "dest_is_symlink" in data["blocked_reason"]
 
@@ -2005,8 +2007,9 @@ class TestGroupedCLINewFailureModes:
             isolate_data_root,
         )
 
-        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert result.returncode == 1, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
+        assert (data["ok"], data["error"]) == (False, "blocked_paths")
         assert data["status"] == "blocked"
         assert "dest_parent_symlink" in data["blocked_reason"]
 
@@ -2476,9 +2479,10 @@ class TestSkipBlockedThroughTheGroupedCLI:
              "--approve", "--json"],
             isolate_data_root,
         )
-        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert result.returncode == 1, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
 
+        assert (data["ok"], data["error"]) == (False, "blocked_paths")
         assert data["skip_blocked"] is False
         assert data["status"] == "blocked"
         assert data["blocked_reason"].startswith("blocked_paths:")
