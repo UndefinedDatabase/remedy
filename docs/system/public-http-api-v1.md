@@ -12,7 +12,12 @@ reached over a socket instead of a process.
 
 Two servers answer this namespace: the cockpit's own server, started by `remedy ui start`, and the
 supervisor's unix socket, which `remedy serve start` opens. Both are bound to this machine only;
-neither is reachable from another host.
+neither is reachable from another host. With `serve.api_port` set in `remedy.toml`, or
+`REMEDY_SERVE_API_PORT` in the environment, `remedy serve start` also answers this API on
+`127.0.0.1` at that port, and nothing but this API there; `0` lets the system pick a free port.
+`remedy serve status --json` names the port under `api_port`, and the token is the same
+`serve.token` file the socket uses. This port, like the socket, is never bound beyond this
+machine.
 
 ## The token
 
