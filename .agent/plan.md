@@ -7,16 +7,16 @@ program meets when it drives Remedy, and the machine client page is its renderin
 (DECISION F298 D21).
 
 ## Current Step
-Session 5, round 23: the hardening stage is recorded in F298's Built State (sixteen claims, fifteen
-proved at once, two gaps found and repaired, none remaining); the repeated audit is saved, round
-22's verdict and the resolutions of R-1179 and R-1180 are booked.
+Session 5, round 24: the closure's self-use item is generated and run to its approval gate, never
+applied, its record saved under `.agent/selfuse_f298/` (docs/roadmap/STATUS_closure_protocol.md
+precondition 6); round 23's verdict is booked.
 
 ## Next Steps
-1. The closure sequence (docs/roadmap/STATUS_closure_protocol.md): the self-use item run to its
-   approval gate (precondition 6).
-2. The one full suite and its CPU cost (precondition 2, amend0917-throughput).
-3. The checklist's consolidation pass, the evidence bundle and review zip, the ledger rotation,
-   the STATUS line with the README sync, and the pull request.
+1. Register every defect the self-use run reports, then the one full suite and its CPU cost
+   (precondition 2, amend0917-throughput).
+2. The checklist's consolidation pass, the evidence bundle and review zip, the ledger rotation,
+   the STATUS line with the README sync and the self-use queue's `consumed_by`, and the pull
+   request.
 
 ## Risks
 - F298 reaches its soft limit of 25 rounds inside the closure sequence; the split it owes was
