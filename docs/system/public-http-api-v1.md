@@ -135,6 +135,9 @@ Two orders sent at once both run: the supervisor starts each as it arrives and k
 line, so the second never waits for the first to end, and the route refuses neither order for the
 other. Remedy sets no limit on how many orders run at once (DECISION F253 D15).
 
+An order sent again is started again: Remedy does not recognise a resent order, so a program that
+sends the same order twice, for example after a lost answer, starts the work twice.
+
 ## Runs
 
 `POST /api/v1/jobs/{job}/run` starts the run of a job, the way `remedy job run` does, and answers
@@ -157,6 +160,26 @@ digest or in what changed, where the job's state reads `running` and then its en
 hands the one launcher that starts runs to its socket and to its port alike, so both answer from
 one list of runs; a server that has no such launcher, the cockpit's own among them, answers the
 route 405 `api_method_not_allowed` (DECISION F253 D18).
+
+## A client's test
+
+A program's own test can start a real supervisor and drive this API against it. Set two
+environment variables for the child process: `REMEDY_DATA_DIR`, a scratch folder whose path is
+short (a unix socket path has a length limit), so the test never touches the data of the machine,
+and `REMEDY_SERVE_API_PORT` set to `0`, so the system picks a free port. Run `remedy serve start
+--json` as a child process in a folder of its own. It prints one line as soon as it answers, the
+envelope `remedy serve status --json` prints, and the key `api_port` holds the port; the token is
+the file `serve/serve.token` under the scratch folder. Register each repository the test orders
+work on with `remedy project register --repo <repo> --json`, run from a folder that is no
+repository, because an order names its project. From then on every request goes to `127.0.0.1` at
+that port with `Authorization: Bearer <token>`. When the test ends, whether it passed or failed, run
+`remedy serve stop --json` with the same environment and wait for the child to end.
+
+An order sent with `no_llm` and both providers set to `fake`, and a run started with both
+providers set to `fake`, run without any model: the fake builder and reviewer answer, so such a test
+costs nothing and needs no key. This repository's own test of it, which drives an order to its
+proof, an apply with its history and a push, an order of two jobs, an order that names its project,
+and a declined result over this API alone, is `tests/orchestration/test_public_api_gate_paths.py`.
 
 ## Staying current
 
