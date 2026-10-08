@@ -36,7 +36,7 @@ and `write_public_api_page` writes it there; a test holds that section equal to 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -75,8 +75,12 @@ class PublicApiRoute:
     #: F253 D12); `()` for a route that takes no body.
     body: tuple[tuple[str, str], ...] = ()
     #: The HTTP status of a refusal token `refusals` does not list, or None when every refusal
-    #: must be listed (DECISION F253 D9 (4)).
+    #: must be listed (DECISION F253 D9 (4)); also None for a `starts_order` route, whose every
+    #: refusal is explicit through `PublicApiWriteRefusal` (DECISION F253 D14 (2)).
     refusal_default: int | None = None
+    #: True for a write route that starts an order through the caller's own order starter rather
+    #: than running its twin as a child of the command runner (DECISION F253 D14 (1), (3)).
+    starts_order: bool = False
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -205,6 +209,27 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
             "<order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` "
             "holds what `remedy do` printed once the order is not `running`."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/orders",
+        twin="client.order",
+        body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
+              ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
+              ("reviewer_provider", "string"), ("deadline", "string")),
+        starts_order=True,
+        description=(
+            "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
+            "run <options> --no-ui --yes -- order.md` would inside its own folder under the "
+            "data root, and answers 202 with its record read exactly as the route above reads "
+            "it. `order` is the order file's whole text, header included, and required; "
+            "`no_llm`, `new_mission`, `force_job` and `force_mission` each pass their `remedy "
+            "do` flag when `true`; `builder_provider`, `reviewer_provider` and `deadline` each "
+            "pass their option with their value. An order whose header names no project, or "
+            "one that names a project `select_project` cannot resolve to exactly one, is "
+            "refused before anything starts with 409 `api_order_project_unknown`; every other "
+            "refusal is `remedy do`'s own, read back only once the order is polled."
         ),
     ),
 )
@@ -536,6 +561,58 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "job.apply": _job_apply_argv,
 }
 
+#: The flags of the order-create route's body, each passed as its `remedy do` option when
+#: `true` (DECISION F253 D14 (1)).
+_ORDER_CREATE_FLAGS: tuple[str, ...] = ("no_llm", "new_mission", "force_job", "force_mission")
+
+#: The strings of the order-create route's body, each passed as its `remedy do` option with its
+#: value (DECISION F253 D14 (1)).
+_ORDER_CREATE_STRINGS: tuple[str, ...] = ("builder_provider", "reviewer_provider", "deadline")
+
+
+def _order_text_and_options(body: dict[str, Any]) -> tuple[str, list[str]]:
+    """The order text and the `remedy do run` options BODY asks for, or `PublicApiWriteRefusal`.
+
+    DECISION F253 D14 (1), (2): `order` is required. Before anything starts, its text is parsed
+    the way `parse_order_file_text` always parses one, so a broken header or an empty order
+    refuses with the parser's own token and message; its header's `project` is then resolved
+    through `select_project`, exactly as `_order_repo` in `apps/cli/commands/do_cmd.py` resolves
+    it for `remedy do`, except a missing or unresolved project REFUSES here rather than falling
+    back to the current folder — the supervisor's own working folder is not one this order's
+    caller chose, and running the order there is exactly what this refusal prevents.
+    """
+    from packages.orchestration.order_file import OrderFileError, parse_order_file_text
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    if "order" not in body:
+        raise PublicApiWriteRefusal(400, "api_body_invalid", "'order' is required")
+    order_text = body["order"]
+    try:
+        order_file = parse_order_file_text(order_text, "order.md")
+    except OrderFileError as exc:
+        raise PublicApiWriteRefusal(400, exc.error, str(exc))
+    if order_file.project is None:
+        raise PublicApiWriteRefusal(
+            409, "api_order_project_unknown",
+            "the order's header names no project, so it is not known where to run it; "
+            "nothing was run")
+    try:
+        select_project(order_file.project, ".")
+    except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+        raise PublicApiWriteRefusal(
+            409, "api_order_project_unknown",
+            f"the order's header names the project {order_file.project!r}, which is not "
+            "registered as exactly one; nothing was run")
+    options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
+    options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
+                if key in body]
+    return order_text, options
+
 
 def _job_lock_key(job: str) -> str:
     """The job a write locks on: the full id JOB names, or JOB itself when it names no one job,
@@ -579,6 +656,7 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
 def answer_public_api_post(
     path: str, raw_body: bytes,
     run_command: Callable[[str, list[str]], dict[str, Any] | None],
+    start_order: Callable[[str, Sequence[str]], Any] | None = None,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The (status, body, headers) this namespace answers a POST of `path` with `raw_body`.
 
@@ -586,15 +664,24 @@ def answer_public_api_post(
     route matches answers 404, a path only a GET route matches answers 405. A bound segment that
     begins with `-`, or that holds `/` or a NUL character once decoded, answers 400
     `api_path_invalid`, because a command builds a file name from its job value and a child's
-    arguments cannot hold a NUL (R-1195); a body that is not a JSON object holding
-    only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; a
-    `PublicApiWriteRefusal` from the twin's argument builder answers its own status and token;
-    none of these starts a command. Otherwise RUN_COMMAND is called with the job the job segment names
-    (`_job_lock_key`) and the argument list the twin's builder makes, and the envelope it returns is the answer: None answers 500
+    arguments cannot hold a NUL (R-1195).
+
+    A route marked `starts_order` (DECISION F253 D14 (3)) never reaches RUN_COMMAND: with no
+    START_ORDER it answers 405 `api_method_not_allowed`, exactly as a handler with no command
+    runner does; otherwise its body is checked, `_order_text_and_options` builds the order's text
+    and options or raises `PublicApiWriteRefusal`, START_ORDER is called with them, and the
+    order it started is answered 202 with `order_record_payload` — the same answer `GET
+    /api/v1/orders/{order}` and `remedy client order` give it.
+
+    Every other route's body, not a JSON object holding only its declared keys each of its kind,
+    answers 400 `api_body_invalid`; a `PublicApiWriteRefusal` from the twin's argument builder
+    answers its own status and token; none of these starts a command. Otherwise RUN_COMMAND is
+    called with the job the job segment names (`_job_lock_key`) and the argument list the twin's
+    builder makes, and the envelope it returns is the answer: None answers 500
     `api_command_failed`, an `ok` envelope 200, a refusal the status `refusals` declares for its
     token or else the route's `refusal_default`.
     """
-    from apps.cli.json_envelope import build_error
+    from apps.cli.json_envelope import build_error, build_ok
 
     for route in PUBLIC_API_ROUTES:
         if route.method != "POST":
@@ -611,9 +698,21 @@ def answer_public_api_post(
                 return 400, build_error(
                     "api_path_invalid",
                     f"the {name} in '{path}' must not hold '/' or a NUL character"), {}
+        if route.starts_order and start_order is None:
+            return (*public_api_method_refusal(), {})
         checked, why = _body_refusal(route, raw_body)
         if checked is None:
             return 400, build_error("api_body_invalid", why), {}
+        if route.starts_order:
+            from packages.orchestration.serve_paths import serve_paths
+            from packages.orchestration.serve_runs import order_record_payload
+
+            try:
+                order_text, options = _order_text_and_options(checked)
+            except PublicApiWriteRefusal as refusal:
+                return refusal.status, build_error(refusal.error, refusal.message), {}
+            record = start_order(order_text, options)
+            return 202, build_ok(**order_record_payload(serve_paths(), record)), {}
         try:
             argv = _TWIN_ARGV[route.twin](segments, checked)
         except PublicApiWriteRefusal as refusal:

@@ -745,6 +745,75 @@ def test_an_apply_post_lands_one_commit_in_the_jobs_own_repository(
     assert body["commit_sha"] == head and parent == before
 
 
+def _register_project(root: Path, repo: Path) -> str:
+    """Register REPO as a project on ROOT via `remedy init --json`; the project's slug."""
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root)}
+    result = subprocess.run([sys.executable, "-m", "apps.cli.main", "init", "--json"],
+                            cwd=str(repo), env=env, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["summary"]["slug"]
+
+
+def _post_order(port: int, token: str, body: dict):
+    return _api_request(port, "POST", "/api/v1/orders", headers=_bearer(token),
+                        body=json.dumps(body).encode(), timeout=120)
+
+
+def test_an_order_create_post_starts_a_real_order_and_polling_reaches_its_end(
+        root, running_with_api, tmp_path):
+    """S5b, DECISION F253 D14: a real order, through the fake builder and reviewer, started by
+    `POST /api/v1/orders` and followed to its end by `GET /api/v1/orders/{order}`."""
+    from tests.cli.test_client_order_cmd import _PAST_DEADLINE, _git_repo
+
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    repo = _git_repo(tmp_path / "order-create-repo")
+    slug = _register_project(root, repo)
+
+    order_text = (f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n"
+                 "Add a line saying hello to README.md\n")
+    body = {"order": order_text, "no_llm": True, "builder_provider": "fake",
+            "reviewer_provider": "fake", "deadline": _PAST_DEADLINE}
+    status, created = _post_order(port, token, body)
+    assert status == 202, created
+    assert created["state"] == "running"
+    order_id = created["order_id"]
+
+    polled = created
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline and polled["state"] == "running":
+        time.sleep(0.2)
+        status, polled = _api_request(
+            port, "GET", f"/api/v1/orders/{order_id}", headers=_bearer(token))
+        assert status == 200, polled
+    assert polled["state"] == "ended", "the order never ended within 120 seconds"
+    assert polled["answer"]["mission_id"]
+    assert polled["answer"]["job_ids"]
+
+    ledger = Path(root) / "api" / "calls.jsonl"
+    records = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+    posts = [r for r in records if r["method"] == "POST" and r["path"] == "/api/v1/orders"]
+    gets = [r for r in records
+            if r["method"] == "GET" and r["path"] == f"/api/v1/orders/{order_id}"]
+    assert posts and posts[-1]["status"] == 202
+    assert gets and gets[-1]["status"] == 200
+
+
+def test_an_order_create_post_without_a_project_is_409_and_starts_nothing(root, running_with_api):
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    orders_dir = serve_paths(root).orders_dir
+    before = sorted(p.name for p in orders_dir.iterdir()) if orders_dir.exists() else []
+
+    body = {"order": "No header at all, just text that is long enough to be an order.\n",
+            "no_llm": True}
+    status, answer = _post_order(port, token, body)
+
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    after = sorted(p.name for p in orders_dir.iterdir()) if orders_dir.exists() else []
+    assert after == before
+
+
 def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_with_api, tmp_path):
     token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
     port = running_with_api.state.api_port

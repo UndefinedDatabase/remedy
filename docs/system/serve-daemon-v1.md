@@ -41,10 +41,11 @@ supervisor counts as running exactly when its socket accepts a connection;
 the process id file is read only to stop it, never to decide whether it runs.
 
 Each order gets its own folder under `orders/`, also created readable by its
-owner only (mode `0700`; F253 S5a, DECISION F253 D13). No route under
-`/api/v1` starts an order yet — `remedy client order <order>` only reads a
-record `OrderLauncher.start` already began, and only that launcher's own
-tests call it, until S5b adds the route.
+owner only (mode `0700`; F253 S5a, DECISION F253 D13). `POST /api/v1/orders`
+starts an order through this registry's own `OrderLauncher` (F253 S5b,
+DECISION F253 D14); `remedy client order <order>` and `GET
+/api/v1/orders/{order}` both read a record that launcher began, through the
+same code (`order_record_payload` in `packages/orchestration/serve_runs.py`).
 
 A data root whose socket path would exceed a unix socket's length limit (104
 bytes on macOS, 108 on Linux, including the terminating NUL) is refused at
