@@ -573,3 +573,30 @@ def test_the_same_post_on_the_supervisors_socket_answers_200_too(root, running):
     assert (body["job_id"], body["decision_id"], body["outcome"]) == (
         job_id, decision_id, "answered")
     assert _stored_decision(job_id, decision_id)["answer"] == "Postgres"
+
+
+def test_a_post_with_a_query_string_is_400_and_runs_nothing(root, running_with_api):
+    """R-1194: no write route takes a query string (DECISION F253 D9)."""
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    job_id, decision_id = _job_with_open_decision()
+    status, body = _api_request(
+        running_with_api.state.api_port, "POST",
+        f"/api/v1/jobs/{job_id}/decisions/{decision_id}?reason=Postgres",
+        headers=_bearer(token), body=json.dumps({"reason": "Postgres"}).encode())
+    assert (status, body["error"]) == (400, "api_query_invalid")
+    assert _stored_decision(job_id, decision_id)["status"] == "open"
+
+
+def test_a_post_declaring_a_body_above_the_ceiling_is_400_and_runs_nothing(
+        root, running_with_api):
+    """R-1194: a body above `COMMAND_REQUEST_MAX_BYTES` is refused before it is read."""
+    from packages.orchestration.ui_server import COMMAND_REQUEST_MAX_BYTES
+
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    job_id, decision_id = _job_with_open_decision()
+    status, body = _api_request(
+        running_with_api.state.api_port, "POST", f"/api/v1/jobs/{job_id}/decisions/{decision_id}",
+        headers={**_bearer(token), "Content-Length": str(COMMAND_REQUEST_MAX_BYTES + 1)},
+        body=json.dumps({"reason": "Postgres"}).encode())
+    assert (status, body["error"]) == (400, "api_body_invalid")
+    assert _stored_decision(job_id, decision_id)["status"] == "open"

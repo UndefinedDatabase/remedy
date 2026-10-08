@@ -396,7 +396,10 @@ def test_a_command_past_the_timeout_gives_none_and_leaves_no_live_child(tmp_path
     pid_file = tmp_path / "pid"
     code = ("import os, sys, time; open(sys.argv[1], 'w').write(str(os.getpid())); "
             "time.sleep(60)")
+    started = time.monotonic()
     assert _runner(tmp_path, code, timeout=1).run("j", [str(pid_file)]) is None
+    # R-1194: the ceiling bites, rather than the child ending on its own after its sleep.
+    assert time.monotonic() - started < 30
     assert not SR._process_is_alive(int(pid_file.read_text()))
 
 
