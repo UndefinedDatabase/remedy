@@ -5,17 +5,16 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result and submits orders, with a token whose policy the operator writes and a ledger
 entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISION amend1007b D3,
-and DECISION F253 D1, which fixes the order and the shape).
+and DECISIONs F253 D1 and D2, which fix the order and the shape).
 
 ## Current Step
-Session 1, round 1: claim F253, book F304's round 24, record DECISION F253 D1, and land S1 — the
-route registry in `packages/orchestration/public_api.py`, `GET /api/v1/interface` on the shared
-request handler, the pinned contract tests, and the page `docs/system/public-http-api-v1.md` with
-its version rule, its exclusion list and its generated route table.
+Session 1, round 2: book round 1, register and repair R-1187, record DECISION F253 D2, and land
+S2a — a line in `api/calls.jsonl` for every call under `/api/v1`, the route fields `twin_key` and
+`query` with the refusal `api_query_invalid`, and `GET /api/v1/digest`, twinned with the `client`
+object of `remedy status --json`.
 
 ## Next Steps
-1. S2: a ledger entry for every call under `/api/v1`, a refused one included; `GET /api/v1/digest`
-   and the proof of a job.
+1. S2b: `GET /api/v1/jobs/<job>/proof`, with the twin's refusals and their HTTP statuses.
 2. S3: what changed since a cursor the client holds.
 3. S4: answer a decision, approve an apply with its commit and push, decline a result, through
    the F009 door.
@@ -24,10 +23,11 @@ its version rule, its exclusion list and its generated route table.
    carry the operator's policy.
 6. S7: F295's and F298's gate tests driven through HTTP alone; the page says how a client's test
    starts a supervisor.
-7. The amend0930b-slow-cap hardening stage, then the closure sequence.
+7. The amend0930b-slow-cap hardening stage, then the closure sequence, which also settles the
+   reserved namespace `apps/api`, whose docstring still says no HTTP API exists.
 
 ## Risks
 - The cockpit's own routes take the token in the query and answer errors in another shape; they
   stay as they are until F303 moves the cockpit onto the public API.
-- F253 owns no open finding. R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
-  R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
+- F253 owns R-1187 (Low), repaired this round. R-1160 (Medium) and R-1138, R-1139, R-1143,
+  R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
