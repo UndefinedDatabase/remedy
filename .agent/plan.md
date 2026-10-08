@@ -3,25 +3,26 @@
 ## Goal
 A machine client drives Remedy through a public, versioned HTTP API under `/api/v1`: it reads the
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
-declines a result and submits orders, with a token whose policy the operator writes and a ledger
-entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISION amend1007b D3,
-and DECISIONs F253 D1 to D18, which fix the order and the shape).
+declines a result, submits orders and starts runs, with a token whose policy the operator writes
+and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISION
+amend1007b D3, and DECISIONs F253 D1 to D19, which fix the order and the shape).
 
 ## Current Step
-Session 5, round 21, S7a (DECISION F253 D18): book round 20's verdict and register R-1204, then
-repair it: a write on a job whose record cannot be read answers instead of raising; the
-supervisor's `RunLauncher` takes options; `POST /api/v1/jobs/{job}/run` starts a job's run and
-answers 202 with its record.
+Session 5, round 22, S7b (DECISION F253 D19): book round 21's verdict, resolve R-1204, register
+R-1205, R-1206 and R-1207; repair R-1205 and R-1206; drive F295's gate path and four of F304's
+paths through a real `remedy serve start` over its port alone; the page says how a client's test
+starts one.
 
 ## Next Steps
-1. S7b: F295's gate path and F304's five paths driven through a real supervisor's port alone; the
-   page says how a client's test starts such a supervisor.
-2. The amend0930b-slow-cap hardening stage, then the closure sequence, which also settles the
-   reserved namespace `apps/api`, whose docstring still says no HTTP API exists.
+1. The amend0930b-slow-cap hardening stage: an acceptance audit of the feature file by a fresh
+   worker, then repairs of what it finds.
+2. The closure sequence, which also settles the reserved namespace `apps/api`, whose docstring
+   still says no HTTP API exists.
 
 ## Risks
-- The soft limit of 25 rounds is four rounds away; S7b, the hardening stage and the closure may
-  need more, and the split-and-close default of amend0905-throughput applies at round 25.
+- The soft limit of 25 rounds is three rounds away; the hardening stage and the closure may need
+  more, and the split-and-close default of amend0905-throughput applies at round 25.
+- An order sent twice over HTTP starts two orders (R-1207, owned by F297).
 - Client tokens live as plain text in `api/clients.json`, readable by its owner only, as the
   supervisor's own token does in `serve.token`; no command writes them yet (DECISION F253 D16).
 - The cockpit's own routes take the token in the query and answer errors in another shape, and
@@ -37,5 +38,6 @@ answers 202 with its record.
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1204 (Low) is open, owned by F253; R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149,
-  R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) stay open, owned by F297.
+- R-1205 and R-1206 (Low) are open, owned by F253; R-1207 and R-1138, R-1139, R-1143, R-1149,
+  R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) and R-1160 (Medium) are owned
+  by F297.
