@@ -7,18 +7,15 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 4, round 19, closure precondition 6: the first pending self-use item, which the
-generator supplies when none is pending, run through the `self_use` role's configured provider to
-its approval gate and never applied, its readings saved under `.agent/selfuse_f304/`.
+Session 4, round 20, the integration gate (closure precondition 2): `apps/ui` built, then the
+closure's one full suite in the primary checkout on the tree that ships, and its CPU cost; the
+self-use run of round 19 reported no defect.
 
 ## Next Steps
-1. Book round 19 and register every defect the self-use run shows, in the next round's first
-   commit.
-2. The integration gate: the closure's one full suite, `apps/ui` built first (DECISION F304 D5
-   (7)), with its CPU cost; repair rounds only for bad nodes.
-3. The checklist's consolidation pass for F304.
-4. The evidence bundle and the fresh review zip, with the staging-copy reclaim.
-5. The ledger rotation, the STATUS line with the README sync and the self-use queue, the PR.
+1. A green suite: the checklist's consolidation pass for F304; a red one: a repair round naming
+   every bad node id, under amend0917-throughput rule 2.
+2. The evidence bundle and the fresh review zip, with the staging-copy reclaim.
+3. The ledger rotation, the STATUS line with the README sync and the self-use queue, the PR.
 
 ## Risks
 - A selector that names no single project still fails in the init step instead of before any step
