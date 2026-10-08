@@ -250,7 +250,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.2`.
+Interface version: `1.3`.
 
 ### Envelope
 
@@ -540,6 +540,7 @@ Description: Decline a completed job's result under its mission, with your reaso
 |---|---|---|---|---|---|
 | `job_id` | no | yes | yes | no | UUID of the job (under its mission) |
 | `--reason` | yes | yes | yes | no | Why you decline the result, in your own words; kept with the decline |
+| `--source` | yes | no | yes | no | Which door the decline came through, kept with it (default: cli; the public HTTP API passes api) |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
