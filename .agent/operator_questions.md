@@ -52,3 +52,26 @@ change your installed packages and stop it.
 
 **What happens if you say nothing.** Nothing changes: the installed command keeps running the old
 copy until you reinstall it, and the loop keeps working from the main folder as it does now.
+
+### Q14 — Writes run the command itself (2026-10-09, F253, round 24)
+
+**What needs deciding.** Your ruling for this feature said that a change a program asks for over
+the web interface should pass through the same door the cockpit uses for its commands. It does
+not: when a program answers a question, approves or declines a result, or starts an order or a
+run, Remedy runs the matching command-line command itself, as a separate process, and hands back
+exactly what that command printed. The cockpit's door only writes a request down for later and
+never carries out an approval or starts work, by its own rules, so those changes could not pass
+through it as it stands.
+
+**Why it matters.** Running the command itself means each change has one copy of its logic and of
+its refusals, the same on the command line and over the web, and a test compares the two answers.
+The cost is a short start-up for each change, and it is a departure from the words of your
+ruling, which is why you are asked.
+
+**My recommendation.** Keep the design as built. The feature's own description now carries a
+paragraph saying so and why, and you can overturn it at any time; the alternative would be to
+widen the cockpit's door so that it carries out changes, which would copy every command's logic
+into a second place.
+
+**What happens if you say nothing.** The recommendation is already in effect and stands until you
+say otherwise: changes over the web interface keep running the command-line commands themselves.
