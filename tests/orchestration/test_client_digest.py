@@ -16,7 +16,7 @@ from packages.orchestration.client_digest import _decision_entry, build_client_d
 from packages.orchestration.decision_queue import HumanDecision
 from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
 from packages.orchestration.job_apply import job_apply_landed
-from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, save_job_plan
 
 NOW = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -442,6 +442,53 @@ def test_a_project_whose_ledger_cannot_be_read_marks_degraded_and_nulls_its_cost
     assert entry["cost_today"] is None
     assert digest["degraded"] is True
     assert f"cost of the day of project {project.id}" in digest["skipped_files"]
+
+
+# ── a declined job, and a job of an abandoned mission (F304 T003, DECISION F304 D5) ──
+
+
+def _completed_job(title: str, project_id: str = "proj-1") -> JobPlan:
+    job = JobPlan(job_title=title, project_id=project_id, state=JOB_COMPLETED)
+    save_job_plan(job)
+    return job
+
+
+def test_a_declined_job_no_longer_waits_for_its_apply(root):
+    from packages.orchestration.job_apply import decline_job_result
+
+    kept, declined = _completed_job("kept"), _completed_job("declined")
+    decline_job_result(declined, reason="not needed", source="cli", now=NOW)
+    save_job_plan(declined)
+
+    digest = build_client_digest(now=NOW)
+
+    waits = {entry["job_id"]: entry["waits_for_apply"] for entry in digest["jobs"]}
+    assert waits == {str(kept.job_id): True, str(declined.job_id): False}
+    assert digest["awaiting_apply"] == [str(kept.job_id)]
+
+
+def test_a_job_of_an_abandoned_mission_no_longer_waits_for_its_apply(root, tmp_path):
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_INITIAL,
+        MISSION_STATUS_ABANDONED,
+        create_mission,
+        link_job_to_mission,
+        set_mission_status,
+    )
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo("abandoning", _git_folder(tmp_path / "abandoning")).id)
+    active, abandoned = (create_mission(project_id, goal) for goal in ("Keep this", "Drop this"))
+    kept, dropped = _completed_job("kept", project_id), _completed_job("dropped", project_id)
+    link_job_to_mission(project_id, active.id, str(kept.job_id), MISSION_ROLE_INITIAL)
+    link_job_to_mission(project_id, abandoned.id, str(dropped.job_id), MISSION_ROLE_INITIAL)
+    set_mission_status(project_id, abandoned.id, MISSION_STATUS_ABANDONED)
+
+    digest = build_client_digest(now=NOW)
+
+    waits = {entry["job_id"]: entry["waits_for_apply"] for entry in digest["jobs"]}
+    assert waits == {str(kept.job_id): True, str(dropped.job_id): False}
+    assert digest["awaiting_apply"] == [str(kept.job_id)]
 
 
 # ── the digest reads and never writes (R-1144) ──────────────────────────────

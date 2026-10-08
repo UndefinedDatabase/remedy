@@ -2114,6 +2114,33 @@ def job_apply_landed(job_id: str) -> bool:
     return False
 
 
+#: DECISION F304 D5: the key of a job's `metadata` that holds the operator's decline of its result,
+#: `{"reason", "source", "declined_at"}`; `source` names the door, `cli` on the command line.
+JOB_METADATA_DECLINE_KEY = "result_decline"
+
+
+def job_result_decline(job: Any) -> dict[str, Any] | None:
+    """The decline recorded on *job*'s own record, or None when its result was never declined."""
+    record = (getattr(job, "metadata", None) or {}).get(JOB_METADATA_DECLINE_KEY)
+    return record if isinstance(record, dict) else None
+
+
+# WHY: a client must be able to say no to a result without applying it, and the no is the
+# operator's own act, kept on the job (T003 of docs/roadmap/features/T12_F304.md, DECISION F304 D5).
+def decline_job_result(job: Any, *, reason: str, source: str, now: datetime) -> dict[str, Any]:
+    """Record the operator's decline of *job*'s result in its `metadata` and return the record.
+
+    Written once: a job that already carries a decline keeps it, and gets it back unchanged. The
+    caller checks that the job may be declined and saves the job; nothing is applied or removed.
+    """
+    existing = job_result_decline(job)
+    if existing is not None:
+        return existing
+    record = {"reason": reason, "source": source, "declined_at": now.isoformat()}
+    job.metadata = {**(job.metadata or {}), JOB_METADATA_DECLINE_KEY: record}
+    return record
+
+
 #: DECISION F295 D15: the fields of an apply record that `change proof` repeats. Facts the record
 #: states and nothing it ran: no test summary, no path outside the target repository's own.
 JOB_APPLY_PROOF_FIELDS = (

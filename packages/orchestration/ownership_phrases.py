@@ -230,6 +230,9 @@ def ownership_sentence(entry: dict[str, Any], titles: dict[str, str] | None = No
     if action == "plan_rejected":
         return f"{actor_phrase} rejected the plan."
 
+    if action == "result_declined":
+        return f"{actor_phrase} declined the job's result; it was not applied{reason}."
+
     raise OwnershipError(f"no ownership sentence template for action {action!r}")
 
 

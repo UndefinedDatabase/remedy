@@ -17,9 +17,9 @@ from packages.orchestration.budget_guard import BudgetCounterError, decode_persi
 from packages.orchestration.data_paths import job_dir, job_evidence_dir, resolve_data_root
 from packages.orchestration.decision_queue import HumanDecision, list_decisions
 from packages.orchestration.escalation import DECISION_TYPE_TASK_DECISION
-from packages.orchestration.job_apply import job_apply_landed
+from packages.orchestration.job_apply import job_apply_landed, job_result_decline
 from packages.orchestration.job_digest import cost_exactness_basis
-from packages.orchestration.mission_state import Mission, list_missions_safe
+from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
 from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, list_job_plans_safe
 from packages.orchestration.project_cockpit import project_cost_of_day
 from packages.orchestration.project_registry import _list_projects_readonly
@@ -167,6 +167,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
     project_entries: list[dict[str, Any]] = []
     mission_id_by_job_id: dict[str, str] = {}
+    abandoned_job_ids: set[str] = set()
     for project in projects:
         project_id = str(project.id)
         missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
@@ -188,6 +189,8 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
         for mission in missions:
             for job_id in mission.job_ids():
                 mission_id_by_job_id[job_id] = mission.id
+                if mission.status == MISSION_STATUS_ABANDONED:
+                    abandoned_job_ids.add(job_id)
 
     plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
     degraded = degraded or jobs_degraded
@@ -199,7 +202,10 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     for plan in sorted(plans, key=lambda p: str(p.job_id)):
         job_id = str(plan.job_id)
         state = plan.state.value
-        waits_for_apply = plan.state == JOB_COMPLETED and not job_apply_landed(job_id)
+        # DECISION F304 D5: a declined result, and a job of an abandoned mission, waits for nothing.
+        waits_for_apply = (plan.state == JOB_COMPLETED and not job_apply_landed(job_id)
+                           and job_result_decline(plan) is None
+                           and job_id not in abandoned_job_ids)
         if waits_for_apply:
             awaiting_apply.append(job_id)
         try:

@@ -13,7 +13,8 @@ Round 1 lands the classes whose records already name an actor: vetoes, veto answ
 injections, subtree reruns, plan and task edits, steering messages and notes, and the pause,
 resume and stop events of the run log. Round 2 lands hunk decisions, decision answers,
 clarification answers and plan approval, and writes `ownership.json` into the job's evidence
-export at every job terminal.
+export at every job terminal. F304 adds the operator's decline of a job's result (DECISION F304
+D5), read through `job_apply`.
 """
 from __future__ import annotations
 
@@ -517,6 +518,27 @@ def _plan_approval_body_entries(job: Any, *, event_recorded: bool) -> list[dict[
     return out
 
 
+def _decline_entries(job: Any) -> list[dict[str, Any]]:
+    """F304's decline (DECISION F304 D5): the operator's decline of the job's result, read from
+    the job's own record through `job_apply`, which owns that record's shape. A job whose result
+    was never declined yields nothing."""
+    from packages.orchestration.job_apply import job_result_decline
+
+    record = job_result_decline(job)
+    if record is None:
+        return []
+    return [{
+        "record_ref": "result_declined",
+        "ts": str(record.get("declined_at", "")),
+        "actor": ownership_actor(record.get("source")),
+        "action": "result_declined",
+        "task_id": "",
+        "text": str(record.get("reason", "")),
+        "consequence": {"kind": "declined", "task_ids": [], "ref": ""},
+        "detail": {},
+    }]
+
+
 def _run_log_entries(job: Any) -> list[dict[str, Any]]:
     from packages.orchestration import data_paths as _dp
     from packages.orchestration import timeline as _tl
@@ -641,6 +663,7 @@ def build_ownership_ledger(job: Any) -> dict[str, Any]:
     entries.extend(_hunk_decision_entries(job))
     entries.extend(_decision_answer_entries(job))
     entries.extend(_clarification_entries(job))
+    entries.extend(_decline_entries(job))
     run_log_entries = _run_log_entries(job)
     entries.extend(run_log_entries)
     event_recorded = any(e["action"] == "plan_approved" for e in run_log_entries)

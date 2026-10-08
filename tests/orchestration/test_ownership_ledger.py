@@ -779,6 +779,31 @@ class TestPlanApproval:
         assert entry["text"] == ""
 
 
+class TestDecline:
+    """DECISION F304 D5: the operator's decline of the job's result, read from the job's record."""
+
+    def test_a_declined_jobs_entry_names_the_door_the_time_and_the_reason(self):
+        from packages.orchestration.job_apply import decline_job_result
+
+        job = _job(tasks=_two_task_chain())
+        decline_job_result(job, reason="not needed any more", source="cli",
+                           now=datetime(2026, 10, 8, 7, 0, tzinfo=timezone.utc))
+
+        ledger = own.build_ownership_ledger(job)
+
+        [entry] = [e for e in ledger["entries"] if e["action"] == "result_declined"]
+        assert entry["record_ref"] == "result_declined"
+        assert entry["ts"] == "2026-10-08T07:00:00+00:00"
+        assert entry["actor"] == own.ownership_actor("cli")
+        assert entry["actor"]["door"] == "cli"
+        assert entry["text"] == "not needed any more"
+        assert entry["consequence"] == {"kind": "declined", "task_ids": [], "ref": ""}
+
+    def test_a_job_never_declined_has_no_decline_entry(self):
+        ledger = own.build_ownership_ledger(_job(tasks=_two_task_chain()))
+        assert [e for e in ledger["entries"] if e["action"] == "result_declined"] == []
+
+
 # ---------------------------------------------------------------------------
 # S2 — the actor's door mapping
 # ---------------------------------------------------------------------------
