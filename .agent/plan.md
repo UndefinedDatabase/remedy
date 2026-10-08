@@ -7,15 +7,16 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 3, round 11, T005's last part (DECISION F304 D12): the approval card ends with one
-recommendation word and one risk word, derived from the card's own facts by rules the page states
-and the interface names. T005 is complete with this round.
+Session 3, round 12, T006's first part (DECISION F304 D13): each job in the digest carries
+`calls` and `tokens` by kind beside its `cost`, and each project's `cost_today` carries `tokens`,
+read from the project cost ledgers in one grouped read per ledger.
 
 ## Next Steps
-1. T006 — tokens and calls where a client reads a cost: per job and per project day, by kind,
-   beside `cost`; an order capped by any one job budget; the page says which tokens the token
-   budget counts.
-2. T007; then the hardening stage; then the closure sequence.
+1. T006's next part: an order's mandatory cap may be any one job budget (cost, total tokens,
+   provider calls or wall-clock minutes); an order with none is refused as today.
+2. T006's last part: the page says exactly which tokens the token budget counts, and an order
+   capped only by calls or by total tokens is accepted and stopped at its cap.
+3. T007; then the hardening stage; then the closure sequence.
 
 ## Risks
 - A selector that names no single project still fails in the init step instead of before any step
