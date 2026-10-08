@@ -87,6 +87,29 @@ def test_a_json_run_adds_the_one_option_a_supervised_run_takes(setup):
     assert Path(record.out_log).read_text().split(" ")[5] == "['--json']"
 
 
+_ARGS_CHILD = """\
+import json, sys
+from pathlib import Path
+Path(sys.argv[1]).write_text(json.dumps(sys.argv[2:]), encoding="utf-8")
+"""
+
+
+@pytest.mark.parametrize("options, json_output, expected", [
+    (["--builder-provider=fake"], True, ["jobO", "--builder-provider=fake", "--json"]),
+    ((), False, ["jobO"]),
+])
+def test_a_run_passes_its_options_after_the_job_and_before_json(
+        tmp_path, options, json_output, expected):
+    """DECISION F253 D18 (3): the child writes the arguments it got after the file's name."""
+    written = tmp_path / "args.json"
+    launcher = SR.RunLauncher(
+        serve_paths(tmp_path),
+        argv_for=lambda job_id: [sys.executable, "-c", _ARGS_CHILD, str(written), job_id])
+    launcher.start("jobO", json_output=json_output, options=options)
+    assert launcher.wait("jobO", timeout=30) == 0
+    assert json.loads(written.read_text(encoding="utf-8")) == expected
+
+
 def test_a_run_starts_with_the_child_environment(setup):
     root, paths, launcher, release = setup
     env = SR.child_environment(paths)
