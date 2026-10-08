@@ -91,6 +91,13 @@ def budget_decision_id(request_id: str) -> str:
     return f"budget:{request_id}" if request_id else "budget_exhausted"
 
 
+def is_budget_decision_id(decision_id: str) -> bool:
+    """The test of the ids `budget_decision_id` builds: true for an id that starts
+    with `budget:` and for `budget_exhausted` (DECISION F253 D17 (3)), so the rule
+    is written once for the command and for the public API."""
+    return decision_id.startswith("budget:") or decision_id == "budget_exhausted"
+
+
 def _parse_budget_time(raw: str) -> datetime | None:
     """A timezone-aware time parsed from ``raw``, or None when it does not parse —
     the safe direction for :func:`budget_stop_answer`: a time that fails to parse

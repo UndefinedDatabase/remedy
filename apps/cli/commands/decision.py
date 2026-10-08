@@ -22,7 +22,9 @@ def _is_budget_decision_id(decision_id: str) -> bool:
     """DECISION F295 D11 (1): a budget decision's id, exactly as
     `decision_queue.budget_decision_id` builds it — `budget:<request id>`, or
     `budget_exhausted` when the stop carried no request id."""
-    return decision_id.startswith("budget:") or decision_id == "budget_exhausted"
+    from packages.orchestration.decision_queue import is_budget_decision_id
+
+    return is_budget_decision_id(decision_id)
 
 
 def _load_job_events(job_id_str: str, *, json_output: bool = False):
