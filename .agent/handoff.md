@@ -1,104 +1,115 @@
-# Handoff — F304 round 23: round 22 booked, the evidence job and the review package built
+# Handoff — F304 round 24: round 23 booked, the ledger rotated, F304 accepted
 
 ## Session
 
-SESSION 5 of feature F304 · round 23 · rounds so far 23
+SESSION 5 of feature F304 · round 24 · rounds so far 24
 
-Context self-assessment: "The reviewer's context is comfortable after two rounds; the session goes on with the closing round."
+Context self-assessment: the reviewer's context is comfortable; the session ends here because F304 is closed and the next feature starts in a fresh session.
 
-Fortschritt: ~98 % (everything but the closing commit and the pull request is done) — Schätzung
+Fortschritt: 100 % (F304 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `3e914de2e26b486f0e891a5dd443eed4d8b2a1ce`..HEAD (HEAD is C2 below, which carries this
-handback). The ACCEPTED HEAD, the last content commit before the package, is C1:
-`95f3421e787555e1381f9eb143fbb61cbd357553`.
+Review of `15b3894c0eb02f607acf9b046c0bd84f47669db8`..HEAD (HEAD is C3 below, which carries this
+handback and is the last commit on the branch).
 
 ## Commits
 
-### 95f3421e7 F304 R23 C1: book round 22, the plan, save the block and the evidence script
+### 8125376f8 F304 R24 C1: book round 23, save the round 24 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f304-r23.md` | 174/0 | new file, byte copy of `block.md` |
-| `.agent/authored/f304-r23-create_f304_evidence.py` | 201/0 | new file, byte copy of the prepared evidence script |
-| `.agent/live_review.md` | 2/0 | its bytes at `3e914de2e` followed by `append-live_review.txt` (round 22's gate entry) |
-| `.agent/plan.md` | 5/7 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f304-r24.md` | 152/0 | new file, byte copy of `block.md` |
+| `.agent/authored/f304-r24-status_line.txt` | 1/0 | new file, byte copy of `status_line.txt` |
+| `.agent/authored/f304-r24-pr_body.md` | 137/0 | new file, byte copy of `pr_body.md` |
+| `.agent/live_review.md` | 2/0 | `sim-C1-live_review.md`, byte for byte: the blob at `15b3894c0` with round 23's gate entry appended |
+| `.agent/plan.md` | 9/7 | `dry-plan.md`, byte for byte |
 
-### F304 R23 C2: handback (self-reference, one grouped table)
+### 28f148a73 F304 R24 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
+| `.agent/live_review.md` | 0/86 | the rotation moved 86 records out, byte-equal to `sim-C2-live_review.md` |
+| `.agent/live_review_archive.md` | 86/0 | the same 86 records appended, byte-equal to `sim-C2-live_review_archive.md` |
+
+### F304 R24 C3: accept F304 in STATUS with its README sync and the self-use queue (self-reference, one grouped table)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 | F304's `[~]` line becomes the one line of `status_line.txt` (`sim-STATUS.md`, byte for byte); measured before the handoff joined |
+| `README.md` | 15/2 | `131 of 304`, Tier 12 row reading 4 and 13, F304's paragraph after F298's (`sim-README.md`, byte for byte); measured before the handoff joined |
+| `scripts/self_use_queue.json` | 1/1 | `SU-049`'s `consumed_by` becomes `F304` (`sim-self_use_queue.json`, byte for byte); measured before the handoff joined |
 | `.agent/handoff.md` | this commit | this file; a handoff cannot table the commit that writes it |
 
 ## External actions
 
-- `git push origin feature/f304-machine-client-contract-v1-1-part-two` after C1, once:
-  `3e914de2e..95f3421e7`, accepted on the first attempt.
-- A0: `python3 -m apps.cli.main data reclaim --orphans`, once, exit 0; `--apply` not run, nothing to
-  reclaim.
-- A1: `python3 .agent/authored/f304-r23-create_f304_evidence.py .remedy-wt/f304-r23-evidence`, once,
-  detached, exit 0.
-- A2: `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f304-r23-evidence`, once, exit 0,
-  without `REMEDY_REVIEW_DIR`.
-- The push after C2 is reported by the worker's reply and gate 5; no pull request is open.
+- `git push origin feature/f304-machine-client-contract-v1-1-part-two` after C3, and then
+  `gh pr create` and `gh pr list --state open`: reported by the worker's reply, not here (Rule A4:
+  this file is written before them, and no pull request number exists yet).
+- The rotation: `python3 scripts/rotate_live_review.py`, once, exit 0 (output below).
 - No full suite, no mutation, no other pytest command, no worktree, no merge, no new branch, no
-  force-push, no pull.
+  force-push, no pull, no checkout or switch.
 
 ## Verification
 
-0. Before any write: the four prepared files matched the prompt's sha256 digests (Python
-   `hashlib.sha256`, 4 of 4 True). `git rev-parse HEAD` and
-   `origin/feature/f304-machine-client-contract-v1-1-part-two` both read
-   `3e914de2e26b486f0e891a5dd443eed4d8b2a1ce`, `git status --porcelain` was empty, `.agent/STOP` was
-   absent. `git branch --show-current` read the feature branch before each commit.
-1. C1 proofs (new file, line count, sha256 beside its prepared file): the block copy 174 lines,
-   `91565f8be43b54ad3ad322e2065b0751a8ecc6803b67b8d7ad114b295c34ebb8` against the same, True; the
-   script copy 201 lines, `0c64ce30e8331af2c76523291c731c0351bcea6da188011752cbec7aadd5f453` against
-   the same, True; the ledger equals the blob at `3e914de2e` followed by the slice, True; the plan
-   equals `dry-plan.md`, True. `git diff --cached --numstat` read `201 0`, `174 0`, `2 0`, `5 7`, four
-   paths. The staged diff was written to a file and read whole.
-2. **Gate 1** (`git status --porcelain` after C1): empty; the four byte comparisons taken from
-   `git show 95f3421e7:<path>` all True.
-3. **A0** (`python3 -m apps.cli.main data reclaim --orphans`, exit 0): `Reclaimable: nothing`;
-   `Would free 0 B in 0 paths — nothing deleted; re-run with --apply`. One refused path:
-   `review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed
-   classes only  1.5 MB`. `--apply` was skipped as the block orders for an empty reading.
-4. **A1** (`apps/ui/node_modules`: real directory True, symlink False; `git reflog -n 3` newest entry
-   C1 and branch the feature branch, before and after). Evidence log
-   `.remedy-wt/f304-r23-worker/evidence.log`, done file `0`:
-   `ancestry-path count 74`, `plain count 74`, `collected node ids 2607, deselected 14`,
-   `red control: unsafe among the real ids 0 []`,
-   `red control: planted id -> a local absolute path`,
-   `pytest exit 0, {'passed': 2604, 'failed': 0, 'skipped': 3}, output_hash 83711bf755edbce9ceb96fa7468550005a99e5ba65dec261def4b0f128cdd491`,
-   `validate_verification_tests problems [] passed 2604`, `is_valid_current_run True`,
-   `validation_errors []`; summary `job_id f304r23e1001`, `head_commit
-   95f3421e787555e1381f9eb143fbb61cbd357553`, `commit_count 74`, `verdict PASS_WITH_RISKS`,
-   `total_passed 2604`.
-5. **A2** (`make_review_zip.sh`, exit 0, log `.remedy-wt/f304-r23-worker/zip.log`):
-   `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`,
-   `REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips`,
-   `ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261008-124310-READY_FOR_REVIEW.zip`,
-   `"final_sha256": "d30f2486853690405637598957c25cabac8bd65f0455c66385bb014df5207945"`. Read back:
-   SHA-256 of the file the same; `zipfile.is_zipfile` True; `testzip()` None; the manifest inside the
-   package, `committed_review_subject`: base `4eda924c5b28662e1136b25fb703d594b0d7046c`, head
-   `95f3421e787555e1381f9eb143fbb61cbd357553`, `commit_count` 74, `base_is_ancestor` true.
-6. **Gate 4** (after A2, before C2): `python3 -m apps.cli.main integrity check --json` exit 0,
-   `"check_count": 6`, all six `pass`, `"fail_count": 0`, `"ok": true`; `open_finding_ids` exit 0,
+0. Before any write: all twelve prepared files matched their sha256 (Python `hashlib`, 12 of 12 True;
+   `block.md` 152 lines, `48b5977453579bd6dd0541a319210ee6aa32e83d55f61b921a1cd4a6945d9289`).
+   `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read
+   `15b3894c0eb02f607acf9b046c0bd84f47669db8`, `git status --porcelain` was empty, `.agent/STOP`
+   was absent. `git branch --show-current` read the feature branch before each commit.
+1. C1: every copy byte-equal to its prepared file (5 of 5 True); `git diff --cached --numstat` read
+   `137 0`, `1 0`, `152 0`, `2 0`, `9 7`, the cells of `sim-readings.txt`. The staged diff was
+   written to a file and read whole.
+2. C2: the rotation's whole output, exit 0:
+
+       gate records moved: 30
+       finding pairs moved: 5 (10 records)
+       resolved-text records moved: 3
+       old ledger size: 261805 bytes
+       new ledger size: 183214 bytes
+       old archive size: 6193064 bytes
+       new archive size: 6271655 bytes
+       open findings before: 11
+       open findings after: 11
+       written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+
+   Both ledger files byte-equal to `sim-C2-live_review.md` and `sim-C2-live_review_archive.md`
+   (True, True); `git diff --cached --numstat` read `0 86` and `86 0`. The staged diff (225 lines)
+   was written to a file and read whole; its 86 removed lines equal its 86 added lines as a
+   multiset (a script reading).
+3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain` after the three C3 files
+   were put in place): ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`
+   and nothing else; `git diff --numstat` read `15 2`, `1 1`, `1 1`. The byte comparison of every
+   copied file against its prepared file: 9 of 9 True (the three authored copies, the plan, the two
+   ledger files, STATUS, README, the queue).
+4. **Gate 2**: the content of `status_line.txt` without its trailing newline occurs 1 time in
+   `docs/roadmap/STATUS.md`; lines beginning `- [~]`: 0.
+5. **Gate 3** (`python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
+   tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+   tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+   tests/cli/test_golden_path.py`, run once through a Python wrapper): exit 0, `555 passed in
+   37.57s`, no FAILED, ERROR or SKIPPED line.
+6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`,
+   `handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`,
+   `repo_root_hygiene` and `high_blockers_open` all `pass`, `"fail_count": 0`, `"ok": true`.
+7. **Gate 5** (`python3 -c "import scripts.rotate_live_review as r;
+   print(r.open_finding_ids(open('.agent/live_review.md').read()))"`): exit 0,
    `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162',
-   'R-1172', 'R-1176']`; `git status --porcelain` empty; `git worktree list` 12 lines;
-   `git reflog -n 3 --date=iso` newest entry `95f3421e7 ... commit: F304 R23 C1: book round 22, the
-   plan, save the block and the evidence script`.
-7. **Gate 5** (after the push): reported in the worker's reply, not here.
+   'R-1172', 'R-1176']`.
+8. Gate 6 (after the push and the pull request): reported in the worker's reply, not here.
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f304-r23.md`: 174 lines, byte-equal, sha256
-  `91565f8be43b54ad3ad322e2065b0751a8ecc6803b67b8d7ad114b295c34ebb8`.
-- `f304-r23-create_f304_evidence.py` to `.agent/authored/f304-r23-create_f304_evidence.py`: 201
-  lines, byte-equal, sha256 `0c64ce30e8331af2c76523291c731c0351bcea6da188011752cbec7aadd5f453`.
-- `append-live_review.txt`: post equals pre plus slice in bytes, once (Verification item 1).
-- `dry-plan.md` to `.agent/plan.md`: byte-equal (Verification item 1).
+- `block.md` to `.agent/authored/f304-r24.md`: 152 lines, byte-equal, sha256
+  `48b5977453579bd6dd0541a319210ee6aa32e83d55f61b921a1cd4a6945d9289`.
+- `status_line.txt` to `.agent/authored/f304-r24-status_line.txt` and `pr_body.md` to
+  `.agent/authored/f304-r24-pr_body.md`: byte-equal.
+- The STATUS line in `docs/roadmap/STATUS.md` is byte-identical to
+  `.agent/authored/f304-r24-status_line.txt` without its trailing newline, count 1 (Verification
+  item 4).
+- `sim-C1-live_review.md` to `.agent/live_review.md` and `dry-plan.md` to `.agent/plan.md`:
+  byte-equal after C1; the two ledger files byte-equal to their `sim-C2-*` files after C2.
+- `sim-STATUS.md`, `sim-README.md` and `sim-self_use_queue.json` to their three paths: byte-equal.
 
 ## Deviations & assumptions
 
@@ -106,24 +117,21 @@ None.
 
 ## Round verdicts
 
-Rounds 1 to 22 are booked in the ledger (round 22 by this round's C1: PASS). Round 23's verdict is
-the reviewer's, booked in the next round's first commit.
+Rounds 1 to 23 are booked in the ledger (round 23 by this round's C1: PASS). Round 24's verdict
+is the reviewer's, written into the pull request and booked in the next feature's first commit.
 
 ## For the operator, in plain sentences
 
-Remedy built the review package for this feature. That makes Remedy dependable for a program that drives it: a job runs in the repository of the project it names, a refused change says why and is never reported as a success, a finished result can be declined, the same work order cannot start twice by accident, and the overview shows what each job changed and what it cost while staying small. The package is the file `remedy-review-20261008-124310-READY_FOR_REVIEW.zip`, saved in the folder `/home/decodeux/Repos/remedy-history/zips`. The evidence run ran 2607 tests (14 more were left out on purpose) and 2604 passed, none failed and 3 were skipped. The cleanup of old scratch copies found nothing it was allowed to remove, so it freed 0 B; one 1.5 MB review staging copy was kept because no job owns it. Nothing waits for you.
+The second part of the machine client contract is finished and accepted. A program that drives Remedy through its command line can now rely on what it is told: a job runs in the repository of the project it names, a change that could not be made is reported as refused and never as a success, a finished result can be turned down with a reason, and the same work order cannot start twice by accident. The overview shows what each finished job changed, what it cost in money, calls and tokens, and whether to apply it, while staying small. The page a program reads says all of this and is checked against the code by tests. A pull request is open for it and will be merged at the start of the next session unless you merge it earlier. The next work is the public web interface for programs. Eleven smaller problems carried from earlier features stay written down for the next clean-up feature. Nothing waits for you.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
    and stop.
-2. Then Phase 1 rule 2, the Open PR Gate; no pull request is open for this branch yet.
-3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then rule 4: the reviewer reviews round 23 and books its verdict in the next round's first
-   commit.
-5. Then the closing round: book round 23, rotate the ledger, the open findings stay with F297, the
-   self-use entry SU-049's consumed_by, the STATUS flip with the README sync, and the pull request,
-   left unmerged.
+2. Then the Open PR Gate, which merges F304's pull request in the NEXT session and never in this
+   one, after reading its hosted checks.
+3. Then the booking of round 24's verdict in the next feature's first commit.
+4. Then Rule A5 (the next unchecked line is F253 — Headless API contract).
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
@@ -133,10 +141,8 @@ R-1162, R-1172 and R-1176, Low; all owned by F297).
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 22, the plan, save the block and the evidence script | done | `95f3421e7`, the accepted head |
-| A0: staging reclaim | done | nothing reclaimable, `--apply` skipped |
-| A1: evidence job `f304r23e1001` | done | exit 0, 2604 passed |
-| A2: review package | done | `READY_FOR_REVIEW`, archived |
-| Gates 1 to 4 | done | all green |
-| C2: handback | done | this commit |
-| Push after C2, gate 5 | done | reported in the worker's reply |
+| C1: book round 23, save the block, the STATUS line and the PR body | done | `8125376f8` |
+| C2: rotate the finding ledger | done | `28f148a73`, 30 gate records and 5 finding pairs moved, 11 open before and after |
+| C3: accept F304 in STATUS, README sync, self-use queue | done | this commit |
+| Gates 1 to 5 | done | all green, run before this file was written |
+| Push, pull request, `gh pr list`, gate 6 | pending | reported in the worker's reply |

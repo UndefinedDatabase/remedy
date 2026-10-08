@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-130 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+131 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 3 | 13 |
+| 12 | Observability & Operations | 4 | 13 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -764,6 +764,19 @@ code and the page differ; the feature's other six parts, an order that runs in i
 repository, honest refusals and declining a result, several jobs and an order started twice, what
 an approval card needs, tokens and calls beside the cost, and a digest that stays small, moved to
 the next feature).
+
+F304 machine client contract v1.1, second part (a program that drives Remedy through the command
+line can now rely on what it is told: an order that names a project runs in that project's
+registered repository wherever the program stands, and `remedy project register --repo <path>`
+registers one without touching its working copy; an approved apply that did not land answers with
+a refusal word for its cause and is never reported as a success, and `remedy job decline` turns a
+finished result down with a reason; one order file runs in one mission at a time unless
+`--new-mission` asks for another, and `remedy job run` reports a job that ended stuck as a refusal;
+each finished job in the status overview carries what an approval needs, its changed files, its
+tasks, its checks and one recommendation word and one risk word by rules the page states, with its
+provider calls and its tokens beside its cost; an order may be capped by any one budget; and the
+overview lists what still needs something and the 20 jobs that ended last, which
+`remedy status --all-ended-jobs` widens).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
