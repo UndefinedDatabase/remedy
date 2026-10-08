@@ -197,6 +197,71 @@ def test_the_same_file_with_max_cost_usd_flag_and_plan_only_is_ok(repo, capsys):
     assert data["ok"] is True
 
 
+# ── 8a-8c: any one job budget is the order's cap (DECISION F304 D14) ─────────
+
+
+def test_the_refusal_names_every_cap_an_order_may_carry(repo, capsys):
+    order_path = _write_order(repo, "Write a CONTRIBUTING.md\n")
+
+    code, out, err = _exit_code_and_output(capsys, str(order_path))
+
+    assert code == 2
+    message = json.loads(out)["message"]
+    for cap in ("max-cost-usd", "max-total-tokens", "max-provider-calls",
+                "max-wall-clock-minutes"):
+        assert f"`{cap}:`" in message and f"--{cap}" in message, cap
+
+
+@pytest.mark.parametrize(("key", "budget", "value"), [
+    ("max-total-tokens", "max_total_tokens", 50000),
+    ("max-provider-calls", "max_provider_calls", 40),
+    ("max-wall-clock-minutes", "max_wall_clock_minutes", 30),
+], ids=["total-tokens", "provider-calls", "wall-clock-minutes"])
+def test_a_header_with_only_another_cap_runs_and_records_that_budget(
+        repo, capsys, key, budget, value):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order_path = _write_order(repo, f"---\n{key}: {value}\n---\nWrite a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, str(order_path))
+
+    assert _step(data, "run")["status"] == "done"
+    [job_id] = data["job_ids"]
+    budgets = load_job_plan(job_id).budgets
+    assert budgets[budget] == value
+    assert budgets["max_cost_usd"] is None
+
+
+@pytest.mark.parametrize(("flag", "budget"), [
+    ("--max-total-tokens", "max_total_tokens"),
+    ("--max-provider-calls", "max_provider_calls"),
+    ("--max-wall-clock-minutes", "max_wall_clock_minutes"),
+], ids=["total-tokens", "provider-calls", "wall-clock-minutes"])
+def test_a_flag_alone_is_the_cap_and_wins_over_the_headers_value(repo, capsys, flag, budget):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    key = flag.removeprefix("--")
+    bare = _write_order(repo, "Write a CONTRIBUTING.md\n", name="bare.md")
+    assert _do_json(capsys, str(bare), flag, "7", "--plan-only")["ok"] is True
+    headed = _write_order(repo, f"---\n{key}: 3\n---\nWrite a CONTRIBUTING.md\n",
+                          name="headed.md")
+
+    data = _do_json(capsys, str(headed), flag, "9")
+
+    [job_id] = data["job_ids"]
+    assert load_job_plan(job_id).budgets[budget] == 9
+
+
+def test_a_header_cap_that_is_no_number_is_refused_as_an_invalid_budget(repo, capsys):
+    order_path = _write_order(repo, "---\nmax-provider-calls: many\n---\nWrite a CONTRIBUTING.md\n")
+
+    code, out, err = _exit_code_and_output(capsys, str(order_path))
+
+    assert code == 2
+    assert json.loads(out)["error"] == "invalid_budget"
+    assert not _missions_dir_exists(repo)
+
+
 # ── 9: a header contract, and a flag that wins over it ───────────────────────
 
 

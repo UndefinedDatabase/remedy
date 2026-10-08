@@ -23,9 +23,11 @@ exits non-zero.
 ## The order file
 
 An order is a Markdown file whose path ends in `.md` and holds no whitespace. An optional header
-sits between two `---` lines and names `project`, `contract`, `max-cost-usd` and any number of
-`constraint` lines; the order text follows it. A flag given on the command line wins over the
-header. An order that names a project, in its header or with `--project`, runs in that
+sits between two `---` lines and names `project`, `contract`, the caps `max-cost-usd`,
+`max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes`, and any number of
+`constraint` lines; the order text follows it. Each cap is the job budget the flag of the same
+name sets, and an order needs at least one of the four, from its header or its flag. A flag
+given on the command line wins over the header. An order that names a project, in its header or with `--project`, runs in that
 project's registered repository wherever the client stands; an order that names none runs in
 `--repo`, by default the current directory. A client registers such a repository once with
 `remedy project register --repo <path> --json`, which answers the project's `project_id` and
@@ -41,7 +43,8 @@ Add a line saying hello to README.md
 
 Remedy refuses an order file before any step, with exit code 2: `order_file_not_found`,
 `order_file_unreadable`, `order_file_empty`, `order_file_invalid_header`, and
-`order_file_no_cost_cap` when neither the header nor `--max-cost-usd` sets a cost cap. An order
+`order_file_no_cost_cap` when neither the header nor a flag sets any of the four caps; the token
+keeps the name it had when the cost was the only cap. An order
 that names a project is refused before any step with `project_has_no_repo` and exit code 3
 when the project has no registered repository, and with `repo_not_in_project` and exit code 2
 when `--repo` names a repository that is not the project's. An order file that a mission which

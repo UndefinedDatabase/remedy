@@ -6,8 +6,10 @@ in `.md` in any letter case; every other argument is order text. The file is
 UTF-8, a leading byte-order mark allowed. When its first line is exactly
 `---`, the lines up to the next line that is exactly `---` are its header;
 otherwise the whole file is the order. A header line is `key: value`, a
-blank line is ignored, the keys are `project`, `contract`, `max-cost-usd`
-(each at most once) and `constraint` (as often as needed). The constraints
+blank line is ignored, the keys are `project`, `contract`, the four caps
+`max-cost-usd`, `max-total-tokens`, `max-provider-calls` and
+`max-wall-clock-minutes` (each at most once; DECISION F304 D14 added the last
+three) and `constraint` (as often as needed). The constraints
 reach the planner appended to the order text. This module knows nothing of
 the command line; `apps/cli/commands/do_cmd.py` calls it first. DECISION
 F295 D3: `read_order_file` also returns the file's resolved absolute path
@@ -21,12 +23,17 @@ import hashlib
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+#: The header's cap keys, each the job budget the flag of the same name sets; an unattended order
+#: needs at least one of them, from its header or its flag (DECISION F304 D14).
+ORDER_FILE_CAP_KEYS = ("max-cost-usd", "max-total-tokens", "max-provider-calls",
+                       "max-wall-clock-minutes")
+
 #: The header's recognised keys, each meaning what the flag of the same name
 #: means; `constraint` is the one key a header may repeat.
-ORDER_FILE_HEADER_KEYS = ("project", "contract", "max-cost-usd", "constraint")
+ORDER_FILE_HEADER_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS, "constraint")
 
 #: The single-valued keys — repeating one of these is `order_file_invalid_header`.
-_SINGLE_VALUED_KEYS = ("project", "contract", "max-cost-usd")
+_SINGLE_VALUED_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS)
 
 #: The header's opening and closing delimiter, matched by exact line equality.
 _HEADER_DELIMITER = "---"
@@ -62,6 +69,10 @@ class OrderFile:
     source_path: str = ""
     #: sha256 (hex) of the exact bytes `read_order_file` read (DECISION F295 D3); "" likewise.
     source_sha256: str = ""
+    #: The header's other three caps (DECISION F304 D14); None when the header names none.
+    max_total_tokens: str | None = None
+    max_provider_calls: str | None = None
+    max_wall_clock_minutes: str | None = None
 
 
 # WHY: the one predicate that decides text-vs-file, read by both `_cmd_do` and
@@ -86,9 +97,7 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
     stripped.
     """
     lines = raw.splitlines()
-    project: str | None = None
-    contract: str | None = None
-    max_cost_usd: str | None = None
+    single_values: dict[str, str] = {}
     constraints: list[str] = []
     order_lines = lines
 
@@ -104,7 +113,6 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
                 f"{path}: line 1 ({_HEADER_DELIMITER!r}) opens a header that no "
                 f"second {_HEADER_DELIMITER!r} line closes.",
             )
-        seen_single: dict[str, bool] = {key: False for key in _SINGLE_VALUED_KEYS}
         for offset, line in enumerate(lines[1:close_index]):
             line_no = offset + 2  # 1-based; line 1 is the opening delimiter.
             if not line.strip():
@@ -128,20 +136,14 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
                     "order_file_invalid_header",
                     f"{path}: line {line_no} ({line!r}) has an empty value.",
                 )
-            if key in seen_single:
-                if seen_single[key]:
+            if key in _SINGLE_VALUED_KEYS:
+                if key in single_values:
                     raise OrderFileError(
                         "order_file_invalid_header",
                         f"{path}: line {line_no} ({line!r}) repeats the header "
                         f"key {key!r}.",
                     )
-                seen_single[key] = True
-                if key == "project":
-                    project = value
-                elif key == "contract":
-                    contract = value
-                else:
-                    max_cost_usd = value
+                single_values[key] = value
             else:
                 constraints.append(value)
         order_lines = lines[close_index + 1:]
@@ -157,8 +159,12 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
         text = order_text
 
     return OrderFile(
-        path=path, text=text, project=project, contract=contract,
-        max_cost_usd=max_cost_usd, constraints=tuple(constraints),
+        path=path, text=text, project=single_values.get("project"),
+        contract=single_values.get("contract"),
+        max_cost_usd=single_values.get("max-cost-usd"), constraints=tuple(constraints),
+        max_total_tokens=single_values.get("max-total-tokens"),
+        max_provider_calls=single_values.get("max-provider-calls"),
+        max_wall_clock_minutes=single_values.get("max-wall-clock-minutes"),
     )
 
 

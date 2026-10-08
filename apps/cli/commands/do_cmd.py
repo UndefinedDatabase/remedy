@@ -482,7 +482,8 @@ def _cmd_do(
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
-    # other step, and a file without a cost cap is refused before any step.
+    # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
+    # cap be any one of the four job budgets an order file's header or the flags can set.
     from packages.orchestration.order_file import (
         OrderFileError,
         order_argument_names_file,
@@ -496,19 +497,28 @@ def _cmd_do(
         except OrderFileError as exc:
             fail(exc.error, f"{exc} Nothing was run.",
                  json_output=json_output, exit_code=2)
-        if max_cost_usd is None and order_file.max_cost_usd is None:
+        if max_cost_usd is None:
+            max_cost_usd = order_file.max_cost_usd
+        if max_total_tokens is None:
+            max_total_tokens = order_file.max_total_tokens
+        if max_provider_calls is None:
+            max_provider_calls = order_file.max_provider_calls
+        if max_wall_clock_minutes is None:
+            max_wall_clock_minutes = order_file.max_wall_clock_minutes
+        if all(cap is None for cap in (max_cost_usd, max_total_tokens, max_provider_calls,
+                                       max_wall_clock_minutes)):
             fail("order_file_no_cost_cap",
-                 f"{goal.strip()}: an unattended order without a cost cap is "
-                 "refused; set `max-cost-usd:` in the header or pass "
-                 "--max-cost-usd. Nothing was run.",
+                 f"{goal.strip()}: an unattended order without a cap is refused; set "
+                 "`max-cost-usd:`, `max-total-tokens:`, `max-provider-calls:` or "
+                 "`max-wall-clock-minutes:` in the header, or pass --max-cost-usd, "
+                 "--max-total-tokens, --max-provider-calls or --max-wall-clock-minutes. "
+                 "Nothing was run.",
                  json_output=json_output, exit_code=2)
         goal = order_file.text
         if project is None:
             project = order_file.project
         if contract is None:
             contract = order_file.contract
-        if max_cost_usd is None:
-            max_cost_usd = order_file.max_cost_usd
         order_source_kwargs = {
             "order_source_path": order_file.source_path,
             "order_source_sha256": order_file.source_sha256,
