@@ -97,6 +97,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy chat show` | 3 |
 | `remedy chat ask` | 3 |
 | `remedy client order` | 3 |
+| `remedy client run` | 3 |
 | `remedy runtime serve` | 3, 4, 5 |
 | `remedy runtime probe` | 3, 4, 5 |
 | `remedy runtime stop` | 5 |

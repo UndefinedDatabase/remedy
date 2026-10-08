@@ -92,7 +92,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.4"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.5"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -529,6 +529,15 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
         "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
         "F253 D14 (4))",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_run:**payload": (
+        frozenset({
+            "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid",
+            "started_at", "state",
+        }),
+        "the keys run_record_payload in packages/orchestration/serve_runs.py returns, shared "
+        "with GET /api/v1/jobs/{job}/run and the 202 answer of POST /api/v1/jobs/{job}/run "
+        "(DECISION F253 D20)",
     ),
 }
 
@@ -1356,6 +1365,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # `OrderLauncher`, is tests/cli/test_client_order_cmd.py's.
     refused_order = answer("client.order", ["client", "order", "0123456789abcdef"], 3)
     assert refused_order["error"] == "order_not_found"
+    # Likewise no run the supervisor started exists here; the refusal is this run's coverage of
+    # client.run (DECISION F253 D20); its real run is tests/cli/test_client_run_cmd.py's.
+    refused_run = answer("client.run", ["client", "run", "0123456789abcdef"], 3)
+    assert refused_run["error"] == "run_not_found"
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,

@@ -436,11 +436,37 @@ def order_state(paths: ServePaths, record: OrderRecord) -> str:
     return "lost"
 
 
+def run_state(paths: ServePaths, record: RunRecord) -> str:
+    """`ended`, `running` or `lost` for the run RECORD holds (DECISION F253 D20 (1)).
+
+    The twin of `order_state`: `ended` once the record holds its end, `running` while
+    `_process_is_this_job` answers for its process, else `lost`. PATHS is kept for symmetry
+    with `order_state` and is not read.
+    """
+    if record.ended_at is not None:
+        return "ended"
+    if _process_is_this_job(record.pid, record.job_id):
+        return "running"
+    return "lost"
+
+
 def order_answer(record: OrderRecord) -> dict[str, Any] | None:
     """The envelope `remedy do` printed to RECORD's `out.log`, or None (DECISION F253 D13 (3)).
 
     The caller decides whether to call this at all: an order's answer is read only
     while its state is not `running`.
+    """
+    try:
+        text = Path(record.out_log).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    return _last_envelope(text)
+
+
+def run_answer(record: RunRecord) -> dict[str, Any] | None:
+    """The envelope `remedy job run` printed to RECORD's `out_log`, or None (DECISION F253 D20 (1)).
+
+    The twin of `order_answer`: the caller reads it only while the state is not `running`.
     """
     try:
         text = Path(record.out_log).read_text(encoding="utf-8", errors="replace")
@@ -477,6 +503,27 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
         "order_file": record.order_file,
         "answer": answer,
     }
+
+
+def run_not_found_message(job_id: str) -> str:
+    """The sentence a job with no run record is refused with (DECISION F253 D20 (1)).
+
+    Shared by `remedy client run` and `GET /api/v1/jobs/{job}/run`, as `order_not_found_message`
+    is by the order readers.
+    """
+    return f"no run record names {job_id!r}."
+
+
+def run_record_payload(paths: ServePaths, record: RunRecord) -> dict[str, Any]:
+    """The answer keys `remedy client run` prints for RECORD (DECISION F253 D20 (1)): every key
+    of the record, `state` and, once the state is not `running`, `answer`.
+
+    Shared by `remedy client run`, `GET /api/v1/jobs/{job}/run` and the 202 answer of `POST
+    /api/v1/jobs/{job}/run`, as `order_record_payload` is by the order readers.
+    """
+    state = run_state(paths, record)
+    answer = run_answer(record) if state != "running" else None
+    return {**record.to_json(), "state": state, "answer": answer}
 
 
 class OrderLauncher:

@@ -12,6 +12,12 @@ the document's, and otherwise as a short summary a person reads.
 (`packages.orchestration.serve_runs.read_order_record`): its state, its exit code and, once it is
 not `running`, the answer `remedy do` printed. An order id that names no record is refused
 `order_not_found`, exit 3.
+
+`remedy client run <job>` reads the run the supervisor started for a job (F253, DECISION F253
+D20), as `remedy client order` reads an order: the job's run record
+(`packages.orchestration.serve_runs.read_run_record`), its `state` and, once that is not
+`running`, the `answer` `remedy job run` printed. A value that names no one job, or a job with no
+run record, is refused `run_not_found`, exit 3.
 """
 
 from __future__ import annotations
@@ -102,10 +108,42 @@ def _cmd_client_order(order_id: str, *, json_output: bool = False) -> None:
     print(f"Order {record.order_id}: {payload['state']}")
 
 
+def _cmd_client_run(job: str, *, json_output: bool = False) -> None:
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import (
+        read_run_record,
+        run_not_found_message,
+        run_record_payload,
+    )
+
+    paths = serve_paths()
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdError:
+        job_id = None
+    record = read_run_record(paths, job_id) if job_id is not None else None
+    if record is None:
+        fail(
+            "run_not_found",
+            run_not_found_message(job),
+            json_output=json_output, exit_code=3,
+        )
+    # As `_cmd_client_order`: a call, hand-verified in tests/cli/test_client_interface.py
+    # (`apps.cli.commands.client_cmd:_cmd_client_run:**payload`).
+    payload = run_record_payload(paths, record)
+    if json_output:
+        emit_ok(**payload)
+        return
+    print(f"Run of job {record.job_id}: {payload['state']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
     "client.changes": lambda args: _cmd_client_changes(
         since=getattr(args, "since", None), json_output=getattr(args, "json", False)),
     "client.order": lambda args: _cmd_client_order(
         args.order, json_output=getattr(args, "json", False)),
+    "client.run": lambda args: _cmd_client_run(
+        args.job, json_output=getattr(args, "json", False)),
 }
