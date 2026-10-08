@@ -341,6 +341,37 @@ def test_the_page_states_the_prefix_the_auth_scheme_and_the_refusal_tokens():
     assert "Deprecation: true" in page
 
 
+def test_the_page_states_the_ledger_file_and_the_query_refusal_token():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "api/calls.jsonl" in page
+    assert "api_query_invalid" in page
+
+
+def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalog():
+    """R-1187: a `remedy <group> <subcommand>` span above the generated marker is real.
+
+    Mutates nothing; this is the standing proof, not the mutation the reviewer runs.
+    """
+    import re
+
+    from apps.cli.command_catalog import CATALOG, resolve_group
+
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    spans = [s for s in re.findall(r"`([^`]+)`", hand_written) if s.startswith("remedy ")]
+    assert spans, "no `remedy ...` span found in the page's hand-written part"
+    for span in spans:
+        words = span.split()
+        first = words[1] if len(words) > 1 else ""
+        second = words[2] if len(words) > 2 else ""
+        if second and not second.startswith("-"):
+            group_id = resolve_group(first)
+            assert any(cmd.group_id == group_id and cmd.subcommand == second
+                       for cmd in CATALOG), span
+        else:
+            assert resolve_group(first) is not None, span
+
+
 # -- H: the digest route, twinned with status.run's client object -------------
 
 
