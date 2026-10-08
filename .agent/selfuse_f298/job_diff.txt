@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-9848929242ac4039  (exit 0)
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 1a5841cf4..fc3caafb3 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -972,7 +972,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) ->
+             job_id, evidence_out, repo_path=repo, job_status=status,
+             changed_files=changed, source_command=source_command,
+         )
+-    except Exception:  # noqa: BLE001 — evidence indexing is best effort; must not break the export
++    except (ImportError, OSError, ValueError, TypeError):
+         pass
+ 
+ 
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

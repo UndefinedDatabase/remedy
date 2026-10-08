@@ -1,0 +1,15 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 335.36s (measured wrapper); pytest's own reported wall time 334.61s (0:05:34)
+summary line: 21658 passed, 22 skipped, 1 warning in 334.61s (0:05:34)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: 6fc1158ca (F298 R26 C3: F298's Built State names every reachability line it added (DECISION F298 D23))
+reflog before: 6fc1158ca HEAD@{2026-10-08 03:32:16 +0200}: commit: F298 R26 C3: F298's Built State names every reachability line it added (DECISION F298 D23)
+reflog after: 6fc1158ca HEAD@{2026-10-08 03:32:16 +0200}: commit: F298 R26 C3: F298's Built State names every reachability line it added (DECISION F298 D23)
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F298 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1084.16 CPU seconds, 334.62 wall seconds, 21680 tests collected, exit status 0, recorded 2026-10-08T01:37:53Z
+This closure's suite used 1084.16 CPU seconds, 3.4 percent more than F116's 1048.32, within the 10 percent limit.

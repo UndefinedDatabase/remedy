@@ -1,23 +1,25 @@
-# Context — F116 Cost anomaly alarm
+# Context — F298 Machine client contract v1.1: what a client can rely on
 
 ## Active Branch
-feature/f116-cost-anomaly-alarm, cut from `main` at `e80b95467`
-(the merge commit of pull request 312, F287 Provider session continuity across relaunch).
+feature/f298-machine-client-contract-v1-1, cut from `main` at `77493e0f9`
+(the merge commit of pull request 314, operator amendment amend1007b-luna-api-upkeep).
 
 ## Scope
-F116 (Tier 3, Luna gate B): one burn detector that compares a run's spend rate with what is
-expected, trip actions for jobs, and the watchdog's burn tripwire as a caller of the same
-detector, as `docs/roadmap/features/T3_F116.md` lists them; DECISION F116 D1 fixes the slices and
-their order.
+F298 (Tier 12, Luna gate A, part two): the semantics a machine client relies on, repaired on the
+command line that F253's HTTP API will call, and one contract document generated from the code,
+as `docs/roadmap/features/T12_F298.md` lists them; DECISION F298 D1 fixes the slices and their
+order.
 
 ## Do not touch
-Notification channels, budget limits (a separate mechanism), calibration (F074's), as the feature
-file says.
+The approval gate (nothing applied without `--approve`, nothing committed or pushed without its
+flag), the transport (F253's), anything in the universe workspace, any time-of-day mechanic.
 
 ## Active assumptions
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation.
-- The detector runs at the existing safe points; no test starts a real provider process.
+- Every probe runs with the fake providers on scratch repositories and a scratch data root; a
+  folder that must not be a repository gets `GIT_CEILING_DIRECTORIES`, because `.remedy-wt/` sits
+  inside the primary checkout.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

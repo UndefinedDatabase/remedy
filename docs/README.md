@@ -95,7 +95,7 @@ Specifications and design documents for the built system.
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone — command deleted by F280 round 3 |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
-| [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, and what Remedy never does on a machine order |
+| [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, what Remedy never does on a machine order, and `remedy client interface`, which prints the interface as data read from the code; the page's last section is that interface, generated |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |

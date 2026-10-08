@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-129 of 303 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+130 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 2 | 12 |
+| 12 | Observability & Operations | 3 | 13 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -752,6 +752,18 @@ decision can be answered with `--json`, including raising or ending the budget o
 at its limit; a run with `--yes --no-ui --json` never waits for typed input; and the page
 `docs/system/machine-client-contract-v1.md` names every command, flag, answer field and exit code of
 that path, which a test keeps equal to a second test that drives the whole path).
+
+F298 machine client contract v1.1, first part (a program can now ask Remedy what it may rely on:
+`remedy client interface --json` prints, read from Remedy's own code, every operation a client
+uses with its arguments, whether each argument takes a value and may be repeated, its exit codes,
+its refusal words and the keys of its answers down to their nested fields, together with every key
+of the status digest, the job states, the mission status words, the contract templates, the
+budget kinds and the interface's own version; the last section of
+`docs/system/machine-client-contract-v1.md` is that interface rendered, and a test fails when the
+code and the page differ; the feature's other six parts, an order that runs in its project's own
+repository, honest refusals and declining a result, several jobs and an order started twice, what
+an approval card needs, tokens and calls beside the cost, and a digest that stays small, moved to
+the next feature).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

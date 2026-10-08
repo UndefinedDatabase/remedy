@@ -163,6 +163,7 @@ GROUPS: dict[str, GroupDef] = {
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False, feature="F261", reach="job-path"),
     "data": GroupDef("data", "Data", "The data root's disk footprint, per directory class.", user_facing=False, feature="F276", reach="job-path"),
     "serve": GroupDef("serve", "Serve", "The supervisor the command line hands the cockpit's commands to, one per data root.", user_facing=False, feature="F200", reach="job-path"),
+    "client": GroupDef("client", "Client", "What a program that drives Remedy's command line can rely on.", user_facing=False, feature="F298", reach="golden-path"),
     "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False, feature="F266", reach="teacher"),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True, feature="F080", reach="self-build"),
@@ -2795,6 +2796,18 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JSON_OPT,),
         supports_json=True,
         related=("serve.start",),
+    ),
+
+    # ── client (F298: the machine client interface as data, DECISION F298 D2) ──
+    CommandEntry(
+        command_id="client.interface",
+        group_id="client",
+        subcommand="interface",
+        description="Show what a program that drives Remedy can rely on: its commands, arguments, exit codes, state words, templates and budget kinds (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("status.run", "do.run"),
     ),
 
     # ── config ──────────────────────────────────────────────────────────
