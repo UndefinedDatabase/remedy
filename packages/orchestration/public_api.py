@@ -13,7 +13,8 @@ page's table, and it is removed only under a new major path.
 
 Every request under this namespace, a refused one included, appends one line to the data root's
 `api/calls.jsonl` (DECISION F253 D2 (1)): the caller's token kept only as its DECISION F009 D7
-fingerprint, never the query string, and a line that cannot be written changes nothing in the
+fingerprint, the name of the client whose token it was (DECISION F253 D16), never the query string,
+and a line that cannot be written changes nothing in the
 answer sent. A route may answer one key of its twin's answer alone (`twin_key`) and takes only
 the query keys it declares: each of `query` a `true`/`false` flag, each of `query_values` one
 non-empty value given once; anything else answers 400 `api_query_invalid` (DECISION F253 D2 (2),
@@ -23,7 +24,10 @@ A `POST` route is a write (DECISION F253 D9): it declares the keys of its JSON b
 a `refusal_default` status, and `answer_public_api_post` answers it with the envelope of the twin
 command, which the caller's runner has run as a child process. A route's argument builder may
 refuse a write itself, before any command runs, by raising `PublicApiWriteRefusal` (DECISION F253
-D12).
+D12). A client token (DECISION F253 D16) is read from `api/clients.json` by
+`packages.orchestration.api_clients`: with one, `answer_public_api_post` refuses an order outside
+the client's projects or ceilings and an apply the client may not approve with 403
+`api_client_policy_refused`.
 
 `GET /api/v1/orders/{order}` (DECISION F253 D14 (4)) answers an order exactly as `remedy client
 order <order> --json` does: the two share one answer-builder, `order_record_payload` in
@@ -47,7 +51,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.7"
+PUBLIC_API_VERSION = "1.8"
 
 
 @dataclass(frozen=True)
@@ -295,12 +299,14 @@ def _match_route_path(template: str, path: str) -> dict[str, str] | None:
 
 
 def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
-    """The 401 a caller gets for a missing or wrong bearer token."""
+    """The 401 a caller gets for a missing or wrong bearer token; it names the server's token and
+    a client token as the two the route takes (DECISION F253 D16)."""
     from apps.cli.json_envelope import build_error
 
     return 401, build_error(
         "api_token_invalid",
-        "this route needs the server's token as 'Authorization: Bearer <token>'",
+        "this route needs the server's token or a client token as "
+        "'Authorization: Bearer <token>'",
     )
 
 
@@ -570,8 +576,12 @@ _ORDER_CREATE_FLAGS: tuple[str, ...] = ("no_llm", "new_mission", "force_job", "f
 _ORDER_CREATE_STRINGS: tuple[str, ...] = ("builder_provider", "reviewer_provider", "deadline")
 
 
-def _order_text_and_options(body: dict[str, Any]) -> tuple[str, list[str]]:
+def _order_text_and_options(body: dict[str, Any],
+                            client: Any = None) -> tuple[str, list[str]]:
     """The order text and the `remedy do run` options BODY asks for, or `PublicApiWriteRefusal`.
+
+    With a CLIENT (DECISION F253 D16 (5)), an order outside the client's projects or ceilings
+    raises 403 `api_client_policy_refused` once its project is resolved.
 
     DECISION F253 D14 (1), (2): `order` is required. Before anything starts, its text is parsed
     the way `parse_order_file_text` always parses one, so a broken header or an empty order
@@ -581,6 +591,7 @@ def _order_text_and_options(body: dict[str, Any]) -> tuple[str, list[str]]:
     back to the current folder — the supervisor's own working folder is not one this order's
     caller chose, and running the order there is exactly what this refusal prevents.
     """
+    from packages.orchestration.api_clients import client_order_refusal
     from packages.orchestration.order_file import OrderFileError, parse_order_file_text
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
@@ -602,12 +613,18 @@ def _order_text_and_options(body: dict[str, Any]) -> tuple[str, list[str]]:
             "the order's header names no project, so it is not known where to run it; "
             "nothing was run")
     try:
-        select_project(order_file.project, ".")
+        project, _source = select_project(order_file.project, ".")
     except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
         raise PublicApiWriteRefusal(
             409, "api_order_project_unknown",
             f"the order's header names the project {order_file.project!r}, which is not "
             "registered as exactly one; nothing was run")
+    if client is not None:
+        refusal = client_order_refusal(
+            client, (project.slug or "", str(project.id)),
+            order_file.max_total_tokens, order_file.max_provider_calls)
+        if refusal is not None:
+            raise PublicApiWriteRefusal(403, "api_client_policy_refused", refusal)
     options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
     options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
                 if key in body]
@@ -657,8 +674,12 @@ def answer_public_api_post(
     path: str, raw_body: bytes,
     run_command: Callable[[str, list[str]], dict[str, Any] | None],
     start_order: Callable[[str, Sequence[str]], Any] | None = None,
+    client: Any = None,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The (status, body, headers) this namespace answers a POST of `path` with `raw_body`.
+
+    With a CLIENT (DECISION F253 D16 (5), (6)) an order outside its policy, and an apply whose
+    client may not approve, answer 403 `api_client_policy_refused` and run nothing.
 
     DECISION F253 D9. Matches POST routes as `answer_public_api_get` matches GET routes: a path no
     route matches answers 404, a path only a GET route matches answers 405. A bound segment that
@@ -710,7 +731,7 @@ def answer_public_api_post(
             from packages.orchestration.serve_runs import order_record_payload
 
             try:
-                order_text, options = _order_text_and_options(checked)
+                order_text, options = _order_text_and_options(checked, client)
             except PublicApiWriteRefusal as refusal:
                 return refusal.status, build_error(refusal.error, refusal.message), {}
             try:
@@ -720,6 +741,11 @@ def answer_public_api_post(
                     "api_command_failed",
                     f"the order for '{path}' could not be started; nothing runs"), {}
             return 202, build_ok(**order_record_payload(serve_paths(), record)), {}
+        if client is not None and route.twin == "job.apply" and not client.may_apply:
+            return 403, build_error(
+                "api_client_policy_refused",
+                f"the client {client.name!r} may not approve a result into a repository; "
+                "nothing was run"), {}
         try:
             argv = _TWIN_ARGV[route.twin](segments, checked)
         except PublicApiWriteRefusal as refusal:
@@ -749,9 +775,12 @@ def answer_public_api_post(
 PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
 
-def append_public_api_call(*, token_fp: str, method: str, path: str, status: int, error: str,
-                            root: Path | None = None) -> None:
+def append_public_api_call(*, token_fp: str, client: str, method: str, path: str, status: int,
+                            error: str, root: Path | None = None) -> None:
     """Append one line to the data root's `api/calls.jsonl` call ledger (DECISION F253 D2 (1)).
+
+    CLIENT is the name of the client whose token the call presented, or the empty string
+    (DECISION F253 D16 (7)); it is written as the key after `token_fp`.
 
     One `os.write` of one already-built line so concurrent requests never interleave; the
     directory is created at 0o700 and the file opened at 0o600, append-only. Raises `OSError` on
@@ -769,6 +798,7 @@ def append_public_api_call(*, token_fp: str, method: str, path: str, status: int
     record = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "token_fp": token_fp,
+        "client": client,
         "method": method,
         "path": path,
         "status": status,

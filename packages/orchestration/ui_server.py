@@ -4334,9 +4334,31 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return False
         return server_token_matches(supplied, self.server_token)
 
+    def _public_api_caller(self) -> tuple[bool, Any]:
+        """Who calls under `/api/v1`: `(accepted, client)` (DECISION F253 D16 (3)).
+
+        `(False, None)` for no token and for a token nobody holds; `(True, None)` for the
+        server's own token, which is decided first; `(True, client)` for a client token read
+        from the operator's file at this call. Only the routes under `/api/v1` use it: the
+        cockpit's command door keeps `_bearer_token_accepted`, which refuses a client token.
+        """
+        from packages.orchestration.api_clients import load_api_clients, match_api_client
+
+        supplied = self._supplied_bearer_token()
+        if not supplied:
+            return False, None
+        if server_token_matches(supplied, self.server_token):
+            return True, None
+        client = match_api_client(supplied, load_api_clients())
+        return (client is not None), client
+
     def _send_public_api_answer(self, method: str, path: str, status: int,
-                                 body: dict[str, Any], headers: dict[str, str]) -> None:
+                                 body: dict[str, Any], headers: dict[str, str],
+                                 client_name: str = "") -> None:
         """Ledger one call under the public HTTP API, then send its decided answer.
+
+        CLIENT_NAME is the name of the client whose token the call presented, empty for the
+        server's token and for a refused one (DECISION F253 D16 (7)).
 
         The shared tail of `_send_public_api_get` and `_send_public_api_refused_method`:
         both decide their own `(status, body, headers)` first, so every attempt under this
@@ -4350,7 +4372,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         try:
             append_public_api_call(
                 token_fp=token_fingerprint(self._supplied_bearer_token()),
-                method=method, path=path, status=status, error=error)
+                client=client_name, method=method, path=path, status=status, error=error)
         except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
             pass
         self._send_json(status, body, headers=headers)
@@ -4366,12 +4388,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             public_api_token_refusal,
         )
 
-        if not self._bearer_token_accepted():
+        accepted, client = self._public_api_caller()
+        if not accepted:
             status, body = public_api_token_refusal()
             headers: dict[str, str] = {}
         else:
             status, body, headers = answer_public_api_get(path, query)
-        self._send_public_api_answer("GET", path, status, body, headers)
+        self._send_public_api_answer("GET", path, status, body, headers,
+                                     client_name=client.name if client else "")
 
     def _send_public_api_post(self, path: str, query: str) -> None:
         """Answer a POST under the public HTTP API namespace through `command_runner` (DECISION
@@ -4388,7 +4412,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         )
 
         headers: dict[str, str] = {}
-        if not self._bearer_token_accepted():
+        accepted, client = self._public_api_caller()
+        if not accepted:
             status, body = public_api_token_refusal()
         else:
             declared = self.headers.get("Content-Length") or "0"
@@ -4408,8 +4433,9 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 raw_body = self.rfile.read(length) if length else b""
                 start_order = self.order_launcher.start if self.order_launcher is not None else None
                 status, body, headers = answer_public_api_post(
-                    path, raw_body, self.command_runner.run, start_order)
-        self._send_public_api_answer("POST", path, status, body, headers)
+                    path, raw_body, self.command_runner.run, start_order, client=client)
+        self._send_public_api_answer("POST", path, status, body, headers,
+                                     client_name=client.name if client else "")
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
         """Answer POST, PUT or DELETE under the public HTTP API namespace (R-1188, DECISION
@@ -4425,11 +4451,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             public_api_token_refusal,
         )
 
-        if not self._bearer_token_accepted():
+        accepted, client = self._public_api_caller()
+        if not accepted:
             status, body = public_api_token_refusal()
         else:
             status, body = public_api_method_refusal()
-        self._send_public_api_answer(method, path, status, body, {})
+        self._send_public_api_answer(method, path, status, body, {},
+                                     client_name=client.name if client else "")
 
     def _read_command_payload(self) -> tuple[Any, Any]:
         """Return `(payload, None)` for a well-formed body, else `(None, error)`."""

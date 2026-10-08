@@ -26,6 +26,25 @@ Every route under `/api/v1` takes its token in the `Authorization` header, as
 The supervisor's token is the file `serve.token` in the `serve` folder of the data root, readable
 by its owner only. The cockpit's token is the one its start printed.
 
+A program can be given a token of its own, called a client token. The operator writes it into
+`clients.json` in the `api` folder of the data root, beside `calls.jsonl`. The file holds one
+object whose one key `clients` is a list, and each entry names a client, its token, the projects it
+may order work on, the largest number of model tokens and of provider calls an order may spend
+(`null` for no limit) and whether it may approve a result into the repository:
+
+    {"clients": [{"name": "nightly-bot", "token": "<at least 32 characters>",
+                  "projects": ["demo"], "max_total_tokens": 200000,
+                  "max_provider_calls": 40, "may_apply": false}]}
+
+A project is written by its slug or its id, and no two entries share a name or a token. The file
+must be readable by its owner only; a file that group or others can read or write counts as
+holding no client. It is read again at every call, so an edit, a new client or a removed one takes
+effect at the next call. A file that is missing, that cannot be read, that is not JSON, or that
+holds anything outside this shape counts as holding no client at all, and the server's own token
+keeps working. A client token reads every route the server's token reads and is accepted under
+`/api/v1` alone: the cockpit's other routes refuse it as they refuse a wrong token. Until the next
+slice, a client token answers decisions and declines results of any job, whatever its projects.
+
 ## The envelope and its refusals
 
 A route's success is its twin command's own `--json` answer: `{"schema_version": 1, "ok": true,
@@ -68,12 +87,18 @@ prints no answer within 120 seconds answers 500 with `api_command_failed`. The s
 command for a job at a time, so a second write for that job waits for the first. `PUT` and
 `DELETE` still answer 405.
 
+A client token (see "The token") is refused with 403 and `api_client_policy_refused` when an order
+names a project outside the client's projects, when an order's header does not name a
+`max-total-tokens:` or a `max-provider-calls:` the client has a limit for, or names a larger one,
+and when it asks to apply a result and the client may not approve one; nothing is run.
+
 ## The ledger
 
 Every request under `/api/v1`, a refused one included, appends one line to `api/calls.jsonl`
-under the data root, with six fields: `ts`, `token_fp`, `method`, `path`, `status` and `error`.
+under the data root, with seven fields: `ts`, `token_fp`, `client`, `method`, `path`, `status` and `error`.
 The caller's token is kept only as its fingerprint, never itself, and the query string is never
-written at all. A line that cannot be written changes nothing in the answer sent.
+written at all. `client` is the name of the client whose token the call presented, and is empty for
+the server's token and for a refused one. A line that cannot be written changes nothing in the answer sent.
 
 ## The version rule
 
@@ -127,7 +152,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.7`.
+API version: `1.8`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
