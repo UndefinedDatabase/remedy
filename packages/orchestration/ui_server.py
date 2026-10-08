@@ -3246,6 +3246,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # has none, and such a request must get 405 rather than an exception.
         parsed = urlparse(getattr(self, "path", ""))
         path = parsed.path.rstrip("/") or "/"
+        # F253 R-1188: the public HTTP API's own namespace decides its own refusal,
+        # in its own envelope, BEFORE the commands door is even considered.
+        if is_public_api_path(path):
+            self._send_public_api_refused_method("POST", path)
+            return
         parts = path.split("/")
         if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"
                 and parts[4] == "commands"):
@@ -4317,19 +4322,35 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return False
         return server_token_matches(supplied, self.server_token)
 
+    def _send_public_api_answer(self, method: str, path: str, status: int,
+                                 body: dict[str, Any], headers: dict[str, str]) -> None:
+        """Ledger one call under the public HTTP API, then send its decided answer.
+
+        The shared tail of `_send_public_api_get` and `_send_public_api_refused_method`:
+        both decide their own `(status, body, headers)` first, so every attempt under this
+        namespace, refused or not, appends one line to the call ledger before the answer is
+        sent (DECISION F253 D2 (1)). A failed append (DECISION F009 D14 clause four) changes
+        nothing in the answer: the exception dies here.
+        """
+        from packages.orchestration.public_api import append_public_api_call
+
+        error = "" if body.get("ok") else body.get("error", "")
+        try:
+            append_public_api_call(
+                token_fp=token_fingerprint(self._supplied_bearer_token()),
+                method=method, path=path, status=status, error=error)
+        except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
+            pass
+        self._send_json(status, body, headers=headers)
+
     def _send_public_api_get(self, path: str, query: str) -> None:
         """Answer a GET under the public HTTP API namespace (F253, DECISIONs F253 D1 and D2).
 
         Authentication is decided BEFORE the route, the same order the write door
         uses: an unauthenticated caller must learn nothing about which paths exist.
-        Every attempt, refused or not, appends one line to the call ledger before the
-        answer is sent, so the line exists when the client reads it. A failed append
-        (DECISION F253 D2 (1), and DECISION F009 D14 clause four) changes nothing in
-        the answer: the exception dies in this method.
         """
         from packages.orchestration.public_api import (
             answer_public_api_get,
-            append_public_api_call,
             public_api_token_refusal,
         )
 
@@ -4338,14 +4359,27 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             headers: dict[str, str] = {}
         else:
             status, body, headers = answer_public_api_get(path, query)
-        error = "" if body.get("ok") else body.get("error", "")
-        try:
-            append_public_api_call(
-                token_fp=token_fingerprint(self._supplied_bearer_token()),
-                method="GET", path=path, status=status, error=error)
-        except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
-            pass
-        self._send_json(status, body, headers=headers)
+        self._send_public_api_answer("GET", path, status, body, headers)
+
+    def _send_public_api_refused_method(self, method: str, path: str) -> None:
+        """Answer POST, PUT or DELETE under the public HTTP API namespace (R-1188, DECISION
+        F253 D3 (4)).
+
+        The token is decided first (401 `api_token_invalid`), the same order
+        `_send_public_api_get` uses, so an unauthenticated caller learns nothing before
+        authenticating; only once the token is accepted does the namespace answer its own
+        405 `api_method_not_allowed`.
+        """
+        from packages.orchestration.public_api import (
+            public_api_method_refusal,
+            public_api_token_refusal,
+        )
+
+        if not self._bearer_token_accepted():
+            status, body = public_api_token_refusal()
+        else:
+            status, body = public_api_method_refusal()
+        self._send_public_api_answer(method, path, status, body, {})
 
     def _read_command_payload(self) -> tuple[Any, Any]:
         """Return `(payload, None)` for a well-formed body, else `(None, error)`."""
@@ -4490,9 +4524,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
+        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        if is_public_api_path(path):  # F253 R-1188
+            self._send_public_api_refused_method("PUT", path)
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
 
     def do_DELETE(self) -> None:  # noqa: N802
+        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        if is_public_api_path(path):  # F253 R-1188
+            self._send_public_api_refused_method("DELETE", path)
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
 
     def _send_json(self, code: int, data: dict[str, Any],

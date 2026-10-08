@@ -1441,7 +1441,9 @@ class TestCommandChannelDoor:
         The structural routes are spelled out here for the reason the docstring
         above gives: there is no literal to derive them from. The public HTTP API's
         routes come from its own registry, `PUBLIC_API_ROUTES`, rather than from a
-        literal or an endpoint dict here, so a route added there is walked for free.
+        literal or an endpoint dict here, so a route added there is walked for free;
+        a route's own `{name}` path segments are written with this job's id, so the
+        walk visits a real, concrete path (F253 R3, DECISION F253 D3).
         """
         from packages.orchestration.public_api import PUBLIC_API_ROUTES
 
@@ -1461,7 +1463,12 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/artifacts/file",
             "/api/projects/any-project/summary",
         ]
-        paths += [route.path for route in PUBLIC_API_ROUTES]
+        for route in PUBLIC_API_ROUTES:
+            concrete = "/".join(
+                self.job_id if segment.startswith("{") and segment.endswith("}") else segment
+                for segment in route.path.split("/")
+            )
+            paths.append(concrete)
         return paths
 
     def test_the_walk_knows_every_route_the_source_dispatches(self):
@@ -1483,7 +1490,14 @@ class TestCommandChannelDoor:
         assert endpoints, "the endpoint dict came back empty, so the walk is vacuous"
 
     def test_every_route_the_server_serves_refuses_post_put_and_delete(self):
-        """The walk itself: one real request per route per mutating method."""
+        """The walk itself: one real request per route per mutating method.
+
+        A path the public HTTP API namespace accepts answers its own envelope token,
+        `api_method_not_allowed`; every other path keeps the cockpit's bare `method not
+        allowed` (F253 R3, R-1188).
+        """
+        from packages.orchestration.public_api import is_public_api_path
+
         port, token = self._start_server()
         seen = []
         for path in self._walkable_paths():
@@ -1495,7 +1509,12 @@ class TestCommandChannelDoor:
                 seen.append((method, path, status, body.get("error")))
         wrong = [row for row in seen if row[2] != 405]
         assert wrong == [], wrong
-        assert {row[3] for row in seen} == {"method not allowed"}, seen
+        mismatched = [
+            row for row in seen
+            if row[3] != ("api_method_not_allowed" if is_public_api_path(row[1])
+                          else "method not allowed")
+        ]
+        assert mismatched == [], mismatched
         # A walk is only worth the name if it walked what it says it walked.
         assert len(seen) == len(self._walkable_paths()) * 3
 

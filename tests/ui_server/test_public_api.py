@@ -604,3 +604,42 @@ def test_a_failed_ledger_write_never_changes_the_answer(tcp_server, monkeypatch)
 
     status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
     assert status == 401, body
+
+
+# -- L: POST, PUT and DELETE under the namespace (R-1188) -----------------------
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_post_put_and_delete_answer_method_not_allowed_with_the_token(tcp_server, method):
+    status, body, _headers = _tcp_request(
+        tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 405, body
+    assert body["ok"] is False
+    assert body["error"] == "api_method_not_allowed"
+    assert body["schema_version"] == 1
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE"])
+def test_post_put_and_delete_without_the_token_are_401(tcp_server, method):
+    status, body, _headers = _tcp_request(tcp_server, method, "/api/v1/interface")
+    assert status == 401, body
+    assert body["error"] == "api_token_invalid"
+
+
+def test_post_put_and_delete_each_write_their_own_ledger_line(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    ledger_path = data_root / "api" / "calls.jsonl"
+
+    for method in ("POST", "PUT", "DELETE"):
+        status, _body, _headers = _tcp_request(
+            tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+        assert status == 405
+
+    raw_lines = ledger_path.read_text(encoding="utf-8").splitlines()
+    assert len(raw_lines) == 3
+    records = [json.loads(line) for line in raw_lines]
+    for method, record in zip(("POST", "PUT", "DELETE"), records):
+        assert record["method"] == method
+        assert record["status"] == 405
+        assert record["error"] == "api_method_not_allowed"
+        assert record["path"] == "/api/v1/interface"
