@@ -547,6 +547,20 @@ def test_read_order_record_refuses_a_malformed_or_unknown_id(tmp_path, bad_id):
     assert SR.read_order_record(paths, bad_id) is None
 
 
+def test_read_order_record_refuses_a_malformed_id_with_a_real_file_at_its_path(tmp_path):
+    """R-1198: the id shape guard must itself refuse a malformed id — a readable,
+    well-formed record planted exactly where that id's path would point must not be
+    found, so a loosened regex cannot hide behind "no file to find"."""
+    paths = serve_paths(tmp_path)
+    good = SR.OrderRecord(order_id="placeholder", pid=1, started_at="t",
+                          order_file="o", out_log="o", err_log="e")
+    for bad_id in ("../x", "0123456789ABCDEF"):
+        order_dir = paths.orders_dir / bad_id
+        order_dir.mkdir(parents=True)
+        (order_dir / "order.json").write_text(json.dumps(good.to_json()), encoding="utf-8")
+        assert SR.read_order_record(paths, bad_id) is None
+
+
 def test_order_state_is_running_then_ended(order_setup):
     root, paths, launcher, release = order_setup
     record = launcher.start("x", [str(release), "0"])
@@ -557,9 +571,39 @@ def test_order_state_is_running_then_ended(order_setup):
     assert SR.order_state(paths, ended) == "ended"
 
 
+def test_order_state_is_running_under_a_data_root_reached_through_a_symlink(tmp_path):
+    """R-1197: `/proc/<pid>/cwd` answers the RESOLVED path, so a data root reached
+    through a symbolic link must not read a running order as `lost`."""
+    real_root = tmp_path / "real"
+    real_root.mkdir()
+    link_root = tmp_path / "link"
+    link_root.symlink_to(real_root)
+    release = tmp_path / "release"
+    paths = serve_paths(link_root)
+    launcher = SR.OrderLauncher(paths, argv_prefix=[sys.executable, "-c", _ORDER_CHILD])
+    record = launcher.start("x", [str(release), "0"])
+    try:
+        assert SR.order_state(paths, record) == "running"
+    finally:
+        release.touch()
+        launcher.wait(record.order_id, timeout=30)
+    ended = SR.read_order_record(paths, record.order_id)
+    assert SR.order_state(paths, ended) == "ended"
+
+
 def test_order_state_is_lost_for_a_record_with_no_end_whose_process_is_gone(tmp_path):
     paths = serve_paths(tmp_path)
     record = SR.OrderRecord(order_id="0123456789abcdef", pid=_dead_pid(),
+                            started_at="2026-01-01T00:00:00Z",
+                            order_file="o", out_log="o", err_log="e")
+    assert SR.order_state(paths, record) == "lost"
+
+
+def test_order_state_is_lost_when_the_pid_is_alive_in_another_folder(tmp_path):
+    """R-1199: the identity check must not reduce to whether the pid is alive — a live
+    process (this test's own) working in another folder must still read `lost`."""
+    paths = serve_paths(tmp_path)
+    record = SR.OrderRecord(order_id="0123456789abcdef", pid=os.getpid(),
                             started_at="2026-01-01T00:00:00Z",
                             order_file="o", out_log="o", err_log="e")
     assert SR.order_state(paths, record) == "lost"
