@@ -28,11 +28,16 @@ answers return no key below the top level that the trees do not name, at the pla
 The last section of `docs/system/machine-client-contract-v1.md` is the interface rendered, and is
 held two ways (DECISION F298 D20): its bytes equal the rendering of the interface the code builds,
 and reading it back line by line gives that interface again, every name, word, number and tree.
+
+F295's gate test is the one client this repository writes down. Every command it drives is an
+operation of the interface and every flag it passes is an argument of one of them, and its file
+is pinned by digest, because F298 keeps it and its path unchanged (R-1179, R-1180).
 """
 from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import inspect
 import json
 import os
@@ -66,7 +71,7 @@ from apps.cli.client_interface import (
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.exit_codes import CLI_EXIT_CODES
-from apps.cli.grouped import build_parser, main
+from apps.cli.grouped import _DEFAULT_COMMAND, build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
 from packages.core.models import JobBudgets, RunState
 from packages.orchestration.contract_templates import list_contract_templates
@@ -77,6 +82,7 @@ from tests.cli.test_machine_client_contract import (
     LATER_DEADLINE,
     ORDER_FILE_TEXT,
     PAST_DEADLINE,
+    _gate_names,
     _remedy,
     _scratch_repo,
 )
@@ -1496,3 +1502,32 @@ def test_the_writer_replaces_only_the_generated_section(tmp_path):
     assert write_client_interface_page(tmp_path) == page
     assert page.read_text(encoding="utf-8") == (
         before + render_client_interface_markdown(build_client_interface()) + after)
+
+
+# F295's gate test, the one client written down, against the interface (R-1179, R-1180).
+
+#: The sha256 of `tests/cli/test_machine_client_contract.py`, F295's gate test, as F295 accepted it
+#: and as F298 keeps it (R-1179). A change to that file is deliberate: it updates this digest in the
+#: same commit and its DECISION says why.
+F295_GATE_TEST_SHA256 = "e6f4d57bc3c0b81e85d4c6cf145f89fca2c64c89ace4558c329b8d5487eb304f"
+
+
+def test_f295s_gate_test_is_unchanged():
+    gate_test = _REPO_ROOT / "tests" / "cli" / "test_machine_client_contract.py"
+    assert hashlib.sha256(gate_test.read_bytes()).hexdigest() == F295_GATE_TEST_SHA256, (
+        "F295's gate test changed; a deliberate change updates F295_GATE_TEST_SHA256 with it")
+
+
+def test_every_command_and_flag_the_gate_test_drives_is_in_the_interface():
+    """R-1180: a command a client drives that the interface leaves out, or a flag it passes that no
+    operation it drives declares, fails here; a group alone runs its default command."""
+    operations = {op["command"]: op for op in build_client_interface()["operations"]}
+    used = _gate_names()
+    driven = set()
+    for command in used["commands"]:
+        words = command.split()
+        driven.add(" ".join(words if len(words) > 2 else [*words, _DEFAULT_COMMAND[words[1]]]))
+    assert sorted(driven - set(operations)) == [], "the gate test drives a command the interface lacks"
+    declared = {arg["name"] for command in driven for arg in operations[command]["arguments"]}
+    assert used["flags"] and sorted(used["flags"] - declared) == [], (
+        "the gate test passes a flag no operation it drives declares")
