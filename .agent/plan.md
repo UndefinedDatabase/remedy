@@ -7,14 +7,15 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 3, round 10, T005's second part, first half (DECISION F304 D11): a completed job's
-approval card carries its mission's blocking criteria with id, text and status, and `checks_ran`,
-false when no test ran and no gate evaluated a blocking criterion.
+Session 3, round 11, T005's last part (DECISION F304 D12): the approval card ends with one
+recommendation word and one risk word, derived from the card's own facts by rules the page states
+and the interface names. T005 is complete with this round.
 
 ## Next Steps
-1. T005's last part: one recommendation word and one risk word on the card, derived from recorded
-   facts by rules the page states.
-2. T006, T007; then the hardening stage; then the closure sequence.
+1. T006 — tokens and calls where a client reads a cost: per job and per project day, by kind,
+   beside `cost`; an order capped by any one job budget; the page says which tokens the token
+   budget counts.
+2. T007; then the hardening stage; then the closure sequence.
 
 ## Risks
 - A selector that names no single project still fails in the init step instead of before any step
