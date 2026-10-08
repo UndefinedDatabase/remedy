@@ -105,8 +105,7 @@ the order's folder is removed and the call answers 500 with `api_command_failed`
 
 Two orders sent at once both run: the supervisor starts each as it arrives and keeps no waiting
 line, so the second never waits for the first to end, and the route refuses neither order for the
-other. The limit on how many orders a client may send at once belongs to the client token's own
-policy, not to this route (DECISION F253 D15).
+other. Remedy sets no limit on how many orders run at once (DECISION F253 D15).
 
 ## Staying current
 
