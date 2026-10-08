@@ -1231,6 +1231,27 @@ def _make_args(**kwargs):
     return ns
 
 
+def _run_job_handler(args) -> None:
+    """Run the `job.run` handler as the command line does, holding its exit to the job's end.
+
+    Since DECISION F304 D8 a run that ended blocked or failed, or stopped at its budget, answers
+    `"ok": false` with its token, every key of its report beside it, and exits 1; every other end
+    exits 0. The answer stays on stdout for the caller to read.
+    """
+    from apps.cli.commands.do_cmd import COMMAND_HANDLERS
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    code = 0
+    try:
+        COMMAND_HANDLERS["job.run"](args)
+    except SystemExit as exc:
+        code = exc.code
+    job = load_job_plan(args.job_id)
+    state = getattr(job.state, "value", job.state)
+    refused = state in ("blocked", "failed") or (state == "stopped" and job.stop_source == "budget")
+    assert code == (1 if refused else 0), f"job {args.job_id} ended {state} and exited {code}"
+
+
 def _install_fake_claude_cli(monkeypatch) -> None:
     """Replace ClaudeCliProvider's one subprocess spawn point with an instant, offline fake.
 
@@ -1286,8 +1307,7 @@ class TestCliHandlerRepairRounds:
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id)
 
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -1299,8 +1319,7 @@ class TestCliHandlerRepairRounds:
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, repair_rounds=0)
 
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -1312,8 +1331,7 @@ class TestCliHandlerRepairRounds:
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, repair_rounds=1)
 
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -2027,7 +2045,6 @@ class TestConfigOverride:
 class TestCliPauseContinueSmoke:
     def test_full_pause_continue_cycle(self, isolate_data_root, demo_repo, capsys):
         """Handler-level proof of pause → continue with persisted config."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         # Step 1: Plan
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -2040,7 +2057,7 @@ class TestCliPauseContinueSmoke:
             repair_rounds=1,
             max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         out1 = json.loads(capsys.readouterr().out)
 
         assert out1["status"] == "paused"
@@ -2059,7 +2076,7 @@ class TestCliPauseContinueSmoke:
 
         # Step 4: Continue without restating flags
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
 
         assert out2["status"] == "completed"
@@ -2078,18 +2095,17 @@ class TestCliPauseContinueSmoke:
 
     def test_target_repo_unchanged_after_smoke(self, isolate_data_root, demo_repo, capsys):
         """Target repo is not mutated during pause/continue cycle."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         readme_before = (demo_repo / "README.md").read_text()
         main_before = (demo_repo / "src" / "main.py").read_text()
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(job_id=job.job_id, max_tasks="1")
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         capsys.readouterr()
 
         assert (demo_repo / "README.md").read_text() == readme_before
@@ -2160,20 +2176,19 @@ class TestMaxRoundsContinuation:
         self, isolate_data_root, demo_repo, capsys
     ):
         """Handler-level: max_rounds persists through pause/continue."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id, builder_provider="fake", reviewer_provider="fake",
             max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["status"] == "paused"
         assert out1["execution_config"]["max_rounds"] == 7
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["status"] == "completed"
         assert out2["execution_config"]["max_rounds"] == 7
@@ -2251,7 +2266,6 @@ class TestProviderOverrideToFake:
         self, isolate_data_root, demo_repo, capsys, monkeypatch
     ):
         """Handler-level: explicit --builder-provider fake overrides persisted."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         _install_fake_claude_cli(monkeypatch)
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -2261,7 +2275,7 @@ class TestProviderOverrideToFake:
             reviewer_provider="claude-cli",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["execution_config"]["builder"] == "claude-cli"
 
@@ -2270,7 +2284,7 @@ class TestProviderOverrideToFake:
             builder_provider="fake",
             reviewer_provider="fake",
         )
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["builder"] == "fake"
         assert out2["execution_config"]["builder_source"] == "cli"
@@ -2524,7 +2538,6 @@ class TestCommandPathFullConfigContinuation:
         self, isolate_data_root, demo_repo, capsys
     ):
         """All config fields survive pause/continue through handler path."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
@@ -2538,7 +2551,7 @@ class TestCommandPathFullConfigContinuation:
             claude_cli_write_mode="none",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         out1 = json.loads(capsys.readouterr().out)
 
         assert out1["status"] == "paused"
@@ -2550,7 +2563,7 @@ class TestCommandPathFullConfigContinuation:
 
         # Continue without restating any flags
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
 
         assert out2["status"] == "completed"
@@ -2568,7 +2581,6 @@ class TestCommandPathFullConfigContinuation:
         self, isolate_data_root, demo_repo, capsys
     ):
         """Report after continuation shows no drift from original config."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
@@ -2576,11 +2588,11 @@ class TestCommandPathFullConfigContinuation:
             job_id=job.job_id, builder_provider="fake", reviewer_provider="fake",
             max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         capsys.readouterr()
 
         from apps.cli.grouped import main
@@ -2603,7 +2615,6 @@ class TestCommandPathExplicitOverrides:
         self, isolate_data_root, demo_repo, capsys, monkeypatch
     ):
         """Persisted claude-cli overridden by explicit --builder-provider fake."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         _install_fake_claude_cli(monkeypatch)
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -2613,7 +2624,7 @@ class TestCommandPathExplicitOverrides:
             reviewer_provider="claude-cli",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["execution_config"]["builder"] == "claude-cli"
 
@@ -2622,7 +2633,7 @@ class TestCommandPathExplicitOverrides:
             builder_provider="fake",
             reviewer_provider="fake",
         )
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["builder"] == "fake"
         assert out2["execution_config"]["builder_source"] == "cli"
@@ -2631,17 +2642,16 @@ class TestCommandPathExplicitOverrides:
 
     def test_max_rounds_override(self, isolate_data_root, demo_repo, capsys):
         """Persisted max_rounds=7 overridden by explicit --max-rounds 3."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id, max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, max_rounds="3")
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["max_rounds"] == 3
         assert out2["execution_config"]["max_rounds_source"] == "cli"
@@ -2650,50 +2660,47 @@ class TestCommandPathExplicitOverrides:
         self, isolate_data_root, demo_repo, capsys
     ):
         """Persisted repair_rounds=1 overridden by explicit --repair-rounds 0."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id, repair_rounds=1, max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, repair_rounds=0)
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["repair_rounds_allowed"] == 0
         assert out2["execution_config"]["repair_rounds_source"] == "cli"
 
     def test_test_command_override(self, isolate_data_root, demo_repo, capsys):
         """Persisted test_command overridden by explicit --test-command."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id, test_command="true", max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, test_command="echo ok")
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["test_command_source"] == "cli"
 
     def test_report_shows_override(self, isolate_data_root, demo_repo, capsys):
         """Report after override shows new active config, not original."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id, max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["job.run"](args1)
+        _run_job_handler(args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, max_rounds="3")
-        COMMAND_HANDLERS["job.run"](args2)
+        _run_job_handler(args2)
         capsys.readouterr()
 
         from apps.cli.grouped import main
@@ -2977,11 +2984,10 @@ class TestCommandPathGateSmoke:
 
     def test_normal_two_task_job_completes(self, isolate_data_root, demo_repo, capsys):
         """Normal fake two-task job still completes through handler."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
@@ -2989,7 +2995,6 @@ class TestCommandPathGateSmoke:
 
     def test_config_unaffected_by_gate_block(self, isolate_data_root, demo_repo, monkeypatch, capsys):
         """Continuation config survives even when gate blocks."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
@@ -3007,7 +3012,7 @@ class TestCommandPathGateSmoke:
         args = _make_args(
             job_id=job.job_id, max_rounds="7", repair_rounds=1,
         )
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
         ec = out["execution_config"]
@@ -3382,7 +3387,6 @@ class TestCommandPathPreApplySmoke:
 
     def test_handler_mutation_blocks(self, isolate_data_root, demo_repo, monkeypatch, capsys):
         """Target mutation blocks through full CLI handler path."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
@@ -3397,7 +3401,7 @@ class TestCommandPathPreApplySmoke:
         monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
 
         args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
         assert out["tasks"][0]["status"] == TASK_BLOCKED
@@ -3405,11 +3409,10 @@ class TestCommandPathPreApplySmoke:
 
     def test_handler_clean_run_unaffected(self, isolate_data_root, demo_repo, capsys):
         """Normal clean run still completes with pre-apply guard present."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
-        COMMAND_HANDLERS["job.run"](args)
+        _run_job_handler(args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
