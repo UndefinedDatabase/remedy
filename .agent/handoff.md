@@ -1,44 +1,54 @@
-# Handoff — F304 session 2, round 4: T003's first part, an approved apply that did not land answers ok false with one token per cause (DECISION F304 D4)
+# Handoff — F304 session 2, round 5: T003's second part, `remedy job decline` and a decline or an abandoned mission ends the wait (DECISION F304 D5)
 
 ## Session
 
-SESSION 2 of feature F304 · round 4 · rounds so far 4
+SESSION 2 of feature F304 · round 5 · rounds so far 5
 
 Context self-assessment: the reviewer's context is comfortable; the session continues.
 
-Fortschritt: ~26 % (T002 done · T003 half done · T004 to T007 open) — Schätzung
+Fortschritt: ~34 % (T002 and T003 done · T004 to T007 open) — Schätzung
 
 ## Range
 
-Review of `ecfb1929190b95c23d4cd0855e1459dcc2c81e73`..HEAD (HEAD is C3 below, which carries this handback).
+Review of `f831e0a42a3412440e1f78ee506fc0c3f6f467b8`..HEAD (HEAD is C4 below, which carries this handback).
 
 ## Commits
 
-### 98645d1c7 F304 R4 C1: book round 3, resolve R-1183, DECISION F304 D4, the plan and the block
+### da104a636 F304 R5 C1: book round 4, DECISION F304 D5, the plan and the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f304-r4.md` | 129/0 (new) | byte copy of `block.md` (129 lines, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`) |
-| `.agent/decisions.md` | 10/0 | its bytes at `ecfb19291` followed by `append-decisions.txt` (DECISION F304 D4) |
-| `.agent/live_review.md` | 4/0 | its bytes at `ecfb19291` followed by `append-live_review.txt` (round 3's gate entry, R-1183's `Done:` paragraph) |
-| `.agent/plan.md` | 8/7 | `dry-plan.md`, byte for byte |
-| `.agent/prose_slips.md` | 3/0 | its bytes at `ecfb19291` followed by `append-prose_slips.txt` (three prose slips) |
+| `.agent/authored/f304-r5.md` | 139/0 (new) | byte copy of `block.md` (139 lines, sha256 `006343ac8a1d65320af762656f98a0eb714db758ecda440457289b730a50f501`) |
+| `.agent/decisions.md` | 10/0 | its bytes at `f831e0a42` followed by `append-decisions.txt` (DECISION F304 D5) |
+| `.agent/live_review.md` | 2/0 | its bytes at `f831e0a42` followed by `append-live_review.txt` (round 4's gate entry) |
+| `.agent/plan.md` | 7/8 | `dry-plan.md`, byte for byte |
+| `.agent/prose_slips.md` | 2/0 | its bytes at `f831e0a42` followed by `append-prose_slips.txt` (two prose slips) |
 
-### 2cc75eb5c F304 R4 C2: an approved apply that did not land answers ok false with one token per cause (T003, DECISION F304 D4)
+### de8712636 F304 R5 C2: a declined job, and a job of an abandoned mission, no longer waits for its apply, and the ownership record names the decline (T003, DECISION F304 D5)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/client_interface.py` | 6/1 | `job.apply` declares its fifteen `APPLY_REFUSAL_TOKENS` in `OPERATION_REFUSAL_TOKENS` |
-| `apps/cli/command_catalog.py` | 3/0 | `job.apply` declares `exit_codes=(0, 1, 2, 3)` |
-| `apps/cli/commands/do_cmd.py` | 26/4 | `_cmd_job_apply` refuses a flag clash with `invalid_argument` and exit 2 before the job is read, and answers a refusal with `apply_refusal`'s token, exit 3 for `job_not_found`/`job_not_ready`, else exit 1 |
-| `docs/guides/exit-codes.md` | 1/0 | `remedy job apply` lists exit 3 |
-| `docs/system/machine-client-contract-v1.md` | 9/3 | order-file section names the refusal and its exit codes; generated section (exit codes, refusal tokens) written again |
-| `packages/orchestration/job_apply.py` | 103/6 | `apply_refusal`, `APPLY_REFUSAL_TOKENS`, `APPLY_NOT_READY_TOKENS` and the sentence-opening constants the token reader and the tests share |
-| `tests/cli/test_client_interface.py` | 13/0 | the hand-verified token site for `_cmd_job_apply`'s `error`, held equal to `APPLY_REFUSAL_TOKENS` |
-| `tests/cli/test_job_apply_refusals.py` | 232/0 (new) | drives each of the six named causes, a missing job, a flag clash, two previews and the text answer through the command line, and reads every token from a table of results |
-| `tests/orchestration/test_job_apply.py` | 9/5 | three pinned "a blocked apply exits 0" assertions now read exit 1 with their token |
-| `tests/orchestration/test_job_apply_commit.py` | 9/4 | the flag-clash test now reads exit 2 and `invalid_argument` before the job is read |
-| `tests/orchestration/test_job_apply_history.py` | 3/2 | the refused-merge test now reads exit 1 and `target_dirty` |
+| `apps/ui/src/api/ownership.ts` | 1/0 | `OWNERSHIP_CHIP_WORDS` gains `result_declined` → `"Declined"` |
+| `packages/orchestration/client_digest.py` | 9/3 | `waits_for_apply` is false for a job carrying a decline and for a job of an `abandoned` mission |
+| `packages/orchestration/job_apply.py` | 27/0 | `decline_job_result` and `job_result_decline`, and the `metadata` key the decline is kept under |
+| `packages/orchestration/ownership.py` | 24/1 | `_decline_entries` reads the decline from `job_apply` and joins `build_ownership_ledger`'s entries |
+| `packages/orchestration/ownership_phrases.py` | 3/0 | `ownership_sentence`'s `result_declined` template |
+| `tests/orchestration/fixtures/ownership/golden/sentences.txt` | 1/0 | the golden decline sentence |
+| `tests/orchestration/test_client_digest.py` | 48/1 | a declined job, and a job of an abandoned mission, each read `waits_for_apply` false and leave `awaiting_apply` |
+| `tests/orchestration/test_ownership_ledger.py` | 25/0 | `TestDecline` asserts the ledger's decline entry's door, time, reason and consequence |
+| `tests/orchestration/test_ownership_phrases.py` | 10/6 | the golden ledger grows to 30 entries over 20 actions with the decline among them |
+
+### df9cc479e F304 R5 C3: remedy job decline declines a completed job's result with a reason (T003, DECISION F304 D5)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/cli/client_interface.py` | 9/1 | `job.decline` joins `CLIENT_OPERATION_IDS` with its refusal tokens, answer keys and an empty answer-key tree |
+| `apps/cli/command_catalog.py` | 22/0 | `job.decline`'s `CommandEntry`, registered beside `job.apply` |
+| `apps/cli/commands/do_cmd.py` | 59/2 | `_cmd_job_decline` and its `COMMAND_HANDLERS` registration |
+| `docs/guides/exit-codes.md` | 1/0 | `remedy job decline` lists exit 3 |
+| `docs/system/machine-client-contract-v1.md` | 21/1 | step 4's decline sentence; generated section (`job.decline`'s row) written again |
+| `tests/cli/test_client_interface.py` | 3/0 | the real-run test declines the job it already applied and reads `job_already_applied` |
+| `tests/cli/test_job_decline.py` | 121/0 (new) | drives the decline through the command line: success and ownership naming, a second decline, a job not completed, a job already applied, a blank reason, and the text answer |
 
 ## External actions
 
@@ -47,42 +57,43 @@ Review of `ecfb1929190b95c23d4cd0855e1459dcc2c81e73`..HEAD (HEAD is C3 below, wh
 
 ## Verification
 
-0. Before any write: `block.md` (129 lines), `sim-readings.txt` and `digests.txt` matched the prompt's sha256 digests (Python `hashlib.sha256`, 3 of 3 True), and the fifteen other prepared files listed in `digests.txt` matched it (15 of 15 True). `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read `ecfb1929190b95c23d4cd0855e1459dcc2c81e73`, `git status --porcelain` was empty, `.agent/STOP` was absent. `git branch --show-current` read the feature branch before each commit (checked inside each commit script).
-1. C1 proofs: the authored copy is 129 lines, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`, byte-equal to its source. `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` each equal `git show ecfb19291:<path>` plus their append file, True (the decisions proof by sha256 comparison of the built bytes against the file on disk, the file itself never read whole). `.agent/plan.md` equals `dry-plan.md`, True. `git diff --cached --numstat` read `129 0`, `10 0`, `4 0`, `8 7`, `3 0`, the cells of `sim-readings.txt`. The staged diff (208 lines) was written to a file and read whole.
-2. C2 proofs: the eleven files equal their prepared files, True eleven of eleven, each sha256-verified. `git diff --cached --numstat` read `6 1`, `3 0`, `26 4`, `1 0`, `9 3`, `103 6`, `13 0`, `232 0`, `9 5`, `9 4`, `3 2`, the cells of `sim-readings.txt`. `git status --porcelain` showed exactly the eleven C2 paths staged, nothing else. The staged diff (689 lines) was written to a file and read whole.
-3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, after C2): exit 0, empty; the byte proofs of C1 and C2 above all True.
-4. **Gate 2** (`python3 -m ruff check` on the nine named files): exit 0, `All checks passed!`.
-5. **Gate 3** (`python3 -m pytest -q -rfEs` on the block's selection, run once, through a Python wrapper capturing the exit code): exit 0, last line `2043 passed in 429.39s (0:07:09)`; the full transcript was scanned for FAILED, ERROR and SKIPPED lines, none found.
-6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six `pass`, `"fail_count": 0`.
-7. **Gate 5** (`open_finding_ids`): exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`.
-8. **Gate 6** (after the push): reported in the worker's final reply.
+0. Before any write: `block.md` (139 lines), `sim-readings.txt` and `digests.txt` matched the prompt's sha256 digests (Python `hashlib.sha256`, 3 of 3 True), and the twenty other prepared files listed in `digests.txt` matched it (20 of 20 True). `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read `f831e0a42a3412440e1f78ee506fc0c3f6f467b8`, `git status --porcelain` was empty, `.agent/STOP` was absent. `git branch --show-current` read the feature branch before each commit (checked inside each commit script).
+1. C1 proofs: the authored copy is 139 lines, sha256 `006343ac8a1d65320af762656f98a0eb714db758ecda440457289b730a50f501`, byte-equal to its source. `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` each equal `git show f831e0a42:<path>` plus their append file, True (the decisions proof by sha256 comparison of the built bytes against the file on disk, the file itself never read whole). `.agent/plan.md` equals `dry-plan.md`, True. `git diff --cached --numstat` read `139 0`, `10 0`, `2 0`, `7 8`, `2 0`, the cells of `sim-readings.txt`. The staged diff (215 lines) was written to a file and read whole.
+2. C2 proofs: the nine files equal their prepared files, True nine of nine, each sha256-verified. `git diff --cached --numstat` read `1 0`, `9 3`, `27 0`, `24 1`, `3 0`, `1 0`, `48 1`, `25 0`, `10 6`, the cells of `sim-readings.txt`. `git status --porcelain` showed exactly the nine C2 paths staged, nothing else. The staged diff (305 lines) was written to a file and read whole.
+3. C3 proofs: the seven files equal their prepared files, True seven of seven, each sha256-verified (one new file, `tests/cli/test_job_decline.py`). `git diff --cached --numstat` read `9 1`, `22 0`, `59 2`, `1 0`, `21 1`, `3 0`, `121 0`, the cells of `sim-readings.txt`. The staged diff (361 lines) was written to a file and read whole.
+4. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, after C3): exit 0, empty; the byte proofs of C1, C2 and C3 above all True.
+5. **Gate 2** (`python3 -m ruff check` on the twelve named files): exit 0, `All checks passed!`.
+6. **Gate 3** (`python3 -m pytest -q -rfEs` on the block's selection, run once, through a Python wrapper capturing the exit code): exit 0, last line `1615 passed in 142.57s (0:02:22)`; the full transcript was scanned for FAILED, ERROR and SKIPPED lines, none found.
+7. **Gate 4** (with `cwd` `/home/decodeux/Repos/remedy/apps/ui`, `npx vitest run src/api/ownership.test.ts`, run once): exit 0, `Tests  27 passed (27)`.
+8. **Gate 5** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six `pass`, `"fail_count": 0`; then `open_finding_ids`: exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`.
+9. **Gate 6** (after the push): reported in the worker's final reply.
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f304-r4.md`: 129 lines, byte-equal, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`.
+- `block.md` to `.agent/authored/f304-r5.md`: 139 lines, byte-equal, sha256 `006343ac8a1d65320af762656f98a0eb714db758ecda440457289b730a50f501`.
 - `append-live_review.txt`, `append-prose_slips.txt` and `append-decisions.txt`: post equals pre plus slice in bytes, once each (Verification item 1 above).
-- `dry-plan.md` to `.agent/plan.md`, and the eleven C2 files to their targets: byte-equal (Verification items 1 and 2 above).
+- `dry-plan.md` to `.agent/plan.md`, the nine C2 files and the seven C3 files to their targets: byte-equal (Verification items 1, 2 and 3 above).
 
 ## Deviations & assumptions
 
-None. (Gates ran one script at a time, after C2 and before C3, as ordered; gate 1's status read was taken after C2 was committed, its byte proofs before.)
+None. (Gates ran one script at a time, after C3 and before C4, as ordered; gate 1's status read was taken after C3 was committed, its byte proofs before.)
 
 ## Round verdicts
 
-Round 3's PASS and R-1183's resolution are booked by C1.
+Round 4's PASS is booked by C1.
 
-Round 4's verdict is the reviewer's.
+Round 5's verdict is the reviewer's.
 
 ## For the operator, in plain sentences
 
-Until now, when a program asked Remedy to apply a job's result and the apply was stopped — for example because the folder had unsaved changes or the push was not allowed — Remedy still answered "success" with exit code 0 and hid the reason inside the answer. From now on such an answer says plainly that it failed, names the cause with one fixed word a program can check (one word each for unsaved changes, a branch that is not checked out, a merge conflict, protected files, no place to push to, and a push the mission's own acceptance criteria forbid), keeps every detail it gave before, and ends with exit code 1, or 3 when the job does not exist or is not finished. A preview without the approval still answers as before. The description Remedy gives a program lists all these words. Nothing waits for the operator.
+A program can now say no to a finished job's result with one command, `remedy job decline`, giving its reason in its own words. Nothing is applied, and the job stops showing up in the list of results waiting to be applied. The record of who did what in the job now says that the operator declined the result, through the command line, and why. A finished job of a mission the operator gave up on stops waiting too. The description Remedy gives a program lists the new command. This finishes the second of the six open parts. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then book round 4's verdict in the next round's first commit.
-4. Then T003's second part: a command that declines a completed job's result, and a declined job or a job of an abandoned mission no longer waits for its apply.
+3. Then book round 5's verdict in the next round's first commit.
+4. Then T004: the second gate test — commit and push to a local bare upstream, an order of two jobs, one order file started twice.
 
 Operator questions open: 1.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low, owned by F297).
@@ -91,8 +102,9 @@ Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 3, resolve R-1183, DECISION F304 D4, the plan and the block | done | `98645d1c7` |
-| C2: an approved apply that did not land answers ok false with one token per cause | done | `2cc75eb5c` |
+| C1: book round 4, DECISION F304 D5, the plan and the block | done | `da104a636` |
+| C2: a declined job, and a job of an abandoned mission, no longer waits for its apply, and the ownership record names the decline | done | `de8712636` |
+| C3: remedy job decline declines a completed job's result with a reason | done | `df9cc479e` |
 | Gates 1 to 5 | done | all green, before this file was written |
-| C3: handback | done | this commit |
+| C4: handback | done | this commit |
 | Push, gate 6 | pending at write time | outcomes in the worker's final reply |
