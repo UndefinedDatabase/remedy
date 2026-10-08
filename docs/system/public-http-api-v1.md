@@ -10,7 +10,7 @@ reached over a socket instead of a process.
 
 ## Where it is served
 
-Two servers answer this namespace: the cockpit's own server, started by `remedy ui`, and the
+Two servers answer this namespace: the cockpit's own server, started by `remedy ui start`, and the
 supervisor's unix socket, which `remedy serve start` opens. Both are bound to this machine only;
 neither is reachable from another host.
 
@@ -24,10 +24,20 @@ by its owner only. The cockpit's token is the one its start printed.
 ## The envelope and its refusals
 
 A route's success is its twin command's own `--json` answer: `{"schema_version": 1, "ok": true,
-...}`. A refusal carries `{"schema_version": 1, "ok": false, "error": "<token>", "message":
-"<sentence>"}` and one of two HTTP statuses: a missing or wrong token answers 401 with
-`api_token_invalid`, and a path this registry does not name answers 404 with
-`api_route_not_found`. `POST`, `PUT` and `DELETE` on every path under `/api/v1` answer 405.
+...}` — or, for a route whose table row below names a key under "Answers as", that key's value
+alone, as the whole body of the envelope. A refusal carries `{"schema_version": 1, "ok": false,
+"error": "<token>", "message": "<sentence>"}` and one of three HTTP statuses: a missing or wrong
+token answers 401 with `api_token_invalid`; a path this registry does not name answers 404 with
+`api_route_not_found`; and a query key a route's table row does not list, a key sent more than
+once, or a value other than `true` or `false` answers 400 with `api_query_invalid` (DECISION F253
+D2 (2)). `POST`, `PUT` and `DELETE` on every path under `/api/v1` answer 405.
+
+## The ledger
+
+Every request under `/api/v1`, a refused one included, appends one line to `api/calls.jsonl`
+under the data root, with six fields: `ts`, `token_fp`, `method`, `path`, `status` and `error`.
+The caller's token is kept only as its fingerprint, never itself, and the query string is never
+written at all. A line that cannot be written changes nothing in the answer sent.
 
 ## The version rule
 
@@ -50,11 +60,12 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.0`.
+API version: `1.1`.
 
-| Method | Path | Answers as | Deprecated | Description |
-|---|---|---|---|---|
-| `GET` | `/api/v1/interface` | `remedy client interface --json` | no | What a program that drives Remedy can rely on: its operations, arguments, exit codes, state words, templates and budget kinds, as `remedy client interface --json` prints it. |
+| Method | Path | Query | Answers as | Deprecated | Description |
+|---|---|---|---|---|---|
+| `GET` | `/api/v1/interface` | — | `remedy client interface --json` | no | What a program that drives Remedy can rely on: its operations, arguments, exit codes, state words, templates and budget kinds, as `remedy client interface --json` prints it. |
+| `GET` | `/api/v1/digest` | `all_ended_jobs` | `remedy status run --json`, its `client` object | no | The digest a program reads about once a minute: every project with its missions, the jobs that still need something and the last ended ones, every open decision and the jobs waiting for their apply, as the `client` object of `remedy status --json` holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does. |
 
 ### Never published
 
