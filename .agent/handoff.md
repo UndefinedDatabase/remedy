@@ -4,7 +4,11 @@
 
 SESSION 2 of feature F304 · round 8 · rounds so far 8
 
-Context self-assessment: the reviewer's context is comfortable; the session continues.
+Context self-assessment: the session ends after round 8's review, at five delegated rounds (F304's
+rounds 4 to 8), below the six-to-eight target, because the reviewer's context is long and three
+of its own authoring slips were caught by its dry runs this session, while the next slice, T005,
+is a new design over the digest, the job and contract records and the interface's key tree that
+a fresh session starts better.
 
 Fortschritt: ~52 % (T002 to T004 done · R-1184 landed · T005 to T007 open) — Schätzung
 
@@ -41,8 +45,10 @@ handback).
 
 ## External actions
 
-- None before this file is committed. The push of the branch and its outcome (every attempt) are
-  in the worker's final reply (write-once rule; not known when this file is written).
+- None before round 8's handback was committed. Round 8's worker then pushed once, without a
+  retry, and the reviewer read `19df4ef80` as both the local tip and
+  `origin/feature/f304-machine-client-contract-v1-1-part-two`, with the tree clean. This session-close
+  commit is pushed by its own worker, whose reply carries that push.
 - No `gh` command, no full suite, no mutation, no worktree, no merge, no new branch, no
   force-push, no pull.
 
@@ -106,7 +112,52 @@ None.
 
 Round 7's PASS is booked by C1.
 
-Round 8's verdict is the reviewer's.
+Round 8: VERDICT PASS, given by the reviewer of F304's second session after this handback.
+Drafted for the next round's first commit, to be appended to `.agent/live_review.md` by that
+round's reviewer, in this order:
+
+`Gate: F304 R8 — the F304 round 8 entry, R-1184's repair, over `e430266a5`..`19df4ef80` (3 commits,
+each single-parent; insertions by `git show --numstat`: `9b1a27a2e` 148, `3e5d24e4e` 174,
+`19df4ef80` 66), followed by the session's closing commit, which touches only `.agent/handoff.md`.
+VERDICT PASS, verified by dry run, bytes identical, compared at `9b1a27a2e` and `3e5d24e4e`
+against the prepared files of the reviewer's dry run on `e430266a5`. `.remedy-wt/f304-r8/review8.py`,
+whose readings are saved beside it as `review8-readings.txt`, read the saved block, `.agent/plan.md`
+and the two appended records at `9b1a27a2e`, and the nine C2 files and the ledger's `Landed:` line
+at `3e5d24e4e`, equal to the prepared files, fourteen of fourteen, and every one of them unchanged
+at `19df4ef80`, which touches only `.agent/handoff.md`. The dry run's readings, saved as
+`.remedy-wt/f304-r8/dry-readings.txt`: ruff clean on the eight Python files, the round's selection
+`2199 passed` at exit 0, and six mutations, each red and green again after: a budget stop answering
+ok, an operator's stop refused as a budget stop, a blocked run answering ok, a failed run answering
+ok, the blocked refusal dropping the report, and an end the client asked for answering nothing.
+The dry run's first readings were red where the reviewer's first edit was wrong and where tests
+pinned the old answer: the report bound to an empty dict hid its keys from the interface's static
+reading, stand-in jobs that carry no state raised, and tests that drive a run to a blocked or
+budget-stopped end pinned exit 0; the handler and those tests were corrected before any file was
+handed over. A live test's UI server rebuilt the stale `apps/ui/dist` by itself during the
+selection and touched no tracked file. The worker's one run of the same selection on the same bytes
+read `2199 passed`, with the tree clean after it. Every reflog entry after `e430266a5` is one of the
+round's commits, the local tip equalled the pushed branch and the tree was clean. The worker
+declared no deviation. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156',
+'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1184']`; R-1184 is resolved below.`
+
+`Done: R-1184 — RESOLVED at F304 round 8 by `3e5d24e4e`, verified by the reviewer of F304's second
+session. At `3e5d24e4e`, `_cmd_job_run` in `apps/cli/commands/do_cmd.py` answers a run that ends
+`blocked`, `failed` or stopped by its budget with `job_blocked`, `job_failed` or
+`job_stopped_by_budget`, every key of the job's report beside the token and exit 1, and a run that
+completes, pauses at the operator's request or at `--tasks`, or stops at the operator's request as
+before; `job.run` and `job.resume` declare the tokens; `tests/cli/test_job_run_end_states.py`
+drives a real blocked run through the command line and every end state through the handler; each
+of the six mutations the round's gate entry names turned its test red, green again after.`
+
+And for `.agent/prose_slips.md`, one line:
+
+`2026-10-08, F304 round 8 — the reviewer's first edit bound the job report to an empty dict, which
+hid its keys from the interface's static reading, and read the state of stand-in jobs that carry
+none; the dry run caught both and they were corrected before any file was handed over, so nothing
+on disk differs.`
+
+The outer backticks of each drafted paragraph mark where it begins and ends; the paragraph itself
+is booked without them, on one line.
 
 ## For the operator, in plain sentences
 
@@ -121,8 +172,20 @@ the problem the reviewer found in the round before, and nothing waits for the op
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and
    stop.
 2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then book round 8's verdict and R-1184's resolution in the next round's first commit.
-4. Then T005: what an approval card needs, from records only.
+3. Then confirm that `origin`'s tip equals the tip of this branch before delegating.
+4. Then, in the next round's first commit: book round 8's verdict, R-1184's `Done:` paragraph and
+   the prose slip, all drafted above, as written.
+5. Then T005: what an approval card needs, from records only. Its first round reads, whole,
+   `build_client_digest` in `packages/orchestration/client_digest.py`, `DIGEST_KEY_TREE` in
+   `apps/cli/client_interface.py` and the tests in `tests/cli/test_client_interface.py` that hold it
+   to the dict literals the digest writes, the job record's task fields (`reviewer_verdict`,
+   `repair_rounds_used`, `test_passed` and the test command), the apply manifests' `applied_files`,
+   and `read_mission_contract` for a mission's blocking criteria; and it sizes the card against
+   T007's bound, 65,536 bytes for the default digest of 1,000 settled jobs (DECISION F298 D1), so
+   the changed-file list is bounded from the start.
+6. Under SLOW MODE, the hardening stage of operator amendment amend0930b-slow-cap runs after T007
+   and before the closure sequence; the closure's one full suite builds `apps/ui` first (DECISION
+   F304 D5 (7)).
 
 Operator questions open: 1.
 Open findings: 12 (R-1160 and R-1184, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
@@ -135,5 +198,6 @@ R-1158, R-1162, R-1172 and R-1176, Low; R-1184 owned by F304 and landed, the res
 | C1: book round 7, DECISION F304 D8, the plan and the block | done | `9b1a27a2e` |
 | C2: R-1184's repair, the nine files and the landed record | done | `3e5d24e4e` |
 | Gates 1 to 4 | done | all green, before this file was written |
-| C3: handback | done | this commit |
-| Push, gate 5 | pending at write time | outcomes in the worker's final reply |
+| C3: handback | done | `19df4ef80` |
+| Push, gate 5 | done | `19df4ef80` equalled `origin/feature/f304-machine-client-contract-v1-1-part-two` after one push |
+| Session close: round 8's verdict, R-1184's drafted resolution, the prose slip and the session's end | done | this commit |
