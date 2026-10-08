@@ -8,11 +8,10 @@ entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISI
 and DECISIONs F253 D1 to D14, which fix the order and the shape).
 
 ## Current Step
-Session 4, round 15: book round 14's verdict and resolve R-1197 to R-1200, then S5b:
-`POST /api/v1/orders` starts an order file's text through the supervisor's `OrderLauncher` and
-answers 202 with its record; `GET /api/v1/orders/{order}` answers as `remedy client order`; an
-order whose header names no registered project is refused before anything starts (DECISION F253
-D14).
+Session 4, round 16: book round 15's verdict and its two findings, then repair them: an order that
+cannot be started is answered 500 `api_command_failed`, ledgered, and leaves no folder (R-1201);
+and the refusal of an order whose header names no project gains a test that a project named by
+`REMEDY_PROJECT` cannot satisfy (R-1202).
 
 ## Next Steps
 1. S5c: two orders at once through HTTP; every record read back; repair what it finds.
@@ -37,5 +36,5 @@ D14).
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
-  R-1176, R-1196 (Low) stay open, owned by F297.
+- R-1201 and R-1202 (Low) are open, owned by F253; R-1160 (Medium) and R-1138, R-1139, R-1143,
+  R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) stay open, owned by F297.
