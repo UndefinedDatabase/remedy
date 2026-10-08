@@ -2164,6 +2164,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
             ArgDef("--force-job", "One job for what you ask, its tasks under the mission, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
             ArgDef("--force-mission", "Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
+            ArgDef("--new-mission", "Start a new mission for an order file that a mission which has not ended already records; without it such an order file is refused before any step, naming that mission", required=False, is_option=True, is_flag=True),
             ArgDef("--step-by-step", "Halt after each step that did work: print what happened and what comes next; Enter continues, q stops", required=False, is_option=True, is_flag=True),
             ArgDef("--plan-only", "Stop after the shape step: nothing is executed, and the output lists every deliverable", required=False, is_option=True, is_flag=True),
             ArgDef("--apply", "Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied", required=False, is_option=True, is_flag=True),

@@ -471,12 +471,15 @@ def _cmd_do(
     commit_auto: bool = False,
     commit_with_history: bool = False,
     push: bool = False,
+    new_mission: bool = False,
 ) -> None:
     """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
 
     Remedy deliberately has no second route under `do`: the autorun branch and the
     flags only it read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`)
-    were deleted by DECISION F268 D16 (1) and (2).
+    were deleted by DECISION F268 D16 (1) and (2). An order file that a mission which has
+    not ended already records is refused before any step with `order_already_running`,
+    exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cost cap is refused before any step.
@@ -539,6 +542,18 @@ def _cmd_do(
                  f"--contract {contract!r} is not a contract template; the "
                  f"templates are {', '.join(templates) or '(none)'}. Nothing was run.",
                  json_output=json_output, exit_code=2)
+    # DECISION F304 D6: one order file is run by one mission at a time, unless a new one is asked.
+    if order_source_kwargs and not new_mission:
+        from packages.orchestration.mission_state import running_mission_for_order_file
+
+        source_path = order_source_kwargs["order_source_path"]
+        running = running_mission_for_order_file(source_path)
+        if running is not None:
+            fail("order_already_running",
+                 f"{source_path} is already run by mission {running.id} ({running.status}); "
+                 f"abandon it with `remedy mission abandon {running.id}`, or pass --new-mission "
+                 "to start another. Nothing was run.",
+                 json_output=json_output, exit_code=2, mission_id=running.id)
     _cmd_do_order(goal, repo=repo, **order_source_kwargs,
                   json_output=json_output, no_llm=no_llm,
                   yes=yes, builder_provider=builder_provider,
@@ -1131,6 +1146,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         commit_auto=bool(getattr(args, "commit_auto", False)),
         commit_with_history=bool(getattr(args, "commit_with_history", False)),
         push=bool(getattr(args, "push", False)),
+        new_mission=bool(getattr(args, "new_mission", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

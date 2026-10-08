@@ -67,6 +67,7 @@ from packages.orchestration.mission_state import (
     resolve_mission_id,
     resolve_verify_command,
     run_verify_task,
+    running_mission_for_order_file,
     save_mission,
     set_mission_contract,
     set_mission_order,
@@ -162,6 +163,34 @@ class TestMissionLoading:
 
         with pytest.raises(MissionError):
             load_mission(_PROJECT, mission.id, root=tmp_path)
+
+
+class TestRunningMissionForOrderFile:
+    """DECISION F304 D6: the mission still running for an order file, read from every project."""
+
+    def _mission(self, tmp_path, project: str, source_path: str, status: str, minutes: int):
+        mission = create_mission(project, "Ship the importer", now=_at(minutes), root=tmp_path)
+        set_mission_order(project, mission.id, MissionOrder(text="Ship it", source_path=source_path),
+                          root=tmp_path)
+        return set_mission_status(project, mission.id, status, root=tmp_path)
+
+    def test_the_newest_running_mission_of_any_project_is_found(self, tmp_path):
+        self._mission(tmp_path, _PROJECT, "/o/order.md", MISSION_STATUS_ACTIVE, 0)
+        newest = self._mission(tmp_path, _OTHER_PROJECT, "/o/order.md", MISSION_STATUS_ACTIVE, 5)
+        self._mission(tmp_path, _PROJECT, "/o/other.md", MISSION_STATUS_ACTIVE, 9)
+
+        assert running_mission_for_order_file("/o/order.md", root=tmp_path).id == newest.id
+
+    @pytest.mark.parametrize("status", [MISSION_STATUS_ACHIEVED, MISSION_STATUS_ABANDONED])
+    def test_an_ended_mission_is_not_running(self, tmp_path, status):
+        self._mission(tmp_path, _PROJECT, "/o/order.md", status, 0)
+
+        assert running_mission_for_order_file("/o/order.md", root=tmp_path) is None
+
+    def test_an_empty_path_matches_no_text_order(self, tmp_path):
+        self._mission(tmp_path, _PROJECT, "", MISSION_STATUS_ACTIVE, 0)
+
+        assert running_mission_for_order_file("", root=tmp_path) is None
 
 
 class TestMissionListing:

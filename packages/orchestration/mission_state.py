@@ -492,6 +492,29 @@ def mission_for_job(job_id: str, root: Path | None = None) -> Mission | None:
     return None
 
 
+#: The statuses of a mission that has ended; a mission in any other status still runs.
+MISSION_ENDED_STATUSES = (MISSION_STATUS_ACHIEVED, MISSION_STATUS_ABANDONED)
+
+
+# WHY: one order file started twice must not quietly start a second mission beside the first
+# (T004 of docs/roadmap/features/T12_F304.md, DECISION F304 D6).
+def running_mission_for_order_file(source_path: str, root: Path | None = None) -> Mission | None:
+    """The newest mission that has not ended and records *source_path* as its order file, or None.
+
+    Scans every project's mission area, as `mission_for_job` does, because a client may name the
+    order file from anywhere. *source_path* is compared as `read_order_file` records it, a
+    resolved absolute path; an empty one matches nothing.
+    """
+    wanted = str(source_path)
+    if not wanted:
+        return None
+    running = [mission for project_id in project_ids_with_missions(root)
+               for mission in list_missions(project_id, root)
+               if mission.order is not None and mission.order.source_path == wanted
+               and mission.status not in MISSION_ENDED_STATUSES]
+    return max(running, key=lambda mission: mission.created_at, default=None)
+
+
 def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
                         role: str = MISSION_ROLE_FOLLOW_UP, *,
                         now: datetime | None = None,

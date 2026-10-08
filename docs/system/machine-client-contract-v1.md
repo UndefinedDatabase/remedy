@@ -42,8 +42,11 @@ Remedy refuses an order file before any step, with exit code 2: `order_file_not_
 `order_file_no_cost_cap` when neither the header nor `--max-cost-usd` sets a cost cap. An order
 that names a project is refused before any step with `project_has_no_repo` and exit code 3
 when the project has no registered repository, and with `repo_not_in_project` and exit code 2
-when `--repo` names a repository that is not the project's. An order argument that holds
-whitespace is planned as text, never read as a file.
+when `--repo` names a repository that is not the project's. An order file that a mission which
+has not ended already records — a mission that is neither achieved nor abandoned — is refused
+before any step with `order_already_running` and exit code 2, and the refusal names that mission
+under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
+holds whitespace is planned as text, never read as a file.
 
 ## The path, step by step
 
@@ -254,6 +257,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--no-llm` | yes | no | no | no | Force heuristic intake (no LLM provider call) |
 | `--force-job` | yes | no | no | no | One job for what you ask, its tasks under the mission, whatever shape the planner chose |
 | `--force-mission` | yes | no | no | no | Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose |
+| `--new-mission` | yes | no | no | no | Start a new mission for an order file that a mission which has not ended already records; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
@@ -264,7 +268,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--push` | yes | no | no | no | With a commit flag only: push your branch to its configured upstream once, after the mission's last job, never forced; refused alone and, before any step, without an upstream; refused while any blocking criteria of the mission contract are unmet, naming those still open. The config key apply.push_after_mission does the same |
 
 Exit codes: `0`, `1`, `2`, `3`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `order_already_running`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
 Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.
 

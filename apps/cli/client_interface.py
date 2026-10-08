@@ -72,9 +72,9 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
 OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "project.register": ("not_a_git_repo",),
     "do.run": (
-        "invalid_argument", "invalid_budget", "order_file_empty", "order_file_invalid_header",
-        "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable",
-        "project_has_no_repo", "repo_not_in_project", "step_failed",
+        "invalid_argument", "invalid_budget", "order_already_running", "order_file_empty",
+        "order_file_invalid_header", "order_file_no_cost_cap", "order_file_not_found",
+        "order_file_unreadable", "project_has_no_repo", "repo_not_in_project", "step_failed",
         "unsupported_contract_template", "unsupported_provider",
     ),
     "status.run": (),

@@ -208,7 +208,9 @@ def test_a_header_contract_gives_that_template_and_a_contract_flag_wins_over_it(
     data = _do_json(capsys, str(order_path), "--plan-only")
     assert data["contract"]["template"] == "website"
 
-    data = _do_json(capsys, str(order_path), "--plan-only", "--contract", "cli-tool")
+    # The first start's mission still runs, so the second asks for its own (DECISION F304 D6).
+    data = _do_json(capsys, str(order_path), "--plan-only", "--contract", "cli-tool",
+                    "--new-mission")
     assert data["contract"]["template"] == "cli-tool"
 
 
@@ -364,3 +366,61 @@ def test_a_text_order_leaves_the_missions_order_source_path_and_digest_empty(
     assert mission is not None
     assert mission.order.source_path == ""
     assert mission.order.source_sha256 == ""
+
+
+# ── 13: one order file, one running mission (F304 T004, DECISION F304 D6) ────
+
+
+def _mission_ids() -> list[str]:
+    from packages.orchestration.mission_state import list_missions, project_ids_with_missions
+
+    return sorted(mission.id for project_id in project_ids_with_missions()
+                  for mission in list_missions(project_id))
+
+
+ORDER_TEXT = "---\nmax-cost-usd: 1\n---\nWrite a CONTRIBUTING.md\n"
+
+
+def test_a_second_start_of_an_order_file_exits_2_naming_the_running_mission(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+
+    code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
+
+    body = json.loads(out)
+    assert (code, body["ok"], body["error"]) == (2, False, "order_already_running")
+    assert body["mission_id"] == first["mission_id"]
+    assert first["mission_id"] in body["message"] and "--new-mission" in body["message"]
+    assert _mission_ids() == [first["mission_id"]]
+
+
+def test_new_mission_starts_a_second_mission_for_the_same_order_file(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+
+    second = _do_json(capsys, str(order_path), "--plan-only", "--new-mission")
+
+    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
+    assert _mission_ids() == sorted([first["mission_id"], second["mission_id"]])
+    # A third start without the flag names the newer of the two running missions.
+    code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
+    assert (code, json.loads(out)["mission_id"]) == (2, second["mission_id"])
+
+
+def test_an_order_file_whose_mission_was_abandoned_starts_again(repo, capsys):
+    order_path = _write_order(repo, ORDER_TEXT)
+    first = _do_json(capsys, str(order_path), "--plan-only")
+    main(["mission", "abandon", first["mission_id"], "--json"])
+    capsys.readouterr()
+
+    second = _do_json(capsys, str(order_path), "--plan-only")
+
+    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
+
+
+def test_another_order_file_starts_beside_a_running_mission(repo, capsys):
+    first = _do_json(capsys, str(_write_order(repo, ORDER_TEXT)), "--plan-only")
+
+    other = _do_json(capsys, str(_write_order(repo, ORDER_TEXT, "other.md")), "--plan-only")
+
+    assert other["ok"] is True and other["mission_id"] != first["mission_id"]
