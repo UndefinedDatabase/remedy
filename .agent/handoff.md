@@ -4,7 +4,7 @@
 
 SESSION 1 of feature F304 · round 3 · rounds so far 3
 
-Context self-assessment: the reviewer's context is comfortable; the session continues.
+Context self-assessment: the session ends after round 3's review, at four delegated rounds (F298's round 30 and F304's rounds 1 to 3), below the six-to-eight target, because the reviewer's own authoring slips accumulated: R-1183 and the three prose slips drafted under Round verdicts, all in this session; T003 starts in a fresh session.
 
 Fortschritt: ~18 % (T002 done · T003 to T007 open) — Schätzung
 
@@ -84,7 +84,52 @@ None. (Gates ran one script at a time, after C3 and before C4, as ordered; gate 
 
 ## Round verdicts
 
-Round 2's PASS is booked by C1. Round 3's verdict is the reviewer's, booked in the next round's first commit.
+Round 2's PASS is booked by C1.
+
+Round 3: VERDICT PASS, given by the reviewer of F304's first session after this handback; C1 to C3
+verified by dry run, bytes identical. `.remedy-wt/f304-r3/review3.py`, whose readings are saved
+beside it as `review3-readings.txt`, read the saved block, `.agent/plan.md` and the two appended
+records at `b99301d48`, the five C2 files and the ledger's `Landed:` line at `0729d19da`, and the
+seven C3 files at `5c65e63d5` equal to the prepared files of the reviewer's dry run on `15dcffc1b`,
+seventeen of seventeen, and every one of them unchanged at `292445a84`, which touches only this
+file. The dry run's readings, saved as `.remedy-wt/f304-r3/dry-readings.txt`: on C2's tree ruff
+clean and `419 passed` for `tests/cli/test_do_project_repo.py`, `tests/cli/test_exit_codes.py` and
+`tests/cli/test_client_interface.py`, with two mutations each red and green again after
+(`project_has_no_repo` back to exit 2 turned its test red; `do.run` without `exit_codes` turned
+`test_declared_codes_equal_the_codes_the_handler_reaches[do.run]` and the guide's table test red);
+on C3's tree ruff clean and the round's selection `1514 passed`, with three mutations each red and
+green again after (the command writing `remedy.toml` turned the clean-copy test red; `created`
+inverted turned both register tests red; `not_a_git_repo` dropped from the token table turned
+`test_declared_tokens_equal_the_tokens_the_handler_reaches[project.register]` and the page's two
+tests red). A first dry run was red on two existing tests, the exit-code guide's command table and
+the real-run test that calls every operation once; both were added to the round before any file
+was handed over. The worker's one run of the same selection on the same bytes read `1514 passed`.
+Every reflog entry after `15dcffc1b` is one of the round's commits, the local tip equalled the
+pushed branch and the tree was clean. The worker declared no deviation.
+
+Drafted for the next round's first commit, to be appended to `.agent/live_review.md` after round
+3's gate entry, by this reviewer:
+
+`Done: R-1183 — RESOLVED at F304 round 3 by 0729d19da, verified by the reviewer of F304's first
+session. At 0729d19da, _order_repo in apps/cli/commands/do_cmd.py refuses an order whose project has
+no registered repository with project_has_no_repo and exit 3, do.run declares exit_codes=(0, 1, 2,
+3), docs/guides/exit-codes.md lists remedy do run with 3, and tests/cli/test_do_project_repo.py
+asserts 3 for that refusal and 2 for repo_not_in_project; the refusal back at exit 2 turned its test
+red, and do.run without the declaration turned the exit-code tests red.`
+
+And for `.agent/prose_slips.md`, three lines:
+
+`2026-10-08, F304 round 2 — the reviewer's first dry run used main at 4eda924c5 as its base while
+the round's base was cdf31a5cf, which differs in docs/roadmap/STATUS.md; the selection was run again
+on cdf31a5cf before delegating, with the same reading, so nothing on disk differs.`
+
+`2026-10-08, F304 round 2 — the reviewer's first wording of do.run's --repo help named an order
+without the vocabulary fragment the binding word needs, which tests/docs/test_vocabulary.py caught
+in the dry run; the help was reworded before any file was handed over.`
+
+`2026-10-08, F304 round 3 — the reviewer first planned a --name option for remedy project register,
+assuming register_project_repo takes the slug from the name it is given, where it takes it from the
+folder's name; the option was dropped before the dry run, so nothing on disk differs.`
 
 ## For the operator, in plain sentences
 
@@ -94,8 +139,14 @@ A program can now register a project's folder with Remedy in one command, `remed
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then book round 3's verdict and R-1183's resolution in the next round's first commit.
-4. Then T003: honest refusals under `--approve --json`, and a command that declines a result.
+3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
+4. Then, in the next round's first commit: book round 3's verdict, quoted above, R-1183's `Done:`
+   paragraph and the three prose slips, all drafted above, as written.
+5. Then T003: honest refusals under `--approve --json`, and a command that declines a result.
+   Its first round reads `apply_job` and `export_job_apply_json` in
+   `packages/orchestration/job_apply.py` whole: every `status = "blocked"` site and the prefix of
+   each `blocked_reason`, so that each cause the slice names (the contract refuses the push, no
+   upstream, a dirty tree, a detached HEAD, a merge conflict, protected files) maps to one token.
 
 Operator questions open: 1.
 Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low, owned by F297; R-1183, Low, owned by F304, landed).
@@ -110,3 +161,4 @@ Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 | C4: handback | done | this commit |
 | Gates 1 to 5 | done | all green, before this file was written |
 | Push, gate 6 | pending at write time | outcomes in the worker's final reply |
+| Session close: round 3's verdict, R-1183's drafted resolution, the prose slips and the session's end | done | this commit |
