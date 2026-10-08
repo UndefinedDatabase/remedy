@@ -1,25 +1,26 @@
-# Plan — F298 Machine client contract v1.1: what a client can rely on
+# Plan — F304 Machine client contract v1.1, part two: what a client can rely on
 
 ## Goal
-One document generated from the code names every operation, field, word, token and exit code a
-program meets when it drives Remedy, and the machine client page is its rendering
-(docs/roadmap/features/T12_F298.md, T001). F298 closes at T001's scope; T002 to T007 moved to F304
-(DECISION F298 D21).
+A client's real paths work through the command line and are written down: an order runs in the
+repository of the project it names, a refused apply says so, a result can be declined, an order of
+several jobs and an order started twice behave, a program sees what changed and what it cost, and
+the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 7, round 30, the Open PR Gate's repair: pull request 315's first hosted run is red on
-Python 3.12 in one test assertion (R-1182). Book round 29's verdict, register R-1182, repair the
-assertion so that it no longer depends on how one Python version prints source, and push; that
-push starts the one re-run (DECISION F298 D24).
+Session 1, round 1, the claim: claim F304, re-head the review record, book F298's round 30 and
+R-1182's resolution, and record DECISION F304 D1 (F298's claim measurement stands; DECISION F298
+D1's slice order).
 
 ## Next Steps
-1. Green hosted run: the Open PR Gate merges pull request 315; the next feature's first commit books
-   round 30's verdict and resolves R-1182; Rule A5 claims F304 — Machine client contract v1.1, part
-   two.
-2. Red hosted run: nothing is merged; an operator question is written and the session stops.
+1. T002 — an order runs in the repository of the project it names, or is refused before any step;
+   one command registers a repository for a client and leaves its working copy clean.
+2. T003 — honest refusals under `--approve --json`, and a command that declines a result.
+3. T004 — the second gate test: commit and push to a local bare upstream, an order of two jobs, one
+   order file started twice.
+4. T005, T006, T007; then the hardening stage; then the closure sequence.
 
 ## Risks
-- T001's sentence that the document only grows inside one major version is a rule for whoever
-  changes it; no test holds it.
-- R-1182 (Low) is owned by F298 until the hosted run is green. R-1160 (Medium) and R-1138, R-1139,
-  R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
+- T002 changes where an order runs; a client standing below another repository must not change it
+  (F298's inventory, the `plain` probe).
+- F304 owns no open finding. R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
+  R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.

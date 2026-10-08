@@ -1,34 +1,34 @@
-# Live Review — F298 Machine client contract v1.1: what a client can rely on
+# Live Review — F304 Machine client contract v1.1, part two: what a client can rely on
 
-> Round-by-round review record, re-headed at the F298 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F116, whose STATUS
-> line went `[x]` on its own branch and whose pull request 313 the operator merged into `main` as
-> `1b9dc2ca4`. Hosted CI run 37669414926 on `e620e674f`, the pull request's last commit, passed
-> both its Python 3.10 and its Python 3.12 job. `e620e674f` is the second parent of `1b9dc2ca4`,
-> and the two trees are identical. The operator's amendment amend1007b-luna-api-upkeep then merged
-> as `77493e0f9` (pull request 314, hosted CI run 37674510475 green on both jobs); it appended
-> R-1176 to this record and registered F298 as the first unchecked line. F116's round 15, its last
-> round, was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1
-> books its verdict here, in the first commit of the next round that is happening anyway; it is
-> appended at the end of this record by this claim. Only the heading, this paragraph and the Steps
-> section below are rewritten; everything from the Findings heading to the end of the file as it
-> stood at `77493e0f9` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic
-> R-XXXX series across the re-head. The open set at `77493e0f9`, computed with `open_finding_ids`
-> from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156',
-> 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`; F297, the rolling findings
-> paydown, owns all of them, and F298 owns none.
+> Round-by-round review record, re-headed at the F304 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F298, whose STATUS
+> line went `[x]` on its own branch. The first hosted CI run of its pull request 315, run
+> 37716986653 on `ad6081d74`, failed one node on Python 3.12 only, registered as R-1182; F298's
+> round 30 repaired that assertion on the branch under DECISION F298 D24, and the fresh run
+> 37720250821 on `9704396c3` passed both its Python 3.10 and its Python 3.12 job. The Open PR Gate
+> merged pull request 315 into `main` as `4eda924c5`, whose second parent is `9704396c3`, and the
+> two trees are identical. F298's round 30 was reviewed after its own handback, so operator amendment
+> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
+> is happening anyway, together with R-1182's resolution; both are appended at the end of this
+> record by this claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything from the Findings heading to the end of the file as it stood at `4eda924c5` is carried
+> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> The open set at `4eda924c5`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156',
+> 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1182']`; this claim resolves
+> R-1182, and F297, the rolling findings paydown, owns the other eleven, so F304 owns none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F298 D1's, which also writes the feature file's slice order. The first
-round claims F298, re-heads this record, books F116's round 15, and records the claim's measurement
-in `.agent/f298_inventory.md`. Then T001, the contract as data with its generated page and the
-test that holds code and document equal; T002, an order runs in the repository of the project it
-names; T003, honest refusals under `--approve --json` and a command that declines a result; T004,
-the second gate test (commit and push to a local bare upstream, an order of two jobs, one order
-file started twice); then T005, the approval card from records; T006, tokens and calls beside the
-cost and a cap of any budget kind; T007, a bounded digest and the template question. Then the
-amend0930b-slow-cap hardening stage this SLOW MODE session orders before the closure sequence;
+THE ORDER BELOW IS DECISION F304 D1's, which carries DECISION F298 D1's order for the six slices
+F298 handed over. The first round claims F304, re-heads this record, books F298's round 30 and
+R-1182's resolution, and records that F298's claim measurement still holds. Then T002, an order
+runs in the repository of the project it names; T003, honest refusals under `--approve --json` and
+a command that declines a result; T004, the second gate test (commit and push to a local bare
+upstream, an order of two jobs, one order file started twice); then T005, the approval card from
+records; T006, tokens and calls beside the cost and a cap of any budget kind; T007, a bounded
+digest and the template question. Every slice adds what it changes to the interface in
+`apps/cli/client_interface.py` in the same round. Then the amend0930b-slow-cap hardening stage,
 then closure.
 
 ## Findings
@@ -237,3 +237,7 @@ Gate: F298 R28 — the F298 round 28 entry, the closure's evidence round, over `
 Gate: F298 R29 — the F298 round 29 entry, the closing round, over `a482d6fd4`..`ad6081d74` (3 commits, each single-parent; insertions by `git show --numstat`: `8ed2fe503` 258, `beb6d94c9` 62, `ad6081d74` 82). VERDICT PASS, given by the reviewer of F298's sixth session in its comment on pull request 315 and booked here by the reviewer of F298's seventh session from that reviewer's saved readings, `.remedy-wt/f298-r29/review29-readings.txt`: the saved block, the STATUS line, the PR body and `.agent/plan.md` at `8ed2fe503`, the rotated ledger and its archive at `beb6d94c9`, and `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` at `ad6081d74` equal to the prepared files of the simulation on `a482d6fd4`, ten of ten; the STATUS line occurs once and no `[~]` line is left; `ad6081d74` is the last commit on the branch and pull request 315's body equals the authored text. The worker's one selection on those bytes read `555 passed` at exit 0 and the integrity check six of six `pass`. The local tip equalled the pushed branch and the tree was clean. The worker declared no deviation. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`; R-1182 below joins it.
 
 - R-1182 — Low, PULL REQUEST 315'S HOSTED CI IS RED ON PYTHON 3.12: `test_the_interface_answer_trees_name_exactly_what_their_code_builds` IN `tests/cli/test_client_interface.py` COMPARES THE TEXT `ast.unparse` PRINTS WITH A STRING WRITTEN AS PYTHON 3.10 PRINTS IT. Raised by hosted CI run 37716986653 on `ad6081d74`: job `ci (3.12)` failed its fast stage on this one node, `1 failed, 5058 passed, 9 skipped`, and passed its standard, ui, smoke and budget stages, while job `ci (3.10)` passed whole. SEARCHED BEFORE MINTING (checklist item 30): no finding of the open set the newest Gate entry names mentions `tests/cli/test_client_interface.py` or `ast.unparse`; the file does not exist on `main`, and the assertion was added by `914384414`, F298 round 15. READ: the run's diff shows Python 3.12 printing the dict comprehension's target as `command_id, keys` where the test expects `(command_id, keys)`; the product line in `apps/cli/client_interface.py` is written without brackets, so the product is right and the expected text is bound to one interpreter. THE REPAIR, which C2 of F298 round 30 lands: the expected source is parsed and printed by the running interpreter as well, so both sides pass through the same printer and the assertion stays an exact comparison of the whole comprehension; on Python 3.10, the reviewer's mutation of the product line from `list(keys)` to `keys` turned the repaired test red, green again after. WHY LOW: no product behaviour is wrong, but the node is red on every Python 3.12 run, so the pull request cannot merge. Owner: F298. OPEN.
+
+Gate: F298 R30 — the F298 round 30 entry, the Open PR Gate's repair, over `ad6081d74`..`9704396c3` (3 commits, each single-parent; insertions by `git show --numstat`: `39184b37d` 144, `553f9f4d7` 4, `9704396c3` 38). VERDICT PASS, verified by dry run, bytes identical, compared at `39184b37d` and `553f9f4d7` against the prepared files of the reviewer's dry run on `ad6081d74`. `.remedy-wt/f298-r30/review30.py`, whose readings are saved beside it as `review30-readings.txt`, read the saved block `.agent/authored/f298-r30.md`, `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` (each the blob at `ad6081d74` followed by its prepared slice) at `39184b37d`, and `tests/cli/test_client_interface.py` at `553f9f4d7`, equal to the prepared files, five of five, and every one of them unchanged at `9704396c3`, which touches only `.agent/handoff.md`. The dry run's readings, saved as `.remedy-wt/f298-r30/dry-readings.txt` and `sim-readings.txt`: on Python 3.10 the round's selection read `160 passed` at exit 0, ruff on the test file read clean, the integrity check read six of six `pass`, and `open_finding_ids` read the eleven ids below and R-1182; the mutation of the product line in `apps/cli/client_interface.py` from `list(keys)` to `keys` turned the repaired node red, green again after, in a disposable worktree that was removed. The worker's one run of the same selection on the same bytes read `160 passed`. Every reflog entry after `ad6081d74` is one of the round's commits, the local tip equalled the pushed branch and the tree was clean. The worker declared no deviation in the commits. Hosted CI run 37720250821 on `9704396c3` passed both its Python 3.10 and its Python 3.12 job, and the Open PR Gate merged pull request 315 as `4eda924c5`. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`; R-1182 is resolved below.
+
+Done: R-1182 — RESOLVED at F298 round 30 by `553f9f4d7` under DECISION F298 D24, proved by the reviewer's dry run recorded in the F298 R30 gate entry above and by hosted CI run 37720250821 on `9704396c3`, green on Python 3.10 and Python 3.12. `test_the_interface_answer_trees_name_exactly_what_their_code_builds` in `tests/cli/test_client_interface.py` now parses and prints the expected comprehension with the running interpreter, so both sides of the assertion pass through the same printer; the comparison is still exact over the whole comprehension, and no production file changed.
