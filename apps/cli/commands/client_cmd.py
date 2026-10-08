@@ -1,8 +1,11 @@
-"""Client group command handlers (F298 T001, DECISION F298 D2).
+"""Client group command handlers (F298 T001, DECISION F298 D2; F253 S3a, DECISION F253 D4 (3)).
 
 `remedy client interface` prints the machine client interface that
 `apps/cli/client_interface.py` builds from the code: with `--json` as one envelope whose keys are
 the document's, and otherwise as a short summary a person reads.
+
+`remedy client changes` prints what changed since a cursor the client holds, from
+`packages.orchestration.client_changes.build_client_changes`.
 """
 
 from __future__ import annotations
@@ -10,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from apps.cli.json_envelope import emit_ok
+from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
     import argparse
@@ -37,6 +40,35 @@ def _cmd_client_interface(*, json_output: bool = False) -> None:
     print("A program reads the whole interface with: remedy client interface --json")
 
 
+def _cmd_client_changes(*, since: str | None, json_output: bool = False) -> None:
+    from packages.orchestration.client_changes import build_client_changes, parse_client_cursor
+
+    parsed_since = None
+    if since is not None:
+        try:
+            parsed_since = parse_client_cursor(since)
+        except ValueError:
+            fail(
+                "invalid_cursor",
+                f"{since!r} is not a cursor this command reads: an ISO 8601 time with its "
+                "offset, such as 2026-01-01T00:00:00Z or 2026-01-01T00:00:00+00:00.",
+                json_output=json_output, exit_code=2,
+            )
+
+    changes = build_client_changes(parsed_since)
+    if json_output:
+        emit_ok(**changes)
+        return
+    print(f"Jobs changed: {len(changes['jobs'])}")
+    print(f"Decisions open: {len(changes['decisions'])}")
+    print(f"Decisions closed: {len(changes['closed_decisions'])}")
+    print(f"Missions changed: {len(changes['missions'])}")
+    print(f"Applies changed: {len(changes['applies'])}")
+    print(f"Next cursor: {changes['cursor']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
+    "client.changes": lambda args: _cmd_client_changes(
+        since=getattr(args, "since", None), json_output=getattr(args, "json", False)),
 }
