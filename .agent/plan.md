@@ -7,15 +7,17 @@ program meets when it drives Remedy, and the machine client page is its renderin
 (DECISION F298 D21).
 
 ## Current Step
-Session 6, round 28: the closure's evidence round. Round 27's verdict is booked; this round's
-first commit is the accepted head; the staging-copy reclaim, the evidence job and the review
-package are built from the clean, pushed tree at that head.
+Session 6, round 29, the closing round: book round 28, rotate the finding ledger, flip F298's
+STATUS line to accepted with the README sync and the self-use item SU-048's `consumed_by`, and
+open the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the ledger rotation, the STATUS line with the README sync and the self-use
-   queue's `consumed_by`, and the pull request.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F298's pull request, then the
+   next feature's first commit books round 29's verdict, then Rule A5 claims the next unchecked
+   line, F304 — Machine client contract v1.1, part two.
 
 ## Risks
-- A failing evidence or package build blocks the closure; it is repaired, or the feature goes `[!]`.
-- R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
-  R-1176 (Low) stay open, owned by F297; F298 owns none.
+- T001's sentence that the document only grows inside one major version is a rule for whoever
+  changes it; no test holds it.
+- F298 owns no open finding. R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
+  R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
