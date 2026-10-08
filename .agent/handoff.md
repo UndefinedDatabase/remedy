@@ -1,58 +1,44 @@
-# Handoff — F304 session 1, round 3: R-1183's repair, then T002's second part, `remedy project register` (DECISION F304 D3)
+# Handoff — F304 session 2, round 4: T003's first part, an approved apply that did not land answers ok false with one token per cause (DECISION F304 D4)
 
 ## Session
 
-SESSION 1 of feature F304 · round 3 · rounds so far 3
+SESSION 2 of feature F304 · round 4 · rounds so far 4
 
-Context self-assessment: the session ends after round 3's review, at four delegated rounds (F298's round 30 and F304's rounds 1 to 3), below the six-to-eight target, because the reviewer's own authoring slips accumulated: R-1183 and the three prose slips drafted under Round verdicts, all in this session; T003 starts in a fresh session.
+Context self-assessment: the reviewer's context is comfortable; the session continues.
 
-Fortschritt: ~18 % (T002 done · T003 to T007 open) — Schätzung
+Fortschritt: ~26 % (T002 done · T003 half done · T004 to T007 open) — Schätzung
 
 ## Range
 
-Review of `15dcffc1b8eb4e30ae0c197b19469d1368c93b4e`..HEAD (HEAD is C4 below, which carries this handback).
+Review of `ecfb1929190b95c23d4cd0855e1459dcc2c81e73`..HEAD (HEAD is C3 below, which carries this handback).
 
 ## Commits
 
-### b99301d48 F304 R3 C1: book round 2, register R-1183, DECISION F304 D3, the plan and the block
+### 98645d1c7 F304 R4 C1: book round 3, resolve R-1183, DECISION F304 D4, the plan and the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f304-r3.md` | 133/0 (new) | byte copy of `block.md` (133 lines, sha256 `afd060c16dfff646192d15cdb75d9052cbc9bff412d645390db5b718c9f71b2a`) |
-| `.agent/decisions.md` | 10/0 | its bytes at `15dcffc1b` followed by `append-decisions.txt` (DECISION F304 D3) |
-| `.agent/live_review.md` | 4/0 | its bytes at `15dcffc1b` followed by `append-live_review.txt` (round 2's gate entry, R-1183) |
-| `.agent/plan.md` | 9/10 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f304-r4.md` | 129/0 (new) | byte copy of `block.md` (129 lines, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`) |
+| `.agent/decisions.md` | 10/0 | its bytes at `ecfb19291` followed by `append-decisions.txt` (DECISION F304 D4) |
+| `.agent/live_review.md` | 4/0 | its bytes at `ecfb19291` followed by `append-live_review.txt` (round 3's gate entry, R-1183's `Done:` paragraph) |
+| `.agent/plan.md` | 8/7 | `dry-plan.md`, byte for byte |
+| `.agent/prose_slips.md` | 3/0 | its bytes at `ecfb19291` followed by `append-prose_slips.txt` (three prose slips) |
 
-### 0729d19da F304 R3 C2: an order whose project has no repository is refused with exit 3 (R-1183)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | 2/0 | its bytes at C1 followed by `append-landed.txt` (R-1183 landed) |
-| `apps/cli/command_catalog.py` | 3/0 | `do.run` declares `exit_codes=(0, 1, 2, 3)` |
-| `apps/cli/commands/do_cmd.py` | 5/4 | `project_has_no_repo` exits 3; docstring names both codes |
-| `docs/guides/exit-codes.md` | 1/0 | `remedy do run` lists 3 |
-| `docs/system/machine-client-contract-v1.md` | 5/5 | order-file section names exit 3 and exit 2; generated section written again |
-| `tests/cli/test_do_project_repo.py` | 4/4 | `_refused` takes the expected code: 3 for `project_has_no_repo`, 2 for `repo_not_in_project` |
-
-### 5c65e63d5 F304 R3 C3: remedy project register registers a repository for a client and leaves its working copy clean (T002, DECISION F304 D3)
+### 2cc75eb5c F304 R4 C2: an approved apply that did not land answers ok false with one token per cause (T003, DECISION F304 D4)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/client_interface.py` | 4/0 | `project.register` joins the operations first, with its token, answer keys and an empty answer tree |
-| `apps/cli/command_catalog.py` | 14/0 | the `project.register` entry, exit codes 0, 1, 2, 4 |
-| `apps/cli/commands/project.py` | 39/0 | `_cmd_project_register` and its handler entry |
-| `docs/guides/exit-codes.md` | 1/0 | `remedy project register` lists 4 |
-| `docs/system/machine-client-contract-v1.md` | 19/1 | order-file section names the command; generated section written again |
-| `tests/cli/test_client_interface.py` | 1/0 | the real-run test calls `project.register` once |
-| `tests/cli/test_project_register.py` | 102/0 (new) | clean working copy, twice answers the same project, an order runs in the registered repository, a path that is no repository |
-
-### C4 F304 R3 C4: handback
-
-C4's hash is not known when this file is written (a handoff cannot table the commit that writes it).
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | this commit | this file, rewritten per `docs/agents/handback_template.md` |
+| `apps/cli/client_interface.py` | 6/1 | `job.apply` declares its fifteen `APPLY_REFUSAL_TOKENS` in `OPERATION_REFUSAL_TOKENS` |
+| `apps/cli/command_catalog.py` | 3/0 | `job.apply` declares `exit_codes=(0, 1, 2, 3)` |
+| `apps/cli/commands/do_cmd.py` | 26/4 | `_cmd_job_apply` refuses a flag clash with `invalid_argument` and exit 2 before the job is read, and answers a refusal with `apply_refusal`'s token, exit 3 for `job_not_found`/`job_not_ready`, else exit 1 |
+| `docs/guides/exit-codes.md` | 1/0 | `remedy job apply` lists exit 3 |
+| `docs/system/machine-client-contract-v1.md` | 9/3 | order-file section names the refusal and its exit codes; generated section (exit codes, refusal tokens) written again |
+| `packages/orchestration/job_apply.py` | 103/6 | `apply_refusal`, `APPLY_REFUSAL_TOKENS`, `APPLY_NOT_READY_TOKENS` and the sentence-opening constants the token reader and the tests share |
+| `tests/cli/test_client_interface.py` | 13/0 | the hand-verified token site for `_cmd_job_apply`'s `error`, held equal to `APPLY_REFUSAL_TOKENS` |
+| `tests/cli/test_job_apply_refusals.py` | 232/0 (new) | drives each of the six named causes, a missing job, a flag clash, two previews and the text answer through the command line, and reads every token from a table of results |
+| `tests/orchestration/test_job_apply.py` | 9/5 | three pinned "a blocked apply exits 0" assertions now read exit 1 with their token |
+| `tests/orchestration/test_job_apply_commit.py` | 9/4 | the flag-clash test now reads exit 2 and `invalid_argument` before the job is read |
+| `tests/orchestration/test_job_apply_history.py` | 3/2 | the refused-merge test now reads exit 1 and `target_dirty` |
 
 ## External actions
 
@@ -61,104 +47,52 @@ C4's hash is not known when this file is written (a handoff cannot table the com
 
 ## Verification
 
-0. Before any write: `block.md` (133 lines), `sim-readings.txt` and `digests.txt` matched the prompt's sha256 digests, and the sixteen other prepared files matched `digests.txt` (Python `hashlib.sha256`, 19 of 19 True). `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read `15dcffc1b8eb4e30ae0c197b19469d1368c93b4e`, `git status --porcelain` was empty, `.agent/STOP` was absent. `git branch --show-current` read the feature branch before each commit (checked inside the commit script).
-1. C1 proofs: `.agent/decisions.md` and `.agent/live_review.md` each equal `git show 15dcffc1b:<path>` plus the append file, True; `.agent/plan.md` equals `dry-plan.md`, True; the block copy is 133 lines, sha256 as above. `git diff --cached --numstat` read `133 0`, `10 0`, `4 0`, `9 10`, the cells of `sim-readings.txt`. The staged diff was written to a file and read whole.
-2. C2 proofs: the five files equal their prepared files, True five of five; `.agent/live_review.md` equals its bytes at C1 plus `append-landed.txt`, True. `git diff --cached --numstat` read `2 0`, `3 0`, `5 4`, `1 0`, `5 5`, `4 4`, the cells of `sim-readings.txt`. The staged diff was written to a file and read whole.
-3. C3 proofs: the seven files equal their prepared files, True seven of seven. `git diff --cached --numstat` read `4 0`, `14 0`, `39 0`, `1 0`, `19 1`, `1 0`, `102 0`, the cells of `sim-readings.txt`. The staged diff was written to a file and read whole.
-4. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, after C3): exit 0, empty; the byte proofs above all True.
-5. **Gate 2** (`python3 -m ruff check` on the seven files): exit 0, `All checks passed!`.
-6. **Gate 3** (`python3 -m pytest -q -rfEs` on the block's selection, run once, through a Python wrapper): exit 0, last line `1514 passed in 255.04s (0:04:15)`; no FAILED, ERROR or SKIPPED line.
-7. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six `pass`, `"fail_count": 0`.
-8. **Gate 5** (`open_finding_ids`): exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1183']`.
-9. **Gate 6** (after the push): reported in the worker's final reply.
+0. Before any write: `block.md` (129 lines), `sim-readings.txt` and `digests.txt` matched the prompt's sha256 digests (Python `hashlib.sha256`, 3 of 3 True), and the fifteen other prepared files listed in `digests.txt` matched it (15 of 15 True). `git rev-parse HEAD` and `origin/feature/f304-machine-client-contract-v1-1-part-two` both read `ecfb1929190b95c23d4cd0855e1459dcc2c81e73`, `git status --porcelain` was empty, `.agent/STOP` was absent. `git branch --show-current` read the feature branch before each commit (checked inside each commit script).
+1. C1 proofs: the authored copy is 129 lines, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`, byte-equal to its source. `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` each equal `git show ecfb19291:<path>` plus their append file, True (the decisions proof by sha256 comparison of the built bytes against the file on disk, the file itself never read whole). `.agent/plan.md` equals `dry-plan.md`, True. `git diff --cached --numstat` read `129 0`, `10 0`, `4 0`, `8 7`, `3 0`, the cells of `sim-readings.txt`. The staged diff (208 lines) was written to a file and read whole.
+2. C2 proofs: the eleven files equal their prepared files, True eleven of eleven, each sha256-verified. `git diff --cached --numstat` read `6 1`, `3 0`, `26 4`, `1 0`, `9 3`, `103 6`, `13 0`, `232 0`, `9 5`, `9 4`, `3 2`, the cells of `sim-readings.txt`. `git status --porcelain` showed exactly the eleven C2 paths staged, nothing else. The staged diff (689 lines) was written to a file and read whole.
+3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, after C2): exit 0, empty; the byte proofs of C1 and C2 above all True.
+4. **Gate 2** (`python3 -m ruff check` on the nine named files): exit 0, `All checks passed!`.
+5. **Gate 3** (`python3 -m pytest -q -rfEs` on the block's selection, run once, through a Python wrapper capturing the exit code): exit 0, last line `2043 passed in 429.39s (0:07:09)`; the full transcript was scanned for FAILED, ERROR and SKIPPED lines, none found.
+6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six `pass`, `"fail_count": 0`.
+7. **Gate 5** (`open_finding_ids`): exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`.
+8. **Gate 6** (after the push): reported in the worker's final reply.
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f304-r3.md`: 133 lines, byte-equal, sha256 `afd060c16dfff646192d15cdb75d9052cbc9bff412d645390db5b718c9f71b2a`.
-- `append-decisions.txt`, `append-live_review.txt` and `append-landed.txt`: post equals pre plus slice in bytes, once each (items 1 and 2 above).
-- `dry-plan.md` to `.agent/plan.md`, the five C2 files and the seven C3 files to their targets: byte-equal.
+- `block.md` to `.agent/authored/f304-r4.md`: 129 lines, byte-equal, sha256 `24888258df3db238f94cc81869749da80ad9448149b0db9dd2a23a32c6f6f948`.
+- `append-live_review.txt`, `append-prose_slips.txt` and `append-decisions.txt`: post equals pre plus slice in bytes, once each (Verification item 1 above).
+- `dry-plan.md` to `.agent/plan.md`, and the eleven C2 files to their targets: byte-equal (Verification items 1 and 2 above).
 
 ## Deviations & assumptions
 
-None. (Gates ran one script at a time, after C3 and before C4, as ordered; gate 1's status read was taken after C3 was committed, its byte proofs before.)
+None. (Gates ran one script at a time, after C2 and before C3, as ordered; gate 1's status read was taken after C2 was committed, its byte proofs before.)
 
 ## Round verdicts
 
-Round 2's PASS is booked by C1.
+Round 3's PASS and R-1183's resolution are booked by C1.
 
-Round 3: VERDICT PASS, given by the reviewer of F304's first session after this handback; C1 to C3
-verified by dry run, bytes identical. `.remedy-wt/f304-r3/review3.py`, whose readings are saved
-beside it as `review3-readings.txt`, read the saved block, `.agent/plan.md` and the two appended
-records at `b99301d48`, the five C2 files and the ledger's `Landed:` line at `0729d19da`, and the
-seven C3 files at `5c65e63d5` equal to the prepared files of the reviewer's dry run on `15dcffc1b`,
-seventeen of seventeen, and every one of them unchanged at `292445a84`, which touches only this
-file. The dry run's readings, saved as `.remedy-wt/f304-r3/dry-readings.txt`: on C2's tree ruff
-clean and `419 passed` for `tests/cli/test_do_project_repo.py`, `tests/cli/test_exit_codes.py` and
-`tests/cli/test_client_interface.py`, with two mutations each red and green again after
-(`project_has_no_repo` back to exit 2 turned its test red; `do.run` without `exit_codes` turned
-`test_declared_codes_equal_the_codes_the_handler_reaches[do.run]` and the guide's table test red);
-on C3's tree ruff clean and the round's selection `1514 passed`, with three mutations each red and
-green again after (the command writing `remedy.toml` turned the clean-copy test red; `created`
-inverted turned both register tests red; `not_a_git_repo` dropped from the token table turned
-`test_declared_tokens_equal_the_tokens_the_handler_reaches[project.register]` and the page's two
-tests red). A first dry run was red on two existing tests, the exit-code guide's command table and
-the real-run test that calls every operation once; both were added to the round before any file
-was handed over. The worker's one run of the same selection on the same bytes read `1514 passed`.
-Every reflog entry after `15dcffc1b` is one of the round's commits, the local tip equalled the
-pushed branch and the tree was clean. The worker declared no deviation.
-
-Drafted for the next round's first commit, to be appended to `.agent/live_review.md` after round
-3's gate entry, by this reviewer:
-
-`Done: R-1183 — RESOLVED at F304 round 3 by 0729d19da, verified by the reviewer of F304's first
-session. At 0729d19da, _order_repo in apps/cli/commands/do_cmd.py refuses an order whose project has
-no registered repository with project_has_no_repo and exit 3, do.run declares exit_codes=(0, 1, 2,
-3), docs/guides/exit-codes.md lists remedy do run with 3, and tests/cli/test_do_project_repo.py
-asserts 3 for that refusal and 2 for repo_not_in_project; the refusal back at exit 2 turned its test
-red, and do.run without the declaration turned the exit-code tests red.`
-
-And for `.agent/prose_slips.md`, three lines:
-
-`2026-10-08, F304 round 2 — the reviewer's first dry run used main at 4eda924c5 as its base while
-the round's base was cdf31a5cf, which differs in docs/roadmap/STATUS.md; the selection was run again
-on cdf31a5cf before delegating, with the same reading, so nothing on disk differs.`
-
-`2026-10-08, F304 round 2 — the reviewer's first wording of do.run's --repo help named an order
-without the vocabulary fragment the binding word needs, which tests/docs/test_vocabulary.py caught
-in the dry run; the help was reworded before any file was handed over.`
-
-`2026-10-08, F304 round 3 — the reviewer first planned a --name option for remedy project register,
-assuming register_project_repo takes the slug from the name it is given, where it takes it from the
-folder's name; the option was dropped before the dry run, so nothing on disk differs.`
+Round 4's verdict is the reviewer's.
 
 ## For the operator, in plain sentences
 
-A program can now register a project's folder with Remedy in one command, `remedy project register`, from wherever it stands. Unlike `remedy init`, this command leaves no new file in that folder. Asking twice answers the same project. The description Remedy gives a program lists this command first, because a program registers before it sends an order. The reviewer found a small slip of its own from the round before: a refusal that answered with the code meaning "you typed the command wrong" where it should say "what you named is not ready"; this round corrected it. This finishes the first of the six open parts. Nothing waits for the operator.
+Until now, when a program asked Remedy to apply a job's result and the apply was stopped — for example because the folder had unsaved changes or the push was not allowed — Remedy still answered "success" with exit code 0 and hid the reason inside the answer. From now on such an answer says plainly that it failed, names the cause with one fixed word a program can check (one word each for unsaved changes, a branch that is not checked out, a merge conflict, protected files, no place to push to, and a push the mission's own acceptance criteria forbid), keeps every detail it gave before, and ends with exit code 1, or 3 when the job does not exist or is not finished. A preview without the approval still answers as before. The description Remedy gives a program lists all these words. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then, in the next round's first commit: book round 3's verdict, quoted above, R-1183's `Done:`
-   paragraph and the three prose slips, all drafted above, as written.
-5. Then T003: honest refusals under `--approve --json`, and a command that declines a result.
-   Its first round reads `apply_job` and `export_job_apply_json` in
-   `packages/orchestration/job_apply.py` whole: every `status = "blocked"` site and the prefix of
-   each `blocked_reason`, so that each cause the slice names (the contract refuses the push, no
-   upstream, a dirty tree, a detached HEAD, a merge conflict, protected files) maps to one token.
+3. Then book round 4's verdict in the next round's first commit.
+4. Then T003's second part: a command that declines a completed job's result, and a declined job or a job of an abandoned mission no longer waits for its apply.
 
 Operator questions open: 1.
-Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low, owned by F297; R-1183, Low, owned by F304, landed).
+Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low, owned by F297).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 2, register R-1183, DECISION F304 D3, the plan and the block | done | `b99301d48` |
-| C2: an order whose project has no repository is refused with exit 3 | done | `0729d19da` |
-| C3: remedy project register | done | `5c65e63d5` |
-| C4: handback | done | this commit |
+| C1: book round 3, resolve R-1183, DECISION F304 D4, the plan and the block | done | `98645d1c7` |
+| C2: an approved apply that did not land answers ok false with one token per cause | done | `2cc75eb5c` |
 | Gates 1 to 5 | done | all green, before this file was written |
+| C3: handback | done | this commit |
 | Push, gate 6 | pending at write time | outcomes in the worker's final reply |
-| Session close: round 3's verdict, R-1183's drafted resolution, the prose slips and the session's end | done | this commit |
