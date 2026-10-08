@@ -37,10 +37,10 @@ Add a line saying hello to README.md
 Remedy refuses an order file before any step, with exit code 2: `order_file_not_found`,
 `order_file_unreadable`, `order_file_empty`, `order_file_invalid_header`, and
 `order_file_no_cost_cap` when neither the header nor `--max-cost-usd` sets a cost cap. An order
-that names a project is refused before any step, with exit code 2, with `project_has_no_repo`
-when the project has no registered repository and with `repo_not_in_project` when `--repo`
-names a repository that is not the project's. An order argument that holds whitespace is
-planned as text, never read as a file.
+that names a project is refused before any step with `project_has_no_repo` and exit code 3
+when the project has no registered repository, and with `repo_not_in_project` and exit code 2
+when `--repo` names a repository that is not the project's. An order argument that holds
+whitespace is planned as text, never read as a file.
 
 ## The path, step by step
 
@@ -235,7 +235,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--commit-with-history` | yes | no | no | no | Implies --apply: merge each job's commits, one per applied task step, onto your current branch with git merge --no-ff instead of copying, as `remedy job apply --approve --commit-with-history` does; each job runs only after the one before it is merged |
 | `--push` | yes | no | no | no | With a commit flag only: push your branch to its configured upstream once, after the mission's last job, never forced; refused alone and, before any step, without an upstream; refused while any blocking criteria of the mission contract are unmet, naming those still open. The config key apply.push_after_mission does the same |
 
-Exit codes: `0`, `1`, `2`.
+Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `invalid_argument`, `invalid_budget`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
 Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.

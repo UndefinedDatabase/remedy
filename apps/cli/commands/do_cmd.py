@@ -205,9 +205,10 @@ def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> 
 
     Without a project, `--repo` or else the current directory, as before. With one, that
     project's registered repository: a project with none is refused with
-    `project_has_no_repo`, and a `--repo` that is not one of its repositories with
-    `repo_not_in_project`. A selector that names no single project is left to the init
-    step, which fails on it as it always has (DECISION F268 D16 (4)).
+    `project_has_no_repo` and exit 3 (R-1183), and a `--repo` that is not one of its
+    repositories with `repo_not_in_project` and exit 2. A selector that names no single
+    project is left to the init step, which fails on it as it always has (DECISION F268
+    D16 (4)).
     """
     if project is None:
         return repo or "."
@@ -231,7 +232,7 @@ def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> 
              f"project {selected.slug} has no registered repository, so the order has "
              f"nowhere to run; attach one with `remedy project attach --project "
              f"{selected.slug} --repo <path>`. Nothing was run.",
-             json_output=json_output, exit_code=2)
+             json_output=json_output, exit_code=3)
     if repo is None:
         return registered
     try:

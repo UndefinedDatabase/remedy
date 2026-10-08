@@ -2165,6 +2165,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # R-0965: a bare `remedy do "<order>"` runs its job through the same
         # runner as `job.run`, so it declares the same execution metadata.
         may_execute_commands=True,
+        # R-1183: an order whose project has no registered repository names a project the
+        # walk cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
         command_id="run.show",

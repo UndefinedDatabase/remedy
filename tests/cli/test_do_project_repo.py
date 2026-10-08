@@ -85,10 +85,10 @@ def _do_json(capsys, order: Path, *extra: str) -> dict:
     return json.loads(capsys.readouterr().out)
 
 
-def _refused(capsys, order: Path, *extra: str) -> dict:
+def _refused(capsys, order: Path, *extra: str, code: int) -> dict:
     with pytest.raises(SystemExit) as exc:
         main(["do", str(order), "--no-llm", "--no-ui", "--json", *FAKE_ROLES, *extra])
-    assert exc.value.code == 2
+    assert exc.value.code == code
     captured = capsys.readouterr()
     assert captured.err == ""
     return json.loads(captured.out)
@@ -151,7 +151,7 @@ def test_an_order_naming_b_with_repo_a_is_refused_before_any_step(projects, tmp_
     (a, _), (b, project_b) = projects["a"], projects["b"]
     before = _repo_state(a)
 
-    data = _refused(capsys, _order(tmp_path, project_b.slug), "--repo", str(a))
+    data = _refused(capsys, _order(tmp_path, project_b.slug), "--repo", str(a), code=2)
 
     assert (data["ok"], data["error"]) == (False, "repo_not_in_project")
     assert str(b) in data["message"]
@@ -167,7 +167,7 @@ def test_an_order_naming_a_project_without_a_repository_is_refused_before_any_st
     bare = RemyProject(name="bare")
     save_project(bare)
 
-    data = _refused(capsys, _order(tmp_path, bare.slug))
+    data = _refused(capsys, _order(tmp_path, bare.slug), code=3)
 
     assert (data["ok"], data["error"]) == (False, "project_has_no_repo")
     assert f"remedy project attach --project {bare.slug} --repo" in data["message"]
