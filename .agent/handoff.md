@@ -1,35 +1,30 @@
-# Handoff — F298 session 6, round 27: round 26 booked, the checklist's consolidation pass for F298
+# Handoff — F298 session 6, round 28: round 27 booked, the evidence job and the review package
 
 ## Session
 
-SESSION 6 of feature F298 · round 27 · rounds so far 27
+SESSION 6 of feature F298 · round 28 · rounds so far 28
 
-Context self-assessment: the reviewer's context is ample after the first round of this session; the session continues with the evidence round and the closing round.
+Context self-assessment: "The reviewer's context is comfortable after two rounds; the session goes on with the closing round."
 
-Fortschritt: ~95 % (T001 landed; split to F304; hardening stage complete; self-use run done; the closure suite green; the consolidation pass done; the evidence, the package and the closing commit remain) — Schätzung
+Fortschritt: ~98 % (everything but the closing commit and the pull request is done) — Schätzung
 
 ## Range
 
-Review of `cacba11b0c57803c130a2cf7a679982e6f5b2ce0`..HEAD (HEAD is C3 below).
+Review of `7f89e01445fe4bf75827099cf343210a5f872342`..HEAD (HEAD is C2 below).
 
 ## Commits
 
-### c505713ed F298 R27 C1: book round 26 and R-1181's resolution, the prose slip, the plan
+### d667e5b49 F298 R28 C1: book round 27, two prose slips, the plan, save the block and the evidence script
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f298-r27.md` | 100/0 (new) | byte copy of `block.md` (100 lines, sha256 `d0751570441b5a408b498d2fe9fa3b34a975c866ea77b8cc696e809f8732af03`) |
-| `.agent/live_review.md` | 4/0 | base blob at `cacba11b0` followed by `append-live_review.txt` (round 26 gate entry, R-1181's `Done:`) |
-| `.agent/prose_slips.md` | 1/0 | base blob at `cacba11b0` followed by `append-prose_slips.txt` |
-| `.agent/plan.md` | 8/8 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f298-r28.md` | 171/0 (new) | byte copy of `block.md` (171 lines, sha256 `4d445bd6a0c5219a1eaa0ef681c3c5a9b0deb3c2f091604801c80f6e1b5d43e7`) |
+| `.agent/authored/f298-r28-create_f298_evidence.py` | 173/0 (new) | byte copy of the prepared script (173 lines, sha256 `cc17c0fd6fd0ade20caadffb1f3051831333937e0a70e6f4efeaf4e7649b53c4`) |
+| `.agent/live_review.md` | 2/0 | base blob at `7f89e0144` followed by `append-live_review.txt` (round 27 gate entry) |
+| `.agent/prose_slips.md` | 2/0 | base blob at `7f89e0144` followed by `append-prose_slips.txt` |
+| `.agent/plan.md` | 5/7 | `dry-plan.md`, byte for byte |
 
-### 652b961d1 F298 R27 C2: the checklist's consolidation pass for F298
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | 31/0 | `dry-planner_reviewer_prompt.md`, byte for byte |
-
-### F298 R27 C3: handback (self-reference exception: the handoff is committed by this same commit)
+### F298 R28 C2: handback (self-reference exception: the handoff is committed by this same commit)
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -37,30 +32,53 @@ Review of `cacba11b0c57803c130a2cf7a679982e6f5b2ce0`..HEAD (HEAD is C3 below).
 
 ## External actions
 
-- `python3 -m pytest -q -rfEs ...` (gate 2) run once; `python3 -m apps.cli.main integrity check --json` and the `open_finding_ids` one-liner (gate 3) run once each.
-- `git push origin feature/f298-machine-client-contract-v1-1`: outcome, including any HTTP 500 retry, is in the worker's final reply (write-once rule; not known when this file is written).
-- No full suite, no UI build, no merge, no branch switch, no new branch, no force-push, no pull, no pull request opened.
+- `git push origin feature/f298-machine-client-contract-v1-1` after C1: `7f89e0144..d667e5b49`, exit 0, first attempt.
+- A0: `python3 -m apps.cli.main data reclaim --orphans` run once (exit 0); `--apply` skipped because nothing was reclaimable.
+- A1: `python3 .agent/authored/f298-r28-create_f298_evidence.py .remedy-wt/f298-r28-evidence` run once, detached, exit 0.
+- A2: `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f298-r28-evidence` run once, exit 0, no `REMEDY_REVIEW_DIR`.
+- The push after C2, with any retry, is in the worker's final reply (write-once rule; not known when this file is written).
+- No full suite, no mutation, no merge, no branch switch, no new branch, no force-push, no pull, no pull request opened.
 
 ## Verification
 
-0. Before any write: `block.md`, `append-live_review.txt`, `append-prose_slips.txt`, `dry-plan.md` and `dry-planner_reviewer_prompt.md` matched their sha256 digest (5 of 5, Python `hashlib.sha256`). `git rev-parse HEAD` and `origin/feature/f298-machine-client-contract-v1-1` both read `cacba11b0c57803c130a2cf7a679982e6f5b2ce0`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before C1 and C2.
-1. `git diff --cached --numstat`: C1 `100 0` block copy, `4 0` live_review, `8 8` plan, `1 0` prose_slips; C2 `31 0` planner_reviewer_prompt. Each staged diff was written to a file in the worker folder (`c1.diff`, `c2.diff`) and read whole.
-2. **Gate 1**: `git -C /home/decodeux/Repos/remedy status --porcelain` — exit 0, empty. Byte proofs, each against `git show <commit>:<path>`: block copy `True`, live_review at C1 `True`, prose_slips at C1 `True`, plan at C1 `True`, planner_reviewer_prompt at C2 `True` (5 of 5).
-3. **Gate 2**: `python3 -m pytest -q -rfEs tests/docs/ tests/orchestration/test_test_runner.py tests/ui_server/test_dashboard_contract.py tests/regression/test_resource_safety.py tests/orchestration/test_block_lint.py tests/cli/test_golden_path.py --deselect tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes --deselect tests/ui_server/test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles` — exit 0; last line `532 passed, 2 deselected in 74.39s (0:01:14)`; no FAILED, ERROR or SKIPPED line.
-4. **Gate 3**: `python3 -m apps.cli.main integrity check --json` — exit 0:
+0. Before any write: the five prepared files matched their sha256 digests (`block.md` 171 lines; Python `hashlib.sha256`). `git rev-parse HEAD` and `origin/feature/f298-machine-client-contract-v1-1` both read `7f89e01445fe4bf75827099cf343210a5f872342`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before C1.
+1. `git diff --cached --numstat` at C1: `173 0` script, `171 0` block copy, `2 0` live_review, `5 7` plan, `2 0` prose_slips, no other path. The staged diff was written to `c1.diff` in the worker folder and read whole.
+2. **Gate 1**: `git status --porcelain` — exit 0, empty. Byte proofs against `git show d667e5b497ded0a0ae43e7e788eb691c6d1599f7:<path>`: block copy `True`, script `True`, live_review (base blob + slice) `True`, prose_slips (base blob + slice) `True`, plan `True` (5 of 5).
+3. **A0** (exit 0): `Reclaimable: nothing`; refused and kept: `review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only  1.5 MB`; last line `Would free 0 B in 0 paths — nothing deleted; re-run with --apply`. `--apply` not run.
+4. **Gate 2 (A1)**: before it, `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` and the newest reflog entry was C1 (`d667e5b49`); `apps/ui/node_modules` is a real directory (isdir True, islink False). Evidence script exit 0, log `.remedy-wt/f298-r28-worker/evidence.log`:
    ```
-   {"check_count": 6, "checks": [{"message": "handlers=176", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
+   head d667e5b497ded0a0ae43e7e788eb691c6d1599f7
+   ancestry-path count 107
+   plain count 107
+   collected node ids 1273, deselected 12
+   red control: unsafe among the real ids 0 []
+   red control: planted id -> a local absolute path
+   pytest exit 0, {'passed': 1270, 'failed': 0, 'skipped': 3}, output_hash bab046002984a46d674ea3cd074d8ae2f651f15fe7d0d52ece5e5d56cd9069ab
+   validate_verification_tests problems [] passed 1270
+   is_valid_current_run True
+   validation_errors []
+   "job_id": "f298r28e1001"
    ```
-   `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"` — exit 0:
-   `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']` — an exact match.
-5. **Gate 4** (after the push): reported in the worker's final reply.
+   After it, the reflog's newest entry was still C1 and the branch unchanged.
+5. **Gate 3 (A2)**, exit 0, `zip.log`:
+   ```
+   PACKAGE_STATUS=READY_FOR_REVIEW
+   REVIEW_SUBJECT_ALIGNMENT=PASS
+   EVIDENCE_AUTHORITATIVE=true
+   REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
+   ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261008-040539-READY_FOR_REVIEW.zip
+   "final_sha256": "03a2010e37b33146587b9ff952a22dd8962dd3c1678354e8e28d97c488452f8d"
+   ```
+   `.review_zip_manifest.json` inside the package: `committed_review_subject` base `77493e0f91eaada0ea79f22828beeed486d7daa6`, head `d667e5b497ded0a0ae43e7e788eb691c6d1599f7`, `commit_count` 107, `file_count` 68. `zipfile.is_zipfile` True, `testzip()` None; the file's own SHA-256 read in Python equals `final_sha256`.
+6. **Gate 4** (after A2, before C2): `python3 -m apps.cli.main integrity check --json` — exit 0, six checks `pass`, `"fail_count": 0`. `open_finding_ids` — `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`, an exact match. `git status --porcelain` empty. `git worktree list`: 12 lines. `git reflog -n 3 --date=iso`: newest entry `d667e5b49 ... commit: F298 R28 C1: ...`.
+7. **Gate 5** (after C2 and its push): reported in the worker's final reply.
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f298-r27.md`: 100 lines, byte-equal (`True`), sha256 `d0751570441b5a408b498d2fe9fa3b34a975c866ea77b8cc696e809f8732af03`.
-- base blobs at `cacba11b0` of `.agent/live_review.md` and `.agent/prose_slips.md` + their prepared slices → the files at C1: byte-equal (`True`, `True`).
-- `dry-plan.md` → `.agent/plan.md` at C1: byte-equal (`True`).
-- `dry-planner_reviewer_prompt.md` → `docs/agents/planner_reviewer_prompt.md` at C2: byte-equal (`True`).
+- `block.md` → `.agent/authored/f298-r28.md`: 171 lines, byte-equal (`True`), sha256 `4d445bd6a0c5219a1eaa0ef681c3c5a9b0deb3c2f091604801c80f6e1b5d43e7`.
+- `f298-r28-create_f298_evidence.py` → `.agent/authored/f298-r28-create_f298_evidence.py`: 173 lines, byte-equal (`True`), sha256 `cc17c0fd6fd0ade20caadffb1f3051831333937e0a70e6f4efeaf4e7649b53c4`.
+- base blobs at `7f89e0144` of `.agent/live_review.md` and `.agent/prose_slips.md` + their prepared slices → the files at C1: byte-equal (`True`, `True`).
+- `dry-plan.md` → `.agent/plan.md` at C1: byte-equal (`True`, sha256 `c1d346027cdcbbfac80471eca0eb9e639cf0fd6d751517df26ba054ef823abd3`).
 
 ## Deviations & assumptions
 
@@ -68,31 +86,34 @@ None.
 
 ## Round verdicts
 
-Round 26 PASS and R-1181's resolution (`Done:` paragraph) booked by C1 in `.agent/live_review.md`; the prose slip booked in `.agent/prose_slips.md`. Round 27's verdict is the reviewer's, booked in the next round's first commit.
+Rounds 1 to 27 are booked in the ledger (round 27 by this round's C1: PASS). Round 28's verdict is the reviewer's to give and book in the next round's first commit.
 
 ## For the operator, in plain sentences
 
-The checklist the reviewer runs before sending each work order to a worker was looked at once, as every feature's closing requires. No two points were merged and it stays at 34 points. One point gained a sentence: a change that makes an existing part of Remedy load another part can widen what the main entry points reach, not only a new file, so the reviewer now checks that list whenever a change adds such a load. Two steps remain: building the review package you can download, and the closing commit with its pull request, which is left for you or the next session to merge. Nothing waits for you.
+Remedy built the review package for this feature. The feature lets a program ask Remedy for a complete, machine-readable description of every command, answer field, refusal word and exit code it may meet, read straight from Remedy's own code. The package is the file `remedy-review-20261008-040539-READY_FOR_REVIEW.zip`, saved in the folder `/home/decodeux/Repos/remedy-history/zips`. The evidence run ran 1273 tests; 1270 passed, 3 were skipped and none failed. The cleanup of old scratch copies found nothing it was allowed to remove, so no space was freed (one 1.5 MB scratch folder was kept because no job owns it). Nothing waits for you.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then rule 2, the Open PR Gate; no pull request is open for this branch yet.
 3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
-4. Then review round 27 and book its verdict in the next round's first commit.
-5. Then the evidence round: the evidence bundle, the staging-copy reclaim and the fresh review zip (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1 and 2).
-6. Then the closing round: the rotation, the STATUS line, the README sync, the self-use item's `consumed_by` and the pull request.
+4. Then rule 4: the reviewer reviews round 28 and books its verdict in the next round's first commit.
+5. Then the closing round: book round 28, rotate the ledger, the open findings stay with F297, the self-use entry SU-048's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
 
 Operator questions open: 1.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low; all owned by F297).
+
+Accepted head: `d667e5b497ded0a0ae43e7e788eb691c6d1599f7`. Reclaim reading: `Would free 0 B in 0 paths — nothing deleted; re-run with --apply`. Evidence job: `"job_id": "f298r28e1001"`. Package: `ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261008-040539-READY_FOR_REVIEW.zip`, `"final_sha256": "03a2010e37b33146587b9ff952a22dd8962dd3c1678354e8e28d97c488452f8d"`, `REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips`.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 26 and R-1181's resolution, the prose slip, the plan | done | `c505713ed` |
-| C2: the checklist's consolidation pass for F298 | done | `652b961d1` |
-| C3: handback | done | this commit |
-| Gates 1 to 3 | done | all green |
-| Push | done | outcome in the worker's final reply |
-| Gate 4 | done | reported in the worker's final reply |
+| C1: book round 27, two prose slips, the plan, save the block and the evidence script | done | `d667e5b49` |
+| A0: the staging reclaim | done | nothing reclaimable, `--apply` skipped |
+| A1: the evidence job | done | `f298r28e1001`, pytest exit 0, 1270 passed |
+| A2: the review package | done | `READY_FOR_REVIEW` |
+| C2: handback | done | this commit |
+| Gates 1 to 4 | done | all green |
+| Push after C1 | done | `7f89e0144..d667e5b49` |
+| Push after C2, gate 5 | done | outcome in the worker's final reply |
