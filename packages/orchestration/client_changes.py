@@ -39,6 +39,13 @@ _DECISION_READ_ERRORS = (OSError, ValueError, AttributeError, TypeError)
 _APPLY_READ_ERRORS = (OSError, json.JSONDecodeError)
 
 
+def client_cursor_refusal_message(value: str) -> str:
+    """The sentence `remedy client changes` and its HTTP twin both send for a cursor
+    `parse_client_cursor` cannot read (DECISION F253 D5 (2))."""
+    return (f"{value!r} is not a cursor this command reads: an ISO 8601 time with its "
+            "offset, such as 2026-01-01T00:00:00Z or 2026-01-01T00:00:00+00:00.")
+
+
 def parse_client_cursor(text: str) -> datetime:
     """One client cursor: an ISO 8601 time with an offset, or a trailing ``Z`` read as ``+00:00``.
 

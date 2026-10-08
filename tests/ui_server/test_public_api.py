@@ -39,6 +39,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
+    ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
 }
 
 
@@ -158,6 +159,19 @@ def _change_proof_command_answer(job_id: str, *, ok: bool = True) -> dict:
     return json.loads(result.stdout)
 
 
+def _client_changes_command_answer(since: str | None = None, *, exit_code: int = 0) -> dict:
+    """`remedy client changes [--since <since>] --json`'s real standard output, as a subprocess,
+    parsed. A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `exit_code` only selects which exit this call expects.
+    """
+    args = [sys.executable, "-m", "apps.cli.main", "client", "changes", "--json"]
+    if since is not None:
+        args += ["--since", since]
+    result = subprocess.run(args, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30)
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    return json.loads(result.stdout)
+
+
 #: Git identity for the scratch repository the seed below commits into.
 _SEED_GIT_IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                       "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -204,6 +218,16 @@ def _without_volatile_digest_fields(digest: dict) -> dict:
         {k: v for k, v in decision.items() if k != "age_seconds"}
         for decision in copy.get("decisions", [])
     ]
+    return copy
+
+
+def _without_volatile_changes_fields(changes: dict) -> dict:
+    """`changes` without its own `read_at` and `cursor`, and without any decision's
+    `age_seconds` (both `decisions` and `closed_decisions` carry the key)."""
+    copy = {k: v for k, v in changes.items() if k not in ("read_at", "cursor")}
+    for key in ("decisions", "closed_decisions"):
+        copy[key] = [{k: v for k, v in entry.items() if k != "age_seconds"}
+                     for entry in copy.get(key, [])]
     return copy
 
 
@@ -316,8 +340,11 @@ def test_every_route_is_well_formed():
             assert token in OPERATION_REFUSAL_TOKENS[route.twin], (route.twin, token)
             assert status in (400, 404, 409), (route.twin, token, status)
         option_flags = {arg.name for arg in entry.args if arg.is_option}
+        value_options = {arg.name for arg in entry.args if arg.is_option and not arg.is_flag}
         for key in route.query:
             assert "--" + key.replace("_", "-") in option_flags
+        for key in route.query_values:
+            assert "--" + key.replace("_", "-") in value_options
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
@@ -514,6 +541,43 @@ def test_the_proof_route_has_no_route_beneath_or_above_it(tcp_server, tmp_path):
     status, body, _headers = _tcp_request(
         tcp_server, "GET", f"/api/v1/jobs/{job_id}/proof?path=README.md",
         headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+
+# -- H3: the changes route, twinned with client.changes (S3b, DECISION F253 D5) -----
+
+
+def test_changes_route_answers_the_client_changes_command(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    reference = _client_changes_command_answer()
+    assert _without_volatile_changes_fields(body) == _without_volatile_changes_fields(reference)
+
+    since = "2000-01-01T00:00:00Z"
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/changes?since={since}", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    reference = _client_changes_command_answer(since)
+    assert body["jobs"], "the route lists no job"
+    assert _without_volatile_changes_fields(body) == _without_volatile_changes_fields(reference)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=yesterday", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    reference = _client_changes_command_answer("yesterday", exit_code=2)
+    assert body == reference
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=", headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/changes?since=a&since=b", headers=_bearer(SERVER_TOKEN))
     assert status == 400, body
     assert body["error"] == "api_query_invalid"
 
