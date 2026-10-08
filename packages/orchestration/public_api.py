@@ -15,8 +15,9 @@ Every request under this namespace, a refused one included, appends one line to 
 `api/calls.jsonl` (DECISION F253 D2 (1)): the caller's token kept only as its DECISION F009 D7
 fingerprint, never the query string, and a line that cannot be written changes nothing in the
 answer sent. A route may answer one key of its twin's answer alone (`twin_key`) and takes only
-the query keys it declares (`query`), each a `true`/`false` flag; anything else answers 400
-`api_query_invalid` (DECISION F253 D2 (2)).
+the query keys it declares: each of `query` a `true`/`false` flag, each of `query_values` one
+non-empty value given once; anything else answers 400 `api_query_invalid` (DECISION F253 D2 (2),
+D5 (1)).
 
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
@@ -34,7 +35,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.2"
+PUBLIC_API_VERSION = "1.3"
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,8 @@ class PublicApiRoute:
     twin_key: str | None = None
     #: The query keys this route accepts, each a `true`/`false` flag (DECISION F253 D2 (2)).
     query: tuple[str, ...] = ()
+    #: The query keys this route accepts with one value each, given once and never empty (DECISION F253 D5 (1)).
+    query_values: tuple[str, ...] = ()
     #: The refusal tokens this route shares with its twin, each with the HTTP status it answers
     #: with (DECISION F253 D3 (2)); `()` for a route that never refuses.
     refusals: tuple[tuple[str, int], ...] = ()
@@ -92,6 +95,19 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "The proof of one job: what each change rests on and where its evidence is, as "
             "`remedy change proof <job> --json` prints it; a job id prefix is accepted, as on the "
             "command line, and the command's `--path` filter is not offered over HTTP."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/changes",
+        twin="client.changes",
+        query_values=("since",),
+        refusals=(("invalid_cursor", 400),),
+        description=(
+            "What changed since a cursor: the jobs and decisions as the digest shows them, the "
+            "decisions answered, the missions and the applies, with the cursor for the next "
+            "read, as `remedy client changes --since <cursor> --json` prints it; without "
+            "`since` only a cursor is given."
         ),
     ),
 )
@@ -239,6 +255,27 @@ def _change_proof_answer(*, job: str) -> dict[str, Any]:
     return build_ok(**export_proof_chain_json(chain))
 
 
+def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
+    """The answer `GET /api/v1/changes` sends: what `client changes --json` prints (DECISION
+    F253 D5 (2)). Calls the same two functions its twin calls, and refuses an unreadable cursor
+    with its twin's own message."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.client_changes import (
+        build_client_changes,
+        client_cursor_refusal_message,
+        parse_client_cursor,
+    )
+
+    parsed_since = None
+    if since is not None:
+        try:
+            parsed_since = parse_client_cursor(since)
+        except ValueError:
+            return build_error("invalid_cursor", client_cursor_refusal_message(since))
+
+    return build_ok(**build_client_changes(parsed_since))
+
+
 #: Twin command id to the function that builds its answer, called with the route's own query
 #: flags and bound path segments as keyword arguments, read at call time so a test that
 #: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
@@ -246,6 +283,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.interface": _client_interface_answer,
     "status.run": _status_digest_answer,
     "change.proof": _change_proof_answer,
+    "client.changes": _client_changes_answer,
 }
 
 
@@ -258,12 +296,14 @@ def answer_public_api_get(
     registry sees the replacement. An unknown path answers 404 and names the page that lists the
     routes, never a hint at what the right path might be. Once a route's template matches the
     path (DECISION F253 D3 (1)), the RAW query string is parsed against that route's own `query`
-    keys (DECISION F253 D2 (2)): a key the route does not declare, a key given more than once, or
-    a value other than `true`/`false` answers 400 `api_query_invalid` before the twin is ever
-    asked. The twin's bound path segments and query flags are then passed as keyword arguments; a
-    body with `ok` true answers 200, a body with `ok` false answers the HTTP status `refusals`
-    declares for its `error` — raising `KeyError` for a token the route never declared, which a
-    test catches before it ships.
+    and `query_values` keys (DECISION F253 D2 (2), D5 (1)): a key of `query` takes a value of
+    `true` or `false`; a key of `query_values` takes one non-empty value; a key given more than
+    once, with an empty value when it is of `query_values`, with a value other than `true`/`false`
+    when it is of `query`, or not declared in either, answers 400 `api_query_invalid` before the
+    twin is ever asked. The twin's bound path segments, query flags and query values are then
+    passed as keyword arguments; a body with `ok` true answers 200, a body with `ok` false answers
+    the HTTP status `refusals` declares for its `error` — raising `KeyError` for a token the route
+    never declared, which a test catches before it ships.
     """
     from apps.cli.json_envelope import build_error
 
@@ -274,15 +314,24 @@ def answer_public_api_get(
         if segments is None:
             continue
         flags: dict[str, bool] = {}
+        values_kw: dict[str, str] = {}
         for key, values in parse_qs(query, keep_blank_values=True).items():
-            if key not in route.query or len(values) != 1 or values[0] not in ("true", "false"):
-                accepted = ", ".join(f"'{k}'" for k in route.query) or "none"
-                return 400, build_error(
-                    "api_query_invalid",
-                    f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
-                ), {}
-            flags[key] = values[0] == "true"
-        body = _TWIN_ANSWERS[route.twin](**flags, **segments)
+            accepted = ", ".join(f"'{k}'" for k in (*route.query, *route.query_values)) or "none"
+            invalid = build_error(
+                "api_query_invalid",
+                f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
+            )
+            if key in route.query:
+                if len(values) != 1 or values[0] not in ("true", "false"):
+                    return 400, invalid, {}
+                flags[key] = values[0] == "true"
+            elif key in route.query_values:
+                if len(values) != 1 or not values[0]:
+                    return 400, invalid, {}
+                values_kw[key] = values[0]
+            else:
+                return 400, invalid, {}
+        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments)
         if body.get("ok"):
             status = 200
         else:
@@ -368,7 +417,10 @@ def render_public_api_markdown() -> str:
     ]
     for route in PUBLIC_API_ROUTES:
         deprecated = "yes" if route.deprecated else "no"
-        query_cell = ", ".join(f"`{key}`" for key in route.query) or "—"
+        query_cell = ", ".join(
+            [f"`{key}`" for key in route.query]
+            + [f"`{key}=<value>`" for key in route.query_values]
+        ) or "—"
         command_line = _twin_command_line(route.twin)
         answers_as = (
             f"`{command_line}`, its `{route.twin_key}` object" if route.twin_key

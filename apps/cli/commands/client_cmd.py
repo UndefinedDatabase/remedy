@@ -41,7 +41,11 @@ def _cmd_client_interface(*, json_output: bool = False) -> None:
 
 
 def _cmd_client_changes(*, since: str | None, json_output: bool = False) -> None:
-    from packages.orchestration.client_changes import build_client_changes, parse_client_cursor
+    from packages.orchestration.client_changes import (
+        build_client_changes,
+        client_cursor_refusal_message,
+        parse_client_cursor,
+    )
 
     parsed_since = None
     if since is not None:
@@ -50,8 +54,7 @@ def _cmd_client_changes(*, since: str | None, json_output: bool = False) -> None
         except ValueError:
             fail(
                 "invalid_cursor",
-                f"{since!r} is not a cursor this command reads: an ISO 8601 time with its "
-                "offset, such as 2026-01-01T00:00:00Z or 2026-01-01T00:00:00+00:00.",
+                client_cursor_refusal_message(since),
                 json_output=json_output, exit_code=2,
             )
 
