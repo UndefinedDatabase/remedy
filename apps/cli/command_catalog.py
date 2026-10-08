@@ -2899,10 +2899,13 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="client.run",
         group_id="client",
         subcommand="run",
-        description="Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed (read-only).",
+        # Both texts carry a word of tests/docs/test_vocabulary.py's meaning table ("task" is a
+        # fragment of Job and of Run), because they use the binding words Job and Run.
+        description="Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed once its tasks ended (read-only).",
         action_class="read_only",
         args=(
-            ArgDef("job", "The job id (or a prefix of it) whose run the supervisor started"),
+            ArgDef("job", "The id of the job, or a prefix of it, whose task run the supervisor "
+                  "started"),
             _JSON_OPT,
         ),
         supports_json=True,

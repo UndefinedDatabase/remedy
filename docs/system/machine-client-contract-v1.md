@@ -768,11 +768,11 @@ Keys under the answer keys: none.
 #### `remedy client run`
 
 Command id: `client.run`.
-Description: Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed (read-only).
+Description: Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed once its tasks ended (read-only).
 
 | Argument | Option | Required | Takes a value | Repeatable | Help |
 |---|---|---|---|---|---|
-| `job` | no | yes | yes | no | The job id (or a prefix of it) whose run the supervisor started |
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose task run the supervisor started |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
