@@ -7,13 +7,13 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 4, round 18, the closure sequence's first round: round 17's verdict, R-1185's resolution
-and the repeated audit are booked, and the feature file's Built State records what was built and
-the hardening stage (closure preconditions 4 and 8).
+Session 4, round 19, closure precondition 6: the first pending self-use item, which the
+generator supplies when none is pending, run through the `self_use` role's configured provider to
+its approval gate and never applied, its readings saved under `.agent/selfuse_f304/`.
 
 ## Next Steps
-1. Closure precondition 6: the first pending self-use item, run to its approval gate and never
-   applied, with every defect it shows registered.
+1. Book round 19 and register every defect the self-use run shows, in the next round's first
+   commit.
 2. The integration gate: the closure's one full suite, `apps/ui` built first (DECISION F304 D5
    (7)), with its CPU cost; repair rounds only for bad nodes.
 3. The checklist's consolidation pass for F304.
