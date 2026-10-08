@@ -8,10 +8,10 @@ entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISI
 and DECISIONs F253 D1 to D13, which fix the order and the shape).
 
 ## Current Step
-Session 4, round 13: book round 12's verdict, then S5a: the supervisor's `OrderLauncher` keeps an
-order as a record of its own under `serve/orders/<order id>/` and runs it as `remedy do run
---json --no-ui --yes -- order.md` from that folder; `remedy client order <order> --json` reads
-the record, its state and the answer `remedy do` printed (DECISION F253 D13).
+Session 4, round 14: book round 13's verdict and its four findings, then repair them: an order
+under a data root reached through a symbolic link reads `running` while it runs (R-1197), and
+three tests that S5a's rules lacked: the order id rule (R-1198), the order's identity check
+(R-1199) and no answer read while an order runs (R-1200).
 
 ## Next Steps
 1. S5b: `POST /api/v1/orders` starts an order and answers its id; `GET /api/v1/orders/{order}`
@@ -38,5 +38,6 @@ the record, its state and the answer `remedy do` printed (DECISION F253 D13).
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
-  R-1176, R-1196 (Low) stay open, owned by F297.
+- R-1197 (Medium) and R-1198, R-1199, R-1200 (Low) are open, owned by F253; R-1160 (Medium) and
+  R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low)
+  stay open, owned by F297.
