@@ -51,6 +51,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/run"):
+        "test_the_run_route_is_pinned_with_its_body_and_its_statuses",
 }
 
 
@@ -342,7 +344,7 @@ def test_every_route_is_well_formed():
         assert route.method in ("GET", "POST")
         assert bool(route.body) == (route.method == "POST")
         assert (route.refusal_default is not None) == (
-            route.method == "POST" and not route.starts_order)
+            route.method == "POST" and not (route.starts_order or route.starts_run))
         entry = get_command(route.twin)  # raises KeyError if not a catalog command
         assert route.twin in CLIENT_OPERATION_IDS
         assert not public_api.command_is_excluded(route.twin)
@@ -370,7 +372,7 @@ def test_every_route_is_well_formed():
             if kind == "flag":
                 assert "--" + key.replace("_", "-") in flag_options, (route.path, key)
             else:
-                assert "--" + key in value_options, (route.path, key)
+                assert "--" + key.replace("_", "-") in value_options, (route.path, key)
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
@@ -802,7 +804,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.8"
+    assert public_api.PUBLIC_API_VERSION == "1.9"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1098,7 +1100,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.8"
+    assert public_api.PUBLIC_API_VERSION == "1.9"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1786,3 +1788,171 @@ def test_a_client_write_for_a_job_whose_record_cannot_be_read_is_403_and_runs_no
     assert (status, answer["error"]) == (403, "api_client_policy_refused")
     assert answer["message"].endswith("; nothing was run")
     assert calls == []
+
+
+# -- the route that starts a job's run (S7a, DECISION F253 D18) ------------------
+
+RUN_PATH = "/api/v1/jobs/{job}/run"
+
+
+def _run_record(job_id: str) -> SR.RunRecord:
+    return SR.RunRecord(job_id=job_id, pid=4242, started_at="2026-01-01T00:00:00Z",
+                        out_log="/data/serve/runs/out", err_log="/data/serve/runs/err")
+
+
+def _recording_run_starter(outcome: object = None):
+    """A stand-in run starter that records `(job, options)`; it returns the job's `RunRecord`,
+    or raises OUTCOME when that is an exception."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def start(job: str, options: list[str]):
+        calls.append((job, list(options)))
+        if isinstance(outcome, Exception):
+            raise outcome
+        return _run_record(job)
+
+    return calls, start
+
+
+def _post_run(job: str, body: object, start, client=None) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    _run_calls, run = _recording_runner()
+    return public_api.answer_public_api_post(
+        RUN_PATH.replace("{job}", job), raw, run, client=client, start_run=start)
+
+
+def test_the_run_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == RUN_PATH)
+    assert (route.method, route.twin) == ("POST", "job.run")
+    assert route.body == (("builder_provider", "string"), ("reviewer_provider", "string"))
+    assert route.refusals == ()
+    assert route.refusal_default is None
+    assert route.starts_run is True
+    assert "job_already_running" in route.description
+
+
+def test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_record():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, body, headers = _post_run(full, {}, start)
+    assert (status, headers) == (202, {})
+    assert body == {"schema_version": 1, "ok": True, **_run_record(full).to_json()}
+    assert sorted(body) == sorted(
+        ["schema_version", "ok", "job_id", "pid", "started_at", "out_log", "err_log",
+         "exit_code", "ended_at"])
+    assert calls == [(full, [])]
+
+
+def test_a_run_post_passes_the_builder_then_the_reviewer_provider():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    body = {"reviewer_provider": "fake", "builder_provider": "fake"}
+    assert _post_run(full, body, start)[0] == 202
+    assert calls == [(full, ["--builder-provider=fake", "--reviewer-provider=fake"])]
+    calls.clear()
+    assert _post_run(full, {"reviewer_provider": "ollama"}, start)[0] == 202
+    assert calls == [(full, ["--reviewer-provider=ollama"])]
+
+
+def test_a_run_post_by_a_job_prefix_starts_the_full_id():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    assert _post_run(full[:8], {}, start)[0] == 202
+    assert calls == [(full, [])]
+
+
+@pytest.mark.parametrize("value, status, token", [
+    ("not-a-job", 404, "invalid_job_id"),
+    (str(uuid4()), 404, "job_not_found"),
+    ("0123abcd", 404, "job_not_found"),
+])
+def test_a_run_post_for_no_job_is_refused_and_starts_nothing(value, status, token):
+    calls, start = _recording_run_starter()
+    got, answer, _headers = _post_run(value, {}, start)
+    assert (got, answer["ok"], answer["error"]) == (status, False, token)
+    assert calls == []
+
+
+def test_a_run_post_for_a_job_whose_record_cannot_be_read_is_404_and_starts_nothing(tmp_path):
+    full = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (404, "job_not_found")
+    assert calls == []
+
+
+def test_a_run_post_by_a_prefix_two_jobs_share_is_400_and_starts_nothing():
+    first = _saved_job_in("")
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    twin = first[:-1] + ("0" if first[-1] != "0" else "1")
+    shutil.copytree(data_root / "jobs" / first, data_root / "jobs" / twin)
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(first[:8], {}, start)
+    assert (status, answer["error"]) == (400, "ambiguous_job_id")
+    assert sorted(answer["matches"]) == sorted([first, twin])
+    assert calls == []
+
+
+def test_a_run_post_whose_starter_refuses_is_409_with_the_starters_own_token():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter(
+        SR.RunRefused("job_already_running", f"the serve supervisor is already running job {full}"))
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (409, "job_already_running")
+    assert full in answer["message"]
+    assert len(calls) == 1
+
+
+def test_a_run_post_whose_starter_raises_oserror_is_500_api_command_failed():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter(OSError("cannot start"))
+    status, answer, _headers = _post_run(full, {}, start)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+    assert len(calls) == 1
+
+
+def test_a_run_post_with_no_run_starter_is_405():
+    full = _saved_job_in("")
+    status, answer, _headers = _post_run(full, {}, None)
+    assert (status, answer["error"]) == (405, "api_method_not_allowed")
+
+
+@pytest.mark.parametrize("body", [
+    {"max_total_tokens": 5}, {"test_command": "true"}, {"builder_provider": 3},
+    {"reviewer_provider": ["fake"]}, b"not json", b"[]",
+])
+def test_a_run_post_body_that_is_not_the_routes_own_is_400_and_starts_nothing(body):
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, body, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def test_a_clients_run_of_a_job_of_another_project_is_403_and_starts_nothing(tmp_path):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(
+        full, {}, start, client=_client_policy(projects=("some-other-project",)))
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, _answer, _headers = _post_run(
+        full, {}, start, client=_client_policy(projects=(project.slug,)))
+    assert status == 202
+    assert calls == [(full, [])]
+
+
+def test_the_cockpits_own_server_answers_a_run_post_405(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "POST", "/api/v1/jobs/j1/run", headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+
+
+def test_the_page_names_the_run_route_and_its_running_refusal():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    assert "## Runs" in hand_written
+    assert "/api/v1/jobs/{job}/run" in hand_written
+    assert "job_already_running" in hand_written

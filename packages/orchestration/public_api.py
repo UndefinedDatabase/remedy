@@ -33,6 +33,10 @@ the client's projects or ceilings and an apply the client may not approve with 4
 order <order> --json` does: the two share one answer-builder, `order_record_payload` in
 `packages.orchestration.serve_runs`.
 
+`POST /api/v1/jobs/{job}/run` (DECISION F253 D18) starts a job's run through the supervisor's own
+`RunLauncher` and answers 202 with the run's record; its body names the builder and the reviewer
+provider and no other option of `remedy job run` is offered.
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
@@ -51,7 +55,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.8"
+PUBLIC_API_VERSION = "1.9"
 
 
 @dataclass(frozen=True)
@@ -85,6 +89,10 @@ class PublicApiRoute:
     #: True for a write route that starts an order through the caller's own order starter rather
     #: than running its twin as a child of the command runner (DECISION F253 D14 (1), (3)).
     starts_order: bool = False
+    #: True for a write route that starts a job's run through the caller's own run starter, the
+    #: supervisor's `RunLauncher`, rather than running its twin as a child of the command runner
+    #: (DECISION F253 D18 (1), (3)); like a `starts_order` route it has no `refusal_default`.
+    starts_run: bool = False
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -234,6 +242,26 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "one that names a project `select_project` cannot resolve to exactly one, is "
             "refused before anything starts with 409 `api_order_project_unknown`; every other "
             "refusal is `remedy do`'s own, read back only once the order is polled."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/run",
+        twin="job.run",
+        body=(("builder_provider", "string"), ("reviewer_provider", "string")),
+        starts_run=True,
+        description=(
+            "Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run "
+            "<job> <options> --json` would, and answers 202 with the run's record: `job_id`, "
+            "`pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two "
+            "`null` until the run ends. `builder_provider` and `reviewer_provider` each pass "
+            "`--builder-provider=<value>` and `--reviewer-provider=<value>`; no other option of "
+            "`remedy job run` is offered over HTTP. A job id prefix is accepted. A client follows "
+            "the run in the digest or in what changed, where the job's state reads `running` and "
+            "then its end. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "
+            "record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, "
+            "`api_command_failed` 500 when the run cannot start, and "
+            "`api_client_policy_refused` 403 for a client token's job outside its projects."
         ),
     ),
 )
@@ -684,6 +712,61 @@ def _client_job_refusal(client: Any, job: str) -> str | None:
             "its projects; nothing was run")
 
 
+_RUN_PROVIDER_KEYS: tuple[str, ...] = ("builder_provider", "reviewer_provider")
+
+
+def _start_run_answer(
+    path: str, job: str, body: dict[str, Any], start_run: Callable[[str, Sequence[str]], Any],
+) -> tuple[int, dict[str, Any], dict[str, str]]:
+    """The answer of a `starts_run` route for JOB (DECISION F253 D18 (2), (3)).
+
+    The job is read with `lookup_job_id` and `load_job_plan_safe`: a value `lookup_job_id` refuses
+    as invalid answers 404 `invalid_job_id`, one no job matches or whose record cannot be read
+    answers 404 `job_not_found`, one that matches several answers 400 `ambiguous_job_id`. Then
+    START_RUN is called with the full job id and the options the body gives, the builder's
+    `--builder-provider=<value>` first and the reviewer's `--reviewer-provider=<value>` second;
+    a `RunRefused` answers 409 with its own token and message, an `OSError` 500
+    `api_command_failed`, and the run's record 202.
+    """
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.data_paths import (
+        JobIdAmbiguous,
+        JobIdInvalid,
+        JobIdNotFound,
+        lookup_job_id,
+    )
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+    from packages.orchestration.serve_runs import RunRefused
+
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdAmbiguous as exc:
+        listed = "\n".join(f"  {m[:8]}" for m in exc.matches)
+        return 400, build_error(
+            "ambiguous_job_id",
+            f"ambiguous job id prefix '{job}' matches {len(exc.matches)} jobs:\n{listed}",
+            matches=exc.matches), {}
+    except JobIdInvalid:
+        return 404, build_error(
+            "invalid_job_id", f"No job matches {job!r}. Try: remedy job list."), {}
+    except JobIdNotFound:
+        return 404, build_error("job_not_found", f"No job matches {job!r}."), {}
+    plan, _degraded = load_job_plan_safe(job_id)
+    if plan is None:
+        return 404, build_error(
+            "job_not_found", f"job {job_id} has no record that can be read; nothing was run"), {}
+    options = [f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
+               if key in body]
+    try:
+        record = start_run(job_id, options)
+    except RunRefused as exc:
+        return 409, build_error(exc.token, str(exc)), {}
+    except OSError:
+        return 500, build_error(
+            "api_command_failed", f"the run for '{path}' could not be started; nothing runs"), {}
+    return 202, build_ok(**record.to_json()), {}
+
+
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
     """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not."""
     try:
@@ -717,6 +800,7 @@ def answer_public_api_post(
     run_command: Callable[[str, list[str]], dict[str, Any] | None],
     start_order: Callable[[str, Sequence[str]], Any] | None = None,
     client: Any = None,
+    start_run: Callable[[str, Sequence[str]], Any] | None = None,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The (status, body, headers) this namespace answers a POST of `path` with `raw_body`.
 
@@ -740,6 +824,13 @@ def answer_public_api_post(
     /api/v1/orders/{order}` and `remedy client order` give it. An `OSError` from START_ORDER —
     the order could not be started — answers 500 `api_command_failed` and nothing runs
     (R-1201).
+
+    A route marked `starts_run` (DECISION F253 D18) is answered the same way through START_RUN:
+    with none it answers 405 `api_method_not_allowed`; once the body is checked and a client's
+    checks of DECISION F253 D17 have passed, `_start_run_answer` reads the job, answers the
+    refusals of D18 (2) and calls START_RUN with the full job id and the options the body gives;
+    a `RunRefused` answers 409 with its own token, an `OSError` 500 `api_command_failed`, and the
+    run's record 202.
 
     Every other route's body, not a JSON object holding only its declared keys each of its kind,
     answers 400 `api_body_invalid`; a `PublicApiWriteRefusal` from the twin's argument builder
@@ -767,6 +858,8 @@ def answer_public_api_post(
                     "api_path_invalid",
                     f"the {name} in '{path}' must not hold '/' or a NUL character"), {}
         if route.starts_order and start_order is None:
+            return (*public_api_method_refusal(), {})
+        if route.starts_run and start_run is None:
             return (*public_api_method_refusal(), {})
         checked, why = _body_refusal(route, raw_body)
         if checked is None:
@@ -801,6 +894,8 @@ def answer_public_api_post(
                 "api_client_policy_refused",
                 f"the client {client.name!r} may not approve a result into a repository; "
                 "nothing was run"), {}
+        if route.starts_run:
+            return _start_run_answer(path, segments["job"], checked, start_run)
         try:
             argv = _TWIN_ARGV[route.twin](segments, checked)
         except PublicApiWriteRefusal as refusal:

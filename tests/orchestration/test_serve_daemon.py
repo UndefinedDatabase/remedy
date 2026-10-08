@@ -924,6 +924,89 @@ def test_two_order_create_posts_sent_at_once_both_run_and_every_record_reads_bac
     assert not bad, bad
 
 
+# -- S7a: POST /api/v1/jobs/{job}/run starts a run through the supervisor (DECISION F253 D18) --
+
+#: A stand-in for `remedy job run`: it writes the arguments it got after its release file's path
+#: (the job id, the options, `--json`) as JSON to the file at argv[1], then waits for the release
+#: file at argv[2] and exits 5. No provider is ever called.
+_RUN_ARGS_CHILD = """\
+import json, sys, time
+from pathlib import Path
+Path(sys.argv[1]).write_text(json.dumps(sys.argv[3:]), encoding="utf-8")
+release = Path(sys.argv[2])
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+sys.exit(5)
+"""
+
+
+@pytest.fixture
+def running_with_run_route(root):
+    """A supervisor with a public port whose runs are `_RUN_ARGS_CHILD`; every child is released
+    and has recorded its end before the supervisor ends."""
+    release = root / "release"
+    supervisor = _Running(root, api_port=0, run_argv=lambda job_id: [
+        sys.executable, "-c", _RUN_ARGS_CHILD, str(root / f"args-{job_id}.json"), str(release),
+        job_id])
+    yield supervisor, release
+    release.touch()
+    paths = serve_paths(root)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline and any(
+            (SR.read_run_record(paths, p.stem) or SR.RunRecord("", 0, "", "", "")).exit_code is None
+            for p in paths.runs_dir.glob("*.json")):
+        time.sleep(0.02)
+    supervisor.close()
+
+
+def _written_args(root: Path, job_id: str) -> list[str]:
+    path = root / f"args-{job_id}.json"
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline and not path.is_file():
+        time.sleep(0.02)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_a_run_post_on_the_port_starts_the_run_and_the_socket_starts_another(
+        root, running_with_run_route):
+    """DECISION F253 D18: the port and the socket answer the route from one launcher."""
+    supervisor, release = running_with_run_route
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = supervisor.state.api_port
+    job_id, other_id = _job(), _job()
+    body = json.dumps({"builder_provider": "fake", "reviewer_provider": "fake"}).encode()
+
+    status, started = _api_request(
+        port, "POST", f"/api/v1/jobs/{job_id}/run", headers=_bearer(token), body=body)
+    assert status == 202, started
+    assert started["job_id"] == job_id and isinstance(started["pid"], int)
+    assert (started["exit_code"], started["ended_at"]) == (None, None)
+    assert _written_args(root, job_id) == [
+        job_id, "--builder-provider=fake", "--reviewer-provider=fake", "--json"]
+
+    status, refused = _api_request(
+        port, "POST", f"/api/v1/jobs/{job_id}/run", headers=_bearer(token), body=body)
+    assert (status, refused["error"]) == (409, "job_already_running")
+
+    conn = SD.UnixHTTPConnection(serve_paths(root).socket, timeout=30)
+    try:
+        conn.request("POST", f"/api/v1/jobs/{other_id}/run", body=b"{}", headers=_bearer(token))
+        response = conn.getresponse()
+        on_socket = json.loads(response.read())
+    finally:
+        conn.close()
+    assert response.status == 202, on_socket
+    assert on_socket["job_id"] == other_id
+    assert _written_args(root, other_id) == [other_id, "--json"]
+
+    release.touch()
+    ended = _ended(root, job_id)
+    assert (ended.exit_code, ended.pid) == (5, started["pid"])
+    assert ended.ended_at is not None
+    assert _ended(root, other_id).exit_code == 5
+
+
 def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_with_api, tmp_path):
     token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
     port = running_with_api.state.api_port
