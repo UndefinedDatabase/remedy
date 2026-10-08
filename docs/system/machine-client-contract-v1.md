@@ -250,7 +250,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.3`.
+Interface version: `1.4`.
 
 ### Envelope
 
@@ -749,6 +749,21 @@ Keys under the answer keys: see below.
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `status`
+
+#### `remedy client order`
+
+Command id: `client.order`.
+Description: Read an order (an order file or text) the supervisor started, as a record of its own: its state, its exit code and the answer remedy do printed (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `order_not_found`.
+Answer keys: `answer`, `ended_at`, `exit_code`, `order_file`, `order_id`, `started_at`, `state`.
+Keys under the answer keys: none.
 
 ### Digest
 
