@@ -58,9 +58,12 @@ apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
 apps.cli.cost_preview_confirm
 apps.cli.exit_codes
+apps.cli.grouped
+apps.cli.help_renderer
 apps.cli.job_id_arg
 apps.cli.json_envelope
 apps.cli.serve_client
+apps.cli.version_report
 packages.common
 packages.common.path_redaction
 packages.common.public_text_redaction
