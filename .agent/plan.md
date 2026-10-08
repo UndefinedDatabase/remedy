@@ -8,9 +8,10 @@ entry for every call (docs/roadmap/features/T12_F253.md, its amendment of DECISI
 and DECISIONs F253 D1 to D9, which fix the order and the shape).
 
 ## Current Step
-Session 2, round 9: book round 8's verdict and register R-1192, R-1193 and R-1194, then repair
-them: a path value is percent-decoded, the runner locks on the full job id, and the three
-refusals of DECISION F253 D9 that had no guard each get a test.
+Session 3, round 10: book round 9's verdict, resolve R-1192, R-1193 and R-1194, register R-1195
+and R-1196, then repair R-1195: a write refuses a path value that holds `/` or a NUL once
+decoded. Before any commit, the three practice records DECISION F253 D10 names are removed from
+the data folder, under the operator's one-time permission.
 
 ## Next Steps
 1. S4b: decline a result through `remedy job decline`, with its own DECISION.
@@ -32,6 +33,6 @@ refusals of DECISION F253 D9 that had no guard each get a test.
   change until the overlap covers it (DECISION F253 D4).
 - The import-time data root changes what every test process sees before its first test; only the
   closure's one full suite reaches every module (DECISION F253 D8).
-- R-1192 (Medium), R-1193 and R-1194 (Low) are owned by F253 and repaired this round. R-1160
-  (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176
-  (Low) stay open, owned by F297.
+- R-1195 (Medium) is owned by F253 and repaired this round. R-1160 (Medium) and R-1138, R-1139,
+  R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) stay open, owned
+  by F297.
