@@ -46,6 +46,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_decline_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/apply"):
         "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
+    ("GET", "/api/v1/orders/{order}"):
+        "test_the_order_poll_route_is_pinned_with_its_statuses",
 }
 
 
@@ -789,7 +791,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.6"
+    assert public_api.PUBLIC_API_VERSION == "1.7"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1057,3 +1059,60 @@ def test_an_apply_post_refuses_a_key_or_a_kind_the_route_does_not_take(tmp_path)
         status, answer, _headers = _post(f"/api/v1/jobs/{full}/apply", body, run)
         assert (status, answer["error"]) == (400, "api_body_invalid"), body
     assert calls == []
+
+
+# -- the route that polls an order (S5b, DECISION F253 D14) ---------------------
+
+ORDER_POLL_PATH = "/api/v1/orders/{order}"
+
+
+def _order_command_answer(order_id: str, *, ok: bool = True) -> dict:
+    """`remedy client order <order_id> --json`'s real standard output, as a subprocess, parsed.
+
+    A refusal exits nonzero but still prints the envelope to stdout
+    (`apps.cli.json_envelope.fail`), so `ok` only selects which exit this call expects.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "order", order_id, "--json"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    if ok:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_the_order_poll_route_is_pinned_with_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
+    assert (route.method, route.twin) == ("GET", "client.order")
+    assert route.refusals == (("order_not_found", 404),)
+    assert public_api.PUBLIC_API_VERSION == "1.7"
+
+
+def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
+    from tests.cli.test_client_order_cmd import _start_ended_order
+
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    order_id = _start_ended_order(data_root)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/orders/{order_id}", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _order_command_answer(order_id)
+
+
+def test_the_order_poll_route_refuses_an_unknown_well_formed_id(tcp_server):
+    unknown = "0123456789abcdef"
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", f"/api/v1/orders/{unknown}", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body == _order_command_answer(unknown, ok=False)
+
+
+def test_the_order_poll_route_rejects_a_path_shaped_id(tcp_server):
+    """R-1198's own guard, read through the route: `../x` must never be read as a path."""
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/orders/..%2Fx", headers=_bearer(SERVER_TOKEN))
+    assert status == 404, body
+    assert body["error"] == "order_not_found"

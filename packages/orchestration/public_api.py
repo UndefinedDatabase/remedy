@@ -25,6 +25,10 @@ command, which the caller's runner has run as a child process. A route's argumen
 refuse a write itself, before any command runs, by raising `PublicApiWriteRefusal` (DECISION F253
 D12).
 
+`GET /api/v1/orders/{order}` (DECISION F253 D14 (4)) answers an order exactly as `remedy client
+order <order> --json` does: the two share one answer-builder, `order_record_payload` in
+`packages.orchestration.serve_runs`.
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
@@ -43,7 +47,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.6"
+PUBLIC_API_VERSION = "1.7"
 
 
 @dataclass(frozen=True)
@@ -190,6 +194,17 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered "
             "over HTTP, and a job whose record names no repository is refused with 409 "
             "`api_job_repository_unknown` before any command runs."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/orders/{order}",
+        twin="client.order",
+        refusals=(("order_not_found", 404),),
+        description=(
+            "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
+            "<order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` "
+            "holds what `remedy do` printed once the order is not `running`."
         ),
     ),
 )
@@ -360,6 +375,25 @@ def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
     return build_ok(**build_client_changes(parsed_since))
 
 
+def _order_answer(*, order: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/orders/{order}` sends: what `remedy client order <order> --json`
+    prints (DECISION F253 D14 (4)). Shares `order_record_payload` with the command itself and
+    with the order-create route's own 202 answer, so all three read an order alike."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import (
+        order_not_found_message,
+        order_record_payload,
+        read_order_record,
+    )
+
+    paths = serve_paths()
+    record = read_order_record(paths, order)
+    if record is None:
+        return build_error("order_not_found", order_not_found_message(order))
+    return build_ok(**order_record_payload(paths, record))
+
+
 #: Twin command id to the function that builds its answer, called with the route's own query
 #: flags and bound path segments as keyword arguments, read at call time so a test that
 #: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
@@ -368,6 +402,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "status.run": _status_digest_answer,
     "change.proof": _change_proof_answer,
     "client.changes": _client_changes_answer,
+    "client.order": _order_answer,
 }
 
 

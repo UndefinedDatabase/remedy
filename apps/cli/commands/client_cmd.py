@@ -78,35 +78,28 @@ def _cmd_client_changes(*, since: str | None, json_output: bool = False) -> None
 
 def _cmd_client_order(order_id: str, *, json_output: bool = False) -> None:
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import order_answer, order_state, read_order_record
+    from packages.orchestration.serve_runs import (
+        order_not_found_message,
+        order_record_payload,
+        read_order_record,
+    )
 
     paths = serve_paths()
     record = read_order_record(paths, order_id)
     if record is None:
         fail(
             "order_not_found",
-            f"no order record names {order_id!r}.",
+            order_not_found_message(order_id),
             json_output=json_output, exit_code=3,
         )
-    state = order_state(paths, record)
-    answer = order_answer(record) if state != "running" else None
-    # A dict literal unpacked by name, not `exit_code=...` written out at the call site: the
-    # answer carries the order's own `exit_code` (DECISION F253 D13 (4)), and a literal keyword
-    # of that name at an emit_ok call site reads, to tests/cli/test_client_interface.py's static
-    # answer-key reader, as fail()'s OWN exit-code parameter instead of a payload key.
-    payload = {
-        "order_id": record.order_id,
-        "state": state,
-        "started_at": record.started_at,
-        "ended_at": record.ended_at,
-        "exit_code": record.exit_code,
-        "order_file": record.order_file,
-        "answer": answer,
-    }
+    # `order_record_payload` is a call, not a dict literal, so it is unresolved to
+    # tests/cli/test_client_interface.py's static answer-key reader by construction; the site is
+    # hand-verified there (`apps.cli.commands.client_cmd:_cmd_client_order:**payload`).
+    payload = order_record_payload(paths, record)
     if json_output:
         emit_ok(**payload)
         return
-    print(f"Order {record.order_id}: {state}")
+    print(f"Order {record.order_id}: {payload['state']}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

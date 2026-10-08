@@ -447,6 +447,36 @@ def order_answer(record: OrderRecord) -> dict[str, Any] | None:
     return _last_envelope(text)
 
 
+def order_not_found_message(order_id: str) -> str:
+    """The sentence an order id that names no record is refused with (DECISION F253 D14 (4)).
+
+    Shared by `remedy client order` and both routes under `/api/v1/orders`, so the three refuse
+    an unknown id with the same words.
+    """
+    return f"no order record names {order_id!r}."
+
+
+def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, Any]:
+    """The answer keys `remedy client order` prints for RECORD (DECISION F253 D14 (4)): its
+    state, its exit code and, once it is not `running`, the answer `remedy do` printed.
+
+    Shared by `remedy client order`, `GET /api/v1/orders/{order}` and the 202 answer of `POST
+    /api/v1/orders`, so the three read an order alike; `remedy client order`'s own output must
+    not change by a byte for this sharing (DECISION F253 D14 (4)).
+    """
+    state = order_state(paths, record)
+    answer = order_answer(record) if state != "running" else None
+    return {
+        "order_id": record.order_id,
+        "state": state,
+        "started_at": record.started_at,
+        "ended_at": record.ended_at,
+        "exit_code": record.exit_code,
+        "order_file": record.order_file,
+        "answer": answer,
+    }
+
+
 class OrderLauncher:
     """Starts an order as a child process and keeps it as a record of its own.
 
