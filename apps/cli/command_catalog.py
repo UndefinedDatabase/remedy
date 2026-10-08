@@ -2131,7 +2131,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show", "change.proof"),
         args=(
             ArgDef("goal", "What you ask, as text, or one path ending in .md to an order file", required=False),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory)", required=False, is_option=True, default=None),
             ArgDef("--project", "Select a registered project by slug or id instead of the repository's own", required=False, is_option=True),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--builder-provider", "Builder provider for `do`: claude, claude-cli, fake or ollama (default: the builder role config)", required=False, is_option=True, default=None),

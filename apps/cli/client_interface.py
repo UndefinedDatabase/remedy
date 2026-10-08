@@ -69,7 +69,8 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
 OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "do.run": (
         "invalid_argument", "invalid_budget", "order_file_empty", "order_file_invalid_header",
-        "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable", "step_failed",
+        "order_file_no_cost_cap", "order_file_not_found", "order_file_unreadable",
+        "project_has_no_repo", "repo_not_in_project", "step_failed",
         "unsupported_contract_template", "unsupported_provider",
     ),
     "status.run": (),

@@ -198,6 +198,54 @@ def _resolve_do_commit_flags(
     return mode, source
 
 
+# WHY: the project an order names files its records, so the work must happen in that project's
+# repository too, wherever the client stands (F298's claim measurement, DECISION F304 D2).
+def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> str:
+    """The repository an order runs in, or exit 2 before any step.
+
+    Without a project, `--repo` or else the current directory, as before. With one, that
+    project's registered repository: a project with none is refused with
+    `project_has_no_repo`, and a `--repo` that is not one of its repositories with
+    `repo_not_in_project`. A selector that names no single project is left to the init
+    step, which fails on it as it always has (DECISION F268 D16 (4)).
+    """
+    if project is None:
+        return repo or "."
+    from pathlib import Path
+
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+    from packages.orchestration.worktrees import WorktreeError, repo_root
+
+    try:
+        selected, _source = select_project(project, ".")
+    except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+        return repo or "."
+    registered = selected.canonical_repo_path
+    if not registered:
+        fail("project_has_no_repo",
+             f"project {selected.slug} has no registered repository, so the order has "
+             f"nowhere to run; attach one with `remedy project attach --project "
+             f"{selected.slug} --repo <path>`. Nothing was run.",
+             json_output=json_output, exit_code=2)
+    if repo is None:
+        return registered
+    try:
+        root = str(Path(repo_root(repo)).resolve())
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        root = str(Path(repo).resolve())
+    if root not in {registered, *selected.repo_paths}:
+        fail("repo_not_in_project",
+             f"--repo {repo} is not a repository of project {selected.slug}, whose "
+             f"repository is {registered}; leave --repo out to run there. Nothing was "
+             "run.", json_output=json_output, exit_code=2)
+    return repo
+
+
 def _cmd_do_order(
     order: str,
     *,
@@ -395,7 +443,7 @@ def _cmd_do_order(
 def _cmd_do(
     goal: str,
     *,
-    repo: str = ".",
+    repo: str | None = None,
     project: str | None = None,
     json_output: bool = False,
     builder_provider: str | None = None,
@@ -462,6 +510,8 @@ def _cmd_do(
             "order_source_sha256": order_file.source_sha256,
         }
 
+    # DECISION F304 D2: an order that names a project runs in that project's repository.
+    repo = _order_repo(project, repo, json_output=json_output)
     # DECISION F270 D4 (1): the commit and push flags are refused before any step.
     mode, push_source = _resolve_do_commit_flags(
         repo, commit=commit, commit_auto=commit_auto,
@@ -979,7 +1029,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
-        repo=getattr(args, "repo", None) or ".",
+        repo=getattr(args, "repo", None),
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
