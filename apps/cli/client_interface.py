@@ -88,17 +88,17 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "proposed_task_not_found", "proposed_task_operation_failed", "stop_reason_not_found",
     ),
     "job.run": (
-        "invalid_argument", "invalid_budget", "job_not_resumable", "job_not_started", "job_stopped",
-        "serve_unreachable",
+        "invalid_argument", "invalid_budget", "job_blocked", "job_failed", "job_not_resumable",
+        "job_not_started", "job_stopped", "job_stopped_by_budget", "serve_unreachable",
     ),
     "job.resume": (
         "ambiguous_job_id", "budget_decision_open", "builder_error", "builder_unavailable",
         "checkpoint_not_found", "checkpoint_not_resumable", "checkpoints_corrupt",
         "configuration_error", "confirmation_required", "invalid_argument", "invalid_budget",
-        "invalid_builder_output", "invalid_job_id", "job_not_found", "job_not_resumable",
-        "job_not_started", "job_stopped", "missing_dependency", "permission_denied",
-        "plan_awaiting_approval", "plan_rejected", "resume_blocked", "serve_unreachable",
-        "verification_failed", "worktree_drift",
+        "invalid_builder_output", "invalid_job_id", "job_blocked", "job_failed", "job_not_found",
+        "job_not_resumable", "job_not_started", "job_stopped", "job_stopped_by_budget",
+        "missing_dependency", "permission_denied", "plan_awaiting_approval", "plan_rejected",
+        "resume_blocked", "serve_unreachable", "verification_failed", "worktree_drift",
     ),
     "job.apply": (
         "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",

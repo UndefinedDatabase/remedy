@@ -474,9 +474,13 @@ class TestJobPlanResume:
         # max-tasks is an F012 material control and travels in RunInvocation,
         # not as a bare kwarg (do_cmd._cmd_job_run docstring).
         from apps.cli.commands.run_invocation import RunInvocation
-        do_cmd._cmd_job_run(job.job_id, builder_provider="fake", reviewer_provider="fake",
-                            max_rounds=1, json_output=True,
-                            invocation=RunInvocation(max_tasks=1))
+        # One round leaves the fake reviewer's verdict at needs_repair, so the run ends blocked
+        # and answers exit 1 (R-1184, DECISION F304 D8); the resume below is what this holds.
+        with pytest.raises(SystemExit) as exc:
+            do_cmd._cmd_job_run(job.job_id, builder_provider="fake", reviewer_provider="fake",
+                                max_rounds=1, json_output=True,
+                                invocation=RunInvocation(max_tasks=1))
+        assert exc.value.code == 1
         capsys.readouterr()
 
         out = export_job_report(resume_job_plan(

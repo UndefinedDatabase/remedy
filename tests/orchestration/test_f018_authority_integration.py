@@ -71,16 +71,21 @@ class TestJobRunBudgetPath:
     """Finding #3: job run accepts budget keyword args."""
 
     def test_job_run_accepts_budget_kwargs(self):
-        """Call _cmd_job_run with budget kwargs — must not raise TypeError on signature."""
+        """Call _cmd_job_run with budget kwargs — must not raise TypeError on signature.
+
+        The job does not exist, so the run ends `blocked` and the command answers exit 1
+        (R-1184, DECISION F304 D8); the signature is what this test holds."""
         from apps.cli.commands.do_cmd import _cmd_job_run
 
-        _cmd_job_run(
-            job_id="nonexistent_deadbeef",
-            max_total_tokens="50000",
-            max_provider_calls=None,
-            max_wall_clock_minutes=None,
-            deadline=None,
-        )
+        with pytest.raises(SystemExit) as exc:
+            _cmd_job_run(
+                job_id="nonexistent_deadbeef",
+                max_total_tokens="50000",
+                max_provider_calls=None,
+                max_wall_clock_minutes=None,
+                deadline=None,
+            )
+        assert exc.value.code == 1
 
 
 class TestBindArtifactRefsPreservesBudgets:

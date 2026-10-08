@@ -249,7 +249,9 @@ class TestTaskVetoE2ELive:
         run2 = subprocess.run(
             [sys.executable, "-m", "apps.cli.main", "job", "run", job_id, "--tasks", "0"],
             cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
-        assert run2.returncode == 0, f"run 2 exited {run2.returncode}: {run2.stderr}"
+        # A run that ends blocked answers exit 1 (R-1184, DECISION F304 D8).
+        assert run2.returncode == 1, f"run 2 exited {run2.returncode}: {run2.stderr}"
+        assert "ended blocked" in run2.stderr, run2.stderr
         # DECISION F035 D3: the report's per-task "Vetoed by" line is gone; the same fact
         # now reads through the ownership catalog's one dialect. This is the veto's only
         # browser-door action in the whole ledger, so its fingerprint is token #1.
@@ -337,7 +339,9 @@ class TestTaskVetoE2ELive:
             [sys.executable, "-m", "apps.cli.main", "job", "run", job_id,
              "--builder-provider", "fake", "--reviewer-provider", "fake"],
             cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=120)
-        assert run1.returncode == 0, f"run 1 exited {run1.returncode}: {run1.stderr}"
+        # A run that ends blocked answers exit 1 (R-1184, DECISION F304 D8).
+        assert run1.returncode == 1, f"run 1 exited {run1.returncode}: {run1.stderr}"
+        assert "ended blocked" in run1.stderr, run1.stderr
 
         blocked = _job_data(data_dir, job_id)
         assert blocked["status"] == "blocked"

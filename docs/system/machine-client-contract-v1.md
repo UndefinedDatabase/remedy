@@ -65,7 +65,11 @@ holds whitespace is planned as text, never read as a file.
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
    the builder and reviewer it started with. An `extend` also answers `no` to the contract
    remainder decision the same budget stop raised, because the job runs on instead of a
-   follow-up mission, and names it under `closed_decisions`.
+   follow-up mission, and names it under `closed_decisions`. A run that ends `blocked`,
+   `failed` or stopped by its budget answers `ok` false with `job_blocked`, `job_failed` or
+   `job_stopped_by_budget`, still carries every key of the job's report, and exits 1; a run
+   that completes, pauses at the operator's request or at `--tasks`, or stops at the operator's
+   request answers as before.
 4. **Approve and apply.** `remedy job apply <job> --approve --json` copies the reviewed result
    into the repository. Then `remedy change proof <job> --json` lists that apply under
    `job_applies`. An approved apply that did not land answers `ok` false with one token for
@@ -374,7 +378,7 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `job_not_resumable`, `job_not_started`, `job_stopped`, `serve_unreachable`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `serve_unreachable`.
 Answer keys: `context_strategy`, `cost_mirror`, `created_at`, `execution_config`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_title`, `job_workspace_path`, `next_command`, `pending_tasks`, `postmortem`, `repair_rounds_allowed`, `repair_rounds_source`, `repo_path`, `result_diff`, `status`, `target_guard`, `tasks`, `warning`, `worktree`.
 Keys under the answer keys: see below.
 
@@ -408,7 +412,7 @@ Description: Resume a job. Without --checkpoint: continue from the newest valid 
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
-Refusal tokens: `ambiguous_job_id`, `budget_decision_open`, `builder_error`, `builder_unavailable`, `checkpoint_not_found`, `checkpoint_not_resumable`, `checkpoints_corrupt`, `configuration_error`, `confirmation_required`, `invalid_argument`, `invalid_budget`, `invalid_builder_output`, `invalid_job_id`, `job_not_found`, `job_not_resumable`, `job_not_started`, `job_stopped`, `missing_dependency`, `permission_denied`, `plan_awaiting_approval`, `plan_rejected`, `resume_blocked`, `serve_unreachable`, `verification_failed`, `worktree_drift`.
+Refusal tokens: `ambiguous_job_id`, `budget_decision_open`, `builder_error`, `builder_unavailable`, `checkpoint_not_found`, `checkpoint_not_resumable`, `checkpoints_corrupt`, `configuration_error`, `confirmation_required`, `invalid_argument`, `invalid_budget`, `invalid_builder_output`, `invalid_job_id`, `job_blocked`, `job_failed`, `job_not_found`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `missing_dependency`, `permission_denied`, `plan_awaiting_approval`, `plan_rejected`, `resume_blocked`, `serve_unreachable`, `verification_failed`, `worktree_drift`.
 Answer keys: `action`, `awaiting_checks`, `blocked_reason`, `budget_stop`, `can_resume`, `checkpoint_id`, `checkpoint_index`, `checkpoint_kind`, `context_strategy`, `cost_mirror`, `created_at`, `cycles`, `cycles_run`, `decision_id`, `dry_run`, `elapsed_ms`, `execution_config`, `failures`, `file`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `log`, `matches`, `model`, `next_command`, `open_decision_ids`, `outcome`, `output_truncated`, `patch_intents`, `pending_tasks`, `persisted_output_bytes`, `plan_approval_gate`, `postmortem`, `reason`, `redaction`, `remaining`, `repair_rounds_allowed`, `repair_rounds_source`, `repo`, `repo_path`, `required_approvals`, `required_capabilities`, `result_diff`, `resume_mode`, `resumed`, `safety_summary`, `stage`, `state`, `status`, `stop_reason`, `stop_request`, `target_guard`, `task_id`, `task_type`, `tasks`, `terminal_status`, `test_run_id`, `tests_passed`, `verified`, `warning`, `worktree`, `worktree_head`, `worktrees`, `would_run`, `would_run_stage`.
 Keys under the answer keys: see below.
 

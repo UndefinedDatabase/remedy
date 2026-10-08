@@ -753,6 +753,12 @@ def _cmd_job_run(
     ``invocation`` carries the F012 material controls (timeout/profile/output/stream/max-tasks)
     with omission preserved as ``None`` (F1); resolution happens in ``run_job()``:
     explicit(non-None) CLI value > persisted config > product default.
+
+    A run that ends `blocked`, `failed` or stopped by its budget is refused with
+    `job_blocked`, `job_failed` or `job_stopped_by_budget`, every key of its report
+    beside the token, and exit 1; every other end — completed, paused at the operator's
+    request or at `--tasks`, stopped at the operator's request — answers as before
+    (R-1184, DECISION F304 D8).
     """
     from apps.cli.commands.run_invocation import RunInvocation
 
@@ -890,10 +896,9 @@ def _cmd_job_run(
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     cost_mirror = mirror_job_run_into_ledger(job.job_id)
 
+    report = export_job_report(job) if json_output else {}
     if json_output:
-        report = export_job_report(job)
         report["cost_mirror"] = cost_mirror
-        emit_ok(**report)
     else:
         from packages.orchestration.pingpong_job import format_job_report_text
         print(format_job_report_text(job))
@@ -906,6 +911,24 @@ def _cmd_job_run(
                 f"`remedy stats backfill-ledger` to reconcile it.",
                 file=sys.stderr,
             )
+
+    # R-1184 (DECISION F304 D8): a client reads `ok` and the exit code, so a run that ended
+    # stuck, failed or at its budget answers as a refusal, every key of its report beside it.
+    state = getattr(job, "state", None)
+    if state == RunState.STOPPED and getattr(job, "stop_source", "") == "budget":
+        fail("job_stopped_by_budget",
+             f"Job {job.job_id} stopped at its budget; answer its budget decision to run it on.",
+             json_output=json_output, **report)
+    if state == RunState.BLOCKED:
+        fail("job_blocked",
+             f"Job {job.job_id} ended blocked, not completed; its tasks name why.",
+             json_output=json_output, **report)
+    if state == RunState.FAILED:
+        fail("job_failed",
+             f"Job {job.job_id} failed: {getattr(job, 'error', '') or 'its tasks name why'}.",
+             json_output=json_output, **report)
+    if json_output:
+        emit_ok(**report)
 
 
 def _cmd_job_evidence(
