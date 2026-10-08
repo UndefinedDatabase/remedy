@@ -445,7 +445,9 @@ def answer_public_api_post(
 
     DECISION F253 D9. Matches POST routes as `answer_public_api_get` matches GET routes: a path no
     route matches answers 404, a path only a GET route matches answers 405. A bound segment that
-    begins with `-` answers 400 `api_path_invalid`, and a body that is not a JSON object holding
+    begins with `-`, or that holds `/` or a NUL character once decoded, answers 400
+    `api_path_invalid`, because a command builds a file name from its job value and a child's
+    arguments cannot hold a NUL (R-1195); a body that is not a JSON object holding
     only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; neither
     starts a command. Otherwise RUN_COMMAND is called with the job the job segment names
     (`_job_lock_key`) and the argument list the twin's builder makes, and the envelope it returns is the answer: None answers 500
@@ -465,6 +467,10 @@ def answer_public_api_post(
                 return 400, build_error(
                     "api_path_invalid",
                     f"the {name} in '{path}' must not begin with '-'"), {}
+            if "/" in value or "\x00" in value:
+                return 400, build_error(
+                    "api_path_invalid",
+                    f"the {name} in '{path}' must not hold '/' or a NUL character"), {}
         checked, why = _body_refusal(route, raw_body)
         if checked is None:
             return 400, build_error("api_body_invalid", why), {}

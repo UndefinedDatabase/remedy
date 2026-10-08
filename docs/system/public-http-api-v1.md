@@ -58,8 +58,9 @@ write takes no query string. The supervisor runs the twin command as a process o
 answers that command's own envelope, so a refusal carries the command's own token and message. The
 statuses are the ones the table row's `Refusals` column names, and any other refusal answers the
 status the row gives after "any other", which is 409. A body the supervisor cannot read, or one
-larger than 64 kilobytes, answers 400 with `api_body_invalid`; a path value that begins with `-`
-answers 400 with `api_path_invalid`, because no job or decision id begins with it; and a command
+larger than 64 kilobytes, answers 400 with `api_body_invalid`; a path value that begins with `-`,
+or that holds `/` or a NUL character once decoded, answers 400 with `api_path_invalid`, because no
+job or decision id does; and a command
 that prints no answer within 120 seconds answers 500 with `api_command_failed`. The supervisor runs
 one command for a job at a time, so a second write for that job waits for the first. `PUT` and
 `DELETE` still answer 405.

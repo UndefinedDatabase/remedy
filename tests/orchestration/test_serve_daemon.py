@@ -600,3 +600,19 @@ def test_a_post_declaring_a_body_above_the_ceiling_is_400_and_runs_nothing(
         body=json.dumps({"reason": "Postgres"}).encode())
     assert (status, body["error"]) == (400, "api_body_invalid")
     assert _stored_decision(job_id, decision_id)["status"] == "open"
+
+
+def test_a_post_whose_path_value_decodes_to_a_nul_is_400_and_ledgered(root, running_with_api):
+    """R-1195: `%00` decodes to a NUL, which no child's argument list can hold; the supervisor
+    answers and ledgers the refusal instead of failing the request."""
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    job_id, decision_id = _job_with_open_decision()
+    path = f"/api/v1/jobs/{job_id}/decisions/{decision_id}%00"
+    status, body = _api_request(running_with_api.state.api_port, "POST", path,
+                                headers=_bearer(token), body=b"{}")
+    assert (status, body["error"]) == (400, "api_path_invalid")
+    assert _stored_decision(job_id, decision_id)["status"] == "open"
+    ledger = Path(root) / "api" / "calls.jsonl"
+    records = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+    assert (records[-1]["method"], records[-1]["path"], records[-1]["status"]) == (
+        "POST", path, 400)
