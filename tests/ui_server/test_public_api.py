@@ -42,6 +42,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
     ("POST", "/api/v1/jobs/{job}/decisions/{decision}"):
         "test_the_decision_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/decline"):
+        "test_the_decline_route_is_pinned_with_its_body_and_its_statuses",
 }
 
 
@@ -749,7 +751,7 @@ _OK_ENVELOPE = {"schema_version": 1, "ok": True, "outcome": "answered"}
 
 
 def _decision_route() -> public_api.PublicApiRoute:
-    return next(route for route in public_api.PUBLIC_API_ROUTES if route.method == "POST")
+    return next(route for route in public_api.PUBLIC_API_ROUTES if route.path == DECISION_PATH)
 
 
 def _recording_runner(envelope: dict | None = _OK_ENVELOPE):
@@ -781,7 +783,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.4"
+    assert public_api.PUBLIC_API_VERSION == "1.5"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -929,3 +931,48 @@ def test_a_path_value_that_decodes_to_a_slash_or_a_nul_is_400_and_runs_nothing()
         status, answer, _headers = _post(path, {}, run)
         assert (status, answer["error"]) == (400, "api_path_invalid"), path
     assert calls == []
+
+
+# -- the write route that declines a result (S4b, DECISION F253 D11) -------------
+
+DECLINE_PATH = "/api/v1/jobs/{job}/decline"
+
+
+def test_the_decline_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == DECLINE_PATH)
+    assert (route.method, route.twin) == ("POST", "job.decline")
+    assert route.body == (("reason", "string"),)
+    assert route.refusal_default == 409
+    assert route.refusals == (
+        ("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+        ("missing_argument", 400),
+    )
+    assert "`api`" in route.description
+
+
+@pytest.mark.parametrize("body, reason", [({"reason": "not wanted"}, "not wanted"), ({}, "")])
+def test_a_decline_post_runs_the_command_with_its_reason_and_the_api_door(body, reason):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/decline", body, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "decline", f"--reason={reason}", "--source=api", "--json",
+                             "--", "j1"])]
+
+
+def test_a_decline_post_refuses_a_key_the_route_does_not_take():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decline", {"answer": ["x"]}, run)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def test_every_route_declares_only_refusals_its_twin_answers():
+    """A route's `refusals` are tokens its twin command really refuses with, as the machine
+    client interface lists them (DECISION F298 D4), so no status is declared for a token that
+    cannot arrive."""
+    from apps.cli.client_interface import OPERATION_REFUSAL_TOKENS
+
+    stray = {route.path: sorted({token for token, _status in route.refusals}
+                                - set(OPERATION_REFUSAL_TOKENS[route.twin]))
+             for route in public_api.PUBLIC_API_ROUTES}
+    assert {path: tokens for path, tokens in stray.items() if tokens} == {}

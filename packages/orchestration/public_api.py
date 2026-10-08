@@ -41,7 +41,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.4"
+PUBLIC_API_VERSION = "1.5"
 
 
 @dataclass(frozen=True)
@@ -147,6 +147,25 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id "
             "prefix is accepted, as on the command line, and `--as-mission` is not offered over "
             "HTTP."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/decline",
+        twin="job.decline",
+        body=(("reason", "string"),),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("ambiguous_job_id", 400),
+            ("missing_argument", 400),
+        ),
+        description=(
+            "Declines a completed job's result, as `remedy job decline <job> --reason <reason> "
+            "--json` does: nothing is applied and the decline is kept on the job, recorded as "
+            "coming through `api`; a job that is not completed, or whose result already landed, "
+            "is refused with 409."
         ),
     ),
 )
@@ -394,10 +413,20 @@ def _decision_resolve_argv(segments: dict[str, str], body: dict[str, Any]) -> li
     return ["decision", "resolve", *options, "--json", "--", segments["job"], segments["decision"]]
 
 
+def _job_decline_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job decline` is run with (DECISION F253 D11): `--reason` always,
+    empty when the body names none, so the command itself refuses it with `missing_argument`
+    rather than its parser with no envelope; `--source=api`, so the decline names the door it came
+    through; then `--json`, `--` and the job."""
+    return ["job", "decline", f"--reason={body.get('reason', '')}", "--source=api", "--json",
+            "--", segments["job"]]
+
+
 #: Twin command id of a write route to the function that builds the argument list its command
 #: runs with, from the route's bound path segments and its checked body (DECISION F253 D9).
 _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "decision.resolve": _decision_resolve_argv,
+    "job.decline": _job_decline_argv,
 }
 
 
