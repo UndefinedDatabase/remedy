@@ -768,7 +768,12 @@ def _start_run_answer(
 
 
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
-    """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not."""
+    """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not.
+
+    A `string` value, or an item of a `strings` value, that holds a NUL character is refused
+    too: a child's arguments cannot hold one, and `subprocess.Popen` would raise out of the
+    route (R-1205).
+    """
     try:
         parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
     except (UnicodeDecodeError, ValueError):
@@ -792,6 +797,14 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
             wanted = "a list of non-empty strings"
         if not valid:
             return None, f"'{key}' must be {wanted}"
+        if kinds[key] == "string":
+            texts = [value]
+        elif kinds[key] == "flag":
+            texts = []
+        else:
+            texts = value
+        if any("\x00" in text for text in texts):
+            return None, f"'{key}' must not hold a NUL character"
     return parsed, ""
 
 
@@ -1003,10 +1016,13 @@ def render_public_api_markdown() -> str:
             + [f"`{key}` ({kind})" for key, kind in route.body]
         ) or "—"
         command_line = _twin_command_line(route.twin)
-        answers_as = (
-            f"`{command_line}`, its `{route.twin_key}` object" if route.twin_key
-            else f"`{command_line}`"
-        )
+        if route.starts_run:
+            # R-1206: the route answers 202 with the run's record, not the twin's result.
+            answers_as = "the run's record, as the supervisor's `RunLauncher` writes it"
+        elif route.twin_key:
+            answers_as = f"`{command_line}`, its `{route.twin_key}` object"
+        else:
+            answers_as = f"`{command_line}`"
         refusals_cell = ", ".join(
             [f"`{token}` {status}" for token, status in route.refusals]
             + ([f"any other {route.refusal_default}"] if route.refusal_default else [])

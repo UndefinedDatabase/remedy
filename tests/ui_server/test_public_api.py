@@ -1956,3 +1956,54 @@ def test_the_page_names_the_run_route_and_its_running_refusal():
     assert "## Runs" in hand_written
     assert "/api/v1/jobs/{job}/run" in hand_written
     assert "job_already_running" in hand_written
+
+
+# -- a body string that holds a NUL character (R-1205) ---------------------------
+
+
+def _refused_for_the_key(status: int, answer: dict, key: str) -> None:
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert f"'{key}' must not hold a NUL character" in answer["message"]
+
+
+def test_a_decision_post_whose_reason_or_answer_holds_a_nul_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {"reason": "a\u0000b"}, run)
+    _refused_for_the_key(status, answer, "reason")
+    status, answer, _headers = _post(
+        "/api/v1/jobs/j1/decisions/d1", {"answer": ["fine", "a\u0000b"]}, run)
+    _refused_for_the_key(status, answer, "answer")
+    assert calls == []
+
+
+def test_a_decline_post_whose_reason_holds_a_nul_is_400_and_runs_nothing():
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(
+        DECLINE_PATH.replace("{job}", "j1"), {"reason": "a\u0000b"}, run)
+    _refused_for_the_key(status, answer, "reason")
+    assert calls == []
+
+
+def test_an_order_post_whose_deadline_holds_a_nul_is_400_and_starts_nothing(tmp_path):
+    slug = _registered_project_slug(tmp_path)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(slug), "deadline": "x\u0000y"}, start)
+    _refused_for_the_key(status, answer, "deadline")
+    assert calls == []
+
+
+def test_a_run_post_whose_builder_provider_holds_a_nul_is_400_and_starts_nothing():
+    full = _saved_job_in("")
+    calls, start = _recording_run_starter()
+    status, answer, _headers = _post_run(full, {"builder_provider": "fa\u0000ke"}, start)
+    _refused_for_the_key(status, answer, "builder_provider")
+    assert calls == []
+
+
+def test_the_rendering_of_the_run_route_names_the_runs_record_not_the_twins_command():
+    rows = [line for line in public_api.render_public_api_markdown().splitlines()
+            if line.startswith(f"| `POST` | `{RUN_PATH}` |")]
+    assert len(rows) == 1
+    assert "the run's record, as the supervisor's `RunLauncher` writes it" in rows[0]
+    assert "remedy job run --json" not in rows[0]
