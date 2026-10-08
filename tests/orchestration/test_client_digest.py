@@ -103,6 +103,53 @@ def test_build_client_digest_names_a_job_file_that_is_not_valid_json_as_degraded
     assert "bad-job-id" in digest["skipped_files"]
 
 
+# ── build_client_digest's job_ids keyword (S3a, DECISION F253 D4 (1)) ────────
+
+
+def _without_age(decisions: list[dict]) -> list[dict]:
+    return [{k: v for k, v in d.items() if k != "age_seconds"} for d in decisions]
+
+
+def test_build_client_digest_restricted_to_one_job_id_lists_exactly_that_job(root):
+    named = JobPlan(job_title="named", project_id="proj-1", metadata=_job_metadata())
+    enqueue_task_decision(named, task_id="T001", question="Q1", options=["a"], now=NOW)
+    save_job_plan(named)
+    other = JobPlan(job_title="other", project_id="proj-1", metadata=_job_metadata())
+    save_job_plan(other)
+
+    unrestricted = build_client_digest(now=NOW)
+    restricted = build_client_digest(now=NOW, job_ids=[str(named.job_id)])
+
+    [restricted_entry] = restricted["jobs"]
+    [unrestricted_entry] = [e for e in unrestricted["jobs"] if e["job_id"] == str(named.job_id)]
+    assert restricted_entry == unrestricted_entry
+    assert _without_age(restricted["decisions"]) == _without_age(
+        [d for d in unrestricted["decisions"] if d["job_id"] == str(named.job_id)])
+    assert restricted["job_window"] == {"ended_limit": None, "left_out": 0}
+
+
+def test_build_client_digest_restricted_to_an_id_with_no_record_lists_nothing(root):
+    digest = build_client_digest(now=NOW, job_ids=["no-such-job"])
+
+    assert digest["jobs"] == []
+    assert digest["degraded"] is False
+    assert digest["skipped_files"] == []
+
+
+def test_build_client_digest_restricted_to_an_unreadable_id_marks_degraded(root):
+    from packages.orchestration.data_paths import jobs_dir
+
+    bad_dir = jobs_dir(root) / "bad-restricted-job"
+    bad_dir.mkdir(parents=True)
+    (bad_dir / "job.json").write_text("not json")
+
+    digest = build_client_digest(now=NOW, job_ids=["bad-restricted-job"])
+
+    assert digest["jobs"] == []
+    assert digest["degraded"] is True
+    assert "bad-restricted-job" in digest["skipped_files"]
+
+
 # ── build_client_digest's decisions key (T002, DECISION F295 D5) ─────────────
 
 

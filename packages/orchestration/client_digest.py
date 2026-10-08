@@ -16,6 +16,7 @@ recommendation word and one risk word derived from them by fixed rules
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,7 @@ from packages.orchestration.pingpong_job import (
     _reviewed_task_files,
     job_is_terminal,
     list_job_plans_safe,
+    load_job_plan_safe,
 )
 from packages.orchestration.project_cockpit import project_cost_of_day
 from packages.orchestration.project_registry import _list_projects_readonly
@@ -300,7 +302,8 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
 
 # DECISION F295 D4 (2): the one builder of the `client` key `_cmd_status` adds to its answer.
 def build_client_digest(now: datetime | None = None, *,
-                        every_ended_job: bool = False) -> dict[str, Any]:
+                        every_ended_job: bool = False,
+                        job_ids: Collection[str] | None = None) -> dict[str, Any]:
     """The `client` object's version-1 frame (DECISION F295 D4 (2), (3); D5; D7); reads only, never writes.
 
     Projects sorted by slug, each with its missions newest first
@@ -323,7 +326,11 @@ def build_client_digest(now: datetime | None = None, *,
     <job_id>``, ``cost of job <job_id>``, ``contract of job <job_id>``,
     ``cost of the day of project <project_id>`` and ``calls and tokens of the
     jobs of project <project_id>`` for a read that failed; the value that
-    read would have filled is null.
+    read would have filled is null. ``job_ids``, given, reads only those jobs
+    with ``load_job_plan_safe``, an id with no record left out and an
+    unreadable one named in ``skipped_files``; ``jobs`` lists every one of
+    them, ``decisions`` and ``awaiting_apply`` only theirs, and ``job_window``
+    reads ``ended_limit`` null and ``left_out`` 0 (DECISION F253 D4 (1)).
     """
     when = now if now is not None else datetime.now(timezone.utc)
     day_moment = (when if when.tzinfo is not None
@@ -375,9 +382,20 @@ def build_client_digest(now: datetime | None = None, *,
                 if mission.status == MISSION_STATUS_ABANDONED:
                     abandoned_job_ids.add(job_id)
 
-    plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
-    degraded = degraded or jobs_degraded
-    skipped_files.extend(jobs_skipped)
+    if job_ids is None:
+        plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
+        degraded = degraded or jobs_degraded
+        skipped_files.extend(jobs_skipped)
+    else:
+        plans = []
+        for job_id in sorted(set(job_ids)):
+            plan, plan_degraded = load_job_plan_safe(job_id)
+            if plan is None:
+                if plan_degraded:
+                    degraded = True
+                    skipped_files.append(job_id)
+                continue
+            plans.append(plan)
 
     job_entries: list[dict[str, Any]] = []
     ended_jobs: list[tuple[str, str, dict[str, Any]]] = []
@@ -437,17 +455,24 @@ def build_client_digest(now: datetime | None = None, *,
             degraded = True
             skipped_files.append(f"decisions of job {job_id}")
         # A job whose decisions could not be read is never taken for ended (DECISION F304 D16).
-        if decisions_read and _job_ended(plan, waits_for_apply,
-                                         len(decision_entries) - decisions_before):
+        # DECISION F253 D4 (1): a `job_ids`-restricted call lists every requested job as itself,
+        # never trimmed into the ended-job window — there is no "ended last" ordering to apply to
+        # a caller-chosen set.
+        if job_ids is None and decisions_read and _job_ended(
+                plan, waits_for_apply, len(decision_entries) - decisions_before):
             ended_jobs.append((_ended_at(plan), job_id, entry))
         else:
             job_entries.append(entry)
 
-    # DECISION F304 D16: every job that still needs something, and the ended jobs that ended last.
-    ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
-    ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
-    listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
-    job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
+    if job_ids is None:
+        # DECISION F304 D16: every job that still needs something, and the ended jobs that ended last.
+        ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
+        ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
+        listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
+        job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
+        job_window = {"ended_limit": ended_limit, "left_out": len(ended_jobs) - len(listed_ended)}
+    else:
+        job_window = {"ended_limit": None, "left_out": 0}
     job_entries.sort(key=lambda entry: entry["job_id"])
 
     return {
@@ -456,8 +481,7 @@ def build_client_digest(now: datetime | None = None, *,
         "supervisor": {"answers": socket_answers(serve_paths().socket)},
         "projects": project_entries,
         "jobs": job_entries,
-        "job_window": {"ended_limit": ended_limit,
-                       "left_out": len(ended_jobs) - len(listed_ended)},
+        "job_window": job_window,
         "awaiting_apply": sorted(awaiting_apply),
         "decisions": sorted(decision_entries, key=lambda e: (e["job_id"], e["decision_id"])),
         "degraded": degraded,
