@@ -171,6 +171,70 @@ def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake
     assert project["cost_today"]["tokens"] == no_tokens
 
 
+# ── 2d: 1,000 settled jobs, the default window and the flag (F304 T007, DECISION F304 D16) ──
+
+#: The size DECISION F298 D1 fixed for the default digest of a scratch root of 1,000 settled jobs.
+DIGEST_SIZE_BOUND = 65_536
+SETTLED_JOBS = 1_000
+
+
+def _settle_jobs(repo: Path, count: int) -> list[str]:
+    """*count* completed jobs whose results were declined, each card naming 25 changed files."""
+    from datetime import datetime, timedelta, timezone
+
+    from packages.orchestration.job_apply import decline_job_result
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        save_job_plan,
+    )
+
+    files = [f"src/module_{index:02d}.py" for index in range(25)]
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    titles = []
+    for index in range(count):
+        task = TaskEntry(task_id="T001", title="Write the modules", reviewer_verdict="pass",
+                         repair_rounds_used=1,
+                         apply_manifest=ApplyManifest(task_id="T001", applied_files=files,
+                                                      status="applied"))
+        finished = start + timedelta(minutes=index)
+        job = JobPlan(job_title=f"settled {index:04d}", project_id="proj-1", state=JOB_COMPLETED,
+                      metadata={"target_repo": str(repo)}, tasks=[task],
+                      finished_at=finished.isoformat())
+        decline_job_result(job, reason="not needed", source="cli", now=finished)
+        save_job_plan(job)
+        titles.append(job.job_title)
+    return titles
+
+
+def test_with_1000_settled_jobs_the_default_digest_stays_small_and_counts_what_it_left_out(
+        repo, capsys):
+    from packages.orchestration.client_digest import CLIENT_DIGEST_ENDED_JOB_LIMIT
+
+    titles = _settle_jobs(repo, SETTLED_JOBS)
+
+    client = _status_json(capsys)["client"]
+
+    assert len(json.dumps(client).encode("utf-8")) < DIGEST_SIZE_BOUND
+    assert client["job_window"] == {"ended_limit": CLIENT_DIGEST_ENDED_JOB_LIMIT,
+                                    "left_out": SETTLED_JOBS - CLIENT_DIGEST_ENDED_JOB_LIMIT}
+    # The jobs that ended last, by their finish; the rest are counted, never listed.
+    assert sorted(job["title"] for job in client["jobs"]) == titles[-CLIENT_DIGEST_ENDED_JOB_LIMIT:]
+    assert client["awaiting_apply"] == [] and client["decisions"] == []
+
+
+def test_all_ended_jobs_lists_every_settled_job_and_names_no_limit(repo, capsys):
+    titles = _settle_jobs(repo, 30)
+
+    main(["status", "--json", "--all-ended-jobs"])
+    client = json.loads(capsys.readouterr().out)["client"]
+
+    assert sorted(job["title"] for job in client["jobs"]) == titles
+    assert client["job_window"] == {"ended_limit": None, "left_out": 0}
+
+
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
 
 

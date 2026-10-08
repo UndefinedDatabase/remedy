@@ -1030,7 +1030,7 @@ def test_the_status_and_proof_answer_trees_name_exactly_what_their_code_builds()
     stored = {ast.unparse(node.value) for node in ast.walk(_function_def(status_cmd, "_cmd_status"))
               if isinstance(node, ast.Assign)
               and any(ast.unparse(target) == "result['client']" for target in node.targets)}
-    assert stored == {"build_client_digest()"}
+    assert stored == {"build_client_digest(every_ended_job=all_ended_jobs)"}
     proof = ANSWER_KEY_TREES["change.proof"]
     next_action = _dict_literal_keys(_REPO_ROOT / proof_chain, "_export_next_action")
     assert set(proof["next_safe_action_obj"]) == next_action == (

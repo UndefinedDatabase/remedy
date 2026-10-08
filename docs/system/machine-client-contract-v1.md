@@ -69,8 +69,15 @@ provider, which spends nothing, although the digest's `calls` still counts it.
    budget stops the job and raises one decision. A run that does not finish answers `ok` false
    with `error` `step_failed` and still carries `mission_id` and `job_ids`, and exits 1.
 2. **Read.** `remedy status --json` carries the digest under `client`: every project with its
-   missions, every job with its state, cost and evidence, every open decision, and the jobs that
-   wait for their apply. Read it as often as once a minute. Beside its `cost`, each job carries
+   missions, the jobs with their state, cost and evidence, every open decision, and the jobs
+   that wait for their apply. Read it as often as once a minute. By default `jobs` lists every
+   job that still needs something and the 20 ended jobs that ended last, by the time each
+   finished, or was created when its record holds no finish. A job has ended when its state is
+   `completed`, `failed` or `cancelled`, it does not wait for its apply and none of its
+   decisions is open; a job whose decisions could not be read has not. `job_window` names the
+   limit under `ended_limit` and how many ended jobs it left out under `left_out`.
+   `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
+   null. Beside its `cost`, each job carries
    `calls` and `tokens`, and each project's `cost_today` carries `tokens` beside its `calls`:
    the provider calls and the tokens by kind, `input`, `output`, `cache_read` and
    `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
@@ -334,15 +341,17 @@ Description: Show project status overview, across its repos and missions.
 | `--project` | yes | no | yes | no | Scope to a project's repo (slug or UUID) |
 | `--all-projects` | yes | no | no | no | Show jobs from all projects |
 | `--json` | yes | no | no | no | Output as JSON |
+| `--all-ended-jobs` | yes | no | no | no | List all ended jobs in the JSON digest, not only those that ended last |
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
 Answer keys: `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime`, `runtime_warning`, `scope`, `skipped_files`, `stops_pending`.
 Keys under the answer keys: see below.
 
-- `client`: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
+- `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
+  - `job_window`: `ended_limit`, `left_out`
   - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
@@ -698,10 +707,11 @@ Keys under the answer keys: see below.
 
 The keys of the `client` object of `remedy status --json`.
 
-Keys: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
+Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
 
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
+- `job_window`: `ended_limit`, `left_out`
 - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`

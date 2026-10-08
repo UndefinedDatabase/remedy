@@ -82,6 +82,7 @@ def test_build_client_digest_on_an_empty_data_root_equals_the_version_1_frame(ro
         "supervisor": {"answers": False},
         "projects": [],
         "jobs": [],
+        "job_window": {"ended_limit": 20, "left_out": 0},
         "awaiting_apply": [],
         "decisions": [],
         "degraded": False,
@@ -849,3 +850,118 @@ def test_reading_the_digest_changes_no_file_under_the_data_root(root, tmp_path):
     assert _data_root_snapshot(root) == before
     assert sorted(entry["slug"] for entry in digest["projects"]) == ["kept-project",
                                                                       "legacy-project"]
+
+
+# ── the job window: every job that needs something, and the ended jobs that ended last ──
+# ── (F304 T007, DECISION F304 D16) ──────────────────────────────────────────────────────
+
+
+def _ended_job(title: str, finished_at: str, *, created_at: str = "2026-01-01T00:00:00+00:00",
+               state: RunState = RunState.FAILED) -> JobPlan:
+    """A job that has ended: terminal, never awaiting an apply, no decision of its own open."""
+    job = JobPlan(job_title=title, project_id="proj-1", metadata=_job_metadata(), state=state,
+                  finished_at=finished_at, created_at=created_at)
+    save_job_plan(job)
+    return job
+
+
+def _listed(digest: dict) -> list[str]:
+    return [entry["title"] for entry in digest["jobs"]]
+
+
+def test_the_ended_jobs_that_ended_last_are_listed_and_the_rest_counted(root, monkeypatch):
+    import packages.orchestration.client_digest as client_digest_mod
+
+    monkeypatch.setattr(client_digest_mod, "CLIENT_DIGEST_ENDED_JOB_LIMIT", 3)
+    for title, finished_at in (("oldest", "2026-01-01T01:00:00+00:00"),
+                               ("older", "2026-01-01T02:00:00+00:00"),
+                               ("newer", "2026-01-01T04:00:00+00:00"),
+                               ("newest", "2026-01-01T05:00:00+00:00")):
+        _ended_job(title, finished_at)
+    # No finish recorded: the job is ordered by when it was created, here between the two pairs.
+    _ended_job("unfinished", "", created_at="2026-01-01T03:00:00+00:00",
+               state=RunState.CANCELLED)
+
+    digest = build_client_digest(now=NOW)
+
+    assert sorted(_listed(digest)) == ["newer", "newest", "unfinished"]
+    assert digest["job_window"] == {"ended_limit": 3, "left_out": 2}
+    assert [entry["job_id"] for entry in digest["jobs"]] == sorted(
+        entry["job_id"] for entry in digest["jobs"])
+
+
+def test_every_job_that_still_needs_something_is_listed_whatever_the_window(root, monkeypatch):
+    import packages.orchestration.client_digest as client_digest_mod
+    from packages.orchestration.job_apply import decline_job_result
+
+    monkeypatch.setattr(client_digest_mod, "CLIENT_DIGEST_ENDED_JOB_LIMIT", 0)
+    _ended_job("ended", "2026-01-01T05:00:00+00:00")
+    declined = _ended_job("completed and declined", "2026-01-01T05:00:00+00:00",
+                          state=JOB_COMPLETED)
+    decline_job_result(declined, reason="not needed", source="cli", now=NOW)
+    save_job_plan(declined)
+    for state in (RunState.PLANNED, RunState.PENDING, RunState.RUNNING, RunState.PAUSED,
+                  RunState.BLOCKED, RunState.STOPPED):
+        save_job_plan(JobPlan(job_title=f"still {state.value}", project_id="proj-1",
+                              metadata=_job_metadata(), state=state))
+    # Its target named, so that waiting for its apply is the one thing it still needs.
+    save_job_plan(JobPlan(job_title="awaiting its apply", project_id="proj-1",
+                          metadata=_job_metadata(), state=JOB_COMPLETED))
+    with_decision = JobPlan(job_title="failed with an open decision", project_id="proj-1",
+                            metadata=_job_metadata(), state=RunState.FAILED,
+                            finished_at="2026-01-01T05:00:00+00:00")
+    enqueue_task_decision(with_decision, task_id="T001", question="Retry?", options=["yes"],
+                          now=NOW)
+    save_job_plan(with_decision)
+
+    digest = build_client_digest(now=NOW)
+
+    assert sorted(_listed(digest)) == sorted([
+        "still planned", "still pending", "still running", "still paused", "still blocked",
+        "still stopped", "awaiting its apply", "failed with an open decision"])
+    assert digest["job_window"] == {"ended_limit": 0, "left_out": 2}
+
+
+def test_every_ended_job_lists_them_all_and_names_no_limit(root, monkeypatch):
+    import packages.orchestration.client_digest as client_digest_mod
+
+    monkeypatch.setattr(client_digest_mod, "CLIENT_DIGEST_ENDED_JOB_LIMIT", 1)
+    for index in range(3):
+        _ended_job(f"ended {index}", f"2026-01-01T0{index}:00:00+00:00")
+
+    digest = build_client_digest(now=NOW, every_ended_job=True)
+
+    assert sorted(_listed(digest)) == ["ended 0", "ended 1", "ended 2"]
+    assert digest["job_window"] == {"ended_limit": None, "left_out": 0}
+
+
+def test_a_job_whose_decisions_cannot_be_read_is_never_taken_for_ended(root, monkeypatch):
+    import packages.orchestration.client_digest as client_digest_mod
+
+    monkeypatch.setattr(client_digest_mod, "CLIENT_DIGEST_ENDED_JOB_LIMIT", 0)
+    unread = _ended_job("unread", "2026-01-01T05:00:00+00:00")
+    _ended_job("read", "2026-01-01T05:00:00+00:00")
+    real_list_decisions = client_digest_mod.list_decisions
+
+    def fake_list_decisions(job, events):
+        if str(job.job_id) == str(unread.job_id):
+            raise OSError("boom")
+        return real_list_decisions(job, events)
+
+    monkeypatch.setattr(client_digest_mod, "list_decisions", fake_list_decisions)
+
+    digest = build_client_digest(now=NOW)
+
+    assert _listed(digest) == ["unread"]
+    assert digest["job_window"] == {"ended_limit": 0, "left_out": 1}
+    assert f"decisions of job {unread.job_id}" in digest["skipped_files"]
+
+
+def test_the_page_names_the_ended_job_limit_the_digest_applies():
+    from packages.orchestration.client_digest import CLIENT_DIGEST_ENDED_JOB_LIMIT
+
+    page = Path(__file__).resolve().parents[2] / "docs/system/machine-client-contract-v1.md"
+    text = " ".join(page.read_text(encoding="utf-8").split())
+
+    assert (f"By default `jobs` lists every job that still needs something and the "
+            f"{CLIENT_DIGEST_ENDED_JOB_LIMIT} ended jobs that ended last") in text

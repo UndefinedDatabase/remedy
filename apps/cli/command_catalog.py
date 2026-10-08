@@ -357,6 +357,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
+            ArgDef("--all-ended-jobs", "List all ended jobs in the JSON digest, not only those "
+                   "that ended last", required=False, is_option=True, is_flag=True),
         ),
         supports_json=True,
     ),

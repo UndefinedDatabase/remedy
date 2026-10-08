@@ -1,7 +1,9 @@
 """The `client` object's version-1 frame in `remedy status --json` (DECISION F295 D4, D5, D7).
 
 Version 1 carries every registered project with its missions and its cost of
-the day, every job on the data root with its measured cost and its evidence
+the day, every job on the data root that still needs something and the jobs
+that ended last, with how many ended jobs it left out (DECISION F304 D16),
+each with its measured cost and its evidence
 references (DECISION F295 D7), the provider calls and tokens by kind that the
 project ledgers hold for each job and each project's day (DECISION F304 D13),
 which of those jobs wait for an operator's apply, whether the supervisor
@@ -31,6 +33,7 @@ from packages.orchestration.pingpong_job import (
     JobPlan,
     TaskEntry,
     _reviewed_task_files,
+    job_is_terminal,
     list_job_plans_safe,
 )
 from packages.orchestration.project_cockpit import project_cost_of_day
@@ -62,6 +65,21 @@ APPROVAL_RISKS = ("low", "medium", "high")
 
 #: The most changed files an approval card's risk may still read `low` (DECISION F304 D12).
 APPROVAL_LOW_RISK_FILE_LIMIT = 5
+
+#: How many ended jobs the digest lists by default, those that ended last (DECISION F304 D16).
+CLIENT_DIGEST_ENDED_JOB_LIMIT = 20
+
+
+def _job_ended(plan: JobPlan, waits_for_apply: bool, open_decision_count: int) -> bool:
+    """True when nothing is left to do about the job: its state is terminal, it does not wait for
+    its apply and no decision of it is open. Every other job still needs something (DECISION F304
+    D16)."""
+    return job_is_terminal(plan.state) and not waits_for_apply and open_decision_count == 0
+
+
+def _ended_at(plan: JobPlan) -> str:
+    """When the job ended, for ordering ended jobs: its `finished_at`, else its `created_at`."""
+    return plan.finished_at or plan.created_at
 
 
 def _job_cost(plan: JobPlan) -> dict[str, Any]:
@@ -281,13 +299,19 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
 
 
 # DECISION F295 D4 (2): the one builder of the `client` key `_cmd_status` adds to its answer.
-def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
+def build_client_digest(now: datetime | None = None, *,
+                        every_ended_job: bool = False) -> dict[str, Any]:
     """The `client` object's version-1 frame (DECISION F295 D4 (2), (3); D5; D7); reads only, never writes.
 
     Projects sorted by slug, each with its missions newest first
     (``list_missions_safe``'s own order); jobs sorted by job id
     (``list_job_plans_safe``'s own order gives the plans, this function
-    sorts them); ``awaiting_apply`` sorted. ``decisions`` holds every open
+    sorts them); ``awaiting_apply`` sorted. ``jobs`` holds every job that
+    still needs something and the ``CLIENT_DIGEST_ENDED_JOB_LIMIT`` ended
+    jobs that ended last, or every ended job when *every_ended_job* is
+    true; ``job_window`` names that limit, null when every ended job is
+    listed, and how many ended jobs it left out (DECISION F304 D16).
+    ``decisions`` holds every open
     decision of every job, sorted by job id then decision id (DECISION
     F295 D5). Each project carries ``cost_today`` for the UTC day of
     ``read_at`` and each job its ``cost`` and ``evidence`` (DECISION F295
@@ -356,6 +380,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     skipped_files.extend(jobs_skipped)
 
     job_entries: list[dict[str, Any]] = []
+    ended_jobs: list[tuple[str, str, dict[str, Any]]] = []
     awaiting_apply: list[str] = []
     decision_entries: list[dict[str, Any]] = []
     for plan in sorted(plans, key=lambda p: str(p.job_id)):
@@ -386,7 +411,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
         # A job no ledger names made no recorded call, unless a ledger could not be read.
         usage = usage_by_job_id.get(job_id)
         calls = usage.calls if usage is not None else (0 if every_ledger_read else None)
-        job_entries.append({
+        entry = {
             "job_id": job_id,
             "project_id": plan.project_id,
             "mission_id": mission.id if mission is not None else None,
@@ -398,7 +423,9 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
             "tokens": _tokens_by_kind(usage),
             "evidence": _job_evidence(plan),
             "approval_card": approval_card,
-        })
+        }
+        decisions_before = len(decision_entries)
+        decisions_read = True
         try:
             events = load_run_events(resolve_data_root(), plan.job_id)
             for decision in list_decisions(plan, events):
@@ -406,8 +433,22 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
                     decision_entries.append(
                         _decision_entry(job_id, plan.project_id, decision, when))
         except _DECISION_READ_ERRORS:
+            decisions_read = False
             degraded = True
             skipped_files.append(f"decisions of job {job_id}")
+        # A job whose decisions could not be read is never taken for ended (DECISION F304 D16).
+        if decisions_read and _job_ended(plan, waits_for_apply,
+                                         len(decision_entries) - decisions_before):
+            ended_jobs.append((_ended_at(plan), job_id, entry))
+        else:
+            job_entries.append(entry)
+
+    # DECISION F304 D16: every job that still needs something, and the ended jobs that ended last.
+    ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
+    ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
+    listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
+    job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
+    job_entries.sort(key=lambda entry: entry["job_id"])
 
     return {
         "version": CLIENT_DIGEST_VERSION,
@@ -415,6 +456,8 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
         "supervisor": {"answers": socket_answers(serve_paths().socket)},
         "projects": project_entries,
         "jobs": job_entries,
+        "job_window": {"ended_limit": ended_limit,
+                       "left_out": len(ended_jobs) - len(listed_ended)},
         "awaiting_apply": sorted(awaiting_apply),
         "decisions": sorted(decision_entries, key=lambda e: (e["job_id"], e["decision_id"])),
         "degraded": degraded,

@@ -205,7 +205,7 @@ TOKENS_BY_KIND_KEY_TREE: dict[str, Any] = {key: {} for key in (
 
 #: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7; DECISION
 #: F304 D10 adds a job's `approval_card`, D11 its mission's blocking criteria, D12 its two words,
-#: D13 the calls and tokens of each job and each project's day), as a tree:
+#: D13 the calls and tokens of each job and each project's day, D16 the `job_window`), as a tree:
 #: each key maps to the tree of the object under it, or of every element of the list under it,
 #: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
 DIGEST_KEY_TREE: dict[str, Any] = {
@@ -262,6 +262,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "risk": {},
         },
     },
+    "job_window": {"ended_limit": {}, "left_out": {}},
     "awaiting_apply": {},
     "decisions": {
         "job_id": {},
