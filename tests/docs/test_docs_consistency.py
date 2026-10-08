@@ -135,7 +135,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: API), were registered on 2026-10-07 by operator amendment
 #: amend1007b-luna-api-upkeep, which also moved F253, F205 and F206 forward; see
 #: their feature files.
-TOTAL_FEATURES = 303
+#: One more, F304 (machine client contract v1.1, part two), was registered on
+#: 2026-10-08 by F298's fifth session as F298's T002 to T007, directly after F298
+#: under the same Tier 12 heading (amend0906-split-placement); see T12_F304.md.
+TOTAL_FEATURES = 304
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

@@ -221,6 +221,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 12 — Luna gate A, part two: what a client can rely on, and the one bridge (operator amendment amend1007b-luna-api-upkeep)
 
 - [~] F298 — Machine client contract v1.1: what a client can rely on
+- [ ] F304 — Machine client contract v1.1, part two: what a client can rely on
 - [ ] F253 — Headless API contract
 
 ## Tier 7 — Luna gate A, part two: acceptance on a repository that is not Remedy's own (operator amendment amend1007b-luna-api-upkeep)
