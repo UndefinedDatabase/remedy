@@ -7,15 +7,17 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 3, round 13, T006's second part (DECISION F304 D14): an order file's mandatory cap may be
-any one of the four job budgets, `max-cost-usd`, `max-total-tokens`, `max-provider-calls` or
-`max-wall-clock-minutes`, from its header or its flag; an order with none is refused as before.
+Session 4, round 14, T006's last part (DECISION F304 D15): the page says what the call and token
+budgets count, and a test provider that reports usage proves that an order capped only by calls
+or by total tokens is stopped at its cap and that the digest names its calls and tokens by kind.
 
 ## Next Steps
-1. T006's last part: the page says exactly which tokens the token budget counts, and an order
-   capped only by provider calls or by total tokens is stopped at its cap; the first step measures
-   whether a fake run's calls and tokens reach the budget at all.
-2. T007; then the hardening stage; then the closure sequence.
+1. T007: the default digest lists every job that still needs something and the jobs that ended
+   inside a window, names the window and how many jobs it left out, and a flag widens it; the
+   first step measures the operator's own data root and a scratch root of 1,000 settled jobs.
+2. T007's template question: does a small change to an existing repository need its own
+   template.
+3. The hardening stage of operator amendment amend0930b-slow-cap; then the closure sequence.
 
 ## Risks
 - A selector that names no single project still fails in the init step instead of before any step
