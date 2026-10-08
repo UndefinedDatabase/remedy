@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 371.30s (measured wrapper); pytest's own reported wall time 370.59s (0:06:10)
+summary line: 12 failed, 21798 passed, 22 skipped, 1 warning in 370.59s (0:06:10)
+bad node ids (failed + errors):
+  - tests/orchestration/test_job_task_runner.py::TestCliHandlerRepairRounds::test_omitted_gives_default
+  - tests/orchestration/test_job_task_runner.py::TestCliHandlerRepairRounds::test_explicit_zero
+  - tests/orchestration/test_job_task_runner.py::TestCliHandlerRepairRounds::test_explicit_one
+  - tests/orchestration/test_job_task_runner.py::TestCliPauseContinueSmoke::test_target_repo_unchanged_after_smoke
+  - tests/orchestration/test_job_task_runner.py::TestProviderOverrideToFake::test_cli_handler_provider_override
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_provider_override_to_fake
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_max_rounds_override
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_repair_rounds_override_to_zero
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_test_command_override
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathExplicitOverrides::test_report_shows_override
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathGateSmoke::test_config_unaffected_by_gate_block
+  - tests/orchestration/test_job_task_runner.py::TestCommandPathPreApplySmoke::test_handler_mutation_blocks
+leftover processes: NONE
+tree it ran on: 31f89b2fb (F304 R20 C1: book round 19, the plan, save the block)
+reflog before: 31f89b2fb HEAD@{2026-10-08 11:52:27 +0200}: commit: F304 R20 C1: book round 19, the plan, save the block
+reflog after: 31f89b2fb HEAD@{2026-10-08 11:52:27 +0200}: commit: F304 R20 C1: book round 19, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F304 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1049.85 CPU seconds, 370.60 wall seconds, 21832 tests collected, exit status 1, recorded 2026-10-08T09:58:55Z
+This closure's suite used 1049.85 CPU seconds, 3.2 percent less than F298's 1084.16, within the 10 percent limit.
