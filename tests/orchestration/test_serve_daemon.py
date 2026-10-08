@@ -23,7 +23,7 @@ import pytest
 from packages.orchestration import safe_points
 from packages.orchestration import serve_daemon as SD
 from packages.orchestration import serve_runs as SR
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.serve_paths import serve_paths
 
 REPO = Path(__file__).resolve().parents[2]
@@ -812,6 +812,116 @@ def test_an_order_create_post_without_a_project_is_409_and_starts_nothing(root, 
     assert (status, answer["error"]) == (409, "api_order_project_unknown")
     after = sorted(p.name for p in orders_dir.iterdir()) if orders_dir.exists() else []
     assert after == before
+
+
+def _project_repo_with_passing_test(path: Path) -> Path:
+    """A git repository at PATH holding `README.md` and a passing test under `tests`, committed,
+    the way `probe_two_orders.py`'s own `repo` function makes one (DECISION F253 D15 (2))."""
+    path.mkdir()
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "init", "-q", str(path)], check=True, env=env)
+    (path / "README.md").write_text("# Scratch\n", encoding="utf-8")
+    (path / "tests").mkdir()
+    (path / "tests" / "test_ok.py").write_text(
+        "def test_ok():\n    assert True\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(path), "add", "-A"], check=True, env=env)
+    subprocess.run(["git", "-C", str(path), "commit", "-q", "-m", "init"], check=True, env=env)
+    return path
+
+
+def test_two_order_create_posts_sent_at_once_both_run_and_every_record_reads_back_whole(
+        root, running_with_api, tmp_path):
+    """DECISION F253 D15 (2): two `POST /api/v1/orders` for one registered project, sent from two
+    threads a `threading.Barrier` releases together, each `no_llm` with both providers `fake` and
+    no deadline. The supervisor keeps no waiting line (DECISION F200 D1 (4)) and refuses neither
+    order for the other, so both answer 202 with different order ids and both reach `ended`; the
+    digest then lists both missions and both jobs `completed`, with `degraded` false and
+    `skipped_files` empty, and no `.json` or `.jsonl` record under the data root is damaged."""
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    repo = _project_repo_with_passing_test(tmp_path / "order-two-repo")
+    slug = _register_project(root, repo)
+
+    bodies = [
+        {"order": (f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n"
+                   f"Add a line saying hello number {i} to README.md\n"),
+         "no_llm": True, "builder_provider": "fake", "reviewer_provider": "fake"}
+        for i in range(2)
+    ]
+    barrier = threading.Barrier(2)
+    results: list[tuple[int, dict] | None] = [None, None]
+    errors: list[Exception] = []
+
+    def send(index: int) -> None:
+        try:
+            barrier.wait(timeout=10)
+            results[index] = _post_order(port, token, bodies[index])
+        except (OSError, threading.BrokenBarrierError) as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=send, args=(i,)) for i in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+    assert not errors, errors
+    assert all(result is not None for result in results)
+
+    order_ids = []
+    for status, created in results:
+        assert status == 202, created
+        assert created["state"] == "running"
+        order_ids.append(created["order_id"])
+    assert order_ids[0] != order_ids[1]
+
+    answers = {}
+    for order_id in order_ids:
+        polled = None
+        deadline = time.monotonic() + 180
+        while time.monotonic() < deadline:
+            status, polled = _api_request(
+                port, "GET", f"/api/v1/orders/{order_id}", headers=_bearer(token))
+            assert status == 200, polled
+            if polled["state"] != "running":
+                break
+            time.sleep(0.2)
+        assert polled["state"] == "ended", f"order {order_id} never ended within 180 seconds"
+        assert polled["exit_code"] == 0, polled
+        assert polled["answer"]["ok"] is True, polled
+        assert polled["answer"]["mission_id"]
+        assert polled["answer"]["job_ids"]
+        answers[order_id] = polled["answer"]
+
+    assert len({answer["mission_id"] for answer in answers.values()}) == 2
+
+    status, digest = _api_request(port, "GET", "/api/v1/digest", headers=_bearer(token))
+    assert status == 200, digest
+    assert digest["degraded"] is False
+    assert digest["skipped_files"] == []
+    project = next(p for p in digest["projects"] if p["slug"] == slug)
+    mission_ids = {mission["mission_id"] for mission in project["missions"]}
+    assert mission_ids == {answer["mission_id"] for answer in answers.values()}
+
+    all_job_ids = {job_id for answer in answers.values() for job_id in answer["job_ids"]}
+    jobs_by_id = {job["job_id"]: job for job in digest["jobs"]}
+    for job_id in all_job_ids:
+        assert jobs_by_id[job_id]["state"] == JOB_COMPLETED
+
+    bad: list[tuple[str, str]] = []
+    for f in root.rglob("*.json"):
+        try:
+            json.loads(f.read_text(encoding="utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            bad.append((str(f.relative_to(root)), str(exc)[:80]))
+    for f in root.rglob("*.jsonl"):
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines()):
+            if line.strip():
+                try:
+                    json.loads(line)
+                except ValueError as exc:
+                    bad.append((f"{f.relative_to(root)}:{n + 1}", str(exc)[:80]))
+    assert not bad, bad
 
 
 def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_with_api, tmp_path):
