@@ -2509,6 +2509,28 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # job the command cannot act on, which is exit 3's meaning (DECISION F283 D12).
         exit_codes=(0, 1, 2, 3),
     ),
+    # ── job decline (F304 T003, DECISION F304 D5) ──────────────────────────
+    CommandEntry(
+        command_id="job.decline",
+        group_id="job",
+        subcommand="decline",
+        description="Decline a completed job's result under its mission, with your reason: "
+                    "nothing is applied, the job no longer waits for its apply, and the decline "
+                    "is kept on the job and named in its ownership record (F304).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--reason", "Why you decline the result, in your own words; kept with the "
+                   "decline", required=True, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("job.apply", "job.ownership"),
+        may_mutate_repo=False,
+        # A job that is not completed, or whose result already landed, names a job the command
+        # cannot act on, which is exit 3's meaning (DECISION F283 D12).
+        exit_codes=(0, 1, 2, 3),
+    ),
 
     # ── self (self-dogfood planner — read/metadata-only) ──────────────────
     CommandEntry(

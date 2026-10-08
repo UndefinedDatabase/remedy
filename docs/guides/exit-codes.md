@@ -53,6 +53,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy init run` | 4 |
 | `remedy do run` | 3 |
 | `remedy job apply` | 3 |
+| `remedy job decline` | 3 |
 | `remedy job stop` | 3 |
 | `remedy job pause` | 3 |
 | `remedy job unpause` | 3 |

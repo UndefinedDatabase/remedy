@@ -3,8 +3,8 @@
 Every `remedy do`, with or without the word `run`, walks
 `packages/orchestration/do_sequence.py` — init, study, plan, shape, run, ui,
 apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
-The module also holds the `run.show`, `run.list`, `job.run`, `job.apply` and
-`job.evidence` handlers.
+The module also holds the `run.show`, `run.list`, `job.run`, `job.apply`,
+`job.decline` and `job.evidence` handlers.
 """
 
 from __future__ import annotations
@@ -1016,6 +1016,58 @@ def _cmd_job_apply(
     fail(error, message, json_output=json_output, **export_job_apply_json(result))
 
 
+# WHY: a program must be able to say no to a result without applying it, and the no is the
+# operator's own act, kept on the job (T003 of docs/roadmap/features/T12_F304.md, DECISION F304 D5).
+def _cmd_job_decline(job_id: str, *, reason: str = "", json_output: bool = False) -> None:
+    """Decline a completed job's result with a reason, recorded on the job; nothing is applied.
+
+    A blank reason is refused with `missing_argument` and exit 2; a job that is not completed
+    with `job_not_declinable`, and one whose result already landed with `job_already_applied`,
+    both exit 3. A second decline answers the first, unchanged, with `already_declined` true.
+    """
+    from datetime import datetime, timezone
+
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from packages.orchestration.job_apply import (
+        decline_job_result,
+        job_apply_landed,
+        job_result_decline,
+    )
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        JobNotFoundError,
+        require_job_plan,
+        save_job_plan,
+    )
+
+    reason = (reason or "").strip()
+    if not reason:
+        fail("missing_argument", "--reason must say why the result is declined; nothing was "
+             "recorded.", json_output=json_output, exit_code=2)
+    job_id = resolve_job_id_or_fail(job_id, json_output=json_output)
+    try:
+        job = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output, exit_code=3)
+    already_declined = job_result_decline(job) is not None
+    if not already_declined and job.state != JOB_COMPLETED:
+        fail("job_not_declinable", f"Job {job_id} is {job.state.value}, not completed, so it has "
+             f"no result to decline; nothing was recorded.", json_output=json_output, exit_code=3)
+    if not already_declined and job_apply_landed(job_id):
+        fail("job_already_applied", f"Job {job_id}'s result is already applied, so it cannot be "
+             f"declined; nothing was recorded.", json_output=json_output, exit_code=3)
+    decline = decline_job_result(job, reason=reason, source="cli", now=datetime.now(timezone.utc))
+    if not already_declined:
+        save_job_plan(job)
+    if json_output:
+        emit_ok(job_id=job_id, reason=decline["reason"], source=decline["source"],
+                declined_at=decline["declined_at"], already_declined=already_declined)
+        return
+    said = "was already declined" if already_declined else "is declined"
+    print(f"The result of job {job_id} {said}: {decline['reason']}")
+    print("Nothing was applied, and the job no longer waits for its apply.")
+
+
 def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> None:
     """Record this export in the existing job evidence index (best effort).
 
@@ -1126,6 +1178,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         commit=getattr(args, "commit", None),
         commit_auto=bool(getattr(args, "commit_auto", False)),
         push=bool(getattr(args, "push", False)),
+        json_output=getattr(args, "json", False),
+    ),
+    "job.decline": lambda args: _cmd_job_decline(
+        args.job_id,
+        reason=getattr(args, "reason", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "job.evidence": lambda args: _cmd_job_evidence(

@@ -46,7 +46,8 @@ CLIENT_INTERFACE_VERSION = "1.1"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
-#: budget refusal of `job resume`, abandoning a mission, and this document's own command.
+#: budget refusal of `job resume`, declining a result, abandoning a mission, and this document's
+#: own command.
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "project.register",
     "do.run",
@@ -55,6 +56,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "job.run",
     "job.resume",
     "job.apply",
+    "job.decline",
     "change.proof",
     "job.evidence",
     "patch.hunks",
@@ -103,6 +105,10 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "invalid_argument", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
         "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
         "target_changed", "target_detached_head", "target_dirty",
+    ),
+    "job.decline": (
+        "ambiguous_job_id", "invalid_job_id", "job_already_applied", "job_not_declinable",
+        "job_not_found", "missing_argument",
     ),
     "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
     "job.evidence": ("job_not_found", "unsafe_task_id"),
@@ -172,6 +178,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "target_clean", "target_guard_ok", "target_repo", "task_summaries",
         "temporary_worktree_cleanup", "unexpected_source_files",
     ),
+    "job.decline": ("already_declined", "declined_at", "job_id", "matches", "reason", "source"),
     "change.proof": (
         "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
         "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
@@ -473,6 +480,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "file_readiness": {"path": {}, "kind": {}, "baseline_status": {}, "workspace_status": {}},
         "execution_config": EXECUTION_CONFIG_KEY_TREE,
     },
+    "job.decline": {},
     "change.proof": {
         "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
         "changes": {

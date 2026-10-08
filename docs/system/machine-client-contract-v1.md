@@ -69,7 +69,11 @@ whitespace is planned as text, never read as a file.
    lists them all — still carries every key of the apply's answer, and exits 1, or 3 when the
    job is absent or not ready to apply; flags that clash exit 2 with `invalid_argument` before
    the job is read. A preview, without `--approve` or with `--dry-run`, answers `ok` true and
-   exits 0, whatever it found.
+   exits 0, whatever it found. A client that does not want a completed job's result declines
+   it instead with `remedy job decline <job> --reason <text> --json`: nothing is applied, the
+   job no longer waits for its apply, and `remedy job ownership <job>` names the decline as the
+   operator's own act. A job that is not completed, or whose result already landed, is
+   refused with exit 3. A job of an abandoned mission no longer waits for its apply either.
 
 ### Commands
 
@@ -451,6 +455,22 @@ Keys under the answer keys: see below.
 - `modes_applied`: `*`
 - `task_summaries`: `applied_files`, `repair_rounds_allowed`, `repair_rounds_used`, `reviewer_verdict`, `run_id`, `status`, `task_id`, `test_passed`, `title`
 - `temporary_worktree_cleanup`: `cleanup_error`, `cleanup_status`, `temporary_registration_removed`, `temporary_worktree_removed`
+
+#### `remedy job decline`
+
+Command id: `job.decline`.
+Description: Decline a completed job's result under its mission, with your reason: nothing is applied, the job no longer waits for its apply, and the decline is kept on the job and named in its ownership record (F304).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | UUID of the job (under its mission) |
+| `--reason` | yes | yes | yes | no | Why you decline the result, in your own words; kept with the decline |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_already_applied`, `job_not_declinable`, `job_not_found`, `missing_argument`.
+Answer keys: `already_declined`, `declined_at`, `job_id`, `matches`, `reason`, `source`.
+Keys under the answer keys: none.
 
 #### `remedy change proof`
 

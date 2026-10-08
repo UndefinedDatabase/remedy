@@ -1319,6 +1319,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     ran = answer("job.run", ["job", "run", job_id], 0)
     answer("job.apply", ["job", "apply", job_id], 0)
     applied = answer("job.apply", ["job", "apply", job_id, "--approve"], 0)
+    # A result that landed cannot be declined (DECISION F304 D5).
+    refused = answer("job.decline", ["job", "decline", job_id, "--reason", "not needed"], 3)
+    assert refused["error"] == "job_already_applied"
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     exported = answer("job.evidence", ["job", "evidence", job_id], 0)
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
