@@ -418,6 +418,12 @@ def test_the_page_states_the_changes_route_and_the_value_query_key():
     assert "since=<value>" in page
 
 
+def test_the_page_states_the_supervisor_ports_setting():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "serve.api_port" in page
+    assert "REMEDY_SERVE_API_PORT" in page
+
+
 def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalog():
     """R-1187: a `remedy <group> <subcommand>` span above the generated marker is real.
 
