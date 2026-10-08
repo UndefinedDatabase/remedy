@@ -152,6 +152,8 @@ open, about the practice records an early test draft left in the data folder.
 
 ## Next
 
+Operator decision on Q10 recorded in decisions.md — apply it before other work.
+
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
    and stop.
 2. Then the Open PR Gate: there is no pull request for this branch yet, so it finds none to
