@@ -642,6 +642,46 @@ def _job_lock_key(job: str) -> str:
         return job
 
 
+def _client_job_refusal(client: Any, job: str) -> str | None:
+    """One sentence ending "; nothing was run" when JOB names a record that is not a job of one of
+    CLIENT's projects, else None (DECISION F253 D17 (1)).
+
+    The job is read as `_job_apply_argv` reads it. The keys its record answers to are its
+    `project_id` and, when `select_project` finds that project, its slug and id; a job of no
+    project has none, so it is outside every client's policy. A value that names no one job is
+    passed on, and the command refuses it.
+    """
+    from packages.orchestration.api_clients import client_lists_project
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    try:
+        plan = load_job_plan(lookup_job_id(job))
+    except JobIdError:
+        return None
+    if plan is None:
+        return None
+    project_id = str(plan.project_id or "")
+    keys = [project_id] if project_id else []
+    if project_id:
+        try:
+            project, _source = select_project(project_id, ".")
+        except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+            pass
+        else:
+            keys += [project.slug or "", str(project.id)]
+    if client_lists_project(client, keys):
+        return None
+    return (f"the client {client.name!r} may not act on job {job!r}, which is not a job of one of "
+            "its projects; nothing was run")
+
+
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
     """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not."""
     try:
@@ -679,7 +719,10 @@ def answer_public_api_post(
     """The (status, body, headers) this namespace answers a POST of `path` with `raw_body`.
 
     With a CLIENT (DECISION F253 D16 (5), (6)) an order outside its policy, and an apply whose
-    client may not approve, answer 403 `api_client_policy_refused` and run nothing.
+    client may not approve, answer 403 `api_client_policy_refused` and run nothing. So does a
+    decision, a decline or an apply for a job outside the client's projects, and a budget answer
+    above the client's ceilings (DECISION F253 D17): `_client_job_refusal` reads the job after the
+    body is checked and before the may-apply check.
 
     DECISION F253 D9. Matches POST routes as `answer_public_api_get` matches GET routes: a path no
     route matches answers 404, a path only a GET route matches answers 405. A bound segment that
@@ -741,6 +784,16 @@ def answer_public_api_post(
                     "api_command_failed",
                     f"the order for '{path}' could not be started; nothing runs"), {}
             return 202, build_ok(**order_record_payload(serve_paths(), record)), {}
+        if client is not None and "job" in segments:
+            refusal_text = _client_job_refusal(client, segments["job"])
+            if refusal_text is None and route.twin == "decision.resolve":
+                from packages.orchestration.api_clients import client_budget_answer_refusal
+                from packages.orchestration.decision_queue import is_budget_decision_id
+
+                if is_budget_decision_id(segments["decision"]):
+                    refusal_text = client_budget_answer_refusal(client, checked.get("answer", []))
+            if refusal_text is not None:
+                return 403, build_error("api_client_policy_refused", refusal_text), {}
         if client is not None and route.twin == "job.apply" and not client.may_apply:
             return 403, build_error(
                 "api_client_policy_refused",

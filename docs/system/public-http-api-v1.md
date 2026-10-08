@@ -42,8 +42,7 @@ holding no client. It is read again at every call, so an edit, a new client or a
 effect at the next call. A file that is missing, that cannot be read, that is not JSON, or that
 holds anything outside this shape counts as holding no client at all, and the server's own token
 keeps working. A client token reads every route the server's token reads and is accepted under
-`/api/v1` alone: the cockpit's other routes refuse it as they refuse a wrong token. Until the next
-slice, a client token answers decisions and declines results of any job, whatever its projects.
+`/api/v1` alone: the cockpit's other routes refuse it as they refuse a wrong token.
 
 ## The envelope and its refusals
 
@@ -90,7 +89,11 @@ command for a job at a time, so a second write for that job waits for the first.
 A client token (see "The token") is refused with 403 and `api_client_policy_refused` when an order
 names a project outside the client's projects, when an order's header does not name a
 `max-total-tokens:` or a `max-provider-calls:` the client has a limit for, or names a larger one,
-and when it asks to apply a result and the client may not approve one; nothing is run.
+and when it asks to apply a result and the client may not approve one; nothing is run. A client
+token may also answer a decision, decline a result or apply a job only for a job of one of its
+projects, and when it answers a budget decision it may not raise `max_total_tokens` or
+`max_provider_calls` above its own limits; otherwise the call is refused the same way and nothing
+is run.
 
 ## The ledger
 

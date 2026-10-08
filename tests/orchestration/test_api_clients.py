@@ -14,6 +14,8 @@ from packages.orchestration.api_clients import (
     API_CLIENTS_FILE_NAME,
     ApiClient,
     api_clients_path,
+    client_budget_answer_refusal,
+    client_lists_project,
     client_order_refusal,
     load_api_clients,
     match_api_client,
@@ -182,3 +184,34 @@ def test_cap_outside_a_ceiling_is_refused_naming_its_header_key(
 
 def test_no_ceiling_and_no_caps_is_inside() -> None:
     assert client_order_refusal(_client(), ("demo",), None, None) is None
+
+
+def test_a_client_lists_a_project_when_any_key_is_listed() -> None:
+    assert client_lists_project(_client(), ("other", "demo")) is True
+    assert client_lists_project(_client(), ("", "0000-id")) is True
+    assert client_lists_project(_client(), ("other", "9999-id")) is False
+    assert client_lists_project(_client(), ()) is False
+
+
+@pytest.mark.parametrize("item,limit", [
+    ("max_total_tokens=1001", "max_total_tokens"),
+    ("max_provider_calls=6", "max_provider_calls"),
+])
+def test_a_budget_answer_above_a_ceiling_is_refused_naming_its_limit(item: str, limit: str) -> None:
+    client = _client(max_total_tokens=1000, max_provider_calls=5)
+    sentence = client_budget_answer_refusal(client, [item])
+    assert sentence is not None
+    assert limit in sentence and "alpha" in sentence and sentence.endswith("; nothing was run")
+
+
+@pytest.mark.parametrize("item", [
+    "max_total_tokens=1000", "max_provider_calls=5", "max_cost_usd=99",
+    "deadline=2099-01-01T00:00:00Z", "max_total_tokens=abc", "no-equals-sign",
+])
+def test_a_budget_answer_inside_the_ceilings_or_outside_the_policy_is_passed_on(item: str) -> None:
+    client = _client(max_total_tokens=1000, max_provider_calls=5)
+    assert client_budget_answer_refusal(client, [item]) is None
+
+
+def test_a_budget_answer_is_not_held_to_a_ceiling_the_client_does_not_have() -> None:
+    assert client_budget_answer_refusal(_client(), ["max_total_tokens=999999"]) is None
