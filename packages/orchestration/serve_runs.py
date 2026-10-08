@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.serve_paths import ServePaths
+from packages.orchestration.serve_paths import ORDER_KEYS_NAME, ServePaths
 
 #: The environment variable `apps/cli/serve_client.py` reads: a run the supervisor
 #: starts runs direct, and never sends a command back to the supervisor.
@@ -371,6 +371,23 @@ _ORDER_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 #: (DECISION F253 D13 (2)).
 ORDER_RUN_ALWAYS_OPTIONS = ("--json", "--no-ui", "--yes")
 
+#: An order key a client chooses: one to 64 letters, digits, `.`, `_` or `-`, beginning with a
+#: letter or a digit; read with `fullmatch`, so it can never name a path outside `order-keys/`
+#: (DECISION F253 D22 (2)).
+ORDER_KEY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+
+
+def keyed_order_file_path(paths: ServePaths, order_key: str) -> Path:
+    """The file of the orders sent with ORDER_KEY: `order-keys/<key>.md` in the `serve` folder.
+
+    DECISION F253 D22 (3). It lies outside `orders/`, and holds the text of the last order sent
+    with that key. Raises `ValueError` when ORDER_KEY is not what `ORDER_KEY_RE` fully matches,
+    so no key can name a path of its own choosing.
+    """
+    if ORDER_KEY_RE.fullmatch(order_key) is None:
+        raise ValueError(f"not an order key: {order_key!r}")
+    return paths.root / ORDER_KEYS_NAME / f"{order_key}.md"
+
 
 @dataclass(frozen=True)
 class OrderRecord:
@@ -547,7 +564,8 @@ class OrderLauncher:
         _atomic_write_json(self._paths.orders_dir / record.order_id / "order.json",
                           record.to_json())
 
-    def start(self, order_text: str, options: Sequence[str]) -> OrderRecord:
+    def start(self, order_text: str, options: Sequence[str],
+              order_key: str | None = None) -> OrderRecord:
         """Write ORDER_TEXT to a new order's own folder and run it there; return its record.
 
         OPTIONS are the caller's own flags (`--no-llm`, `--builder-provider=fake`, ...); this
@@ -555,13 +573,26 @@ class OrderLauncher:
         child cannot be started, `subprocess.Popen` raises `OSError`: the order's folder is
         removed whole and the error is raised again, so no half-made order is left on disk
         (R-1201).
+
+        With ORDER_KEY, ORDER_TEXT is written to the key's own file
+        (`keyed_order_file_path`, replacing what it held) and the order's `order.md` is a
+        symbolic link to that file, so the child, still run from its own folder with
+        `-- order.md`, records the key's file as its order file and `remedy do`'s own refusal
+        of an order file a running mission records applies to it (DECISION F253 D22 (3), (5)).
+        Without it, `order.md` is a plain file, as before.
         """
         order_id = secrets.token_hex(8)
         self._paths.orders_dir.mkdir(parents=True, exist_ok=True)
         order_dir = self._paths.orders_dir / order_id
         order_dir.mkdir(mode=0o700)
         order_md = order_dir / "order.md"
-        order_md.write_text(order_text, encoding="utf-8")
+        if order_key is None:
+            order_md.write_text(order_text, encoding="utf-8")
+        else:
+            key_file = keyed_order_file_path(self._paths, order_key)
+            key_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            key_file.write_text(order_text, encoding="utf-8")
+            os.symlink(key_file.resolve(), order_md)
         out_log = order_dir / "out.log"
         err_log = order_dir / "err.log"
         env = child_environment(self._paths)

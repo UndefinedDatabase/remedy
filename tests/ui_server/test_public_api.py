@@ -807,7 +807,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.10"
+    assert public_api.PUBLIC_API_VERSION == "1.11"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1103,7 +1103,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.10"
+    assert public_api.PUBLIC_API_VERSION == "1.11"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1194,7 +1194,7 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
     assert route.body == (
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
-        ("reviewer_provider", "string"), ("deadline", "string"))
+        ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
@@ -1211,8 +1211,8 @@ def test_the_order_create_routes_body_matches_do_runs_own_flags():
     value_options = {a.name for a in do_run.args if a.is_option and not a.is_flag}
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
     for key, kind in route.body:
-        if key == "order":
-            continue
+        if key in ("order", "order_key"):
+            continue  # neither is an option of `remedy do` (DECISION F253 D22)
         if kind == "flag":
             assert "--" + key.replace("_", "-") in flag_options, key
         else:
@@ -1287,6 +1287,108 @@ def test_an_order_create_post_without_the_order_key_is_400_and_starts_nothing():
     status, answer, _headers = _post_order({}, start)
     assert (status, answer["error"]) == (400, "api_body_invalid")
     assert calls == []
+
+
+def _keyed_order_starter(record: SR.OrderRecord):
+    """Like `_recording_order_starter`, but takes `order_key` as a keyword and records it."""
+    calls: list[tuple[str, list[str], str | None]] = []
+
+    def start(order_text: str, options: list[str], order_key: str | None = None):
+        calls.append((order_text, list(options), order_key))
+        return record
+
+    return calls, start
+
+
+def _stand_in_running_mission(monkeypatch, mission):
+    """Replace `running_mission_for_order_file` (the route imports it at each call) with a
+    stand-in that records the path it is asked and returns MISSION."""
+    from packages.orchestration import mission_state
+
+    asked: list[str] = []
+
+    def running_mission_for_order_file(source_path, root=None):
+        asked.append(source_path)
+        return mission
+
+    monkeypatch.setattr(mission_state, "running_mission_for_order_file",
+                        running_mission_for_order_file)
+    return asked
+
+
+@pytest.mark.parametrize("bad_key", ["", ".x", "a/b", "k" * 65])
+def test_an_order_create_post_with_a_malformed_order_key_is_400_and_starts_nothing(
+        registered_project_slug, bad_key):
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": bad_key}, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid"), answer
+    assert calls == []
+
+
+def test_an_order_with_a_key_that_a_running_mission_records_is_409_and_starts_nothing(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import keyed_order_file_path
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": "k-1"}, start)
+    assert status == 409, answer
+    assert answer["error"] == "order_already_running"
+    assert answer["mission_id"] == "m-running"
+    assert "m-running" in answer["message"]
+    assert calls == []
+    assert asked == [str(keyed_order_file_path(serve_paths(), "k-1").resolve())]
+
+
+def test_an_order_with_a_key_and_new_mission_true_does_not_ask_and_starts(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order(
+        {"order": text, "order_key": "k-1", "new_mission": True}, start)
+    assert status == 202, answer
+    assert asked == []
+    assert calls == [(text, ["--new-mission"], "k-1")]
+
+
+def test_an_order_with_a_key_that_no_running_mission_records_is_202_and_starts_with_the_key(
+        registered_project_slug, monkeypatch):
+    asked = _stand_in_running_mission(monkeypatch, None)
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text, "order_key": "k-1"}, start)
+    assert status == 202, answer
+    assert len(asked) == 1
+    assert calls == [(text, [], "k-1")]
+
+
+def test_an_order_without_a_key_does_not_ask_and_the_starter_gets_two_positional_arguments(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    asked = _stand_in_running_mission(
+        monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    seen: list[tuple[tuple, dict]] = []
+
+    def start(*args, **kwargs):
+        seen.append((args, kwargs))
+        return _fixture_order_record()
+
+    text = _order_text(registered_project_slug)
+    status, answer, _headers = _post_order({"order": text}, start)
+    assert status == 202, answer
+    assert asked == []
+    assert seen == [((text, []), {})]
 
 
 def test_an_order_create_post_with_a_broken_header_is_400_and_starts_nothing():
@@ -2041,7 +2143,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.10"
+    assert public_api.PUBLIC_API_VERSION == "1.11"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):

@@ -30,6 +30,9 @@ API_PORT_NAME = "api.port"
 #: One folder per order the supervisor starts as a record of its own (S5a, DECISION F253 D13):
 #: `orders/<order id>/` holds `order.md`, its record `order.json`, and `out.log`/`err.log`.
 ORDERS_NAME = "orders"
+#: The folder of the files of orders sent with a key (DECISION F253 D22): `order-keys/<key>.md`
+#: holds the text of the last order sent with that key, outside `orders/`.
+ORDER_KEYS_NAME = "order-keys"
 
 #: The longest socket path both Linux and macOS accept: 104 bytes less the NUL.
 SOCKET_PATH_MAX_BYTES = 103
