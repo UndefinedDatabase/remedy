@@ -119,10 +119,11 @@ def _tcp_answers(port: int) -> bool:
 
 
 def _api_request(port: int, method: str, path: str,
-                  headers: dict[str, str] | None = None) -> tuple[int, dict]:
+                  headers: dict[str, str] | None = None,
+                  body: bytes | None = None) -> tuple[int, dict]:
     conn = HTTPConnection("127.0.0.1", port, timeout=10)
     try:
-        conn.request(method, path, headers=headers or {})
+        conn.request(method, path, body=body, headers=headers or {})
         resp = conn.getresponse()
         raw = resp.read()
         status = resp.status
@@ -465,3 +466,110 @@ def test_run_supervisor_without_the_keyword_reads_serve_api_port_from_configurat
         assert isinstance(supervisor.state.api_port, int) and supervisor.state.api_port > 0
     finally:
         supervisor.close()
+
+
+# -- S4a: a write under /api/v1 runs its twin command as a child (DECISION F253 D9) ----------
+
+
+def _job_with_open_decision() -> tuple[str, str]:
+    """A saved job holding one open task decision, asked with the same question as any other."""
+    from datetime import datetime, timezone
+
+    from packages.orchestration.escalation import enqueue_task_decision
+
+    job = JobPlan(job_title="serve-decision-job", user_prompt="Serve decision prompt",
+                  tasks=[TaskEntry(title="Pick a database")])
+    record = enqueue_task_decision(job, task_id=job.tasks[0].task_id,
+                                   question="Which database?", options=("postgres", "sqlite"),
+                                   now=datetime.now(timezone.utc))
+    save_job_plan(job)
+    return str(job.job_id), record["decision_id"]
+
+
+def _stored_decision(job_id: str, decision_id: str) -> dict:
+    from packages.orchestration.escalation import find_task_decision
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    return find_task_decision(require_job_plan(job_id), decision_id)
+
+
+def _resolve_command_envelope(root: Path, job_id: str, decision_id: str) -> dict:
+    """What `remedy decision resolve <job> <decision> --reason Postgres --json` prints, run as a
+    subprocess against ROOT; a refusal exits nonzero and still prints its envelope."""
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root), SR.DIRECT_ENV: "1"}
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "decision", "resolve", job_id, decision_id,
+         "--reason", "Postgres", "--json"],
+        cwd=str(REPO), env=env, capture_output=True, text=True, timeout=60)
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+def _post_reason(port: int, token: str, job_id: str, decision_id: str):
+    return _api_request(port, "POST", f"/api/v1/jobs/{job_id}/decisions/{decision_id}",
+                        headers=_bearer(token), body=json.dumps({"reason": "Postgres"}).encode())
+
+
+def test_a_post_on_the_api_port_answers_what_the_resolve_command_prints(root, running_with_api):
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    posted_job, posted_decision = _job_with_open_decision()
+    run_job, run_decision = _job_with_open_decision()
+    open_job, open_decision = _job_with_open_decision()
+
+    status, body = _post_reason(port, token, posted_job, posted_decision)
+    assert status == 200, body
+    command = _resolve_command_envelope(root, run_job, run_decision)
+    assert (body["job_id"], body["decision_id"]) == (posted_job, posted_decision)
+    assert (command["job_id"], command["decision_id"]) == (run_job, run_decision)
+    aside = ("job_id", "decision_id", "next_command")
+    assert ({k: v for k, v in body.items() if k not in aside}
+            == {k: v for k, v in command.items() if k not in aside})
+    assert _stored_decision(posted_job, posted_decision)["answer"] == "Postgres"
+
+    status, refused = _post_reason(port, token, posted_job, posted_decision)
+    assert (status, refused["error"]) == (409, "decision_already_answered")
+    again = _resolve_command_envelope(root, run_job, run_decision)
+    assert again["error"] == "decision_already_answered"
+    assert refused["message"].replace(posted_decision, "<decision>") == \
+        again["message"].replace(run_decision, "<decision>")
+
+    status, unknown = _api_request(
+        port, "POST", f"/api/v1/jobs/not-a-job/decisions/{open_decision}",
+        headers=_bearer(token), body=b"{}")
+    assert (status, unknown["error"]) == (404, "invalid_job_id")
+    assert unknown == _resolve_command_envelope(root, "not-a-job", open_decision)
+
+    status, denied = _api_request(
+        port, "POST", f"/api/v1/jobs/{open_job}/decisions/{open_decision}",
+        body=json.dumps({"reason": "Postgres"}).encode())
+    assert (status, denied["error"]) == (401, "api_token_invalid")
+    assert _stored_decision(open_job, open_decision)["status"] == "open"
+
+    ledger = Path(root) / "api" / "calls.jsonl"
+    posts = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()
+             if json.loads(line)["method"] == "POST"]
+    assert [(r["path"], r["status"]) for r in posts] == [
+        (f"/api/v1/jobs/{posted_job}/decisions/{posted_decision}", 200),
+        (f"/api/v1/jobs/{posted_job}/decisions/{posted_decision}", 409),
+        (f"/api/v1/jobs/not-a-job/decisions/{open_decision}", 404),
+        (f"/api/v1/jobs/{open_job}/decisions/{open_decision}", 401),
+    ]
+
+
+def test_the_same_post_on_the_supervisors_socket_answers_200_too(root, running):
+    from packages.orchestration.serve_daemon import UnixHTTPConnection
+
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    job_id, decision_id = _job_with_open_decision()
+    conn = UnixHTTPConnection(serve_paths(root).socket, timeout=30)
+    try:
+        conn.request("POST", f"/api/v1/jobs/{job_id}/decisions/{decision_id}",
+                     body=json.dumps({"reason": "Postgres"}).encode(), headers=_bearer(token))
+        response = conn.getresponse()
+        body = json.loads(response.read())
+    finally:
+        conn.close()
+    assert response.status == 200, body
+    assert (body["job_id"], body["decision_id"], body["outcome"]) == (
+        job_id, decision_id, "answered")
+    assert _stored_decision(job_id, decision_id)["answer"] == "Postgres"

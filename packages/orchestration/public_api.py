@@ -19,12 +19,18 @@ the query keys it declares: each of `query` a `true`/`false` flag, each of `quer
 non-empty value given once; anything else answers 400 `api_query_invalid` (DECISION F253 D2 (2),
 D5 (1)).
 
+A `POST` route is a write (DECISION F253 D9): it declares the keys of its JSON body in `body` and
+a `refusal_default` status, and `answer_public_api_post` answers it with the envelope of the twin
+command, which the caller's runner has run as a child process.
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,7 +41,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.3"
+PUBLIC_API_VERSION = "1.4"
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,12 @@ class PublicApiRoute:
     #: The refusal tokens this route shares with its twin, each with the HTTP status it answers
     #: with (DECISION F253 D3 (2)); `()` for a route that never refuses.
     refusals: tuple[tuple[str, int], ...] = ()
+    #: The keys of a write route's JSON body, each with its kind: `"string"`, or `"strings"` (a
+    #: list of non-empty strings) (DECISION F253 D9 (3)); `()` for a route that takes no body.
+    body: tuple[tuple[str, str], ...] = ()
+    #: The HTTP status of a refusal token `refusals` does not list, or None when every refusal
+    #: must be listed (DECISION F253 D9 (4)).
+    refusal_default: int | None = None
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -108,6 +120,33 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "decisions answered, the missions and the applies, with the cursor for the next "
             "read, as `remedy client changes --since <cursor> --json` prints it; without "
             "`since` only a cursor is given."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/decisions/{decision}",
+        twin="decision.resolve",
+        body=(("reason", "string"), ("answer", "strings")),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("decision_not_found", 404),
+            ("stop_reason_not_found", 404),
+            ("proposed_task_not_found", 404),
+            ("ambiguous_job_id", 400),
+            ("invalid_argument", 400),
+            ("missing_argument", 400),
+            ("option_not_applicable", 400),
+            ("answer_parse_error", 400),
+            ("invalid_budget", 400),
+            ("decision_not_resolvable", 400),
+        ),
+        description=(
+            "Answers one decision of a job, as `remedy decision resolve <job> <decision> --json` "
+            "does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id "
+            "prefix is accepted, as on the command line, and `--as-mission` is not offered over "
+            "HTTP."
         ),
     ),
 )
@@ -182,12 +221,13 @@ def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
 
 
 def public_api_method_refusal() -> tuple[int, dict[str, Any]]:
-    """The 405 a caller gets for `POST`, `PUT` or `DELETE` under this namespace: GET only."""
+    """The 405 a caller gets for a method this server does not answer under this namespace."""
     from apps.cli.json_envelope import build_error
 
     return 405, build_error(
         "api_method_not_allowed",
-        "this namespace answers GET only",
+        "this server answers only GET under /api/v1; writes are answered by the supervisor "
+        "that `remedy serve start` starts",
     )
 
 
@@ -345,6 +385,98 @@ def answer_public_api_get(
     ), {}
 
 
+def _decision_resolve_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy decision resolve` is run with: each option as `--name=value`,
+    then `--json`, then `--` so that no value is read as an option (DECISION F253 D9 (1))."""
+    options = [f"--reason={body['reason']}"] if "reason" in body else []
+    options += [f"--answer={answer}" for answer in body.get("answer", [])]
+    return ["decision", "resolve", *options, "--json", "--", segments["job"], segments["decision"]]
+
+
+#: Twin command id of a write route to the function that builds the argument list its command
+#: runs with, from the route's bound path segments and its checked body (DECISION F253 D9).
+_TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
+    "decision.resolve": _decision_resolve_argv,
+}
+
+
+def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
+    """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not."""
+    try:
+        parsed = json.loads(raw_body.decode("utf-8")) if raw_body.strip() else {}
+    except (UnicodeDecodeError, ValueError):
+        return None, "the body is not valid JSON"
+    if not isinstance(parsed, dict):
+        return None, "the body must be a JSON object"
+    kinds = dict(route.body)
+    for key, value in parsed.items():
+        if key not in kinds:
+            takes = ", ".join(f"'{k}'" for k in kinds) or "none"
+            return None, f"'{key}' is not a key of this route's body; it takes {takes}"
+        if kinds[key] == "string":
+            valid = isinstance(value, str)
+            wanted = "a string"
+        else:
+            valid = (isinstance(value, list) and all(isinstance(item, str) and item
+                                                     for item in value))
+            wanted = "a list of non-empty strings"
+        if not valid:
+            return None, f"'{key}' must be {wanted}"
+    return parsed, ""
+
+
+def answer_public_api_post(
+    path: str, raw_body: bytes,
+    run_command: Callable[[str, list[str]], dict[str, Any] | None],
+) -> tuple[int, dict[str, Any], dict[str, str]]:
+    """The (status, body, headers) this namespace answers a POST of `path` with `raw_body`.
+
+    DECISION F253 D9. Matches POST routes as `answer_public_api_get` matches GET routes: a path no
+    route matches answers 404, a path only a GET route matches answers 405. A bound segment that
+    begins with `-` answers 400 `api_path_invalid`, and a body that is not a JSON object holding
+    only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; neither
+    starts a command. Otherwise RUN_COMMAND is called with the job segment and the argument list
+    the twin's builder makes, and the envelope it returns is the answer: None answers 500
+    `api_command_failed`, an `ok` envelope 200, a refusal the status `refusals` declares for its
+    token or else the route's `refusal_default`.
+    """
+    from apps.cli.json_envelope import build_error
+
+    for route in PUBLIC_API_ROUTES:
+        if route.method != "POST":
+            continue
+        segments = _match_route_path(route.path, path)
+        if segments is None:
+            continue
+        for name, value in segments.items():
+            if value.startswith("-"):
+                return 400, build_error(
+                    "api_path_invalid",
+                    f"the {name} in '{path}' must not begin with '-'"), {}
+        checked, why = _body_refusal(route, raw_body)
+        if checked is None:
+            return 400, build_error("api_body_invalid", why), {}
+        envelope = run_command(segments["job"], _TWIN_ARGV[route.twin](segments, checked))
+        if envelope is None:
+            return 500, build_error(
+                "api_command_failed",
+                f"the command for '{path}' printed no answer, or took longer than allowed"), {}
+        if envelope.get("ok"):
+            status = 200
+        else:
+            status = dict(route.refusals).get(envelope.get("error", ""),
+                                              route.refusal_default or 500)
+        headers = {"Deprecation": "true"} if route.deprecated else {}
+        return status, envelope, headers
+
+    if any(_match_route_path(route.path, path) is not None for route in PUBLIC_API_ROUTES):
+        return (*public_api_method_refusal(), {})
+    return 404, build_error(
+        "api_route_not_found",
+        f"no route answers '{path}'; docs/system/public-http-api-v1.md lists every route",
+    ), {}
+
+
 #: The call ledger's own file name, under the `api` data-root class (DECISION F253 D2 (1)).
 PUBLIC_API_LEDGER_NAME = "calls.jsonl"
 
@@ -412,7 +544,7 @@ def render_public_api_markdown() -> str:
         "",
         f"API version: `{PUBLIC_API_VERSION}`.",
         "",
-        "| Method | Path | Query | Answers as | Refusals | Deprecated | Description |",
+        "| Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |",
         "|---|---|---|---|---|---|---|",
     ]
     for route in PUBLIC_API_ROUTES:
@@ -420,6 +552,7 @@ def render_public_api_markdown() -> str:
         query_cell = ", ".join(
             [f"`{key}`" for key in route.query]
             + [f"`{key}=<value>`" for key in route.query_values]
+            + [f"`{key}` ({kind})" for key, kind in route.body]
         ) or "—"
         command_line = _twin_command_line(route.twin)
         answers_as = (
@@ -427,7 +560,8 @@ def render_public_api_markdown() -> str:
             else f"`{command_line}`"
         )
         refusals_cell = ", ".join(
-            f"`{token}` {status}" for token, status in route.refusals
+            [f"`{token}` {status}" for token, status in route.refusals]
+            + ([f"any other {route.refusal_default}"] if route.refusal_default else [])
         ) or "—"
         lines.append(
             f"| `{route.method}` | `{route.path}` | {query_cell} | {answers_as} "

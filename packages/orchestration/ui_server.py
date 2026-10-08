@@ -2967,6 +2967,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: command line sends with those three commands is recorded as given, as its
     #: `--source` option is when the command runs direct (DECISION F200 D3).
     client_names_source: bool = False
+    #: The `CommandRunner` that answers a write under `/api/v1` (DECISION F253 D9): set only
+    #: on the handlers the `remedy serve start` supervisor binds, so the cockpit's own server
+    #: answers every such write 405.
+    command_runner: Any = None
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -3249,7 +3253,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # F253 R-1188: the public HTTP API's own namespace decides its own refusal,
         # in its own envelope, BEFORE the commands door is even considered.
         if is_public_api_path(path):
-            self._send_public_api_refused_method("POST", path)
+            if self.command_runner is not None:   # DECISION F253 D9
+                self._send_public_api_post(path, parsed.query)
+            else:
+                self._send_public_api_refused_method("POST", path)
             return
         parts = path.split("/")
         if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"
@@ -4360,6 +4367,43 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         else:
             status, body, headers = answer_public_api_get(path, query)
         self._send_public_api_answer("GET", path, status, body, headers)
+
+    def _send_public_api_post(self, path: str, query: str) -> None:
+        """Answer a POST under the public HTTP API namespace through `command_runner` (DECISION
+        F253 D9).
+
+        The token is decided first, before the body is read, so an unauthenticated caller
+        starts no child and learns nothing; a body above `COMMAND_REQUEST_MAX_BYTES` is refused
+        without being read, and a query string is refused, as no write route takes one.
+        """
+        from apps.cli.json_envelope import build_error
+        from packages.orchestration.public_api import (
+            answer_public_api_post,
+            public_api_token_refusal,
+        )
+
+        headers: dict[str, str] = {}
+        if not self._bearer_token_accepted():
+            status, body = public_api_token_refusal()
+        else:
+            declared = self.headers.get("Content-Length") or "0"
+            try:
+                length = int(declared)
+            except ValueError:
+                length = -1
+            if length < 0 or length > COMMAND_REQUEST_MAX_BYTES:
+                status, body = 400, build_error(
+                    "api_body_invalid",
+                    f"the body must be at most {COMMAND_REQUEST_MAX_BYTES} bytes, "
+                    "given by a Content-Length")
+            elif query:
+                status, body = 400, build_error(
+                    "api_query_invalid", f"'{path}' accepts no query string")
+            else:
+                raw_body = self.rfile.read(length) if length else b""
+                status, body, headers = answer_public_api_post(
+                    path, raw_body, self.command_runner.run)
+        self._send_public_api_answer("POST", path, status, body, headers)
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
         """Answer POST, PUT or DELETE under the public HTTP API namespace (R-1188, DECISION

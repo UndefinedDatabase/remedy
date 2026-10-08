@@ -33,7 +33,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from packages.orchestration.serve_paths import ServePaths, serve_paths, socket_path_problem
-from packages.orchestration.serve_runs import RunLauncher, RunRefused, job_run_argv
+from packages.orchestration.serve_runs import CommandRunner, RunLauncher, RunRefused, job_run_argv
 
 #: `run_supervisor`'s own sentinel for `api_port`, distinguishing "the caller passed no
 #: argument, so read `serve.api_port` from the configuration" from "the caller explicitly
@@ -95,11 +95,13 @@ class UnixHTTPConnection(HTTPConnection):
         self.sock = sock
 
 
-def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> type:
+def socket_handler_class(token: str, launcher: RunLauncher | None = None,
+                         runner: CommandRunner | None = None) -> type:
     """The cockpit's request handler, bound for the supervisor's socket.
 
     With a LAUNCHER it also accepts `job.run` and starts the job's run through it;
-    every other command takes the cockpit door's own path.
+    every other command takes the cockpit door's own path. With a RUNNER it also
+    answers a write under `/api/v1` through it (DECISION F253 D9).
     """
     from packages.orchestration.ui_server import (
         COMMAND_EFFECT_FAILED_MESSAGE,
@@ -115,6 +117,7 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> typ
         effect_source = SOCKET_EFFECT_SOURCE
         client_names_source = True
         run_launcher = launcher
+        command_runner = runner
 
         def _command_is_ui_exposed(self, command_id: str) -> bool:
             if command_id == JOB_RUN_COMMAND_ID:
@@ -140,10 +143,10 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> typ
     return _SocketHandler
 
 
-def public_api_handler_class(token: str) -> type:
+def public_api_handler_class(token: str, runner: CommandRunner | None = None) -> type:
     """The handler bound to the supervisor's public HTTP API listener (S6a, DECISION F253 D6).
 
-    A subclass of `socket_handler_class(token)` with no run launcher. Each of `do_GET`,
+    A subclass of `socket_handler_class(token, None, runner)` with no run launcher. Each of `do_GET`,
     `do_POST`, `do_PUT` and `do_DELETE` reads the path the way `do_POST` reads it, and passes
     a path `is_public_api_path` accepts to the inherited method, which answers it exactly as
     the socket does. Every other path, for every method, answers 404 `api_route_not_found`
@@ -153,7 +156,7 @@ def public_api_handler_class(token: str) -> type:
     from apps.cli.json_envelope import build_error
     from packages.orchestration.public_api import PUBLIC_API_PREFIX, is_public_api_path
 
-    base = socket_handler_class(token)
+    base = socket_handler_class(token, None, runner)
 
     def _not_served(handler: Any, path: str) -> None:
         handler._send_json(404, build_error(
@@ -310,7 +313,8 @@ def run_supervisor(
     _write_private(paths.token_file, token)
     stop = stop if stop is not None else threading.Event()
     launcher = RunLauncher(paths, argv_for=run_argv)
-    server = _SocketServer(str(paths.socket), socket_handler_class(token, launcher))
+    runner = CommandRunner(paths)
+    server = _SocketServer(str(paths.socket), socket_handler_class(token, launcher, runner))
     if api_port is _UNSET_API_PORT:
         from packages.orchestration.config import get_config
         resolved_api_port = get_config().get("serve.api_port")
@@ -325,7 +329,7 @@ def run_supervisor(
         if resolved_api_port is not None:
             try:
                 api_server = ThreadingHTTPServer(
-                    ("127.0.0.1", resolved_api_port), public_api_handler_class(token))
+                    ("127.0.0.1", resolved_api_port), public_api_handler_class(token, runner))
             except OSError as exc:
                 raise ServeError(
                     "serve_api_port_unavailable",
