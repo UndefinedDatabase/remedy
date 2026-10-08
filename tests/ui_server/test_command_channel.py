@@ -1439,8 +1439,12 @@ class TestCommandChannelDoor:
         """Every concrete GET path this job exposes, ready to be POSTed at.
 
         The structural routes are spelled out here for the reason the docstring
-        above gives: there is no literal to derive them from.
+        above gives: there is no literal to derive them from. The public HTTP API's
+        routes come from its own registry, `PUBLIC_API_ROUTES`, rather than from a
+        literal or an endpoint dict here, so a route added there is walked for free.
         """
+        from packages.orchestration.public_api import PUBLIC_API_ROUTES
+
         _, endpoints = self._do_get_route_facts()
         paths = ["/", "/api/state", "/api/layers", "/api/projects", "/assets/index.js"]
         paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
@@ -1457,6 +1461,7 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/artifacts/file",
             "/api/projects/any-project/summary",
         ]
+        paths += [route.path for route in PUBLIC_API_ROUTES]
         return paths
 
     def test_the_walk_knows_every_route_the_source_dispatches(self):
