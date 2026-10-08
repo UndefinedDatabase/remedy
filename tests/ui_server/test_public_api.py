@@ -26,6 +26,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration import public_api
+from packages.orchestration import serve_runs as SR
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
 from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
@@ -48,6 +49,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/orders/{order}"):
         "test_the_order_poll_route_is_pinned_with_its_statuses",
+    ("POST", "/api/v1/orders"):
+        "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
 }
 
 
@@ -337,7 +340,8 @@ def test_every_route_is_well_formed():
         assert route.path.startswith(public_api.PUBLIC_API_PREFIX + "/")
         assert route.method in ("GET", "POST")
         assert bool(route.body) == (route.method == "POST")
-        assert (route.refusal_default is not None) == (route.method == "POST")
+        assert (route.refusal_default is not None) == (
+            route.method == "POST" and not route.starts_order)
         entry = get_command(route.twin)  # raises KeyError if not a catalog command
         assert route.twin in CLIENT_OPERATION_IDS
         assert not public_api.command_is_excluded(route.twin)
@@ -358,6 +362,10 @@ def test_every_route_is_well_formed():
         flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
         for key, kind in route.body:
             assert kind in ("string", "strings", "flag")
+            # A `starts_order` route's body maps to `remedy do run`'s own flags, not its twin
+            # `client.order`'s (which takes none): checked by its own dedicated test instead.
+            if route.starts_order:
+                continue
             if kind == "flag":
                 assert "--" + key.replace("_", "-") in flag_options, (route.path, key)
             else:
@@ -1116,3 +1124,202 @@ def test_the_order_poll_route_rejects_a_path_shaped_id(tcp_server):
         tcp_server, "GET", "/api/v1/orders/..%2Fx", headers=_bearer(SERVER_TOKEN))
     assert status == 404, body
     assert body["error"] == "order_not_found"
+
+
+# -- the write route that creates and starts an order (S5b, DECISION F253 D14) --
+
+ORDER_CREATE_PATH = "/api/v1/orders"
+
+
+def _registered_project_slug(tmp_path: Path) -> str:
+    """The slug of a project registered on the active data root, backed by a fresh git repo."""
+    from packages.orchestration.project_registry import register_project_repo
+
+    repo = tmp_path / "order-route-repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    return register_project_repo("order-route-repo", repo).slug
+
+
+@pytest.fixture
+def registered_project_slug(tmp_path):
+    return _registered_project_slug(tmp_path)
+
+
+def _order_text(slug: str) -> str:
+    return f"---\nproject: {slug}\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n"
+
+
+def _fixture_order_record(**overrides) -> SR.OrderRecord:
+    """An `OrderRecord` whose `ended_at` is already set, so `order_state` never touches `/proc`
+    at all — the mocked tests below only need a deterministic answer, not a live process."""
+    base = dict(
+        order_id="abc0123456789def", pid=1, started_at="2026-01-01T00:00:00Z",
+        order_file="/data/orders/abc0123456789def/order.md",
+        out_log="/data/orders/abc0123456789def/out.log",
+        err_log="/data/orders/abc0123456789def/err.log",
+        exit_code=None, ended_at="2026-01-01T00:00:05Z")
+    base.update(overrides)
+    return SR.OrderRecord(**base)
+
+
+def _recording_order_starter(record: SR.OrderRecord):
+    """A stand-in order starter that records `(order_text, options)` and returns RECORD."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def start(order_text: str, options: list[str]):
+        calls.append((order_text, list(options)))
+        return record
+
+    return calls, start
+
+
+def _post_order(body: object, start) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    _run_calls, run = _recording_runner()
+    return public_api.answer_public_api_post(ORDER_CREATE_PATH, raw, run, start)
+
+
+def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
+    assert (route.method, route.twin) == ("POST", "client.order")
+    assert route.body == (
+        ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
+        ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
+        ("reviewer_provider", "string"), ("deadline", "string"))
+    assert route.refusals == ()
+    assert route.refusal_default is None
+    assert route.starts_order is True
+    assert "`api_order_project_unknown`" in route.description
+
+
+def test_the_order_create_routes_body_matches_do_runs_own_flags():
+    """`route.body`'s twin is `client.order`, which takes none of these; its flags and strings
+    are checked against `do.run`'s own instead (DECISION F253 D14 (1))."""
+    from apps.cli.command_catalog import get_command
+
+    do_run = get_command("do.run")
+    flag_options = {a.name for a in do_run.args if a.is_option and a.is_flag}
+    value_options = {a.name for a in do_run.args if a.is_option and not a.is_flag}
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_CREATE_PATH)
+    for key, kind in route.body:
+        if key == "order":
+            continue
+        if kind == "flag":
+            assert "--" + key.replace("_", "-") in flag_options, key
+        else:
+            assert "--" + key.replace("_", "-") in value_options, key
+
+
+@pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
+def test_each_order_create_flag_set_true_passes_its_option(registered_project_slug, flag):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, flag: True}, start)
+    assert status == 202
+    assert calls == [(text, ["--" + flag.replace("_", "-")])]
+
+
+@pytest.mark.parametrize("flag", ["no_llm", "new_mission", "force_job", "force_mission"])
+def test_each_order_create_flag_set_false_passes_nothing(registered_project_slug, flag):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, flag: False}, start)
+    assert status == 202
+    assert calls == [(text, [])]
+
+
+@pytest.mark.parametrize("key, flag_name", [
+    ("builder_provider", "--builder-provider"),
+    ("reviewer_provider", "--reviewer-provider"),
+    ("deadline", "--deadline"),
+])
+def test_each_order_create_string_passes_its_value(registered_project_slug, key, flag_name):
+    text = _order_text(registered_project_slug)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text, key: "value-x"}, start)
+    assert status == 202
+    assert calls == [(text, [f"{flag_name}=value-x"])]
+
+
+def test_an_order_create_post_sends_the_order_text_to_the_starter_byte_for_byte(
+        registered_project_slug):
+    text = (f"---\nproject: {registered_project_slug}\nmax-cost-usd: 1\n---\n"
+           "Unicode: café ☃, and a trailing blank line.\n\n")
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, _body, _headers = _post_order({"order": text}, start)
+    assert status == 202
+    assert calls == [(text, [])]
+
+
+def test_an_order_create_post_answers_202_with_the_starters_record(
+        tmp_path, registered_project_slug):
+    out_log = tmp_path / "out.log"
+    out_log.write_text('{"ok": true, "mission_id": "m-fixture"}\n', encoding="utf-8")
+    record = _fixture_order_record(
+        out_log=str(out_log), order_file=str(tmp_path / "order.md"), exit_code=0)
+    calls, start = _recording_order_starter(record)
+    text = _order_text(registered_project_slug)
+
+    status, body, _headers = _post_order({"order": text}, start)
+
+    assert status == 202, body
+    assert body == {
+        "schema_version": 1, "ok": True,
+        "order_id": record.order_id, "state": "ended",
+        "started_at": record.started_at, "ended_at": record.ended_at,
+        "exit_code": record.exit_code, "order_file": record.order_file,
+        "answer": {"ok": True, "mission_id": "m-fixture"},
+    }
+    assert calls == [(text, [])]
+
+
+def test_an_order_create_post_without_the_order_key_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({}, start)
+    assert (status, answer["error"]) == (400, "api_body_invalid")
+    assert calls == []
+
+
+def test_an_order_create_post_with_a_broken_header_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nnot a valid line\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (400, "order_file_invalid_header")
+    assert calls == []
+
+
+def test_an_order_create_post_with_an_empty_order_is_400_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({"order": "---\n---\n   \n"}, start)
+    assert (status, answer["error"]) == (400, "order_file_empty")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_header_names_no_project_is_409_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_whose_project_is_not_registered_is_409_and_starts_nothing():
+    calls, start = _recording_order_starter(_fixture_order_record())
+    body = {"order": "---\nproject: no-such-project-xyz\n---\nDo it\n"}
+    status, answer, _headers = _post_order(body, start)
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert calls == []
+
+
+def test_an_order_create_post_with_no_starter_is_405():
+    _calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(ORDER_CREATE_PATH, b"{}", run)
+    assert (status, answer["error"]) == (405, "api_method_not_allowed")
+
+
+def test_the_page_states_the_order_create_refusal_tokens():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    for token in ("api_order_project_unknown", "order_file_invalid_header", "order_file_empty"):
+        assert token in hand_written, token

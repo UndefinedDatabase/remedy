@@ -89,6 +89,19 @@ and shows it in the table below; it is removed only under a new major path.
 `remedy client order <order> --json` reads them. An order id this registry's own shape rejects, or
 one no record names, answers 404 with `order_not_found`.
 
+`POST /api/v1/orders` starts an order through the supervisor's own `OrderLauncher`, the way
+`remedy do run <options> --no-ui --yes -- order.md` would inside its own folder under the data
+root, and answers 202 with its record read exactly as the route above reads it. Its body's `order`
+is the order file's whole text, header included, and is required, answering 400 with
+`api_body_invalid` when it is missing; a broken header or an empty order answers 400 with the
+parser's own token, `order_file_invalid_header` or `order_file_empty`; `no_llm`, `new_mission`,
+`force_job` and `force_mission` pass their `remedy do` flag when `true`, and `builder_provider`,
+`reviewer_provider` and `deadline` pass their option with their value. An order whose header names
+no project, or one that names a project this machine does not register as exactly one, is refused
+before anything starts, with 409 `api_order_project_unknown` — because the order would otherwise
+run in a folder nobody chose; every other refusal is `remedy do`'s own, read back only once the
+order is polled.
+
 ## Staying current
 
 A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with its `since` query
@@ -121,6 +134,7 @@ API version: `1.7`.
 | `POST` | `/api/v1/jobs/{job}/decline` | `reason` (string) | `remedy job decline --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, `missing_argument` 400, any other 409 | no | Declines a completed job's result, as `remedy job decline <job> --reason <reason> --json` does: nothing is applied and the decline is kept on the job, recorded as coming through `api`; a job that is not completed, or whose result already landed, is refused with 409. |
 | `POST` | `/api/v1/jobs/{job}/apply` | `commit` (string), `commit_auto` (flag), `commit_with_history` (flag), `push` (flag), `skip_blocked` (flag) | `remedy job apply --json` | `job_not_found` 404, `invalid_argument` 400, any other 409 | no | Approves a completed job's result and applies it to the repository the job's own record names, as `remedy job apply <job> --repo <that repository> --approve --json` does: `commit` is given as `--commit`, and each of `commit_auto`, `commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered over HTTP, and a job whose record names no repository is refused with 409 `api_job_repository_unknown` before any command runs. |
 | `GET` | `/api/v1/orders/{order}` | — | `remedy client order --json` | `order_not_found` 404 | no | Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order <order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` holds what `remedy do` printed once the order is not `running`. |
+| `POST` | `/api/v1/orders` | `order` (string), `no_llm` (flag), `new_mission` (flag), `force_job` (flag), `force_mission` (flag), `builder_provider` (string), `reviewer_provider` (string), `deadline` (string) | `remedy client order --json` | — | no | Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do run <options> --no-ui --yes -- order.md` would inside its own folder under the data root, and answers 202 with its record read exactly as the route above reads it. `order` is the order file's whole text, header included, and required; `no_llm`, `new_mission`, `force_job` and `force_mission` each pass their `remedy do` flag when `true`; `builder_provider`, `reviewer_provider` and `deadline` each pass their option with their value. An order whose header names no project, or one that names a project `select_project` cannot resolve to exactly one, is refused before anything starts with 409 `api_order_project_unknown`; every other refusal is `remedy do`'s own, read back only once the order is polled. |
 
 ### Never published
 

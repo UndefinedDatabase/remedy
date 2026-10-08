@@ -2971,6 +2971,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: on the handlers the `remedy serve start` supervisor binds, so the cockpit's own server
     #: answers every such write 405.
     command_runner: Any = None
+    #: The `OrderLauncher` that answers `POST /api/v1/orders` (DECISION F253 D14 (3)): set only
+    #: on the handlers the `remedy serve start` supervisor binds, so a handler without one, the
+    #: cockpit's own server included, answers that route 405 like every other write it has none
+    #: of.
+    order_launcher: Any = None
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -4401,8 +4406,9 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                     "api_query_invalid", f"'{path}' accepts no query string")
             else:
                 raw_body = self.rfile.read(length) if length else b""
+                start_order = self.order_launcher.start if self.order_launcher is not None else None
                 status, body, headers = answer_public_api_post(
-                    path, raw_body, self.command_runner.run)
+                    path, raw_body, self.command_runner.run, start_order)
         self._send_public_api_answer("POST", path, status, body, headers)
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
