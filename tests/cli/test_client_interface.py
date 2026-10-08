@@ -24,6 +24,10 @@ declaration does not name.
 The keys under those top-level keys are declared there as trees, and held the same two ways
 (DECISIONs F298 D8 to D18): each tree's names equal what the code that builds it names, and the real run's
 answers return no key below the top level that the trees do not name, at the place they name it.
+
+The last section of `docs/system/machine-client-contract-v1.md` is the interface rendered, and is
+held two ways (DECISION F298 D20): its bytes equal the rendering of the interface the code builds,
+and reading it back line by line gives that interface again, every name, word, number and tree.
 """
 from __future__ import annotations
 
@@ -32,6 +36,7 @@ import ast
 import inspect
 import json
 import os
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -40,6 +45,9 @@ import pytest
 from apps.cli import command_catalog
 from apps.cli.client_interface import (
     ANSWER_KEY_TREES,
+    CLIENT_INTERFACE_PAGE_BEGIN,
+    CLIENT_INTERFACE_PAGE_END,
+    CLIENT_INTERFACE_PAGE_PATH,
     CLIENT_INTERFACE_VERSION,
     CLIENT_OPERATION_IDS,
     DIGEST_KEY_TREE,
@@ -52,6 +60,8 @@ from apps.cli.client_interface import (
     OPERATION_REFUSAL_TOKENS,
     TARGET_GUARD_KEY_TREE,
     build_client_interface,
+    render_client_interface_markdown,
+    write_client_interface_page,
 )
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
@@ -1348,3 +1358,141 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
                             for key in OPERATION_ANSWER_KEYS[command_id]}
                 payload = {key: value for key, value in body.items() if key not in _ENVELOPE_KEYS}
                 assert _undeclared_paths(_key_tree(payload), declared) == [], command_id
+
+
+# The page's generated section is the interface rendered, and reads back as the interface
+# (DECISION F298 D20).
+
+_REGENERATE_PAGE = ('python3 -c "from apps.cli.client_interface import write_client_interface_page; '
+                    'write_client_interface_page()"')
+_CHILD = re.compile(r"`([^`]+)`( \(keys not fixed\)| \(repeats the object that holds it\))?")
+
+
+def _page_section() -> str:
+    """The generated section of the committed page, both markers included."""
+    text = (_REPO_ROOT / CLIENT_INTERFACE_PAGE_PATH).read_text(encoding="utf-8")
+    assert text.count(CLIENT_INTERFACE_PAGE_BEGIN) == text.count(CLIENT_INTERFACE_PAGE_END) == 1
+    start = text.index(CLIENT_INTERFACE_PAGE_BEGIN)
+    return text[start:text.index(CLIENT_INTERFACE_PAGE_END) + len(CLIENT_INTERFACE_PAGE_END) + 1]
+
+
+def _listed_words(line: str, label: str) -> list[str]:
+    """The backticked words of a `<label>: ...` line, which ends in a full stop."""
+    assert line.startswith(f"{label}: ") and line.endswith("."), (label, line)
+    body = line[len(label) + 2:-1]
+    return [] if body == "none" else [word for word, _ in _CHILD.findall(body)]
+
+
+def _table_cells(row: str) -> list[str]:
+    return [cell.strip().replace("\\|", "|") for cell in re.split(r"(?<!\\)\|", row)[1:-1]]
+
+
+def _read_tree(bullets: list[str]) -> dict:
+    """A key tree read back from its rendered bullets, one per key that holds keys."""
+    root: dict = {}
+    stack: list[tuple[int, dict]] = [(-1, root)]
+    for line in bullets:
+        depth = (len(line) - len(line.lstrip(" "))) // 2
+        name, children = re.fullmatch(r"- `([^`]+)`: (.+)", line.strip()).groups()
+        while stack[-1][0] >= depth:
+            stack.pop()
+        parent = stack[-1][1]
+        assert parent is root or parent.get(name) == {}, (name, line)
+        parent[name] = {child: KEY_TREE_REPEAT_MARK if "repeats" in mark else None if mark else {}
+                        for child, mark in _CHILD.findall(children)}
+        stack.append((depth, parent[name]))
+    return root
+
+
+def _read_page_section(section: str) -> dict:
+    """The interface read back from its rendered section, line by line."""
+    read: dict = {"envelope": {}, "exit_codes": [], "operations": [], "answers": {},
+                  "answer_trees": {}}
+    labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
+              "Contract templates": "contract_templates", "Budget kinds": "budget_kinds"}
+    place, operation, bullets = "", None, []
+    for line in [*section.splitlines(), "### End"]:
+        if line.startswith(("#### ", "### ")) and bullets:
+            tree = _read_tree(bullets)
+            if operation is None:
+                read["digest"].update(tree)
+            else:
+                read["answer_trees"][operation["command_id"]] = tree
+            bullets = []
+        label = line.split(": ", 1)[0]
+        if line.startswith("### "):
+            place, operation = line[4:], None
+        elif line.startswith("#### "):
+            operation = {"command": line[6:-1], "arguments": []}
+            read["operations"].append(operation)
+        elif label == "Interface version":
+            read["interface_version"] = _listed_words(line, label)[0]
+        elif label == "Schema version":
+            read["envelope"]["schema_version"] = int(_listed_words(line, label)[0])
+        elif label in ("Reserved keys", "Refusal keys"):
+            key = "reserved_keys" if label == "Reserved keys" else "error_keys"
+            read["envelope"][key] = _listed_words(line, label)
+        elif label in labels:
+            read[labels[label]] = _listed_words(line, label)
+        elif label == "Command id":
+            operation["command_id"] = _listed_words(line, label)[0]
+        elif label == "Description":
+            operation["description"] = line[len("Description: "):]
+        elif label == "Exit codes" and operation is not None:
+            operation["exit_codes"] = [int(code) for code in _listed_words(line, label)]
+        elif label == "Refusal tokens":
+            operation["refusal_tokens"] = _listed_words(line, label)
+        elif label == "Answer keys":
+            read["answers"][operation["command_id"]] = _listed_words(line, label)
+            read["answer_trees"][operation["command_id"]] = {}
+        elif label == "Keys" and place == "Digest":
+            read["digest"] = {key: {} for key in _listed_words(line, label)}
+        elif line.startswith(("- ", "  ")):
+            bullets.append(line)
+        elif line.startswith("| `") and place == "Exit codes of every command":
+            code, name, meaning = _table_cells(line)
+            read["exit_codes"].append({"code": int(code.strip("`")), "name": name.strip("`"),
+                                       "meaning": meaning})
+        elif line.startswith("| `") and operation is not None:
+            name, option, required, takes_value, repeatable, help_text = _table_cells(line)
+            operation["arguments"].append({
+                "name": name.strip("`"), "help": help_text, "option": option == "yes",
+                "required": required == "yes", "takes_value": takes_value == "yes",
+                "repeatable": repeatable == "yes"})
+    return read
+
+
+def _flat_text(text: str) -> str:
+    return " ".join(text.split())
+
+
+def test_the_pages_generated_section_is_the_interface_rendered():
+    assert _page_section() == render_client_interface_markdown(build_client_interface()), (
+        f"{CLIENT_INTERFACE_PAGE_PATH} differs from the interface; regenerate it with "
+        f"{_REGENERATE_PAGE}")
+
+
+def test_the_pages_generated_section_reads_back_as_the_interface():
+    """Every name, word, number and tree of the interface can be read back from the page, so the
+    page names nothing the code does not return and leaves out nothing it does."""
+    interface = json.loads(json.dumps(build_client_interface()))
+    for row in interface["exit_codes"]:
+        row["meaning"] = _flat_text(row["meaning"])
+    for operation in interface["operations"]:
+        operation["description"] = _flat_text(operation["description"])
+        for argument in operation["arguments"]:
+            argument["help"] = _flat_text(argument["help"])
+    interface["answer_trees"] = {command_id: {key: tree for key, tree in trees.items() if tree != {}}
+                                 for command_id, trees in interface["answer_trees"].items()}
+    assert _read_page_section(_page_section()) == interface
+
+
+def test_the_writer_replaces_only_the_generated_section(tmp_path):
+    page = tmp_path / CLIENT_INTERFACE_PAGE_PATH
+    page.parent.mkdir(parents=True)
+    before, after = "# Written by hand\n\nThe walk.\n\n", "\nAfter the section.\n"
+    page.write_text(f"{before}{CLIENT_INTERFACE_PAGE_BEGIN}\nstale\n{CLIENT_INTERFACE_PAGE_END}\n{after}",
+                    encoding="utf-8")
+    assert write_client_interface_page(tmp_path) == page
+    assert page.read_text(encoding="utf-8") == (
+        before + render_client_interface_markdown(build_client_interface()) + after)
