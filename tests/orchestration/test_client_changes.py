@@ -152,6 +152,30 @@ def test_ten_seconds_after_the_seed_nothing_is_listed(root, tmp_path):
     assert changes["applies"] == []
 
 
+# ── a run-log change alone lists a job (R-1190) ───────────────────────────
+
+
+def test_a_job_whose_run_log_alone_changed_is_listed_by_build_client_changes(root):
+    """R-1190: a scan that ignores the run-log files leaves a job whose `job.json` predates the
+    cursor, but whose run log gained an event after it, unlisted. `append_run_event` is
+    `packages/orchestration/timeline.py`'s own writer."""
+    from packages.orchestration.timeline import append_run_event
+
+    job = JobPlan(job_title="log-only", project_id="proj-1")
+    save_job_plan(job)
+    cursor = NOW
+    old_mtime = (cursor - timedelta(seconds=60)).timestamp()
+    os.utime(job_record_path(str(job.job_id)), (old_mtime, old_mtime))
+
+    before = build_client_changes(cursor, now=NOW)
+    assert str(job.job_id) not in {j["job_id"] for j in before["jobs"]}
+
+    append_run_event(root, str(job.job_id), event="probe")
+
+    after = build_client_changes(cursor, now=NOW)
+    assert str(job.job_id) in {j["job_id"] for j in after["jobs"]}
+
+
 # ── the overlap boundary, by file modification time ───────────────────────
 
 

@@ -128,6 +128,19 @@ def test_build_client_digest_restricted_to_one_job_id_lists_exactly_that_job(roo
     assert restricted["job_window"] == {"ended_limit": None, "left_out": 0}
 
 
+def test_build_client_digest_restricted_to_an_ended_job_lists_it_outside_the_ended_job_window(
+        root):
+    """R-1189: a restriction to a job that has ended still lists it in `jobs`, never trimmed into
+    the ended-job window — there is no "ended last" ordering to apply to a caller-chosen set
+    (DECISION F253 D4 (1))."""
+    ended = _ended_job("ended", "2026-01-01T05:00:00+00:00")
+
+    digest = build_client_digest(now=NOW, job_ids=[str(ended.job_id)])
+
+    assert _listed(digest) == ["ended"]
+    assert digest["job_window"] == {"ended_limit": None, "left_out": 0}
+
+
 def test_build_client_digest_restricted_to_an_id_with_no_record_lists_nothing(root):
     digest = build_client_digest(now=NOW, job_ids=["no-such-job"])
 
