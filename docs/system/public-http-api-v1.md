@@ -32,7 +32,8 @@ A route's success is its twin command's own `--json` answer: `{"schema_version":
 ...}` — or, for a route whose table row below names a key under "Answers as", that key's value
 alone, as the whole body of the envelope. A path may hold a segment written in braces, such as
 `{job}`; it stands for one value the caller supplies, such as a job id or its own prefix, exactly
-as the command line accepts it. A refusal carries `{"schema_version": 1, "ok": false, "error":
+as the command line accepts it. Such a value may be percent-encoded, as `td%3A...` for `td:...`;
+it is decoded before it is used. A refusal carries `{"schema_version": 1, "ok": false, "error":
 "<token>", "message": "<sentence>"}`; a missing or wrong token answers 401 with
 `api_token_invalid`; a path this registry does not name answers 404 with `api_route_not_found`. A
 query key in a route's table row is either a flag, whose value is `true` or `false`, or a key

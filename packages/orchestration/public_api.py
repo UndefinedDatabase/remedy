@@ -34,7 +34,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 
 #: The path prefix every route under this registry lives below; the major version is in the path.
 PUBLIC_API_PREFIX = "/api/v1"
@@ -192,7 +192,8 @@ def _match_route_path(template: str, path: str) -> dict[str, str] | None:
     """Bind `template`'s `{name}` segments against `path`, or None when they do not match.
 
     Both split on `/`; the same number of segments is required. A template segment written
-    `{name}` matches exactly one non-empty path segment and binds it under `name`; every other
+    `{name}` matches exactly one non-empty path segment and binds it under `name`, percent-decoded,
+    so that a decision id a client sends as `td%3A...` arrives as `td:...` (R-1192); every other
     segment must be equal (DECISION F253 D3 (1)).
     """
     template_parts = template.split("/")
@@ -204,7 +205,7 @@ def _match_route_path(template: str, path: str) -> dict[str, str] | None:
         if template_part.startswith("{") and template_part.endswith("}"):
             if not path_part:
                 return None
-            bound[template_part[1:-1]] = path_part
+            bound[template_part[1:-1]] = unquote(path_part)
         elif template_part != path_part:
             return None
     return bound
@@ -400,6 +401,17 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
 }
 
 
+def _job_lock_key(job: str) -> str:
+    """The job a write locks on: the full id JOB names, or JOB itself when it names no one job,
+    so that a prefix and its full id wait for each other (DECISION F253 D9 (1), R-1193)."""
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+
+    try:
+        return lookup_job_id(job)
+    except JobIdError:
+        return job
+
+
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
     """The checked JSON body of a write to ROUTE and an empty sentence, or None and why not."""
     try:
@@ -435,8 +447,8 @@ def answer_public_api_post(
     route matches answers 404, a path only a GET route matches answers 405. A bound segment that
     begins with `-` answers 400 `api_path_invalid`, and a body that is not a JSON object holding
     only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; neither
-    starts a command. Otherwise RUN_COMMAND is called with the job segment and the argument list
-    the twin's builder makes, and the envelope it returns is the answer: None answers 500
+    starts a command. Otherwise RUN_COMMAND is called with the job the job segment names
+    (`_job_lock_key`) and the argument list the twin's builder makes, and the envelope it returns is the answer: None answers 500
     `api_command_failed`, an `ok` envelope 200, a refusal the status `refusals` declares for its
     token or else the route's `refusal_default`.
     """
@@ -456,7 +468,8 @@ def answer_public_api_post(
         checked, why = _body_refusal(route, raw_body)
         if checked is None:
             return 400, build_error("api_body_invalid", why), {}
-        envelope = run_command(segments["job"], _TWIN_ARGV[route.twin](segments, checked))
+        envelope = run_command(_job_lock_key(segments["job"]),
+                               _TWIN_ARGV[route.twin](segments, checked))
         if envelope is None:
             return 500, build_error(
                 "api_command_failed",
