@@ -492,6 +492,25 @@ end the response with:
   parser decides it, is item 8's reading of the code that produces the value a sentence asserts.
   R-1179 and R-1180 were found by the hardening stage's audit, which exists to find a promise no
   test holds.
+  Consolidated again at F304's closure on 2026-10-08: no two items were merged and one
+  counter-measure joined an item, so the list stays at 34 items. Finding R-1186 joined item 34: the
+  tests that guard a command's path include every test file that calls the command's handler by
+  its catalog name, not only the file named after the handler's module, so item 34 now orders the
+  search that finds them. None of F304's six lines in `.agent/prose_slips.md` names a lesson the
+  list lacks. A dry run taken on `main` instead of the round's base is item 12's clause on readings
+  that are true of the wrong commit; a help text that missed the vocabulary fragment its binding
+  word needs is item 7's reading of the guards that read a file the block adds a string to, and so
+  is an answer bound to an empty dictionary, which hid its keys from the interface's static
+  reading; an option planned on a guess about where a function takes a project's name from, answer
+  keys declared without the one a shared refusal adds, and a state read from stand-in jobs that
+  carry none are item 34's reading of the code the order reaches; and a handback that miscounted
+  what its own round changed is a slip in following a block, which no item about a block's text
+  can prevent. Its authoring defects that left something on disk wrong were registered as
+  findings, each the reading of an existing item: R-1183, an exit code chosen without reading the
+  exit-code taxonomy, is item 8's reading of the code that produces the value a sentence asserts,
+  and R-1186 is item 34's. R-1184 was a defect of the product that the second gate test found
+  while it was being built, and R-1185 was found by the hardening stage's audit, which exists to
+  find a promise no test holds.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
@@ -1224,6 +1243,15 @@ end the response with:
       is the instance: `apps/cli/client_interface.py` began to import the command line's parser
       inside one function, three modules joined the closure unlisted, and only the closure's one
       full suite found them.
+      Finding R-1186, joined here at F304's closure, names where the tests that guard a command's
+      path live. A test file named after another module can drive a command by calling its handler
+      directly, as `COMMAND_HANDLERS["<command>"](args)` with the command's catalog name as the
+      key, so the test file named after the handler's own module is not the whole set. A block that
+      changes what a command's handler answers or how it exits therefore searches `tests/` for that
+      key and for the handler's module, and puts every file the search finds in the round's
+      selection. F304's round 8 is the instance: `remedy job run` began to exit 1 for a job that
+      ended blocked, twelve tests of `tests/orchestration/test_job_task_runner.py` called its
+      handler on such jobs, and only the closure's one full suite found them.
 
   35. **A description and the enumeration it points at are read against each other,
       and the enumeration is the half that gets executed.** Findings R-0699 and
