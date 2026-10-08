@@ -7,21 +7,20 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 4, round 21, the closure suite's repair (amend0917-throughput rule 2): round 20's one
-full suite read 12 failed, all R-1186, tests that call the `job.run` handler on a blocked end;
-this round routes them through one helper holding DECISION F304 D8 and runs the suite again.
+Session 5, round 22, the first round of the closure sequence: book round 21's verdict and
+R-1186's resolution, and the checklist's consolidation pass for F304 (§3 of
+docs/agents/planner_reviewer_prompt.md, amend0827-process-diet rule 4), which stays at 34 items.
 
 ## Next Steps
-1. A green suite: the checklist's consolidation pass for F304; a red one: the second repair
-   round naming every bad node id.
-2. The evidence bundle and the fresh review zip, with the staging-copy reclaim.
-3. The ledger rotation, the STATUS line with the README sync and the self-use queue, the PR.
+1. The evidence round: the evidence bundle, the staging-copy reclaim and the fresh review zip
+   (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1 and 2).
+2. The closing round: the ledger rotation, the STATUS line with the README sync and the self-use
+   queue's `consumed_by`, and the pull request, not merged.
 
 ## Risks
 - A selector that names no single project still fails in the init step instead of before any step
   (DECISION F268 D16 (4), kept by DECISION F304 D2).
 - The operator's own data root holds 13,481 open decisions, so its digest stays about 10 MB
   under the window (DECISION F304 D16).
-- R-1186 (Low) is owned by F304 and lands in round 21.
 - R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
   R-1176 (Low) stay open, owned by F297.
