@@ -5,8 +5,8 @@ the day, every job on the data root with its measured cost and its evidence
 references (DECISION F295 D7), which of those jobs wait for an operator's
 apply, whether the supervisor answers, and every job's open decisions
 (DECISION F295 D5). Each completed job carries its approval card, what an
-operator approves its result on, read from the job's record only (DECISION
-F304 D10).
+operator approves its result on, read from the job's record and its mission's
+contract only (DECISIONs F304 D10 and D11).
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from packages.orchestration.decision_queue import HumanDecision, list_decisions
 from packages.orchestration.escalation import DECISION_TYPE_TASK_DECISION
 from packages.orchestration.job_apply import job_apply_landed, job_result_decline
 from packages.orchestration.job_digest import cost_exactness_basis
+from packages.orchestration.mission_contract import ContractError, read_mission_contract
 from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -101,23 +102,39 @@ def _card_task(task: TaskEntry) -> dict[str, Any]:
     }
 
 
+def _mission_blocking_criteria(mission: Mission | None) -> list[dict[str, Any]]:
+    """The blocking criteria of *mission*'s contract with their id, text and status, in contract
+    order (DECISION F304 D11); none without a mission or a contract. Raises ``ContractError`` on a
+    contract that cannot be read.
+    """
+    contract = read_mission_contract(mission) if mission is not None else None
+    return [{"id": criterion.id, "text": criterion.text, "status": criterion.status}
+            for criterion in (contract.criteria if contract is not None else ()) if criterion.blocking]
+
+
 # WHY: a client approves a result on what the records hold, never on a model's summary
-# (F304 T005, DECISION F304 D10).
-def _approval_card(plan: JobPlan) -> dict[str, Any] | None:
-    """A completed job's approval card, read from its record only; None for any other job.
+# (F304 T005, DECISIONs F304 D10 and D11).
+def _approval_card(plan: JobPlan, blocking_criteria: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """A completed job's approval card, read from its record and its mission's contract only.
 
     The changed files are the paths its tasks' applied manifests name, sorted, the first
-    `APPROVAL_CARD_FILE_LIMIT` of them by name and all of them by count.
+    `APPROVAL_CARD_FILE_LIMIT` of them by name and all of them by count. `blocking_criteria` is
+    null when the mission's contract cannot be read. A check ran when a task's test command ran or
+    a gate evaluated a blocking criterion, `met` or `unmet`; `checks_ran` false says none did.
     """
-    if plan.state != JOB_COMPLETED:
-        return None
     changed_files = _reviewed_task_files(plan)
     test_command = plan.execution_config.test_command if plan.execution_config else ""
+    tasks = [_card_task(task) for task in plan.tasks]
+    checks_ran = (any(task["test_ran"] for task in tasks)
+                  or any(criterion["status"] in ("met", "unmet")
+                         for criterion in blocking_criteria or ()))
     return {
         "changed_file_count": len(changed_files),
         "changed_files": changed_files[:APPROVAL_CARD_FILE_LIMIT],
         "test_command": test_command or None,
-        "tasks": [_card_task(task) for task in plan.tasks],
+        "tasks": tasks,
+        "blocking_criteria": blocking_criteria,
+        "checks_ran": checks_ran,
     }
 
 
@@ -193,12 +210,12 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     F295 D5). Each project carries ``cost_today`` for the UTC day of
     ``read_at`` and each job its ``cost`` and ``evidence`` (DECISION F295
     D7), and its ``approval_card``, null unless the job is completed
-    (DECISION F304 D10). ``degraded`` and ``skipped_files`` gather what the listing
+    (DECISIONs F304 D10 and D11). ``degraded`` and ``skipped_files`` gather what the listing
     functions and the per-job and per-project reads could not read, named
     exactly as they return them, plus ``decisions of job <job_id>``,
-    ``cost of job <job_id>`` and ``cost of the day of project
-    <project_id>`` for a read that failed; the value that read would have
-    filled is null.
+    ``cost of job <job_id>``, ``contract of job <job_id>`` and ``cost of the
+    day of project <project_id>`` for a read that failed; the value that read
+    would have filled is null.
     """
     when = now if now is not None else datetime.now(timezone.utc)
     day_moment = (when if when.tzinfo is not None
@@ -210,7 +227,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     # R-1144: the read-only projection, never `list_projects`, which migrates a legacy record on read.
     projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
     project_entries: list[dict[str, Any]] = []
-    mission_id_by_job_id: dict[str, str] = {}
+    mission_by_job_id: dict[str, Mission] = {}
     abandoned_job_ids: set[str] = set()
     for project in projects:
         project_id = str(project.id)
@@ -232,7 +249,7 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
         # Built once here, never one scan per job below.
         for mission in missions:
             for job_id in mission.job_ids():
-                mission_id_by_job_id[job_id] = mission.id
+                mission_by_job_id[job_id] = mission
                 if mission.status == MISSION_STATUS_ABANDONED:
                     abandoned_job_ids.add(job_id)
 
@@ -258,16 +275,26 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
             cost = None
             degraded = True
             skipped_files.append(f"cost of job {job_id}")
+        mission = mission_by_job_id.get(job_id)
+        approval_card: dict[str, Any] | None = None
+        if plan.state == JOB_COMPLETED:
+            try:
+                blocking_criteria: list[dict[str, Any]] | None = _mission_blocking_criteria(mission)
+            except ContractError:
+                blocking_criteria = None
+                degraded = True
+                skipped_files.append(f"contract of job {job_id}")
+            approval_card = _approval_card(plan, blocking_criteria)
         job_entries.append({
             "job_id": job_id,
             "project_id": plan.project_id,
-            "mission_id": mission_id_by_job_id.get(job_id),
+            "mission_id": mission.id if mission is not None else None,
             "title": plan.job_title,
             "state": state,
             "waits_for_apply": waits_for_apply,
             "cost": cost,
             "evidence": _job_evidence(plan),
-            "approval_card": _approval_card(plan),
+            "approval_card": approval_card,
         })
         try:
             events = load_run_events(resolve_data_root(), plan.job_id)

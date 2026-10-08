@@ -534,6 +534,8 @@ def test_a_completed_jobs_card_names_its_changed_files_test_command_and_tasks(ro
             {"task_id": "T003", "title": "Not applied", "reviewer_verdict": None,
              "repair_rounds_used": 0, "test_ran": False, "test_passed": None},
         ],
+        "blocking_criteria": [],
+        "checks_ran": True,
     }
 
 
@@ -563,6 +565,102 @@ def test_a_job_that_is_not_completed_carries_a_null_card(root, state):
     [entry] = build_client_digest(now=NOW)["jobs"]
 
     assert entry["approval_card"] is None
+
+
+# ── the card's blocking criteria and whether a check ran (DECISION F304 D11) ──
+
+
+def _mission_job(tmp_path: Path, name: str, job: JobPlan, contract=None) -> str:
+    """Register a project, file *job* under a new mission of it with *contract*; the mission id."""
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_INITIAL,
+        create_mission,
+        link_job_to_mission,
+        set_mission_contract,
+    )
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo(name, _git_folder(tmp_path / name)).id)
+    mission = create_mission(project_id, f"Goal of {name}")
+    job.project_id = project_id
+    save_job_plan(job)
+    link_job_to_mission(project_id, mission.id, str(job.job_id), MISSION_ROLE_INITIAL)
+    if contract is not None:
+        set_mission_contract(project_id, mission.id, contract)
+    return mission.id
+
+
+def _contract(*criteria) -> dict:
+    from packages.orchestration.mission_contract import ContractCriterion, MissionContract
+
+    return MissionContract(criteria=tuple(ContractCriterion(**c) for c in criteria)).to_json()
+
+
+def test_a_card_names_its_missions_blocking_criteria_and_a_met_one_is_a_check_that_ran(
+        root, tmp_path):
+    job = JobPlan(job_title="gated", state=JOB_COMPLETED,
+                  tasks=[_task("T001", ["a.py"], reviewer_verdict="pass")])
+    _mission_job(tmp_path, "gated", job, _contract(
+        {"id": "C001", "text": "The tests pass", "origin": "planner", "status": "met"},
+        {"id": "C002", "text": "The docs say so", "origin": "planner", "blocking": False,
+         "status": "unmet"},
+        {"id": "C003", "text": "Lint is clean", "origin": "template"}))
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    card = entry["approval_card"]
+    assert card["blocking_criteria"] == [
+        {"id": "C001", "text": "The tests pass", "status": "met"},
+        {"id": "C003", "text": "Lint is clean", "status": "open"},
+    ]
+    assert card["tasks"][0]["test_ran"] is False
+    assert card["checks_ran"] is True
+
+
+def test_an_unmet_blocking_criterion_is_a_check_that_ran(root, tmp_path):
+    job = JobPlan(job_title="red", state=JOB_COMPLETED, tasks=[_task("T001", ["a.py"])])
+    _mission_job(tmp_path, "red", job, _contract(
+        {"id": "C001", "text": "The tests pass", "origin": "planner", "status": "unmet"}))
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert entry["approval_card"]["checks_ran"] is True
+
+
+def test_a_job_with_no_test_run_and_only_open_criteria_says_no_check_ran(root, tmp_path):
+    job = JobPlan(job_title="unchecked", state=JOB_COMPLETED, tasks=[_task("T001", ["a.py"])])
+    _mission_job(tmp_path, "unchecked", job, _contract(
+        {"id": "C001", "text": "The tests pass", "origin": "planner"},
+        {"id": "C002", "text": "The docs say so", "origin": "planner", "blocking": False,
+         "status": "met"}))
+    lone = JobPlan(job_title="lone", project_id="proj-1", state=JOB_COMPLETED,
+                   tasks=[_task("T001", ["b.py"])])
+    save_job_plan(lone)
+
+    cards = {entry["title"]: entry["approval_card"]
+             for entry in build_client_digest(now=NOW)["jobs"]}
+
+    assert cards["unchecked"]["blocking_criteria"] == [
+        {"id": "C001", "text": "The tests pass", "status": "open"}]
+    assert cards["unchecked"]["checks_ran"] is False
+    assert cards["lone"]["blocking_criteria"] == []
+    assert cards["lone"]["checks_ran"] is False
+
+
+def test_a_contract_that_cannot_be_read_nulls_the_criteria_and_marks_degraded(root, tmp_path):
+    job = JobPlan(job_title="broken", state=JOB_COMPLETED,
+                  tasks=[_task("T001", ["a.py"], test_passed=True)])
+    _mission_job(tmp_path, "broken", job, {"schema": "not_a_contract", "criteria": []})
+
+    digest = build_client_digest(now=NOW)
+
+    [entry] = digest["jobs"]
+    card = entry["approval_card"]
+    assert card["blocking_criteria"] is None
+    assert card["changed_files"] == ["a.py"]
+    assert card["checks_ran"] is True
+    assert digest["degraded"] is True
+    assert digest["skipped_files"] == [f"contract of job {job.job_id}"]
 
 
 # ── the digest reads and never writes (R-1144) ──────────────────────────────

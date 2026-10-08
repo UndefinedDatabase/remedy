@@ -63,7 +63,11 @@ holds whitespace is planned as text, never read as a file.
    `approval_card`, what an operator approves its result on, read from the job's record alone:
    how many files its tasks changed and the first twenty of them by name, the test command the
    job ran with, and each task's title, reviewer's verdict and repair rounds, and whether its
-   test ran and passed. Every other job's `approval_card` is null.
+   test ran and passed. It also carries every blocking criterion of the job's mission's contract
+   with its id, text and status, `open`, `met` or `unmet`, under `blocking_criteria`, which is
+   null when that contract cannot be read; and `checks_ran`, false when no check ran on the job:
+   no task's test command ran and no gate evaluated a blocking criterion to `met` or `unmet`.
+   Every other job's `approval_card` is null.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
@@ -315,7 +319,8 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
-    - `approval_card`: `changed_file_count`, `changed_files`, `tasks`, `test_command`
+    - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `tasks`, `test_command`
+      - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
@@ -671,7 +676,8 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, 
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
-  - `approval_card`: `changed_file_count`, `changed_files`, `tasks`, `test_command`
+  - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `tasks`, `test_command`
+    - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`

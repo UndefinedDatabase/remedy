@@ -120,7 +120,8 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
     from apps.cli.client_interface import DIGEST_KEY_TREE
     from packages.orchestration.pingpong_job import load_job_plan
 
-    [job_id] = _do_json(capsys, ORDER)["job_ids"]
+    done = _do_json(capsys, ORDER)
+    [job_id] = done["job_ids"]
 
     [job] = _status_json(capsys)["client"]["jobs"]
 
@@ -140,6 +141,12 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
         for task in record.tasks
     ]
     assert [task["reviewer_verdict"] for task in card["tasks"]] == ["pass"]
+    # The planner's one criterion, unmet in a repository without tests, as `remedy do` answered.
+    assert card["blocking_criteria"] == [
+        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "unmet"}]
+    assert [criterion["id"] for criterion in card["blocking_criteria"]
+            if criterion["status"] != "met"] == done["unmet_blocking_criteria"]
+    assert card["checks_ran"] is True
 
 
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
