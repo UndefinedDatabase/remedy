@@ -539,6 +539,57 @@ def test_order_md_holds_the_text_byte_for_byte(order_setup):
     launcher.wait(record.order_id, timeout=30)
 
 
+@pytest.mark.parametrize("key", ["a", "A.b_c-9", "k" * 64])
+def test_order_key_re_fully_matches_a_key_a_client_may_choose(key):
+    assert SR.ORDER_KEY_RE.fullmatch(key) is not None
+
+
+@pytest.mark.parametrize("key", ["", ".a", "-a", "_a", "a/b", "a b", "a\x00b", "k" * 65])
+def test_order_key_re_matches_none_of_the_shapes_the_decision_refuses(key):
+    assert SR.ORDER_KEY_RE.fullmatch(key) is None
+
+
+def test_keyed_order_file_path_names_the_keys_file_outside_the_orders_folder(tmp_path):
+    paths = serve_paths(tmp_path)
+    key_file = SR.keyed_order_file_path(paths, "k-1")
+    assert key_file == paths.root / "order-keys" / "k-1.md"
+    assert paths.orders_dir not in key_file.parents
+    with pytest.raises(ValueError):
+        SR.keyed_order_file_path(paths, "a/b")
+
+
+def test_an_order_with_a_key_runs_from_a_link_to_the_keys_file_and_records_that_file(
+        order_setup):
+    root, paths, launcher, release = order_setup
+    key_file = SR.keyed_order_file_path(paths, "k-1")
+    first = launcher.start("first text", [str(release), "0"], order_key="k-1")
+    release.touch()
+    launcher.wait(first.order_id, timeout=30)
+    order_md = paths.orders_dir / first.order_id / "order.md"
+    assert order_md.is_symlink()
+    assert order_md.resolve() == key_file.resolve()
+    assert key_file.read_text(encoding="utf-8") == "first text"
+    ended = SR.read_order_record(paths, first.order_id)
+    assert ended.order_file == str(key_file.resolve())
+    second = launcher.start("second text", [str(release), "0"], order_key="k-1")
+    launcher.wait(second.order_id, timeout=30)
+    assert second.order_id != first.order_id
+    assert Path(second.order_file).resolve() == key_file.resolve()
+    assert (paths.orders_dir / second.order_id).is_dir()
+    assert key_file.read_text(encoding="utf-8") == "second text"
+
+
+def test_an_order_without_a_key_keeps_a_plain_order_md(order_setup):
+    root, paths, launcher, release = order_setup
+    record = launcher.start("plain text", [str(release), "0"])
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+    order_md = paths.orders_dir / record.order_id / "order.md"
+    assert not order_md.is_symlink()
+    assert order_md.read_text(encoding="utf-8") == "plain text"
+    assert not (paths.root / "order-keys").exists()
+
+
 @pytest.mark.parametrize("code", [0, 7])
 def test_the_record_has_no_end_at_start_and_the_exit_code_at_the_end(order_setup, code):
     root, paths, launcher, release = order_setup

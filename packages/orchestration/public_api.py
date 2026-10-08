@@ -58,7 +58,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.10"
+PUBLIC_API_VERSION = "1.11"
 
 
 @dataclass(frozen=True)
@@ -232,7 +232,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         twin="client.order",
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
-              ("reviewer_provider", "string"), ("deadline", "string")),
+              ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
@@ -244,7 +244,13 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "pass their option with their value. An order whose header names no project, or "
             "one that names a project `select_project` cannot resolve to exactly one, is "
             "refused before anything starts with 409 `api_order_project_unknown`; every other "
-            "refusal is `remedy do`'s own, read back only once the order is polled."
+            "refusal is `remedy do`'s own, read back only once the order is polled. "
+            "`order_key` names the order with a key the client chooses, one to 64 letters, "
+            "digits, `.`, `_` or `-`, beginning with a letter or a digit, any other value "
+            "answering 400 `api_body_invalid`; an order with a key whose order file a mission "
+            "that has not ended records is refused before anything starts with 409 "
+            "`order_already_running`, the mission's id under `mission_id`, unless `new_mission` "
+            "is `true`, and the record's `order_file` then names the key's file."
         ),
     ),
     PublicApiRoute(
@@ -886,6 +892,14 @@ def answer_public_api_post(
     the order could not be started — answers 500 `api_command_failed` and nothing runs
     (R-1201).
 
+    An order body with `order_key` (DECISION F253 D22 (2), (4), (5)) is checked first: a key that
+    `ORDER_KEY_RE` does not fully match answers 400 `api_body_invalid` and nothing else is read.
+    After `_order_text_and_options` has passed, and unless the body sets `new_mission`, the key's
+    file (`keyed_order_file_path`, resolved) is asked of `running_mission_for_order_file`: a mission
+    that has not ended answers 409 `order_already_running` with its id under `mission_id` and
+    START_ORDER is not called. START_ORDER gets the key as the keyword `order_key` only when the
+    body has one, so a starter of two arguments still serves an order without a key.
+
     A route marked `starts_run` (DECISION F253 D18) is answered the same way through START_RUN:
     with none it answers 405 `api_method_not_allowed`; once the body is checked and a client's
     checks of DECISION F253 D17 have passed, `_start_run_answer` reads the job, answers the
@@ -927,14 +941,40 @@ def answer_public_api_post(
             return 400, build_error("api_body_invalid", why), {}
         if route.starts_order:
             from packages.orchestration.serve_paths import serve_paths
-            from packages.orchestration.serve_runs import order_record_payload
+            from packages.orchestration.serve_runs import (
+                ORDER_KEY_RE,
+                keyed_order_file_path,
+                order_record_payload,
+            )
 
+            order_key = checked.get("order_key")
+            if order_key is not None and ORDER_KEY_RE.fullmatch(order_key) is None:
+                return 400, build_error(
+                    "api_body_invalid",
+                    "'order_key' must be 1 to 64 letters, digits, '.', '_' or '-', "
+                    "beginning with a letter or a digit"), {}
             try:
                 order_text, options = _order_text_and_options(checked, client)
             except PublicApiWriteRefusal as refusal:
                 return refusal.status, build_error(refusal.error, refusal.message), {}
+            if order_key is not None and not checked.get("new_mission"):
+                from packages.orchestration.mission_state import running_mission_for_order_file
+
+                mission = running_mission_for_order_file(
+                    str(keyed_order_file_path(serve_paths(), order_key).resolve()))
+                if mission is not None:
+                    return 409, build_error(
+                        "order_already_running",
+                        f"the order key {order_key!r} is already run by mission {mission.id} "
+                        f"({mission.status}); abandon it with `remedy mission abandon "
+                        f"{mission.id}`, or send the order with new_mission true to start "
+                        "another; nothing was run",
+                        mission_id=mission.id), {}
             try:
-                record = start_order(order_text, options)
+                if order_key is None:
+                    record = start_order(order_text, options)
+                else:
+                    record = start_order(order_text, options, order_key=order_key)
             except OSError:
                 return 500, build_error(
                     "api_command_failed",
