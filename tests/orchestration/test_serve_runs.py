@@ -446,3 +446,137 @@ def test_two_commands_for_one_job_never_overlap(tmp_path):
 def test_commands_for_two_jobs_overlap(tmp_path):
     (first_start, first_end), (second_start, _) = _timed_intervals(tmp_path, ("one", "two"))
     assert second_start < first_end
+
+
+# ---------------------------------------------------------------------------
+# OrderLauncher (F253 S5a, DECISION F253 D13): an order kept as a record of
+# its own, run the way `remedy do` runs an order file.
+# ---------------------------------------------------------------------------
+
+#: A stand-in for `remedy do run`: it prints one JSON envelope naming its own arguments,
+#: its working folder and its `REMEDY_DATA_DIR`, then waits for a release file (its path
+#: at argv[3], the exit code to use at argv[4] — both OPTIONS the test passes through
+#: `OrderLauncher.start`) before exiting with that code.
+_ORDER_CHILD = """\
+import json, os, sys, time
+from pathlib import Path
+release, code = Path(sys.argv[3]), int(sys.argv[4])
+print(json.dumps({"ok": True, "argv": sys.argv[1:], "cwd": os.getcwd(),
+                  "data_dir": os.environ.get("REMEDY_DATA_DIR")}))
+sys.stdout.flush()
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+sys.exit(code)
+"""
+
+
+@pytest.fixture
+def order_setup(tmp_path_factory):
+    root = tmp_path_factory.mktemp("so")
+    release = root / "release"
+    paths = serve_paths(root)
+    launcher = SR.OrderLauncher(paths, argv_prefix=[sys.executable, "-c", _ORDER_CHILD])
+    yield root, paths, launcher, release
+    release.touch()
+    for order_dir in (paths.orders_dir.glob("*") if paths.orders_dir.is_dir() else ()):
+        launcher.wait(order_dir.name, timeout=30)
+
+
+def _order_printed(record: SR.OrderRecord) -> dict:
+    return json.loads(Path(record.out_log).read_text(encoding="utf-8").splitlines()[0])
+
+
+def test_the_childs_arguments_after_the_prefix_equal_the_built_command(order_setup):
+    root, paths, launcher, release = order_setup
+    record = launcher.start("do something", [str(release), "0"])
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+    assert _order_printed(record)["argv"] == [
+        "do", "run", str(release), "0", "--json", "--no-ui", "--yes", "--", "order.md"]
+
+
+def test_the_orders_working_folder_is_its_own_folder_on_its_data_root(order_setup):
+    root, paths, launcher, release = order_setup
+    record = launcher.start("x", [str(release), "0"])
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+    printed = _order_printed(record)
+    assert Path(printed["cwd"]) == paths.orders_dir / record.order_id
+    assert printed["data_dir"] == str(root)
+
+
+def test_order_md_holds_the_text_byte_for_byte(order_setup):
+    root, paths, launcher, release = order_setup
+    text = "---\nmax-cost-usd: 1\n---\nWrite étoile to a file.\n"
+    record = launcher.start(text, [str(release), "0"])
+    assert Path(record.order_file).read_bytes() == text.encode("utf-8")
+    assert Path(record.order_file) == paths.orders_dir / record.order_id / "order.md"
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+
+
+@pytest.mark.parametrize("code", [0, 7])
+def test_the_record_has_no_end_at_start_and_the_exit_code_at_the_end(order_setup, code):
+    root, paths, launcher, release = order_setup
+    record = launcher.start("x", [str(release), str(code)])
+    assert record.exit_code is None and record.ended_at is None
+    assert SR.read_order_record(paths, record.order_id) == record
+    release.touch()
+    assert launcher.wait(record.order_id, timeout=30) == code
+    ended = SR.read_order_record(paths, record.order_id)
+    assert (ended.exit_code, ended.pid, ended.started_at) == (code, record.pid, record.started_at)
+    assert ended.ended_at is not None
+
+
+def test_two_starts_get_two_different_ids_and_folders(order_setup):
+    root, paths, launcher, release = order_setup
+    first = launcher.start("x", [str(release), "0"])
+    second = launcher.start("y", [str(release), "0"])
+    assert first.order_id != second.order_id
+    assert Path(first.order_file).parent != Path(second.order_file).parent
+    release.touch()
+    launcher.wait(first.order_id, timeout=30)
+    launcher.wait(second.order_id, timeout=30)
+
+
+@pytest.mark.parametrize("bad_id", [
+    "../../x", "0123456789ABCDEF", "0123456789abcde", "0123456789abcdef"])
+def test_read_order_record_refuses_a_malformed_or_unknown_id(tmp_path, bad_id):
+    paths = serve_paths(tmp_path)
+    assert SR.read_order_record(paths, bad_id) is None
+
+
+def test_order_state_is_running_then_ended(order_setup):
+    root, paths, launcher, release = order_setup
+    record = launcher.start("x", [str(release), "0"])
+    assert SR.order_state(paths, record) == "running"
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+    ended = SR.read_order_record(paths, record.order_id)
+    assert SR.order_state(paths, ended) == "ended"
+
+
+def test_order_state_is_lost_for_a_record_with_no_end_whose_process_is_gone(tmp_path):
+    paths = serve_paths(tmp_path)
+    record = SR.OrderRecord(order_id="0123456789abcdef", pid=_dead_pid(),
+                            started_at="2026-01-01T00:00:00Z",
+                            order_file="o", out_log="o", err_log="e")
+    assert SR.order_state(paths, record) == "lost"
+
+
+@pytest.mark.parametrize("last_line", ["not json", '{"no_ok": true}'])
+def test_order_answer_is_none_when_the_last_line_is_no_envelope(tmp_path, last_line):
+    out = tmp_path / "out.log"
+    out.write_text(last_line + "\n", encoding="utf-8")
+    record = SR.OrderRecord(order_id="o", pid=1, started_at="t", order_file="o",
+                            out_log=str(out), err_log="e")
+    assert SR.order_answer(record) is None
+
+
+def test_order_answer_is_the_object_when_the_last_line_is_one(tmp_path):
+    out = tmp_path / "out.log"
+    out.write_text('{"ok": true, "mission_id": "m1"}\n', encoding="utf-8")
+    record = SR.OrderRecord(order_id="o", pid=1, started_at="t", order_file="o",
+                            out_log=str(out), err_log="e")
+    assert SR.order_answer(record) == {"ok": True, "mission_id": "m1"}

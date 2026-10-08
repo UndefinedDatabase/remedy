@@ -1,4 +1,5 @@
-"""The runs the `remedy serve start` supervisor starts (F200, DECISIONs F200 D1 (4) and D4).
+"""The runs and orders the `remedy serve start` supervisor starts (F200, DECISIONs F200 D1 (4)
+and D4; F253 S5a, DECISION F253 D13).
 
 The supervisor runs a job the way an operator would: as its own process running
 `remedy job run <job>` in direct mode, so the run is the same code path with the
@@ -16,11 +17,21 @@ that job (the launcher refuses a second `start` of it, a watcher thread records 
 end once it is gone), RESTARTED when its job's own record still reads `running`
 (or left FAILED, untouched, when that restart could not even launch), or marked
 LOST — nothing to resume.
+
+`OrderLauncher` starts an order the same way, but an order has no id until it
+starts: a new one, `orders/<order id>/`, holds the order's own text (`order.md`),
+its record (`order.json`) and its two logs (`out.log`, `err.log`), and the order
+runs as `remedy do run <options> --json --no-ui --yes -- order.md` from inside
+that folder, so a data root whose path holds whitespace never confuses the order
+file for order text (DECISION F253 D13 (1)). `read_order_record`, `order_state`
+and `order_answer` read what `remedy client order` answers.
 """
 from __future__ import annotations
 
 import json
 import os
+import re
+import secrets
 import subprocess
 import sys
 import threading
@@ -85,6 +96,30 @@ def child_environment(paths: ServePaths) -> dict[str, str]:
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# WHY: `RunLauncher` and `OrderLauncher` both write their record twice — on start, and
+# again from the thread that waits for the child — and both need the second write to
+# never leave a torn file behind a crash; shared here instead of copied (DECISION
+# F253 D13 (2)).
+def _atomic_write_json(target: Path, payload: dict) -> None:
+    scratch = target.with_suffix(".json.tmp")
+    scratch.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(scratch, target)
+
+
+# WHY: `CommandRunner.run` and `order_answer` both read a child's standard output for
+# its last envelope line; shared here instead of copied (DECISION F253 D13 (3)).
+def _last_envelope(text: str) -> dict[str, Any] | None:
+    """The last non-empty line of TEXT read as JSON, when that is an object holding `ok`."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        return None
+    try:
+        envelope = json.loads(lines[-1])
+    except ValueError:
+        return None
+    return envelope if isinstance(envelope, dict) and "ok" in envelope else None
 
 
 def read_run_record(paths: ServePaths, job_id: str) -> RunRecord | None:
@@ -165,11 +200,7 @@ class RunLauncher:
         self._adopted: set[str] = set()
 
     def _write(self, record: RunRecord) -> None:
-        target = self._paths.runs_dir / f"{record.job_id}.json"
-        scratch = target.with_suffix(".json.tmp")
-        scratch.write_text(json.dumps(record.to_json(), indent=2, sort_keys=True) + "\n",
-                           encoding="utf-8")
-        os.replace(scratch, target)
+        _atomic_write_json(self._paths.runs_dir / f"{record.job_id}.json", record.to_json())
 
     def running(self, job_id: str) -> bool:
         """True while a run this launcher started or adopted for JOB_ID has not ended."""
@@ -322,6 +353,166 @@ class RunLauncher:
         return None if record is None else record.exit_code
 
 
+# ---------------------------------------------------------------------------
+# Orders: kept as a record of their own, run the way `remedy do` runs an order
+# file (F253 S5a, DECISION F253 D13).
+# ---------------------------------------------------------------------------
+
+
+#: An order id is exactly what `secrets.token_hex(8)` makes: sixteen lowercase
+#: hexadecimal characters. `read_order_record` refuses anything else before it
+#: ever builds a path from it, so a value a client sends can never name a path
+#: outside `orders/` (DECISION F253 D13 (3)).
+_ORDER_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+#: The four options `OrderLauncher.start` always adds, after the caller's own
+#: (DECISION F253 D13 (2)).
+ORDER_RUN_ALWAYS_OPTIONS = ("--json", "--no-ui", "--yes")
+
+
+@dataclass(frozen=True)
+class OrderRecord:
+    """One order the supervisor started, as `orders/<order id>/order.json` holds it."""
+
+    order_id: str
+    pid: int
+    started_at: str
+    order_file: str
+    out_log: str
+    err_log: str
+    exit_code: int | None = None
+    ended_at: str | None = None
+
+    def to_json(self) -> dict:
+        return asdict(self)
+
+
+def read_order_record(paths: ServePaths, order_id: str) -> OrderRecord | None:
+    """The record of ORDER_ID's order, or None when ORDER_ID is malformed or there is none,
+    or it cannot be read."""
+    if not _ORDER_ID_RE.fullmatch(order_id):
+        return None
+    try:
+        data = json.loads(
+            (paths.orders_dir / order_id / "order.json").read_text(encoding="utf-8"))
+        return OrderRecord(**data)
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _process_is_this_order(pid: int, order_dir: Path) -> bool:
+    """True when PID is alive and, where `/proc` exists, its working folder is ORDER_DIR.
+
+    On Linux, `/proc/<pid>/cwd` is a symlink to the process's current working directory;
+    `OrderLauncher.start` always sets it to the order's own folder, so this also guards
+    against a pid the kernel reused for an unrelated process after the order's own ended
+    (the same reasoning `_process_is_this_job` applies to a job id in `/proc/<pid>/cmdline`).
+    Elsewhere `/proc` does not exist and another process's working folder cannot be read
+    without extra privilege, so aliveness alone stands in.
+    """
+    proc_dir = Path("/proc") / str(pid)
+    if proc_dir.parent.exists():
+        try:
+            cwd = os.readlink(proc_dir / "cwd")
+        except OSError:
+            return False
+        return Path(cwd) == order_dir
+    return _process_is_alive(pid)
+
+
+def order_state(paths: ServePaths, record: OrderRecord) -> str:
+    """`ended`, `running` or `lost` for RECORD (DECISION F253 D13 (3))."""
+    if record.ended_at is not None:
+        return "ended"
+    order_dir = paths.orders_dir / record.order_id
+    if _process_is_this_order(record.pid, order_dir):
+        return "running"
+    return "lost"
+
+
+def order_answer(record: OrderRecord) -> dict[str, Any] | None:
+    """The envelope `remedy do` printed to RECORD's `out.log`, or None (DECISION F253 D13 (3)).
+
+    The caller decides whether to call this at all: an order's answer is read only
+    while its state is not `running`.
+    """
+    try:
+        text = Path(record.out_log).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    return _last_envelope(text)
+
+
+class OrderLauncher:
+    """Starts an order as a child process and keeps it as a record of its own.
+
+    DECISION F253 D13. Unlike `RunLauncher`, an order has no id until it starts: `start`
+    makes one, a new folder under the `serve` class's `orders/` directory, and runs the
+    order from inside it so a data root whose path holds whitespace never confuses the
+    order file (an absolute path) for order text (DECISION F253 D1's amendment of
+    amend1007b D3; `order_argument_names_file` in `packages/orchestration/order_file.py`).
+    """
+
+    def __init__(self, paths: ServePaths, *, argv_prefix: Sequence[str] | None = None) -> None:
+        self._paths = paths
+        self._prefix = (list(argv_prefix) if argv_prefix is not None
+                        else [sys.executable, "-m", "apps.cli.main"])
+        self._lock = threading.Lock()
+        self._reapers: dict[str, threading.Thread] = {}
+
+    def _write(self, record: OrderRecord) -> None:
+        _atomic_write_json(self._paths.orders_dir / record.order_id / "order.json",
+                          record.to_json())
+
+    def start(self, order_text: str, options: Sequence[str]) -> OrderRecord:
+        """Write ORDER_TEXT to a new order's own folder and run it there; return its record.
+
+        OPTIONS are the caller's own flags (`--no-llm`, `--builder-provider=fake`, ...); this
+        method adds only `ORDER_RUN_ALWAYS_OPTIONS` and the trailing `-- order.md`.
+        """
+        order_id = secrets.token_hex(8)
+        self._paths.orders_dir.mkdir(parents=True, exist_ok=True)
+        order_dir = self._paths.orders_dir / order_id
+        order_dir.mkdir(mode=0o700)
+        order_md = order_dir / "order.md"
+        order_md.write_text(order_text, encoding="utf-8")
+        out_log = order_dir / "out.log"
+        err_log = order_dir / "err.log"
+        env = child_environment(self._paths)
+        argv = [*self._prefix, "do", "run", *options, *ORDER_RUN_ALWAYS_OPTIONS, "--", "order.md"]
+        with open(out_log, "wb") as out, open(err_log, "wb") as err:
+            child = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
+                                     cwd=str(order_dir), env=env, start_new_session=True)
+        record = OrderRecord(order_id=order_id, pid=child.pid, started_at=_now(),
+                             order_file=str(order_md.resolve()), out_log=str(out_log),
+                             err_log=str(err_log))
+        self._write(record)
+        with self._lock:
+            reaper = threading.Thread(target=self._reap, args=(child, record), daemon=True,
+                                      name=f"remedy-serve-order-{order_id}")
+            self._reapers[order_id] = reaper
+        reaper.start()
+        return record
+
+    def _reap(self, child: subprocess.Popen, record: OrderRecord) -> None:
+        code = child.wait()
+        with self._lock:
+            self._write(replace(record, exit_code=code, ended_at=_now()))
+
+    def wait(self, order_id: str, timeout: float | None = None) -> int | None:
+        """Wait until ORDER_ID's order has ended and its record says so; its exit code, or
+        None when this launcher started no order for it or TIMEOUT passed first."""
+        with self._lock:
+            reaper = self._reapers.get(order_id)
+        if reaper is None:
+            return None
+        reaper.join(timeout)
+        if reaper.is_alive():
+            return None
+        record = read_order_record(self._paths, order_id)
+        return None if record is None else record.exit_code
+
+
 class CommandRunner:
     """Runs one command line command as a child of the supervisor and returns its envelope.
 
@@ -359,11 +550,4 @@ class CommandRunner:
                                       timeout=self.timeout)
             except (subprocess.TimeoutExpired, OSError):
                 return None
-        lines = [line for line in done.stdout.splitlines() if line.strip()]
-        if not lines:
-            return None
-        try:
-            envelope = json.loads(lines[-1])
-        except ValueError:
-            return None
-        return envelope if isinstance(envelope, dict) and "ok" in envelope else None
+        return _last_envelope(done.stdout)
