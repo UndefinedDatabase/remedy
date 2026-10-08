@@ -471,6 +471,27 @@ end the response with:
   reaches; and R-1169, a finding id left in a sentence a person reads, is governed by operator
   amendment amend0921-operator-feedback rule 3, which already states it. The list stays at 34
   items.
+  Consolidated again at F298's closure on 2026-10-08: no two items were merged and one
+  counter-measure joined an item, so the list stays at 34 items. Finding R-1181 joined item 34: the
+  generated reachability list grows when an existing module gains an import, even one inside a
+  function body, and not only when a new module appears, so item 34's clause about that list now
+  names both. None of the lines F298 wrote to `.agent/prose_slips.md` up to its round 26 names a
+  lesson the list lacks. A reviewer probe run in a folder inside the checkout without a git
+  ceiling, a reviewer command run with `cd` into a dry worktree, and a dry-run command run from
+  the primary checkout instead of the dry tree are all item 12's clause on the working directory a
+  dry run executes in; a handback that spoke about its own commit's self-review is item 31's
+  handback half, which already sends that commit's own readings out of the handback; worker
+  replies that disagreed with their handbacks or misreported a reading, a reading taken otherwise
+  than its block ordered, a worker command the block's constraints forbade, and a transcript field
+  written in a shape other than the one ordered are slips in following a block, which no item
+  about a block's text can prevent; and a decision dated a day late, with a prose line left
+  overlong, is a slip of typing no item would have caught. Its authoring defects that
+  left something on disk wrong were registered as findings, each the reading of an existing item:
+  R-1177, a docstring that counted a list a later round grew, is item 16's; and R-1178, an
+  interface that took whether an argument takes a value from the catalog while the command line's
+  parser decides it, is item 8's reading of the code that produces the value a sentence asserts.
+  R-1179 and R-1180 were found by the hardening stage's audit, which exists to find a promise no
+  test holds.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
@@ -1193,6 +1214,16 @@ end the response with:
       The neighbour above reads the TESTS that guard a path; this reads the LIST a guard
       regenerates, which no reading of the target file can show, because the file the
       block writes is not the file that goes red.
+      Finding R-1181, joined here at F298's closure, widens what makes that list grow from a new
+      module to a new import. An import that an existing module gains, inside a function body as
+      much as at its top, can bring modules that were always there into the closure, because the
+      test follows imports inside function bodies as well. A block that orders a new first-party
+      import under `apps/` or `packages/` therefore measures the closure in its dry run, names the
+      list in its change set when it grows, and puts
+      `tests/orchestration/test_import_reachability.py` in the round's selection. F298's round 19
+      is the instance: `apps/cli/client_interface.py` began to import the command line's parser
+      inside one function, three modules joined the closure unlisted, and only the closure's one
+      full suite found them.
 
   35. **A description and the enumeration it points at are read against each other,
       and the enumeration is the half that gets executed.** Findings R-0699 and
