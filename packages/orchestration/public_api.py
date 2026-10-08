@@ -165,6 +165,16 @@ def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
     )
 
 
+def public_api_method_refusal() -> tuple[int, dict[str, Any]]:
+    """The 405 a caller gets for `POST`, `PUT` or `DELETE` under this namespace: GET only."""
+    from apps.cli.json_envelope import build_error
+
+    return 405, build_error(
+        "api_method_not_allowed",
+        "this namespace answers GET only",
+    )
+
+
 def _client_interface_answer() -> dict[str, Any]:
     """The answer `GET /api/v1/interface` sends: `client.interface`'s own `--json` answer."""
     from apps.cli.client_interface import build_client_interface
