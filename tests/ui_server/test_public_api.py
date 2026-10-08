@@ -259,3 +259,22 @@ def test_an_undeprecated_route_sends_no_deprecation_header(tcp_server):
         tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
     assert status == 200
     assert "Deprecation" not in headers
+
+
+# -- G: the published page -----------------------------------------------------
+
+
+def test_the_pages_generated_section_equals_the_rendering():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    start = page.index(public_api.PUBLIC_API_PAGE_BEGIN)
+    end = page.index(public_api.PUBLIC_API_PAGE_END) + len(public_api.PUBLIC_API_PAGE_END) + 1
+    assert page[start:end] == public_api.render_public_api_markdown()
+
+
+def test_the_page_states_the_prefix_the_auth_scheme_and_the_refusal_tokens():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "/api/v1" in page
+    assert "Authorization: Bearer" in page
+    assert "api_token_invalid" in page
+    assert "api_route_not_found" in page
+    assert "Deprecation: true" in page
