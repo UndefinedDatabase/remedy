@@ -8,11 +8,14 @@ The socket is a real unix socket, and the requests are real HTTP requests on it.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import stat
+import subprocess
 import sys
 import threading
 import time
+from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
@@ -22,6 +25,11 @@ from packages.orchestration import serve_daemon as SD
 from packages.orchestration import serve_runs as SR
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.serve_paths import serve_paths
+
+REPO = Path(__file__).resolve().parents[2]
+#: `run_supervisor`'s own sentinel, re-exported so this module's tests can tell "pass no
+#: `api_port` keyword at all" apart from "pass `None`" the same way `_Running` below does.
+_UNSET_API_PORT = SD._UNSET_API_PORT
 
 
 @pytest.fixture
@@ -33,9 +41,14 @@ def root(tmp_path_factory, monkeypatch):
 
 
 class _Running:
-    """A supervisor running in a thread until `close` sets its stop event."""
+    """A supervisor running in a thread until `close` sets its stop event.
 
-    def __init__(self, root: Path, run_argv=None) -> None:
+    `api_port` left at its own unset sentinel means the keyword is never passed to
+    `run_supervisor`, so it reads `serve.api_port` from the configuration itself, the way a
+    real start does; passing `0` or `None` here passes it through unchanged.
+    """
+
+    def __init__(self, root: Path, run_argv=None, api_port=_UNSET_API_PORT) -> None:
         self.stop = threading.Event()
         self.ready = threading.Event()
         self.errors: list[Exception] = []
@@ -46,11 +59,13 @@ class _Running:
             self.ready.set()
 
         def run() -> None:
+            kwargs = {}
+            if run_argv is not None:
+                kwargs["run_argv"] = run_argv
+            if api_port is not _UNSET_API_PORT:
+                kwargs["api_port"] = api_port
             try:
-                if run_argv is None:
-                    SD.run_supervisor(root, stop=self.stop, on_ready=ready)
-                else:
-                    SD.run_supervisor(root, stop=self.stop, on_ready=ready, run_argv=run_argv)
+                SD.run_supervisor(root, stop=self.stop, on_ready=ready, **kwargs)
             except (SD.ServeError, OSError) as exc:
                 self.errors.append(exc)
                 self.ready.set()
@@ -73,6 +88,14 @@ def running(root):
     supervisor.close()
 
 
+@pytest.fixture
+def running_with_api(root):
+    """A supervisor whose public HTTP API listener is bound to a free port (S6a)."""
+    supervisor = _Running(root, api_port=0)
+    yield supervisor
+    supervisor.close()
+
+
 def _job() -> str:
     job = JobPlan(job_title="serve-test-job", user_prompt="Serve test prompt",
                   tasks=[TaskEntry(title="Write a README")])
@@ -82,6 +105,34 @@ def _job() -> str:
 
 def _mode(path: Path) -> int:
     return stat.S_IMODE(path.stat().st_mode)
+
+
+def _tcp_answers(port: int) -> bool:
+    """True when a process accepts a TCP connection on 127.0.0.1 at PORT."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(1.0)
+        try:
+            sock.connect(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def _api_request(port: int, method: str, path: str,
+                  headers: dict[str, str] | None = None) -> tuple[int, dict]:
+    conn = HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.request(method, path, headers=headers or {})
+        resp = conn.getresponse()
+        raw = resp.read()
+        status = resp.status
+    finally:
+        conn.close()
+    return status, json.loads(raw) if raw else {}
+
+
+def _bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_a_running_supervisor_answers_and_reports_itself(root, running):
@@ -285,3 +336,119 @@ def test_a_data_root_too_deep_for_a_socket_is_refused_before_anything_is_written
 
 def test_stopping_with_no_supervisor_reports_that_nothing_ran(root):
     assert SD.stop_supervisor(root) is False
+
+
+# -- S6a: the public HTTP API on 127.0.0.1 at `serve.api_port` (DECISION F253 D6) -----------
+
+
+def test_the_api_port_is_bound_and_named_by_ready_state_and_status(root, running_with_api):
+    paths = serve_paths(root)
+    bound = running_with_api.state.api_port
+    assert isinstance(bound, int) and bound > 0
+    assert SD.supervisor_state(root).api_port == bound
+    assert paths.api_port_file.read_text(encoding="utf-8").strip() == str(bound)
+    assert _mode(paths.api_port_file) == 0o600
+
+
+def test_the_api_listener_binds_127_0_0_1_only(root, monkeypatch):
+    captured: dict[str, tuple[str, int]] = {}
+    real_cls = SD.ThreadingHTTPServer
+
+    class _CapturingServer(real_cls):
+        def __init__(self, address, handler):
+            captured["address"] = address
+            super().__init__(address, handler)
+
+    monkeypatch.setattr(SD, "ThreadingHTTPServer", _CapturingServer)
+    supervisor = _Running(root, api_port=0)
+    try:
+        assert captured["address"][0] == "127.0.0.1"
+    finally:
+        supervisor.close()
+
+
+def test_the_api_port_answers_the_interface_route_with_the_sockets_own_token(
+        root, running_with_api):
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    status, body = _api_request(running_with_api.state.api_port, "GET", "/api/v1/interface",
+                                 headers=_bearer(token))
+    assert status == 200, body
+    env = dict(os.environ)
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "client", "interface", "--json"],
+        cwd=str(REPO), env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert body == json.loads(result.stdout)
+
+
+def test_the_api_port_without_the_token_is_401(root, running_with_api):
+    status, body = _api_request(running_with_api.state.api_port, "GET", "/api/v1/interface")
+    assert status == 401
+    assert body["error"] == "api_token_invalid"
+
+
+@pytest.mark.parametrize("method,path", [
+    ("GET", "/api/state"),
+    ("GET", "/"),
+    ("POST", "/api/jobs/any-job/commands"),
+])
+def test_the_api_port_answers_every_cockpit_only_path_404(root, running_with_api, method, path):
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    status, body = _api_request(running_with_api.state.api_port, method, path,
+                                 headers=_bearer(token))
+    assert status == 404
+    assert body["error"] == "api_route_not_found"
+
+
+def test_ending_removes_the_api_port_file_and_the_port_no_longer_answers(root):
+    supervisor = _Running(root, api_port=0)
+    port = supervisor.state.api_port
+    supervisor.close()
+    assert not serve_paths(root).api_port_file.exists()
+    assert not _tcp_answers(port)
+
+
+def test_with_api_port_none_no_port_file_exists_and_api_port_is_null(root):
+    supervisor = _Running(root, api_port=None)
+    try:
+        assert supervisor.state.api_port is None
+        assert not serve_paths(root).api_port_file.exists()
+        assert SD.supervisor_state(root).api_port is None
+    finally:
+        supervisor.close()
+
+
+def test_a_port_already_bound_refuses_the_start_and_leaves_nothing_behind(root):
+    blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    blocker.bind(("127.0.0.1", 0))
+    blocker.listen(1)
+    taken_port = blocker.getsockname()[1]
+    try:
+        with pytest.raises(SD.ServeError) as caught:
+            SD.run_supervisor(root, stop=threading.Event(), api_port=taken_port)
+        assert caught.value.token == "serve_api_port_unavailable"
+        assert str(taken_port) in str(caught.value)
+    finally:
+        blocker.close()
+    paths = serve_paths(root)
+    assert not paths.socket.exists()
+    assert not paths.pid_file.exists()
+    assert not paths.token_file.exists()
+    assert not paths.api_port_file.exists()
+
+
+def test_run_supervisor_without_the_keyword_reads_serve_api_port_from_configuration(
+        root, monkeypatch):
+    import packages.orchestration.config as cfg
+
+    class _FakeConfig:
+        def get(self, key: str) -> int:
+            assert key == "serve.api_port"
+            return 0
+
+    monkeypatch.setattr(cfg, "get_config", lambda: _FakeConfig())
+    supervisor = _Running(root)
+    try:
+        assert isinstance(supervisor.state.api_port, int) and supervisor.state.api_port > 0
+    finally:
+        supervisor.close()

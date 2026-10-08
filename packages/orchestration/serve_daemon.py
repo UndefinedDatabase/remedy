@@ -27,11 +27,19 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from packages.orchestration.serve_paths import ServePaths, serve_paths, socket_path_problem
 from packages.orchestration.serve_runs import RunLauncher, RunRefused, job_run_argv
+
+#: `run_supervisor`'s own sentinel for `api_port`, distinguishing "the caller passed no
+#: argument, so read `serve.api_port` from the configuration" from "the caller explicitly
+#: passed `None`, so no listener binds" — the two cases a plain default of `None` cannot
+#: tell apart, mirroring `self_use_runner._UNSET`.
+_UNSET_API_PORT: Any = object()
 
 #: The `source` an effect that arrives over the socket is recorded with: the word
 #: `remedy job stop`, `remedy job pause` and `remedy job unpause` write direct.
@@ -56,9 +64,13 @@ class SupervisorState:
     running: bool
     pid: int | None
     socket: Path
+    #: The public HTTP API listener's bound port (S6a, DECISION F253 D6); `None` when no
+    #: listener runs.
+    api_port: int | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {"running": self.running, "pid": self.pid, "socket": str(self.socket)}
+        return {"running": self.running, "pid": self.pid, "socket": str(self.socket),
+                "api_port": self.api_port}
 
 
 class _SocketServer(socketserver.ThreadingUnixStreamServer):
@@ -128,6 +140,64 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None) -> typ
     return _SocketHandler
 
 
+def public_api_handler_class(token: str) -> type:
+    """The handler bound to the supervisor's public HTTP API listener (S6a, DECISION F253 D6).
+
+    A subclass of `socket_handler_class(token)` with no run launcher. Each of `do_GET`,
+    `do_POST`, `do_PUT` and `do_DELETE` reads the path the way `do_POST` reads it, and passes
+    a path `is_public_api_path` accepts to the inherited method, which answers it exactly as
+    the socket does. Every other path, for every method, answers 404 `api_route_not_found`
+    straight through `_send_json`, naming that this port serves only `/api/v1` — never through
+    `_send_public_api_answer`, so a request this port does not serve writes no ledger line.
+    """
+    from apps.cli.json_envelope import build_error
+    from packages.orchestration.public_api import PUBLIC_API_PREFIX, is_public_api_path
+
+    base = socket_handler_class(token)
+
+    def _not_served(handler: Any, path: str) -> None:
+        handler._send_json(404, build_error(
+            "api_route_not_found",
+            f"this port answers only the public HTTP API under {PUBLIC_API_PREFIX}; "
+            f"'{path}' is not served here",
+        ))
+
+    class _PublicApiHandler(base):
+        def do_GET(self) -> None:  # noqa: N802
+            parsed = urlparse(getattr(self, "path", ""))
+            path = parsed.path.rstrip("/") or "/"
+            if is_public_api_path(path):
+                super().do_GET()
+                return
+            _not_served(self, path)
+
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(getattr(self, "path", ""))
+            path = parsed.path.rstrip("/") or "/"
+            if is_public_api_path(path):
+                super().do_POST()
+                return
+            _not_served(self, path)
+
+        def do_PUT(self) -> None:  # noqa: N802
+            parsed = urlparse(getattr(self, "path", ""))
+            path = parsed.path.rstrip("/") or "/"
+            if is_public_api_path(path):
+                super().do_PUT()
+                return
+            _not_served(self, path)
+
+        def do_DELETE(self) -> None:  # noqa: N802
+            parsed = urlparse(getattr(self, "path", ""))
+            path = parsed.path.rstrip("/") or "/"
+            if is_public_api_path(path):
+                super().do_DELETE()
+                return
+            _not_served(self, path)
+
+    return _PublicApiHandler
+
+
 def socket_answers(path: Path, timeout: float = 1.0) -> bool:
     """True when a process accepts a connection on the unix socket at PATH."""
     if not path.exists():
@@ -150,12 +220,22 @@ def read_pid(paths: ServePaths) -> int | None:
     return pid if pid > 0 else None
 
 
+def read_api_port(paths: ServePaths) -> int | None:
+    """The public HTTP API port the supervisor wrote, or None when there is no readable one."""
+    try:
+        port = int(paths.api_port_file.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return port
+
+
 def supervisor_state(root: Path | None = None) -> SupervisorState:
-    """Whether a supervisor answers on ROOT's socket, and its process id if so."""
+    """Whether a supervisor answers on ROOT's socket, its process id and API port if so."""
     paths = serve_paths(root)
     running = socket_answers(paths.socket)
-    return SupervisorState(running=running, pid=read_pid(paths) if running else None,
-                           socket=paths.socket)
+    return SupervisorState(
+        running=running, pid=read_pid(paths) if running else None, socket=paths.socket,
+        api_port=read_api_port(paths) if running else None)
 
 
 def _write_private(path: Path, text: str) -> None:
@@ -189,6 +269,7 @@ def run_supervisor(
     on_ready: Callable[[SupervisorState], None] | None = None,
     run_argv: Callable[[str], list[str]] = job_run_argv,
     job_is_running: Callable[[str], bool] | None = None,
+    api_port: int | None = _UNSET_API_PORT,
 ) -> None:
     """Answer ROOT's socket until STOP is set, or until SIGTERM or SIGINT arrives.
 
@@ -203,6 +284,16 @@ def run_supervisor(
     data root still names as open is adopted, restarted or declared lost — see
     `RunLauncher.resume_registered`, which JOB_IS_RUNNING is passed through to;
     tests replace it the way they replace RUN_ARGV.
+
+    API_PORT left unset reads `serve.api_port` from `get_config()` (S6a, DECISION F253 D6);
+    `None`, given or read, means no listener. Otherwise, after the socket server is created
+    and before ON_READY, a threaded HTTP server is bound to `("127.0.0.1", API_PORT)` with
+    `public_api_handler_class`, answering only `/api/v1`; an `OSError` from that bind raises
+    `ServeError("serve_api_port_unavailable", ...)`, and the same `finally` blocks that remove
+    the socket, the process id file and the token file still run. The bound port is written
+    with `_write_private` to `paths.api_port_file`, served in its own daemon thread, passed to
+    ON_READY's `SupervisorState`, and on the way out shut down, closed and removed with the
+    other files.
     """
     paths = serve_paths(root)
     problem = socket_path_problem(paths.socket)
@@ -220,25 +311,54 @@ def run_supervisor(
     stop = stop if stop is not None else threading.Event()
     launcher = RunLauncher(paths, argv_for=run_argv)
     server = _SocketServer(str(paths.socket), socket_handler_class(token, launcher))
+    if api_port is _UNSET_API_PORT:
+        from packages.orchestration.config import get_config
+        resolved_api_port = get_config().get("serve.api_port")
+    else:
+        resolved_api_port = api_port
+    api_server: ThreadingHTTPServer | None = None
+    bound_api_port: int | None = None
     try:
         os.chmod(paths.socket, 0o600)
         _write_private(paths.pid_file, str(os.getpid()))
         launcher.resume_registered(job_is_running=job_is_running)
+        if resolved_api_port is not None:
+            try:
+                api_server = ThreadingHTTPServer(
+                    ("127.0.0.1", resolved_api_port), public_api_handler_class(token))
+            except OSError as exc:
+                raise ServeError(
+                    "serve_api_port_unavailable",
+                    f"the public HTTP API port {resolved_api_port} could not be bound: {exc}",
+                ) from exc
+            bound_api_port = api_server.server_address[1]
+            _write_private(paths.api_port_file, str(bound_api_port))
         restore = _install_stop_signals(stop)
         thread = threading.Thread(target=server.serve_forever, name="remedy-serve", daemon=True)
         thread.start()
+        api_thread: threading.Thread | None = None
+        if api_server is not None:
+            api_thread = threading.Thread(
+                target=api_server.serve_forever, name="remedy-serve-api", daemon=True)
+            api_thread.start()
         try:
             if on_ready is not None:
-                on_ready(SupervisorState(running=True, pid=os.getpid(), socket=paths.socket))
+                on_ready(SupervisorState(running=True, pid=os.getpid(), socket=paths.socket,
+                                         api_port=bound_api_port))
             while not stop.wait(0.2):
                 pass
         finally:
             server.shutdown()
             thread.join()
+            if api_server is not None and api_thread is not None:
+                api_server.shutdown()
+                api_thread.join()
             restore()
     finally:
         server.server_close()
-        for path in (paths.socket, paths.pid_file, paths.token_file):
+        if api_server is not None:
+            api_server.server_close()
+        for path in (paths.socket, paths.pid_file, paths.token_file, paths.api_port_file):
             path.unlink(missing_ok=True)
 
 
