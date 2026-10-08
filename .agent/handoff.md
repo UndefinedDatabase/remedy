@@ -114,7 +114,36 @@ None. One pytest run only; no file was written outside the named paths; no `cd`,
 
 Round 25 PASS, booked by C1 in `.agent/live_review.md`; R-1181 registered there and landed by C2.
 
-Round 26's verdict is the reviewer's, booked with R-1181's resolution in the next round's first commit.
+Round 26: VERDICT PASS, given by the reviewer of session 5 after this handback; C1 to C3 verified by
+dry run, bytes identical. `.remedy-wt/f298-r26/review26.py`, whose readings are saved beside it as
+`review26-readings.txt`, read the saved block, `.agent/plan.md` and the two appended records at
+`9dfb386fb`, the allowlist and the ledger's `Landed:` line at `f592ea40c` and the feature file at
+`6fc1158ca` equal to the prepared files of the reviewer's dry run on `a92550b18`, and every one of
+them unchanged by `66bbaef9f` and `5be716af3`, eighteen of eighteen; `66bbaef9f` touches only the
+transcript and `5be716af3` only this file. The dry run's readings, saved as
+`.remedy-wt/f298-r26/build-readings-b.txt`: the targeted selection `438 passed` at exit 0,
+integrity six of six `pass`, the open set with R-1181, and `measure_reach.py` reading no unlisted
+module; the red control of `.remedy-wt/f298-r26/edit_dry.py`, the allowlist without
+`apps.cli.grouped`, turned the ratchet red, green again after. The transcript at `66bbaef9f`
+agrees with the worker's log `.remedy-wt/f298-r26-worker/suite.txt`: exit 0, `21658 passed, 22
+skipped`, no FAILED or ERROR line, the reflog unchanged during the run; the bad set shrank from
+round 25's one node to none, with no node newly bad, so amend0917-throughput rule 2's repair is
+done after one round. The worker declared no deviation.
+
+Drafted for the next round's first commit, to be appended to `.agent/live_review.md` after round
+26's gate entry, by this reviewer:
+
+`Done: R-1181 — RESOLVED at F298 round 26 by f592ea40c, verified by the reviewer of F298's fifth
+session. At f592ea40c, apps.cli.grouped, apps.cli.help_renderer and apps.cli.version_report stand in
+tests/orchestration/import_reachability_allowlist.txt in their sorted places, the file is byte-equal
+to the reviewer's prepared copy, and .remedy-wt/f298-r26/measure_reach.py read no reachable module
+missing from it; the list without apps.cli.grouped turned the ratchet red. F298's Built State names
+all five lines the feature added at 6fc1158ca, and the closure's one full suite on that tree,
+transcript at 66bbaef9f, read 21658 passed with no bad node.`
+
+And for `.agent/prose_slips.md`: `2026-10-08, F298 round 26 — the closure suite's transcript
+writes its empty bad set as a list item reading NONE on the line after the field, where the shape
+puts NONE on the field's own line; the values are right, so nothing on disk is wrong.`
 
 ## For the operator, in plain sentences
 
@@ -132,9 +161,21 @@ Nothing waits for you.
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then rule 2, the Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reviews round 26 and books its verdict and R-1181's resolution in the next round's first commit.
-4. Then the checklist's consolidation pass, the evidence bundle and the review package (this suite was green).
-5. Then the rotation, the STATUS line and the pull request.
+3. Then confirm `origin`'s tip equals the tip this handoff names before delegating.
+4. Then, in the next round's first commit: book round 26's verdict, quoted above, R-1181's `Done:`
+   paragraph and the prose slip, both drafted above, as written.
+5. Then the closure sequence (`docs/roadmap/STATUS_closure_protocol.md`, F116's rounds 13 to 15 as
+   the precedent): the §3 checklist's consolidation pass for F298 in
+   `docs/agents/planner_reviewer_prompt.md` (the list stays at 34 items or shorter); the evidence
+   bundle through `create_manual_completion_bundle(review_feature_id="F298", ...)`, the data
+   reclaim preview and apply, and the review zip from a clean tree; then the ledger rotation, the
+   STATUS `[x]` line with the README sync and `consumed_by` `F298` for `SU-048` in
+   `scripts/self_use_queue.json`, and the pull request. The closure suite is green at `66bbaef9f`;
+   if the branch moves outside the loop before the package, the suite runs once more
+   (amend0921-operator-feedback rule 1).
+6. F298 stands at 26 rounds and 5 sessions, past its soft limit of 25 rounds; the scope report is in
+   round 25's handback at `a92550b18`, and the split it proposes was executed by DECISION F298 D21.
+   Only the closure sequence remains.
 
 Operator questions open: 1.
 Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 and R-1181, Low; R-1181 owned by F298 and landed, the rest owned by F297).
@@ -151,3 +192,4 @@ Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 | Gates 1 to 3 | done | all green |
 | Push | done | outcome in the worker's final reply |
 | Gate 4 | done | reported in the worker's final reply |
+| Session close: round 26's verdict, R-1181's drafted resolution and the session's end | done | this commit |
