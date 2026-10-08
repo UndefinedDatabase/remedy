@@ -35,7 +35,10 @@ order <order> --json` does: the two share one answer-builder, `order_record_payl
 
 `POST /api/v1/jobs/{job}/run` (DECISION F253 D18) starts a job's run through the supervisor's own
 `RunLauncher` and answers 202 with the run's record; its body names the builder and the reviewer
-provider and no other option of `remedy job run` is offered.
+provider and no other option of `remedy job run` is offered. `GET /api/v1/jobs/{job}/run`
+(DECISION F253 D20) answers that record as `remedy client run <job> --json` does, with `state` and,
+once the run is not `running`, `answer`, and the 202 answer holds the same keys: the two share
+`run_record_payload` in `packages.orchestration.serve_runs`.
 
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
@@ -55,7 +58,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.9"
+PUBLIC_API_VERSION = "1.10"
 
 
 @dataclass(frozen=True)
@@ -245,6 +248,22 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         ),
     ),
     PublicApiRoute(
+        method="GET",
+        path="/api/v1/jobs/{job}/run",
+        twin="client.run",
+        refusals=(("run_not_found", 404),),
+        description=(
+            "Polls the run the `POST` to this path started, answering the run's record as "
+            "`remedy client run <job> --json` does: the record's keys, `state` and `answer`. A "
+            "client polls it until `state` is not `running`: `state` reads `running`, `ended` or "
+            "`lost`; `exit_code` is `null` until the run ends and stays `null` for a run read "
+            "`lost`; `answer` is `null` while the run is `running` and afterwards holds what "
+            "`remedy job run --json` printed, or `null` when it printed no envelope. A job id "
+            "prefix is accepted; a value that names no one job, or a job with no run, is "
+            "refused with 404 `run_not_found`."
+        ),
+    ),
+    PublicApiRoute(
         method="POST",
         path="/api/v1/jobs/{job}/run",
         twin="job.run",
@@ -254,11 +273,12 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run "
             "<job> <options> --json` would, and answers 202 with the run's record: `job_id`, "
             "`pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two "
-            "`null` until the run ends. `builder_provider` and `reviewer_provider` each pass "
+            "`null` until the run ends, and `state` and `answer` as the route above reads them. "
+            "`builder_provider` and `reviewer_provider` each pass "
             "`--builder-provider=<value>` and `--reviewer-provider=<value>`; no other option of "
-            "`remedy job run` is offered over HTTP. A job id prefix is accepted. A client follows "
-            "the run in the digest or in what changed, where the job's state reads `running` and "
-            "then its end. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "
+            "`remedy job run` is offered over HTTP. A job id prefix is accepted. A client waits "
+            "for the run's end by polling the route above until `state` is not `running`. "
+            "Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "
             "record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, "
             "`api_command_failed` 500 when the run cannot start, and "
             "`api_client_policy_refused` 403 for a client token's job outside its projects."
@@ -453,6 +473,31 @@ def _order_answer(*, order: str) -> dict[str, Any]:
     return build_ok(**order_record_payload(paths, record))
 
 
+def _run_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/run` sends: what `remedy client run <job> --json`
+    prints (DECISION F253 D20 (3)). Shares `run_record_payload` with the command itself and with
+    the run route's own 202 answer, so all three read a run alike. A value that names no one job,
+    or a job with no run record, is refused `run_not_found`."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import (
+        read_run_record,
+        run_not_found_message,
+        run_record_payload,
+    )
+
+    paths = serve_paths()
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdError:
+        return build_error("run_not_found", run_not_found_message(job))
+    record = read_run_record(paths, job_id)
+    if record is None:
+        return build_error("run_not_found", run_not_found_message(job))
+    return build_ok(**run_record_payload(paths, record))
+
+
 #: Twin command id to the function that builds its answer, called with the route's own query
 #: flags and bound path segments as keyword arguments, read at call time so a test that
 #: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
@@ -462,6 +507,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "change.proof": _change_proof_answer,
     "client.changes": _client_changes_answer,
     "client.order": _order_answer,
+    "client.run": _run_answer,
 }
 
 
@@ -726,7 +772,8 @@ def _start_run_answer(
     START_RUN is called with the full job id and the options the body gives, the builder's
     `--builder-provider=<value>` first and the reviewer's `--reviewer-provider=<value>` second;
     a `RunRefused` answers 409 with its own token and message, an `OSError` 500
-    `api_command_failed`, and the run's record 202.
+    `api_command_failed`, and the run's record 202, read by `run_record_payload` as `GET
+    /api/v1/jobs/{job}/run` reads it (DECISION F253 D20 (4)).
     """
     from apps.cli.json_envelope import build_error, build_ok
     from packages.orchestration.data_paths import (
@@ -736,7 +783,8 @@ def _start_run_answer(
         lookup_job_id,
     )
     from packages.orchestration.pingpong_job import load_job_plan_safe
-    from packages.orchestration.serve_runs import RunRefused
+    from packages.orchestration.serve_paths import serve_paths
+    from packages.orchestration.serve_runs import RunRefused, run_record_payload
 
     try:
         job_id = lookup_job_id(job)
@@ -764,7 +812,7 @@ def _start_run_answer(
     except OSError:
         return 500, build_error(
             "api_command_failed", f"the run for '{path}' could not be started; nothing runs"), {}
-    return 202, build_ok(**record.to_json()), {}
+    return 202, build_ok(**run_record_payload(serve_paths(), record)), {}
 
 
 def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any] | None, str]:
