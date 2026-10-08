@@ -53,16 +53,19 @@ A write is a `POST`. Only the supervisor that `remedy serve start` starts answer
 socket and on its port; the cockpit's own server answers every `POST` under `/api/v1` with 405 and
 `api_method_not_allowed`. The body of a write is a JSON object that holds only the keys the
 route's table row names under "Query or body", each of the kind the row gives: `string` is one
-string, and `strings` is a list of non-empty strings; no body at all is the empty object, and a
-write takes no query string. The supervisor runs the twin command as a process of its own and
-answers that command's own envelope, so a refusal carries the command's own token and message. The
-statuses are the ones the table row's `Refusals` column names, and any other refusal answers the
-status the row gives after "any other", which is 409. A body the supervisor cannot read, or one
-larger than 64 kilobytes, answers 400 with `api_body_invalid`; a path value that begins with `-`,
-or that holds `/` or a NUL character once decoded, answers 400 with `api_path_invalid`, because no
-job or decision id does; and a command
-that prints no answer within 120 seconds answers 500 with `api_command_failed`. The supervisor runs
-one command for a job at a time, so a second write for that job waits for the first. `PUT` and
+string, `strings` is a list of non-empty strings, and `flag` is `true` or `false`, where `true`
+passes the command's option of that name and `false` passes nothing; no body at all is the empty
+object, and a write takes no query string. The supervisor runs the twin command as a process of
+its own and answers that command's own envelope, so a refusal carries the command's own token and
+message. The statuses are the ones the table row's `Refusals` column names, and any other refusal
+answers the status the row gives after "any other", which is 409. A body the supervisor cannot
+read, or one larger than 64 kilobytes, answers 400 with `api_body_invalid`; a path value that
+begins with `-`, or that holds `/` or a NUL character once decoded, answers 400 with
+`api_path_invalid`, because no job or decision id does; an apply of a job whose record names no
+repository answers 409 with `api_job_repository_unknown`, because the API applies only to the
+repository a job's own record names and never to one the caller chooses; and a command that
+prints no answer within 120 seconds answers 500 with `api_command_failed`. The supervisor runs one
+command for a job at a time, so a second write for that job waits for the first. `PUT` and
 `DELETE` still answer 405.
 
 ## The ledger
@@ -99,7 +102,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.5`.
+API version: `1.6`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
@@ -109,6 +112,7 @@ API version: `1.5`.
 | `GET` | `/api/v1/changes` | `since=<value>` | `remedy client changes --json` | `invalid_cursor` 400 | no | What changed since a cursor: the jobs and decisions as the digest shows them, the decisions answered, the missions and the applies, with the cursor for the next read, as `remedy client changes --since <cursor> --json` prints it; without `since` only a cursor is given. |
 | `POST` | `/api/v1/jobs/{job}/decisions/{decision}` | `reason` (string), `answer` (strings) | `remedy decision resolve --json` | `invalid_job_id` 404, `job_not_found` 404, `decision_not_found` 404, `stop_reason_not_found` 404, `proposed_task_not_found` 404, `ambiguous_job_id` 400, `invalid_argument` 400, `missing_argument` 400, `option_not_applicable` 400, `answer_parse_error` 400, `invalid_budget` 400, `decision_not_resolvable` 400, any other 409 | no | Answers one decision of a job, as `remedy decision resolve <job> <decision> --json` does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id prefix is accepted, as on the command line, and `--as-mission` is not offered over HTTP. |
 | `POST` | `/api/v1/jobs/{job}/decline` | `reason` (string) | `remedy job decline --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, `missing_argument` 400, any other 409 | no | Declines a completed job's result, as `remedy job decline <job> --reason <reason> --json` does: nothing is applied and the decline is kept on the job, recorded as coming through `api`; a job that is not completed, or whose result already landed, is refused with 409. |
+| `POST` | `/api/v1/jobs/{job}/apply` | `commit` (string), `commit_auto` (flag), `commit_with_history` (flag), `push` (flag), `skip_blocked` (flag) | `remedy job apply --json` | `job_not_found` 404, `invalid_argument` 400, any other 409 | no | Approves a completed job's result and applies it to the repository the job's own record names, as `remedy job apply <job> --repo <that repository> --approve --json` does: `commit` is given as `--commit`, and each of `commit_auto`, `commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered over HTTP, and a job whose record names no repository is refused with 409 `api_job_repository_unknown` before any command runs. |
 
 ### Never published
 

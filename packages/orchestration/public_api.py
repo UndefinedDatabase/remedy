@@ -21,7 +21,9 @@ D5 (1)).
 
 A `POST` route is a write (DECISION F253 D9): it declares the keys of its JSON body in `body` and
 a `refusal_default` status, and `answer_public_api_post` answers it with the envelope of the twin
-command, which the caller's runner has run as a child process.
+command, which the caller's runner has run as a child process. A route's argument builder may
+refuse a write itself, before any command runs, by raising `PublicApiWriteRefusal` (DECISION F253
+D12).
 
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
@@ -41,7 +43,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.5"
+PUBLIC_API_VERSION = "1.6"
 
 
 @dataclass(frozen=True)
@@ -64,8 +66,9 @@ class PublicApiRoute:
     #: The refusal tokens this route shares with its twin, each with the HTTP status it answers
     #: with (DECISION F253 D3 (2)); `()` for a route that never refuses.
     refusals: tuple[tuple[str, int], ...] = ()
-    #: The keys of a write route's JSON body, each with its kind: `"string"`, or `"strings"` (a
-    #: list of non-empty strings) (DECISION F253 D9 (3)); `()` for a route that takes no body.
+    #: The keys of a write route's JSON body, each with its kind: `"string"`, `"strings"` (a list
+    #: of non-empty strings) (DECISION F253 D9 (3)), or `"flag"` (`true` or `false`) (DECISION
+    #: F253 D12); `()` for a route that takes no body.
     body: tuple[tuple[str, str], ...] = ()
     #: The HTTP status of a refusal token `refusals` does not list, or None when every refusal
     #: must be listed (DECISION F253 D9 (4)).
@@ -166,6 +169,27 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "--json` does: nothing is applied and the decline is kept on the job, recorded as "
             "coming through `api`; a job that is not completed, or whose result already landed, "
             "is refused with 409."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/apply",
+        twin="job.apply",
+        body=(("commit", "string"), ("commit_auto", "flag"), ("commit_with_history", "flag"),
+              ("push", "flag"), ("skip_blocked", "flag")),
+        refusal_default=409,
+        refusals=(
+            ("job_not_found", 404),
+            ("invalid_argument", 400),
+        ),
+        description=(
+            "Approves a completed job's result and applies it to the repository the job's own "
+            "record names, as `remedy job apply <job> --repo <that repository> --approve --json` "
+            "does: `commit` is given as `--commit`, and each of `commit_auto`, "
+            "`commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job "
+            "id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered "
+            "over HTTP, and a job whose record names no repository is refused with 409 "
+            "`api_job_repository_unknown` before any command runs."
         ),
     ),
 )
@@ -422,11 +446,59 @@ def _job_decline_argv(segments: dict[str, str], body: dict[str, Any]) -> list[st
             "--", segments["job"]]
 
 
+class PublicApiWriteRefusal(Exception):
+    """A write a route's argument builder refuses before any command runs (DECISION F253 D12)."""
+
+    def __init__(self, status: int, error: str, message: str) -> None:
+        super().__init__(message)
+        self.status, self.error, self.message = status, error, message
+
+
+#: The flags of the apply route's body, each passed as its `job apply` option when `true`
+#: (DECISION F253 D12).
+_JOB_APPLY_FLAGS: tuple[str, ...] = ("commit_auto", "commit_with_history", "push", "skip_blocked")
+
+
+def _job_apply_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job apply` is run with (DECISION F253 D12): `--approve` always;
+    `--repo` the repository the job's own record names, never one the caller chooses, and the job
+    by its full id, so that a prefix is accepted; `--commit` when the body gives one, and each flag
+    the body sets `true`; never `--test-command`, which would run a command of the caller's choice.
+
+    A value that names no one job is passed as sent and without `--repo`, and the command refuses
+    it `job_not_found` before it touches any repository. A job whose record names no repository
+    is refused here with 409 `api_job_repository_unknown`, because `--repo` would otherwise mean
+    the supervisor's own working folder.
+    """
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job, repo = segments["job"], []
+    try:
+        plan = load_job_plan(lookup_job_id(job))
+    except JobIdError:
+        plan = None
+    if plan is not None:
+        if not plan.repo_path:
+            raise PublicApiWriteRefusal(
+                409, "api_job_repository_unknown",
+                f"job {plan.job_id}'s record names no repository, so it is not known where to "
+                "apply it; nothing was run")
+        job, repo = str(plan.job_id), [f"--repo={plan.repo_path}"]
+    options = ["--approve", *repo]
+    if "commit" in body:
+        options.append(f"--commit={body['commit']}")
+    options += [f"--{flag.replace('_', '-')}" for flag in _JOB_APPLY_FLAGS if body.get(flag)]
+    return ["job", "apply", *options, "--json", "--", job]
+
+
 #: Twin command id of a write route to the function that builds the argument list its command
-#: runs with, from the route's bound path segments and its checked body (DECISION F253 D9).
+#: runs with, from the route's bound path segments and its checked body (DECISION F253 D9). A
+#: builder may raise `PublicApiWriteRefusal` instead (DECISION F253 D12).
 _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "decision.resolve": _decision_resolve_argv,
     "job.decline": _job_decline_argv,
+    "job.apply": _job_apply_argv,
 }
 
 
@@ -457,6 +529,9 @@ def _body_refusal(route: PublicApiRoute, raw_body: bytes) -> tuple[dict[str, Any
         if kinds[key] == "string":
             valid = isinstance(value, str)
             wanted = "a string"
+        elif kinds[key] == "flag":
+            valid = isinstance(value, bool)
+            wanted = "true or false"
         else:
             valid = (isinstance(value, list) and all(isinstance(item, str) and item
                                                      for item in value))
@@ -477,8 +552,9 @@ def answer_public_api_post(
     begins with `-`, or that holds `/` or a NUL character once decoded, answers 400
     `api_path_invalid`, because a command builds a file name from its job value and a child's
     arguments cannot hold a NUL (R-1195); a body that is not a JSON object holding
-    only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; neither
-    starts a command. Otherwise RUN_COMMAND is called with the job the job segment names
+    only the route's declared keys, each of its kind, answers 400 `api_body_invalid`; a
+    `PublicApiWriteRefusal` from the twin's argument builder answers its own status and token;
+    none of these starts a command. Otherwise RUN_COMMAND is called with the job the job segment names
     (`_job_lock_key`) and the argument list the twin's builder makes, and the envelope it returns is the answer: None answers 500
     `api_command_failed`, an `ok` envelope 200, a refusal the status `refusals` declares for its
     token or else the route's `refusal_default`.
@@ -503,8 +579,11 @@ def answer_public_api_post(
         checked, why = _body_refusal(route, raw_body)
         if checked is None:
             return 400, build_error("api_body_invalid", why), {}
-        envelope = run_command(_job_lock_key(segments["job"]),
-                               _TWIN_ARGV[route.twin](segments, checked))
+        try:
+            argv = _TWIN_ARGV[route.twin](segments, checked)
+        except PublicApiWriteRefusal as refusal:
+            return refusal.status, build_error(refusal.error, refusal.message), {}
+        envelope = run_command(_job_lock_key(segments["job"]), argv)
         if envelope is None:
             return 500, build_error(
                 "api_command_failed",

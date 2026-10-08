@@ -120,8 +120,8 @@ def _tcp_answers(port: int) -> bool:
 
 def _api_request(port: int, method: str, path: str,
                   headers: dict[str, str] | None = None,
-                  body: bytes | None = None) -> tuple[int, dict]:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
+                  body: bytes | None = None, timeout: float = 10) -> tuple[int, dict]:
+    conn = HTTPConnection("127.0.0.1", port, timeout=timeout)
     try:
         conn.request(method, path, body=body, headers=headers or {})
         resp = conn.getresponse()
@@ -686,3 +686,87 @@ def test_a_decline_post_refuses_as_the_command_does(root, running_with_api):
     assert (status, body["error"]) == (400, "missing_argument")
     assert body == _decline_command_envelope(root, completed, "")
     assert job_result_decline(require_job_plan(completed)) is None
+
+
+# -- S4c: approving an apply over HTTP (DECISION F253 D12) -------------------------------------
+
+
+def _completed_job_in_a_repository(root: Path, tmp_path: Path) -> tuple[str, Path]:
+    """A job `remedy do` completed with the fake builder and reviewer, run as a child against
+    ROOT inside a scratch repository: the job's id and the repository."""
+    from tests.cli.test_machine_client_paths import UNATTENDED, _client
+
+    repo, order_file, env = _client(tmp_path)
+    env = {**env, "REMEDY_DATA_DIR": str(root), SR.DIRECT_ENV: "1", "PYTHONPATH": str(REPO)}
+    done = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "do", str(order_file), *UNATTENDED, "--json"],
+        cwd=str(repo), env=env, capture_output=True, text=True, timeout=300)
+    envelope = json.loads(done.stdout.strip().splitlines()[-1])
+    assert envelope["ok"], envelope
+    [job_id] = envelope["job_ids"]
+    return job_id, repo
+
+
+def _apply_command_envelope(root: Path, job_id: str, repo: Path, *flags: str) -> dict:
+    """What `remedy job apply <job> --repo <repo> --approve <flags> --json` prints, run as a
+    subprocess against ROOT; a refusal exits nonzero and still prints its envelope."""
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root), SR.DIRECT_ENV: "1"}
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "job", "apply", job_id, "--repo", str(repo),
+         "--approve", *flags, "--json"],
+        cwd=str(REPO), env=env, capture_output=True, text=True, timeout=120)
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+def _post_apply(port: int, token: str, job: str, body: dict):
+    return _api_request(port, "POST", f"/api/v1/jobs/{job}/apply", headers=_bearer(token),
+                        body=json.dumps(body).encode(), timeout=120)
+
+
+def test_an_apply_post_lands_one_commit_in_the_jobs_own_repository(
+        root, running_with_api, tmp_path, monkeypatch):
+    from tests.cli.test_machine_client_contract import _GIT_IDENTITY
+
+    for name, value in _GIT_IDENTITY.items():
+        monkeypatch.setenv(name, value)
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    job_id, repo = _completed_job_in_a_repository(root, tmp_path)
+    before = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                            capture_output=True, text=True).stdout.strip()
+
+    status, body = _post_apply(running_with_api.state.api_port, token, job_id[:8],
+                               {"commit_auto": True})
+    assert status == 200, body
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    parent = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD~1"], check=True,
+                            capture_output=True, text=True).stdout.strip()
+    assert (body["ok"], body["status"], body["job_id"]) == (True, "applied", job_id)
+    assert body["commit_sha"] == head and parent == before
+
+
+def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_with_api, tmp_path):
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+
+    planned = JobPlan(job_title="serve-apply-job", user_prompt="Serve apply prompt",
+                      tasks=[TaskEntry(title="Write a page")], repo_path=str(tmp_path))
+    save_job_plan(planned)
+    status, body = _post_apply(port, token, str(planned.job_id), {"commit_auto": True})
+    assert (status, body["ok"], body["error"]) == (409, False, "job_not_ready")
+    command = _apply_command_envelope(root, str(planned.job_id), tmp_path, "--commit-auto")
+    aside = ("job_apply_id", "started_at", "finished_at")
+    assert ({k: v for k, v in body.items() if k not in aside}
+            == {k: v for k, v in command.items() if k not in aside})
+
+    status, body = _post_apply(port, token, "0123abcd", {})
+    assert (status, body["error"]) == (404, "job_not_found")
+
+    unknown = _saved_job(completed=True)
+    path = f"/api/v1/jobs/{unknown}/apply"
+    status, body = _api_request(port, "POST", path, headers=_bearer(token), body=b"{}")
+    assert (status, body["error"]) == (409, "api_job_repository_unknown")
+    ledger = Path(root) / "api" / "calls.jsonl"
+    records = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+    assert (records[-1]["method"], records[-1]["path"], records[-1]["status"]) == (
+        "POST", path, 409)
