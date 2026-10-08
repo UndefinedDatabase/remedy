@@ -3,7 +3,8 @@
 `docs/roadmap/features/T12_F298.md` T001 asks for one document, generated from the code and never
 written by hand, that names what a program meets when it drives Remedy's command line. This
 module builds it. Every list in it is read from the place the product already keeps it: the
-command catalog for the operations, their arguments and the exit codes each can reach;
+command catalog for the operations, their arguments and the exit codes each can reach; the
+command line's parser for whether an argument takes a value and may be repeated (R-1178);
 `apps/cli/exit_codes.py` for what each exit code means; `RunState` for the job states;
 `MISSION_STATUSES` for the mission status words; `docs/contracts/` for the contract templates;
 `JobBudgets` for the budget kinds; and `apps/cli/json_envelope.py` for the envelope every
@@ -29,6 +30,7 @@ removes one.
 
 from __future__ import annotations
 
+import argparse
 import copy
 from typing import Any
 
@@ -607,31 +609,46 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
 }
 
 
-def _argument_entry(arg: Any) -> dict[str, Any]:
-    """One catalog `ArgDef` as the document names it."""
+def _parser_actions(entry: Any) -> dict[str, argparse.Action]:
+    """The actions the command line's parser builds for one catalog entry, by argument name."""
+    from apps.cli.grouped import _add_command_args
+
+    parser = argparse.ArgumentParser(add_help=False)
+    _add_command_args(parser, entry)
+    return {name: action for action in parser._actions
+            for name in (action.option_strings or [action.dest])}
+
+
+# WHY: the parser, not the catalog's `is_flag`, decides whether an argument takes a value and may
+# be repeated, because it gives `--json`, `--approve` and others their own rules by name (R-1178,
+# DECISION F298 D19).
+def _argument_entry(arg: Any, action: argparse.Action) -> dict[str, Any]:
+    """One catalog `ArgDef` as the document names it, with the parser action built for it."""
     return {
         "name": arg.name,
         "help": arg.help,
         "option": arg.is_option,
         "required": arg.required,
-        "takes_value": not arg.is_flag,
-        "repeatable": arg.is_repeatable,
+        "takes_value": action.nargs != 0,
+        "repeatable": isinstance(action, argparse._AppendAction),
     }
 
 
 def _operation_entry(command_id: str) -> dict[str, Any]:
-    """One operation, read from its catalog entry and its refusal tokens.
+    """One operation, read from its catalog entry, its parser and its refusal tokens.
 
-    `KeyError` when the catalog has no such id or `OPERATION_REFUSAL_TOKENS` no entry for it.
+    `KeyError` when the catalog has no such id, the parser no action for one of its arguments, or
+    `OPERATION_REFUSAL_TOKENS` no entry for it.
     """
     from apps.cli.command_catalog import get_command
 
     entry = get_command(command_id)
+    actions = _parser_actions(entry)
     return {
         "command_id": entry.command_id,
         "command": f"remedy {entry.group_id} {entry.subcommand}",
         "description": entry.description,
-        "arguments": [_argument_entry(arg) for arg in entry.args],
+        "arguments": [_argument_entry(arg, actions[arg.name]) for arg in entry.args],
         "exit_codes": list(entry.exit_codes),
         "refusal_tokens": list(OPERATION_REFUSAL_TOKENS[command_id]),
     }

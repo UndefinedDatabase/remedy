@@ -3,7 +3,9 @@
 `apps/cli/client_interface.py` builds the document a program relies on, and
 `remedy client interface` prints it. These tests hold every list in the document to the place the
 product keeps it, and prove the reading is live: a change made to the catalog while the test
-runs appears in the document without any edit to the interface module.
+runs appears in the document without any edit to the interface module. Whether an argument takes
+a value and may be repeated is held to the parser `remedy` really runs, which gives some options
+their own rules by name (R-1178, DECISION F298 D19).
 
 The digest's key tree is declared in the interface module, so it is held from two sides
 (DECISION F298 D3): its names equal the string keys of the dict literals the digest's code
@@ -25,6 +27,7 @@ answers return no key below the top level that the trees do not name, at the pla
 """
 from __future__ import annotations
 
+import argparse
 import ast
 import inspect
 import json
@@ -53,7 +56,7 @@ from apps.cli.client_interface import (
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.exit_codes import CLI_EXIT_CODES
-from apps.cli.grouped import main
+from apps.cli.grouped import build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
 from packages.core.models import JobBudgets, RunState
 from packages.orchestration.contract_templates import list_contract_templates
@@ -75,11 +78,25 @@ def test_the_document_carries_its_own_version():
     assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.1"
 
 
+def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
+    """The actions of one command's parser inside the parser `remedy` really runs, by argument name."""
+    entry = get_command(command_id)
+
+    def choices(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentParser]:
+        return next(action for action in parser._actions
+                    if isinstance(action, argparse._SubParsersAction)).choices
+
+    command = choices(choices(build_parser())[entry.group_id])[entry.subcommand]
+    return {name: action for action in command._actions
+            for name in (action.option_strings or [action.dest])}
+
+
 def test_each_operation_is_its_catalog_entry_in_the_declared_order():
     operations = build_client_interface()["operations"]
     assert [op["command_id"] for op in operations] == list(CLIENT_OPERATION_IDS)
     for op in operations:
         entry = get_command(op["command_id"])
+        actions = _command_parser_actions(op["command_id"])
         assert op["command"] == f"remedy {entry.group_id} {entry.subcommand}"
         assert op["description"] == entry.description
         assert op["exit_codes"] == list(entry.exit_codes)
@@ -91,9 +108,26 @@ def test_each_operation_is_its_catalog_entry_in_the_declared_order():
                 "help": catalog_arg.help,
                 "option": catalog_arg.is_option,
                 "required": catalog_arg.required,
-                "takes_value": not catalog_arg.is_flag,
-                "repeatable": catalog_arg.is_repeatable,
+                "takes_value": actions[catalog_arg.name].nargs != 0,
+                "repeatable": isinstance(actions[catalog_arg.name], argparse._AppendAction),
             }
+
+
+def test_a_switch_takes_no_value_and_a_collected_option_repeats():
+    """R-1178: the parser gives `--json`, `--approve` and others their own rules by name, so the
+    catalog's `is_flag` alone said they take a value; the document says what the parser does."""
+    arguments = {(op["command_id"], arg["name"]): arg
+                 for op in build_client_interface()["operations"] for arg in op["arguments"]}
+    for switch in (("job.apply", "--approve"), ("job.apply", "--dry-run"), ("do.run", "--json"),
+                   ("do.run", "--no-ui"), ("do.run", "--yes"), ("job.run", "--stream-evidence"),
+                   ("job.resume", "--dry-run"), ("client.interface", "--json")):
+        assert arguments[switch]["takes_value"] is False, switch
+    for valued in (("decision.resolve", "--reason"), ("do.run", "--max-cost-usd"),
+                   ("do.run", "--project"), ("do.run", "goal")):
+        assert arguments[valued]["takes_value"] is True, valued
+    assert arguments[("job.evidence", "--verification-command")]["repeatable"] is True
+    assert arguments[("decision.resolve", "--answer")]["repeatable"] is True
+    assert arguments[("job.apply", "--approve")]["repeatable"] is False
 
 
 def test_an_argument_added_to_the_catalog_appears_in_the_document(monkeypatch):
@@ -1200,7 +1234,7 @@ def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
     [entry] = [node.value for node in _function_def(interface, "_operation_entry").body
                if isinstance(node, ast.Return)]
     arguments = {key.value: value for key, value in zip(entry.keys, entry.values)}["arguments"]
-    assert ast.unparse(arguments) == "[_argument_entry(arg) for arg in entry.args]"
+    assert ast.unparse(arguments) == "[_argument_entry(arg, actions[arg.name]) for arg in entry.args]"
     assert set(trees["operations"]["arguments"]) == _returned_dict_keys(interface, "_argument_entry")
     assert isinstance(values["exit_codes"], ast.ListComp)
     assert set(trees["exit_codes"]) == _dict_display_keys(values["exit_codes"].elt)
