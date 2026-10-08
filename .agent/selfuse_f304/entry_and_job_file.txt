@@ -1,0 +1,5 @@
+Entry ID: SU-049
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:718
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as exc:  # noqa: BLE001 — a read view never fails on one section)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f304-r19-selfuse/SU-049.md
