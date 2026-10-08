@@ -1,5 +1,5 @@
-"""S7b — F295's gate path and four of F304's five paths, driven through a real supervisor over
-HTTP alone (DECISION F253 D19).
+"""S7b — F295's gate path and F304's five paths, driven through a real supervisor over HTTP
+alone (DECISION F253 D19, D22).
 
 `tests/cli/test_machine_client_contract.py` (F295's gate test) and
 `tests/cli/test_machine_client_paths.py` (F304's second gate test) drive a machine client's work
@@ -12,10 +12,11 @@ an operator does before a client starts; everything after that goes to `127.0.0.
 with the token. Every order is sent with `no_llm` and both providers `fake`, and every run names
 both providers `fake`, so no model is called.
 
-The four paths of F304 driven here are the apply with its history and a push, the order of two
-jobs, the order naming its project, and the decline. The fifth, one order file started twice, is
-absent on purpose: a client sends an order's text, not a file, and two orders sent over HTTP never
-share a file, so `order_already_running` has no HTTP form (R-1207, DECISION F253 D19 (4)).
+The five paths of F304 driven here are the apply with its history and a push, the order of two
+jobs, the order naming its project, the decline, and one order file started twice. A client sends
+an order's text, not a file, so the fifth is driven with `order_key` (DECISION F253 D22): two
+orders sent with one key share the key's file, and the second is refused `order_already_running`
+while the first one's mission has not ended (R-1207, R-1210).
 
 A test waits for the end of each run it starts (R-1208, DECISION F253 D20): the digest can read a
 job `completed` and waiting for its apply a moment before the run that finished it has ended, so a
@@ -78,6 +79,11 @@ def _environment(data_root: Path, **more: str) -> dict[str, str]:
 
 def _remedy_command(*args: str) -> list[str]:
     return [sys.executable, "-m", "apps.cli.main", *args]
+
+
+def _order_text(slug: str, text: str = "Add a line saying hello to README.md") -> str:
+    """The whole text of an order of project SLUG with a cost cap, as `send_order` sends it."""
+    return f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n{text}\n"
 
 
 def _first_line(child: subprocess.Popen) -> str:
@@ -150,7 +156,7 @@ class Supervisor:
     def send_order(self, slug: str, text: str = "Add a line saying hello to README.md",
                    **more: Any) -> dict:
         """Send an order of project SLUG with a cost cap; the 202 answer's record."""
-        order = f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n{text}\n"
+        order = _order_text(slug, text)
         status, created = self.post("/api/v1/orders", {"order": order, **ORDER_FLAGS, **more})
         assert status == 202, created
         assert created["state"] == "running", created
@@ -382,6 +388,34 @@ def test_an_order_naming_its_project_is_applied_in_that_projects_repository_over
 
     assert (repo / "docs" / "README.md").is_file()
     assert list(elsewhere.iterdir()) == []
+
+
+def test_one_order_sent_twice_with_one_key_is_refused_naming_the_mission_that_runs_it_over_http(
+        supervisor, tmp_path):
+    repo = _repository(tmp_path)
+    registered, _elsewhere = supervisor.register(repo)
+    slug = registered["slug"]
+
+    # The deadline has passed, so the budget stops the order's mission before any task runs and
+    # leaves it open: the mission has not ended.
+    ended = supervisor.ended_order(
+        supervisor.send_order(slug, deadline=PAST_DEADLINE, order_key="order-once"))
+    assert ended["exit_code"] == 1, ended
+    mission_id = ended["answer"]["mission_id"]
+
+    status, refused = supervisor.post("/api/v1/orders", {
+        "order": _order_text(slug), **ORDER_FLAGS, "deadline": PAST_DEADLINE,
+        "order_key": "order-once"})
+    assert status == 409, refused
+    assert refused["error"] == "order_already_running", refused
+    assert refused["mission_id"] == mission_id, refused
+    digest = supervisor.digest()
+    listed = [m["mission_id"] for project in digest["projects"] for m in project["missions"]]
+    assert listed == [mission_id], digest
+
+    again = supervisor.ended_order(supervisor.send_order(
+        slug, deadline=PAST_DEADLINE, order_key="order-once", new_mission=True))
+    assert again["answer"]["mission_id"] != mission_id, again
 
 
 def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervisor, tmp_path):
