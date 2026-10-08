@@ -1,42 +1,42 @@
-# Handoff — F304 session 4, round 15: T007's first part, the digest lists what needs something and the jobs that ended last (DECISION F304 D16)
+# Handoff — F304 session 4, round 16: T007's last part, a small change needs no contract template of its own (DECISION F304 D17)
 
 ## Session
 
-SESSION 4 of feature F304 · round 15 · rounds so far 15
+SESSION 4 of feature F304 · round 16 · rounds so far 16
 
 Context self-assessment: the reviewer's context is comfortable; the session continues.
 
-Fortschritt: ~84 % (T002 to T006 done · T007's window landed · T007's template question, the
-hardening stage and the closure open) — Schätzung
+Fortschritt: ~88 % (T002 to T007 done · the hardening stage and the closure open) — Schätzung
 
 ## Range
 
-Review of `5eabb405924de6a9191b154829ac1396b6568885`..HEAD (HEAD is C3 below, which carries this
+Review of `7d95ea980646c13fffd94d0901bc66db82bbc8b6`..HEAD (HEAD is C3 below, which carries this
 handback).
 
 ## Commits
 
-### 97b4a534e F304 R15 C1: book round 14, DECISION F304 D16, the plan and the block
+### e28e4e120 F304 R16 C1: book round 15, DECISION F304 D17, the plan and the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f304-r15.md` | 129/0 | new file, byte copy of `block.md` |
-| `.agent/decisions.md` | 10/0 | its bytes at `5eabb4059` followed by `append-decisions.txt` (DECISION F304 D16) |
-| `.agent/live_review.md` | 2/0 | its bytes at `5eabb4059` followed by `append-live_review.txt` (round 14's gate entry) |
-| `.agent/plan.md` | 8/9 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f304-r16.md` | 122/0 | new file, byte copy of `block.md` |
+| `.agent/decisions.md` | 10/0 | its bytes at `7d95ea980` followed by `append-decisions.txt` (DECISION F304 D17) |
+| `.agent/live_review.md` | 2/0 | its bytes at `7d95ea980` followed by `append-live_review.txt` (round 15's gate entry) |
+| `.agent/plan.md` | 9/8 | `dry-plan.md`, byte for byte |
 
-### fdd780428 F304 R15 C2: the digest lists what needs something and the jobs that ended last (T007, DECISION F304 D16)
+### 565339b6b F304 R16 C2: a small change needs no contract template of its own (T007, DECISION F304 D17)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/client_interface.py` | 2/1 | `job_window` joins `DIGEST_KEY_TREE` |
-| `apps/cli/command_catalog.py` | 2/0 | the `--all-ended-jobs` flag of `status` |
-| `apps/cli/commands/status_cmd.py` | 8/2 | the handler passes the flag to the digest builder |
-| `docs/system/machine-client-contract-v1.md` | 14/4 | step 2 says what `jobs` holds and what has ended; the generated section written again |
-| `packages/orchestration/client_digest.py` | 48/5 | the ended-job window, `job_window`, `every_ended_job` |
-| `tests/cli/test_client_interface.py` | 1/1 | the pinned digest call |
-| `tests/cli/test_status_cmd.py` | 64/0 | 1,000 settled jobs through the command line, and the flag |
-| `tests/orchestration/test_client_digest.py` | 116/0 | order, creation fallback, every kind of job that needs something, the flag, an unreadable job, the page's sentence |
+| `docs/system/machine-client-contract-v1.md` | 9/0 | the order-file section says what an order is held to with and without a template |
+| `tests/cli/test_do_order_file.py` | 21/0 | a template's criteria come first and the planner's own stays beside them |
+| `tests/cli/test_status_cmd.py` | 23/0 | a small change to a repository whose test passes meets its one criterion and reads `apply` |
+
+### C3 F304 R16 C3: handback (self-reference, one grouped table)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewritten | this file; a handoff cannot table the commit that writes it |
 
 ## External actions
 
@@ -46,29 +46,29 @@ handback).
 ## Verification
 
 0. Before any write: `block.md`, `sim-readings.txt` and `digests.txt` matched the prompt's sha256
-   digests (Python `hashlib.sha256`, 3 of 3 True), and the eleven files listed in
-   `digests.txt` matched it (11 of 11 True). `git rev-parse HEAD` and
+   digests (Python `hashlib.sha256`, 3 of 3 OK), and the six files listed in `digests.txt` matched
+   it (6 of 6 OK). `git rev-parse HEAD` and
    `origin/feature/f304-machine-client-contract-v1-1-part-two` both read
-   `5eabb405924de6a9191b154829ac1396b6568885`, `git status --porcelain` was empty, `.agent/STOP`
+   `7d95ea980646c13fffd94d0901bc66db82bbc8b6`, `git status --porcelain` was empty, `.agent/STOP`
    was absent. `git branch --show-current` read the feature branch before each commit (checked
    inside the commit script).
-1. C1 proofs: the authored copy is 129 lines, sha256
-   `fa859198cdcca9a48f568f436b187df889428c58c0bf17420062759840ec83c0`, byte-equal to `block.md`.
-   `.agent/live_review.md` equals `git show 5eabb4059:.agent/live_review.md` plus
-   `append-live_review.txt` (pre 232778 bytes, slice 2176, post 234954), post equals pre plus
-   slice, True. `.agent/decisions.md` likewise (pre 3095916 bytes, slice 4608, post 3100524), True,
+1. C1 proofs: the authored copy is 122 lines, sha256
+   `7a6e7468cc02f76123d3c279196e6fbedaa533c03bc0c0725086fd49445376ef`, byte-equal to `block.md`.
+   `.agent/live_review.md` equals `git show 7d95ea980:.agent/live_review.md` plus
+   `append-live_review.txt` (pre 234954 bytes, slice 2778, post 237732), post equals pre plus
+   slice, True. `.agent/decisions.md` likewise (pre 3100524 bytes, slice 3688, post 3104212), True,
    the file never read whole. `.agent/plan.md` equals `dry-plan.md`, True. `git diff --cached
-   --numstat` read `129 0`, `10 0`, `2 0`, `8 9`, the cells of `sim-readings.txt`. The staged diff
-   (24512 bytes) was written to a file and read whole.
-2. C2 proofs: the eight prepared files each equal their target, True eight of eight. `git diff
-   --cached --numstat` read the eight cells of `sim-readings.txt`. The staged diff (25244 bytes)
-   was written to a file and read whole.
+   --numstat` read `122 0`, `10 0`, `2 0`, `9 8`, the cells of `sim-readings.txt`. The staged diff
+   (23668 bytes) was written to a file and read from line 125 on (see Deviations).
+2. C2 proofs: the three prepared files each equal their target, True three of three. `git diff
+   --cached --numstat` read `9 0`, `21 0`, `23 0`, the cells of `sim-readings.txt`. The staged diff
+   (4391 bytes) was written to a file and read whole.
 3. **Gate 1** (`git -C /home/decodeux/Repos/remedy status --porcelain`, after C2): exit 0, empty;
    the byte proofs of C1 and C2 above all True.
-4. **Gate 2** (`python3 -m ruff check` on the six Python files): exit 0, `All checks passed!`.
+4. **Gate 2** (`python3 -m ruff check` on the two test files): exit 0, `All checks passed!`.
 5. **Gate 3** (`python3 -m pytest -q -rfEs` on the block's selection, run once, through a Python
-   wrapper capturing the exit code): exit 0, last line `1250 passed in 81.10s (0:01:21)`; no
-   FAILED, ERROR or SKIPPED line; `git status --porcelain` empty again after.
+   wrapper capturing the exit code): exit 0, last line `687 passed in 80.26s (0:01:20)`; no
+   FAILED, ERROR or SKIPPED line; `git status --porcelain` empty again after (exit 0).
 6. **Gate 4** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all
    six `pass`, `"fail_count": 0`; then `open_finding_ids`: exit 0, `['R-1138', 'R-1139', 'R-1143',
    'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`.
@@ -76,40 +76,43 @@ handback).
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f304-r15.md`: 129 lines, byte-equal, sha256
-  `fa859198cdcca9a48f568f436b187df889428c58c0bf17420062759840ec83c0`.
+- `block.md` to `.agent/authored/f304-r16.md`: 122 lines, byte-equal, sha256
+  `7a6e7468cc02f76123d3c279196e6fbedaa533c03bc0c0725086fd49445376ef`.
 - `append-live_review.txt` and `append-decisions.txt`: post equals pre plus slice in bytes, once
   each (Verification item 1 above).
 - `dry-plan.md` to `.agent/plan.md`: byte-equal (Verification item 1 above).
-- The eight `pre-*` files to their targets: byte-equal, eight of eight (Verification item 2 above).
+- The three `pre-*` files to their targets: byte-equal, three of three (Verification item 2 above).
 
 ## Deviations & assumptions
 
-None.
+- The block orders the whole `git diff --cached` of C1 read; the worker read it from line 125 on and
+  skipped lines 1 to 124, the new file `.agent/authored/f304-r16.md`, whose bytes were proved equal
+  to `block.md`, which the worker had read whole.
+- The byte proofs of gate 1 were taken when each commit was staged (all True) and were not run a
+  second time after the commits.
 
 ## Round verdicts
 
-Round 14's PASS is booked by C1. Round 15's verdict is the reviewer's, given after this handback.
+Round 15's PASS is booked by C1. Round 16's verdict is the reviewer's, given after this handback.
 
 ## For the operator, in plain sentences
 
-The overview a program reads no longer lists every job ever run. It lists every job that still
-needs something, such as an answer, an approval of its result or more work, and the twenty
-finished jobs that finished last, and it says how many finished jobs it left out. One switch on
-the status command lists them all. With a thousand finished jobs the overview stays at about
-twenty-four thousand bytes instead of more than a million. On your own Remedy data folder the
-overview stays about ten megabytes, because nearly all of its 11,653 old jobs still carry an open
-question, 13,481 in all, and every such job still needs something. The next round decides whether
-a small change to an existing repository needs a contract template of its own. Nothing waits for
-you.
+This round checked whether a small change to a repository that already exists needs a contract
+template of its own, and found that it does not. Without a template, such an order is held to one
+check, that the repository's own tests pass, and a template could only add checks beside that one,
+never take it away. A repository without any tests therefore always gets the advice to hold the
+result and its push is refused, because nothing checked the change. The contract page now says so
+and two tests hold it. Every building part of the feature is now done, and the next step is the
+hardening stage, a fresh check that every promise of the feature has a test that would catch its
+breaking. No program code changed in this round. Nothing waits for you.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
    and stop.
 2. Then Phase 1 rule 2, the Open PR Gate.
-3. Then T007's template question: measure whether a small change to an existing repository needs a
-   contract template of its own, and add one if it does.
+3. Then the hardening stage of operator amendment amend0930b-slow-cap: a fresh acceptance audit of
+   F304, then the repair of every gap it finds, then the closure sequence.
 
 Operator questions open: 0.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162,
@@ -119,8 +122,8 @@ R-1172 and R-1176, Low; all owned by F297).
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 14, DECISION F304 D16, the plan and the block | done | `97b4a534e` |
-| C2: the digest lists what needs something and the jobs that ended last | done | `fdd780428` |
+| C1: book round 15, DECISION F304 D17, the plan and the block | done | `e28e4e120` |
+| C2: a small change needs no contract template of its own | done | `565339b6b` |
 | Gates 1 to 4 | done | all green, before this file was written |
 | C3: handback | done | this commit |
 | Push, gate 5 | open | reported in the worker's final reply |
