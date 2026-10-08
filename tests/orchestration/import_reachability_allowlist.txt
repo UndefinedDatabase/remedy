@@ -109,6 +109,7 @@ packages.orchestration.chat_turn
 packages.orchestration.checkpoints
 packages.orchestration.ci_run
 packages.orchestration.ci_stages
+packages.orchestration.client_changes
 packages.orchestration.client_digest
 packages.orchestration.cockpit
 packages.orchestration.command_audit

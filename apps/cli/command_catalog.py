@@ -2854,6 +2854,25 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("status.run", "do.run"),
     ),
+    # F253 S3a (DECISION F253 D4 (3)): what changed since a cursor the client holds.
+    CommandEntry(
+        command_id="client.changes",
+        group_id="client",
+        subcommand="changes",
+        description="List what changed since a cursor: jobs, open and resolved decisions, missions and applies, with a cursor for the next read (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef(
+                "--since",
+                "The cursor of the last read: a time with its offset, such as the digest's "
+                "read_at or the cursor the last read answered",
+                required=False, is_option=True,
+            ),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "status.run"),
+    ),
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
