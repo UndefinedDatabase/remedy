@@ -7,15 +7,13 @@ program meets when it drives Remedy, and the machine client page is its renderin
 (DECISION F298 D21).
 
 ## Current Step
-Session 6, round 27: the closure sequence. Round 26's verdict and R-1181's resolution are booked,
-and the pre-emission checklist of docs/agents/planner_reviewer_prompt.md gets F298's one
-consolidation pass: no two items merge, R-1181's counter-measure joins item 34, and the list stays
-at 34 items.
+Session 6, round 28: the closure's evidence round. Round 27's verdict is booked; this round's
+first commit is the accepted head; the staging-copy reclaim, the evidence job and the review
+package are built from the clean, pushed tree at that head.
 
 ## Next Steps
-1. The evidence bundle, the staging-copy reclaim and the fresh review zip.
-2. The ledger rotation, the STATUS line with the README sync and the self-use queue's
-   `consumed_by`, and the pull request.
+1. The closing round: the ledger rotation, the STATUS line with the README sync and the self-use
+   queue's `consumed_by`, and the pull request.
 
 ## Risks
 - A failing evidence or package build blocks the closure; it is repaired, or the feature goes `[!]`.
