@@ -534,14 +534,15 @@ def _job_apply_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]
     A value that names no one job is passed as sent and without `--repo`, and the command refuses
     it `job_not_found` before it touches any repository. A job whose record names no repository
     is refused here with 409 `api_job_repository_unknown`, because `--repo` would otherwise mean
-    the supervisor's own working folder.
+    the supervisor's own working folder. A record that exists and cannot be read is passed on as a
+    missing one is, because `load_job_plan_safe` never raises (R-1204).
     """
     from packages.orchestration.data_paths import JobIdError, lookup_job_id
-    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.pingpong_job import load_job_plan_safe
 
     job, repo = segments["job"], []
     try:
-        plan = load_job_plan(lookup_job_id(job))
+        plan, _degraded = load_job_plan_safe(lookup_job_id(job))
     except JobIdError:
         plan = None
     if plan is not None:
@@ -649,11 +650,12 @@ def _client_job_refusal(client: Any, job: str) -> str | None:
     The job is read as `_job_apply_argv` reads it. The keys its record answers to are its
     `project_id` and, when `select_project` finds that project, its slug and id; a job of no
     project has none, so it is outside every client's policy. A value that names no one job is
-    passed on, and the command refuses it.
+    passed on, and the command refuses it. A record that exists and cannot be read has no project
+    keys, so it is refused, because `load_job_plan_safe` never raises (R-1204).
     """
     from packages.orchestration.api_clients import client_lists_project
     from packages.orchestration.data_paths import JobIdError, lookup_job_id
-    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.pingpong_job import load_job_plan_safe
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
         InvalidProjectSelectorError,
@@ -662,12 +664,12 @@ def _client_job_refusal(client: Any, job: str) -> str | None:
     )
 
     try:
-        plan = load_job_plan(lookup_job_id(job))
+        plan, degraded = load_job_plan_safe(lookup_job_id(job))
     except JobIdError:
         return None
-    if plan is None:
+    if plan is None and not degraded:
         return None
-    project_id = str(plan.project_id or "")
+    project_id = str(plan.project_id or "") if plan is not None else ""
     keys = [project_id] if project_id else []
     if project_id:
         try:
