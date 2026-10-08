@@ -135,6 +135,29 @@ Two orders sent at once both run: the supervisor starts each as it arrives and k
 line, so the second never waits for the first to end, and the route refuses neither order for the
 other. Remedy sets no limit on how many orders run at once (DECISION F253 D15).
 
+## Runs
+
+`POST /api/v1/jobs/{job}/run` starts the run of a job, the way `remedy job run` does, and answers
+202 with the run's record: `job_id`, `pid`, `started_at`, `out_log`, `err_log`, and `exit_code` and
+`ended_at`, which are `null` until the run ends. Its body takes `builder_provider` and
+`reviewer_provider`, each a string that names the model that builds or the one that reviews; either
+may be left out. No other option of `remedy job run` is offered over HTTP: each other one either
+raises a limit, which a client token's ceilings bound only at the order, or runs a command of the
+caller's choice. A job id prefix is accepted, and the run starts under the job's full id.
+
+Before anything starts, the job is read: a value that is no job id answers 404 `invalid_job_id`; a
+well-formed id that no job has, or a job whose record cannot be read, answers 404 `job_not_found`;
+a prefix that matches several jobs answers 400 `ambiguous_job_id`; and a client token's job
+outside its projects answers 403 `api_client_policy_refused`, as for every write on a job. A job
+whose run has not ended answers 409 `job_already_running`, and a run that cannot start answers 500
+`api_command_failed`.
+
+The route answers when the run has started, not when it ends. A client follows the run in the
+digest or in what changed, where the job's state reads `running` and then its end. The supervisor
+hands the one launcher that starts runs to its socket and to its port alike, so both answer from
+one list of runs; a server that has no such launcher, the cockpit's own among them, answers the
+route 405 `api_method_not_allowed` (DECISION F253 D18).
+
 ## Staying current
 
 A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with its `since` query
@@ -155,7 +178,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.8`.
+API version: `1.9`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
@@ -168,6 +191,7 @@ API version: `1.8`.
 | `POST` | `/api/v1/jobs/{job}/apply` | `commit` (string), `commit_auto` (flag), `commit_with_history` (flag), `push` (flag), `skip_blocked` (flag) | `remedy job apply --json` | `job_not_found` 404, `invalid_argument` 400, any other 409 | no | Approves a completed job's result and applies it to the repository the job's own record names, as `remedy job apply <job> --repo <that repository> --approve --json` does: `commit` is given as `--commit`, and each of `commit_auto`, `commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered over HTTP, and a job whose record names no repository is refused with 409 `api_job_repository_unknown` before any command runs. |
 | `GET` | `/api/v1/orders/{order}` | — | `remedy client order --json` | `order_not_found` 404 | no | Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order <order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` holds what `remedy do` printed once the order is not `running`. |
 | `POST` | `/api/v1/orders` | `order` (string), `no_llm` (flag), `new_mission` (flag), `force_job` (flag), `force_mission` (flag), `builder_provider` (string), `reviewer_provider` (string), `deadline` (string) | `remedy client order --json` | — | no | Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do run <options> --no-ui --yes -- order.md` would inside its own folder under the data root, and answers 202 with its record read exactly as the route above reads it. `order` is the order file's whole text, header included, and required; `no_llm`, `new_mission`, `force_job` and `force_mission` each pass their `remedy do` flag when `true`; `builder_provider`, `reviewer_provider` and `deadline` each pass their option with their value. An order whose header names no project, or one that names a project `select_project` cannot resolve to exactly one, is refused before anything starts with 409 `api_order_project_unknown`; every other refusal is `remedy do`'s own, read back only once the order is polled. |
+| `POST` | `/api/v1/jobs/{job}/run` | `builder_provider` (string), `reviewer_provider` (string) | `remedy job run --json` | — | no | Starts a job's run through the supervisor's own `RunLauncher`, as `remedy job run <job> <options> --json` would, and answers 202 with the run's record: `job_id`, `pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two `null` until the run ends. `builder_provider` and `reviewer_provider` each pass `--builder-provider=<value>` and `--reviewer-provider=<value>`; no other option of `remedy job run` is offered over HTTP. A job id prefix is accepted. A client follows the run in the digest or in what changed, where the job's state reads `running` and then its end. Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a record that cannot be read), `ambiguous_job_id` 400, `job_already_running` 409, `api_command_failed` 500 when the run cannot start, and `api_client_policy_refused` 403 for a client token's job outside its projects. |
 
 ### Never published
 

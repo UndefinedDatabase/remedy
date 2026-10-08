@@ -153,10 +153,13 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None,
 
 
 def public_api_handler_class(token: str, runner: CommandRunner | None = None,
-                             orders: OrderLauncher | None = None) -> type:
+                             orders: OrderLauncher | None = None,
+                             launcher: RunLauncher | None = None) -> type:
     """The handler bound to the supervisor's public HTTP API listener (S6a, DECISION F253 D6).
 
-    A subclass of `socket_handler_class(token, None, runner, orders)` with no run launcher. Each
+    A subclass of `socket_handler_class(token, launcher, runner, orders)`. With a LAUNCHER it
+    answers `POST /api/v1/jobs/{job}/run` through it, the same one the socket's handler holds
+    (DECISION F253 D18 (4)); with none the route answers 405. Each
     of `do_GET`, `do_POST`, `do_PUT` and `do_DELETE` reads the path the way `do_POST` reads it,
     and passes a path `is_public_api_path` accepts to the inherited method, which answers it
     exactly as the socket does. Every other path, for every method, answers 404
@@ -167,7 +170,7 @@ def public_api_handler_class(token: str, runner: CommandRunner | None = None,
     from apps.cli.json_envelope import build_error
     from packages.orchestration.public_api import PUBLIC_API_PREFIX, is_public_api_path
 
-    base = socket_handler_class(token, None, runner, orders)
+    base = socket_handler_class(token, launcher, runner, orders)
 
     def _not_served(handler: Any, path: str) -> None:
         handler._send_json(404, build_error(
@@ -301,7 +304,9 @@ def run_supervisor(
 
     One `OrderLauncher` is made per supervisor and handed to both the socket's handler and the
     public HTTP API's, so `POST /api/v1/orders` on either answers through the same registry of
-    started orders (DECISION F253 D14 (3)).
+    started orders (DECISION F253 D14 (3)). The one `RunLauncher` is handed to both handlers
+    the same way, so `POST /api/v1/jobs/{job}/run` on either answers from one registry of runs
+    (DECISION F253 D18 (4)).
 
     API_PORT left unset reads `serve.api_port` from `get_config()` (S6a, DECISION F253 D6);
     `None`, given or read, means no listener. Otherwise, after the socket server is created
@@ -347,7 +352,7 @@ def run_supervisor(
             try:
                 api_server = ThreadingHTTPServer(
                     ("127.0.0.1", resolved_api_port),
-                    public_api_handler_class(token, runner, orders))
+                    public_api_handler_class(token, runner, orders, launcher))
             except OSError as exc:
                 raise ServeError(
                     "serve_api_port_unavailable",
