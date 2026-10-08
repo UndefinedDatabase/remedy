@@ -1,45 +1,34 @@
-# Handoff — F298 session 5, round 24: round 23 booked, the closure's self-use item run to its approval gate
+# Handoff — F298 session 5, round 25: round 24 booked, the integration gate: the one full suite and its cost
 
 ## Session
 
-SESSION 5 of feature F298 · round 24 · rounds so far 24
+SESSION 5 of feature F298 · round 25 · rounds so far 25
 
-Context self-assessment: the reviewer's context is sufficient after six rounds in this session; the reviewer reviews this round and then decides whether the session continues.
+Context self-assessment: the reviewer's context is sufficient after seven rounds in this session; the reviewer reviews this round and then decides whether the session continues.
 
-Fortschritt: ~86 % (T001 landed; split to F304; hardening stage complete; the closure's self-use run done; the one full suite, the consolidation pass, the evidence, the package and the closing commit remain) — Schätzung
+Fortschritt: ~90 % (T001 landed; split to F304; hardening stage complete; self-use run and the one full suite done; the consolidation pass, the evidence, the package and the closing commit remain) — Schätzung
 
 ## Range
 
-Review of `c2a6ab8f361b9c3ef24d865a2d568528ffabb253`..HEAD (HEAD is C3 below).
+Review of `c9046a9e60e608b9f8ae47f6836e9165ddd4345e`..HEAD (HEAD is C3 below).
 
 ## Commits
 
-### 884feeef5 F298 R24 C1: book round 23, the plan, save the block and the self-use script
+### 1963fb2cc F298 R25 C1: book round 24, the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f298-r24.md` | 134/0 (new) | byte copy of `block.md` (134 lines, sha256 `9d4c02ea2017f180d5cd41390411324bcdc4f39a526581ef56d58ff6dec1f8dd`) |
-| `.agent/authored/f298-r24-selfuse.py` | 122/0 (new) | byte copy of `selfuse.py` |
-| `.agent/live_review.md` | 2/0 | base blob at `c2a6ab8f3` followed by `append-live_review.txt` (books round 23's PASS) |
-| `.agent/plan.md` | 8/8 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f298-r25.md` | 160/0 (new) | byte copy of `block.md` (160 lines, sha256 `759b7cf4bd3d977638fd1e548a5d966db7f221fbd01e3ae047611a5a56c6aad9`) |
+| `.agent/live_review.md` | 2/0 | base blob at `c9046a9e6` followed by `append-live_review.txt` (books round 24's PASS) |
+| `.agent/plan.md` | 9/10 | `dry-plan.md`, byte for byte |
 
-### c7fd3d0bc F298 R24 C2: the closure's self-use item run to its approval gate, never applied
+### e68107709 F298 R25 C2: the closure's one full suite and its CPU cost
 
 | Path | +/- | Reason |
 |---|---|---|
-| `scripts/self_use_queue.json` | 8/0 | the generator's one appended entry, SU-048, `consumed_by` empty |
-| `.agent/selfuse_f298/SU-048.md` | 13/0 (new) | the job file |
-| `.agent/selfuse_f298/changed_paths.txt` | 2/0 (new) | reading |
-| `.agent/selfuse_f298/entry_and_job_file.txt` | 5/0 (new) | reading |
-| `.agent/selfuse_f298/execution_config.txt` | 39/0 (new) | reading |
-| `.agent/selfuse_f298/full_transcript.txt` | 14/0 (new) | reading |
-| `.agent/selfuse_f298/job_diff.txt` | 27/0 (new) | reading |
-| `.agent/selfuse_f298/result_state.txt` | 12/0 (new) | reading |
-| `.agent/selfuse_f298/run_defects.txt` | 1/0 (new) | reading |
-| `.agent/selfuse_f298/staleness_after.txt` | 2/0 (new) | reading |
-| `.agent/selfuse_f298/timing.txt` | 3/0 (new) | reading |
+| `.agent/authored/f298-closure-suite.txt` | 15/0 (new) | the transcript of the one full suite and the cost script, as read |
 
-### F298 R24 C3: handback (self-reference exception: the handoff is committed by this same commit)
+### F298 R25 C3: handback (self-reference exception: the handoff is committed by this same commit)
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -47,115 +36,94 @@ Review of `c2a6ab8f361b9c3ef24d865a2d568528ffabb253`..HEAD (HEAD is C3 below).
 
 ## External actions
 
-- Self-use run: `python3 .remedy-wt/f298-r24/launch_selfuse.py` (started once), then `wait_selfuse.py ... 50` called once with a 600000 ms timeout; it printed `exit 0`. The run called the `self_use` role's frontier provider (claude-cli), budgeted at 6.0 USD.
+- `npm --prefix /home/decodeux/Repos/remedy/apps/ui run build` via `run.py`: exit 0 (the one npm command).
+- `python3 -m pytest -n auto -q`: run once, detached, by a `time.monotonic()` wrapper; log at `.remedy-wt/f298-r25-worker/suite.txt`.
+- `python3 scripts/closure_suite_cost.py --feature F298 --record /home/decodeux/.remedy-loop/test_load.jsonl`: run once, exit 0; it appended its line to the record.
 - `git push origin feature/f298-machine-client-contract-v1-1`: outcome, including whether an HTTP 500 retry was needed, is in the worker's final reply (write-once rule; not known when this file is written).
 - No merge, no branch switch, no new branch, no force-push, no pull, no pull request opened.
 
 ## Verification
 
-0. Before any write: `block.md` and the seven prepared files matched their sha256 digest and line count (8 of 8, Python `hashlib.sha256`). `git rev-parse HEAD` and `origin/feature/f298-machine-client-contract-v1-1` both read `c2a6ab8f361b9c3ef24d865a2d568528ffabb253`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before C1 and C2.
-1. C1: numstat `122 0`, `134 0`, `2 0`, `8 8`, as the block names. Byte proofs all `True`.
-2. Self-use run: `launch_selfuse.py` then `wait_selfuse.py`: `exit 0`. Output printed by the script (trimmed to its decisive lines; the ten files are committed whole): `generate_and_append_if_empty(): ('SU-048', 'Narrow the excused handler at apps/cli/commands/do_cmd.py:975', 'generated (self-use-generator tier 4, ...)')`, then the ten files. After the run `git status --porcelain` showed only `scripts/self_use_queue.json` modified and `.agent/selfuse_f298/` new; `git diff scripts/self_use_queue.json` showed exactly one appended entry, `SU-048`, `"consumed_by": ""`.
-3. **Gate 1**: `git -C /home/decodeux/Repos/remedy status --porcelain` — exit 0, empty. C1's four byte proofs against `git show 884feeef5:<path>`: block `True`, selfuse `True`, plan `True`, append `True`.
-4. **Gate 2**: the ten files under `.agent/selfuse_f298/`, all non-empty, bytes: `SU-048.md` 953, `entry_and_job_file.txt` 395, `execution_config.txt` 1203, `result_state.txt` 810, `timing.txt` 105, `changed_paths.txt` 57, `full_transcript.txt` 1419, `staleness_after.txt` 59, `job_diff.txt` 1159, `run_defects.txt` 5.
-5. **Gate 3**: `python3 /home/decodeux/Repos/remedy/.remedy-wt/f298-r24/run_selection.py /home/decodeux/Repos/remedy` — `exit 0`, no FAILED, ERROR or `process(es) behind` line. Output as printed:
-   ```
-   exit 0
-   SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-   SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
-   SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-   3762 passed, 3 skipped in 207.23s (0:03:27)
-   ```
-6. **Gate 4**: `python3 -m apps.cli.main integrity check --json` — exit 0:
+0. Before any write: `block.md`, `append-live_review.txt`, `dry-plan.md` and `run.py` matched their sha256 digest and line count (4 of 4, Python `hashlib.sha256`). `git rev-parse HEAD` and `origin/feature/f298-machine-client-contract-v1-1` both read `c9046a9e60e608b9f8ae47f6836e9165ddd4345e`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f298-machine-client-contract-v1-1` before C1 and C2.
+1. C1: `git diff --cached --numstat` read `160 0 .agent/authored/f298-r25.md`, `2 0 .agent/live_review.md`, `9 10 .agent/plan.md`, as the block names. Byte proofs all `True`.
+2. **Gate 1**: `git -C /home/decodeux/Repos/remedy status --porcelain` — exit 0, empty. C1's byte proofs against `git show 1963fb2cc:<path>`: `live_review True`, `block copy True`, `plan True`.
+3. **Gate 2**: the suite of C2 — real exit code 1; summary line `1 failed, 21657 passed, 22 skipped, 1 warning in 344.03s (0:05:44)`; bad node id: `tests/orchestration/test_import_reachability.py::test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points`. Its failure text names three modules reachable from the D11 (c) entry points and missing from `import_reachability_allowlist.txt`: `apps.cli.grouped`, `apps.cli.help_renderer`, `apps.cli.version_report`. Not investigated or re-run, as the block orders.
+4. **Gate 3**: `python3 -m apps.cli.main integrity check --json` — exit 0:
    ```
    {"check_count": 6, "checks": [{"message": "handlers=176", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
    ```
    `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"` — exit 0:
    `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']` — an exact match.
-7. **Gate 5** (after the push): reported in the worker's final reply.
+5. **Gate 4** (after the push): reported in the worker's final reply.
 
-## Self-use run
+## Closure suite
 
-- Entry: `SU-048`, "Narrow the excused handler at apps/cli/commands/do_cmd.py:975" (generated, self-use-generator tier 4).
-- Job id: `9848929242ac4039`.
-- Builder: provider `claude-cli`, model `claude-sonnet-4-6`, effort medium. Reviewer: provider `claude-cli`, model `claude-sonnet-4-6`, effort medium (`execution_config.txt`).
-- Job state: `completed`; stop reason: empty.
-- Task T001: status `applied_to_job_workspace`, reviewer verdict `pass`, final status `staged_review_passed`, repair rounds used 1.
-- Wall seconds (`timing.txt`): 306.8.
-- Changed paths (`changed_paths.txt`): `apps/cli/commands/do_cmd.py`, `tests/test_ble001_ratchet.py`.
-- Budget actuals (`result_state.txt`): 4 provider calls, 14436 total tokens, measured cost 1.7866107000000002 USD, against `max_cost_usd` 6.0 and `max_provider_calls` 8.
+UI build: `python3 .remedy-wt/f298-r25/run.py /home/decodeux/Repos/remedy 5 npm --prefix /home/decodeux/Repos/remedy/apps/ui run build` — exit 0 (output tail was Vite's chunk-size warning only). `apps/ui/dist/index.html`: 414 bytes, modification time 2026-10-08 03:19:17 +0200.
 
-`job_diff.txt`, verbatim:
+`.agent/authored/f298-closure-suite.txt`, verbatim:
 
 ```
-$ git diff HEAD...remedy/job-9848929242ac4039  (exit 0)
-diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
-index 1a5841cf4..fc3caafb3 100644
---- a/apps/cli/commands/do_cmd.py
-+++ b/apps/cli/commands/do_cmd.py
-@@ -972,7 +972,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) ->
-             job_id, evidence_out, repo_path=repo, job_status=status,
-             changed_files=changed, source_command=source_command,
-         )
--    except Exception:  # noqa: BLE001 — evidence indexing is best effort; must not break the export
-+    except (ImportError, OSError, ValueError, TypeError):
-         pass
- 
- 
-diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
-index ff1f68ae3..cb21e641a 100644
---- a/tests/test_ble001_ratchet.py
-+++ b/tests/test_ble001_ratchet.py
-@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
- 
- #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
- #: commit that removes a mark lowers this number in the same commit, and it is never raised.
--MAX_EXCUSED = 285
-+MAX_EXCUSED = 284
- 
- 
- def _marks() -> list[tuple[str, int, str]]:
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 344.82s (measured wrapper); pytest's own reported wall time 344.03s (0:05:44)
+summary line: 1 failed, 21657 passed, 22 skipped, 1 warning in 344.03s (0:05:44)
+bad node ids (failed + errors):
+  - tests/orchestration/test_import_reachability.py::test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points
+leftover processes: NONE
+tree it ran on: 1963fb2cc (F298 R25 C1: book round 24, the plan, save the block)
+reflog before: 1963fb2cc HEAD@{2026-10-08 03:19:09 +0200}: commit: F298 R25 C1: book round 24, the plan, save the block
+reflog after: 1963fb2cc HEAD@{2026-10-08 03:19:09 +0200}: commit: F298 R25 C1: book round 24, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F298 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1095.36 CPU seconds, 344.05 wall seconds, 21680 tests collected, exit status 1, recorded 2026-10-08T01:25:09Z
+This closure's suite used 1095.36 CPU seconds, 4.5 percent more than F116's 1048.32, within the 10 percent limit.
 ```
 
-`run_defects.txt`, verbatim:
+## Scope report at the soft limit
 
-```
-NONE
-```
+F298 has reached 25 rounds in its fifth session, its soft limit. Finished: T001, the machine client interface, the command that prints it, and the page rendered from it, with the hardening stage complete. Missing: T002 to T007. The proposal, already executed in round 21 as the default the rules give the session (DECISION F298 D21): F298 closes at T001's scope, and T002 to T007 moved word for word to F304, placed directly after F298 and before F253; the operator questions file records that ruling as reversible. What is left of F298 is its closure sequence and nothing else.
 
 ## Authored-text proofs
 
-- `block.md` → `.agent/authored/f298-r24.md`: 134 lines, byte-equal (`True`), sha256 `9d4c02ea2017f180d5cd41390411324bcdc4f39a526581ef56d58ff6dec1f8dd`.
-- `selfuse.py` → `.agent/authored/f298-r24-selfuse.py`: byte-equal (`True`).
+- `block.md` → `.agent/authored/f298-r25.md`: 160 lines, byte-equal (`True`), sha256 `759b7cf4bd3d977638fd1e548a5d966db7f221fbd01e3ae047611a5a56c6aad9`.
 - `dry-plan.md` → `.agent/plan.md`: byte-equal (`True`).
-- base `.agent/live_review.md` blob at `c2a6ab8f3` + `append-live_review.txt` → the file at C1: byte-equal (`True`).
+- base `.agent/live_review.md` blob at `c9046a9e6` + `append-live_review.txt` → the file at C1: byte-equal (`True`).
 - Each proof ran against the committed blob at C1 (in the C1 proof script and again in gate 1 after C2).
 
 ## Deviations & assumptions
 
-None. The gates ran once each after C2 and before C3. No file was written outside the named paths; no `cd`, nothing under `/tmp`, no `-n`, no `REMEDY_TEST_MAX_WORKERS`, no mutation, no full suite. The self-use script was run once and not edited. The detailed handoff text above is the one write of this file.
+One deviation. For C2 I did not write `git diff --cached` to a file in the worker folder before reading it; I read the whole staged diff as printed by the tool (15 added lines, the one new file). C1's staged diff was written to `.remedy-wt/f298-r25-worker/c1.diff` and read whole. Otherwise none: the gates ran once each after C2 and before C3; no file was written outside the named paths; no `cd`, nothing under `/tmp`, no `-n` other than `auto`, no `REMEDY_TEST_MAX_WORKERS`, no mutation, one pytest run only.
 
 ## Round verdicts
 
-Round 23 PASS, booked by C1 in `.agent/live_review.md`.
+Round 24 PASS, booked by C1 in `.agent/live_review.md`.
 
-Round 24's verdict is the reviewer's, to be booked in the next round's first commit.
+Round 25's verdict is the reviewer's, to be booked in the next round's first commit.
 
 ## For the operator, in plain sentences
 
-Before a feature closes, Remedy runs one real piece of work on itself with a paid model, to show it is used on itself. This time the work was to narrow one place in its own command-line code that catches every kind of error. The run stops before anything is applied; its record is saved for the next round to read.
+Before a feature closes, Remedy runs its whole test collection once on the code that will ship.
 
-The run cost about 1.79 US dollars across four paid model calls, against a budget of 6.
+21,657 tests passed and 1 failed (22 were skipped by design).
 
-It ended cleanly: the paid model narrowed the handler to four named error types, a second paid model approved the change, and nothing was applied. Nothing waits for you.
+The run took 5 minutes 44 seconds.
+
+The cost script said the run used 1095.36 seconds of computer time, 4.5 percent more than the previous feature's 1048.32, which is within the 10 percent limit.
+
+The one failing test checks that no code file is reachable from the program's entry points without being on an approved list; three command-line files (`apps/cli/grouped`, `help_renderer` and `version_report`) are reachable and not on the list, and the next round repairs that.
+
+The paid trial run on Remedy's own work in the round before finished its one small task for about one dollar eighty, passed its review, found no problem, and was not applied.
+
+This feature has reached its limit of rounds, which is expected, because the rest of its work was already moved to a new feature, and only its closing steps remain. Nothing waits for you.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then rule 2, the Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reviews round 24, books its verdict and registers every self-use run defect in the next round's first commit.
-4. The integration-gate round: the one full suite.
-5. The consolidation pass, the evidence bundle, the review package, the rotation, the STATUS line and the pull request.
+3. The reviewer reviews round 25 and books its verdict in the next round's first commit.
+4. Then either the checklist's consolidation pass, the evidence bundle and the review package (a green suite) or a repair round naming every bad node id (a red one). This suite was red: one bad node id, `tests/orchestration/test_import_reachability.py::test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points`.
+5. Then the rotation, the STATUS line and the pull request.
 
 Operator questions open: 1.
 Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low; all owned by F297).
@@ -164,9 +132,10 @@ Open findings: 11 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-115
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 23, the plan, save the block and the self-use script | done | `884feeef5` |
-| C2: the closure's self-use item run to its approval gate, never applied | done | `c7fd3d0bc` |
-| C3: handback | done | this commit |
-| Gates 1 to 4 | done | all green, see Verification |
+| C1: book round 24, the plan, save the block | done | `1963fb2cc` |
+| C2: the closure's one full suite and its CPU cost | done | `e68107709`; the suite is red, 1 bad node id, transcript committed as read |
+| C3: handback, and the scope report at the soft limit | done | this commit |
+| UI build | done | exit 0 |
+| Gates 1 to 3 | done | gates 1 and 3 green; gate 2 reads the red suite as recorded |
 | Push | done | outcome in the worker's final reply |
-| Gate 5 | done | reported in the worker's final reply |
+| Gate 4 | done | reported in the worker's final reply |
