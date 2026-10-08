@@ -282,6 +282,27 @@ def test_a_header_contract_gives_that_template_and_a_contract_flag_wins_over_it(
     assert data["contract"]["template"] == "cli-tool"
 
 
+def test_a_template_adds_its_criteria_and_keeps_the_planners_own(repo, capsys):
+    """A template is the floor of a contract, never its ceiling (DECISION F304 D17): its criteria
+    come first and the planner's own goal criterion stays beside them."""
+    from packages.orchestration.contract_templates import (
+        compile_contract_template,
+        load_contract_template,
+    )
+
+    order_path = _write_order(
+        repo, "---\nmax-cost-usd: 1\ncontract: cli-tool\n---\nWrite a CONTRIBUTING.md\n")
+
+    criteria = _do_json(capsys, str(order_path), "--plan-only")["contract"]["criteria"]
+
+    template_texts = [criterion.text for criterion in
+                      compile_contract_template(load_contract_template("cli-tool"))]
+    assert [(c["origin"], c["text"]) for c in criteria] == [
+        *(("template", text) for text in template_texts),
+        ("planner", "The mission goal is met in full: Write a CONTRIBUTING.md"),
+    ]
+
+
 # ── 9a-9d: the header's max-cost-usd and project reach the job, flags win (R-1140) ──
 
 

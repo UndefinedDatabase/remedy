@@ -235,6 +235,29 @@ def test_all_ended_jobs_lists_every_settled_job_and_names_no_limit(repo, capsys)
     assert client["job_window"] == {"ended_limit": None, "left_out": 0}
 
 
+# ── 2e: a small change needs no template of its own (F304 T007, DECISION F304 D17) ──
+
+
+def test_a_small_change_to_a_repository_whose_tests_pass_meets_its_one_criterion_and_reads_apply(
+        repo, capsys):
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_readme.py").write_text(
+        "from pathlib import Path\n\n\ndef test_the_readme_exists():\n"
+        "    assert Path('README.md').is_file()\n", encoding="utf-8")
+    _git(repo, "add", "tests")
+    _git(repo, "commit", "-qm", "Add a test")
+
+    done = _do_json(capsys, ORDER)
+
+    [job] = _status_json(capsys)["client"]["jobs"]
+    card = job["approval_card"]
+    assert done["unmet_blocking_criteria"] == []
+    assert card["blocking_criteria"] == [
+        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "met"}]
+    # Every check passed; the one repair round of the fake reviewer makes the risk medium.
+    assert (card["recommendation"], card["risk"]) == ("apply", "medium")
+
+
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
 
 

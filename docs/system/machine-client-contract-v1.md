@@ -53,6 +53,15 @@ before any step with `order_already_running` and exit code 2, and the refusal na
 under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
 holds whitespace is planned as text, never read as a file.
 
+With the deterministic planner of `--no-llm`, an order is held to one blocking criterion of the
+planner's own, that the mission goal is met in full, checked by running the repository's tests
+under `tests`; a model planner writes criteria of its own. A contract template, named by the
+header's `contract` or by `--contract`, adds its criteria before the planner's and never removes
+one, and each shipped template is for building something new and asks for tests of its own. A
+small change to an existing repository therefore needs no template: it meets the planner's
+criterion when the repository's tests pass, and in a repository without tests that criterion
+reads `unmet`, so the approval card says `hold` and a push is refused.
+
 A run checks its budgets before each call of its builder and its reviewer, never during one,
 and stops at the first check that finds a budget reached; a stopped run answers as step 1 below
 says. `max-provider-calls` counts every call the builder and the reviewer make, a retry
