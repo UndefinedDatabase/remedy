@@ -44,6 +44,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_decision_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/decline"):
         "test_the_decline_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/apply"):
+        "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
 }
 
 
@@ -351,9 +353,13 @@ def test_every_route_is_well_formed():
             assert "--" + key.replace("_", "-") in option_flags
         for key in route.query_values:
             assert "--" + key.replace("_", "-") in value_options
+        flag_options = {arg.name for arg in entry.args if arg.is_option and arg.is_flag}
         for key, kind in route.body:
-            assert kind in ("string", "strings")
-            assert "--" + key in value_options
+            assert kind in ("string", "strings", "flag")
+            if kind == "flag":
+                assert "--" + key.replace("_", "-") in flag_options, (route.path, key)
+            else:
+                assert "--" + key in value_options, (route.path, key)
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
@@ -783,7 +789,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.5"
+    assert public_api.PUBLIC_API_VERSION == "1.6"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -976,3 +982,78 @@ def test_every_route_declares_only_refusals_its_twin_answers():
                                 - set(OPERATION_REFUSAL_TOKENS[route.twin]))
              for route in public_api.PUBLIC_API_ROUTES}
     assert {path: tokens for path, tokens in stray.items() if tokens} == {}
+
+
+# -- the write route that approves an apply (S4c, DECISION F253 D12) -------------
+
+APPLY_PATH = "/api/v1/jobs/{job}/apply"
+
+
+def _saved_job_in(repo_path: str) -> str:
+    """The full id of a saved job whose record names REPO_PATH as its repository."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="apply-route-job", user_prompt="Apply route prompt",
+                  tasks=[TaskEntry(title="Write a page")], repo_path=repo_path)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def test_the_apply_route_is_pinned_with_its_body_and_its_statuses():
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == APPLY_PATH)
+    assert (route.method, route.twin) == ("POST", "job.apply")
+    assert route.body == (("commit", "string"), ("commit_auto", "flag"),
+                          ("commit_with_history", "flag"), ("push", "flag"),
+                          ("skip_blocked", "flag"))
+    assert route.refusal_default == 409
+    assert route.refusals == (("job_not_found", 404), ("invalid_argument", 400))
+    assert "`--test-command`" in route.description and "not offered" in route.description
+
+
+def test_an_apply_post_applies_to_the_jobs_own_repository_by_its_full_id(tmp_path):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post(
+        f"/api/v1/jobs/{full[:8]}/apply", {"commit": "Land it", "push": True, "skip_blocked": False},
+        run)
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}", "--commit=Land it",
+                             "--push", "--json", "--", full])]
+
+
+@pytest.mark.parametrize("flag", ["commit_auto", "commit_with_history", "push", "skip_blocked"])
+def test_each_apply_flag_set_true_passes_its_option(tmp_path, flag):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    assert _post(f"/api/v1/jobs/{full}/apply", {flag: True}, run)[0] == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}",
+                             "--" + flag.replace("_", "-"), "--json", "--", full])]
+
+
+def test_an_apply_post_for_no_known_job_runs_the_command_without_a_repository():
+    """The command refuses the value `job_not_found` before it touches any repository."""
+    calls, run = _recording_runner()
+    assert _post("/api/v1/jobs/0123abcd/apply", {}, run)[0] == 200
+    assert calls == [("0123abcd", ["job", "apply", "--approve", "--json", "--", "0123abcd"])]
+
+
+def test_an_apply_post_for_a_job_without_a_repository_is_409_and_runs_nothing():
+    """Without a repository on the record, `--repo` would mean the supervisor's own folder."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "`api_job_repository_unknown`" in page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    full = _saved_job_in("")
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(f"/api/v1/jobs/{full}/apply", {"commit_auto": True}, run)
+    assert (status, answer["error"]) == (409, "api_job_repository_unknown")
+    assert full in answer["message"]
+    assert calls == []
+
+
+def test_an_apply_post_refuses_a_key_or_a_kind_the_route_does_not_take(tmp_path):
+    full = _saved_job_in(str(tmp_path))
+    calls, run = _recording_runner()
+    for body in ({"push": "true"}, {"push": 1}, {"test_command": "true"}, {"repo": str(tmp_path)},
+                 {"dry_run": True}):
+        status, answer, _headers = _post(f"/api/v1/jobs/{full}/apply", body, run)
+        assert (status, answer["error"]) == (400, "api_body_invalid"), body
+    assert calls == []
