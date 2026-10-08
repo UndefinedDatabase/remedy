@@ -7,17 +7,19 @@ program meets when it drives Remedy, and the machine client page is its renderin
 (DECISION F298 D21).
 
 ## Current Step
-Session 6, round 29, the closing round: book round 28, rotate the finding ledger, flip F298's
-STATUS line to accepted with the README sync and the self-use item SU-048's `consumed_by`, and
-open the pull request, left unmerged.
+Session 7, round 30, the Open PR Gate's repair: pull request 315's first hosted run is red on
+Python 3.12 in one test assertion (R-1182). Book round 29's verdict, register R-1182, repair the
+assertion so that it no longer depends on how one Python version prints source, and push; that
+push starts the one re-run (DECISION F298 D24).
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F298's pull request, then the
-   next feature's first commit books round 29's verdict, then Rule A5 claims the next unchecked
-   line, F304 — Machine client contract v1.1, part two.
+1. Green hosted run: the Open PR Gate merges pull request 315; the next feature's first commit books
+   round 30's verdict and resolves R-1182; Rule A5 claims F304 — Machine client contract v1.1, part
+   two.
+2. Red hosted run: nothing is merged; an operator question is written and the session stops.
 
 ## Risks
 - T001's sentence that the document only grows inside one major version is a rule for whoever
   changes it; no test holds it.
-- F298 owns no open finding. R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
-  R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
+- R-1182 (Low) is owned by F298 until the hosted run is green. R-1160 (Medium) and R-1138, R-1139,
+  R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 (Low) stay open, owned by F297.
