@@ -791,6 +791,14 @@ def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_rou
     assert "`decision_not_resolvable` 400, any other 409" in page
 
 
+def test_the_page_states_how_a_write_is_refused():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    assert "## Writes" in hand_written
+    for token in ("api_body_invalid", "api_path_invalid", "api_command_failed"):
+        assert token in hand_written, token
+
+
 def test_a_post_builds_the_command_line_from_the_body_and_the_path():
     calls, run = _recording_runner()
     status, body, headers = _post("/api/v1/jobs/j1/decisions/d1",

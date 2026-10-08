@@ -41,10 +41,27 @@ a value is never empty. A query key a route's table row does not list, a key giv
 once, a flag's value other than `true`/`false`, or an empty value for a key that takes one,
 answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)); and every other refusal a
 route answers is one its table row's `Refusals` column names, sharing its HTTP status, its
-`error` token and its `message` sentence with the route's own twin command. `POST`, `PUT` and
-`DELETE` under `/api/v1` answer 401 with `api_token_invalid` without the token, and 405 with
+`error` token and its `message` sentence with the route's own twin command. `PUT` and `DELETE`
+under `/api/v1` answer 401 with `api_token_invalid` without the token, and 405 with
 `api_method_not_allowed` with it; each such request is written to the ledger below like any
-other.
+other. A `POST` is a write, and the next section says how a write is answered.
+
+## Writes
+
+A write is a `POST`. Only the supervisor that `remedy serve start` starts answers writes, on its
+socket and on its port; the cockpit's own server answers every `POST` under `/api/v1` with 405 and
+`api_method_not_allowed`. The body of a write is a JSON object that holds only the keys the
+route's table row names under "Query or body", each of the kind the row gives: `string` is one
+string, and `strings` is a list of non-empty strings; no body at all is the empty object, and a
+write takes no query string. The supervisor runs the twin command as a process of its own and
+answers that command's own envelope, so a refusal carries the command's own token and message. The
+statuses are the ones the table row's `Refusals` column names, and any other refusal answers the
+status the row gives after "any other", which is 409. A body the supervisor cannot read, or one
+larger than 64 kilobytes, answers 400 with `api_body_invalid`; a path value that begins with `-`
+answers 400 with `api_path_invalid`, because no job or decision id begins with it; and a command
+that prints no answer within 120 seconds answers 500 with `api_command_failed`. The supervisor runs
+one command for a job at a time, so a second write for that job waits for the first. `PUT` and
+`DELETE` still answer 405.
 
 ## The ledger
 
