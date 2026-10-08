@@ -1,0 +1,15 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 344.82s (measured wrapper); pytest's own reported wall time 344.03s (0:05:44)
+summary line: 1 failed, 21657 passed, 22 skipped, 1 warning in 344.03s (0:05:44)
+bad node ids (failed + errors):
+  - tests/orchestration/test_import_reachability.py::test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points
+leftover processes: NONE
+tree it ran on: 1963fb2cc (F298 R25 C1: book round 24, the plan, save the block)
+reflog before: 1963fb2cc HEAD@{2026-10-08 03:19:09 +0200}: commit: F298 R25 C1: book round 24, the plan, save the block
+reflog after: 1963fb2cc HEAD@{2026-10-08 03:19:09 +0200}: commit: F298 R25 C1: book round 24, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F298 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1095.36 CPU seconds, 344.05 wall seconds, 21680 tests collected, exit status 1, recorded 2026-10-08T01:25:09Z
+This closure's suite used 1095.36 CPU seconds, 4.5 percent more than F116's 1048.32, within the 10 percent limit.
