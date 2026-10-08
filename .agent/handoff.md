@@ -1,10 +1,14 @@
-# Handoff — F304 session 4, round 21: round 20 booked, R-1186 registered and repaired, the closure suite GREEN
+# Handoff — F304 session 4 close: round 21's verdict, the closure suite GREEN, and the session's end
 
 ## Session
 
 SESSION 4 of feature F304 · round 21 · rounds so far 21
 
-Context self-assessment: the reviewer's context is sufficient after eight rounds in this session, the top of the session target; the session ends after this round's review, and the next session runs the rest of the closure.
+Context self-assessment: the session ends after round 21's review, at eight delegated rounds
+(F304's rounds 14 to 21), the top of the six-to-eight target, because the reviewer's context is
+long after eight dry runs, two audits and two full suites; the closure's remaining steps, the
+checklist's consolidation pass, the evidence bundle and the review package, the ledger rotation,
+the STATUS line and the pull request, start better in a fresh session.
 
 Fortschritt: ~96 % (T002 to T007, the hardening stage and the self-use run done; the closure suite repaired and run again; the consolidation pass, the evidence, the package and the closing commit remain) — Schätzung
 
@@ -46,7 +50,9 @@ handback).
 
 - `python3 -m pytest -n auto -q`, once, through a detached Python wrapper: exit 0 (see Closure suite).
 - `python3 scripts/closure_suite_cost.py --feature F304 --record /home/decodeux/.remedy-loop/test_load.jsonl`, once: exit 0.
-- The push of this branch after C4 is reported in the worker's final reply.
+- Round 21's worker pushed once, without a retry, and the reviewer read `dc26256ea` as the local
+  tip and, with `git ls-remote`, as the remote tip, with the tree clean. This session-close
+  commit is pushed by its own worker, whose reply carries that push.
 - No UI build, no other test command, no mutation, no worktree, no merge, no new branch, no force-push, no pull.
 
 ## Verification
@@ -73,7 +79,9 @@ handback).
 5. **Gate 3** (`python3 -m apps.cli.main integrity check --json`): exit 0, `"check_count": 6`, all six
    `pass`, `"fail_count": 0`, `"ok": true`; then `open_finding_ids`: exit 0, `['R-1138', 'R-1139',
    'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1186']`.
-6. **Gate 4** (after the push): reported in the worker's final reply.
+6. **Gate 4** (after the push): `git status --porcelain` empty, and the local tip equal to
+   `origin/feature/f304-machine-client-contract-v1-1-part-two` at `dc26256ea`, which the reviewer
+   read again before this session-close commit.
 
 ## Closure suite
 
@@ -130,8 +138,17 @@ bad node ids holds the single line `(none)` under its unchanged header.
 
 ## Round verdicts
 
-Round 20 PASS, booked by C1; R-1186 registered there and landed by C2. Round 21's verdict is the
-reviewer's, booked with R-1186's resolution in the next round's first commit.
+Round 20 PASS, booked by round 21's C1; R-1186 registered there and landed by its C2.
+
+Round 21: VERDICT PASS, given by the reviewer of F304's fourth session after its handback. The
+verdict and R-1186's resolution are drafted below for the next round's first commit, to be
+appended to `.agent/live_review.md` by that round's reviewer in this order, each as one paragraph
+on one line, after one blank line, without the outer backticks that mark where each begins and
+ends:
+
+`Gate: F304 R21 — the F304 round 21 entry, the closure suite's repair, over `54dc50250`..`dc26256ea` (4 commits, each single-parent; insertions by `git show --numstat`: `ebe537b64` 151, `a7f988699` 52, `e5c8bc0d6` 9, `dc26256ea` 89). VERDICT PASS, verified by dry run, bytes identical, compared at `ebe537b64` and `a7f988699` against the prepared files of the reviewer's dry run on `54dc50250`. `.remedy-wt/f304-r21/review21.py`, whose readings are saved beside it as `review21-readings.txt`, read the saved block and `.agent/plan.md` at `ebe537b64`, the ledger there equal to its blob at `54dc50250` followed by the prepared slice and at `a7f988699` equal to that followed by the prepared `Landed:` line, and the test file at `a7f988699` equal to the prepared file and to the dry tree, five of five; `e5c8bc0d6` touches only `.agent/authored/f304-closure-suite.txt` and `dc26256ea` only `.agent/handoff.md`. The dry run's readings, saved as `.remedy-wt/f304-r21/dry-readings.txt`: ruff clean on the test file, the repaired file with `tests/cli/test_job_run_end_states.py`, the BLE001 ratchet, the parametrize-ids guard and the canary `271 passed` at exit 0, and one mutation, `_cmd_job_run` answering a blocked end as done, red on exactly the twelve nodes round 20's suite listed and green again after. The transcript, read at `e5c8bc0d6` against the worker's log `.remedy-wt/f304-r21-worker/suite.txt`: `python3 -m pytest -n auto -q` on `a7f988699`, exit 0, `21810 passed, 22 skipped, 1 warning in 404.41s (0:06:44)`, no FAILED or ERROR line in the log, no process left behind, the reflog unchanged during the run, and `scripts/closure_suite_cost.py` exit 0 at 1126.33 CPU seconds, 3.9 percent above F298's 1084.16 and within the 10 percent limit. The bad set shrank from round 20's twelve to none with no node newly bad, the twelve now passing, so amend0917-throughput rule 2 needs no further repair round and marks nothing. The transcript writes its empty bad-node list as `(none)` where F298's wrote `- NONE`, which the worker declared as an assumption. Every reflog entry after `54dc50250` is one of the round's commits, the local tip equalled the pushed branch, which the reviewer read with `git ls-remote` as `dc26256ea`, and the tree was clean. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1186']`; R-1186's resolution below leaves the eleven F297 owns.`
+
+`Done: R-1186 — RESOLVED at F304 round 21 by `a7f988699`, which the round 21 gate entry above verified by dry run with bytes identical: `_run_job_handler` in `tests/orchestration/test_job_task_runner.py` runs the `job.run` handler as the command line does and holds its exit to the job's end as DECISION F304 D8 states it, exit 1 for a run that ended blocked or failed or stopped at its budget and exit 0 for every other, and every call of the handler in that file goes through it, so each test keeps every assertion it made and now also checks the end. The reviewer's mutation that answers a blocked end as done turned exactly the twelve red, and the closure's one full suite on the repaired tree, `.agent/authored/f304-closure-suite.txt` at `e5c8bc0d6`, read `21810 passed, 22 skipped` with no bad node.`
 
 ## For the operator, in plain sentences
 
@@ -142,19 +159,41 @@ The run took about six minutes and forty-four seconds.
 The cost script said the run used 1126.33 seconds of computer time, 3.9 percent more than the previous feature's 1084.16, within the 10 percent limit.
 Nothing waits for you.
 
+This session ended after eight working rounds. In them, the contract page came to say what the
+limits on calls and tokens count, and a test showed that a run really stops at such a limit; the
+overview a program reads stopped listing every finished job and now lists what still needs
+something and the twenty that finished last; and the round that checked contract templates
+found that a small change to an existing repository needs none of its own. A fresh checker then
+tested all forty promises of the feature and found one gap in the final end-to-end test, which
+was repaired and checked again. Before closing, Remedy ran one real task on itself with a paid
+model for about one dollar sixty, stopped before anything was applied, and the whole test
+collection ran: the first time twelve old tests still expected a behaviour this feature had
+changed on purpose; they were brought up to date, and the second run passed. Every round was
+checked by the reviewer and passed. The next session finishes the closing steps and opens the
+request to merge; nothing waits for the operator.
+
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback
    and stop.
 2. Then Phase 1 rule 2, the Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reviews round 21 and books its verdict and R-1186's resolution in the next round's
-   first commit.
-4. The checklist's consolidation pass, the evidence bundle and the review package.
-5. The rotation, the STATUS line and the pull request.
+3. Then confirm that `origin`'s tip equals the tip of this branch before delegating.
+4. Then, in the next round's first commit: book round 21's verdict and R-1186's resolution,
+   drafted above, as written.
+5. The checklist's consolidation pass for F304 (§3 of `docs/agents/planner_reviewer_prompt.md`,
+   the list the same length or shorter), reading F304's six lines in `.agent/prose_slips.md`, all
+   from rounds 2 to 8, and the findings F304 registered, R-1183 to R-1186.
+6. The evidence bundle and the fresh review zip, with the staging-copy reclaim
+   (`docs/roadmap/STATUS_closure_protocol.md` steps 1 and 2). F304 added no line to
+   `tests/orchestration/import_reachability_allowlist.txt` or `tests/test_no_orphan_modules.py`,
+   and the green suite holds both reachability guards, so precondition 7 needs no Built State line.
+7. The ledger rotation, the STATUS line with the README sync and the self-use queue's `SU-049`
+   marked consumed by F304, and the pull request, not merged.
 
 Operator questions open: 0.
-Open findings: 12 (R-1160, Medium; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162,
-R-1172, R-1176 and R-1186, Low; R-1186 owned by F304 and landed, the rest owned by F297).
+Open findings: 12 until the next round books R-1186's resolution, then 11 (R-1160, Medium;
+R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172 and R-1176, Low; all owned
+by F297).
 
 ## Item status
 
@@ -165,4 +204,5 @@ R-1172, R-1176 and R-1186, Low; R-1186 owned by F304 and landed, the rest owned 
 | C3: the closure's one full suite and its CPU cost | done | `e5c8bc0d6`; the suite is GREEN, 0 bad nodes |
 | Gates 1 to 3 | done | all green |
 | C4: handback | done | this commit |
-| Push, gate 4 | open | reported in the worker's final reply |
+| Push, gate 4 | done | `dc26256ea` equalled `origin/feature/f304-machine-client-contract-v1-1-part-two` after one push |
+| Session close: round 21's verdict, the session's end and the next session's first steps | done | this commit |
