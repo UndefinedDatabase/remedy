@@ -672,8 +672,10 @@ def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
     assert len(raw_lines) == 4
     records = [json.loads(line) for line in raw_lines]
     for record in records:
-        assert list(record.keys()) == ["ts", "token_fp", "method", "path", "status", "error"]
+        assert list(record.keys()) == ["ts", "token_fp", "client", "method", "path", "status",
+                                       "error"]
         assert record["method"] == "GET"
+        assert record["client"] == ""
 
     assert records[0]["status"] == 200
     assert records[0]["error"] == ""
@@ -800,7 +802,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.7"
+    assert public_api.PUBLIC_API_VERSION == "1.8"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1096,7 +1098,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.7"
+    assert public_api.PUBLIC_API_VERSION == "1.8"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1391,3 +1393,207 @@ def test_the_page_states_the_order_create_refusal_tokens():
     hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
     for token in ("api_order_project_unknown", "order_file_invalid_header", "order_file_empty"):
         assert token in hand_written, token
+
+
+# -- client tokens and their policy (S6b-1, DECISION F253 D16) -------------------
+
+CLIENT_TOKEN = "client-token-of-the-nightly-bot-0123456789"
+
+
+def _client_entry(**changes) -> dict:
+    entry = {"name": "nightly-bot", "token": CLIENT_TOKEN, "projects": [],
+             "max_total_tokens": None, "max_provider_calls": None, "may_apply": False}
+    entry.update(changes)
+    return entry
+
+
+def _write_clients(entries: list[dict], mode: int = 0o600) -> Path:
+    """Write the operator's clients file under the scratch data root, at MODE."""
+    from packages.orchestration.api_clients import api_clients_path
+
+    path = api_clients_path()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_text(json.dumps({"clients": entries}), encoding="utf-8")
+    os.chmod(path, mode)
+    return path
+
+
+def _ledger_records() -> list[dict]:
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    return [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+
+
+def test_a_client_token_reads_a_route_like_the_servers_token_and_the_ledger_names_it(tcp_server):
+    _write_clients([_client_entry()])
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(CLIENT_TOKEN))
+    assert status == 200, body
+    server_status, server_body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert server_status == 200
+    assert body == server_body
+    records = _ledger_records()
+    assert [r["client"] for r in records] == ["nightly-bot", ""]
+    assert records[0]["token_fp"] == token_fingerprint(CLIENT_TOKEN)
+    assert CLIENT_TOKEN not in json.dumps(records)
+
+
+def test_a_client_token_is_refused_by_the_cockpits_other_doors(tcp_server):
+    from packages.orchestration.ui_server import COMMAND_CSRF_HEADER
+
+    _write_clients([_client_entry()])
+    status, _body, _headers = _tcp_request(tcp_server, "GET", f"/api/state?token={CLIENT_TOKEN}")
+    assert status == 403
+    status, _body, _headers = _tcp_request(
+        tcp_server, "POST", "/api/jobs/any-job/commands",
+        headers={**_bearer(CLIENT_TOKEN), COMMAND_CSRF_HEADER: CLIENT_TOKEN})
+    assert status == 403
+
+
+@pytest.mark.parametrize("change", ["mode", "removed"])
+def test_a_client_token_stops_working_at_the_very_next_call(tcp_server, change):
+    path = _write_clients([_client_entry()])
+    assert _tcp_request(tcp_server, "GET", "/api/v1/interface",
+                        headers=_bearer(CLIENT_TOKEN))[0] == 200
+    if change == "mode":
+        os.chmod(path, 0o644)
+    else:
+        _write_clients([_client_entry(name="other-bot", token="other-token-" + "x" * 30)])
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(CLIENT_TOKEN))
+    assert (status, body["error"]) == (401, "api_token_invalid")
+    assert _tcp_request(tcp_server, "GET", "/api/v1/interface",
+                        headers=_bearer(SERVER_TOKEN))[0] == 200
+    assert _ledger_records()[-2]["client"] == ""
+
+
+def _registered_project(tmp_path: Path):
+    from packages.orchestration.project_registry import register_project_repo
+
+    repo = tmp_path / "client-route-repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    return register_project_repo("client-route-repo", repo)
+
+
+def _client_order(project, **ceilings) -> str:
+    header = "".join(f"{key}: {value}\n" for key, value in ceilings.items())
+    return f"---\nproject: {project.slug}\n{header}---\nAdd a line saying hello to README.md\n"
+
+
+def _client_policy(**changes):
+    from packages.orchestration.api_clients import ApiClient
+
+    fields = {"name": "nightly-bot", "token": CLIENT_TOKEN, "projects": (),
+              "max_total_tokens": None, "max_provider_calls": None, "may_apply": False}
+    fields.update(changes)
+    return ApiClient(**fields)
+
+
+def _post_order_as(client, text: str, start):
+    _run_calls, run = _recording_runner()
+    raw = json.dumps({"order": text}).encode("utf-8")
+    return public_api.answer_public_api_post(ORDER_CREATE_PATH, raw, run, start, client=client)
+
+
+def test_a_client_order_for_a_project_it_does_not_list_is_403_and_starts_nothing(tmp_path):
+    project = _registered_project(tmp_path)
+    calls, start = _recording_order_starter(_fixture_order_record())
+    client = _client_policy(projects=("some-other-project",))
+    status, answer, _headers = _post_order_as(client, _client_order(project), start)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert "nightly-bot" in answer["message"] and answer["message"].endswith("; nothing was run")
+    assert calls == []
+
+
+def test_a_client_order_for_a_project_listed_by_slug_or_by_id_is_202(tmp_path):
+    project = _registered_project(tmp_path)
+    for listed in (project.slug, str(project.id)):
+        calls, start = _recording_order_starter(_fixture_order_record())
+        client = _client_policy(projects=(listed,))
+        status, answer, _headers = _post_order_as(client, _client_order(project), start)
+        assert status == 202, answer
+        assert len(calls) == 1
+
+
+@pytest.mark.parametrize("ceiling_key,header", [
+    ("max_total_tokens", "max-total-tokens"), ("max_provider_calls", "max-provider-calls")])
+def test_a_client_order_is_held_to_its_ceilings(tmp_path, ceiling_key, header):
+    project = _registered_project(tmp_path)
+    client = _client_policy(projects=(project.slug,), **{ceiling_key: 1000})
+    for ceilings in ({}, {header: 1001}):
+        calls, start = _recording_order_starter(_fixture_order_record())
+        status, answer, _headers = _post_order_as(
+            client, _client_order(project, **ceilings), start)
+        assert (status, answer["error"]) == (403, "api_client_policy_refused"), ceilings
+        assert header + ":" in answer["message"]
+        assert calls == []
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(
+        client, _client_order(project, **{header: 1000}), start)
+    assert status == 202, answer
+    assert len(calls) == 1
+
+
+def test_a_client_apply_needs_its_may_apply(tmp_path):
+    full = _saved_job_in(str(tmp_path))
+    path = f"/api/v1/jobs/{full}/apply"
+    calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        path, b"{}", run, client=_client_policy(may_apply=False))
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, _answer, _headers = public_api.answer_public_api_post(
+        path, b"{}", run, client=_client_policy(may_apply=True))
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}", "--json", "--",
+                             full])]
+
+
+def test_a_client_order_outside_its_projects_through_the_socket_handler_starts_nothing(
+        tmp_path):
+    """Through a real handler made by `socket_handler_class`: the client's order outside its
+    projects is 403, the ledger holds one line for it naming the client, and no order starts."""
+    import socketserver
+
+    from packages.orchestration.serve_paths import serve_paths
+
+    project = _registered_project(tmp_path)
+    _write_clients([_client_entry(projects=["some-other-project"])])
+    paths = serve_paths()
+    launcher = SR.OrderLauncher(paths, argv_prefix=[str(tmp_path / "no-such-program")])
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "client-403.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=SR.CommandRunner(paths), orders=launcher))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, body, _headers = _unix_request(
+            sock_path, "POST", ORDER_CREATE_PATH, headers=_bearer(CLIENT_TOKEN),
+            body=json.dumps({"order": _client_order(project)}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    records = [r for r in _ledger_records() if r["path"] == ORDER_CREATE_PATH]
+    assert len(records) == 1
+    assert records[0]["status"] == 403
+    assert records[0]["error"] == "api_client_policy_refused"
+    assert records[0]["client"] == "nightly-bot"
+    assert list(paths.orders_dir.glob("*")) == []
+
+
+def test_the_page_states_the_clients_file_and_the_policy_refusal():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    token_section = hand_written[hand_written.index("## The token"):
+                                 hand_written.index("## The envelope")]
+    assert "clients.json" in token_section
+    assert "api_client_policy_refused" in hand_written
