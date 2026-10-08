@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -84,6 +85,17 @@ def test_a_json_run_adds_the_one_option_a_supervised_run_takes(setup):
     release.touch()
     launcher.wait("job8", timeout=30)
     assert Path(record.out_log).read_text().split(" ")[5] == "['--json']"
+
+
+def test_a_run_starts_with_the_child_environment(setup):
+    root, paths, launcher, release = setup
+    env = SR.child_environment(paths)
+    assert env[SR.DIRECT_ENV] == "1" and env["REMEDY_DATA_DIR"] == str(root)
+    assert env["PYTHONPATH"].split(os.pathsep)[0] == str(SR.CODE_ROOT)
+    record = launcher.start("jobenv")
+    release.touch()
+    launcher.wait("jobenv", timeout=30)
+    assert Path(record.out_log).read_text().split(" ")[2:4] == ["1", str(root)]
 
 
 def test_the_code_root_holds_the_command_line_the_run_imports():
@@ -346,3 +358,88 @@ def test_resume_registered_marks_a_failed_restart_and_leaves_the_record_untouche
     ]
     after = (paths.runs_dir / "jobF.json").read_bytes()
     assert after == before, "a failed restart must not touch the stale record"
+
+
+# ---------------------------------------------------------------------------
+# CommandRunner (DECISION F253 D9): a command as a child, its envelope returned
+# ---------------------------------------------------------------------------
+
+
+def _runner(tmp_path, code: str, **keywords) -> SR.CommandRunner:
+    """A runner whose command is the Python CODE, so that no Remedy command runs."""
+    return SR.CommandRunner(serve_paths(tmp_path), argv_prefix=[sys.executable, "-c", code],
+                            **keywords)
+
+
+def test_the_runner_returns_the_envelope_line_as_a_dict(tmp_path):
+    code = 'import json, sys; print(json.dumps({"ok": True, "argv": sys.argv[1:]}))'
+    assert _runner(tmp_path, code).run("j", ["a", "--b=c"]) == {"ok": True, "argv": ["a", "--b=c"]}
+
+
+def test_the_runner_ignores_the_output_before_the_last_line(tmp_path):
+    code = 'print("a note"); print("{}"); print(\'{"ok": false, "error": "x"}\'); print()'
+    assert _runner(tmp_path, code).run("j", []) == {"ok": False, "error": "x"}
+
+
+@pytest.mark.parametrize("last_line", ["not json", "[1, 2]", '"ok"', '{"error": "x"}', ""])
+def test_a_last_line_that_is_no_envelope_gives_none(tmp_path, last_line):
+    code = f"print({last_line!r})"
+    assert _runner(tmp_path, code).run("j", []) is None
+
+
+def test_a_command_that_cannot_start_gives_none(tmp_path):
+    runner = SR.CommandRunner(serve_paths(tmp_path), argv_prefix=["/no/such/remedy-exe"])
+    assert runner.run("j", []) is None
+
+
+def test_a_command_past_the_timeout_gives_none_and_leaves_no_live_child(tmp_path):
+    pid_file = tmp_path / "pid"
+    code = ("import os, sys, time; open(sys.argv[1], 'w').write(str(os.getpid())); "
+            "time.sleep(60)")
+    assert _runner(tmp_path, code, timeout=1).run("j", [str(pid_file)]) is None
+    assert not SR._process_is_alive(int(pid_file.read_text()))
+
+
+def test_the_default_timeout_is_the_ceiling_the_decision_names():
+    assert SR.PUBLIC_API_COMMAND_TIMEOUT_SECONDS == 120
+    assert SR.CommandRunner(serve_paths(Path("/x"))).timeout == 120
+
+
+def test_the_command_sees_the_direct_setting_and_the_supervisors_data_root(tmp_path):
+    code = ('import json, os; print(json.dumps({"ok": True, "direct": os.environ["REMEDY_SERVE_DIRECT"], '
+            '"data": os.environ["REMEDY_DATA_DIR"]}))')
+    answer = _runner(tmp_path, code).run("j", [])
+    assert (answer["direct"], answer["data"]) == ("1", str(tmp_path))
+
+
+_TIMED = """\
+import sys, time
+start = time.time()
+time.sleep(0.6)
+with open(sys.argv[1], "a") as handle:
+    handle.write(f"{start} {time.time()}\\n")
+print('{"ok": true}')
+"""
+
+
+def _timed_intervals(tmp_path, jobs: tuple[str, str]) -> list[tuple[float, float]]:
+    log = tmp_path / "times"
+    runner = _runner(tmp_path, _TIMED)
+    threads = [threading.Thread(target=runner.run, args=(job, [str(log)])) for job in jobs]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    assert not any(thread.is_alive() for thread in threads)
+    rows = [tuple(map(float, line.split())) for line in log.read_text().splitlines()]
+    return sorted(rows)
+
+
+def test_two_commands_for_one_job_never_overlap(tmp_path):
+    (first_start, first_end), (second_start, _) = _timed_intervals(tmp_path, ("one", "one"))
+    assert second_start >= first_end
+
+
+def test_commands_for_two_jobs_overlap(tmp_path):
+    (first_start, first_end), (second_start, _) = _timed_intervals(tmp_path, ("one", "two"))
+    assert second_start < first_end

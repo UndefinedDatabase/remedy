@@ -29,6 +29,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from packages.orchestration.serve_paths import ServePaths
 
@@ -40,6 +41,9 @@ DIRECT_ENV = "REMEDY_SERVE_DIRECT"
 #: import path so that `-m apps.cli.main` runs the supervisor's own code wherever
 #: the supervisor was started from.
 CODE_ROOT = Path(__file__).resolve().parents[2]
+
+#: The longest a command a write route runs may take before it is killed (DECISION F253 D9).
+PUBLIC_API_COMMAND_TIMEOUT_SECONDS = 120
 
 
 class RunRefused(Exception):
@@ -69,6 +73,14 @@ class RunRecord:
 def job_run_argv(job_id: str) -> list[str]:
     """The command a run executes: `remedy job run <job>`, through this interpreter."""
     return [sys.executable, "-m", "apps.cli.main", "job", "run", job_id]
+
+
+def child_environment(paths: ServePaths) -> dict[str, str]:
+    """The environment of a child the supervisor starts: direct mode, its data root, its code first."""
+    return {**os.environ, DIRECT_ENV: "1",
+            "REMEDY_DATA_DIR": str(paths.root.parent),
+            "PYTHONPATH": os.pathsep.join(
+                p for p in (str(CODE_ROOT), os.environ.get("PYTHONPATH", "")) if p)}
 
 
 def _now() -> str:
@@ -188,10 +200,7 @@ class RunLauncher:
             self._paths.runs_dir.mkdir(parents=True, exist_ok=True)
             out_log = self._paths.runs_dir / f"{job_id}.out"
             err_log = self._paths.runs_dir / f"{job_id}.err"
-            env = {**os.environ, DIRECT_ENV: "1",
-                   "REMEDY_DATA_DIR": str(self._paths.root.parent),
-                   "PYTHONPATH": os.pathsep.join(
-                       p for p in (str(CODE_ROOT), os.environ.get("PYTHONPATH", "")) if p)}
+            env = child_environment(self._paths)
             argv = [*self._argv_for(job_id), *(["--json"] if json_output else [])]
             with open(out_log, "wb") as out, open(err_log, "wb") as err:
                 child = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
@@ -311,3 +320,50 @@ class RunLauncher:
             return None
         record = read_run_record(self._paths, job_id)
         return None if record is None else record.exit_code
+
+
+class CommandRunner:
+    """Runs one command line command as a child of the supervisor and returns its envelope.
+
+    DECISION F253 D9. A write route under `/api/v1` answers what the command
+    answers, so it runs the command rather than copying its logic: the child
+    gets the environment of a run (:func:`child_environment`), and at most one
+    command runs for a job at a time, while commands for two jobs may overlap.
+    """
+
+    def __init__(self, paths: ServePaths, *,
+                 timeout: float = PUBLIC_API_COMMAND_TIMEOUT_SECONDS,
+                 argv_prefix: Sequence[str] | None = None) -> None:
+        self._paths = paths
+        self.timeout = timeout
+        self._prefix = (list(argv_prefix) if argv_prefix is not None
+                        else [sys.executable, "-m", "apps.cli.main"])
+        self._guard = threading.Lock()
+        self._job_locks: dict[str, threading.Lock] = {}
+
+    def _lock_for(self, job_id: str) -> threading.Lock:
+        with self._guard:
+            return self._job_locks.setdefault(job_id, threading.Lock())
+
+    def run(self, job_id: str, argv: Sequence[str]) -> dict[str, Any] | None:
+        """The envelope the command prints, or None when it prints none or outlives the timeout.
+
+        The envelope is the last non-empty line of standard output, parsed as
+        JSON, when that is an object holding the key `ok`.
+        """
+        with self._lock_for(job_id):
+            try:
+                done = subprocess.run([*self._prefix, *argv], stdin=subprocess.DEVNULL,
+                                      capture_output=True, text=True, errors="replace",
+                                      env=child_environment(self._paths),
+                                      timeout=self.timeout)
+            except (subprocess.TimeoutExpired, OSError):
+                return None
+        lines = [line for line in done.stdout.splitlines() if line.strip()]
+        if not lines:
+            return None
+        try:
+            envelope = json.loads(lines[-1])
+        except ValueError:
+            return None
+        return envelope if isinstance(envelope, dict) and "ok" in envelope else None
