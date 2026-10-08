@@ -135,8 +135,16 @@ Two orders sent at once both run: the supervisor starts each as it arrives and k
 line, so the second never waits for the first to end, and the route refuses neither order for the
 other. Remedy sets no limit on how many orders run at once (DECISION F253 D15).
 
-An order sent again is started again: Remedy does not recognise a resent order, so a program that
-sends the same order twice, for example after a lost answer, starts the work twice.
+An order may carry a key, the body key `order_key`: one to 64 letters, digits, `.`, `_` or `-`,
+beginning with a letter or a digit; any other value answers 400 `api_body_invalid`. The supervisor
+keeps the text of an order with a key in a file named for the key, and the order runs from a link to
+that file, so the record's `order_file` names the key's file. An order whose key's file a mission
+that has not ended records is refused before anything starts with 409 `order_already_running`, the
+mission's id under `mission_id`, so a program that sends the same order again with the same key, for
+example after a lost answer, does not start the work twice. With `new_mission` set to `true` the
+order starts another mission anyway. An order without a key is started again when it is sent again:
+Remedy does not recognise a resent order that has no key. Two orders with one key sent close
+together may both start, as two `remedy do` of one order file may.
 
 ## Runs
 
@@ -185,7 +193,7 @@ An order sent with `no_llm` and both providers set to `fake`, and a run started 
 providers set to `fake`, run without any model: the fake builder and reviewer answer, so such a test
 costs nothing and needs no key. This repository's own test of it, which drives an order to its
 proof, an apply with its history and a push, an order of two jobs, an order that names its project,
-and a declined result over this API alone, is `tests/orchestration/test_public_api_gate_paths.py`.
+a declined result, and an order sent twice with one key over this API alone, is `tests/orchestration/test_public_api_gate_paths.py`.
 
 ## Staying current
 
