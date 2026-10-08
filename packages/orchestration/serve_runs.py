@@ -211,13 +211,14 @@ class RunLauncher:
             child = self._children.get(job_id)
             return child is not None and child.poll() is None
 
-    def start(self, job_id: str, *, json_output: bool = False) -> RunRecord:
+    def start(self, job_id: str, *, json_output: bool = False,
+              options: Sequence[str] = ()) -> RunRecord:
         """Start JOB_ID's run and return its record; refuse a job whose run has not ended.
 
-        JSON_OUTPUT adds `--json` to the run's command, the one option a run started
-        through the supervisor takes (DECISION F200 D5). A job adopted after a
-        restart (DECISION F200 D7) is refused exactly as a child this launcher
-        started itself is.
+        JSON_OUTPUT adds `--json` to the run's command (DECISION F200 D5). OPTIONS are the
+        caller's own, placed in the command after `argv_for(job_id)` and before `--json`
+        (DECISION F253 D18 (3)). A job adopted after a restart (DECISION F200 D7) is refused
+        exactly as a child this launcher started itself is.
         """
         with self._lock:
             if job_id in self._adopted:
@@ -233,7 +234,7 @@ class RunLauncher:
             out_log = self._paths.runs_dir / f"{job_id}.out"
             err_log = self._paths.runs_dir / f"{job_id}.err"
             env = child_environment(self._paths)
-            argv = [*self._argv_for(job_id), *(["--json"] if json_output else [])]
+            argv = [*self._argv_for(job_id), *options, *(["--json"] if json_output else [])]
             with open(out_log, "wb") as out, open(err_log, "wb") as err:
                 child = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
                                          stdout=out, stderr=err, env=env,
