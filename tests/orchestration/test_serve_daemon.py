@@ -616,3 +616,73 @@ def test_a_post_whose_path_value_decodes_to_a_nul_is_400_and_ledgered(root, runn
     records = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
     assert (records[-1]["method"], records[-1]["path"], records[-1]["status"]) == (
         "POST", path, 400)
+
+
+# -- S4b: declining a result over HTTP (DECISION F253 D11) --------------------------------------
+
+
+def _saved_job(*, completed: bool) -> str:
+    from packages.orchestration.pingpong_job import JOB_COMPLETED
+
+    job = JobPlan(job_title="serve-decline-job", user_prompt="Serve decline prompt",
+                  tasks=[TaskEntry(title="Write a page")])
+    if completed:
+        job.state = JOB_COMPLETED
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def _decline_command_envelope(root: Path, job_id: str, reason: str) -> dict:
+    """What `remedy job decline <job> --reason <reason> --source api --json` prints, run as a
+    subprocess against ROOT; a refusal exits nonzero and still prints its envelope."""
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root), SR.DIRECT_ENV: "1"}
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "job", "decline", job_id, "--reason", reason,
+         "--source", "api", "--json"],
+        cwd=str(REPO), env=env, capture_output=True, text=True, timeout=60)
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+def _post_decline(port: int, token: str, job_id: str, body: dict):
+    return _api_request(port, "POST", f"/api/v1/jobs/{job_id}/decline",
+                        headers=_bearer(token), body=json.dumps(body).encode())
+
+
+def test_a_decline_post_answers_what_the_decline_command_prints(root, running_with_api):
+    from packages.orchestration.job_apply import job_result_decline
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    posted, run = _saved_job(completed=True), _saved_job(completed=True)
+
+    status, body = _post_decline(port, token, posted, {"reason": "not wanted"})
+    assert status == 200, body
+    command = _decline_command_envelope(root, run, "not wanted")
+    aside = ("job_id", "declined_at")
+    assert ({k: v for k, v in body.items() if k not in aside}
+            == {k: v for k, v in command.items() if k not in aside})
+    assert (body["job_id"], body["source"], body["already_declined"]) == (posted, "api", False)
+    assert job_result_decline(require_job_plan(posted))["source"] == "api"
+
+    status, again = _post_decline(port, token, posted, {"reason": "other reason"})
+    assert status == 200 and again["already_declined"] is True
+    assert (again["reason"], again["declined_at"]) == ("not wanted", body["declined_at"])
+
+
+def test_a_decline_post_refuses_as_the_command_does(root, running_with_api):
+    from packages.orchestration.job_apply import job_result_decline
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    planned, completed = _saved_job(completed=False), _saved_job(completed=True)
+
+    status, body = _post_decline(port, token, planned, {"reason": "too early"})
+    assert (status, body["error"]) == (409, "job_not_declinable")
+    assert body == _decline_command_envelope(root, planned, "too early")
+
+    status, body = _post_decline(port, token, completed, {})
+    assert (status, body["error"]) == (400, "missing_argument")
+    assert body == _decline_command_envelope(root, completed, "")
+    assert job_result_decline(require_job_plan(completed)) is None
