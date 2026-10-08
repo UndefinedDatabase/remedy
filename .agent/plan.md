@@ -7,14 +7,13 @@ several jobs and an order started twice behave, a program sees what changed and 
 the digest stays small (docs/roadmap/features/T12_F304.md, T002 to T007, carried from F298).
 
 ## Current Step
-Session 3, round 9, T005's first part (DECISION F304 D10): each completed job in the digest
-carries an `approval_card` read from its record alone, with its changed files (a count and the
-first twenty), its test command and its tasks' verdicts, repair rounds and test answers.
+Session 3, round 10, T005's second part, first half (DECISION F304 D11): a completed job's
+approval card carries its mission's blocking criteria with id, text and status, and `checks_ran`,
+false when no test ran and no gate evaluated a blocking criterion.
 
 ## Next Steps
-1. T005's second part: the blocking criteria of the job's mission contract with status and text,
-   one recommendation word and one risk word derived by rules the page states, and a card that
-   says when no check ran.
+1. T005's last part: one recommendation word and one risk word on the card, derived from recorded
+   facts by rules the page states.
 2. T006, T007; then the hardening stage; then the closure sequence.
 
 ## Risks
