@@ -28,3 +28,27 @@ that a resent order runs again.
 
 **What happens if you say nothing.** The recommendation is already in effect and stands until you
 say otherwise: a resent order runs again, and the fix waits for the next clean-up feature.
+
+### Q13 — The installed command runs old code (2026-10-09, F253, round 23)
+
+**What needs deciding.** The `remedy` command installed for your user on this computer does not
+run the code in your main Remedy folder. Python's list of installed packages points it at a
+working copy that one of Remedy's own jobs made on October 7, the job that raised the version pins
+and regenerated the constraints file, and that copy has not changed since. Anything you start with
+the plain `remedy` command, the supervisor included, therefore runs that older code, not today's.
+
+**Why it matters.** Features built since October 7, among them the web interface for programs that
+this work is building, are missing from the command you type, so trying them by hand would show
+old behaviour and could look like a fault. The loop's own tests are not affected, because they
+always run the code of the main folder. It is also worth knowing how the pointer moved: either a
+job's work installed Remedy from inside its own copy, which a job should never be able to do to
+your user's settings, or it was done by hand.
+
+**My recommendation.** Open a terminal in your main Remedy folder and install it again for your
+user in editable form, the same way it was installed before, for example with
+`python3 -m pip install --user -e .`, so the command follows the main folder again. If you did not
+make that change yourself, tell the loop, and a later feature will look into whether a job can
+change your installed packages and stop it.
+
+**What happens if you say nothing.** Nothing changes: the installed command keeps running the old
+copy until you reinstall it, and the loop keeps working from the main folder as it does now.
