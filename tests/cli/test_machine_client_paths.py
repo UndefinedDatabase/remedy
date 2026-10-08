@@ -4,9 +4,11 @@
 `tests/cli/test_machine_client_contract.py` keeps unchanged: an order file driven to `remedy job
 apply <job> --approve --commit-with-history --push --json` against a local bare upstream, reading
 the commit, the branch and the push from the answer; an order of two jobs driven to its end as a
-program would, from the JSON answers alone; and one order file started twice. Every command runs
-through F295's `_remedy`, in this process with the environment a child process would have, and
-with a stdin that fails the test on any read.
+program would, from the JSON answers alone; and one order file started twice. Its Goal & Done
+also names two more paths, which the hardening stage found missing here (R-1185): an order that
+names its project, started by a client that stands in no repository, and a result the client
+declines. Every command runs through F295's `_remedy`, in this process with the environment a
+child process would have, and with a stdin that fails the test on any read.
 """
 from __future__ import annotations
 
@@ -124,3 +126,58 @@ def test_one_order_file_started_twice_is_refused_naming_the_mission_that_runs_it
                           repo, env)
     assert code == 0, other
     assert other["mission_id"] != first["mission_id"]
+
+
+def _project_order(tmp_path: Path) -> tuple[Path, Path, Path, dict[str, str], dict]:
+    """The client's repository registered as a project from a folder that is no repository, and
+    the order file naming that project; the client stands in that folder from here on."""
+    repo, order_file, env = _client(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    code, registered = _remedy(["project", "register", "--repo", str(repo)], elsewhere, env)
+    assert code == 0, registered
+    order_file.write_text(ORDER_FILE_TEXT.replace(
+        "---\n", f"---\nproject: {registered['slug']}\n", 1), encoding="utf-8")
+    return repo, elsewhere, order_file, env, registered
+
+
+def test_an_order_naming_its_project_runs_in_that_projects_repository_wherever_the_client_stands(
+        tmp_path):
+    repo, elsewhere, order_file, env, registered = _project_order(tmp_path)
+
+    code, done = _remedy(["do", str(order_file), *UNATTENDED], elsewhere, env)
+    assert code == 0, done
+    [job_id] = done["job_ids"]
+
+    # The answer names the project's repository as the place to apply, and the job records it.
+    assert f"remedy job apply {job_id} --repo {registered['repo_path']} --approve" in done["next"]
+    code, shown = _remedy(["job", "show", job_id], elsewhere, env)
+    assert (code, shown["repo_path"], shown["project_id"]) == (
+        0, registered["repo_path"], registered["project_id"])
+    code, applied = _remedy(["job", "apply", job_id, "--repo", registered["repo_path"],
+                             "--approve"], elsewhere, env)
+    assert (code, applied["status"]) == (0, "applied"), applied
+    assert (repo / "docs" / "README.md").is_file()
+    assert list(elsewhere.iterdir()) == []
+
+
+def test_a_client_declines_a_completed_result_and_it_waits_for_nothing(tmp_path):
+    repo, elsewhere, order_file, env, registered = _project_order(tmp_path)
+    code, done = _remedy(["do", str(order_file), *UNATTENDED], elsewhere, env)
+    assert code == 0, done
+    [job_id] = done["job_ids"]
+    code, status = _remedy(["status"], elsewhere, env)
+    assert status["client"]["awaiting_apply"] == [job_id]
+
+    code, declined = _remedy(["job", "decline", job_id, "--reason", "not wanted"], elsewhere, env)
+
+    assert (code, declined["ok"], declined["reason"]) == (0, True, "not wanted"), declined
+    code, status = _remedy(["status"], elsewhere, env)
+    job = _digest_job(status["client"], job_id)
+    assert (job["state"], job["waits_for_apply"]) == ("completed", False)
+    assert status["client"]["awaiting_apply"] == []
+    code, ownership = _remedy(["job", "ownership", job_id], elsewhere, env)
+    assert [(entry["action"], entry["text"]) for entry in ownership["entries"]] == [
+        ("result_declined", "not wanted")]
+    # Nothing was applied: the repository is as the client left it.
+    assert not (repo / "docs" / "README.md").exists()
