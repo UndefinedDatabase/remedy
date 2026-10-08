@@ -2525,6 +2525,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--reason", "Why you decline the result, in your own words; kept with the "
                    "decline", required=True, is_option=True),
+            ArgDef("--source", "Which door the decline came through, kept with it (default: "
+                   "cli; the public HTTP API passes api)", required=False, is_option=True,
+                   default="cli"),
             _JSON_OPT,
         ),
         supports_json=True,
