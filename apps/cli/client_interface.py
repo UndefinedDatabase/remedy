@@ -44,8 +44,9 @@ from typing import Any
 #: The document's own version. Its major number changes only when a name is removed or changes
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
 #: to `1.2` for `client.changes`, F253 S4b (DECISION F253 D11) to `1.3` for `job decline`'s
-#: `--source`, and F253 S5a (DECISION F253 D13) to `1.4` for `client.order`.
-CLIENT_INTERFACE_VERSION = "1.4"
+#: `--source`, F253 S5a (DECISION F253 D13) to `1.4` for `client.order`, and F253 round 23
+#: (DECISION F253 D20) to `1.5` for `client.run`.
+CLIENT_INTERFACE_VERSION = "1.5"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -70,6 +71,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.interface",
     "client.changes",
     "client.order",
+    "client.run",
 )
 
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
@@ -129,6 +131,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.interface": (),
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",),
+    "client.run": ("run_not_found",),
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
@@ -207,6 +210,10 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     ),
     "client.order": (
         "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+    ),
+    "client.run": (
+        "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
+        "state",
     ),
 }
 
@@ -686,6 +693,9 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 S5a (DECISION F253 D13): `answer` is the envelope `remedy do` printed, read only
     # once the order is not `running`; no tree is declared under it in this round.
     "client.order": {},
+    # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
+    # the run is not `running`; no tree is declared under it.
+    "client.run": {},
 }
 
 

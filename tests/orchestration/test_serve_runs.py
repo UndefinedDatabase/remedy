@@ -658,3 +658,59 @@ def test_order_answer_is_the_object_when_the_last_line_is_one(tmp_path):
     record = SR.OrderRecord(order_id="o", pid=1, started_at="t", order_file="o",
                             out_log=str(out), err_log="e")
     assert SR.order_answer(record) == {"ok": True, "mission_id": "m1"}
+
+
+# ---------------------------------------------------------------------------
+# Reading a run: its state, its answer and its record's payload (DECISION F253 D20).
+# ---------------------------------------------------------------------------
+
+
+def test_run_state_is_running_then_ended(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("jobS")
+    assert SR.run_state(paths, record) == "running"
+    release.touch()
+    launcher.wait("jobS", timeout=30)
+    ended = SR.read_run_record(paths, "jobS")
+    assert SR.run_state(paths, ended) == "ended"
+
+
+def test_run_state_is_lost_for_a_record_with_no_end_whose_process_is_gone(tmp_path):
+    paths = serve_paths(tmp_path)
+    record = SR.RunRecord(job_id="jobL", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+                          out_log="o", err_log="e")
+    assert SR.run_state(paths, record) == "lost"
+
+
+@pytest.mark.parametrize("last_line", ["not json", '{"no_ok": true}'])
+def test_run_answer_is_none_when_the_last_line_is_no_envelope(tmp_path, last_line):
+    out = tmp_path / "out.log"
+    out.write_text(last_line + "\n", encoding="utf-8")
+    record = SR.RunRecord(job_id="j", pid=1, started_at="t", out_log=str(out), err_log="e")
+    assert SR.run_answer(record) is None
+
+
+def test_run_answer_is_the_object_when_the_last_line_is_one(tmp_path):
+    out = tmp_path / "out.log"
+    out.write_text('{"ok": true, "job_id": "j"}\n', encoding="utf-8")
+    record = SR.RunRecord(job_id="j", pid=1, started_at="t", out_log=str(out), err_log="e")
+    assert SR.run_answer(record) == {"ok": True, "job_id": "j"}
+
+
+def test_run_record_payload_holds_every_key_of_the_record_plus_state_and_answer(setup):
+    root, paths, launcher, release = setup
+    record = launcher.start("jobP")
+    running = SR.run_record_payload(paths, record)
+    assert running == {**record.to_json(), "state": "running", "answer": None}
+    release.touch()
+    launcher.wait("jobP", timeout=30)
+    ended_record = SR.read_run_record(paths, "jobP")
+    ended = SR.run_record_payload(paths, ended_record)
+    assert set(ended) == set(record.to_json()) | {"state", "answer"}
+    assert ended["state"] == "ended" and ended["exit_code"] == 3
+    # The stand-in's last line is no envelope, so its answer is None.
+    assert ended["answer"] is None
+
+
+def test_run_not_found_message_names_the_value():
+    assert "jobX" in SR.run_not_found_message("jobX")

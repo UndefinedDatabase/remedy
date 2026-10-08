@@ -2893,6 +2893,24 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
         exit_codes=(0, 1, 2, 3),
     ),
+    # F253 (DECISION F253 D20): read the run the supervisor started for a job, as `client.order`
+    # reads an order.
+    CommandEntry(
+        command_id="client.run",
+        group_id="client",
+        subcommand="run",
+        description="Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("job", "The job id (or a prefix of it) whose run the supervisor started"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "client.order"),
+        # A value that names no job, or a job with no run record, is absent, which exit 3's
+        # `not_ready` meaning covers.
+        exit_codes=(0, 1, 2, 3),
+    ),
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
