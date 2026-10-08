@@ -1490,6 +1490,17 @@ def _client_policy(**changes):
     return ApiClient(**fields)
 
 
+def _saved_job_of_project(project_id: str, repo_path: str) -> str:
+    """The full id of a saved job whose record names PROJECT_ID as its project."""
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="client-policy-job", user_prompt="Client policy prompt",
+                  tasks=[TaskEntry(title="Write a page")], repo_path=repo_path,
+                  project_id=project_id)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
 def _post_order_as(client, text: str, start):
     _run_calls, run = _recording_runner()
     raw = json.dumps({"order": text}).encode("utf-8")
@@ -1536,16 +1547,17 @@ def test_a_client_order_is_held_to_its_ceilings(tmp_path, ceiling_key, header):
 
 
 def test_a_client_apply_needs_its_may_apply(tmp_path):
-    full = _saved_job_in(str(tmp_path))
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
     path = f"/api/v1/jobs/{full}/apply"
     calls, run = _recording_runner()
     status, answer, _headers = public_api.answer_public_api_post(
-        path, b"{}", run, client=_client_policy(may_apply=False))
+        path, b"{}", run, client=_client_policy(projects=(project.slug,), may_apply=False))
     assert (status, answer["error"]) == (403, "api_client_policy_refused")
     assert answer["message"].endswith("; nothing was run")
     assert calls == []
     status, _answer, _headers = public_api.answer_public_api_post(
-        path, b"{}", run, client=_client_policy(may_apply=True))
+        path, b"{}", run, client=_client_policy(projects=(project.slug,), may_apply=True))
     assert status == 200
     assert calls == [(full, ["job", "apply", "--approve", f"--repo={tmp_path}", "--json", "--",
                              full])]
@@ -1597,3 +1609,141 @@ def test_the_page_states_the_clients_file_and_the_policy_refusal():
                                  hand_written.index("## The envelope")]
     assert "clients.json" in token_section
     assert "api_client_policy_refused" in hand_written
+    assert "Until the next slice" not in page
+    assert "max_provider_calls" in hand_written
+
+
+# -- a client token's jobs and budget answers (S6b-2, DECISION F253 D17) ---------
+
+#: The three routes that act on one job: kind to path template and body.
+_JOB_WRITES = {
+    "decision": ("/api/v1/jobs/{job}/decisions/plan:x", {"reason": "approve"}),
+    "decline": ("/api/v1/jobs/{job}/decline", {"reason": "not wanted"}),
+    "apply": ("/api/v1/jobs/{job}/apply", {}),
+}
+
+
+def _client_job_write(kind: str, job: str, client):
+    """Post the KIND write for JOB as CLIENT; the (status, answer) and the runner's calls."""
+    template, body = _JOB_WRITES[kind]
+    calls, run = _recording_runner()
+    status, answer, _headers = public_api.answer_public_api_post(
+        template.replace("{job}", job), json.dumps(body).encode("utf-8"), run, client=client)
+    return status, answer, calls
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_another_project_is_403_and_runs_nothing(tmp_path, kind):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=("some-other-project",), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert "nightly-bot" in answer["message"] and full in answer["message"]
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_a_project_it_lists_by_slug_or_id_runs(tmp_path, kind):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    for listed in (project.slug, str(project.id)):
+        client = _client_policy(projects=(listed,), may_apply=True)
+        status, answer, calls = _client_job_write(kind, full, client)
+        assert status == 200, answer
+        assert len(calls) == 1
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_of_no_project_is_403_and_runs_nothing(tmp_path, kind):
+    full = _saved_job_of_project("", str(tmp_path))
+    client = _client_policy(projects=("demo",), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert calls == []
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_value_that_names_no_job_runs_the_command_as_before(kind):
+    client = _client_policy(projects=("demo",), may_apply=True)
+    status, _answer, calls = _client_job_write(kind, "0123abcd", client)
+    assert status == 200
+    assert len(calls) == 1
+
+
+def _budget_answer_as(client, decision: str, job: str, answers: list[str]):
+    calls, run = _recording_runner()
+    raw = json.dumps({"reason": "extend", "answer": answers}).encode("utf-8")
+    status, answer, _headers = public_api.answer_public_api_post(
+        f"/api/v1/jobs/{job}/decisions/{decision}", raw, run, client=client)
+    return status, answer, calls
+
+
+@pytest.mark.parametrize("decision", ["budget:r1", "budget_exhausted"])
+@pytest.mark.parametrize("limit,ceiling", [("max_total_tokens", 1000), ("max_provider_calls", 5)])
+def test_a_client_budget_answer_above_its_ceiling_is_403_and_runs_nothing(
+        tmp_path, decision, limit, ceiling):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=(project.slug,), **{limit: ceiling})
+    status, answer, calls = _budget_answer_as(client, decision, full, [f"{limit}={ceiling + 1}"])
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert limit in answer["message"] and answer["message"].endswith("; nothing was run")
+    assert calls == []
+    status, answer, calls = _budget_answer_as(client, decision, full, [f"{limit}={ceiling}"])
+    assert status == 200, answer
+    assert len(calls) == 1
+
+
+def test_a_client_answer_of_a_decision_that_is_not_a_budget_decision_is_not_held_to_a_ceiling(
+        tmp_path):
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    client = _client_policy(projects=(project.slug,), max_total_tokens=1000)
+    status, answer, calls = _budget_answer_as(client, "plan:x", full, ["max_total_tokens=5000"])
+    assert status == 200, answer
+    assert len(calls) == 1
+
+
+def test_a_client_decline_of_a_job_of_another_project_through_the_socket_handler_runs_nothing(
+        tmp_path):
+    """Through a real handler made by `socket_handler_class`: the decline is 403, the ledger holds
+    one line for it naming the client, and the runner never runs a command."""
+    import socketserver
+
+    project = _registered_project(tmp_path)
+    full = _saved_job_of_project(str(project.id), str(tmp_path))
+    _write_clients([_client_entry(projects=["some-other-project"])])
+    ran: list[tuple[str, list[str]]] = []
+
+    class _RecordingRunner:
+        def run(self, job_id: str, argv: list[str]) -> dict | None:
+            ran.append((job_id, argv))
+            return _OK_ENVELOPE
+
+    class _Server(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    sock_path = tmp_path / "client-decline-403.sock"
+    server = _Server(str(sock_path), socket_handler_class(
+        SERVER_TOKEN, runner=_RecordingRunner()))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    path = f"/api/v1/jobs/{full}/decline"
+    try:
+        status, body, _headers = _unix_request(
+            sock_path, "POST", path, headers=_bearer(CLIENT_TOKEN),
+            body=json.dumps({"reason": "not wanted"}).encode("utf-8"))
+    finally:
+        server.shutdown()
+        thread.join(10)
+        server.server_close()
+
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    records = [r for r in _ledger_records() if r["path"] == path]
+    assert len(records) == 1
+    assert records[0]["status"] == 403
+    assert records[0]["error"] == "api_client_policy_refused"
+    assert records[0]["client"] == "nightly-bot"
+    assert ran == []

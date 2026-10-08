@@ -6,7 +6,9 @@ holds exactly the keys `name`, `token`, `projects`, `max_total_tokens`, `max_pro
 `may_apply`, and no two entries share a name or a token. Fail-closed rule (D16 (2)): the file is
 read again at every call, and a file that is missing, that group or others may read or write, that
 cannot be read, that is not JSON, or that holds any part outside this shape, holds no client at
-all, so a mistake in it never grants more than the operator wrote.
+all, so a mistake in it never grants more than the operator wrote. A client token answers a
+decision, declines a result and applies a job only for a job of its projects, and may not raise a
+budget limit above its ceilings (DECISION F253 D17).
 """
 
 from __future__ import annotations
@@ -143,6 +145,11 @@ def _cap_refusal(client: ApiClient, key: str, ceiling: int | None, cap: str | No
     return None
 
 
+def client_lists_project(client: ApiClient, project_keys: Iterable[str]) -> bool:
+    """True when any key of PROJECT_KEYS (a project's slug or id) is in the client's projects."""
+    return any(key in client.projects for key in project_keys)
+
+
 def client_order_refusal(
     client: ApiClient, project_keys: Iterable[str],
     max_total_tokens: str | None, max_provider_calls: str | None,
@@ -153,9 +160,38 @@ def client_order_refusal(
     projects; or, for a ceiling that is not None, the matching cap is absent, is not a whole
     number above zero, or is above the ceiling (DECISION F253 D16 (5)).
     """
-    if not any(key in client.projects for key in project_keys):
+    if not client_lists_project(client, project_keys):
         return (f"the client {client.name!r} may not order work on this project; "
                 "nothing was run")
     return (_cap_refusal(client, "max-total-tokens", client.max_total_tokens, max_total_tokens)
             or _cap_refusal(client, "max-provider-calls", client.max_provider_calls,
                             max_provider_calls))
+
+
+def client_budget_answer_refusal(client: ApiClient, answers: Sequence[str]) -> str | None:
+    """One sentence ending "; nothing was run" when an item of ANSWERS raises a limit above CLIENT's
+    ceiling, else None (DECISION F253 D17 (2)).
+
+    Only an item `<limit>=<value>` whose limit, stripped, is `max_total_tokens` or
+    `max_provider_calls`, and for which the client's ceiling is not None, can be refused: its value,
+    read as a cap is read, must not be above the ceiling. A value that cannot be read, an item
+    without `=` and every other limit are passed on, and the command refuses what it refuses.
+    """
+    from packages.orchestration.budget_resolution import BudgetConfigError, _pos_int
+
+    for item in answers:
+        limit, equals, value = item.partition("=")
+        limit = limit.strip()
+        if not equals or limit not in ("max_total_tokens", "max_provider_calls"):
+            continue
+        ceiling = getattr(client, limit)
+        if ceiling is None:
+            continue
+        try:
+            parsed = _pos_int(limit, value)
+        except BudgetConfigError:
+            continue
+        if parsed is not None and parsed > ceiling:
+            return (f"the client {client.name!r} may raise '{limit}' to at most {ceiling}, "
+                    f"and the answer gives {parsed}; nothing was run")
+    return None
