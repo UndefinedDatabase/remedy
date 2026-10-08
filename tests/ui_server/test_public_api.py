@@ -40,6 +40,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
+    ("POST", "/api/v1/jobs/{job}/decisions/{decision}"):
+        "test_the_decision_route_is_pinned_with_its_body_and_its_statuses",
 }
 
 
@@ -327,7 +329,9 @@ def test_every_route_is_well_formed():
     segment_re = re.compile(r"^[A-Za-z0-9_-]+$")
     for route in public_api.PUBLIC_API_ROUTES:
         assert route.path.startswith(public_api.PUBLIC_API_PREFIX + "/")
-        assert route.method == "GET"
+        assert route.method in ("GET", "POST")
+        assert bool(route.body) == (route.method == "POST")
+        assert (route.refusal_default is not None) == (route.method == "POST")
         entry = get_command(route.twin)  # raises KeyError if not a catalog command
         assert route.twin in CLIENT_OPERATION_IDS
         assert not public_api.command_is_excluded(route.twin)
@@ -345,6 +349,9 @@ def test_every_route_is_well_formed():
             assert "--" + key.replace("_", "-") in option_flags
         for key in route.query_values:
             assert "--" + key.replace("_", "-") in value_options
+        for key, kind in route.body:
+            assert kind in ("string", "strings")
+            assert "--" + key in value_options
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
@@ -733,3 +740,137 @@ def test_post_put_and_delete_each_write_their_own_ledger_line(tcp_server):
         assert record["status"] == 405
         assert record["error"] == "api_method_not_allowed"
         assert record["path"] == "/api/v1/interface"
+
+
+# -- M: the write route that answers a decision (S4a, DECISION F253 D9) -----------
+
+DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"
+_OK_ENVELOPE = {"schema_version": 1, "ok": True, "outcome": "answered"}
+
+
+def _decision_route() -> public_api.PublicApiRoute:
+    return next(route for route in public_api.PUBLIC_API_ROUTES if route.method == "POST")
+
+
+def _recording_runner(envelope: dict | None = _OK_ENVELOPE):
+    """A stand-in `run_command` that records its arguments and returns ENVELOPE."""
+    calls: list[tuple[str, list[str]]] = []
+
+    def run(job: str, argv: list[str]) -> dict | None:
+        calls.append((job, argv))
+        return envelope
+
+    return calls, run
+
+
+def _post(path: str, body: object, run) -> tuple[int, dict, dict[str, str]]:
+    raw = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+    return public_api.answer_public_api_post(path, raw, run)
+
+
+def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
+    route = _decision_route()
+    assert (route.method, route.path, route.twin) == ("POST", DECISION_PATH, "decision.resolve")
+    assert route.body == (("reason", "string"), ("answer", "strings"))
+    assert route.refusal_default == 409
+    assert route.refusals == (
+        ("invalid_job_id", 404), ("job_not_found", 404), ("decision_not_found", 404),
+        ("stop_reason_not_found", 404), ("proposed_task_not_found", 404),
+        ("ambiguous_job_id", 400), ("invalid_argument", 400), ("missing_argument", 400),
+        ("option_not_applicable", 400), ("answer_parse_error", 400), ("invalid_budget", 400),
+        ("decision_not_resolvable", 400),
+    )
+    assert "--as-mission" in route.description and "is not offered" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.4"
+
+
+def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "Query or body" in page
+    assert "`reason` (string), `answer` (strings)" in page
+    assert "`decision_not_resolvable` 400, any other 409" in page
+
+
+def test_a_post_builds_the_command_line_from_the_body_and_the_path():
+    calls, run = _recording_runner()
+    status, body, headers = _post("/api/v1/jobs/j1/decisions/d1",
+                                  {"reason": "extend", "answer": ["a b", "--c"]}, run)
+    assert (status, body, headers) == (200, _OK_ENVELOPE, {})
+    assert calls == [("j1", ["decision", "resolve", "--reason=extend", "--answer=a b",
+                             "--answer=--c", "--json", "--", "j1", "d1"])]
+
+
+@pytest.mark.parametrize("raw", [b"", b"  \n", b"{}"])
+def test_a_post_with_no_body_or_an_empty_object_takes_the_bare_command_line(raw):
+    calls, run = _recording_runner()
+    assert _post("/api/v1/jobs/j1/decisions/d1", raw, run)[0] == 200
+    assert calls == [("j1", ["decision", "resolve", "--json", "--", "j1", "d1"])]
+
+
+@pytest.mark.parametrize("body, key", [
+    (b"not json", "valid JSON"),
+    (b"\xff\xfe", "valid JSON"),
+    (b'["reason"]', "JSON object"),
+    (b'"reason"', "JSON object"),
+    (b'{"as_mission": true}', "as_mission"),
+    (b'{"reason": 3}', "reason"),
+    (b'{"reason": null}', "reason"),
+    (b'{"answer": "Postgres"}', "answer"),
+    (b'{"answer": ["ok", ""]}', "answer"),
+    (b'{"answer": ["ok", 2]}', "answer"),
+])
+def test_a_post_body_that_is_not_the_routes_own_is_400_and_runs_nothing(body, key):
+    calls, run = _recording_runner()
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", body, run)
+    assert status == 400 and answer["error"] == "api_body_invalid"
+    assert key in answer["message"]
+    assert calls == []
+
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/jobs/-h/decisions/d1", "/api/v1/jobs/j1/decisions/--help",
+    "/api/v1/jobs/-/decisions/d1",
+])
+def test_a_path_value_that_begins_with_a_dash_is_400_and_runs_nothing(path):
+    calls, run = _recording_runner()
+    status, answer, _headers = _post(path, {}, run)
+    assert status == 400 and answer["error"] == "api_path_invalid"
+    assert calls == []
+
+
+def test_a_command_that_prints_no_envelope_is_500():
+    calls, run = _recording_runner(None)
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {}, run)
+    assert (status, answer["error"]) == (500, "api_command_failed")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("token, expected", [
+    ("decision_not_found", 404), ("ambiguous_job_id", 400), ("decision_already_answered", 409),
+    ("a_token_nobody_listed", 409),
+])
+def test_a_refusal_keeps_the_commands_envelope_and_takes_its_routes_status(token, expected):
+    refusal = {"schema_version": 1, "ok": False, "error": token, "message": "m"}
+    _calls, run = _recording_runner(refusal)
+    status, answer, _headers = _post("/api/v1/jobs/j1/decisions/d1", {}, run)
+    assert (status, answer) == (expected, refusal)
+
+
+def test_a_get_of_a_write_routes_path_is_404_and_a_post_of_a_get_routes_path_is_405():
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/j1/decisions/d1")
+    assert (status, body["error"]) == (404, "api_route_not_found")
+    _calls, run = _recording_runner()
+    status, body, _headers = _post("/api/v1/interface", {}, run)
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+    status, body, _headers = _post("/api/v1/nothing", {}, run)
+    assert (status, body["error"]) == (404, "api_route_not_found")
+
+
+def test_the_cockpits_own_server_answers_a_decision_post_405_and_ledgers_it(tcp_server):
+    ledger_path = Path(os.environ["REMEDY_DATA_DIR"]) / "api" / "calls.jsonl"
+    path = "/api/v1/jobs/j1/decisions/d1"
+    status, body, _headers = _tcp_request(tcp_server, "POST", path, headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (405, "api_method_not_allowed")
+    assert "remedy serve start" in body["message"]
+    records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+    assert [(r["method"], r["path"], r["status"]) for r in records] == [("POST", path, 405)]
