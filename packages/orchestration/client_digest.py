@@ -6,7 +6,8 @@ references (DECISION F295 D7), which of those jobs wait for an operator's
 apply, whether the supervisor answers, and every job's open decisions
 (DECISION F295 D5). Each completed job carries its approval card, what an
 operator approves its result on, read from the job's record and its mission's
-contract only (DECISIONs F304 D10 and D11).
+contract only, with one recommendation word and one risk word derived from
+them by fixed rules (DECISIONs F304 D10 to D12).
 """
 from __future__ import annotations
 
@@ -50,6 +51,14 @@ _LEDGER_READ_ERRORS = (OSError, sqlite3.Error)
 
 #: How many changed files an approval card names; its count names them all (DECISION F304 D10).
 APPROVAL_CARD_FILE_LIMIT = 20
+
+#: The words an approval card's `recommendation` and `risk` take, from the most to the least
+#: favourable; `_card_recommendation` and `_card_risk` state the rules (DECISION F304 D12).
+APPROVAL_RECOMMENDATIONS = ("apply", "review", "hold")
+APPROVAL_RISKS = ("low", "medium", "high")
+
+#: The most changed files an approval card's risk may still read `low` (DECISION F304 D12).
+APPROVAL_LOW_RISK_FILE_LIMIT = 5
 
 
 def _job_cost(plan: JobPlan) -> dict[str, Any]:
@@ -112,15 +121,49 @@ def _mission_blocking_criteria(mission: Mission | None) -> list[dict[str, Any]]:
             for criterion in (contract.criteria if contract is not None else ()) if criterion.blocking]
 
 
+# WHY: the two words are derived from recorded facts by fixed rules, which the machine client page
+# states, so a client can check every word against the card it stands on (DECISION F304 D12).
+def _card_recommendation(tasks: list[dict[str, Any]],
+                         blocking_criteria: list[dict[str, Any]] | None, checks_ran: bool) -> str:
+    """`hold` when a record says no: a test that ran and failed, a reviewer's verdict other than
+    `pass`, or an `unmet` blocking criterion. Else `review` when something is unverified: no check
+    ran, a task without a reviewer's verdict, a blocking criterion still `open`, or a contract that
+    cannot be read. Else `apply`.
+    """
+    if (any(task["test_passed"] is False for task in tasks)
+            or any(task["reviewer_verdict"] not in (None, "pass") for task in tasks)
+            or any(criterion["status"] == "unmet" for criterion in blocking_criteria or ())):
+        return "hold"
+    if (not checks_ran or blocking_criteria is None
+            or any(task["reviewer_verdict"] is None for task in tasks)
+            or any(criterion["status"] == "open" for criterion in blocking_criteria)):
+        return "review"
+    return "apply"
+
+
+def _card_risk(tasks: list[dict[str, Any]], changed_file_count: int, checks_ran: bool) -> str:
+    """`high` when no check ran or more files changed than the card names
+    (`APPROVAL_CARD_FILE_LIMIT`). Else `medium` when a task took a repair round or more than
+    `APPROVAL_LOW_RISK_FILE_LIMIT` files changed. Else `low`.
+    """
+    if not checks_ran or changed_file_count > APPROVAL_CARD_FILE_LIMIT:
+        return "high"
+    if (any(task["repair_rounds_used"] > 0 for task in tasks)
+            or changed_file_count > APPROVAL_LOW_RISK_FILE_LIMIT):
+        return "medium"
+    return "low"
+
+
 # WHY: a client approves a result on what the records hold, never on a model's summary
-# (F304 T005, DECISIONs F304 D10 and D11).
+# (F304 T005, DECISIONs F304 D10 to D12).
 def _approval_card(plan: JobPlan, blocking_criteria: list[dict[str, Any]] | None) -> dict[str, Any]:
     """A completed job's approval card, read from its record and its mission's contract only.
 
     The changed files are the paths its tasks' applied manifests name, sorted, the first
     `APPROVAL_CARD_FILE_LIMIT` of them by name and all of them by count. `blocking_criteria` is
     null when the mission's contract cannot be read. A check ran when a task's test command ran or
-    a gate evaluated a blocking criterion, `met` or `unmet`; `checks_ran` false says none did.
+    a gate evaluated a blocking criterion, `met` or `unmet`; `checks_ran` false says none did. The
+    `recommendation` and the `risk` follow from those facts alone.
     """
     changed_files = _reviewed_task_files(plan)
     test_command = plan.execution_config.test_command if plan.execution_config else ""
@@ -135,6 +178,8 @@ def _approval_card(plan: JobPlan, blocking_criteria: list[dict[str, Any]] | None
         "tasks": tasks,
         "blocking_criteria": blocking_criteria,
         "checks_ran": checks_ran,
+        "recommendation": _card_recommendation(tasks, blocking_criteria, checks_ran),
+        "risk": _card_risk(tasks, len(changed_files), checks_ran),
     }
 
 

@@ -60,14 +60,21 @@ holds whitespace is planned as text, never read as a file.
 2. **Read.** `remedy status --json` carries the digest under `client`: every project with its
    missions, every job with its state, cost and evidence, every open decision, and the jobs that
    wait for their apply. Read it as often as once a minute. Each completed job also carries
-   `approval_card`, what an operator approves its result on, read from the job's record alone:
-   how many files its tasks changed and the first twenty of them by name, the test command the
-   job ran with, and each task's title, reviewer's verdict and repair rounds, and whether its
-   test ran and passed. It also carries every blocking criterion of the job's mission's contract
-   with its id, text and status, `open`, `met` or `unmet`, under `blocking_criteria`, which is
-   null when that contract cannot be read; and `checks_ran`, false when no check ran on the job:
-   no task's test command ran and no gate evaluated a blocking criterion to `met` or `unmet`.
-   Every other job's `approval_card` is null.
+   `approval_card`, what an operator approves its result on, read from the job's record and its
+   mission's contract alone: how many files its tasks changed and the first twenty of them by
+   name, the test command the job ran with, and each task's title, reviewer's verdict and repair
+   rounds, and whether its test ran and passed. It also carries every blocking criterion of the
+   job's mission's contract with its id, text and status, `open`, `met` or `unmet`, under
+   `blocking_criteria`, which is null when that contract cannot be read; and `checks_ran`, false
+   when no check ran on the job: no task's test command ran and no gate evaluated a blocking
+   criterion to `met` or `unmet`. Every other job's `approval_card` is null.
+   The card ends with two words that follow from those facts by fixed rules, never from a model.
+   `recommendation` is `hold` when a record says no: a test that ran and failed, a reviewer's
+   verdict other than `pass`, or an `unmet` blocking criterion; else `review` when something is
+   unverified: no check ran, a task without a reviewer's verdict, a blocking criterion still
+   `open`, or a contract that cannot be read; else `apply`. `risk` is `high` when no check ran
+   or more than 20 files changed; else `medium` when a task took a repair round or more than 5
+   files changed; else `low`.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
@@ -226,6 +233,8 @@ Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `c
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
+Approval recommendations: `apply`, `review`, `hold`.
+Approval risks: `low`, `medium`, `high`.
 
 ### Operations
 
@@ -319,7 +328,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
-    - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `tasks`, `test_command`
+    - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
     - `cost`: `basis`, `value_usd`
@@ -654,7 +663,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -676,7 +685,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `jobs`, `projects`, `read_at`, 
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `jobs`: `approval_card`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `waits_for_apply`
-  - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `tasks`, `test_command`
+  - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`

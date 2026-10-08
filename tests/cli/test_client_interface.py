@@ -74,6 +74,7 @@ from apps.cli.exit_codes import CLI_EXIT_CODES
 from apps.cli.grouped import _DEFAULT_COMMAND, build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
 from packages.core.models import JobBudgets, RunState
+from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
 from packages.orchestration.contract_templates import list_contract_templates
 from packages.orchestration.mission_state import MISSION_STATUSES
 from tests.cli.test_exit_codes import _module_info
@@ -175,6 +176,8 @@ def test_the_vocabularies_are_the_products_own():
     assert interface["mission_statuses"] == list(MISSION_STATUSES)
     assert interface["contract_templates"] == list(list_contract_templates())
     assert interface["budget_kinds"] == list(JobBudgets.model_fields)
+    assert interface["approval_recommendations"] == list(APPROVAL_RECOMMENDATIONS)
+    assert interface["approval_risks"] == list(APPROVAL_RISKS)
     assert interface["envelope"] == {"schema_version": SCHEMA_VERSION,
                                      "reserved_keys": list(RESERVED_KEYS),
                                      "error_keys": ["error", "message"]}
@@ -474,8 +477,9 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_interface:**interface": (
         frozenset({
-            "answer_trees", "answers", "budget_kinds", "contract_templates", "digest", "envelope",
-            "exit_codes", "interface_version", "job_states", "mission_statuses", "operations",
+            "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
+            "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
+            "job_states", "mission_statuses", "operations",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -1434,7 +1438,9 @@ def _read_page_section(section: str) -> dict:
     read: dict = {"envelope": {}, "exit_codes": [], "operations": [], "answers": {},
                   "answer_trees": {}}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
-              "Contract templates": "contract_templates", "Budget kinds": "budget_kinds"}
+              "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
+              "Approval recommendations": "approval_recommendations",
+              "Approval risks": "approval_risks"}
     place, operation, bullets = "", None, []
     for line in [*section.splitlines(), "### End"]:
         if line.startswith(("#### ", "### ")) and bullets:

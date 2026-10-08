@@ -536,6 +536,8 @@ def test_a_completed_jobs_card_names_its_changed_files_test_command_and_tasks(ro
         ],
         "blocking_criteria": [],
         "checks_ran": True,
+        "recommendation": "hold",
+        "risk": "medium",
     }
 
 
@@ -661,6 +663,77 @@ def test_a_contract_that_cannot_be_read_nulls_the_criteria_and_marks_degraded(ro
     assert card["checks_ran"] is True
     assert digest["degraded"] is True
     assert digest["skipped_files"] == [f"contract of job {job.job_id}"]
+
+
+# ── the card's recommendation and risk words (DECISION F304 D12) ─────────────
+
+
+def _rule_task(verdict="pass", test_passed=True, repair_rounds_used=0) -> dict:
+    """One task as `_card_task` writes it, for the rule tables below."""
+    return {"task_id": "T001", "title": "t", "reviewer_verdict": verdict,
+            "repair_rounds_used": repair_rounds_used, "test_ran": test_passed is not None,
+            "test_passed": test_passed}
+
+
+def _rule_criterion(status) -> dict:
+    return {"id": "C001", "text": "c", "status": status}
+
+
+@pytest.mark.parametrize(("tasks", "criteria", "checks_ran", "expected"), [
+    ([_rule_task()], [_rule_criterion("met")], True, "apply"),
+    ([_rule_task()], [], True, "apply"),
+    ([_rule_task(test_passed=False)], [_rule_criterion("met")], True, "hold"),
+    ([_rule_task(verdict="needs_repair")], [], True, "hold"),
+    ([_rule_task(verdict="blocked", test_passed=None)], [], False, "hold"),
+    ([_rule_task()], [_rule_criterion("unmet")], True, "hold"),
+    ([_rule_task(test_passed=False)], [_rule_criterion("open")], True, "hold"),
+    ([_rule_task(test_passed=None)], [], False, "review"),
+    ([_rule_task()], [_rule_criterion("open")], True, "review"),
+    ([_rule_task()], None, True, "review"),
+    ([_rule_task(verdict=None)], [_rule_criterion("met")], True, "review"),
+], ids=["every-check-passed", "no-contract", "a-test-failed", "a-verdict-not-pass",
+        "a-blocked-verdict-unchecked", "a-criterion-unmet", "a-no-beats-an-open-criterion",
+        "no-check-ran", "a-criterion-open", "contract-unreadable", "a-task-without-verdict"])
+def test_the_recommendation_follows_its_rules(tasks, criteria, checks_ran, expected):
+    from packages.orchestration.client_digest import _card_recommendation
+
+    assert _card_recommendation(tasks, criteria, checks_ran) == expected
+
+
+@pytest.mark.parametrize(("repair_rounds_used", "changed_file_count", "checks_ran", "expected"), [
+    (0, 1, True, "low"),
+    (0, 5, True, "low"),
+    (0, 6, True, "medium"),
+    (1, 1, True, "medium"),
+    (0, 20, True, "medium"),
+    (0, 21, True, "high"),
+    (0, 1, False, "high"),
+], ids=["small-and-checked", "at-the-low-limit", "past-the-low-limit", "a-repair-round",
+        "at-the-card-limit", "past-the-card-limit", "no-check-ran"])
+def test_the_risk_follows_its_rules(repair_rounds_used, changed_file_count, checks_ran, expected):
+    from packages.orchestration.client_digest import _card_risk
+
+    tasks = [_rule_task(repair_rounds_used=repair_rounds_used)]
+    assert _card_risk(tasks, changed_file_count, checks_ran) == expected
+
+
+def test_the_page_states_the_rules_with_the_codes_own_limits():
+    from apps.cli.client_interface import CLIENT_INTERFACE_PAGE_PATH
+    from packages.orchestration.client_digest import (
+        APPROVAL_CARD_FILE_LIMIT,
+        APPROVAL_LOW_RISK_FILE_LIMIT,
+    )
+
+    page = Path(__file__).resolve().parents[2] / CLIENT_INTERFACE_PAGE_PATH
+    text = " ".join(page.read_text(encoding="utf-8").split())
+    assert ("`recommendation` is `hold` when a record says no: a test that ran and failed, a "
+            "reviewer's verdict other than `pass`, or an `unmet` blocking criterion; else `review` "
+            "when something is unverified: no check ran, a task without a reviewer's verdict, a "
+            "blocking criterion still `open`, or a contract that cannot be read; else `apply`."
+            ) in text
+    assert (f"`risk` is `high` when no check ran or more than {APPROVAL_CARD_FILE_LIMIT} files "
+            f"changed; else `medium` when a task took a repair round or more than "
+            f"{APPROVAL_LOW_RISK_FILE_LIMIT} files changed; else `low`.") in text
 
 
 # ── the digest reads and never writes (R-1144) ──────────────────────────────

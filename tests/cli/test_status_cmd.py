@@ -147,6 +147,8 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
     assert [criterion["id"] for criterion in card["blocking_criteria"]
             if criterion["status"] != "met"] == done["unmet_blocking_criteria"]
     assert card["checks_ran"] is True
+    # An unmet blocking criterion holds the result, and the one repair round makes it medium.
+    assert (card["recommendation"], card["risk"]) == ("hold", "medium")
 
 
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
