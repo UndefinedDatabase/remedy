@@ -12,6 +12,7 @@ the suite, so a route added later cannot ship unpinned.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -24,7 +25,7 @@ import pytest
 
 from packages.orchestration import public_api
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
-from packages.orchestration.ui_server import _RemedyHandler
+from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_TOKEN = "f253-public-api-test-token"
@@ -34,6 +35,7 @@ SERVER_TOKEN = "f253-public-api-test-token"
 #: exists in this module, makes an unpinned route fail the suite.
 PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
+    ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
 }
 
 
@@ -126,6 +128,60 @@ def _command_line_interface_answer() -> dict:
     return json.loads(result.stdout)
 
 
+def _status_json_client(extra_args: tuple[str, ...] = ()) -> dict:
+    """`remedy status --json [extra_args]`'s real `client` key, as a subprocess, parsed."""
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "status", "--json", *extra_args],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)["client"]
+
+
+#: Git identity for the scratch repository the seed below commits into.
+_SEED_GIT_IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                      "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+#: A deadline already in the past: the run's budget stops it before any task runs,
+#: raising the one decision a fake run raises on its own (as
+#: tests/cli/test_machine_client_contract.py uses it).
+_SEED_PAST_DEADLINE = "2000-01-01T00:00:00+00:00"
+
+
+def _seed_project_job_and_decision(tmp_path: Path) -> None:
+    """Put one project, one job and one open decision on the current data root.
+
+    The same path as tests/cli/test_machine_client_contract.py, with the fake providers: an
+    order file whose deadline has already passed stops the run before any task runs and raises
+    the budget decision, so `remedy do` exits 1 and leaves one job with one open decision behind.
+    """
+    repo = tmp_path / "seed-repo"
+    repo.mkdir()
+    env = {**os.environ, **_SEED_GIT_IDENTITY}
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
+    (repo / "README.md").write_text("# Scratch\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True, env=env)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "init"], check=True, env=env)
+    order_file = tmp_path / "seed-order.md"
+    order_file.write_text(
+        "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "apps.cli.main", "do", str(order_file), "--json",
+         "--no-ui", "--yes", "--no-llm", "--builder-provider", "fake",
+         "--reviewer-provider", "fake", "--deadline", _SEED_PAST_DEADLINE],
+        cwd=str(repo), capture_output=True, text=True, env=env, timeout=120)
+    assert result.returncode == 1, result.stdout + result.stderr
+
+
+def _without_volatile_digest_fields(digest: dict) -> dict:
+    """`digest` without its own `read_at` and without any decision's `age_seconds`."""
+    copy = {k: v for k, v in digest.items() if k != "read_at"}
+    copy["decisions"] = [
+        {k: v for k, v in decision.items() if k != "age_seconds"}
+        for decision in copy.get("decisions", [])
+    ]
+    return copy
+
+
 # -- A: the one route, over both transports ---------------------------------
 
 
@@ -210,15 +266,20 @@ def test_every_route_is_pinned_by_name():
 
 
 def test_every_route_is_well_formed():
-    from apps.cli.client_interface import CLIENT_OPERATION_IDS
+    from apps.cli.client_interface import CLIENT_OPERATION_IDS, OPERATION_ANSWER_KEYS
     from apps.cli.command_catalog import get_command
 
     for route in public_api.PUBLIC_API_ROUTES:
         assert route.path.startswith(public_api.PUBLIC_API_PREFIX + "/")
         assert route.method == "GET"
-        get_command(route.twin)  # raises KeyError if not a catalog command
+        entry = get_command(route.twin)  # raises KeyError if not a catalog command
         assert route.twin in CLIENT_OPERATION_IDS
         assert not public_api.command_is_excluded(route.twin)
+        if route.twin_key is not None:
+            assert route.twin_key in OPERATION_ANSWER_KEYS[route.twin]
+        option_flags = {arg.name for arg in entry.args if arg.is_option}
+        for key in route.query:
+            assert "--" + key.replace("_", "-") in option_flags
     major = public_api.PUBLIC_API_PREFIX.rsplit("/api/v", 1)[-1]
     assert public_api.PUBLIC_API_VERSION.split(".")[0] == major
 
@@ -278,3 +339,129 @@ def test_the_page_states_the_prefix_the_auth_scheme_and_the_refusal_tokens():
     assert "api_token_invalid" in page
     assert "api_route_not_found" in page
     assert "Deprecation: true" in page
+
+
+# -- H: the digest route, twinned with status.run's client object -------------
+
+
+def test_digest_route_answers_the_status_commands_client_object(tcp_server, tmp_path):
+    _seed_project_job_and_decision(tmp_path)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    digest = {k: v for k, v in body.items() if k not in ("schema_version", "ok")}
+    reference = _status_json_client()
+    assert digest["jobs"], "the digest holds no job"
+    assert digest["decisions"], "the digest holds no decision"
+    assert _without_volatile_digest_fields(digest) == _without_volatile_digest_fields(reference)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?all_ended_jobs=true", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    digest_all = {k: v for k, v in body.items() if k not in ("schema_version", "ok")}
+    reference_all = _status_json_client(("--all-ended-jobs",))
+    assert (_without_volatile_digest_fields(digest_all)
+            == _without_volatile_digest_fields(reference_all))
+
+
+# -- I: query refusals ----------------------------------------------------------
+
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/digest?nope=true",
+    "/api/v1/digest?all_ended_jobs=yes",
+    "/api/v1/digest?all_ended_jobs=",
+    "/api/v1/digest?all_ended_jobs=true&all_ended_jobs=false",
+    f"/api/v1/interface?token={SERVER_TOKEN}",
+])
+def test_an_undeclared_key_a_repeated_key_or_a_bad_value_is_400(tcp_server, path):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", path, headers=_bearer(SERVER_TOKEN))
+    assert status == 400, body
+    assert body["error"] == "api_query_invalid"
+
+
+def test_a_declared_flag_set_to_false_is_200(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?all_ended_jobs=false", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+
+
+def test_an_invalid_query_without_a_token_is_401_not_400(tcp_server):
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/digest?nope=true")
+    assert status == 401, body
+    assert body["error"] == "api_token_invalid"
+
+
+# -- J: the call ledger ----------------------------------------------------------
+
+
+def test_the_ledger_holds_one_line_per_request_in_order(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    ledger_path = data_root / "api" / "calls.jsonl"
+
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200
+    status, _body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
+    assert status == 401
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/nothing", headers=_bearer(SERVER_TOKEN))
+    assert status == 404
+    status, _body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/digest?nope=true", headers=_bearer(SERVER_TOKEN))
+    assert status == 400
+
+    raw_lines = ledger_path.read_text(encoding="utf-8").splitlines()
+    assert len(raw_lines) == 4
+    records = [json.loads(line) for line in raw_lines]
+    for record in records:
+        assert list(record.keys()) == ["ts", "token_fp", "method", "path", "status", "error"]
+        assert record["method"] == "GET"
+
+    assert records[0]["status"] == 200
+    assert records[0]["error"] == ""
+    assert records[0]["path"] == "/api/v1/interface"
+    assert records[0]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    assert records[1]["status"] == 401
+    assert records[1]["error"] == "api_token_invalid"
+    assert records[1]["path"] == "/api/v1/interface"
+    assert records[1]["token_fp"] == token_fingerprint("")
+
+    assert records[2]["status"] == 404
+    assert records[2]["error"] == "api_route_not_found"
+    assert records[2]["path"] == "/api/v1/nothing"
+    assert records[2]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    assert records[3]["status"] == 400
+    assert records[3]["error"] == "api_query_invalid"
+    assert records[3]["path"] == "/api/v1/digest"
+    assert records[3]["token_fp"] == token_fingerprint(SERVER_TOKEN)
+
+    for raw_line in raw_lines:
+        assert SERVER_TOKEN not in raw_line
+        assert "?" not in raw_line
+        assert "nope" not in raw_line
+
+    assert (ledger_path.parent.stat().st_mode & 0o777) == 0o700
+    assert (ledger_path.stat().st_mode & 0o777) == 0o600
+
+
+# -- K: a failed ledger write never changes the answer ---------------------------
+
+
+def test_a_failed_ledger_write_never_changes_the_answer(tcp_server, monkeypatch):
+    def _raise_os_error(**_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(public_api, "append_public_api_call", _raise_os_error)
+
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 200, body
+    assert body == _command_line_interface_answer()
+
+    status, body, _headers = _tcp_request(tcp_server, "GET", "/api/v1/interface")
+    assert status == 401, body
