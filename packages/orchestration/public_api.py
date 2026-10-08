@@ -8,6 +8,13 @@ each addition raises the minor number of `PUBLIC_API_VERSION`; a route that is t
 marked `deprecated`, which makes it answer the header `Deprecation: true` and shows it in the
 page's table, and it is removed only under a new major path.
 
+Every request under this namespace, a refused one included, appends one line to the data root's
+`api/calls.jsonl` (DECISION F253 D2 (1)): the caller's token kept only as its DECISION F009 D7
+fingerprint, never the query string, and a line that cannot be written changes nothing in the
+answer sent. A route may answer one key of its twin's answer alone (`twin_key`) and takes only
+the query keys it declares (`query`), each a `true`/`false` flag; anything else answers 400
+`api_query_invalid` (DECISION F253 D2 (2)).
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
@@ -17,13 +24,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs
 
 #: The path prefix every route under this registry lives below; the major version is in the path.
 PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.0"
+PUBLIC_API_VERSION = "1.1"
 
 
 @dataclass(frozen=True)
@@ -37,6 +45,10 @@ class PublicApiRoute:
     #: One sentence for the page.
     description: str
     deprecated: bool = False
+    #: The key of the twin's `--json` answer this route answers alone, or None for the whole answer.
+    twin_key: str | None = None
+    #: The query keys this route accepts, each a `true`/`false` flag (DECISION F253 D2 (2)).
+    query: tuple[str, ...] = ()
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -50,6 +62,19 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "What a program that drives Remedy can rely on: its operations, arguments, exit "
             "codes, state words, templates and budget kinds, as `remedy client interface --json` "
             "prints it."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/digest",
+        twin="status.run",
+        twin_key="client",
+        query=("all_ended_jobs",),
+        description=(
+            "The digest a program reads about once a minute: every project with its missions, "
+            "the jobs that still need something and the last ended ones, every open decision and "
+            "the jobs waiting for their apply, as the `client` object of `remedy status --json` "
+            "holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does."
         ),
     ),
 )
@@ -109,31 +134,99 @@ def _client_interface_answer() -> dict[str, Any]:
     return build_ok(**build_client_interface())
 
 
-#: Twin command id to the function that builds its answer, read at call time so a test that
-#: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
+def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
+    """The answer `GET /api/v1/digest` sends: the `client` key of `status.run`'s `--json` answer.
+
+    Calls `build_client_digest` directly rather than the whole `status.run` command: the digest
+    reads the data root alone, while the rest of that command's answer depends on the directory
+    the server happens to run in (DECISION F253 D2 (3)).
+    """
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.client_digest import build_client_digest
+
+    return build_ok(**build_client_digest(every_ended_job=all_ended_jobs))
+
+
+#: Twin command id to the function that builds its answer, called with the route's own query
+#: flags as keyword arguments, read at call time so a test that monkeypatches `PUBLIC_API_ROUTES`
+#: sees the real handler behind whichever routes it leaves.
 _TWIN_ANSWERS: dict[str, Any] = {
     "client.interface": _client_interface_answer,
+    "status.run": _status_digest_answer,
 }
 
 
-def answer_public_api_get(path: str) -> tuple[int, dict[str, Any], dict[str, str]]:
-    """The (status, body, headers) this namespace answers a GET of `path` with.
+def answer_public_api_get(
+    path: str, query: str = "",
+) -> tuple[int, dict[str, Any], dict[str, str]]:
+    """The (status, body, headers) this namespace answers a GET of `path` with `query`.
 
     Reads `PUBLIC_API_ROUTES` at call time, never at import time, so a test that replaces the
     registry sees the replacement. An unknown path answers 404 and names the page that lists the
-    routes, never a hint at what the right path might be.
+    routes, never a hint at what the right path might be. Once a route is found, the RAW query
+    string is parsed against that route's own `query` keys (DECISION F253 D2 (2)): a key the route
+    does not declare, a key given more than once, or a value other than `true`/`false` answers 400
+    `api_query_invalid` before the twin is ever asked.
     """
+    from apps.cli.json_envelope import build_error
+
     for route in PUBLIC_API_ROUTES:
         if route.method == "GET" and route.path == path:
-            body = _TWIN_ANSWERS[route.twin]()
+            flags: dict[str, bool] = {}
+            for key, values in parse_qs(query, keep_blank_values=True).items():
+                if key not in route.query or len(values) != 1 or values[0] not in ("true", "false"):
+                    accepted = ", ".join(f"'{k}'" for k in route.query) or "none"
+                    return 400, build_error(
+                        "api_query_invalid",
+                        f"'{key}' is not a valid query key for '{path}'; it accepts {accepted}",
+                    ), {}
+                flags[key] = values[0] == "true"
+            body = _TWIN_ANSWERS[route.twin](**flags)
             headers = {"Deprecation": "true"} if route.deprecated else {}
             return 200, body, headers
-    from apps.cli.json_envelope import build_error
 
     return 404, build_error(
         "api_route_not_found",
         f"no route answers '{path}'; docs/system/public-http-api-v1.md lists every route",
     ), {}
+
+
+#: The call ledger's own file name, under the `api` data-root class (DECISION F253 D2 (1)).
+PUBLIC_API_LEDGER_NAME = "calls.jsonl"
+
+
+def append_public_api_call(*, token_fp: str, method: str, path: str, status: int, error: str,
+                            root: Path | None = None) -> None:
+    """Append one line to the data root's `api/calls.jsonl` call ledger (DECISION F253 D2 (1)).
+
+    One `os.write` of one already-built line so concurrent requests never interleave; the
+    directory is created at 0o700 and the file opened at 0o600, append-only. Raises `OSError` on
+    failure and catches nothing itself — the caller (`_send_public_api_get`) decides whether a
+    failed write may change the answer it is recording, per DECISION F009 D14 clause four.
+    """
+    import json
+    import os
+    from datetime import datetime, timezone
+
+    from packages.orchestration.data_paths import data_class_dir
+
+    directory = data_class_dir("api", root)
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    record = {
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "token_fp": token_fp,
+        "method": method,
+        "path": path,
+        "status": status,
+        "error": error,
+    }
+    line = (json.dumps(record) + "\n").encode("utf-8")
+    fd = os.open(str(directory / PUBLIC_API_LEDGER_NAME),
+                 os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        os.write(fd, line)
+    finally:
+        os.close(fd)
 
 
 #: The page this module's generated section lives in, between the two markers below; the rest of
@@ -165,13 +258,19 @@ def render_public_api_markdown() -> str:
         "",
         f"API version: `{PUBLIC_API_VERSION}`.",
         "",
-        "| Method | Path | Answers as | Deprecated | Description |",
-        "|---|---|---|---|---|",
+        "| Method | Path | Query | Answers as | Deprecated | Description |",
+        "|---|---|---|---|---|---|",
     ]
     for route in PUBLIC_API_ROUTES:
         deprecated = "yes" if route.deprecated else "no"
+        query_cell = ", ".join(f"`{key}`" for key in route.query) or "—"
+        command_line = _twin_command_line(route.twin)
+        answers_as = (
+            f"`{command_line}`, its `{route.twin_key}` object" if route.twin_key
+            else f"`{command_line}`"
+        )
         lines.append(
-            f"| `{route.method}` | `{route.path}` | `{_twin_command_line(route.twin)}` "
+            f"| `{route.method}` | `{route.path}` | {query_cell} | {answers_as} "
             f"| {deprecated} | {route.description} |"
         )
     lines += [

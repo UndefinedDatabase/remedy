@@ -2998,7 +2998,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # Authorization header, never the query, and answers in the command line's
         # envelope rather than the cockpit's own shape.
         if is_public_api_path(path):
-            self._send_public_api_get(path)
+            self._send_public_api_get(path, parsed.query)
             return
 
         # API routes — token required
@@ -4317,21 +4317,34 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return False
         return server_token_matches(supplied, self.server_token)
 
-    def _send_public_api_get(self, path: str) -> None:
-        """Answer a GET under the public HTTP API namespace (F253, DECISION F253 D1).
+    def _send_public_api_get(self, path: str, query: str) -> None:
+        """Answer a GET under the public HTTP API namespace (F253, DECISIONs F253 D1 and D2).
 
         Authentication is decided BEFORE the route, the same order the write door
         uses: an unauthenticated caller must learn nothing about which paths exist.
+        Every attempt, refused or not, appends one line to the call ledger before the
+        answer is sent, so the line exists when the client reads it. A failed append
+        (DECISION F253 D2 (1), and DECISION F009 D14 clause four) changes nothing in
+        the answer: the exception dies in this method.
         """
         from packages.orchestration.public_api import (
             answer_public_api_get,
+            append_public_api_call,
             public_api_token_refusal,
         )
 
         if not self._bearer_token_accepted():
-            self._send_json(*public_api_token_refusal())
-            return
-        status, body, headers = answer_public_api_get(path)
+            status, body = public_api_token_refusal()
+            headers: dict[str, str] = {}
+        else:
+            status, body, headers = answer_public_api_get(path, query)
+        error = "" if body.get("ok") else body.get("error", "")
+        try:
+            append_public_api_call(
+                token_fp=token_fingerprint(self._supplied_bearer_token()),
+                method="GET", path=path, status=status, error=error)
+        except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
+            pass
         self._send_json(status, body, headers=headers)
 
     def _read_command_payload(self) -> tuple[Any, Any]:
