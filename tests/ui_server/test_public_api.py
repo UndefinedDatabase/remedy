@@ -914,3 +914,18 @@ def test_a_job_prefix_and_its_full_id_lock_on_the_same_job():
         assert _post(f"/api/v1/jobs/{spelling}/decisions/d1", {}, run)[0] == 200
     assert [key for key, _argv in calls] == [full, full]
     assert [argv[-2] for _key, argv in calls] == [full, full[:8]]
+
+
+def test_a_path_value_that_decodes_to_a_slash_or_a_nul_is_400_and_runs_nothing():
+    """R-1195: `decision resolve` builds a file name from its job value, and a child's arguments
+    cannot hold a NUL, so a value holding either never reaches the command."""
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = " ".join(page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)].split())
+    assert "holds `/` or a NUL character once decoded" in hand_written
+    calls, run = _recording_runner()
+    for path in ("/api/v1/jobs/..%2F..%2Fescape/decisions/sr:abc",
+                 "/api/v1/jobs/j1/decisions/td%2Fabc",
+                 "/api/v1/jobs/j1/decisions/td%00abc"):
+        status, answer, _headers = _post(path, {}, run)
+        assert (status, answer["error"]) == (400, "api_path_invalid"), path
+    assert calls == []
