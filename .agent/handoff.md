@@ -107,6 +107,8 @@ however the job is named. Three refusals the web interface already gave now each
 
 ## Next
 
+Operator decision on Q11 recorded in decisions.md — apply it before other work.
+
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and
    stop.
 2. Then the Open PR Gate (rule 2): there is no pull request for this branch yet, so it finds none to
