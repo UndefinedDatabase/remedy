@@ -714,3 +714,40 @@ def test_run_record_payload_holds_every_key_of_the_record_plus_state_and_answer(
 
 def test_run_not_found_message_names_the_value():
     assert "jobX" in SR.run_not_found_message("jobX")
+
+
+_ENVELOPE_THEN_WAIT_CHILD = """\
+import json, sys, time
+from pathlib import Path
+release = Path(sys.argv[1])
+print(json.dumps({"ok": True, "job_id": sys.argv[2]}))
+sys.stdout.flush()
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+"""
+
+
+def test_a_running_run_that_has_printed_an_envelope_reads_no_answer_until_it_ends(tmp_path):
+    """R-1209: `answer` is read only once the state is not `running`, even with a line in the log."""
+    release = tmp_path / "release"
+    paths = serve_paths(tmp_path)
+    launcher = SR.RunLauncher(
+        paths, argv_for=lambda job_id: [sys.executable, "-c", _ENVELOPE_THEN_WAIT_CHILD,
+                                        str(release), job_id])
+    try:
+        record = launcher.start("jobR")
+        out_log = Path(record.out_log)
+        deadline = time.monotonic() + 30
+        while '"ok"' not in out_log.read_text(encoding="utf-8") and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert SR.run_answer(record) == {"ok": True, "job_id": "jobR"}
+        running = SR.run_record_payload(paths, record)
+        assert running["state"] == "running"
+        assert running["answer"] is None
+    finally:
+        release.touch()
+    assert launcher.wait("jobR", timeout=30) == 0
+    ended = SR.run_record_payload(paths, SR.read_run_record(paths, "jobR"))
+    assert ended["state"] == "ended"
+    assert ended["answer"] == {"ok": True, "job_id": "jobR"}

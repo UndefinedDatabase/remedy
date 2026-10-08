@@ -28,6 +28,7 @@ import pytest
 from packages.orchestration import public_api
 from packages.orchestration import serve_runs as SR
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
+from packages.orchestration.serve_paths import serve_paths
 from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -2076,3 +2077,75 @@ def test_the_run_poll_route_refuses_a_value_that_is_no_id(tcp_server):
         tcp_server, "GET", "/api/v1/jobs/..%2Fx/run", headers=_bearer(SERVER_TOKEN))
     assert status == 404, body
     assert body["error"] == "run_not_found"
+
+
+# -- the 202 answers equal what the commands that read what they start print (R-1212) --
+
+#: A stand-in for `remedy do run` and for `remedy job run`: prints one envelope and exits 0.
+_PRINTS_ONE_ENVELOPE = 'import json; print(json.dumps({"ok": True, "stand_in": "r1212"}))'
+
+
+def test_the_order_create_202_answer_equals_what_client_order_prints(
+        registered_project_slug):
+    """R-1212: the route's 202 body is the envelope `remedy client order <order> --json` prints."""
+    paths = serve_paths(Path(os.environ["REMEDY_DATA_DIR"]))
+    launcher = SR.OrderLauncher(paths, argv_prefix=[sys.executable, "-c", _PRINTS_ONE_ENVELOPE])
+    started = launcher.start("do a thing", [])
+    assert launcher.wait(started.order_id, timeout=30) == 0
+    record = SR.read_order_record(paths, started.order_id)
+    assert record is not None and record.ended_at is not None
+
+    calls, start = _recording_order_starter(record)
+    status, body, _headers = _post_order({"order": _order_text(registered_project_slug)}, start)
+
+    assert status == 202, body
+    assert len(calls) == 1
+    assert body["answer"] == {"ok": True, "stand_in": "r1212"}
+    assert body == _order_command_answer(record.order_id)
+
+
+def test_the_run_202_answer_equals_what_client_run_prints():
+    """R-1212: the route's 202 body is the envelope `remedy client run <job> --json` prints."""
+    job = _saved_job_in("")
+    paths = serve_paths(Path(os.environ["REMEDY_DATA_DIR"]))
+    launcher = SR.RunLauncher(
+        paths, argv_for=lambda job_id: [sys.executable, "-c", _PRINTS_ONE_ENVELOPE, job_id])
+    launcher.start(job)
+    assert launcher.wait(job, timeout=30) == 0
+    record = SR.read_run_record(paths, job)
+    assert record is not None and record.ended_at is not None
+
+    def start(job_id: str, options: list[str]):
+        return record
+
+    status, body, _headers = _post_run(job, {}, start)
+
+    assert status == 202, body
+    assert body["state"] == "ended"
+    assert body["answer"] == {"ok": True, "stand_in": "r1212"}
+    assert body == _run_command_answer(job)
+
+
+# -- the page's section "A client's test" names what the gate test's fixture uses (R-1215) --
+
+GATE_TEST_PATH = "tests/orchestration/test_public_api_gate_paths.py"
+
+
+def test_the_clients_test_section_names_what_the_gate_tests_fixture_uses():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    heading = "## A client's test"
+    assert page.count(heading) == 1
+    after = page[page.index(heading) + len(heading):]
+    next_heading = after.find("\n## ")
+    section = after if next_heading < 0 else after[:next_heading]
+    # A line break inside a code span is a space for a reader of the page.
+    section = " ".join(section.split())
+    for needle in ("REMEDY_DATA_DIR", "REMEDY_SERVE_API_PORT", "remedy serve start --json",
+                   "api_port", "serve/serve.token", "remedy project register --repo",
+                   "remedy serve stop --json", GATE_TEST_PATH):
+        assert needle in section, needle
+    gate_source = (REPO_ROOT / GATE_TEST_PATH).read_text(encoding="utf-8")
+    for needle in ("REMEDY_SERVE_API_PORT", '"serve", "start", "--json"', '"api_port"',
+                   '"serve.token"', '"project", "register", "--repo"',
+                   '"serve", "stop", "--json"'):
+        assert needle in gate_source, needle

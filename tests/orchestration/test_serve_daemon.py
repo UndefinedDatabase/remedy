@@ -688,6 +688,67 @@ def test_a_decline_post_refuses_as_the_command_does(root, running_with_api):
     assert job_result_decline(require_job_plan(completed)) is None
 
 
+def test_a_client_token_on_the_port_reads_a_route_and_is_refused_a_write_outside_its_policy(
+        root, running_with_api):
+    """R-1213: the door another user of the machine reaches Remedy by takes a client's token."""
+    from packages.orchestration.job_apply import job_result_decline
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    api_dir = Path(root) / "api"
+    api_dir.mkdir(mode=0o700, exist_ok=True)
+    client_token = "client-token-" + "x" * 32
+    clients_file = api_dir / "clients.json"
+    clients_file.write_text(json.dumps({"clients": [{
+        "name": "other-user", "token": client_token, "projects": ["no-such-project"],
+        "max_total_tokens": None, "max_provider_calls": None, "may_apply": False}]}),
+        encoding="utf-8")
+    clients_file.chmod(0o600)
+    assert _mode(clients_file) == 0o600 and len(client_token) >= 32
+    port = running_with_api.state.api_port
+    job_id = _saved_job(completed=True)
+
+    status, body = _api_request(port, "GET", "/api/v1/interface", headers=_bearer(client_token))
+    assert status == 200, body
+
+    status, refused = _post_decline(port, client_token, job_id, {"reason": "not mine"})
+    assert (status, refused["error"]) == (403, "api_client_policy_refused")
+    assert job_result_decline(require_job_plan(job_id)) is None
+
+    ledger = api_dir / "calls.jsonl"
+    posts = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()
+             if json.loads(line)["method"] == "POST"]
+    assert [(r["client"], r["path"], r["status"], r["error"]) for r in posts] == [
+        ("other-user", f"/api/v1/jobs/{job_id}/decline", 403, "api_client_policy_refused")]
+
+
+def test_the_supervisors_listener_source_imports_no_ssl_and_binds_127_0_0_1_only():
+    """R-1214: no TLS and no remote bind (the feature file's binding); read from the source."""
+    import ast
+
+    source = (REPO / "packages" / "orchestration" / "serve_daemon.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    imported: list[str] = []
+    listeners: list[ast.Call] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported += [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            imported.append(node.module or "")
+        elif isinstance(node, ast.Call):
+            func = node.func
+            name = func.id if isinstance(func, ast.Name) else (
+                func.attr if isinstance(func, ast.Attribute) else "")
+            if name == "ThreadingHTTPServer":
+                listeners.append(node)
+    assert not [m for m in imported if m == "ssl" or m.startswith("ssl.")]
+    assert listeners, "no call of ThreadingHTTPServer found in serve_daemon.py"
+    for call in listeners:
+        address = call.args[0] if call.args else None
+        assert isinstance(address, ast.Tuple) and address.elts, ast.dump(call)
+        host = address.elts[0]
+        assert isinstance(host, ast.Constant) and host.value == "127.0.0.1", ast.dump(call)
+
+
 # -- S4c: approving an apply over HTTP (DECISION F253 D12) -------------------------------------
 
 
