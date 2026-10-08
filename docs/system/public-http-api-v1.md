@@ -103,6 +103,11 @@ run in a folder nobody chose; every other refusal is `remedy do`'s own, read bac
 order is polled. When the order's child process cannot be started at all, nothing is left behind:
 the order's folder is removed and the call answers 500 with `api_command_failed`.
 
+Two orders sent at once both run: the supervisor starts each as it arrives and keeps no waiting
+line, so the second never waits for the first to end, and the route refuses neither order for the
+other. The limit on how many orders a client may send at once belongs to the client token's own
+policy, not to this route (DECISION F253 D15).
+
 ## Staying current
 
 A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with its `since` query
