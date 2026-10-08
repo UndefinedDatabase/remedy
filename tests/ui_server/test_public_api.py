@@ -388,6 +388,12 @@ def test_the_page_states_the_ledger_file_and_the_query_refusal_token():
 def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalog():
     """R-1187: a `remedy <group> <subcommand>` span above the generated marker is real.
 
+    A group named alone (no second word, or a second word starting with `-`) passes only
+    when the catalog holds that group's `run` command — the way `remedy status` and `remedy
+    do` run without a subcommand, and `remedy ui` prints its help instead (recurrence, round
+    3, DECISION F253 D3 (5)): a bare `remedy ui` must fail here, not pass because the group
+    merely exists.
+
     Mutates nothing; this is the standing proof, not the mutation the reviewer runs.
     """
     import re
@@ -407,7 +413,15 @@ def test_every_remedy_command_the_pages_hand_written_part_names_is_in_the_catalo
             assert any(cmd.group_id == group_id and cmd.subcommand == second
                        for cmd in CATALOG), span
         else:
-            assert resolve_group(first) is not None, span
+            group_id = resolve_group(first)
+            assert group_id is not None, span
+            assert any(cmd.group_id == group_id and cmd.subcommand == "run"
+                       for cmd in CATALOG), span
+
+
+def test_the_page_states_the_method_refusal_token():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    assert "api_method_not_allowed" in page
 
 
 # -- H: the digest route, twinned with status.run's client object -------------
