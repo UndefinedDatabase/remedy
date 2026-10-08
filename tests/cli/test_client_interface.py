@@ -522,6 +522,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         }),
         "the keys export_dry_run_json in packages/orchestration/event_replay.py returns",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_order:**payload": (
+        frozenset({
+            "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+        }),
+        "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
+        "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
+        "F253 D14 (4))",
+    ),
 }
 
 
