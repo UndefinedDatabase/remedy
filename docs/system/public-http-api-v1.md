@@ -29,11 +29,14 @@ alone, as the whole body of the envelope. A path may hold a segment written in b
 `{job}`; it stands for one value the caller supplies, such as a job id or its own prefix, exactly
 as the command line accepts it. A refusal carries `{"schema_version": 1, "ok": false, "error":
 "<token>", "message": "<sentence>"}`; a missing or wrong token answers 401 with
-`api_token_invalid`; a path this registry does not name answers 404 with `api_route_not_found`; a
-query key a route's table row does not list, a key sent more than once, or a value other than
-`true` or `false` answers 400 with `api_query_invalid` (DECISION F253 D2 (2)); and every other
-refusal a route answers is one its table row's `Refusals` column names, sharing its HTTP status,
-its `error` token and its `message` sentence with the route's own twin command. `POST`, `PUT` and
+`api_token_invalid`; a path this registry does not name answers 404 with `api_route_not_found`. A
+query key in a route's table row is either a flag, whose value is `true` or `false`, or a key
+that takes one value, written `key=<value>` in the table; either kind is given at most once, and
+a value is never empty. A query key a route's table row does not list, a key given more than
+once, a flag's value other than `true`/`false`, or an empty value for a key that takes one,
+answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)); and every other refusal a
+route answers is one its table row's `Refusals` column names, sharing its HTTP status, its
+`error` token and its `message` sentence with the route's own twin command. `POST`, `PUT` and
 `DELETE` under `/api/v1` answer 401 with `api_token_invalid` without the token, and 405 with
 `api_method_not_allowed` with it; each such request is written to the ledger below like any
 other.
@@ -52,6 +55,12 @@ only ever added, and each addition raises the minor number of the registry's ver
 that is to go is first marked deprecated, which makes it answer the header `Deprecation: true`
 and shows it in the table below; it is removed only under a new major path.
 
+## Staying current
+
+A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with its `since` query
+key set to the `cursor` each answer gives, to stay current without reading the whole digest
+again.
+
 ## Why some commands are never published
 
 The exclusion list below names operator-console commands: commands that change or recover this
@@ -66,13 +75,14 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.2`.
+API version: `1.3`.
 
 | Method | Path | Query | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
 | `GET` | `/api/v1/interface` | — | `remedy client interface --json` | — | no | What a program that drives Remedy can rely on: its operations, arguments, exit codes, state words, templates and budget kinds, as `remedy client interface --json` prints it. |
 | `GET` | `/api/v1/digest` | `all_ended_jobs` | `remedy status run --json`, its `client` object | — | no | The digest a program reads about once a minute: every project with its missions, the jobs that still need something and the last ended ones, every open decision and the jobs waiting for their apply, as the `client` object of `remedy status --json` holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does. |
 | `GET` | `/api/v1/jobs/{job}/proof` | — | `remedy change proof --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400 | no | The proof of one job: what each change rests on and where its evidence is, as `remedy change proof <job> --json` prints it; a job id prefix is accepted, as on the command line, and the command's `--path` filter is not offered over HTTP. |
+| `GET` | `/api/v1/changes` | `since=<value>` | `remedy client changes --json` | `invalid_cursor` 400 | no | What changed since a cursor: the jobs and decisions as the digest shows them, the decisions answered, the missions and the applies, with the cursor for the next read, as `remedy client changes --since <cursor> --json` prints it; without `since` only a cursor is given. |
 
 ### Never published
 
