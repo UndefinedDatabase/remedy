@@ -28308,3 +28308,13 @@ CHOSEN: (1) After the run, `_cmd_job_run` refuses an end the client did not ask 
 ALTERNATIVES: Refusing every end but `completed`, REJECTED: a run capped by `--tasks`, paused or stopped by the operator did what was asked. A token for every end, with exit 0 for the ends asked for, REJECTED: a refusal envelope is `"ok": false`, and an end the client asked for is no refusal. Exit 3 for a blocked end, REJECTED: the job exists and was acted on, while 3 says the command could not act on what it was given.
 
 HOW TO REVERSE: Delete this paragraph, the three refusals and their tokens, the page's sentence and the new test file, and restore the pinned tests' exit 0; R-1184 then reopens.
+
+## DECISION F304 D9 — the operator confirms Q9 via remedy-answer: the client contract feature's early split stands (2026-10-08)
+
+CONTEXT: Operator question Q9 in `.agent/operator_questions.md`, written at F298 round 21 on 2026-10-08, reported that the feature making Remedy's promises to a program true and written down had seven parts, that the first part was finished and tested, that the feature had used twenty of its twenty-five working rounds, and that the session split it: the feature closes with the first part, and the other six parts move unchanged into a new feature placed directly after it and before the feature that serves Remedy over HTTP. Recommendation: keep the split, since the first part is a clean point to close and the new feature carries the rest word for word. The split was already executed as DECISION F298 D (the registration of F304, "Machine client contract v1.1, part two", at commit range around `28196`). The operator answered via remedy-answer, quoted in full: "Ok".
+
+CHOSEN: the standing recommendation stands exactly as written and is now confirmed rather than merely defaulted-to: F298 stays closed at its first part, and F304 keeps T002 to T007 as the carried six parts, placed directly after F298 and before the HTTP feature.
+
+ALTERNATIVES: none — the operator's answer confirms the standing recommendation without amendment.
+
+HOW TO REVERSE: Delete this paragraph; the split would then again await operator confirmation.
