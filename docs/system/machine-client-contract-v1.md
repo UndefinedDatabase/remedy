@@ -4,9 +4,11 @@
 > Remedy through its command line — Luna's runner first
 > (`docs/roadmap/design/luna-control-plane-v1.md`, "Gate A" and "Gate B").
 > `tests/cli/test_machine_client_contract.py` drives the path below end to end and fails when the
-> tables of the path and that test name different things. The last section, "The interface", is
-> generated from the code and names everything a client can rely on; the rest of the page is
-> written by hand and walks through the path.
+> tables of the path and that test name different things. `tests/cli/test_machine_client_paths.py`
+> (F304) drives three more paths the same way: an apply merged with its history and pushed to an
+> upstream, an order of two jobs carried to its end, and one order file started twice. The last
+> section, "The interface", is generated from the code and names everything a client can rely
+> on; the rest of the page is written by hand and walks through the path.
 
 A machine client is a program that never sees a terminal. It writes an order file, starts
 Remedy, reads one digest, answers the decisions a run raises, approves the apply and reads the
