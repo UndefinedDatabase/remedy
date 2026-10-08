@@ -2,17 +2,19 @@
 
 Version 1 carries every registered project with its missions and its cost of
 the day, every job on the data root with its measured cost and its evidence
-references (DECISION F295 D7), which of those jobs wait for an operator's
-apply, whether the supervisor answers, and every job's open decisions
-(DECISION F295 D5). Each completed job carries its approval card, what an
-operator approves its result on, read from the job's record and its mission's
-contract only, with one recommendation word and one risk word derived from
-them by fixed rules (DECISIONs F304 D10 to D12).
+references (DECISION F295 D7), the provider calls and tokens by kind that the
+project ledgers hold for each job and each project's day (DECISION F304 D13),
+which of those jobs wait for an operator's apply, whether the supervisor
+answers, and every job's open decisions (DECISION F295 D5). Each completed
+job carries its approval card, what an operator approves its result on, read
+from the job's record and its mission's contract only, with one
+recommendation word and one risk word derived from them by fixed rules
+(DECISIONs F304 D10 to D12).
 """
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +38,7 @@ from packages.orchestration.project_registry import _list_projects_readonly
 from packages.orchestration.serve_daemon import socket_answers
 from packages.orchestration.serve_paths import serve_paths
 from packages.orchestration.timeline import load_run_events
+from packages.orchestration.token_ledger import CostRow, ledger_usage_by_job, query_cost
 
 #: The frame's own version; DECISION F295 D4 (5) adds to it without moving it.
 CLIENT_DIGEST_VERSION = 1
@@ -75,6 +78,40 @@ def _job_cost(plan: JobPlan) -> dict[str, Any]:
     value_usd = decoded["measured_cost_usd"]
     return {"value_usd": value_usd,
             "basis": cost_exactness_basis(value_usd, decoded["unpriced_call_count"])}
+
+
+def _tokens_by_kind(row: CostRow | None) -> dict[str, int | None]:
+    """A ledger total's tokens by kind (DECISION F304 D13); a kind no call reported is null."""
+    return {
+        "input": row.tokens_in if row is not None else None,
+        "output": row.tokens_out if row is not None else None,
+        "cache_read": row.cache_read if row is not None else None,
+        "cache_creation": row.cache_write if row is not None else None,
+    }
+
+
+def _known_sum(first: int | None, second: int | None) -> int | None:
+    """Two ledger figures added; null only when neither ledger reported one."""
+    if first is None or second is None:
+        return second if first is None else first
+    return first + second
+
+
+def _merged_usage(first: CostRow, second: CostRow) -> CostRow:
+    """One job's totals from two project ledgers, added, a figure neither reported staying null."""
+    return CostRow(calls=first.calls + second.calls,
+                   tokens_in=_known_sum(first.tokens_in, second.tokens_in),
+                   tokens_out=_known_sum(first.tokens_out, second.tokens_out),
+                   cache_read=_known_sum(first.cache_read, second.cache_read),
+                   cache_write=_known_sum(first.cache_write, second.cache_write))
+
+
+def _day_tokens(project_id: Any, moment: datetime) -> dict[str, int | None]:
+    """The project's ledger tokens by kind on *moment*'s UTC day, the day `cost_today` reads."""
+    day = moment.date()
+    report = query_cost(project_id=project_id, since=day.isoformat(),
+                        until=(day + timedelta(days=1)).isoformat())
+    return _tokens_by_kind(report.total)
 
 
 def _existing_file(path: Path) -> str | None:
@@ -254,13 +291,15 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     decision of every job, sorted by job id then decision id (DECISION
     F295 D5). Each project carries ``cost_today`` for the UTC day of
     ``read_at`` and each job its ``cost`` and ``evidence`` (DECISION F295
-    D7), and its ``approval_card``, null unless the job is completed
-    (DECISIONs F304 D10 and D11). ``degraded`` and ``skipped_files`` gather what the listing
-    functions and the per-job and per-project reads could not read, named
-    exactly as they return them, plus ``decisions of job <job_id>``,
-    ``cost of job <job_id>``, ``contract of job <job_id>`` and ``cost of the
-    day of project <project_id>`` for a read that failed; the value that read
-    would have filled is null.
+    D7), the calls and tokens by kind its project ledgers hold (DECISION
+    F304 D13), and its ``approval_card``, null unless the job is completed
+    (DECISIONs F304 D10 to D12). ``degraded`` and ``skipped_files`` gather
+    what the listing functions and the per-job and per-project reads could
+    not read, named exactly as they return them, plus ``decisions of job
+    <job_id>``, ``cost of job <job_id>``, ``contract of job <job_id>``,
+    ``cost of the day of project <project_id>`` and ``calls and tokens of the
+    jobs of project <project_id>`` for a read that failed; the value that
+    read would have filled is null.
     """
     when = now if now is not None else datetime.now(timezone.utc)
     day_moment = (when if when.tzinfo is not None
@@ -274,17 +313,31 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
     project_entries: list[dict[str, Any]] = []
     mission_by_job_id: dict[str, Mission] = {}
     abandoned_job_ids: set[str] = set()
+    # DECISION F304 D13: every job's ledger totals, one grouped read per project ledger.
+    usage_by_job_id: dict[str, CostRow] = {}
+    every_ledger_read = True
     for project in projects:
         project_id = str(project.id)
         missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
         degraded = degraded or mission_degraded
         skipped_files.extend(mission_skipped)
         try:
-            cost_today: dict[str, Any] | None = project_cost_of_day(project.id, day_moment)
+            cost_today: dict[str, Any] | None = {
+                **project_cost_of_day(project.id, day_moment),
+                "tokens": _day_tokens(project.id, day_moment),
+            }
         except _LEDGER_READ_ERRORS:
             cost_today = None
             degraded = True
             skipped_files.append(f"cost of the day of project {project_id}")
+        try:
+            for job_id, row in ledger_usage_by_job(project_id=project.id).items():
+                kept = usage_by_job_id.get(job_id)
+                usage_by_job_id[job_id] = row if kept is None else _merged_usage(kept, row)
+        except _LEDGER_READ_ERRORS:
+            every_ledger_read = False
+            degraded = True
+            skipped_files.append(f"calls and tokens of the jobs of project {project_id}")
         project_entries.append({
             "project_id": project_id,
             "slug": project.slug or "",
@@ -330,6 +383,9 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
                 degraded = True
                 skipped_files.append(f"contract of job {job_id}")
             approval_card = _approval_card(plan, blocking_criteria)
+        # A job no ledger names made no recorded call, unless a ledger could not be read.
+        usage = usage_by_job_id.get(job_id)
+        calls = usage.calls if usage is not None else (0 if every_ledger_read else None)
         job_entries.append({
             "job_id": job_id,
             "project_id": plan.project_id,
@@ -338,6 +394,8 @@ def build_client_digest(now: datetime | None = None) -> dict[str, Any]:
             "state": state,
             "waits_for_apply": waits_for_apply,
             "cost": cost,
+            "calls": calls,
+            "tokens": _tokens_by_kind(usage),
             "evidence": _job_evidence(plan),
             "approval_card": approval_card,
         })

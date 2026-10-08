@@ -151,6 +151,26 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
     assert (card["recommendation"], card["risk"]) == ("hold", "medium")
 
 
+# ── 2c: a job's calls and tokens, read through the command line (DECISION F304 D13) ──
+
+
+def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake_never_reported(
+        repo, capsys):
+    from packages.orchestration.token_ledger import query_cost
+
+    [job_id] = _do_json(capsys, ORDER)["job_ids"]
+
+    client = _status_json(capsys)["client"]
+
+    [project] = client["projects"]
+    [job] = client["jobs"]
+    ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
+    assert job["calls"] == ledger.calls == 4
+    no_tokens = {"input": None, "output": None, "cache_read": None, "cache_creation": None}
+    assert job["tokens"] == no_tokens
+    assert project["cost_today"]["tokens"] == no_tokens
+
+
 # ── 3: `--apply` lands the apply record, so the job no longer awaits it ─────
 
 

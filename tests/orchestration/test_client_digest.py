@@ -421,16 +421,18 @@ def test_a_projects_cost_today_sums_the_ledgers_calls_of_the_utc_day_of_read_at(
     )
 
     project = register_project_repo("ledger-project", _git_folder(tmp_path / "ledger-project"))
-    for call_id, ts_utc, cost_usd in (("today", "2026-01-01T09:00:00+00:00", 0.25),
-                                      ("yesterday", "2025-12-31T23:59:59+00:00", 1.0)):
+    for call_id, ts_utc, cost_usd, tokens_in in (("today", "2026-01-01T09:00:00+00:00", 0.25, 100),
+                                                 ("yesterday", "2025-12-31T23:59:59+00:00", 1.0, 900)):
         assert record_call(CallRecord(call_id=call_id, ts_utc=ts_utc, cost_usd=cost_usd,
-                                      cost_basis=COST_BASIS_PROVIDER_REPORTED),
+                                      cost_basis=COST_BASIS_PROVIDER_REPORTED,
+                                      tokens_in=tokens_in, tokens_out=20, cache_read=5),
                            project_id=project.id)
 
     [entry] = build_client_digest(now=NOW)["projects"]
 
     assert entry["cost_today"] == {
         "day": "2026-01-01", "value_usd": 0.25, "basis": "actual", "calls": 1,
+        "tokens": {"input": 100, "output": 20, "cache_read": 5, "cache_creation": None},
     }
 
 
@@ -450,6 +452,82 @@ def test_a_project_whose_ledger_cannot_be_read_marks_degraded_and_nulls_its_cost
     assert entry["cost_today"] is None
     assert digest["degraded"] is True
     assert f"cost of the day of project {project.id}" in digest["skipped_files"]
+
+
+# ── each job's calls and tokens by kind (F304 T006, DECISION F304 D13) ──────
+
+
+def _ledger_call(project_id, call_id: str, job_id: str | None, **tokens) -> None:
+    from packages.orchestration.token_ledger import CallRecord, record_call
+
+    assert record_call(CallRecord(call_id=call_id, job_id=job_id,
+                                  ts_utc="2026-01-01T09:00:00+00:00", **tokens),
+                       project_id=project_id)
+
+
+NO_TOKENS = {"input": None, "output": None, "cache_read": None, "cache_creation": None}
+
+
+def test_each_job_carries_the_calls_and_tokens_by_kind_its_ledger_holds(root, tmp_path):
+    from packages.orchestration.project_registry import register_project_repo
+
+    project = register_project_repo("usage", _git_folder(tmp_path / "usage"))
+    measured, unmeasured, silent = (JobPlan(job_title=title, project_id=str(project.id))
+                                    for title in ("measured", "unmeasured", "silent"))
+    for job in (measured, unmeasured, silent):
+        save_job_plan(job)
+    _ledger_call(project.id, "m1", str(measured.job_id), tokens_in=100, tokens_out=20,
+                 cache_read=7, cache_write=3)
+    _ledger_call(project.id, "m2", str(measured.job_id), tokens_in=50, tokens_out=5, cache_read=1)
+    _ledger_call(project.id, "u1", str(unmeasured.job_id))
+    _ledger_call(project.id, "x1", None, tokens_in=999)
+
+    jobs = {entry["title"]: entry for entry in build_client_digest(now=NOW)["jobs"]}
+
+    assert (jobs["measured"]["calls"], jobs["measured"]["tokens"]) == (
+        2, {"input": 150, "output": 25, "cache_read": 8, "cache_creation": 3})
+    assert (jobs["unmeasured"]["calls"], jobs["unmeasured"]["tokens"]) == (1, NO_TOKENS)
+    assert (jobs["silent"]["calls"], jobs["silent"]["tokens"]) == (0, NO_TOKENS)
+
+
+def test_a_jobs_rows_in_two_project_ledgers_are_added(root, tmp_path):
+    from packages.orchestration.project_registry import register_project_repo
+
+    first, second = (register_project_repo(name, _git_folder(tmp_path / name))
+                     for name in ("first", "second"))
+    job = JobPlan(job_title="moved", project_id=str(first.id))
+    save_job_plan(job)
+    _ledger_call(first.id, "a", str(job.job_id), tokens_in=10, cache_write=4)
+    _ledger_call(second.id, "b", str(job.job_id), tokens_in=5, tokens_out=2)
+
+    [entry] = build_client_digest(now=NOW)["jobs"]
+
+    assert (entry["calls"], entry["tokens"]) == (
+        2, {"input": 15, "output": 2, "cache_read": None, "cache_creation": 4})
+
+
+def test_an_unreadable_ledger_nulls_the_calls_of_a_job_no_ledger_names(root, tmp_path):
+    from packages.orchestration.project_registry import register_project_repo
+    from packages.orchestration.token_ledger import token_ledger_path_for
+
+    readable, broken = (register_project_repo(name, _git_folder(tmp_path / name))
+                        for name in ("readable", "broken"))
+    named, unnamed = (JobPlan(job_title=title, project_id=str(readable.id))
+                      for title in ("named", "unnamed"))
+    for job in (named, unnamed):
+        save_job_plan(job)
+    _ledger_call(readable.id, "n1", str(named.job_id), tokens_in=10)
+    ledger = token_ledger_path_for(broken.id)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    ledger.write_bytes(b"this is not an SQLite database, and it is long enough to be read")
+
+    digest = build_client_digest(now=NOW)
+
+    jobs = {entry["title"]: entry for entry in digest["jobs"]}
+    assert jobs["named"]["calls"] == 1
+    assert (jobs["unnamed"]["calls"], jobs["unnamed"]["tokens"]) == (None, NO_TOKENS)
+    assert digest["degraded"] is True
+    assert f"calls and tokens of the jobs of project {broken.id}" in digest["skipped_files"]
 
 
 # ── a declined job, and a job of an abandoned mission (F304 T003, DECISION F304 D5) ──
