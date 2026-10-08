@@ -7,19 +7,18 @@ program meets when it drives Remedy, and the machine client page is its renderin
 (DECISION F298 D21).
 
 ## Current Step
-Session 5, round 24: the closure's self-use item is generated and run to its approval gate, never
-applied, its record saved under `.agent/selfuse_f298/` (docs/roadmap/STATUS_closure_protocol.md
-precondition 6); round 23's verdict is booked.
+Session 5, round 25: the integration gate. The UI is built once and F298's one full suite runs on
+the tree that ships, with its CPU cost; the transcript is `.agent/authored/f298-closure-suite.txt`.
+Round 24's verdict is booked; its self-use run reported no defect.
 
 ## Next Steps
-1. Register every defect the self-use run reports, then the one full suite and its CPU cost
-   (precondition 2, amend0917-throughput).
-2. The checklist's consolidation pass, the evidence bundle and review zip, the ledger rotation,
-   the STATUS line with the README sync and the self-use queue's `consumed_by`, and the pull
-   request.
+1. A repair round naming every bad node id, if the suite is red (amend0917-throughput rule 2).
+2. The checklist's consolidation pass, the evidence bundle and review zip.
+3. The ledger rotation, the STATUS line with the README sync and the self-use queue's
+   `consumed_by`, and the pull request.
 
 ## Risks
-- F298 reaches its soft limit of 25 rounds inside the closure sequence; the split it owes was
-  executed by DECISION F298 D21, and the handoff that reaches 25 carries the scope report.
+- Round 25 is F298's soft limit; the split it owes was executed by DECISION F298 D21, and this
+  round's handoff carries the scope report.
 - R-1160 (Medium) and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172,
   R-1176 (Low) stay open, owned by F297.
