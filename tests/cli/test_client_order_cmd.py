@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.serve_paths import serve_paths
-from packages.orchestration.serve_runs import OrderLauncher
+from packages.orchestration.serve_runs import OrderLauncher, OrderRecord
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,6 +88,25 @@ def test_an_unknown_or_path_shaped_id_is_order_not_found(tmp_path, bad_id):
     assert bad_id in body["message"]
 
 
+def test_a_path_shaped_id_is_order_not_found_even_with_a_real_record_at_its_path(tmp_path):
+    """R-1198: a readable, well-formed record planted exactly where `../x` would point
+    must not be found — the id shape guard, not the absence of a file, refuses it."""
+    data_root = tmp_path / "data"
+    paths = serve_paths(data_root)
+    bad_id = "../x"
+    order_dir = paths.orders_dir / bad_id
+    order_dir.mkdir(parents=True)
+    good = OrderRecord(order_id="placeholder", pid=1, started_at="t",
+                       order_file="o", out_log="o", err_log="e")
+    (order_dir / "order.json").write_text(json.dumps(good.to_json()), encoding="utf-8")
+
+    code, out = _remedy(["client", "order", bad_id, "--json"], tmp_path, data_root)
+
+    assert code == 3, out
+    body = json.loads(out)
+    assert (body["ok"], body["error"]) == (False, "order_not_found")
+
+
 def test_the_summary_without_json_names_the_state(tmp_path):
     data_root = tmp_path / "data"
     order_id = _start_ended_order(data_root)
@@ -96,6 +115,45 @@ def test_the_summary_without_json_names_the_state(tmp_path):
 
     assert code == 0, out
     assert f"Order {order_id}: ended" in out
+
+
+#: A stand-in for `remedy do run`: prints one envelope at once, then waits for a release
+#: file — the running order R-1200's test holds `client order` to before it is released.
+_RUNNING_ORDER_CHILD = """\
+import json, sys, time
+from pathlib import Path
+release, code = Path(sys.argv[3]), int(sys.argv[4])
+print(json.dumps({"ok": True, "mission_id": "m-running"}))
+sys.stdout.flush()
+deadline = time.monotonic() + 60
+while not release.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+sys.exit(code)
+"""
+
+
+def test_a_running_orders_answer_is_null_then_the_envelope_once_ended(tmp_path):
+    """R-1200: `client order` must not read the answer of an order still `running`."""
+    data_root = tmp_path / "data"
+    release = tmp_path / "release"
+    launcher = OrderLauncher(serve_paths(data_root),
+                             argv_prefix=[sys.executable, "-c", _RUNNING_ORDER_CHILD])
+    record = launcher.start("do a thing", [str(release), "0"])
+    try:
+        code, out = _remedy(["client", "order", record.order_id, "--json"], tmp_path, data_root)
+        assert code == 0, out
+        body = json.loads(out)
+        assert body["state"] == "running"
+        assert body["answer"] is None
+    finally:
+        release.touch()
+        launcher.wait(record.order_id, timeout=30)
+
+    code, out = _remedy(["client", "order", record.order_id, "--json"], tmp_path, data_root)
+    assert code == 0, out
+    body = json.loads(out)
+    assert body["state"] == "ended"
+    assert body["answer"] == {"ok": True, "mission_id": "m-running"}
 
 
 def _git_repo(path: Path) -> Path:

@@ -403,8 +403,12 @@ def read_order_record(paths: ServePaths, order_id: str) -> OrderRecord | None:
 def _process_is_this_order(pid: int, order_dir: Path) -> bool:
     """True when PID is alive and, where `/proc` exists, its working folder is ORDER_DIR.
 
-    On Linux, `/proc/<pid>/cwd` is a symlink to the process's current working directory;
-    `OrderLauncher.start` always sets it to the order's own folder, so this also guards
+    On Linux, `/proc/<pid>/cwd` is a symlink to the process's current working directory,
+    and the kernel always answers it RESOLVED — every symbolic link in the path already
+    replaced by what it points to. ORDER_DIR is resolved here before the comparison for
+    the same reason: a data root reached through a symbolic link would otherwise compare
+    the kernel's resolved spelling against the caller's unresolved one and never match,
+    reading a running order as `lost` while it runs (R-1197). This also still guards
     against a pid the kernel reused for an unrelated process after the order's own ended
     (the same reasoning `_process_is_this_job` applies to a job id in `/proc/<pid>/cmdline`).
     Elsewhere `/proc` does not exist and another process's working folder cannot be read
@@ -416,7 +420,7 @@ def _process_is_this_order(pid: int, order_dir: Path) -> bool:
             cwd = os.readlink(proc_dir / "cwd")
         except OSError:
             return False
-        return Path(cwd) == order_dir
+        return Path(cwd) == order_dir.resolve()
     return _process_is_alive(pid)
 
 
