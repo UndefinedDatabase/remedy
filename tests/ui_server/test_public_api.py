@@ -1747,3 +1747,42 @@ def test_a_client_decline_of_a_job_of_another_project_through_the_socket_handler
     assert records[0]["error"] == "api_client_policy_refused"
     assert records[0]["client"] == "nightly-bot"
     assert ran == []
+
+
+# -- a write on a job whose record cannot be read (R-1204) -----------------------
+
+
+def _saved_job_with_unreadable_record(project_id: str, repo_path: str) -> str:
+    """The full id of a saved job whose record's `tasks` was then rewritten to `5`, which parses
+    as JSON into the wrong shape."""
+    from packages.orchestration.data_paths import job_record_path
+
+    full = _saved_job_of_project(project_id, repo_path)
+    path = job_record_path(full)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["tasks"] = 5
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return full
+
+
+def test_an_apply_post_for_a_job_whose_record_cannot_be_read_is_passed_on_as_sent(tmp_path):
+    """R-1204: the record is passed on as a missing one is, with no `--repo`, and nothing raises."""
+    full = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post(f"/api/v1/jobs/{full}/apply", {}, run)
+    assert status == 200
+    assert calls == [(full, ["job", "apply", "--approve", "--json", "--", full])]
+
+
+@pytest.mark.parametrize("kind", sorted(_JOB_WRITES))
+def test_a_client_write_for_a_job_whose_record_cannot_be_read_is_403_and_runs_nothing(
+        tmp_path, kind):
+    """R-1204: the unreadable record has no project keys, so no list of projects reaches it."""
+    project = _registered_project(tmp_path)
+    full = _saved_job_with_unreadable_record(str(project.id), str(tmp_path))
+    client = _client_policy(
+        projects=(project.slug, str(project.id), "demo", "some-other-project"), may_apply=True)
+    status, answer, calls = _client_job_write(kind, full, client)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert answer["message"].endswith("; nothing was run")
+    assert calls == []
