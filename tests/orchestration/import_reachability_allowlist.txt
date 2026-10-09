@@ -193,6 +193,7 @@ packages.orchestration.mission_dossier
 packages.orchestration.mission_plan_schema
 packages.orchestration.mission_readiness
 packages.orchestration.mission_state
+packages.orchestration.mission_upkeep
 packages.orchestration.model_aliases
 packages.orchestration.model_routing
 packages.orchestration.orchestrator_dispatch

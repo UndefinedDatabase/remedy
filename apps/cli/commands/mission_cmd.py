@@ -406,9 +406,13 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
         continue_mission,
         is_verify_task,
     )
+    from packages.orchestration.mission_upkeep import record_closed_jobs
 
     project_id = _resolve_project_id(project, json_output=json_output)
     mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
+    # DECISION F301 D1: the mission's ended jobs leave their open findings in the project's
+    # upkeep ledger before its next job is made.
+    record_closed_jobs(project_id, mission.id)
 
     try:
         job = continue_mission(project_id, mission.id, next_step)
