@@ -46,6 +46,13 @@ def cmd_check(check_id: str, argv: list[str], *, blocking: bool = True) -> DoDCh
                     blocking=blocking, source="compiled")
 
 
+def project_tests_check(check_id: str, *, blocking: bool = True) -> DoDCheck:
+    """A `project_tests` check with an empty spec — red `no_test_command` in a
+    folder that names none (DECISION F299 D1/D2)."""
+    return DoDCheck(id=check_id, kind="project_tests", spec={},
+                    blocking=blocking, source="compiled")
+
+
 def dod_of(*checks: DoDCheck, compiled: bool = True) -> DoD:
     return DoD(
         schema_v=DOD_SCHEMA_V,
@@ -124,6 +131,18 @@ class TestGateRule:
         assert gate_blocker(evaluate_dod(dod_of(cmd_check("a", EXIT_OK)),
                                          tmp_path)) == ""
         assert gate_blocker(None) == ""
+
+    def test_a_not_run_check_holds_nothing_whether_blocking_or_not(self, tmp_path: Path):
+        """DECISION F299 D2 (3): `no_test_command` is neither green nor red."""
+        for blocking in (False, True):
+            result = evaluate_dod(
+                dod_of(project_tests_check("pt", blocking=blocking)), tmp_path)
+            assert result.released is True
+            assert result.not_run == ("pt",)
+            assert result.blocking_red == ()
+            assert result.reported_red == ()
+            stored = json.loads(json.dumps(result.to_json()))
+            assert stored["not_run"] == ["pt"]
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +290,46 @@ class TestReportMatrix:
         ), mode=MODE_FINAL)
         assert "the gate released" in report
 
+    def test_a_not_run_check_prints_its_own_two_sentences(self):
+        """DECISION F299 D2 (4): a `no_test_command` check is named by its own
+        sentence, and the released sentence says no blocking check is red."""
+        from packages.orchestration.run_report import (
+            MODE_FINAL,
+            DoDCheckRow,
+            ReportSources,
+            render_report_from_sources,
+        )
+
+        report = render_report_from_sources(ReportSources(
+            job_id="abc", dod_released=True,
+            dod_checks=(DoDCheckRow("pt", "project_tests", True, "failed",
+                                   "no_test_command", 9),),
+        ), mode=MODE_FINAL)
+        assert "No blocking check is red — the gate released." in report
+        assert ("For pt, no check ran, because the project names no "
+               "test command.") in report
+
+    def test_a_held_gate_counts_only_the_truly_red_check_not_the_one_that_did_not_run(self):
+        """DECISION F299 D2 (4): a `no_test_command` check held nothing and ran nothing,
+        so the held sentence's count and its named checks leave it out, naming only the
+        check that is really red."""
+        from packages.orchestration.run_report import (
+            MODE_FINAL,
+            DoDCheckRow,
+            ReportSources,
+            render_report_from_sources,
+        )
+
+        report = render_report_from_sources(ReportSources(
+            job_id="abc", dod_released=False,
+            dod_checks=(
+                DoDCheckRow("red", "pytest", True, "failed", "nonzero_exit", 5),
+                DoDCheckRow("pt", "project_tests", True, "failed", "no_test_command", 9),
+            ),
+        ), mode=MODE_FINAL)
+
+        assert "The gate is HOLDING this job open: 1 blocking check(s) red (red)." in report
+
 
 # ---------------------------------------------------------------------------
 # The `dod` section of `remedy job show <id> --full` (formerly its own command)
@@ -285,12 +344,16 @@ class TestJobDodCommand:
         return job
 
     def _show(self, capsys, job_id: str):
-        """`job show <id> --full`: the dod section's envelope, and its text (the last section) on stderr."""
+        """`job show <id> --full`: the dod section's envelope, and its own text, scoped to
+        between its header and the next section's (`Tour`, which echoes the same
+        `no_test_command` sentence) — an assertion on this text is pinned to `_dod_section`'s
+        own line and is not satisfied by `Tour`'s repeat of it."""
         from apps.cli.grouped import main
 
         main(["job", "show", job_id, "--full"])
         shown = capsys.readouterr()
-        return json.loads(shown.out)["sections"]["dod"], shown.err.split("--- Dod ---\n", 1)[1]
+        dod_text = shown.err.split("--- Dod ---\n", 1)[1].split("\n--- Tour ---", 1)[0]
+        return json.loads(shown.out)["sections"]["dod"], dod_text
 
     def _text(self, capsys, job_id: str) -> str:
         return self._show(capsys, job_id)[1]
@@ -355,6 +418,20 @@ class TestJobDodCommand:
         with pytest.raises(SystemExit) as exc:
             self._show(capsys, "99999999-9999-4999-8999-999999999999")
         assert exc.value.code == 1
+
+    def test_a_not_run_check_reads_released_with_no_blocking_red_and_no_reported_reds(
+            self, tmp_path, monkeypatch, capsys):
+        """DECISION F299 D2 (3): the gate releases, says so without claiming every
+        check is green, names the not-run check, and prints no `Non-blocking reds`."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = self._job(tmp_path)
+        store_dod(str(job.job_id), dod_of(project_tests_check("pt")))
+        run_job_gate(str(job.job_id), tmp_path)
+
+        out = self._text(capsys, str(job.job_id))
+        assert "Gate: RELEASED — no blocking check is red." in out
+        assert "For pt, no check ran, because the project names no test command." in out
+        assert "Non-blocking reds" not in out
 
     def test_the_command_is_read_only_and_runs_nothing(self, tmp_path, monkeypatch, capsys):
         """It shows the LAST gate run; it never starts a check of its own."""

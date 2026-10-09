@@ -1208,9 +1208,10 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
 
     if ctx.push and len(ctx.run_job_ids) == 1:
         # D4 (6): one job's contract is final once it ran, so red refuses before anything.
-        refusals, still_open = do_mission_push_refusals(ctx)
+        refusals, still_open, unchecked = do_mission_push_refusals(ctx)
         if refusals:
-            ctx.push_outcome = _do_push_record(ctx, "", still_open, error=" ".join(refusals))
+            ctx.push_outcome = _do_push_record(
+                ctx, "", still_open, unchecked, error=" ".join(refusals))
             return DO_STEP_FAILED, (
                 f"{ctx.push_source} was refused, so nothing was applied, committed or "
                 f"pushed: {' '.join(refusals)}")
@@ -1267,11 +1268,12 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     return ""
 
 
-def do_mission_push_refusals(ctx: DoContext) -> tuple[list[str], list[str]]:
-    """``(refusals, open)`` for the walk's one push: the upstream's, then the mission's; reads only.
+def do_mission_push_refusals(ctx: DoContext) -> tuple[list[str], list[str], list[str]]:
+    """``(refusals, open, unchecked)`` for the walk's one push: the upstream's, then the
+    mission's; reads only.
 
-    `job_apply`'s own refusals (DECISIONs F270 D3 (5) and D4 (6)), asked of the
-    walk's mission rather than of one job's.
+    `job_apply`'s own refusals (DECISIONs F270 D3 (5), D4 (6) and F299 D2 (6)),
+    asked of the walk's mission rather than of one job's.
     """
     from packages.orchestration.job_apply import mission_push_refusals, upstream_push_refusals
     from packages.orchestration.mission_state import load_mission
@@ -1281,15 +1283,16 @@ def do_mission_push_refusals(ctx: DoContext) -> tuple[list[str], list[str]]:
             return None
         return load_mission(str(ctx.project.id), ctx.mission_id)
 
-    refusals, still_open = mission_push_refusals(read_mission)
-    return upstream_push_refusals(Path(ctx.repo_root)) + refusals, still_open
+    refusals, still_open, unchecked = mission_push_refusals(read_mission)
+    return upstream_push_refusals(Path(ctx.repo_root)) + refusals, still_open, unchecked
 
 
-def _do_push_record(ctx: DoContext, sha: str, still_open: list[str], *,
+def _do_push_record(ctx: DoContext, sha: str, still_open: list[str], unchecked: list[str], *,
                     error: str = "") -> dict[str, Any]:
     """The `push` object of `do --json` (DECISION F270 D4 (7)), before the push is tried."""
     return {"pushed": False, "sha": sha, "remote": "", "ref": "", "error": error,
-            "source": ctx.push_source, "open_blocking_criteria": list(still_open)}
+            "source": ctx.push_source, "open_blocking_criteria": list(still_open),
+            "unchecked_blocking_criteria": list(unchecked)}
 
 
 def do_push_mission(ctx: DoContext) -> tuple[str, str]:
@@ -1298,17 +1301,23 @@ def do_push_mission(ctx: DoContext) -> tuple[str, str]:
     DECISION F270 D4 (4): push is a mission-level act, so it runs once, after
     the last job, through the push `job apply` uses. The refusals are asked
     again first; a refused or failed push leaves every commit where it landed
-    and fails the step, so `do` exits 1. The blocking criteria still open are
-    named whatever happens (D4 (6)).
+    and fails the step, so `do` exits 1. The blocking criteria still open and
+    those unchecked are named whatever happens (D4 (6), DECISION F299 D2 (6)).
     """
-    from packages.orchestration.job_apply import push_open_criteria_sentence, push_to_upstream
+    from packages.orchestration.job_apply import (
+        push_open_criteria_sentence,
+        push_to_upstream,
+        push_unchecked_criteria_sentence,
+    )
 
     if not ctx.landed:
         return DO_STEP_DONE, "nothing landed, so nothing was pushed"
     last = ctx.landed[-1]
-    refusals, still_open = do_mission_push_refusals(ctx)
-    ctx.push_outcome = _do_push_record(ctx, last["sha"], still_open)
-    named = push_open_criteria_sentence(still_open).rstrip(".")
+    refusals, still_open, unchecked = do_mission_push_refusals(ctx)
+    ctx.push_outcome = _do_push_record(ctx, last["sha"], still_open, unchecked)
+    sentences = [push_open_criteria_sentence(still_open).rstrip("."),
+                push_unchecked_criteria_sentence(unchecked).rstrip(".")]
+    named = "; ".join(s for s in sentences if s)
     named = f"; {named}" if named else ""
     if refusals:
         ctx.push_outcome["error"] = " ".join(refusals)
@@ -1370,16 +1379,30 @@ def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
 
     DECISION F269 D6 (4): the met criteria counted against all of them, and
     each blocking criterion not met named with its status, `open` or `unmet`.
+    DECISION F299 D2 (4): a blocking criterion that is `unchecked` — its
+    project named no test command, so nothing ran — is named separately, after
+    the ones genuinely not met, with the one phrase every surface uses.
     """
     if contract is None:
         return None
-    from packages.orchestration.mission_contract import MissionContract
+    from packages.orchestration.mission_contract import (
+        CRITERION_STATUS_UNCHECKED,
+        MissionContract,
+    )
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
 
     criteria = MissionContract.from_json(contract).criteria
     met = sum(1 for c in criteria if c.status == "met")
-    unmet = [f"{c.id} ({c.status})" for c in criteria if c.blocking and c.status != "met"]
-    tail = (f"blocking criteria not met: {', '.join(unmet)}" if unmet
-            else "every blocking criterion is met")
+    not_met = [f"{c.id} ({c.status})" for c in criteria
+              if c.blocking and c.status in ("open", "unmet")]
+    unchecked = [c.id for c in criteria
+                if c.blocking and c.status == CRITERION_STATUS_UNCHECKED]
+    parts = []
+    if not_met:
+        parts.append(f"blocking criteria not met: {', '.join(not_met)}")
+    if unchecked:
+        parts.append(f"for {', '.join(unchecked)}, {NO_CHECK_RAN_WORDS}")
+    tail = "; ".join(parts) if parts else "every blocking criterion is met"
     return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
 
 

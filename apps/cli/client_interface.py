@@ -183,7 +183,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "history_commits", "job_apply_id", "job_id", "job_status", "job_title", "job_workspace_path",
         "merge_commit", "merge_conflicts", "merged_branch", "missing_source_files", "modes_applied",
         "post_test_command_present", "post_test_passed", "post_test_summary", "push", "push_error",
-        "push_open_criteria", "push_ref", "push_remote", "pushed", "reviewed_task_files",
+        "push_open_criteria", "push_ref", "push_remote", "push_unchecked_criteria", "pushed",
+        "reviewed_task_files",
         "skip_blocked", "source_changed_files", "started_at", "status", "target_branch",
         "target_clean", "target_guard_ok", "target_repo", "task_summaries",
         "temporary_worktree_cleanup", "unexpected_source_files",
@@ -482,6 +483,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "error": {},
             "source": {},
             "open_blocking_criteria": {},
+            "unchecked_blocking_criteria": {},
         },
     },
     "status.run": {

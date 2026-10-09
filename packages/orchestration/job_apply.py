@@ -385,6 +385,9 @@ class JobApplyResult:
     #: DECISION F270 D4 (6): the mission's blocking criteria still ``open`` when
     #: the push was asked; named, never holding it — only an ``unmet`` one does.
     push_open_criteria: list[str] = field(default_factory=list)
+    #: DECISION F299 D2 (6): the mission's blocking criteria that are ``unchecked``
+    #: when the push was asked; named, never holding it either.
+    push_unchecked_criteria: list[str] = field(default_factory=list)
     #: DECISION F270 D4 (3): `remedy do`'s walk of several jobs asks --commit-auto
     #: for each job's title before the mission's goal; not a record field.
     commit_auto_title_first: bool = False
@@ -845,17 +848,26 @@ CONTRACT_UNREADABLE_OPENING = "The mission's contract cannot be read"
 CONTRACT_UNMET_OPENING = "The mission's blocking contract criteria"
 
 
-def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], list[str]]:
-    """``(refusals, open)``: the contract's sentences refusing a push, and its open blockers.
+def mission_push_refusals(
+        read_mission: Callable[[], Any]) -> tuple[list[str], list[str], list[str]]:
+    """``(refusals, open, unchecked)``: the contract's push sentences, its open blockers
+    and its unchecked ones.
 
     DECISION F270 D4 (6), amending D3 (5): a push is refused while any
     blocking criterion of the whole mission is ``unmet`` — the feature's
     "red" — or when the contract cannot be read. A blocking criterion still
     ``open``, which no gate has evaluated yet, does not hold the push; its id
     is returned in ``open`` so the push's output and record name it.
+    DECISION F299 D2 (6): a blocking criterion that is ``unchecked`` — its
+    project named no test command — never holds the push either; its id is
+    returned in ``unchecked`` instead, named by its own sentence. The
+    unreadable-contract branch returns two empty lists after its refusal.
     ``read_mission`` returns the mission, or None without one. Reads only.
     """
-    from packages.orchestration.mission_contract import read_mission_contract
+    from packages.orchestration.mission_contract import (
+        CRITERION_STATUS_UNCHECKED,
+        read_mission_contract,
+    )
 
     try:
         mission = read_mission()
@@ -863,14 +875,15 @@ def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], l
     except Exception as exc:  # noqa: BLE001 — an unreadable contract must refuse the push, not allow it
         return [f"{CONTRACT_UNREADABLE_OPENING} "
                 f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
-                f"shown safe."], []
+                f"shown safe."], [], []
     blocking = [c for c in (contract.criteria if contract else ()) if c.blocking]
     unmet = [c.id for c in blocking if c.status == "unmet"]
-    still_open = [c.id for c in blocking if c.status not in ("met", "unmet")]
+    still_open = [c.id for c in blocking if c.status == "open"]
+    unchecked = [c.id for c in blocking if c.status == CRITERION_STATUS_UNCHECKED]
     if unmet:
         return [f"{CONTRACT_UNMET_OPENING} {', '.join(unmet)} are "
-                f"unmet, so nothing is pushed."], still_open
-    return [], still_open
+                f"unmet, so nothing is pushed."], still_open, unchecked
+    return [], still_open, unchecked
 
 
 def push_open_criteria_sentence(still_open: list[str]) -> str:
@@ -882,12 +895,25 @@ def push_open_criteria_sentence(still_open: list[str]) -> str:
             f"holds a push.")
 
 
-def _push_refusals(job: Any, target: Path) -> tuple[list[str], list[str]]:
-    """``(refusals, open)`` for --push here: the upstream's, then the job's mission's; reads only."""
+def push_unchecked_criteria_sentence(unchecked: list[str]) -> str:
+    """The sentence naming the blocking criteria that are `unchecked`, or "" (D2 (6))."""
+    if not unchecked:
+        return ""
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+
+    return (f"The mission's blocking contract criteria {', '.join(unchecked)} are "
+            f"unchecked: {NO_CHECK_RAN_WORDS}; only an unmet criterion holds a "
+            f"push.")
+
+
+def _push_refusals(job: Any, target: Path) -> tuple[list[str], list[str], list[str]]:
+    """``(refusals, open, unchecked)`` for --push here: the upstream's, then the job's
+    mission's; reads only."""
     from packages.orchestration.mission_state import mission_for_job
 
-    refusals, still_open = mission_push_refusals(lambda: mission_for_job(str(job.job_id)))
-    return upstream_push_refusals(target) + refusals, still_open
+    refusals, still_open, unchecked = mission_push_refusals(
+        lambda: mission_for_job(str(job.job_id)))
+    return upstream_push_refusals(target) + refusals, still_open, unchecked
 
 
 def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list[str],
@@ -906,7 +932,8 @@ def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list
     else:
         return []
     if result.push:
-        refusals, result.push_open_criteria = _push_refusals(job, target)
+        refusals, result.push_open_criteria, result.push_unchecked_criteria = (
+            _push_refusals(job, target))
         found += [f"{PUSH_REFUSED}: {s}" for s in refusals]
     return found
 
@@ -2253,6 +2280,7 @@ def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
         "push_ref": result.push_ref,
         "push_error": result.push_error,
         "push_open_criteria": result.push_open_criteria,
+        "push_unchecked_criteria": result.push_unchecked_criteria,
     }
     return _redact_json_value(raw)
 
@@ -2400,6 +2428,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                                  "configured upstream, never forced.")
             if result.push and result.push_open_criteria:
                 lines.append(push_open_criteria_sentence(result.push_open_criteria))
+            if result.push and result.push_unchecked_criteria:
+                lines.append(push_unchecked_criteria_sentence(result.push_unchecked_criteria))
         lines.append("")
         flag_words = (f"--commit {shlex.quote(result.commit_message)}"
                       if result.commit_message_mode == "message" else flag)
@@ -2447,6 +2477,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             lines.append("No commits or pushes were made. Review and commit manually.")
         if result.push and result.push_open_criteria:
             lines.append(push_open_criteria_sentence(result.push_open_criteria))
+        if result.push and result.push_unchecked_criteria:
+            lines.append(push_unchecked_criteria_sentence(result.push_unchecked_criteria))
 
     elif result.status == "applied_push_failed":
         lines.append("")
@@ -2458,6 +2490,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                      "by hand once the cause is fixed.")
         if result.push_open_criteria:
             lines.append(push_open_criteria_sentence(result.push_open_criteria))
+        if result.push_unchecked_criteria:
+            lines.append(push_unchecked_criteria_sentence(result.push_unchecked_criteria))
 
     elif result.status == "applied_test_failed":
         lines.append("")

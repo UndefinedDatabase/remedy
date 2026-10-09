@@ -557,18 +557,30 @@ def _dod_lines(sources: ReportSources) -> list[str]:
     A job nobody compiled a DoD for renders ``not recorded`` — the same rule as
     every other absent source (P6). A gated job gets the full matrix, including
     the non-blocking reds, which are reported here precisely because they did
-    NOT gate anything.
+    NOT gate anything. DECISION F299 D2 (4): a check whose reason is
+    ``no_test_command`` held nothing and ran nothing, so it is left out of the
+    blocking-red count and named by its own sentence instead.
     """
     lines = ["## Definition of Done", ""]
     if not sources.dod_checks:
         lines += [f"Definition of Done: {NOT_RECORDED}.", ""]
         return lines
 
+    from packages.orchestration.dod_runners import REASON_NO_TEST_COMMAND
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+
+    not_run = [c.check_id for c in sources.dod_checks if c.reason == REASON_NO_TEST_COMMAND]
+
     if sources.dod_released is True:
-        lines += ["Every blocking check is green — the gate released.", ""]
+        if not_run:
+            lines += ["No blocking check is red — the gate released.",
+                     f"For {', '.join(not_run)}, {NO_CHECK_RAN_WORDS}.", ""]
+        else:
+            lines += ["Every blocking check is green — the gate released.", ""]
     elif sources.dod_released is False:
         blocking_red = [c.check_id for c in sources.dod_checks
-                        if c.blocking and c.status != "passed"]
+                        if c.blocking and c.status != "passed"
+                        and c.reason != REASON_NO_TEST_COMMAND]
         lines += [
             "The gate is HOLDING this job open: "
             f"{len(blocking_red)} blocking check(s) red "

@@ -18,6 +18,7 @@
 | self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
 | self-use track | [self-use-track-v1.md](system/self-use-track-v1.md) | system |
 | toolchain refresh order | [toolchain-refresh.md](orders/toolchain-refresh.md) | orders |
+| acceptance checks | [acceptance-checks-v1.md](system/acceptance-checks-v1.md) | system |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -82,6 +83,7 @@ Specifications and design documents for the built system.
 
 | File | Description |
 |------|-------------|
+| [acceptance-checks-v1.md](system/acceptance-checks-v1.md) | A mission's acceptance checks on a project's own test command: where the command comes from (`.remedy/config.toml`, `package.json`, a `tests` folder), the project's own environment it runs in, and the state `unchecked` of a project that names no test command |
 | [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
 | [architecture.md](system/architecture.md) | High-level Remedy architecture |
 | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | Mission tripwires (no-progress, burn anomaly, goal drift), the pause-only action, and the mission watchdog/resume/show surface |

@@ -526,6 +526,18 @@ end the response with:
   under a guard no round's selection named until the closure's own checks ran it, which is item
   34's reading as well; and R-1209 to R-1218 were found by the round gates and the hardening
   stage's audits, which exist to find a promise no test holds. The list stays at 34 items.
+  Consolidated again at F299's closure on 2026-10-09: nothing joined and no two items were merged,
+  because none of F299's three lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  prepared reference file captured before the last change to the script that writes it is item
+  12's clause on a dry run that executes the gate's exact command; and a worker that ran mutations
+  in the primary checkout, with a worker command begun with `cd`, are slips in following a block,
+  which no item about a block's text can prevent. Its authoring defects that left something on
+  disk wrong or unguarded were registered as findings, each the reading of an existing item:
+  R-1227 and R-1229, promises of a decision that no ordered test could see broken, are item 18's
+  reading of an ordered recipe, here a list of tests, against the property it must establish; and
+  R-1228, a reworded sentence that a second test file pinned, is item 34's reading of the tests
+  that already guard a path. R-1230 was found by the closure's self-use run. The list stays at 34
+  items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

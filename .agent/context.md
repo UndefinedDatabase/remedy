@@ -1,25 +1,22 @@
-# Context — F253 Headless API contract: the public HTTP API
+# Context — F299 Acceptance checks on a repository that is not Remedy's own
 
 ## Active Branch
-feature/f253-public-http-api-v2, the copy of `feature/f253-public-http-api` with five commit
-subjects reworded (DECISIONs F253 D32 and D33); both start from `main` at `1474a65ea` (the merge
-commit of pull request 316, F304), and the old branch stays at `83d266f5c` as the record.
+feature/f299-acceptance-checks-other-repos, from `main` at `1acd5ac39` (the merge commit of pull
+request 317, F253).
 
 ## Scope
-F253 (Tier 12, Luna gate A, part two): the public HTTP API a machine client uses, as
-`docs/roadmap/features/T12_F253.md` and its amendment of DECISION amend1007b D3 list the
-operations; DECISION F253 D1 fixes the shape and the order of the slices. The shipped cockpit's
-migration onto the API, and the MCP facet, belong to F303.
+F299 (Tier 7, Luna gate A, part two): a mission's acceptance checks on a repository that is not
+Remedy's own, as `docs/roadmap/features/T7_F299.md` lists them; DECISION F299 D1 fixes the order
+and the shape. T001 measures, T002 runs the project's own test command in the project's own
+environment, T003 says "no check ran" instead of judging red, T004 is the page and the proof.
 
 ## Do not touch
-The cockpit's existing routes and their token in the query (F303's), the approval gate (nothing
-applied without approval, nothing committed or pushed without its flag), the exclusion list
-except to grow it, anything bound beyond localhost, TLS or any remote story (F201), and anything in
-the universe workspace.
+The closed list of executables, which grows only by its own review; the approval gate; the push
+rule of F270 for a criterion that really is unmet; the compiler's fallback for a job's own
+definition of done; anything in the universe workspace.
 
 ## Active assumptions
-- Every route calls the function its command-line twin calls, and a test compares the route's
-  answer with the command's `--json` envelope.
+- Remedy's checks on Remedy's own repository stay unchanged, and a test pins it.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation.
 - Every probe runs with the fake providers on scratch repositories and a scratch data root; a

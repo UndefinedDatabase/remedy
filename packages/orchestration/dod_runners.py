@@ -57,7 +57,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -67,6 +67,13 @@ from packages.orchestration.exec_guard import (
     dod_app_exec_policy,
     plan_child_spawn,
     run_guarded_dod_process_command,
+)
+from packages.orchestration.project_tests import (
+    NO_TEST_COMMAND_MESSAGE,
+    ProjectTestConfigError,
+    find_project_test_command,
+    project_environment,
+    project_python,
 )
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 from packages.runtimes.dev_server import (
@@ -98,6 +105,11 @@ REASON_TIMEOUT = "timeout"
 REASON_EXECUTABLE_NOT_ALLOWED = "executable_not_allowed"
 REASON_CWD_OUTSIDE_WORKTREE = "cwd_outside_worktree"
 REASON_CWD_MISSING = "cwd_missing"
+#: project_tests (F299, DECISION F299 D1): the project names no test command at
+#: all — no config entry, no package.json test script, no tests folder.
+REASON_NO_TEST_COMMAND = "no_test_command"
+#: project_tests: the `[tests]` table of `.remedy/config.toml` cannot be used.
+REASON_TEST_COMMAND_INVALID = "test_command_invalid"
 #: runtime_flow (T003).
 REASON_RUNTIME_NOT_CONFIGURED = "runtime_not_configured"
 REASON_APP_START_FAILED = "app_start_failed"
@@ -292,25 +304,15 @@ def _refused(check: DoDCheck, reason: str, argv: list[str], cwd: str,
     )
 
 
-def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
-    """Run a check that IS one process: pytest, lint, build, custom_cmd."""
-    root = ctx.root
-    argv = build_argv(check)
-    allowed = ctx.allowed
-    declared_cwd = str(check.spec.get("cwd", "") or "")
+def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
+                 declared_cwd: str,
+                 env_overlay: Mapping[str, str] | None = None) -> CheckEvidence:
+    """Spawn ``argv`` in ``cwd`` under the guard, and judge what it did.
 
-    if check.kind in _ALLOWLISTED_KINDS and argv[0] not in allowed:
-        return _refused(
-            check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,
-            f"executable {argv[0]!r} is not in the allowed set; nothing was run")
-
-    cwd, cwd_reason = _resolve_cwd(check, root)
-    if cwd is None:
-        return _refused(
-            check, cwd_reason, argv, declared_cwd,
-            f"working directory {declared_cwd or '.'!r} is unusable "
-            f"under {root}; nothing was run")
-
+    The spawn-and-judge half of a single-process check, shared by
+    ``_run_process_check`` (``env_overlay=None``, Remedy's own environment) and
+    ``_run_project_tests`` (F299: the project's own ``PATH``/``VIRTUAL_ENV``).
+    """
     start = time.monotonic()
     try:
         # The guard owns the spawn since F085 T002c: it keeps this check's wall
@@ -320,6 +322,7 @@ def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             argv,
             timeout_sec=ctx.timeout_sec,
             cwd=str(cwd),
+            env_overlay=env_overlay,
         )
     except FileNotFoundError:
         # The tool is not installed. A missing linter is a RED check with a
@@ -357,6 +360,67 @@ def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
         output_tail=tail,
         output_truncated=truncated,
     )
+
+
+def _run_process_check(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
+    """Run a check that IS one process: pytest, lint, build, custom_cmd."""
+    root = ctx.root
+    argv = build_argv(check)
+    allowed = ctx.allowed
+    declared_cwd = str(check.spec.get("cwd", "") or "")
+
+    if check.kind in _ALLOWLISTED_KINDS and argv[0] not in allowed:
+        return _refused(
+            check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,
+            f"executable {argv[0]!r} is not in the allowed set; nothing was run")
+
+    cwd, cwd_reason = _resolve_cwd(check, root)
+    if cwd is None:
+        return _refused(
+            check, cwd_reason, argv, declared_cwd,
+            f"working directory {declared_cwd or '.'!r} is unusable "
+            f"under {root}; nothing was run")
+
+    return _spawn_check(check, ctx, argv, cwd, declared_cwd)
+
+
+def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
+    """F299, DECISION F299 D1 — a project's own test command, in its own environment.
+
+    Never Remedy's: the command is found at run time, in the check's working
+    directory, in DECISION F299 D1 (2)'s fixed order (``project_tests.
+    find_project_test_command``), and runs with that project's own ``PATH``/
+    ``VIRTUAL_ENV`` (``project_tests.project_environment``) rather than
+    Remedy's. A command found in the project's own ``tests`` folder is exempt
+    from the allowlist, as the ``pytest`` kind's fixed-template argv is — F299
+    builds that argv itself; a command named in the project's own
+    configuration or ``package.json`` is not.
+    """
+    declared_cwd = str(check.spec.get("cwd", "") or "")
+    cwd, cwd_reason = _resolve_cwd(check, ctx.root)
+    if cwd is None:
+        return _refused(
+            check, cwd_reason, [], declared_cwd,
+            f"working directory {declared_cwd or '.'!r} is unusable "
+            f"under {ctx.root}; nothing was run")
+
+    try:
+        command = find_project_test_command(cwd, project_python(cwd, PYTEST_PYTHON))
+    except ProjectTestConfigError as exc:
+        return _refused(check, REASON_TEST_COMMAND_INVALID, [], declared_cwd, str(exc))
+
+    if command is None:
+        return _refused(check, REASON_NO_TEST_COMMAND, [], declared_cwd,
+                        NO_TEST_COMMAND_MESSAGE)
+
+    argv = list(command.argv)
+    if command.source != "tests_folder" and argv[0] not in ctx.allowed:
+        return _refused(
+            check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,
+            f"executable {argv[0]!r} is not in the allowed set; nothing was run")
+
+    return _spawn_check(check, ctx, argv, cwd, declared_cwd,
+                        env_overlay=project_environment(cwd))
 
 
 # ---------------------------------------------------------------------------
@@ -777,6 +841,7 @@ RUNNER_REGISTRY: dict[str, Callable[[DoDCheck, _RunContext], CheckEvidence]] = {
     "custom_cmd": _run_process_check,
     "runtime_flow": _run_runtime_flow,
     "product_smoke": _run_product_smoke,
+    "project_tests": _run_project_tests,
 }
 
 

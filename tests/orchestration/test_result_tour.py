@@ -111,10 +111,12 @@ def _multi_file_diff(paths: list[str]) -> str:
 
 
 def _make_check(check_id: str, *, command: str, status: str = "passed",
-                blocking: bool = True) -> CheckEvidence:
+                blocking: bool = True, reason: str | None = None) -> CheckEvidence:
     return CheckEvidence(
         check_id=check_id, kind="pytest", source="dod.json", blocking=blocking,
-        status=status, reason="" if status == "passed" else "nonzero_exit",
+        status=status,
+        reason=(reason if reason is not None
+               else "" if status == "passed" else "nonzero_exit"),
         command=command, argv=tuple(command.split(" ")), cwd="", exit_code=0,
         duration_ms=5, output_tail="",
     )
@@ -186,6 +188,48 @@ def test_a_finished_job_with_report_diff_and_gate_yields_exactly_five_stops():
         "body": "1 of 1 checks passed; the gate released the job.",
         "anchor": {"kind": "evidence", "ref": "dod_result.json"},
     }
+
+
+def test_a_not_run_check_alone_names_itself_and_counts_as_no_check():
+    """DECISION F299 D2 (4): a `no_test_command` check is neither passed nor
+    failed in the stop's count — it is named by its own sentence instead."""
+    from packages.orchestration.dod_runners import REASON_NO_TEST_COMMAND
+
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="write the module", status=RunState.COMPLETED)],
+        metadata={"cycle_terminal_status": "all_green"},
+    )
+    write_final_report(job)
+    _write_gate(str(job.job_id), [_make_check(
+        "c1", command="python3 -m pytest -q", reason=REASON_NO_TEST_COMMAND)],
+        released=True)
+
+    tour = build_fallback_tour(job)
+    dod = next(s for s in tour["stops"] if s["title"] == "Definition of Done")
+    assert dod["body"] == ("The gate released the job. For c1, no check ran, "
+                           "because the project names no test command.")
+
+
+def test_a_not_run_check_beside_a_passed_one_counts_only_the_passed_one():
+    from packages.orchestration.dod_runners import REASON_NO_TEST_COMMAND
+
+    job = _make_job(
+        state=RunState.COMPLETED,
+        tasks=[TaskEntry(title="write the module", status=RunState.COMPLETED)],
+        metadata={"cycle_terminal_status": "all_green"},
+    )
+    write_final_report(job)
+    checks = [
+        _make_check("c1", command="python3 -m pytest -q"),
+        _make_check("c2", command="python3 -m pytest -q", reason=REASON_NO_TEST_COMMAND),
+    ]
+    _write_gate(str(job.job_id), checks, released=True)
+
+    tour = build_fallback_tour(job)
+    dod = next(s for s in tour["stops"] if s["title"] == "Definition of Done")
+    assert dod["body"] == ("1 of 1 checks passed; the gate released the job. For c2, "
+                           "no check ran, because the project names no test command.")
 
 
 # ---------------------------------------------------------------------------

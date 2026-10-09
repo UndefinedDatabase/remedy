@@ -1,0 +1,16 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 430.29s (measured wrapper); pytest's own reported wall time 429.44s (0:07:09)
+summary line: 22246 passed, 22 skipped, 1 warning in 429.44s (0:07:09)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 3ae2d45a6 (F299 R7 C2: the page names remedy do run, not the group alone (R-1231))
+reflog before: 3ae2d45a6 HEAD@{2026-10-09 18:51:49 +0200}: commit: F299 R7 C2: the page names remedy do run, not the group alone (R-1231)
+reflog after: 3ae2d45a6 HEAD@{2026-10-09 18:51:49 +0200}: commit: F299 R7 C2: the page names remedy do run, not the group alone (R-1231)
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F299 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1166.53 CPU seconds, 429.45 wall seconds, 22268 tests collected, exit status 0, recorded 2026-10-09T17:00:12Z
+This closure's suite used 1166.53 CPU seconds, 2.0 percent more than F253's 1143.17, within the 10 percent limit.
+bad set of the previous run: tests/cli/test_advertised_commands.py::test_every_group_only_advertisement_reaches_a_command (the run on 6cb91ae79, recorded at 67e81e91c)
+bad set shrank with no node newly bad: yes

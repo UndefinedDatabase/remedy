@@ -828,11 +828,14 @@ def _rule_criterion(status) -> dict:
     ([_rule_task(test_passed=False)], [_rule_criterion("open")], True, "hold"),
     ([_rule_task(test_passed=None)], [], False, "review"),
     ([_rule_task()], [_rule_criterion("open")], True, "review"),
+    # DECISION F299 D2 (5): `unchecked` reads `review` where `met` would read `apply`.
+    ([_rule_task()], [_rule_criterion("unchecked")], True, "review"),
     ([_rule_task()], None, True, "review"),
     ([_rule_task(verdict=None)], [_rule_criterion("met")], True, "review"),
 ], ids=["every-check-passed", "no-contract", "a-test-failed", "a-verdict-not-pass",
         "a-blocked-verdict-unchecked", "a-criterion-unmet", "a-no-beats-an-open-criterion",
-        "no-check-ran", "a-criterion-open", "contract-unreadable", "a-task-without-verdict"])
+        "no-check-ran", "a-criterion-open", "a-criterion-unchecked", "contract-unreadable",
+        "a-task-without-verdict"])
 def test_the_recommendation_follows_its_rules(tasks, criteria, checks_ran, expected):
     from packages.orchestration.client_digest import _card_recommendation
 
@@ -868,7 +871,8 @@ def test_the_page_states_the_rules_with_the_codes_own_limits():
     assert ("`recommendation` is `hold` when a record says no: a test that ran and failed, a "
             "reviewer's verdict other than `pass`, or an `unmet` blocking criterion; else `review` "
             "when something is unverified: no check ran, a task without a reviewer's verdict, a "
-            "blocking criterion still `open`, or a contract that cannot be read; else `apply`."
+            "blocking criterion still `open` or `unchecked`, or a contract that cannot be read; "
+            "else `apply`."
             ) in text
     assert (f"`risk` is `high` when no check ran or more than {APPROVAL_CARD_FILE_LIMIT} files "
             f"changed; else `medium` when a task took a repair round or more than "

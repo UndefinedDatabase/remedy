@@ -643,7 +643,10 @@ DOD_PROCESS_ENV_ALLOWLIST: tuple[str, ...] = TEST_COMMAND_ENV_ALLOWLIST
 DOD_PROCESS_OUTPUT_CAP_BYTES: int = TEST_COMMAND_OUTPUT_CAP_BYTES
 
 
-def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
+def dod_process_exec_policy(
+    timeout_sec: float, cwd: str | None,
+    env_overlay: Mapping[str, str] | None = None,
+) -> ExecGuardPolicy:
     """The stage-1 policy every `dod-process` check runs under.
 
     A DoD check is BOUNDED — pytest, a linter, a build, a project's own command —
@@ -667,13 +670,19 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
     wrote `__pycache__/*.pyc` into that tree would end the job
     `job_handoff_coverage_failed` on files no task wrote. The value becomes the scrub
     SOURCE beside `os.environ`, as `test_command_exec_policy`'s overlay does.
+
+    `env_overlay` is F299's project environment — a `project_tests` check's own
+    `PATH` and `VIRTUAL_ENV`, found in the project rather than in Remedy's own.
+    It still passes through the allowlist above, so only an allowlisted key such
+    as `PATH` or `VIRTUAL_ENV` reaches the child, and it is applied BEFORE the
+    bytecode key so an overlay can never unset that key.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
         cwd=cwd,
         core_file_bytes=0,
-        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        env={**os.environ, **(env_overlay or {}), "PYTHONDONTWRITEBYTECODE": "1"},
         env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
         deny_network=True,
     )
@@ -684,6 +693,7 @@ def run_guarded_dod_process_command(
     *,
     timeout_sec: float,
     cwd: str | None,
+    env_overlay: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one `dod-process` check under the guard, shaped like `subprocess.run`.
 
@@ -700,7 +710,7 @@ def run_guarded_dod_process_command(
     translations; what stays per-seam is the policy each wrapper builds, and the
     `check` knob `runtime-build` alone asks for.
     """
-    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd))
+    guarded = run_guarded(cmd, dod_process_exec_policy(timeout_sec, cwd, env_overlay))
     return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 

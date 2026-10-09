@@ -50,8 +50,10 @@ TRACEABILITY_RULE = "every plan acceptance line traceable to a check id"
 
 #: What a check runs. ``runtime_flow`` is schema-valid from R1 on, but has no
 #: runner until T003 — the runner registry fails loud on it rather than passing.
+#: ``project_tests`` (F299) is a project's own test command, found when the
+#: check runs rather than when it is compiled.
 CheckKind = Literal["pytest", "lint", "build", "runtime_flow", "custom_cmd",
-                    "product_smoke"]
+                    "product_smoke", "project_tests"]
 
 #: Where a check came from. ``compiled`` = proposed by the provider from user
 #: intent; ``plan_acceptance`` = generated to cover a plan acceptance line;
@@ -80,6 +82,9 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     # the block that emits it and the runner that executes it agree on the
     # vocabulary, so an unknown name is refused here rather than at run time.
     "product_smoke": frozenset({"smoke", "retry", "paths"}),
+    # F299, DECISION F299 D1: the check finds its own command when it runs, so
+    # it carries none beyond the common keys every kind shares.
+    "project_tests": frozenset(),
 }
 
 #: The v1 runtime_flow vocabulary (R-0165). One action, and a closed set of

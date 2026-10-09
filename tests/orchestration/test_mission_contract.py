@@ -54,16 +54,22 @@ from typing import Any
 import pytest
 
 from packages.orchestration.dod_gate import GateResult, load_dod, save_gate_result, store_dod
-from packages.orchestration.dod_runners import CheckEvidence
+from packages.orchestration.dod_runners import (
+    REASON_NO_TEST_COMMAND,
+    REASON_TEST_COMMAND_INVALID,
+    CheckEvidence,
+)
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
 from packages.orchestration.mission_compiler import plan_mission
 from packages.orchestration.mission_contract import (
+    CRITERION_STATUS_UNCHECKED,
     JOB_MILESTONE_KEY,
     ContractCriterion,
     ContractError,
     MissionContract,
     amend_mission_contract,
     compile_contract_criteria,
+    contract_blockers,
     job_contract_slice,
     merge_contract_slice_into_dod,
     read_job_milestone,
@@ -79,6 +85,7 @@ from packages.orchestration.mission_state import (
     set_mission_contract,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
 
 PROJECT = "p-f269"
 
@@ -142,7 +149,7 @@ BROKEN_BODIES = [
     ("milestones is a list of distinct milestone ids",
      _broken(("criteria", 0, "milestones"), ["M1", "M1"])),
     ("check is null or an object", _broken(("criteria", 0, "check"), "pytest")),
-    ("status is open, met or unmet", _broken(("criteria", 0, "status"), "done")),
+    ("status is open, met, unmet or unchecked", _broken(("criteria", 0, "status"), "done")),
     ("evidence_ref is null or a non-empty string",
      _broken(("criteria", 0, "evidence_ref"), "")),
     ("amendments is a list of objects", _broken(("amendments",), ["a note"])),
@@ -287,6 +294,15 @@ class TestTheCompiledContract:
 
         assert compiled.check["kind"] == "pytest"
         assert compiled.check["spec"] == {"selector": "tests/test_cli.py::test_help"}
+
+    def test_a_criterion_naming_no_test_path_compiles_to_project_tests(self):
+        """DECISION F299 D1 (5): the compiler's own fallback becomes `project_tests`."""
+        [compiled] = compile_contract_criteria(
+            [_criterion("C001", "the suite passes")])
+
+        assert compiled.check["kind"] == "project_tests"
+        assert compiled.check["spec"] == {}
+        assert compiled.check["source"] == "plan_acceptance"
 
     def test_the_compiled_check_is_a_valid_dod_check_and_survives_a_write(
             self, tmp_path, mission):
@@ -446,12 +462,14 @@ class TestTheJobDoDCarriesItsSlice:
         assert load_dod(JOB) is None
 
 
-def _gate_result(*passed_or_failed: tuple[str, str]) -> GateResult:
+def _gate_result(*passed_or_failed: tuple[str, str],
+                 reasons: dict[str, str] | None = None) -> GateResult:
+    reasons = reasons or {}
     return GateResult(released=all(s == "passed" for _, s in passed_or_failed),
                       evidence=tuple(CheckEvidence(
                           check_id=check_id, kind="pytest", source="plan_acceptance",
-                          blocking=True, status=status, reason="", command="",
-                          argv=(), cwd="", exit_code=0, duration_ms=0,
+                          blocking=True, status=status, reason=reasons.get(check_id, ""),
+                          command="", argv=(), cwd="", exit_code=0, duration_ms=0,
                           output_tail="") for check_id, status in passed_or_failed))
 
 
@@ -482,6 +500,54 @@ class TestTheJobGateDecidesItsCriteria:
 
         assert load_mission(PROJECT, sliced.id, tmp_path).contract == sliced.contract
 
+    def test_a_check_whose_reason_is_no_test_command_writes_unchecked(
+            self, tmp_path, sliced):
+        """DECISION F299 D2 (1): nothing ran, so the criterion is neither met nor unmet."""
+        store_dod(JOB, DoD(schema_v=DOD_SCHEMA_V, compiled=False,
+                           origin="deterministic",
+                           checks=[_pytest_check("acc-001", "tests/test_all.py")]))
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+        save_gate_result(JOB, _gate_result(
+            ("acc-001", "passed"), ("ctr-C002", "failed"),
+            reasons={"ctr-C002": REASON_NO_TEST_COMMAND}))
+
+        record_contract_results(PROJECT, sliced.id, JOB, "M1", tmp_path)
+
+        contract = read_mission_contract(load_mission(PROJECT, sliced.id, tmp_path))
+        [c002] = [c for c in contract.criteria if c.id == "C002"]
+        assert c002.status == CRITERION_STATUS_UNCHECKED
+
+    def test_a_check_whose_reason_is_test_command_invalid_writes_unmet(
+            self, tmp_path, sliced):
+        """A command the project named but cannot run is judged by it, not excused."""
+        store_dod(JOB, DoD(schema_v=DOD_SCHEMA_V, compiled=False,
+                           origin="deterministic",
+                           checks=[_pytest_check("acc-001", "tests/test_all.py")]))
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+        save_gate_result(JOB, _gate_result(
+            ("acc-001", "passed"), ("ctr-C002", "failed"),
+            reasons={"ctr-C002": REASON_TEST_COMMAND_INVALID}))
+
+        record_contract_results(PROJECT, sliced.id, JOB, "M1", tmp_path)
+
+        contract = read_mission_contract(load_mission(PROJECT, sliced.id, tmp_path))
+        [c002] = [c for c in contract.criteria if c.id == "C002"]
+        assert c002.status == "unmet"
+
+
+class TestContractBlockers:
+    """DECISION F299 D2 (2): an `unchecked` criterion holds no mission."""
+
+    def test_an_unchecked_blocking_criterion_is_left_out_but_unmet_and_open_are_kept(self):
+        contract = MissionContract(criteria=(
+            _criterion("C001", "met one", status="met"),
+            _criterion("C002", "unmet one", status="unmet"),
+            _criterion("C003", "open one", status="open"),
+            _criterion("C004", "unchecked one", status=CRITERION_STATUS_UNCHECKED),
+        ))
+
+        assert contract_blockers(contract) == ("C002", "C003")
+
 
 class TestTheRenderer:
     def test_every_criterion_is_rendered_in_order_with_its_scope(self):
@@ -502,6 +568,21 @@ class TestTheRenderer:
 
         assert "  Criteria: (none)" in lines
         assert "  Template: (none)" in lines
+
+    def test_an_unchecked_criterion_prints_no_check_ran_words_under_its_text_and_nowhere_else(
+            self):
+        """DECISION F299 D2 (4): one more line, directly under the criterion's text."""
+        criteria = (
+            _criterion("C001", "met one", status="met"),
+            _criterion("C002", "unchecked one", status=CRITERION_STATUS_UNCHECKED),
+        )
+
+        lines = render_contract_lines("t", None, criteria)
+        text = "\n".join(lines)
+
+        assert text.count(NO_CHECK_RAN_WORDS) == 1
+        text_idx = lines.index("          unchecked one")
+        assert lines[text_idx + 1] == f"          {NO_CHECK_RAN_WORDS}"
 
 
 # ── DECISION F269 D7: the contract binds each of its jobs and grants it ──

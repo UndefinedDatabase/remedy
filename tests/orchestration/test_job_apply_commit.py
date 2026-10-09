@@ -25,6 +25,7 @@ from packages.orchestration.job_apply import (
     apply_job,
     commit_subject_problem,
     load_job_apply_record,
+    mission_push_refusals,
     summarize_job_apply,
 )
 from tests.orchestration.test_job_apply_history import (  # noqa: F401  (autouse fixture)
@@ -455,6 +456,33 @@ class TestPush:
         assert record["push_open_criteria"] == ["C002"]
         summary = summarize_job_apply(result)
         assert "criteria C002 are still open, not yet evaluated" in summary
+        assert "C003" not in summary
+
+    def test_p8_an_unchecked_blocking_criterion_is_pushed_and_named(
+        self, repo, monkeypatch, tmp_path,
+    ):
+        """DECISION F299 D2 (6): an `unchecked` blocking criterion — its project named
+        no test command — does not hold the push; it is named in the output and the
+        record, and kept apart from the still-`open` ones."""
+        remote = _bare_upstream(repo, tmp_path)
+        job = _completed(repo, monkeypatch)
+        _mission(monkeypatch, statuses={"C001": ("unchecked", True), "C002": ("open", True),
+                                        "C003": ("unchecked", False)})
+
+        refusals, still_open, unchecked = mission_push_refusals(
+            lambda: MS.mission_for_job(str(job.job_id)))
+        assert (refusals, still_open, unchecked) == ([], ["C002"], ["C001"])
+
+        result = apply_job(job.job_id, str(repo), approve=True, commit_auto=True, push=True)
+        assert result.status == "applied", (result.blocked_reason, result.push_error)
+        assert result.pushed and len(_pushes(tmp_path)) == 1
+        assert _git(remote, "rev-parse", _branch(repo)).strip() == result.commit_sha
+        assert result.push_unchecked_criteria == ["C001"]
+        record = load_job_apply_record(job.job_id, result.job_apply_id)
+        assert record["push_unchecked_criteria"] == ["C001"]
+        summary = summarize_job_apply(result)
+        assert ("criteria C001 are unchecked: no check ran, because the project names "
+               "no test command") in summary
         assert "C003" not in summary
 
     def test_p6_a_push_that_fails_leaves_the_commit_and_says_so(

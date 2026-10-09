@@ -223,6 +223,7 @@ packages.orchestration.project_context_coverage
 packages.orchestration.project_registry
 packages.orchestration.project_scope
 packages.orchestration.project_summary
+packages.orchestration.project_tests
 packages.orchestration.prompt_budget
 packages.orchestration.prompt_facts
 packages.orchestration.prompt_segments
