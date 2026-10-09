@@ -1974,7 +1974,7 @@ def test_a_run_post_by_a_job_prefix_starts_the_full_id():
 
 @pytest.mark.parametrize("value, status, token", [
     ("not-a-job", 404, "invalid_job_id"),
-    (str(uuid4()), 404, "job_not_found"),
+    ("6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a", 404, "job_not_found"),
     ("0123abcd", 404, "job_not_found"),
 ])
 def test_a_run_post_for_no_job_is_refused_and_starts_nothing(value, status, token):
