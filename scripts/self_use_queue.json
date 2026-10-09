@@ -399,7 +399,7 @@
       "title": "Narrow the excused handler at apps/cli/commands/job.py:867",
       "why": "except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI",
       "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/job.py:867\n\n## Task 1\nLine 867 of `apps/cli/commands/job.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nAcceptance:\n- The handler at line 867 of `apps/cli/commands/job.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/job.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
-      "consumed_by": "",
+      "consumed_by": "F253",
       "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI)"
     }
   ]

@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-131 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+132 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 4 | 13 |
+| 12 | Observability & Operations | 5 | 13 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -777,6 +777,16 @@ tasks, its checks and one recommendation word and one risk word by rules the pag
 provider calls and its tokens beside its cost; an order may be capped by any one budget; and the
 overview lists what still needs something and the 20 jobs that ended last, which
 `remedy status --all-ended-jobs` widens).
+
+F253 public HTTP API (a program on the same machine can now drive Remedy over a local web
+interface that `remedy serve` answers on `127.0.0.1` beside its socket: it reads what this Remedy
+can do, the status digest, a job's proof and what changed since a point it holds, answers a
+decision, declines or approves and applies a result, sends an order and starts a job's run, and
+follows both to their end; every route answers what its command-line twin answers, every call needs
+a token, a client's token carries the operator's policy for it, which names its projects, its
+largest limits and whether it may apply, and every call is written down; the interface's page is
+`docs/system/public-http-api-v1.md`, and moving the shipped cockpit onto it is a later feature's
+work).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
