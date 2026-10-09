@@ -1616,11 +1616,11 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
     and then RUNS the job through the existing multi-cycle executor
     (:func:`execute_dispatched_job`). Creating a job and walking away was
     R-0184: the milestone could never become done, so the loop re-dispatched
-    until its iteration budget ran out.
+    until its iteration budget ran out. That path is
+    ``orchestrator_dispatch.dispatch_milestone_job`` (DECISION F301 D1).
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
-        continue_mission,
         set_mission_status,
     )
     from packages.orchestration.orchestrator_move_schema import (
@@ -1666,51 +1666,10 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
                            detail=f"milestone {milestone_id} recorded as done")
 
     if kind == MOVE_DISPATCH_JOB:
-        create = dispatch or continue_mission
-        job = create(project_id, mission_id, payload["step"], root=root,
-                     now=now)
-        approved = _auto_approve_if_gated(job)
-        detail = f"job {job.job_id} dispatched for {payload['milestone_id']}"
-        if approved:
-            detail += " (plan auto-approved, audited)"
-        from packages.orchestration.mission_contract import (
-            JOB_MILESTONE_KEY,
-            grant_contract_job_repository,
-            merge_contract_slice_into_dod,
-            record_contract_results,
-            record_job_milestone,
-        )
-        from packages.orchestration.mission_state import load_mission as _load
+        from packages.orchestration.orchestrator_dispatch import dispatch_milestone_job
 
-        # R-0188: give the job its milestone's DoD before it runs, or the gate
-        # has nothing to evaluate when it finishes.
-        current = _load(project_id, mission_id, root)
-        if attach_milestone_dod(project_id, mission_id, current,
-                                payload["milestone_id"], str(job.job_id), root):
-            detail += "; DoD attached"
-        # DECISION F269 D4 (3): the job's DoD carries its contract slice, so
-        # the job's own gate decides the criteria it serves.
-        merge_contract_slice_into_dod(current, payload["milestone_id"],
-                                      str(job.job_id))
-        # DECISION F269 D7: the contract binds the job to its repository and
-        # grants it; the in-memory job carries the same values, as below.
-        granted = grant_contract_job_repository(current, str(job.job_id), root)
-        if granted and isinstance(getattr(job, "metadata", None), dict):
-            job.metadata.update(granted)
-        # DECISION F269 D3 (1): the job records the milestone it serves, so its
-        # contract slice can be derived. The in-memory job is the one the
-        # executor saves next, so it carries the same key.
-        if record_job_milestone(str(job.job_id), payload["milestone_id"], root):
-            metadata = getattr(job, "metadata", None)
-            if isinstance(metadata, dict):
-                metadata[JOB_MILESTONE_KEY] = payload["milestone_id"]
-        run = (execute or execute_dispatched_job)(job)
-        # DECISION F269 D4 (4): the job's gate result decides its slice criteria.
-        record_contract_results(project_id, mission_id, str(job.job_id),
-                                payload["milestone_id"], root)
-        return MoveOutcome(status="dispatched",
-                           detail=detail + execution_detail(run),
-                           job_id=str(job.job_id))
+        return dispatch_milestone_job(project_id, mission_id, payload, root=root,
+                                      dispatch=dispatch, execute=execute, now=now)
 
     # Unreachable through the schema: `kind` is a closed Literal, so anything
     # else failed validation long before it reached here. Kept as a loud

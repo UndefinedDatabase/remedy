@@ -107,6 +107,10 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   per-task loop — the task without a run, the lineage and membership check of each entry, and the
   expectation check. Steps: (1) the check of one entry becomes a function, lineage still first;
   (2) the task without a run becomes a function.
+- `execute_move` (`packages/orchestration/orchestrator_loop.py`). Boundary: one branch per kind
+  of move, the dispatch branch holding most of its lines. Steps: (1) done by F301, the dispatch
+  branch is `dispatch_milestone_job` in `packages/orchestration/orchestrator_dispatch.py`, which
+  reads the loop's helpers from the loop's module, and the function left the table.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -278,7 +282,6 @@ with the code that calls it.
 | 118 | `packages/orchestration/pingpong_loop.py` | `_record_call_failure` |
 | 118 | `packages/orchestration/task_injection.py` | `draft_task_injection` |
 | 116 | `packages/orchestration/model_routing.py` | `validate_task_class_tier_overrides` |
-| 114 | `packages/orchestration/orchestrator_loop.py` | `execute_move` |
 | 114 | `packages/orchestration/provider_token_evidence.py` | `validate_provider_token_evidence` |
 | 113 | `packages/orchestration/job_evidence.py` | `_build_job_agent_run_trace` |
 | 113 | `packages/orchestration/repository_snapshot.py` | `verify_snapshot` |
@@ -321,7 +324,7 @@ with the code that calls it.
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
-| 2296 | `packages/orchestration/orchestrator_loop.py` |
+| 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
 | 2052 | `packages/runtimes/dev_server.py` |
 | 2024 | `packages/orchestration/pingpong_provider.py` |
