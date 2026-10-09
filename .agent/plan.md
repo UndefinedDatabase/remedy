@@ -8,13 +8,13 @@ operator writes and a ledger entry for every call (docs/roadmap/features/T12_F25
 amendments, and DECISIONs F253 D1 to D27, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 34, the checklist's consolidation pass: book round 33's verdict, resolve R-1223
-and R-1224, register R-1225 for the closure suite's cost; one dated paragraph in section 3 of
-docs/agents/planner_reviewer_prompt.md classifies F253's prose slips and its authoring defects.
+Session 6, round 35, the closure's evidence round: book round 34's verdict; the commit that saves
+this round's block and evidence script is the accepted head; preview and apply the staging-copy
+reclaim, build the evidence job `f253r35e1001` and build the review package from that head.
 
 ## Next Steps
-1. The evidence bundle, the reclaim of staging copies and the review package.
-2. The ledger rotation, the owner lines, the STATUS line, the README and the pull request.
+1. The ledger rotation, the owner lines, the self-use entry's `consumed_by`, the STATUS line, the
+   README and the pull request, left unmerged.
 
 ## Risks
 - The installed `remedy` command on this machine runs the code of a stale job worktree (Q13);
