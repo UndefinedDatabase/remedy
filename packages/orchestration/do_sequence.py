@@ -1370,16 +1370,30 @@ def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
 
     DECISION F269 D6 (4): the met criteria counted against all of them, and
     each blocking criterion not met named with its status, `open` or `unmet`.
+    DECISION F299 D2 (4): a blocking criterion that is `unchecked` — its
+    project named no test command, so nothing ran — is named separately, after
+    the ones genuinely not met, with the one phrase every surface uses.
     """
     if contract is None:
         return None
-    from packages.orchestration.mission_contract import MissionContract
+    from packages.orchestration.mission_contract import (
+        CRITERION_STATUS_UNCHECKED,
+        MissionContract,
+    )
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
 
     criteria = MissionContract.from_json(contract).criteria
     met = sum(1 for c in criteria if c.status == "met")
-    unmet = [f"{c.id} ({c.status})" for c in criteria if c.blocking and c.status != "met"]
-    tail = (f"blocking criteria not met: {', '.join(unmet)}" if unmet
-            else "every blocking criterion is met")
+    not_met = [f"{c.id} ({c.status})" for c in criteria
+              if c.blocking and c.status in ("open", "unmet")]
+    unchecked = [c.id for c in criteria
+                if c.blocking and c.status == CRITERION_STATUS_UNCHECKED]
+    parts = []
+    if not_met:
+        parts.append(f"blocking criteria not met: {', '.join(not_met)}")
+    if unchecked:
+        parts.append(f"for {', '.join(unchecked)}, {NO_CHECK_RAN_WORDS}")
+    tail = "; ".join(parts) if parts else "every blocking criterion is met"
     return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
 
 

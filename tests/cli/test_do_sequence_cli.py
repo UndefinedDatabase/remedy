@@ -902,9 +902,11 @@ SUITE_PASSES = "The test suite passes."
 def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_the_unmet(
         repo, capsys):
     """D6 (1), (3), (4): the repository has no tests, so the suite criterion reads
-    `unmet`; the hygiene criteria read `met`; the job still completes."""
+    `unchecked` — DECISION F299 D2: nothing ran, so it is neither met nor unmet —
+    the hygiene criteria read `met`, and the job still completes."""
     from packages.orchestration.dod_gate import load_dod, load_gate_result
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
 
     data = json.loads(_do(capsys, "--json", "--contract", "cli-tool"))
 
@@ -923,29 +925,27 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
 
     by_text = {c["text"]: c for c in criteria}
     suite = by_text[SUITE_PASSES]
-    assert suite["status"] == "unmet"
+    assert suite["status"] == "unchecked"
     assert suite["evidence_ref"].startswith(f"{job_id}:")
     hygiene = [c for c in whole if c["check"]["kind"] == "custom_cmd"]
     assert len(hygiene) == 3
     assert [c["status"] for c in hygiene] == ["met"] * 3
 
-    # Not met, in contract order: the four suite-judged template criteria
-    # (unmet: no tests) and the planner's milestone criterion (unmet: the job
+    # Unchecked, in contract order: the four suite-judged template criteria
+    # (no test command named) and the planner's milestone criterion (the job
     # serves the plan's one milestone, so its gate evaluated it — R-0977).
     suite_judged = [c for c in whole if c["check"]["kind"] != "custom_cmd"]
     planner = [c for c in criteria if c["origin"] == "planner"]
-    assert [c["status"] for c in suite_judged] == ["unmet"] * 4
-    assert [c["status"] for c in planner] == ["unmet"] * len(planner)
+    assert [c["status"] for c in suite_judged] == ["unchecked"] * 4
+    assert [c["status"] for c in planner] == ["unchecked"] * len(planner)
     expected = [c["id"] for c in suite_judged + planner]
     assert expected == [c["id"] for c in criteria if c not in hygiene]
-    assert data["unmet_blocking_criteria"] == expected
+    assert data["unmet_blocking_criteria"] == []
 
     out = _do(capsys, "--contract", "cli-tool", order="Write a CHANGELOG.md")
     [line] = [line for line in out.splitlines() if line.startswith("Contract: ")]
-    named = ", ".join([f"{c['id']} (unmet)" for c in suite_judged]
-                      + [f"{c['id']} (unmet)" for c in planner])
     assert line == (f"Contract: 3 of {len(criteria)} criteria met; "
-                    f"blocking criteria not met: {named}")
+                    f"for {', '.join(expected)}, {NO_CHECK_RAN_WORDS}")
 
 
 def commit_a_passing_suite(repo: Path) -> None:
@@ -992,8 +992,8 @@ def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo,
     assert [(c.id, c.blocking) for c in load_dod(job_id).checks] == [
         (c["check"]["id"], False) for c in criteria]
     assert {(c["origin"], c["blocking"], c["status"]) for c in criteria} == {
-        ("planner", True, "unmet")}
-    assert data["unmet_blocking_criteria"] == [c["id"] for c in criteria]
+        ("planner", True, "unchecked")}
+    assert data["unmet_blocking_criteria"] == []
 
 
 # ── F273 R-0977: each `do` job records the milestone its outline came from ──
@@ -1022,7 +1022,7 @@ def two_milestone_plan(monkeypatch) -> None:
 def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, monkeypatch):
     """R-0977: each job records the milestone whose outline it came from, so its
     gate evaluates that milestone's planner criterion and none is left `open`.
-    The repository has no tests, so each reads `unmet`, and each job completes."""
+    The repository has no tests, so each reads `unchecked`, and each job completes."""
     from packages.orchestration.mission_contract import read_job_milestone
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
 
@@ -1033,13 +1033,13 @@ def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, mo
     assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
     assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
-        (["M1"], True, "unmet"), (["M2"], True, "unmet")]
+        (["M1"], True, "unchecked"), (["M2"], True, "unchecked")]
     job_ids = data["job_ids"]
     assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
     assert [load_job_plan(j).state for j in job_ids] == [JOB_COMPLETED] * 2
     assert [c["evidence_ref"] for c in planner] == [
         f"{job_ids[0]}:{planner[0]['check']['id']}", f"{job_ids[1]}:{planner[1]['check']['id']}"]
-    assert data["unmet_blocking_criteria"] == [c["id"] for c in planner]
+    assert data["unmet_blocking_criteria"] == []
 
 
 def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_criteria(

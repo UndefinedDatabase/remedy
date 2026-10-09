@@ -69,6 +69,10 @@ NO_TEST_COMMAND_MESSAGE = (
     "'tests' folder, so no check ran"
 )
 
+#: DECISION F299 D2 (4): the one phrase every surface that shows an `unchecked`
+#: criterion or check says, so the words never drift between them.
+NO_CHECK_RAN_WORDS = "no check ran, because the project names no test command"
+
 
 def project_lookup_dirs(cwd: Path) -> tuple[Path, ...]:
     """Where a project's environment and configuration might live.

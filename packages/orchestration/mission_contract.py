@@ -76,7 +76,10 @@ CONTRACT_ORIGINS = ("template", "planner", "amendment")
 
 #: A criterion's state.  ``open`` until the mission gate (T002) says otherwise.
 CRITERION_STATUS_OPEN = "open"
-CRITERION_STATUSES = (CRITERION_STATUS_OPEN, "met", "unmet")
+#: DECISION F299 D2 (1): the check found no test command at all — neither met nor
+#: unmet, because nothing ran to judge.
+CRITERION_STATUS_UNCHECKED = "unchecked"
+CRITERION_STATUSES = (CRITERION_STATUS_OPEN, "met", "unmet", CRITERION_STATUS_UNCHECKED)
 
 #: The job metadata key the orchestrator's dispatch writes (DECISION F269 D3).
 JOB_MILESTONE_KEY = "milestone_id"
@@ -159,7 +162,7 @@ class ContractCriterion:
             raise ContractError("check is null or an object",
                                 f"criterion {self.id} has {self.check!r}")
         if self.status not in CRITERION_STATUSES:
-            raise ContractError("status is open, met or unmet",
+            raise ContractError("status is open, met, unmet or unchecked",
                                 f"criterion {self.id} has {self.status!r}")
         if self.evidence_ref is not None and (
                 not isinstance(self.evidence_ref, str) or not self.evidence_ref):
@@ -673,13 +676,16 @@ def record_contract_results(project_id: str, mission_id: str, job_id: str,
     """Read a job's gate result back onto its slice criteria (D4 (4)).
 
     Each slice criterion whose check has the ``kind`` and ``spec`` of a check
-    in the job's stored DoD becomes ``met`` when that check's evidence passed
-    and ``unmet`` otherwise, with ``evidence_ref`` = ``<job id>:<check id>``.
-    A job with no gate result, or no readable DoD, changes nothing and returns
-    None; otherwise the contract as written is returned.
+    in the job's stored DoD becomes ``met`` when that check's evidence passed,
+    ``unchecked`` when the matched check's evidence has the reason
+    ``no_test_command`` (DECISION F299 D2 (1): nothing ran, so it is neither
+    met nor unmet), and ``unmet`` otherwise, with ``evidence_ref`` =
+    ``<job id>:<check id>``.  A job with no gate result, or no readable DoD,
+    changes nothing and returns None; otherwise the contract as written is
+    returned.
     """
     from packages.orchestration.dod_gate import load_dod, load_gate_result
-    from packages.orchestration.dod_runners import STATUS_PASSED
+    from packages.orchestration.dod_runners import REASON_NO_TEST_COMMAND, STATUS_PASSED
     from packages.orchestration.mission_state import load_mission
 
     contract = read_mission_contract(load_mission(project_id, mission_id, root))
@@ -689,8 +695,11 @@ def record_contract_results(project_id: str, mission_id: str, job_id: str,
     dod = load_dod(job_id)
     if result is None or dod is None:
         return None
-    passed = {str(e.get("check_id")) for e in result.get("checks") or []
+    checks = result.get("checks") or []
+    passed = {str(e.get("check_id")) for e in checks
               if isinstance(e, dict) and e.get("status") == STATUS_PASSED}
+    no_check_ran = {str(e.get("check_id")) for e in checks
+                    if isinstance(e, dict) and e.get("reason") == REASON_NO_TEST_COMMAND}
     in_slice = {c.id for c in job_contract_slice(contract, milestone_id)}
     criteria: list[ContractCriterion] = []
     for criterion in contract.criteria:
@@ -700,9 +709,11 @@ def record_contract_results(project_id: str, mission_id: str, job_id: str,
              if _same_check(c.kind, c.spec, check.get("kind"), check.get("spec"))),
             None)
         if match is not None:
-            criterion = replace(
-                criterion, status="met" if match.id in passed else "unmet",
-                evidence_ref=f"{job_id}:{match.id}")
+            status = ("met" if match.id in passed
+                      else CRITERION_STATUS_UNCHECKED if match.id in no_check_ran
+                      else "unmet")
+            criterion = replace(criterion, status=status,
+                                evidence_ref=f"{job_id}:{match.id}")
         criteria.append(criterion)
     return write_mission_contract(
         project_id, mission_id, replace(contract, criteria=tuple(criteria)), root)
@@ -717,12 +728,15 @@ def contract_blockers(contract: MissionContract | None) -> tuple[str, ...]:
     """The ids of the blocking criteria whose status is not ``met``, in order.
 
     These hold the orchestrator's ``declare_mission_achieved``; a mission with
-    no contract has none.
+    no contract has none.  DECISION F299 D2 (2): a criterion that reads
+    ``unchecked`` — its project named no test command, so nothing ran — does
+    not count as a blocker either; only a genuinely ``unmet`` or still-``open``
+    criterion holds the mission.
     """
     if contract is None:
         return ()
     return tuple(c.id for c in contract.criteria
-                 if c.blocking and c.status != "met")
+                 if c.blocking and c.status not in ("met", CRITERION_STATUS_UNCHECKED))
 
 
 # ---------------------------------------------------------------------------
@@ -955,8 +969,12 @@ def render_contract_lines(title: str, template: str | None,
     for c in criteria:
         scope = ", ".join(c.milestones) if c.milestones else "whole mission"
         kind = "blocking" if c.blocking else "advisory"
-        lines.append(f"    {c.id}  {c.status:<5}  {kind:<8}  {c.origin:<9}  {scope}")
+        lines.append(f"    {c.id}  {c.status:<9}  {kind:<8}  {c.origin:<9}  {scope}")
         lines.append(f"          {c.text}")
+        if c.status == CRITERION_STATUS_UNCHECKED:
+            # DECISION F299 D2 (4): the one phrase every surface says.
+            from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+            lines.append(f"          {NO_CHECK_RAN_WORDS}")
         if c.evidence_ref:
             lines.append(f"          evidence: {c.evidence_ref}")
     if amendments:

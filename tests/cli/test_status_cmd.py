@@ -141,14 +141,16 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
         for task in record.tasks
     ]
     assert [task["reviewer_verdict"] for task in card["tasks"]] == ["pass"]
-    # The planner's one criterion, unmet in a repository without tests, as `remedy do` answered.
+    # The planner's one criterion reads `unchecked`: the repository names no test
+    # command, so no check ran on it at all (DECISION F299 D2).
     assert card["blocking_criteria"] == [
-        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "unmet"}]
+        {"id": "C001", "text": f"The mission goal is met in full: {ORDER}", "status": "unchecked"}]
     assert [criterion["id"] for criterion in card["blocking_criteria"]
-            if criterion["status"] != "met"] == done["unmet_blocking_criteria"]
-    assert card["checks_ran"] is True
-    # An unmet blocking criterion holds the result, and the one repair round makes it medium.
-    assert (card["recommendation"], card["risk"]) == ("hold", "medium")
+            if criterion["status"] not in ("met", "unchecked")] == done["unmet_blocking_criteria"]
+    assert card["checks_ran"] is False
+    # No check ran, so nothing is verified: `review`, never `hold` or `apply`, and the
+    # unknown-risk rule (no check ran) reads `high` (DECISION F299 D2 (5)).
+    assert (card["recommendation"], card["risk"]) == ("review", "high")
 
 
 # ── 2c: a job's calls and tokens, read through the command line (DECISION F304 D13) ──
