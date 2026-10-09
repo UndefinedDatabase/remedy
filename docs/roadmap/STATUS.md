@@ -226,7 +226,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 7 — Luna gate A, part two: acceptance on a repository that is not Remedy's own (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F299 — Acceptance checks on a repository that is not Remedy's own
+- [~] F299 — Acceptance checks on a repository that is not Remedy's own
 
 ## Tier 2 — The process as the product: the structure ledger and its ratchet (operator amendment amend1007b-luna-api-upkeep)
 

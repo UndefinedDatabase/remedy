@@ -1,31 +1,33 @@
-# Live Review — F253 Headless API contract: the public HTTP API
+# Live Review — F299 Acceptance checks on a repository that is not Remedy's own
 
-> Round-by-round review record, re-headed at the F253 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F304, whose STATUS
-> line went `[x]` on its own branch. Both hosted CI jobs of its pull request 316, Python 3.10 and
-> Python 3.12 of run 37766558683 on `c96af2115`, passed, and the Open PR Gate merged pull request
-> 316 into `main` as `1474a65ea`, whose second parent is `c96af2115`. F304's round 24 was reviewed
-> after its own handback and its verdict was written into that pull request, so operator amendment
-> amend0827-process-diet rule 1 books it here, in the first commit of the next round that is
-> happening anyway; it is appended at the end of this record by this claim. Only the heading, this
-> paragraph and the Steps section below are rewritten; everything from the Findings heading to the
-> end of the file as it stood at `1474a65ea` is carried forward BYTE-IDENTICAL, and finding ids
-> continue the monotonic R-XXXX series across the re-head. The open set at `1474a65ea`, computed
-> with `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
-> 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176']`; F297, the
-> rolling findings paydown, owns all eleven, so F253 owns none.
+> Round-by-round review record, re-headed at the F299 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F253, whose STATUS line
+> went `[x]` on its own branch. Both hosted CI jobs of its pull request 317, Python 3.10 and Python
+> 3.12 of run 37927524000 on `e654a94d6`, passed, and the Open PR Gate merged pull request 317 into
+> `main` as `1acd5ac39`, whose second parent is `e654a94d6` and whose tree equals that commit's.
+> F253's round 38 was reviewed after its own handback and its verdict was written into that pull
+> request, so operator amendment amend0827-process-diet rule 1 books it here, in the first commit of
+> the next round that is happening anyway; it is appended at the end of this record by this claim,
+> followed by F299's round 1, whose only commit is its handoff. Only the heading, this paragraph and
+> the Steps section below are rewritten; everything from the Findings heading to the end of the file
+> as it stood at `1acd5ac39` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `1acd5ac39`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
+> 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1196',
+> 'R-1219', 'R-1220', 'R-1225']`; F297, the rolling findings paydown, owns all of them, so F299 owns
+> none.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F253 D1's. The first round claims F253, re-heads this record, books
-F304's round 24, and lands S1: the namespace `/api/v1` on the request handler the cockpit and the
-supervisor share, the route registry, the published page with its version rule and exclusion
-list, and `GET /api/v1/interface`. Then S2, a ledger entry for every call with the digest and the
-proof; S3, what changed since a cursor; S4, answering a decision, approving an apply and declining
-a result through the F009 door; S5, submitting an order; S6, the supervisor's localhost port and
-client tokens with the operator's policy; S7, the gate tests driven through HTTP alone. Every slice
-adds its routes to the registry, the page and the pinned contract tests in the same round. Then
-the amend0930b-slow-cap hardening stage, then closure.
+THE ORDER BELOW IS DECISION F299 D1's. The first round stopped at its first gate, on a reference
+file the reviewer had prepared stale. The second round claims F299, re-heads this record, books
+F253's round 38 and F299's round 1, saves T001's measurement of the three scratch targets as
+`.agent/f299_inventory.md`, and lands T002: the check kind `project_tests`, which finds the
+project's own test command when it runs and runs it in the project's own environment, and the
+contract's default check moved onto it. Then T003, a criterion state that reads "no check ran"
+for a project with no test command, its words on every surface that shows a criterion, and its
+push rule; then T004, the page under `docs/system/` and the three targets as `remedy do` tests.
+Then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -255,3 +257,7 @@ Gate: F253 R35 — the F253 round 35 entry, the closure's evidence round, over `
 Gate: F253 R36 — the F253 round 36 entry, the closure's bookkeeping round that wrote operator question Q16, over `aca472c38`..`dbf5f7c2a` (2 commits, each single-parent; insertions by `git show --numstat`: `05ccb816f` 126, `dbf5f7c2a` 79). VERDICT PASS. The reviewer of F253's seventh session read both commits whole and compared their bytes with the round's prepared files under `.remedy-wt/f253-r36/`: the saved block, `.agent/plan.md` and `.agent/operator_questions.md` equal their prepared copies, and `.agent/live_review.md` at `05ccb816f` equals its blob at `aca472c38` followed by its slice. The reviewer's re-run at `dbf5f7c2a`, in a disposable worktree removed afterwards, read `100 passed` for the round's four test files, and `integrity check --json` read six checks `pass` with `fail_count` 0 and the open ids R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1160, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225 and R-1226, as the round's handoff names them. The operator's commit `83d266f5c`, which followed the round, changes `.agent/decisions.md` (DECISIONs F253 D28 to D32, the answers to Q12 to Q16) and `.agent/operator_questions.md` (the five answered entries deleted) and no other path; it left the question file without the line an empty question file carries, which round 37's first commit restores.
 
 Gate: F253 R37 — the F253 round 37 entry, the closure's evidence round taken again on the reworded copy, over `83d266f5c`..`72ab1767f` on `feature/f253-public-http-api-v2` (the copy's tip `b9cde4ca5`, written by the reword script, then 4 commits, each single-parent; insertions by `git show --numstat`: `2baecf916` 247, `647527eaa` 336, `04ee857ca` 9, `72ab1767f` 107). VERDICT PASS. The copy's tip equals the one the reviewer's dry run in an isolated clone predicted, `b9cde4ca562278b6ffe689849f6b66aafc508d04`, so each of its 139 commits is the copy that dry run checked: its original's tree, its original's message but for the five subjects, and no subject the metadata scan rejects; the copy's tree equals that of `83d266f5c`, and `feature/f253-public-http-api` stays at `83d266f5c` locally and on the remote. At `647527eaa` the saved block, the two saved scripts, `.agent/plan.md`, `.agent/context.md` and `.agent/operator_questions.md` equal their prepared files, and `.agent/live_review.md` and `.agent/decisions.md` equal their blobs at `83d266f5c` followed by their slices. The full suite ran once on `647527eaa`, exit 0, `22203 passed, 22 skipped, 1 warning in 291.53s (0:04:51)`, no bad node and the reflog unchanged; the cost script exited 0 at 1143.17 CPU seconds, 1.5 percent above F304's closure, so the 11.3 percent of the run R-1225 records did not recur, and R-1225 stays open with F297 as its owner. The staging reclaim found nothing to free. The evidence job `f253r37e1001` ran on `04ee857ca`, the accepted head, and exited 0: both ancestry counts 142, 2209 node ids with 44 deselected and none unsafe, 2206 passed and 3 skipped, no validation problem, `is_valid_current_run True`. The reviewer re-read the package `remedy-review-20261009-134321-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`: SHA-256 `c3c31dda428e52aee4fe4e7980db88adcf3dfc3e72c10272a0b613894ce66944`, `package_status` `READY_FOR_REVIEW`, alignment verdict `PASS`, its manifest's base `1474a65ea` and head `04ee857ca`, and `testzip()` None.
+
+Gate: F253 R38 — the F253 round 38 entry, the closing round, over `72ab1767f`..`e654a94d6` (3 commits, each single-parent; insertions by `git show --numstat`: `0dc3fce8d` 320, `439ab9841` 200, `e654a94d6` 77). VERDICT PASS, booked here from the reviewer's verdict on pull request 317, which the claim of F299 read at `1acd5ac39`. The reviewer of F253's seventh session verified the round against its own simulation on the base `72ab1767f`: every committed file equalled the simulated file, eleven of eleven — at `0dc3fce8d` the saved block, the STATUS line, the PR body, the plan, the ledger with round 37's gate entry and R-1226's resolution appended, and the prose-slip line; at `439ab9841` the rotated ledger and its archive; at `e654a94d6` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json`. The rotation moved 24 gate records, 36 finding pairs and 1 resolved-text record, the ledger from 337,711 to 222,413 bytes, 15 open findings before and after. The STATUS line occurred once with no line left in progress, README read 132 of 304 and the Tier 12 row 5 of 13, SU-050 was consumed by F253, and the last commit touched exactly those three files and `.agent/handoff.md`. The simulation's selection read `555 passed` at exit 0 with six integrity checks `pass`, its red control turned `test_the_readme_accepted_count_equals_the_status_count` red, and the worker's one run read `555 passed`. The closure's preconditions held: every round 1 to 38 has a verdict, the FAILs of rounds 28, 30, 32 and 35 each repaired by a later passing round; the one full suite on the shipped tree read `22203 passed, 22 skipped` (`.agent/authored/f253-closure-suite.txt`); the hardening stage is recorded with two gaps carried to F297; and the package `remedy-review-20261009-134321-READY_FOR_REVIEW.zip` is READY with head `04ee857ca`. Both hosted CI jobs of run 37927524000 passed on `e654a94d6` before the merge. The open set is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225']`, all owned by F297.
+
+Gate: F299 R1 — the F299 round 1 entry, over `1acd5ac39`..`5eaca8c78` (1 commit, single-parent; insertions by `git show --numstat`: `5eaca8c78` 130). VERDICT FAIL, the reviewer's own: the round's gate 1 compared the worker's run of `.remedy-wt/f299-r1/measure.py` at the base with the prepared `dry-measure.txt`, which the reviewer had captured before adding to that script the line that writes `<secs>` for a test run's duration, so the two differed in exactly three duration lines and the worker stopped before C1, as the block ordered. The reviewer's run of the script at `5eaca8c78`, saved again as `dry-measure.txt`, equals the worker's `measure-base.txt` byte for byte. Nothing but `.agent/handoff.md` landed, and no finding is registered: the defect was the reviewer's prepared file, recorded in `.agent/prose_slips.md`. The worker declared one deviation of its own: before creating the branch and before gate 1 it drafted C3 and C4 in the primary checkout on `main`, then moved the draft, its two new files included, into the stash entry `f299-r1 draft C3/C4 before gate1` and ran gate 1 on a clean tree; no commit was made on `main`, whose tip stayed `1acd5ac39`, and round 2 takes the draft from that stash under review. The reflog after `1acd5ac39` holds the branch's creation, the stash's reset of the tree and the one commit, the local tip equalled the pushed branch, and the tree was clean.
