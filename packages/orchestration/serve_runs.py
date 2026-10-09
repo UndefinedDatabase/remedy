@@ -492,6 +492,33 @@ def run_answer(record: RunRecord) -> dict[str, Any] | None:
     return _last_envelope(text)
 
 
+#: How long an answer that would read `lost` reads the record again for its end, because a
+#: launcher writes a child's end only after it has reaped it (DECISION F253 D23, R-1216).
+RECORDED_END_GRACE_SECONDS = 2.0
+
+#: How long the re-reading helper sleeps between two reads of the record.
+_RECORDED_END_POLL_SECONDS = 0.05
+
+
+def _recorded_end_within(read_again: Callable[[], Any], grace: float) -> Any:
+    """The first record READ_AGAIN returns with an `ended_at`, within GRACE seconds, else None.
+
+    READ_AGAIN takes no argument and returns a record or None; it is called at once and then
+    every 0.05 seconds. Once GRACE seconds have passed since the first call with no record
+    that holds an end, the answer is None (DECISION F253 D23). The caller passes the grace at
+    call time, so a test that sets `RECORDED_END_GRACE_SECONDS` changes the wait.
+    """
+    deadline = time.monotonic() + grace
+    while True:
+        record = read_again()
+        if record is not None and record.ended_at is not None:
+            return record
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        time.sleep(min(_RECORDED_END_POLL_SECONDS, remaining))
+
+
 def order_not_found_message(order_id: str) -> str:
     """The sentence an order id that names no record is refused with (DECISION F253 D14 (4)).
 
@@ -507,9 +534,16 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
 
     Shared by `remedy client order`, `GET /api/v1/orders/{order}` and the 202 answer of `POST
     /api/v1/orders`, so the three read an order alike; `remedy client order`'s own output must
-    not change by a byte for this sharing (DECISION F253 D14 (4)).
+    not change by a byte for this sharing (DECISION F253 D14 (4)). A state that would read `lost`
+    reads the record again for up to `RECORDED_END_GRACE_SECONDS` and reads `ended` once the
+    end is written (DECISION F253 D23).
     """
     state = order_state(paths, record)
+    if state == "lost":
+        recorded = _recorded_end_within(
+            lambda: read_order_record(paths, record.order_id), RECORDED_END_GRACE_SECONDS)
+        if recorded is not None:
+            record, state = recorded, "ended"
     answer = order_answer(record) if state != "running" else None
     return {
         "order_id": record.order_id,
@@ -536,9 +570,16 @@ def run_record_payload(paths: ServePaths, record: RunRecord) -> dict[str, Any]:
     of the record, `state` and, once the state is not `running`, `answer`.
 
     Shared by `remedy client run`, `GET /api/v1/jobs/{job}/run` and the 202 answer of `POST
-    /api/v1/jobs/{job}/run`, as `order_record_payload` is by the order readers.
+    /api/v1/jobs/{job}/run`, as `order_record_payload` is by the order readers. A state that
+    would read `lost` reads the record again for up to `RECORDED_END_GRACE_SECONDS` and reads
+    `ended` once the end is written (DECISION F253 D23).
     """
     state = run_state(paths, record)
+    if state == "lost":
+        recorded = _recorded_end_within(
+            lambda: read_run_record(paths, record.job_id), RECORDED_END_GRACE_SECONDS)
+        if recorded is not None:
+            record, state = recorded, "ended"
     answer = run_answer(record) if state != "running" else None
     return {**record.to_json(), "state": state, "answer": answer}
 

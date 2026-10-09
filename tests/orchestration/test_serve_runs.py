@@ -767,6 +767,90 @@ def test_run_not_found_message_names_the_value():
     assert "jobX" in SR.run_not_found_message("jobX")
 
 
+# ---------------------------------------------------------------------------
+# An answer that would read `lost` waits for the recorded end (DECISION F253 D23, R-1216).
+# ---------------------------------------------------------------------------
+
+
+def test_the_recorded_end_grace_is_two_seconds():
+    assert SR.RECORDED_END_GRACE_SECONDS == 2.0
+
+
+def _write_later(target: Path, payload: dict, delay: float) -> threading.Thread:
+    """A started thread that writes PAYLOAD to TARGET, as a launcher's reaper does, after DELAY."""
+    def write() -> None:
+        time.sleep(delay)
+        SR._atomic_write_json(target, payload)
+
+    writer = threading.Thread(target=write, daemon=True)
+    writer.start()
+    return writer
+
+
+def test_a_run_whose_end_is_written_within_the_grace_answers_ended(tmp_path):
+    paths = serve_paths(tmp_path)
+    record = SR.RunRecord(job_id="jobW", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+                          out_log="o", err_log="e")
+    _plant_record(paths, record)
+    ended = SR.RunRecord(**{**record.to_json(), "exit_code": 0, "ended_at": "2026-01-01T00:00:09Z"})
+    writer = _write_later(paths.runs_dir / "jobW.json", ended.to_json(), 0.3)
+    payload = SR.run_record_payload(paths, record)
+    writer.join(timeout=30)
+    assert payload["state"] == "ended"
+    assert payload["exit_code"] == 0
+    assert payload["ended_at"] == "2026-01-01T00:00:09Z"
+
+
+def test_a_run_with_no_end_written_answers_lost_after_the_grace(tmp_path, monkeypatch):
+    monkeypatch.setattr(SR, "RECORDED_END_GRACE_SECONDS", 0.3)
+    paths = serve_paths(tmp_path)
+    record = SR.RunRecord(job_id="jobW", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+                          out_log="o", err_log="e")
+    _plant_record(paths, record)
+    began = time.monotonic()
+    payload = SR.run_record_payload(paths, record)
+    assert time.monotonic() - began >= 0.3
+    assert payload["state"] == "lost"
+    assert payload["exit_code"] is None
+
+
+def _plant_order(paths, record: SR.OrderRecord) -> Path:
+    target = paths.orders_dir / record.order_id / "order.json"
+    target.parent.mkdir(parents=True)
+    target.write_text(json.dumps(record.to_json()), encoding="utf-8")
+    return target
+
+
+def test_an_order_whose_end_is_written_within_the_grace_answers_ended(tmp_path):
+    paths = serve_paths(tmp_path)
+    record = SR.OrderRecord(order_id="0123456789abcdef", pid=_dead_pid(),
+                            started_at="2026-01-01T00:00:00Z",
+                            order_file="o", out_log="o", err_log="e")
+    target = _plant_order(paths, record)
+    ended = SR.OrderRecord(**{**record.to_json(), "exit_code": 0,
+                              "ended_at": "2026-01-01T00:00:09Z"})
+    writer = _write_later(target, ended.to_json(), 0.3)
+    payload = SR.order_record_payload(paths, record)
+    writer.join(timeout=30)
+    assert payload["state"] == "ended"
+    assert payload["exit_code"] == 0
+    assert payload["ended_at"] == "2026-01-01T00:00:09Z"
+
+
+def test_an_order_with_no_end_written_answers_lost_after_the_grace(tmp_path, monkeypatch):
+    monkeypatch.setattr(SR, "RECORDED_END_GRACE_SECONDS", 0.3)
+    paths = serve_paths(tmp_path)
+    record = SR.OrderRecord(order_id="0123456789abcdef", pid=_dead_pid(),
+                            started_at="2026-01-01T00:00:00Z",
+                            order_file="o", out_log="o", err_log="e")
+    _plant_order(paths, record)
+    began = time.monotonic()
+    payload = SR.order_record_payload(paths, record)
+    assert time.monotonic() - began >= 0.3
+    assert payload["state"] == "lost"
+    assert payload["exit_code"] is None
+
+
 _ENVELOPE_THEN_WAIT_CHILD = """\
 import json, sys, time
 from pathlib import Path
