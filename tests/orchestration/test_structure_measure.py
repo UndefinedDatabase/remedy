@@ -277,3 +277,58 @@ class TestReachedAsAUser:
         assert proc.returncode == 0
         assert "big" in proc.stdout
         assert "small" not in proc.stdout
+
+
+class TestOrderJSONShapeAndFileLimit:
+    """R-1232: the handler's order, its `--json` entry shape and its check of `--file-limit`
+    each had no test that would see them broken. These turn red under exactly the four
+    mutations the reviewer found at F300's round 1 gate: sorting `large_functions` or
+    `large_files` ascending, renaming a function entry's `lines` key, and checking
+    `--function-limit` alone so `--file-limit` reaches `int()` unchecked."""
+
+    def _repo(self, tmp_path: Path) -> Path:
+        root = tmp_path / "repo"
+        _init_repo(root)
+        (root / "a_small.py").write_text(_fn("small_fn", 101), encoding="utf-8")
+        (root / "b_large.py").write_text(_fn("large_fn", 140), encoding="utf-8")
+        (root / "a_short.txt").write_text("s\n" * 1001, encoding="utf-8")
+        (root / "b_long.txt").write_text("l\n" * 1200, encoding="utf-8")
+        _commit_all(root)
+        return root
+
+    def test_measure_repository_lists_both_pairs_largest_first(self, tmp_path):
+        root = self._repo(tmp_path)
+        measure = measure_repository(root)
+        assert [(f.path, f.lines) for f in measure.large_functions] == [
+            ("b_large.py", 140), ("a_small.py", 101),
+        ]
+        assert [(f.path, f.lines) for f in measure.large_files] == [
+            ("b_long.txt", 1200), ("a_short.txt", 1001),
+        ]
+
+    def test_the_handlers_json_answer_has_the_exact_entry_dictionaries(self, tmp_path, capsys):
+        root = self._repo(tmp_path)
+        code, out = TestTheHandler()._run(capsys, path=str(root))
+        assert code == 0
+        document = json.loads(out)
+        assert document["large_functions"] == [
+            {"path": "b_large.py", "name": "large_fn", "line": 1, "lines": 140},
+            {"path": "a_small.py", "name": "small_fn", "line": 1, "lines": 101},
+        ]
+        assert document["large_files"] == [
+            {"path": "b_long.txt", "lines": 1200},
+            {"path": "a_short.txt", "lines": 1001},
+        ]
+
+    def test_the_text_answer_lists_the_larger_entry_before_the_smaller_one(self, tmp_path, capsys):
+        root = self._repo(tmp_path)
+        code, out = TestTheHandler()._run(capsys, path=str(root), json=False)
+        assert code == 0
+        assert out.index("b_large.py") < out.index("a_small.py")
+        assert out.index("b_long.txt") < out.index("a_short.txt")
+
+    @pytest.mark.parametrize("value", ["0", "x", "-3", "1.5", "²"])
+    def test_invalid_file_limit_values_exit_2(self, tmp_path, capsys, value):
+        code, out = TestTheHandler()._run(capsys, path=str(tmp_path), file_limit=value)
+        assert code == 2
+        assert json.loads(out)["error"] == "invalid_limit"
