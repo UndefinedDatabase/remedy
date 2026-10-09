@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-449935c821c54023  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 160b61157..ffcf1cb32 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1306,7 +1306,7 @@ def _cmd_job_run_cycles(
+     log = RunLogWriter(job_id=job.job_id)
+     try:
+         builder = OllamaBuilder()
+-    except Exception as exc:  # noqa: BLE001 — builder construction failure is reported, not a crash
++    except (ValueError, KeyError) as exc:
+         fail("builder_unavailable", f'builder unavailable — {exc}', json_output=json_output)
+ 
+     limits = replace(limits, budgets=job.budgets)
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
