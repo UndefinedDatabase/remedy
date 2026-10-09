@@ -28648,3 +28648,13 @@ CHOSEN: (1) R-1219 and R-1220 are registered, owned by F297, and F253 closes PAS
 ALTERNATIVES: Rewriting the namespace's docstring to point at `packages/orchestration/public_api.py`, REJECTED: a namespace that holds nothing and that nothing imports is an attic, which "Replacing is deleting" forbids. Repairing R-1219 and R-1220 in a fourth repair round, REJECTED by rule (3) of amend0930b-slow-cap and D24 (3). Editing the Step 32 table, REJECTED: it records what that step did, and the deletion is recorded here.
 
 HOW TO REVERSE: Restore `apps/api/__init__.py` and its lines in `tests/test_reserved_namespaces.py` and `scripts/remedy_smoke.sh` from git history at `994656bb9`, delete the Built State section, and for (1) repair R-1219 and R-1220 in F253 before its closure.
+
+## DECISION F253 D26 — the Step 32 row of `docs/system/architecture.md` that names `apps/api/__init__.py` is repaired to name the deleted namespace without a file path, as `tests/docs/test_named_source_paths.py` requires; this replaces the clause of DECISION F253 D25 (2) that kept the row as written (R-1221) (2026-10-09)
+
+CONTEXT: R-1221. `tests/docs/test_named_source_paths.py` sweeps every page under `docs/system` and `docs/guides` for a source path, a match of `(?:packages|apps|tests|scripts)/[\w./-]*\.(?:tsx|ts|py|sh|json|toml)`, and requires each to be a tracked file; its docstring excludes nothing under `docs/system` by design, and its message asks that a reference be deleted or repaired in the same commit as the file. DECISION F253 D25 (2) deleted `apps/api/__init__.py` and kept as written the Step 32 row of `docs/system/architecture.md` whose first cell names `apps/api/__init__.py` and whose second reads "HTTP API server (Step 38+)", so the branch tip `0cfeeb23f` is red on that guard.
+
+CHOSEN: The row's first cell becomes `apps/api` followed by "(deleted by F253, DECISION F253 D25; the HTTP API is `packages/orchestration/public_api.py`)", and its second cell is unchanged. It still records that Step 32 reserved the namespace, names no missing file, and points at the file that holds what it reserved, which the guard finds tracked. Nothing else in the page changes. This replaces D25 (2)'s sentence that the Step 32 table stays as written; the rest of D25 stands.
+
+ALTERNATIVES: Exempting the row or the page in the guard, REJECTED: the guard excludes no page under `docs/system` on purpose, and an exemption is the way a stale claim survives. Deleting the row, REJECTED: the table records what Step 32 did, and the repair keeps that record true.
+
+HOW TO REVERSE: Restore the row from git history at `994656bb9` together with `apps/api/__init__.py`, as D25's reversal does.
