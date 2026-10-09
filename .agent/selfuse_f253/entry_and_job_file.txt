@@ -1,0 +1,5 @@
+Entry ID: SU-050
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:867
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f253-r30-selfuse/SU-050.md
