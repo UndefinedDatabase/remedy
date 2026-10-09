@@ -4071,19 +4071,18 @@ def run_job(
 
             # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed
             # now takes effect before the NEXT task is dispatched.
+            # R-1160: a pause read here parks the job as at every other safe point.
             _stop = _stop_check()
             if _stop is not None:
+                if isinstance(_stop, _PauseSignal) and _stop.is_error:
+                    return _block_for_pause_error(_stop)
                 _persist_budget_actuals()
-                if isinstance(_stop, _StopSignal):
-                    try:
-                        return _stop_job(job, _stop, task=None, control_root_path=_control)
-                    except StopFinalizationError:
-                        return job          # no further task is dispatched
-                else:
-                    job.state = JOB_BLOCKED
-                    job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
-                    _persist_job(job)
-                    return job
+                if isinstance(_stop, _PauseSignal):
+                    return _park_job(job, _stop, task=None, control_root_path=_control)
+                try:
+                    return _stop_job(job, _stop, task=None, control_root_path=_control)
+                except StopFinalizationError:
+                    return job          # no further task is dispatched
 
             # F028 D2 (3): the injection fold's third point — the last statement of the
             # loop body — so a task confirmed while an earlier one ran is folded before the
