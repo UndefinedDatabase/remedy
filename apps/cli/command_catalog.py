@@ -2748,6 +2748,26 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("integrity.check",),
     ),
+    CommandEntry(
+        command_id="integrity.structure",
+        group_id="integrity",
+        subcommand="structure",
+        description="Name every Python function and every tracked text file of a git repository longer "
+                     "than its line limit, largest first (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("--path", "Folder inside the repository to measure (defaults to the current "
+                   "directory)", required=False, is_option=True),
+            ArgDef("--function-limit", "Name a Python function longer than this many lines "
+                   "(default: 100)", required=False, is_option=True, default="100"),
+            ArgDef("--file-limit", "Name a tracked text file longer than this many lines "
+                   "(default: 1000)", required=False, is_option=True, default="1000"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("integrity.check",),
+        exit_codes=(0, 1, 2, 4),
+    ),
 
     # ── snapshot ─────────────────────────────────────────────────────────
     CommandEntry(

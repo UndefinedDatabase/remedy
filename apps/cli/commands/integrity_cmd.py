@@ -62,7 +62,48 @@ def _cmd_integrity_block(args: Any) -> None:
     print(f"All {len(results)} checkable items pass.")
 
 
+def _cmd_integrity_structure(args: Any) -> None:
+    """Name every Python function and tracked text file above its line limit (F300 T001, DECISION F300 D1)."""
+    from pathlib import Path
+
+    from packages.orchestration.structure_measure import (
+        NotAGitRepository,
+        measure_as_dict,
+        measure_repository,
+        render_measure,
+    )
+
+    json_output = getattr(args, "json", False)
+
+    limits: dict[str, int] = {}
+    for option, attr in (("--function-limit", "function_limit"), ("--file-limit", "file_limit")):
+        raw = getattr(args, attr, None)
+        text = str(raw)
+        if not (text.isascii() and text.isdigit() and int(text) >= 1):
+            fail("invalid_limit", f"{option} must be a whole number of at least 1, got {raw!r}",
+                 json_output=json_output, exit_code=2)
+        limits[attr] = int(text)
+
+    folder = Path(getattr(args, "path", "") or ".")
+    if not folder.is_dir():
+        fail("path_not_found", f"no folder at {folder}", json_output=json_output, exit_code=2)
+
+    try:
+        measure = measure_repository(folder, function_limit=limits["function_limit"],
+                                      file_limit=limits["file_limit"])
+    except NotAGitRepository:
+        fail("not_a_git_repo", f"{folder} is in no git repository, so nothing was measured",
+             json_output=json_output, exit_code=4)
+
+    if json_output:
+        emit_ok(**measure_as_dict(measure))
+    else:
+        for line in render_measure(measure):
+            print(line)
+
+
 COMMAND_HANDLERS = {
     "integrity.check": lambda args: _cmd_integrity_check(args),
     "integrity.block": lambda args: _cmd_integrity_block(args),
+    "integrity.structure": lambda args: _cmd_integrity_structure(args),
 }
