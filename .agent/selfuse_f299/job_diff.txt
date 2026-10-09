@@ -1,0 +1,31 @@
+$ git diff HEAD...remedy/job-8f5ab7fd0fc947ed  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 160b61157..e8305dff4 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -952,6 +952,15 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
+     from packages.orchestration.workspace import LocalWorkspaceRuntime
+     from packages.providers.ollama_builder.provider import OllamaBuilder
+ 
++    try:
++        import ollama as _ollama
++        _OLLAMA_ERRORS: tuple[type[Exception], ...] = (
++            _ollama.RequestError,
++            _ollama.ResponseError,
++        )
++    except ImportError:
++        _OLLAMA_ERRORS = ()
++
+     log = RunLogWriter(job_id=job.job_id)
+ 
+     if not any(t.status == RunState.PENDING for t in job.tasks):
+@@ -1004,6 +1013,9 @@ def _cmd_run_next_task_local(job_id_str: str, *, json_output: bool = False) -> N
+     except ValueError as exc:
+         _fail("configuration_error", error_category="ValueError")
+         fail("configuration_error", f'configuration — {exc}', json_output=json_output)
++    except _OLLAMA_ERRORS as exc:
++        _fail("builder_error", error_category=type(exc).__name__)
++        fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
+     except Exception as exc:  # noqa: BLE001 — any builder failure is reported, never crashes the CLI
+         _fail("builder_error", error_category=type(exc).__name__)
+         fail("builder_error", f'builder execution failed — {exc}', json_output=json_output)
