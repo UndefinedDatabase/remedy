@@ -115,7 +115,10 @@ and shows it in the table below; it is removed only under a new major path.
 `GET /api/v1/orders/{order}` polls an order by the id a `POST` to `/api/v1/orders` answered:
 `state` reads `running`, `ended` or `lost` and `answer` holds what `remedy do` printed, exactly as
 `remedy client order <order> --json` reads them. An order id this registry's own shape rejects, or
-one no record names, answers 404 with `order_not_found`.
+one no record names, answers 404 with `order_not_found`. A poll that finds the order's process gone
+and no end in its record reads the record again for up to two seconds, because the supervisor writes
+an end only after the process has finished, and answers `ended` once the end is there, `lost`
+otherwise.
 
 `POST /api/v1/orders` starts an order through the supervisor's own `OrderLauncher`, the way
 `remedy do run <options> --no-ui --yes -- order.md` would inside its own folder under the data
@@ -169,8 +172,10 @@ The route answers when the run has started, not when it ends. A client polls `GE
 because the digest can read a job `completed` a moment before the run that finished it has ended.
 The poll answers what `remedy client run <job> --json` answers: the record, `state` (`running`,
 `ended` or `lost`) and `answer`, which is `null` while the run is `running` and afterwards holds
-what `remedy job run --json` printed. An unknown job, or a job with no run, answers 404
-`run_not_found`. The supervisor
+what `remedy job run --json` printed. A poll that finds the run's process gone and no end in its
+record reads the record again for up to two seconds, because the supervisor writes an end only after
+the process has finished, and answers `ended` once the end is there, `lost` otherwise. An unknown
+job, or a job with no run, answers 404 `run_not_found`. The supervisor
 hands the one launcher that starts runs to its socket and to its port alike, so both answer from
 one list of runs; a server that has no such launcher, the cockpit's own among them, answers the
 route 405 `api_method_not_allowed` (DECISION F253 D18).
