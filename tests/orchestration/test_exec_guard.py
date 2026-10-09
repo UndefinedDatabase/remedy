@@ -648,6 +648,27 @@ def test_the_dod_process_policy_keeps_the_wall_timeout_its_class_is_defined_by()
     assert policy.open_files is None
 
 
+def test_the_dod_process_policys_env_overlay_cannot_unset_the_bytecode_key():
+    """F299, DECISION F299 D1: a `project_tests` check's own PATH/VIRTUAL_ENV.
+
+    The overlay reaches the policy's env, and through it the allowlisted
+    child, but it is applied BEFORE `PYTHONDONTWRITEBYTECODE` is set, so it
+    can never turn that key off.
+    """
+    policy = exec_guard.dod_process_exec_policy(
+        45, "/tmp/dod-cwd",
+        env_overlay={"PATH": "/x", "VIRTUAL_ENV": "/v",
+                     "PYTHONDONTWRITEBYTECODE": "0"})
+
+    assert policy.env["PATH"] == "/x"
+    assert policy.env["VIRTUAL_ENV"] == "/v"
+    assert policy.env["PYTHONDONTWRITEBYTECODE"] == "1"
+
+    child_env = exec_guard.plan_child_spawn(policy).env
+    assert child_env["PATH"] == "/x"
+    assert child_env["VIRTUAL_ENV"] == "/v"
+
+
 def test_the_dod_app_policy_takes_neither_a_wall_timeout_nor_an_output_cap():
     """The two columns separating `dod-app` from every bounded class in T2_F085.
 

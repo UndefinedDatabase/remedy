@@ -973,7 +973,7 @@ def test_a_gated_pytest_check_in_a_repo_with_a_passing_suite_leaves_the_job_comp
     assert (job.state, job.error, job.unexpected_root_files) == (JOB_COMPLETED, "", [])
     assert job.handoff_coverage_verdict == "PASS"
     assert _step(data, "run")["status"] == "done"
-    assert data["contract"]["criteria"][0]["check"]["kind"] == "pytest"
+    assert data["contract"]["criteria"][0]["check"]["kind"] == "project_tests"
     assert {c["status"] for c in data["contract"]["criteria"]
             if c["origin"] == "template"} == {"met"}
 
@@ -1060,7 +1060,7 @@ def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_cr
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
     assert [(c["milestones"], c["blocking"], c["status"]) for c in planner] == [
         (["M1"], True, "met"), (["M2"], True, "met")]
-    assert {c["check"]["kind"] for c in planner} == {"pytest"}
+    assert {c["check"]["kind"] for c in planner} == {"project_tests"}
     job_ids = data["job_ids"]
     assert [read_job_milestone(j) for j in job_ids] == ["M1", "M2"]
     assert [(load_job_plan(j).state, load_job_plan(j).unexpected_root_files)

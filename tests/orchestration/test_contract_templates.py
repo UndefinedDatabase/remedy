@@ -173,8 +173,9 @@ def test_a_check_line_compiles_to_that_check(tmp_path):
         "blocking": True, "acceptance_refs": ["C001:0"],
         "description": "the lint target passes", "source": "plan_acceptance"}
     assert first.blocking is True
-    # The criterion without a check line is compiled by F061's compiler.
-    assert second.check["id"] == "ctr-C002" and second.check["kind"] == "pytest"
+    # The criterion without a check line is compiled by F061's compiler
+    # (DECISION F299 D1 (5): the compiler's own fallback is `project_tests`).
+    assert second.check["id"] == "ctr-C002" and second.check["kind"] == "project_tests"
     assert second.check["blocking"] is False
 
 

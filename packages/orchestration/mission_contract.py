@@ -341,9 +341,18 @@ def compile_contract_criteria(
     ``<criterion id>:0``, re-labelled as its own: id ``ctr-<criterion id>``,
     that one ref, and the criterion's own ``blocking``.  F061's traceability
     rule guarantees such a check exists.  ``call_fn=None`` is the compiler's
-    own deterministic path.
+    own deterministic path.  DECISION F299 D1 (5): a check that is the
+    compiler's own fallback — source ``plan_acceptance``, kind ``pytest``,
+    spec ``{"selector": "tests"}`` — becomes kind ``project_tests`` with an
+    empty spec instead, so a mission's default acceptance check runs the
+    project's own test command rather than Remedy's; a criterion naming its
+    own test path keeps its ``pytest`` check untouched.
     """
-    from packages.orchestration.dod_compiler import acceptance_line_key, compile_dod
+    from packages.orchestration.dod_compiler import (
+        DEFAULT_TEST_SELECTOR,
+        acceptance_line_key,
+        compile_dod,
+    )
     from packages.orchestration.schemas.models import TASK_PLAN_SCHEMA_V, TaskPlan
 
     if not criteria:
@@ -360,6 +369,10 @@ def compile_contract_criteria(
         body = check.model_dump(mode="json")
         body.update(id=f"{CONTRACT_CHECK_ID_PREFIX}{criterion.id}",
                     acceptance_refs=[ref], blocking=criterion.blocking)
+        if (body["source"] == "plan_acceptance" and body["kind"] == "pytest"
+                and body["spec"] == {"selector": DEFAULT_TEST_SELECTOR}):
+            body["kind"] = "project_tests"
+            body["spec"] = {}
         compiled.append(replace(criterion, check=body))
     return tuple(compiled)
 

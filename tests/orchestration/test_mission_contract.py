@@ -288,6 +288,15 @@ class TestTheCompiledContract:
         assert compiled.check["kind"] == "pytest"
         assert compiled.check["spec"] == {"selector": "tests/test_cli.py::test_help"}
 
+    def test_a_criterion_naming_no_test_path_compiles_to_project_tests(self):
+        """DECISION F299 D1 (5): the compiler's own fallback becomes `project_tests`."""
+        [compiled] = compile_contract_criteria(
+            [_criterion("C001", "the suite passes")])
+
+        assert compiled.check["kind"] == "project_tests"
+        assert compiled.check["spec"] == {}
+        assert compiled.check["source"] == "plan_acceptance"
+
     def test_the_compiled_check_is_a_valid_dod_check_and_survives_a_write(
             self, tmp_path, mission):
         compiled = compile_contract_criteria([_criterion("C001", "it builds")])

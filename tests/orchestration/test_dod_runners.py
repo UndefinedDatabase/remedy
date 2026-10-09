@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -34,9 +35,11 @@ from packages.orchestration.dod_runners import (
     REASON_CWD_OUTSIDE_WORKTREE,
     REASON_EXECUTABLE_NOT_ALLOWED,
     REASON_FLOW_STEP_FAILED,
+    REASON_NO_TEST_COMMAND,
     REASON_NONE,
     REASON_NONZERO_EXIT,
     REASON_RUNTIME_NOT_CONFIGURED,
+    REASON_TEST_COMMAND_INVALID,
     REASON_TIMEOUT,
     REASON_TOOL_UNAVAILABLE,
     REASON_UNKNOWN_FLOW_ACTION,
@@ -51,6 +54,7 @@ from packages.orchestration.dod_runners import (
     runner_for,
 )
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
+from packages.orchestration.project_tests import NO_TEST_COMMAND_MESSAGE
 
 #: A process that exits 0 / non-zero without touching anything.
 EXIT_OK = ["python3", "-c", "print('f061 ok')"]
@@ -60,6 +64,19 @@ EXIT_BAD = ["python3", "-c", "import sys; print('f061 boom'); sys.exit(7)"]
 def check(kind: str, spec: dict, **kw) -> DoDCheck:
     kw.setdefault("source", "compiled")
     return DoDCheck(id=kw.pop("id", "c1"), kind=kind, spec=spec, **kw)
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=str(repo), check=True, capture_output=True, text=True)
+
+
+def _init_repo(repo: Path) -> None:
+    """A committed git repository, as `tests/cli/test_do_sequence_cli.py`'s `repo` fixture builds one."""
+    repo.mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@e.com")
+    _git(repo, "config", "user.name", "T")
+    _git(repo, "config", "commit.gpgsign", "false")
 
 
 @pytest.fixture
@@ -184,6 +201,140 @@ class TestCustomCmdKind:
 
 
 # ---------------------------------------------------------------------------
+# project_tests (F299, DECISION F299 D1) — a project's own test command, run
+# in its own environment, never Remedy's.
+# ---------------------------------------------------------------------------
+
+def project_tests_check(**kw) -> DoDCheck:
+    return check("project_tests", {}, **kw)
+
+
+class TestProjectTestsKind:
+    def test_a_project_with_no_command_is_red_with_no_test_command(
+            self, tmp_path: Path):
+        ev = run_check(project_tests_check(), tmp_path)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_NO_TEST_COMMAND
+        assert ev.exit_code is None
+        assert ev.argv == ()
+        assert ev.output_tail == NO_TEST_COMMAND_MESSAGE
+
+    def test_a_configured_command_outside_the_allowlist_is_refused_unrun(
+            self, tmp_path: Path, monkeypatch):
+        conf = tmp_path / ".remedy"
+        conf.mkdir()
+        (conf / "config.toml").write_text('[tests]\ncommand = ["curl", "x"]\n')
+
+        def _never(*args, **kwargs):
+            raise AssertionError("project_tests must not spawn a refused command")
+
+        from packages.orchestration import dod_runners
+        monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _never)
+
+        ev = run_check(project_tests_check(), tmp_path)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_EXECUTABLE_NOT_ALLOWED
+        assert ev.exit_code is None
+        assert ev.argv == ("curl", "x")
+
+    def test_a_broken_tests_table_is_test_command_invalid(self, tmp_path: Path):
+        conf = tmp_path / ".remedy"
+        conf.mkdir()
+        (conf / "config.toml").write_text('[tests]\ncommand = "pytest"\n')
+
+        ev = run_check(project_tests_check(), tmp_path)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_TEST_COMMAND_INVALID
+        assert ev.exit_code is None
+        assert ev.argv == ()
+        assert ".remedy/config.toml" in ev.output_tail
+
+    def test_a_tests_folder_project_with_no_virtualenv_builds_the_pytest_argv(
+            self, worktree: Path, monkeypatch):
+        """D1 (5): the same argv the `pytest` kind itself would build."""
+        import subprocess as sp
+
+        from packages.orchestration import dod_runners
+
+        seen: dict = {}
+
+        def _capture(cmd, *, timeout_sec, cwd, env_overlay=None):
+            seen.update(cmd=list(cmd), env_overlay=env_overlay)
+            return sp.CompletedProcess(list(cmd), 0, b"", b"")
+
+        monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _capture)
+        ev = run_check(project_tests_check(), worktree)
+
+        expected = build_argv(check("pytest", {"selector": "tests"}))
+        assert seen["cmd"] == expected
+        assert ev.status == STATUS_PASSED
+
+    def test_the_python_target_runs_for_real_in_its_own_venv_and_pytest_alone_fails(
+            self, tmp_path: Path):
+        """The red control: Remedy's own `pytest` check lacks the dependency."""
+        import venv as venv_mod
+
+        import pytest as pytest_pkg
+
+        repo = tmp_path / "py-target"
+        _init_repo(repo)
+        (repo / ".gitignore").write_text(".venv/\n")
+        (repo / "tests").mkdir()
+        (repo / "tests" / "test_dep.py").write_text(
+            "import only_in_project_venv\n\n\n"
+            "def test_dep():\n    assert only_in_project_venv.VALUE == 42\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+
+        venv_mod.EnvBuilder(with_pip=False, symlinks=True).create(repo / ".venv")
+        [site] = list((repo / ".venv" / "lib").glob("python3*/site-packages"))
+        (site / "only_in_project_venv.py").write_text("VALUE = 42\n")
+        (site / "remedy-pytest.pth").write_text(
+            str(Path(pytest_pkg.__file__).parent.parent) + "\n")
+
+        worktree = repo / ".remedy-wt" / "wt"
+        worktree.parent.mkdir(parents=True)
+        _git(repo, "worktree", "add", str(worktree), "-b", "wt-branch")
+
+        ev = run_check(project_tests_check(), worktree, timeout_sec=60)
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert ev.argv[0] == str(repo / ".venv" / "bin" / "python")
+
+        red = run_check(check("pytest", {"selector": "tests"}), worktree, timeout_sec=60)
+        assert red.status == STATUS_FAILED
+        assert "No module named" in red.output_tail
+
+    def test_the_node_target_runs_for_real_with_npm_test(self, tmp_path: Path):
+        repo = tmp_path / "node-target"
+        _init_repo(repo)
+        (repo / "package.json").write_text(json.dumps(
+            {"name": "node-target", "version": "0.1.0", "private": True,
+             "scripts": {"test": "node --test"}}) + "\n")
+        (repo / "test").mkdir()
+        (repo / "test" / "sum.test.js").write_text(
+            "const test = require('node:test');\n"
+            "const assert = require('node:assert');\n\n"
+            "test('sum', () => { assert.strictEqual(1 + 1, 2); });\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+
+        worktree = repo / ".remedy-wt" / "wt"
+        worktree.parent.mkdir(parents=True)
+        _git(repo, "worktree", "add", str(worktree), "-b", "wt-branch")
+
+        ev = run_check(project_tests_check(), worktree, timeout_sec=60)
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert ev.argv == ("npm", "test")
+
+        (worktree / "package.json").write_text(json.dumps(
+            {"name": "node-target", "version": "0.1.0", "private": True,
+             "scripts": {"test": "node -e \"process.exit(1)\""}}) + "\n")
+        red = run_check(project_tests_check(), worktree, timeout_sec=60)
+        assert red.status == STATUS_FAILED
+        assert red.reason == REASON_NONZERO_EXIT
+
+
+# ---------------------------------------------------------------------------
 # Never a silent pass
 # ---------------------------------------------------------------------------
 
@@ -269,11 +420,11 @@ def unsupported_check(kind: str = "telepathy") -> DoDCheck:
 
 class TestUnsupportedKindFailsLoud:
     def test_registry_covers_exactly_the_schema_kinds(self):
-        # F062 added `product_smoke`; the invariant is unchanged — every kind
+        # F299 added `project_tests`; the invariant is unchanged — every kind
         # the schema accepts has a runner, and only those.
         assert set(RUNNER_REGISTRY) == {
             "pytest", "lint", "build", "custom_cmd", "runtime_flow",
-            "product_smoke"}
+            "product_smoke", "project_tests"}
         assert set(ARGV_BUILDERS) == {"pytest", "lint", "build", "custom_cmd"}
 
     def test_runner_for_raises_on_a_kind_with_no_runner(self):
@@ -609,8 +760,9 @@ class TestTheDodProcessSeam:
 
         seen: dict = {}
 
-        def _capture(cmd, *, timeout_sec, cwd):
-            seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+        def _capture(cmd, *, timeout_sec, cwd, env_overlay=None):
+            seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd,
+                       env_overlay=env_overlay)
             return sp.CompletedProcess(list(cmd), 0, b"seam stdout", b"")
 
         monkeypatch.setattr(
@@ -621,6 +773,7 @@ class TestTheDodProcessSeam:
         assert seen["cmd"] == EXIT_OK
         assert seen["timeout_sec"] == 7
         assert seen["cwd"] == str(worktree.resolve())
+        assert seen["env_overlay"] is None
         assert ev.status == STATUS_PASSED
         assert "seam stdout" in ev.output_tail
 
