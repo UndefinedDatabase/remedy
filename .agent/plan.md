@@ -5,16 +5,17 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result, submits orders and starts and follows runs, with a token whose policy the
 operator writes and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its
-amendments, and DECISIONs F253 D1 to D23, which fix the order and the shape).
+amendments, and DECISIONs F253 D1 to D24, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 26, the hardening stage's third and last repair round (DECISION F253 D23): book
-round 25's verdict, resolve R-1210 and R-1207, register R-1216; a run's or an order's answer that
-would read `lost` waits up to two seconds for its end to be written, and reads `ended` once it is.
+Session 6, round 27, the hardening stage's third and last repair round (DECISION F253 D24): book
+round 26's verdict, resolve R-1216, save the repeated audit and register its gaps R-1217 and
+R-1218; a test compares the apply route's success answer with `remedy job apply --json`'s, and
+the no-TLS test reads every module of the API's path.
 
 ## Next Steps
-1. The acceptance audit repeated for the six statements that had gaps; a gap it finds keeps a
-   finding with an owner, and the feature then closes PASS_WITH_RISKS naming it.
+1. The acceptance audit repeated for statements 18 and 23; a gap it finds keeps a finding owned by
+   the next findings-paydown feature, and the feature then closes PASS_WITH_RISKS naming it.
 2. The closure sequence, which also settles the reserved namespace `apps/api`, whose docstring
    still says no HTTP API exists.
 
@@ -38,5 +39,5 @@ would read `lost` waits up to two seconds for its end to be written, and reads `
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1216 (Medium) is open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
-  R-1158, R-1162, R-1172, R-1176, R-1196 (Low) and R-1160 (Medium) by F297.
+- R-1217 and R-1218 (Low) are open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156,
+  R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) and R-1160 (Medium) by F297.
