@@ -1,0 +1,14 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 367.6s (measured wrapper); pytest's own reported wall time 366.78s (0:06:06)
+summary line: 22289 passed, 22 skipped, 1 warning in 366.78s (0:06:06)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: fb23d424e (F300 R4 C3: the closure's self-use item run to its approval gate, never applied)
+reflog before: fb23d424e HEAD@{2026-10-09 23:25:07 +0200}: commit: F300 R4 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: fb23d424e HEAD@{2026-10-09 23:25:07 +0200}: commit: F300 R4 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F300 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1264.11 CPU seconds, 366.80 wall seconds, 22311 tests collected, exit status 0, recorded 2026-10-09T21:31:22Z
+This closure's suite used 1264.11 CPU seconds, 8.4 percent more than F299's 1166.53, within the 10 percent limit.

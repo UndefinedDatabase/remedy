@@ -1,0 +1,5 @@
+Entry ID: SU-052
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:1309
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as exc:  # noqa: BLE001 — builder construction failure is reported, not a crash)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f300-r4-selfuse/SU-052.md

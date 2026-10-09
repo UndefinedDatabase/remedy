@@ -101,6 +101,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy runtime serve` | 3, 4, 5 |
 | `remedy runtime probe` | 3, 4, 5 |
 | `remedy runtime stop` | 5 |
+| `remedy integrity structure` | 4 |
 
 No existing exit-code site is renumbered by this taxonomy: a code is a
 contract with every script that already reads it, so an older site that

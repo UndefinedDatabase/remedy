@@ -522,3 +522,47 @@ class TestR1050AFailedResumedEventStillCompletesTheRun:
         assert resumed.metadata.get("pause_event_error", "").startswith(
             "job_resumed_event_failed:")
         assert len(_events(isolate_data_root, job.job_id, "job_resumed")) == 0
+
+
+class TestR1160APauseWhileATaskIsApplied:
+    """R-1160: the safe point after a task is applied reads a pause as every other one does."""
+
+    def _pause_during_the_first_lesson(self, monkeypatch, job, corrupt=False):
+        real_teach = pj._teach_task_lesson
+        calls = {"n": 0}
+
+        def teach_then_pause(job_arg, task):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                pc.request_pause(job.job_id, "pause while task 1 applies", "cli")
+                if corrupt:
+                    (job_control_dir(job.job_id) / pc.PAUSE_REQUEST_FILENAME).write_bytes(b"{not json")
+            return real_teach(job_arg, task)
+
+        monkeypatch.setattr(pj, "_teach_task_lesson", teach_then_pause)
+
+    def test_a_pause_after_the_apply_parks_the_job(self, isolate_data_root, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        self._pause_during_the_first_lesson(monkeypatch, job)
+        builder = _pass_provider()
+
+        parked = run_job(job.job_id, builder_provider=builder,
+                         reviewer_provider=_pass_provider(), repair_rounds=0)
+
+        assert parked.state == JOB_PAUSED and not parked.error
+        assert parked.pause.get("scope") == "job"
+        assert [t.status for t in parked.tasks] == [TASK_APPLIED, TASK_PENDING]
+        assert builder.build_calls == 1
+        assert len(_events(isolate_data_root, job.job_id, "job_paused")) == 1
+
+    def test_an_unreadable_pause_after_the_apply_blocks_with_pause_control_error(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        self._pause_during_the_first_lesson(monkeypatch, job, corrupt=True)
+
+        blocked = run_job(job.job_id, builder_provider=_pass_provider(),
+                          reviewer_provider=_pass_provider(), repair_rounds=0)
+
+        assert blocked.state == JOB_BLOCKED
+        assert (blocked.error or "").startswith("pause_control_error:")
+        assert [t.status for t in blocked.tasks] == [TASK_APPLIED, TASK_PENDING]

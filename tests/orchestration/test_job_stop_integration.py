@@ -199,6 +199,28 @@ class TestStopBeforeTheFirstTask:
         assert not reloaded.stop_error and not reloaded.stop_event_error
 
 
+class TestAFailedStopFinalizationInsideATask:
+    """F300 T004: a stop that halts a task and then fails to finalize leaves that task pending."""
+
+    def test_the_halted_task_goes_back_to_pending(self, isolate_data_root, demo_repo, monkeypatch):
+        import packages.orchestration.pingpong_job as PJ
+
+        job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
+        builder = _pass_provider(job_id=job.job_id, stop_on_build=1)
+
+        def _failing_stop(*args, **kwargs):
+            raise PJ.StopFinalizationError("simulated finalization failure")
+
+        monkeypatch.setattr(PJ, "_stop_job", _failing_stop)
+        returned = run_job(job.job_id, builder_provider=builder,
+                           reviewer_provider=_pass_provider(), repair_rounds=0)
+
+        assert builder.build_calls == 1
+        assert returned.state != JOB_STOPPED
+        assert returned.tasks[0].status == TASK_PENDING
+        assert load_job_plan(job.job_id).tasks[0].status == TASK_PENDING
+
+
 class TestStopDuringAProviderCall:
     def test_a_stop_during_the_builder_call_lets_that_call_finish_and_starts_no_reviewer(
             self, isolate_data_root, demo_repo):

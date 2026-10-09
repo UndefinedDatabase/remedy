@@ -275,6 +275,7 @@ packages.orchestration.steering
 packages.orchestration.stop_reasons
 packages.orchestration.story_export
 packages.orchestration.stream_evidence
+packages.orchestration.structure_measure
 packages.orchestration.structured_base
 packages.orchestration.structured_outputs
 packages.orchestration.structured_patch

@@ -230,7 +230,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — The process as the product: the structure ledger and its ratchet (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F300 — Structure ledger and size ratchet: what is large may only shrink, and nothing new grows large
+- [x] F300 — Structure ledger and size ratchet: what is large may only shrink, and nothing new grows large (T001–T004 complete, R-1160 and R-1232 resolved; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225 and R-1230 open — owned by F297; accepted 2026-10-09 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f300r5e1001 · package remedy-review-20261009-234617-READY_FOR_REVIEW.zip · SHA-256 9fa8f77003f4fb19f4793907ec4cacedc0f8fe7fce93d96a005f21877f6dff5a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c5ebe4d340f198c5bd48f9f6964812c8867fdaf7)
 
 ## Tier 7 — The process as the product: upkeep inside every mission (operator amendment amend1007b-luna-api-upkeep)
 

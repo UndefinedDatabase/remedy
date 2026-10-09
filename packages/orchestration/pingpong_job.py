@@ -3396,6 +3396,34 @@ def run_job(
             **_money,
         }
 
+    def _settle_safe_point(signal, *, task=None, capture_snapshot=False,
+                           persist_before_stop=False) -> JobPlan:
+        """F300 T004: what every safe point does with the signal it read, in one place.
+
+        A pause parks the job, and a pause that could not be read blocks it; an operator,
+        budget or veto stop ends it through `_stop_job`. *task* is the in-flight task the
+        in-task point halted, None elsewhere; *capture_snapshot* and *persist_before_stop*
+        keep the pre-work and pre-task points' own steps before a stop.
+        """
+        if isinstance(signal, _PauseSignal):
+            if signal.is_error:
+                return _block_for_pause_error(signal)
+            _persist_budget_actuals()
+            return _park_job(job, signal, task=task, control_root_path=_control)
+        if capture_snapshot and not _episode_snapshot_bound_ok(job):
+            _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+        _persist_budget_actuals()
+        if persist_before_stop:
+            _persist_job(job)
+        try:
+            return _stop_job(job, signal, task=task, control_root_path=_control)
+        except StopFinalizationError:
+            if task is not None:
+                # The task is already back to pending; the request stays pending too.
+                task.status = TASK_PENDING
+                _persist_job(job)
+            return job
+
     # F018: allocate episode BEFORE computing budget identity so the stop
     # request_id is stable across finalization failures.
     if not job.active_episode_id:
@@ -3409,19 +3437,7 @@ def run_job(
         # it (S3). `isinstance` tells the two apart directly; only the IN-TASK safe
         # point, whose result crosses `pingpong_loop`'s string-only interface, needs
         # the `_PAUSE_REASON_PREFIX` marker instead (see `_pause_park_signal`).
-        if isinstance(_pre_stop, _PauseSignal):
-            if _pre_stop.is_error:
-                return _block_for_pause_error(_pre_stop)
-            _persist_budget_actuals()
-            return _park_job(job, _pre_stop, task=None, control_root_path=_control)
-        if not _episode_snapshot_bound_ok(job):
-            _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
-        _persist_budget_actuals()
-        _persist_job(job)
-        try:
-            return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
-        except StopFinalizationError:
-            return job
+        return _settle_safe_point(_pre_stop, capture_snapshot=True, persist_before_stop=True)
 
     # F025 S5: THE RELAUNCH IS THE RESUME. Beside the pre-work stop check above
     # (which already re-parks a job-scope pause whose settle previously failed, or
@@ -3651,17 +3667,7 @@ def run_job(
             if _stop is not None:
                 # F025 S2 PRE-TASK reading: `task` about to be dispatched is
                 # withheld — park with scope `task`, never dispatch it.
-                if isinstance(_stop, _PauseSignal):
-                    if _stop.is_error:
-                        return _block_for_pause_error(_stop)
-                    _persist_budget_actuals()
-                    return _park_job(job, _stop, task=None, control_root_path=_control)
-                _persist_budget_actuals()
-                _persist_job(job)
-                try:
-                    return _stop_job(job, _stop, task=None, control_root_path=_control)
-                except StopFinalizationError:
-                    return job
+                return _settle_safe_point(_stop, persist_before_stop=True)
 
             # F027 D2 (1): the fold runs again at every pre-task safe point, right after
             # the stop and the pause both found nothing — a veto beats neither.
@@ -3908,17 +3914,14 @@ def run_job(
                     return job
                 if _reason_is_pause(_halt_reason) or _reason_is_pause_error(_halt_reason):
                     _fresh = _pause_park_signal(in_flight_task=task)
-                    if _fresh is not None and _fresh.is_error:
-                        return _block_for_pause_error(_fresh)
                     if _fresh is not None:
-                        _persist_budget_actuals()
-                        return _park_job(job, _fresh, task=task, control_root_path=_control)
+                        return _settle_safe_point(_fresh, task=task)
                     # F116 D5 (3): a pause request that FAILED to be written leaves
                     # nothing on disk to re-read, so the halt's own error reason is
                     # what blocks the job — it must never fall through to a stop.
                     if _reason_is_pause_error(_halt_reason):
-                        return _block_for_pause_error(_PauseSignal(
-                            job_id=job.job_id, reason=_halt_reason, is_error=True))
+                        return _settle_safe_point(_PauseSignal(
+                            job_id=job.job_id, reason=_halt_reason, is_error=True), task=task)
                     # The pause was lifted or released between the in-task halt and
                     # now: nothing left to park for. Fall through and record the
                     # halted round as an ordinary stop rather than silently
@@ -3937,14 +3940,7 @@ def run_job(
                     source=result.stop_source or "unknown",
                     requested_at=result.stop_requested_at,
                 )
-                _persist_budget_actuals()
-                try:
-                    return _stop_job(job, signal, task=task, control_root_path=_control)
-                except StopFinalizationError:
-                    # The task is already back to pending; the request stays pending too.
-                    task.status = TASK_PENDING
-                    _persist_job(job)
-                    return job
+                return _settle_safe_point(signal, task=task)
 
             # Step 4857: Deterministic task completion gate
             gate_ok, gate_reasons = validate_job_task_result(result)
@@ -4071,19 +4067,10 @@ def run_job(
 
             # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed
             # now takes effect before the NEXT task is dispatched.
+            # R-1160: a pause read here parks the job as at every other safe point.
             _stop = _stop_check()
             if _stop is not None:
-                _persist_budget_actuals()
-                if isinstance(_stop, _StopSignal):
-                    try:
-                        return _stop_job(job, _stop, task=None, control_root_path=_control)
-                    except StopFinalizationError:
-                        return job          # no further task is dispatched
-                else:
-                    job.state = JOB_BLOCKED
-                    job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
-                    _persist_job(job)
-                    return job
+                return _settle_safe_point(_stop)    # no further task is dispatched
 
             # F028 D2 (3): the injection fold's third point — the last statement of the
             # loop body — so a task confirmed while an earlier one ran is folded before the
