@@ -5,19 +5,19 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result, submits orders and starts and follows runs, with a token whose policy the
 operator writes and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its
-amendments, and DECISIONs F253 D1 to D24, which fix the order and the shape).
+amendments, and DECISIONs F253 D1 to D25, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 27, the hardening stage's third and last repair round (DECISION F253 D24): book
-round 26's verdict, resolve R-1216, save the repeated audit and register its gaps R-1217 and
-R-1218; a test compares the apply route's success answer with `remedy job apply --json`'s, and
-the no-TLS test reads every module of the API's path.
+Session 6, round 28, the first round of the closure sequence (DECISION F253 D25): book round 27's
+verdict, resolve R-1217 and R-1218, save the second repeated audit and register its gaps R-1219 and
+R-1220 for F297; delete the reserved namespace `apps/api`; write the feature file's Built State.
 
 ## Next Steps
-1. The acceptance audit repeated for statements 18 and 23; a gap it finds keeps a finding owned by
-   the next findings-paydown feature, and the feature then closes PASS_WITH_RISKS naming it.
-2. The closure sequence, which also settles the reserved namespace `apps/api`, whose docstring
-   still says no HTTP API exists.
+1. The closure's self-use item, run to its approval gate and never applied.
+2. The closure's one full suite and its CPU cost.
+3. The checklist's consolidation pass.
+4. The evidence bundle, the reclaim of staging copies and the review package.
+5. The ledger rotation, the owner lines, the STATUS line, the README and the pull request.
 
 ## Risks
 - The installed `remedy` command on this machine runs the code of a stale job worktree (Q13);
@@ -39,5 +39,5 @@ the no-TLS test reads every module of the API's path.
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1217 and R-1218 (Low) are open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156,
-  R-1157, R-1158, R-1162, R-1172, R-1176, R-1196 (Low) and R-1160 (Medium) by F297.
+- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
+  R-1219, R-1220 (Low) and R-1160 (Medium) are open, all owned by F297.
