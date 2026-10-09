@@ -8,36 +8,21 @@ operator writes and a ledger entry for every call (docs/roadmap/features/T12_F25
 amendments, and DECISIONs F253 D1 to D33, which fix the order and the shape).
 
 ## Current Step
-Round 37, on `feature/f253-public-http-api-v2`: the copy of the branch with the five subjects of
-R-1226 reworded (DECISIONs F253 D32 and D33); the closure's one full suite taken again on the
-copy, then the evidence job and the review package from the copy's accepted head.
+Round 38, the closing round on `feature/f253-public-http-api-v2`: book round 37 and R-1226's
+resolution, rotate the ledger, accept F253 in STATUS with the README and the self-use queue, and
+open the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: book round 37, resolve R-1226 once the package reads ready, rotate the
-   ledger, the open findings stay with F297, the self-use entry's `consumed_by`, the STATUS line
-   with the README, and the pull request from the copy, left unmerged.
+1. The next session's Open PR Gate merges F253's pull request after reading its hosted checks;
+   round 38's verdict is booked in the next feature's first commit.
+2. Rule A5: the next unchecked line, F299 — Acceptance checks on a repository that is not
+   Remedy's own.
 
 ## Risks
-- The installed `remedy` command on this machine may run the code of a stale job worktree until
-  the operator reinstalls it (DECISION F253 D29); every test and gate of this loop runs from the
-  checkout and is not affected.
-- Client tokens live as plain text in `api/clients.json`, readable by its owner only, as the
-  supervisor's own token does in `serve.token`; no command writes them yet (DECISION F253 D16).
-- The cockpit's own routes take the token in the query and answer errors in another shape, and
-  its server answers no write under `/api/v1`; they stay so until F303 moves the cockpit.
-- A write runs its command as a child process, so each costs an interpreter start; one command
-  runs per job at a time, and two supervisors on one data root are refused by the socket.
-- An order or a run whose supervisor stops before it ends never gets its end written: once its
-  process is gone it reads `lost`, with no exit code, after a wait of up to two seconds.
+- Client tokens live as plain text in a file under the data root, readable by its owner only;
+  no command writes them yet (DECISION F253 D16).
+- The cockpit's own routes take the token in the query and answer errors in another shape; they
+  stay so until F303 moves the cockpit.
 - Nothing limits how many orders run at once (DECISION F253 D15).
-- Two orders with one key sent close together may both start, as two `remedy do` of one file
-  may; the key's file holds the text of the last order sent with it (DECISION F253 D22).
-- An apply with a push runs inside the 120-second ceiling of a write; a slow remote or a slow
-  hook answers 500 `api_command_failed` while the apply may still have landed.
-- What changed is read from file modification times; a clock set back on the server hides a
-  change until the overlap covers it (DECISION F253 D4).
-- A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
-  the vocabulary of doors has no `api` yet (DECISION F253 D11).
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297; R-1226 (Medium)
-  is owned by F253 and is repaired by this round's copy.
+  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297.
