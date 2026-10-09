@@ -7,17 +7,16 @@ tests is told so instead of being judged red (docs/roadmap/features/T7_F299.md, 
 F299 D1 and D2, which fix the order and the shape).
 
 ## Current Step
-Round 4 on `feature/f299-acceptance-checks-other-repos`: book round 3 (FAIL) with R-1227's
-resolution and findings R-1228 and R-1229; repair both; land T004: four scratch projects driven
-through `remedy do` to the push as tests, and the page `docs/system/acceptance-checks-v1.md` with
-its two index rows.
+Round 5 on `feature/f299-acceptance-checks-other-repos`, the closure's first round: book round 4
+(PASS) with the resolutions of R-1228 and R-1229; write the feature file's Built State; run the
+closure's self-use item to its approval gate, never applied, and record it under
+`.agent/selfuse_f299/`.
 
 ## Next Steps
-1. The closure's first round: the feature file's Built State, naming the module this feature
-   added to the reachability list, and the self-use item run to its approval gate.
-2. The integration gate: the full suite once, its cost, and the checklist's consolidation pass.
-3. The evidence job and the review package.
-4. The closing round: the ledger's rotation, the STATUS line, the README and the pull request.
+1. The integration gate: the full suite once, its cost, the self-use run's defects registered,
+   and the checklist's consolidation pass.
+2. The evidence job and the review package.
+3. The closing round: the ledger's rotation, the STATUS line, the README and the pull request.
 
 ## Risks
 - A job's worktree holds no `.venv` and no `node_modules`; the check finds them in the
@@ -26,6 +25,5 @@ its two index rows.
 - A project whose tests are not in a `tests` folder and that has no `test` script reads
   `unchecked` until it names its command.
 - A blocking `project_tests` check that finds no command holds no job (DECISION F299 D2 (3)).
-- R-1228 and R-1229 (Low, owned by F299) are open until this round's repair is reviewed; R-1138,
-  R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220,
-  R-1225 (Low) and R-1160 (Medium) are open, all owned by F297.
+- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
+  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297.
