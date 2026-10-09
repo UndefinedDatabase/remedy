@@ -1,0 +1,16 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 436.45s (measured wrapper); pytest's own reported wall time 435.70s (0:07:15)
+summary line: 2 failed, 22201 passed, 22 skipped, 1 warning in 435.70s (0:07:15)
+bad node ids (failed + errors):
+  - tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
+  - tests/cli/test_job_refusal_envelope.py::TestLookupJobIdIsPinnedToItsTwoHandlers::test_the_call_sites_match_the_measured_dict
+leftover processes: NONE
+tree it ran on: 40a2b642b (F253 R32 C1: book round 31, resolve R-1222, the plan, save the block)
+reflog before: 40a2b642b HEAD@{2026-10-09 04:20:00 +0200}: commit: F253 R32 C1: book round 31, resolve R-1222, the plan, save the block
+reflog after: 40a2b642b HEAD@{2026-10-09 04:20:00 +0200}: commit: F253 R32 C1: book round 31, resolve R-1222, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F253 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1211.20 CPU seconds, 435.71 wall seconds, 22225 tests collected, exit status 1, recorded 2026-10-09T02:27:24Z
+This closure's suite used 1211.20 CPU seconds, 7.5 percent more than F304's 1126.33, within the 10 percent limit.
