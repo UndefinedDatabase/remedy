@@ -606,6 +606,27 @@ while a feature is open. A lesson learned mid-feature goes into
 the single consolidation pass in the closure sequence, which may not lengthen
 the list. Reverse by deleting this paragraph.
 
+## The structure rule (F300, DECISION F300 D2)
+Remedy's large functions and files are written down, with their sizes, in
+`docs/system/structure-ledger-v1.md`, and `tests/test_structure_ratchet.py` lets each size fall and
+never rise. This section is the one place the rule that pays them down is written.
+1. THE CADENCE IS FIVE. The rolling findings paydown, which comes after every fifth accepted
+   feature (amend0911-feedback rule B), begins by running `remedy integrity structure` and asking
+   whether the ledger still describes what Remedy has become, and it closes with one structural
+   step taken from the ledger, at the top of the ledger unless a feature waiting on a debt makes
+   another one more urgent.
+2. A FEATURE THAT TOUCHES A LISTED FUNCTION OR FILE draws the boundary the ledger names for it
+   first, in a commit of its own, before its own change; when the ledger names no boundary for it,
+   that commit writes one into the page first.
+3. A FEATURE THAT REPLACES A STRUCTURE deletes what it replaces before it closes. When a deletion
+   must wait, the feature's closure registers it as the first step of the next paydown.
+4. A STRUCTURAL STEP changes no behaviour and keeps every import path working; its proof is the
+   unchanged tests staying green, and it lowers the rows and the pins of the ratchet it shrinks in
+   the same commit.
+5. A NEW DEBT never enters by itself: the ratchet fails on it. A row is added only by a DECISION
+   that says why the function or file cannot be cut, in the same commit as its row, its boundary
+   and its steps, and that commit raises the ratchet's pins by exactly that row.
+
 ## What stays with the operator
 The review zip (`scripts/make_review_zip.sh`) remains the operator's
 remote window into a run, on demand and at closure. Nothing in this
