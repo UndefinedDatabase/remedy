@@ -8,9 +8,9 @@ operator writes and a ledger entry for every call (docs/roadmap/features/T12_F25
 amendments, and DECISIONs F253 D1 to D26, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 30, the closure's self-use item (closure precondition 6): book round 29's verdict
-and resolve R-1221; generate the next self-use item into the queue and run it to its approval
-gate through the `self_use` role's configured provider, never applying it.
+Session 6, round 31, the repair of round 30: book round 30's FAIL, with its self-use run, and
+register R-1222; a fixed, well-formed UUID string replaces the `uuid4()` drawn inside a
+parametrize list of `tests/ui_server/test_public_api.py`.
 
 ## Next Steps
 1. The closure's one full suite and its CPU cost.
@@ -38,5 +38,5 @@ gate through the `self_use` role's configured provider, never applying it.
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220 (Low) and R-1160 (Medium) are open, all owned by F297.
+- R-1222 (Low) is open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
+  R-1162, R-1172, R-1176, R-1196, R-1219, R-1220 (Low) and R-1160 (Medium) by F297.
