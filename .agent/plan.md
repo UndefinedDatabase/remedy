@@ -8,21 +8,19 @@ feature, and the first step, `run_job`'s safe points in one function
 (docs/roadmap/features/T2_F300.md; DECISIONs F300 D1 and D2).
 
 ## Current Step
-Round 2 on `feature/f300-structure-ledger-size-ratchet`: book round 1 and register R-1232, repair
-R-1232 with the tests it names, and land T002 and T003: the ledger page
-`docs/system/structure-ledger-v1.md`, the ratchet `tests/test_structure_ratchet.py`, and the
-section "The structure rule" of `docs/agents/self_drive_protocol.md`.
+Round 3 on `feature/f300-structure-ledger-size-ratchet`: book round 2 and resolve R-1232, then
+T004 — R-1160's repair with its red-proof in a commit of its own, then `run_job`'s safe points
+drawn into one function, `_settle_safe_point`, each commit lowering the ledger's rows and pins it
+shrinks.
 
 ## Next Steps
-1. T004: R-1160's repair with its red-proof in its own commit, then `run_job`'s safe points drawn
-   into one function, its row and the ratchet's pins lowered in the same commit.
-2. Closure: the one full suite, the self-use item, the evidence package, the STATUS line.
+1. Closure: the Built State, the checklist consolidation and the self-use item, then the one full
+   suite, the evidence package, and the STATUS line with the pull request.
 
 ## Risks
-- The ratchet holds every round from here on: a round that grows a listed function or adds one
-  above 100 lines is red until it is cut back.
-- A structural step changes no behaviour and no test's expectation; R-1160's repair is the one
-  behaviour change and lands alone, before it.
-- R-1160 (Medium) and R-1232 (Low) are owned by F300; R-1138, R-1139, R-1143, R-1149, R-1156,
-  R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225 and R-1230 (Low) are
-  owned by F297.
+- The structural step changes no behaviour and no test's expectation: only the ratchet's pins
+  change under `tests/` in its commit.
+- The ratchet holds every round: a commit that lengthens a listed function is red until it is cut
+  back, so R-1160's repair is written without lengthening `run_job`.
+- R-1160 (Medium) is owned by F300; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
+  R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225 and R-1230 (Low) are owned by F297.
