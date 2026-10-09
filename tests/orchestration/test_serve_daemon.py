@@ -722,25 +722,32 @@ def test_a_client_token_on_the_port_reads_a_route_and_is_refused_a_write_outside
 
 
 def test_the_supervisors_listener_source_imports_no_ssl_and_binds_127_0_0_1_only():
-    """R-1214: no TLS and no remote bind (the feature file's binding); read from the source."""
+    """R-1214, R-1218: no TLS and no remote bind (the feature file's binding); read from the
+    source. No module of the API's path imports `ssl`, wherever in the module the import stands;
+    the listener is the one in `serve_daemon.py`."""
     import ast
 
-    source = (REPO / "packages" / "orchestration" / "serve_daemon.py").read_text(encoding="utf-8")
-    tree = ast.parse(source)
+    api_path = ("serve_daemon.py", "public_api.py", "ui_server.py", "serve_runs.py",
+                "serve_paths.py", "api_clients.py")
     imported: list[str] = []
     listeners: list[ast.Call] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported += [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom):
-            imported.append(node.module or "")
-        elif isinstance(node, ast.Call):
-            func = node.func
-            name = func.id if isinstance(func, ast.Name) else (
-                func.attr if isinstance(func, ast.Attribute) else "")
-            if name == "ThreadingHTTPServer":
-                listeners.append(node)
-    assert not [m for m in imported if m == "ssl" or m.startswith("ssl.")]
+    for filename in api_path:
+        module = REPO / "packages" / "orchestration" / filename
+        assert module.is_file(), f"{filename} is not where the API's path puts it"
+        tree = ast.parse(module.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported += [f"{filename}: {alias.name}" for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                imported.append(f"{filename}: {node.module or ''}")
+            elif isinstance(node, ast.Call) and filename == "serve_daemon.py":
+                func = node.func
+                name = func.id if isinstance(func, ast.Name) else (
+                    func.attr if isinstance(func, ast.Attribute) else "")
+                if name == "ThreadingHTTPServer":
+                    listeners.append(node)
+    assert not [m for m in imported
+                if m.split(": ", 1)[1] == "ssl" or m.split(": ", 1)[1].startswith("ssl.")]
     assert listeners, "no call of ThreadingHTTPServer found in serve_daemon.py"
     for call in listeners:
         address = call.args[0] if call.args else None
@@ -804,6 +811,47 @@ def test_an_apply_post_lands_one_commit_in_the_jobs_own_repository(
                             capture_output=True, text=True).stdout.strip()
     assert (body["ok"], body["status"], body["job_id"]) == (True, "applied", job_id)
     assert body["commit_sha"] == head and parent == before
+
+
+def test_an_apply_post_answers_what_the_apply_command_prints(
+        root, running_with_api, tmp_path, monkeypatch):
+    """R-1217: the success answer of the route equals `remedy job apply --json`'s envelope for a
+    second job made alike in a repository of its own, but for the keys that name the job, its
+    commit, an apply record's id or a time."""
+    from tests.cli.test_machine_client_contract import _GIT_IDENTITY
+
+    for name, value in _GIT_IDENTITY.items():
+        monkeypatch.setenv(name, value)
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    (tmp_path / "posted").mkdir()
+    (tmp_path / "run").mkdir()
+    posted, _posted_repo = _completed_job_in_a_repository(root, tmp_path / "posted")
+    run, run_repo = _completed_job_in_a_repository(root, tmp_path / "run")
+
+    status, body = _post_apply(running_with_api.state.api_port, token, posted,
+                               {"commit_auto": True})
+    assert status == 200, body
+    command = _apply_command_envelope(root, run, run_repo, "--commit-auto")
+    assert body["ok"] is True and command["ok"] is True, (body, command)
+    assert set(body) == set(command), sorted(set(body) ^ set(command))
+    aside = (
+        "commit_sha",       # its commit: the commit each repository's own apply made
+        "finished_at",      # a time
+        "job_apply_id",     # an apply record's id
+        "job_id",           # the job
+        "started_at",       # a time
+        "task_summaries",   # names the job's tasks and runs by id; compared below without them
+    )
+    differing = {k: (body[k], command[k]) for k in body if k not in aside and body[k] != command[k]}
+    assert not differing, "\n".join(f"{k}: {a!r} | {b!r}" for k, (a, b) in differing.items())
+
+    def without_ids(summaries: list[dict]) -> list[dict]:
+        return [{k: v for k, v in item.items() if k not in ("run_id", "task_id")}
+                for item in summaries]
+
+    assert without_ids(body["task_summaries"]) == without_ids(command["task_summaries"])
+    assert (body["job_id"], command["job_id"]) == (posted, run)
+    assert len(body["commit_sha"]) == len(command["commit_sha"]) == 40
 
 
 def _register_project(root: Path, repo: Path) -> str:
