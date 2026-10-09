@@ -483,22 +483,18 @@ def _run_answer(*, job: str) -> dict[str, Any]:
     """The answer `GET /api/v1/jobs/{job}/run` sends: what `remedy client run <job> --json`
     prints (DECISION F253 D20 (3)). Shares `run_record_payload` with the command itself and with
     the run route's own 202 answer, so all three read a run alike. A value that names no one job,
-    or a job with no run record, is refused `run_not_found`."""
+    or a job with no run record, is refused `run_not_found`; `run_record_for_job_value` reads
+    the job's id as the command does (R-1224)."""
     from apps.cli.json_envelope import build_error, build_ok
-    from packages.orchestration.data_paths import JobIdError, lookup_job_id
     from packages.orchestration.serve_paths import serve_paths
     from packages.orchestration.serve_runs import (
-        read_run_record,
         run_not_found_message,
+        run_record_for_job_value,
         run_record_payload,
     )
 
     paths = serve_paths()
-    try:
-        job_id = lookup_job_id(job)
-    except JobIdError:
-        return build_error("run_not_found", run_not_found_message(job))
-    record = read_run_record(paths, job_id)
+    record = run_record_for_job_value(paths, job)
     if record is None:
         return build_error("run_not_found", run_not_found_message(job))
     return build_ok(**run_record_payload(paths, record))

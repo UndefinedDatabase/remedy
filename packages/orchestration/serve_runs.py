@@ -43,6 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from packages.common.secure_fs import durable_write_json
 from packages.orchestration.serve_paths import ORDER_KEYS_NAME, ServePaths
 
 #: The environment variable `apps/cli/serve_client.py` reads: a run the supervisor
@@ -99,16 +100,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# WHY: `RunLauncher` and `OrderLauncher` both write their record twice — on start, and
-# again from the thread that waits for the child — and both need the second write to
-# never leave a torn file behind a crash; shared here instead of copied (DECISION
-# F253 D13 (2)).
-def _atomic_write_json(target: Path, payload: dict) -> None:
-    scratch = target.with_suffix(".json.tmp")
-    scratch.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(scratch, target)
-
-
 # WHY: `CommandRunner.run` and `order_answer` both read a child's standard output for
 # its last envelope line; shared here instead of copied (DECISION F253 D13 (3)).
 def _last_envelope(text: str) -> dict[str, Any] | None:
@@ -130,6 +121,22 @@ def read_run_record(paths: ServePaths, job_id: str) -> RunRecord | None:
         return RunRecord(**data)
     except (OSError, ValueError, TypeError):
         return None
+
+
+def run_record_for_job_value(paths: ServePaths, job: str) -> RunRecord | None:
+    """The record of the last run of the one job JOB names, by full id or prefix, or None when
+    JOB names no one job or that job has no readable run record (R-1224).
+
+    Shared by `remedy client run` and `GET /api/v1/jobs/{job}/run`, which both refuse a None
+    with `run_not_found`, so the command line reads a job's id in one place.
+    """
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdError:
+        return None
+    return read_run_record(paths, job_id)
 
 
 #: How often an adopted run's watcher checks whether its process has ended.
@@ -201,7 +208,9 @@ class RunLauncher:
         self._adopted: set[str] = set()
 
     def _write(self, record: RunRecord) -> None:
-        _atomic_write_json(self._paths.runs_dir / f"{record.job_id}.json", record.to_json())
+        # A record is written twice, on start and from the thread that waits for the child;
+        # `durable_write_json` never leaves a torn file behind a crash (R-1223).
+        durable_write_json(self._paths.runs_dir / f"{record.job_id}.json", record.to_json())
 
     def running(self, job_id: str) -> bool:
         """True while a run this launcher started or adopted for JOB_ID has not ended."""
@@ -602,8 +611,9 @@ class OrderLauncher:
         self._reapers: dict[str, threading.Thread] = {}
 
     def _write(self, record: OrderRecord) -> None:
-        _atomic_write_json(self._paths.orders_dir / record.order_id / "order.json",
-                          record.to_json())
+        # Written twice, as a run's record is (R-1223).
+        durable_write_json(self._paths.orders_dir / record.order_id / "order.json",
+                           record.to_json())
 
     def start(self, order_text: str, options: Sequence[str],
               order_key: str | None = None) -> OrderRecord:
