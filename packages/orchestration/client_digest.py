@@ -27,7 +27,11 @@ from packages.orchestration.decision_queue import HumanDecision, list_decisions
 from packages.orchestration.escalation import DECISION_TYPE_TASK_DECISION
 from packages.orchestration.job_apply import job_apply_landed, job_result_decline
 from packages.orchestration.job_digest import cost_exactness_basis
-from packages.orchestration.mission_contract import ContractError, read_mission_contract
+from packages.orchestration.mission_contract import (
+    CRITERION_STATUS_UNCHECKED,
+    ContractError,
+    read_mission_contract,
+)
 from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -184,8 +188,8 @@ def _card_recommendation(tasks: list[dict[str, Any]],
                          blocking_criteria: list[dict[str, Any]] | None, checks_ran: bool) -> str:
     """`hold` when a record says no: a test that ran and failed, a reviewer's verdict other than
     `pass`, or an `unmet` blocking criterion. Else `review` when something is unverified: no check
-    ran, a task without a reviewer's verdict, a blocking criterion still `open`, or a contract that
-    cannot be read. Else `apply`.
+    ran, a task without a reviewer's verdict, a blocking criterion still `open` or `unchecked`
+    (DECISION F299 D2 (5)), or a contract that cannot be read. Else `apply`.
     """
     if (any(task["test_passed"] is False for task in tasks)
             or any(task["reviewer_verdict"] not in (None, "pass") for task in tasks)
@@ -193,7 +197,8 @@ def _card_recommendation(tasks: list[dict[str, Any]],
         return "hold"
     if (not checks_ran or blocking_criteria is None
             or any(task["reviewer_verdict"] is None for task in tasks)
-            or any(criterion["status"] == "open" for criterion in blocking_criteria)):
+            or any(criterion["status"] in ("open", CRITERION_STATUS_UNCHECKED)
+                   for criterion in blocking_criteria)):
         return "review"
     return "apply"
 

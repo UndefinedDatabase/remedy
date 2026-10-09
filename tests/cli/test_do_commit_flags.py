@@ -324,6 +324,24 @@ def test_an_open_blocking_criterion_is_pushed_and_named_in_the_json(repo, capsys
     assert f"criteria {', '.join(still_open)} are still open" in _step(data, "apply")["detail"]
 
 
+def test_an_unchecked_blocking_criterion_is_pushed_and_named_in_the_json(repo, capsys):
+    """DECISION F299 D2 (6): the fixture's repository has no tests, so the job's
+    planner criterion reads `unchecked`, not `open`; it does not hold the push
+    either, and is named apart from `open_blocking_criteria`."""
+    _bare_upstream(repo)
+
+    code, data, _err = _run(capsys, "--commit", MESSAGE, "--push")
+
+    assert code == 0, data and _step(data, "apply")
+    unchecked = [c["id"] for c in data["contract"]["criteria"]
+                if c["blocking"] and c["status"] == "unchecked"]
+    assert unchecked, "the fixture's repository has no unchecked blocking criterion"
+    assert data["push"]["pushed"] is True and len(_pushes(repo)) == 1
+    assert data["push"]["unchecked_blocking_criteria"] == unchecked
+    assert data["push"]["open_blocking_criteria"] == []
+    assert "are unchecked: no check ran" in _step(data, "apply")["detail"]
+
+
 def test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk(repo, capsys):
     commit_a_passing_suite(repo)   # R-0977: the gate meets the planner's criteria
     remote = _bare_upstream(repo)

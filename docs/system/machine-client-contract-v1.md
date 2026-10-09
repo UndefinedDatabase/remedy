@@ -54,13 +54,15 @@ under `mission_id`; `--new-mission` starts another mission for it instead. An or
 holds whitespace is planned as text, never read as a file.
 
 With the deterministic planner of `--no-llm`, an order is held to one blocking criterion of the
-planner's own, that the mission goal is met in full, checked by running the repository's tests
-under `tests`; a model planner writes criteria of its own. A contract template, named by the
-header's `contract` or by `--contract`, adds its criteria before the planner's and never removes
-one, and each shipped template is for building something new and asks for tests of its own. A
-small change to an existing repository therefore needs no template: it meets the planner's
-criterion when the repository's tests pass, and in a repository without tests that criterion
-reads `unmet`, so the approval card says `hold` and a push is refused.
+planner's own, that the mission goal is met in full, checked by the project's own test command,
+run in the project's own environment when the check runs (DECISION F299 D1); a model planner
+writes criteria of its own. A contract template, named by the header's `contract` or by
+`--contract`, adds its criteria before the planner's and never removes one, and each shipped
+template is for building something new and asks for tests of its own. A small change to an
+existing repository therefore needs no template: it meets the planner's criterion when the
+project's tests pass. When the project names no test command, that criterion reads `unchecked`,
+which means that no check ran: the approval card says `review`, and a push is not refused but
+names the criterion (DECISION F299 D2).
 
 A run checks its budgets before each call of its builder and its reviewer, never during one,
 and stops at the first check that finds a budget reached; a stopped run answers as step 1 below
@@ -96,15 +98,15 @@ provider, which spends nothing, although the digest's `calls` still counts it.
    mission's contract alone: how many files its tasks changed and the first twenty of them by
    name, the test command the job ran with, and each task's title, reviewer's verdict and repair
    rounds, and whether its test ran and passed. It also carries every blocking criterion of the
-   job's mission's contract with its id, text and status, `open`, `met` or `unmet`, under
-   `blocking_criteria`, which is null when that contract cannot be read; and `checks_ran`, false
-   when no check ran on the job: no task's test command ran and no gate evaluated a blocking
-   criterion to `met` or `unmet`. Every other job's `approval_card` is null.
-   The card ends with two words that follow from those facts by fixed rules, never from a model.
-   `recommendation` is `hold` when a record says no: a test that ran and failed, a reviewer's
-   verdict other than `pass`, or an `unmet` blocking criterion; else `review` when something is
-   unverified: no check ran, a task without a reviewer's verdict, a blocking criterion still
-   `open`, or a contract that cannot be read; else `apply`. `risk` is `high` when no check ran
+   job's mission's contract with its id, text and status, `open`, `met`, `unmet` or `unchecked`,
+   under `blocking_criteria`, which is null when that contract cannot be read; and `checks_ran`,
+   false when no check ran on the job: no task's test command ran and no gate evaluated a blocking
+   criterion to `met` or `unmet`. Every other job's `approval_card` is null. The card ends with
+   two words that follow from those facts by fixed rules, never from a model. `recommendation` is
+   `hold` when a record says no: a test that ran and failed, a reviewer's verdict other than
+   `pass`, or an `unmet` blocking criterion; else `review` when something is unverified: no check
+   ran, a task without a reviewer's verdict, a blocking criterion still `open` or `unchecked`, or
+   a contract that cannot be read; else `apply`. `risk` is `high` when no check ran
    or more than 20 files changed; else `medium` when a task took a repair round or more than 5
    files changed; else `low`. After the first read, a client need not read the whole digest
    again: it asks `remedy client changes --since <read_at> --json` for what changed since, and
@@ -346,7 +348,7 @@ Keys under the answer keys: see below.
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
 - `landed`: `branch`, `job_id`, `sha`
-- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `sha`, `source`
+- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `sha`, `source`, `unchecked_blocking_criteria`
 - `steps`: `detail`, `name`, `status`
 
 #### `remedy status run`
@@ -522,7 +524,7 @@ Description: Review and apply job workspace changes to target repo, under its mi
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed`, `target_detached_head`, `target_dirty`.
-Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
+Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `push_unchecked_criteria`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
 Keys under the answer keys: see below.
 
 - `execution_config`: `builder`, `builder_effort`, `builder_effort_source`, `builder_model`, `builder_model_source`, `builder_source`, `claude_cli_write_mode`, `claude_cli_write_mode_source`, `context_strategy`, `max_output_chars`, `max_output_chars_source`, `max_rounds`, `max_rounds_source`, `max_tasks`, `max_tasks_source`, `repair_effort`, `repair_effort_source`, `repair_model`, `repair_model_source`, `repair_provider`, `repair_provider_source`, `repair_rounds_allowed`, `repair_rounds_source`, `reviewer`, `reviewer_effort`, `reviewer_effort_source`, `reviewer_model`, `reviewer_model_source`, `reviewer_source`, `stream_evidence`, `stream_evidence_source`, `test_command`, `test_command_present`, `test_command_source`, `timeout_profile`, `timeout_profile_source`, `timeout_sec`, `timeout_sec_source`
