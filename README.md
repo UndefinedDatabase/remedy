@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-133 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+134 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 42 | 44 |
+| 2 | Minimal Self-Build Runtime | 43 | 44 |
 | 3 | Full Token Economy & Autonomy | 8 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
@@ -291,7 +291,15 @@ previous feature added was measured and recorded. At its end, Remedy narrowed on
 more error handler in its own `remedy dev status` command in a self-repair run
 whose change was kept. A full run of all tests used about 1,196 processor
 seconds before the last merge with the main line and about 1,049 after it, both
-more than before, and finding out why is the next paydown's work).
+more than before, and finding out why is the next paydown's work),
+F300 structure ledger and size ratchet (`remedy integrity structure` names every Python function
+longer than 100 lines and every tracked file longer than 1,000 lines in any git repository, and
+changes nothing; Remedy's own 162 such functions and 39 such files are written down with their
+sizes in `docs/system/structure-ledger-v1.md`, the 29 largest with where to cut them, and a test
+lets each size shrink and never grow and refuses a new one; the rolling findings paydown now takes
+one such step every fifth feature, and the first was taken here: the job runner's four places that
+check for a stop, a pause or the end of the budget became one, and a pause that arrives while a
+task is being saved now parks the job instead of ending it as if its budget had run out).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

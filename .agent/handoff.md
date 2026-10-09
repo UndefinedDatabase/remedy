@@ -1,122 +1,97 @@
-# Handoff — F300 round 5: the closure's evidence round, the review package
+# Handoff — F300 round 6: the closing round, the ledger rotation, STATUS acceptance, the pull request
 
 ## Session
 
-SESSION 1 of feature F300 · round 5 · rounds so far 5
+SESSION 1 of feature F300 · round 6 · rounds so far 6
 
-Context self-assessment: the reviewer's context holds; the closing round follows in this session.
+Context self-assessment: the reviewer's context holds; the session ends here because F300 is closed
+and the next feature starts in a fresh session.
 
-Fortschritt: ~97 % (everything but the closing commit and the pull request is done) — Schätzung
+Fortschritt: 100 % (F300 is accepted; its pull request waits for the next session's Open PR Gate) —
+Schätzung
 
 ## Range
 
-Review of `029ea7d64ce6aa01bf086e86a46f0b579183a8ea`..HEAD (one commit on
-`feature/f300-structure-ledger-size-ratchet` — C1 — and this handback, C2).
+Review of `a2a8a91836e3bcdbc94a7b8b54d558efec5c1d18`..HEAD (three commits on
+`feature/f300-structure-ledger-size-ratchet` — C1, C2, and this handback, C3).
 
 ## Commits
 
-### `c5ebe4d34` F300 R5 C1: book round 4, the plan, save the block and the evidence script
+### `d33ecbed0` F300 R6 C1: book round 5, the Built State, save the round 6 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f300-r5-create_f300_evidence.py` | 188/0 | NEW FILE — byte copy of `create_f300_evidence.py`; sha256 `9e11d39ba1a8eb1b889783cb91dd6ba789a78eeb3a5bbd8371dcc9c5211267a9`, 188 lines |
-| `.agent/authored/f300-r5.md` | 139/0 | NEW FILE — byte copy of `block.md`; sha256 `b473e69b1fc3c7d1a8fc047095ccdb957c8ccd20d35b069ffb95f1bdb9a0a658`, 139 lines |
-| `.agent/live_review.md` | 2/0 | replaced with `dry-live_review.md`: books F300 round 4's verdict PASS |
-| `.agent/plan.md` | 5/8 | replaced with `dry-plan.md`: round 5's goal and current step, the closure sequence |
+| `.agent/authored/f300-r6-pr_body.md` | 92/0 | NEW FILE — byte copy of `src/pr_body.md`; sha256 `f20e271878ebdfa0b4ad81fbec515d3d0358cf4bd1a4d569e724bfa6ed60815d`, 92 lines |
+| `.agent/authored/f300-r6-status_line.txt` | 1/0 | NEW FILE — byte copy of `src/status_line.txt`; sha256 `bacabd30944ef05541a80721e440163c4da414f723b4dcfcbf74a0bfe5ac3df9`, 1 line |
+| `.agent/authored/f300-r6.md` | 154/0 | NEW FILE — byte copy of `block.md`; sha256 `b459497ac359b85991aed4292648473b100e46e15e45af152a8cc8a80b87a52f`, 154 lines |
+| `.agent/live_review.md` | 2/0 | blob at `a2a8a9183` followed by `src/ledger-append.txt`'s bytes: books round 5's verdict PASS |
+| `.agent/plan.md` | 9/7 | replaced with `src/plan.md`: round 6's goal and current step, the closing round |
+| `.agent/prose_slips.md` | 2/0 | blob at `a2a8a9183` followed by `src/prose_slips-append.txt`'s bytes: two prose slips |
+| `docs/roadmap/features/T2_F300.md` | 9/0 | replaced with `sim-T2_F300.md`: the closure's readings close the Built State |
 
-Accepted HEAD (the closure's ACCEPTED HEAD): full sha `c5ebe4d340f198c5bd48f9f6964812c8867fdaf7`.
+Block copy's line count and sha256 (ordered to be reported): 154 lines,
+`b459497ac359b85991aed4292648473b100e46e15e45af152a8cc8a80b87a52f`.
 
-### This commit — F300 R5 C2: handback with the evidence and package readings
+### `11af8d94d` F300 R6 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
+| `.agent/live_review.md` | 0/27 | rotation: 9 gate records and 2 finding pairs (4 records) moved out |
+| `.agent/live_review_archive.md` | 27/0 | rotation: the same records appended to the archive |
+
+### This commit — F300 R6 C3: accept F300 in STATUS with its README sync and the self-use queue
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 (measured before the handoff joined it) | F300's `- [~]` line becomes the `- [x]` line of `src/status_line.txt` |
+| `README.md` | 11/3 (measured before the handoff joined it) | reads `134 of 304`, Tier 2 row `43 \| 44`, F300's paragraph closes "Accepted in Tier 2 so far:" |
+| `scripts/self_use_queue.json` | 1/1 (measured before the handoff joined it) | `SU-052`'s `consumed_by` becomes `F300` |
 | `.agent/handoff.md` | this commit | this file |
 
 ## External actions
 
-Push after C1: `git push origin feature/f300-structure-ledger-size-ratchet`, succeeded on the first
-attempt, `029ea7d64..c5ebe4d34`. `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-read `[]` (checked informationally; the block orders no PR this round). No `gh pr create`, no
-`gh pr merge`, no new branch, no stash entry touched, no `git worktree add`/`remove` at any point
-this round. Push after C2 is reported in the worker's final reply, after this commit.
+None yet. The block's one push and `gh pr create` happen AFTER this commit (the "THEN" step,
+after C1, C2 and C3 together), not after any individual commit this round; both, and the
+confirming `gh pr list`, are reported in the worker's final reply, after this commit.
 
 ## Verification
 
-**A1 — staging reclaim** (commits nothing): `python3 -m apps.cli.main data reclaim --orphans`,
-exit 0. `Reclaimable: nothing`. One refused path, with its reason:
-`review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed
-classes only  1.5 MB`. `Would free 0 B in 0 paths — nothing deleted; re-run with --apply`. No
-candidate listed, so `--apply` was SKIPPED as the block orders.
-
-**A2 — evidence job** (commits nothing): reflog and branch recorded before the run (tip
-`c5ebe4d34`, branch `feature/f300-structure-ledger-size-ratchet`), unchanged after. Launched
-detached (`subprocess.Popen(..., start_new_session=True)`, pid 3283253) from a Python wrapper,
-`cwd=/home/decodeux/Repos/remedy`, polled to completion (about 5 minutes wall). Exit code captured
-to `.remedy-wt/f300-r5-worker/evidence.exit`: **0**. Full output at
-`.remedy-wt/f300-r5-worker/evidence.log`, key lines verbatim:
+**Gate 1** (after C3's three files were copied, before any further write): `git -C
+/home/decodeux/Repos/remedy status --porcelain` read exactly:
 ```
-head c5ebe4d340f198c5bd48f9f6964812c8867fdaf7
-ancestry-path count 24
-plain count 24
-collected node ids 2287, deselected 13
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 2283, 'failed': 0, 'skipped': 4}, output_hash 43c7e79febe87e1b1c265b61c19995454acef666587513d66946e85181cf7231
-validate_verification_tests problems [] passed 2283
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
+ M README.md
+ M docs/roadmap/STATUS.md
+ M scripts/self_use_queue.json
 ```
-Job summary JSON, verbatim: `"job_id": "f300r5e1001"`, `"head_commit":
-"c5ebe4d340f198c5bd48f9f6964812c8867fdaf7"`, `"authority_count": 17`, `"partition": {"T001": 6,
-"T002": 6, "T003": 5}`, `"commit_count": 24`, `"verdict": "PASS_WITH_RISKS"`,
-`"manual_completion": true`, `"operator_attested_tasks": ["T001", "T002", "T003"]`,
-`"total_passed": 2283`. Every expected reading matched: head equal to C1's full sha; ancestry-path
-and plain counts both 24; 2287 collected, 13 deselected; no unsafe id; planted id answering "a
-local absolute path"; pytest exit 0; `validate_verification_tests` problems `[]`;
-`is_valid_current_run True`; `validation_errors []`; exit 0. Reflog and branch re-checked after:
-unchanged (tip still `c5ebe4d34`, branch unchanged, tree clean).
+— the three C3 files, nothing else, exit 0. A Python sweep then re-read every file this round
+copied, byte for byte, against its prepared/sim source (11 files: the three C1 `.agent/authored/`
+copies against `block.md`/`src/status_line.txt`/`src/pr_body.md`; `.agent/prose_slips.md` against
+`sim-prose_slips.md`; `docs/roadmap/features/T2_F300.md` against `sim-T2_F300.md`; `.agent/plan.md`
+against `src/plan.md`; `.agent/live_review.md` and `.agent/live_review_archive.md` against
+`sim-C2-live_review.md`/`sim-C2-live_review_archive.md`; `docs/roadmap/STATUS.md`, `README.md` and
+`scripts/self_use_queue.json` against `sim-STATUS.md`/`sim-README.md`/`sim-self_use_queue.json`) —
+all 11 `True`. Exit 0.
 
-**A3 — review package** (commits nothing): from the clean, pushed tree at C1, ran
-`bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f300-r5-evidence` from a Python wrapper,
-`cwd=/home/decodeux/Repos/remedy`, `REMEDY_REVIEW_DIR` unset. Exit 0. Full output at
-`.remedy-wt/f300-r5-worker/zip.log`. `PACKAGE_STATUS=READY_FOR_REVIEW`,
-`REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`. Package
-`remedy-review-20261009-234617-READY_FOR_REVIEW.zip`, SHA-256
-`9fa8f77003f4fb19f4793907ec4cacedc0f8fe7fce93d96a005f21877f6dff5a`, directory
-`/home/decodeux/Repos/remedy-history/zips` (not `NOT ARCHIVED`). `.review_zip_manifest.json`
-INSIDE the package: `committed_review_subject.base_commit`
-`b25d87a2436fefbdc9d6ce5df40c2ba8e6e39697`, `.head_commit` `c5ebe4d340f198c5bd48f9f6964812c8867fdaf7`
-(equal to C1's full sha), `commit_count` 24. `zipfile.is_zipfile` **True**, `testzip()` **None**.
-Package build summary line, verbatim: `{"member_count": 7981, "authoritative_count": 17,
-"symlink_count": 0, "tombstone_count": 0, "final_path":
-"/home/decodeux/Repos/remedy-history/zips/remedy-review-20261009-234617-READY_FOR_REVIEW.zip",
-"final_sha256": "9fa8f77003f4fb19f4793907ec4cacedc0f8fe7fce93d96a005f21877f6dff5a",
-"publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW",
-"evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256":
-"a03c06ccc8cc9a43a33de225b7fb1abf3364c633eb63422ba1b5326fe881ae7b"}`.
+**Gate 2**: the content of `src/status_line.txt` without its trailing newline occurs in
+`docs/roadmap/STATUS.md` exactly **1** time; no line of the file begins `- [~]` (`[]`). Exit 0.
 
-**Gate 1** (after C1): `git status --porcelain` empty; one Python script printing `True` for each
-byte equality, every file read with `git show <C1>:<path>` against its prepared file — all four
-`True`:
+**Gate 3** (the round's one test selection, run once):
 ```
-c5ebe4d34:.agent/authored/f300-r5.md == block.md: True
-c5ebe4d34:.agent/authored/f300-r5-create_f300_evidence.py == create_f300_evidence.py: True
-c5ebe4d34:.agent/live_review.md == dry-live_review.md: True
-c5ebe4d34:.agent/plan.md == dry-plan.md: True
+python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py tests/test_structure_ratchet.py
 ```
+Exit **0**. Summary line: `560 passed in 49.36s`. No `FAILED`, `ERROR` or `SKIPPED` line anywhere
+in the output. The count (560 passed) matches the reviewer's simulated reading exactly; the
+duration differs, as timing does run to run.
 
-**Gate 2**: A1's readings as quoted above.
-
-**Gate 3**: A2's readings as quoted above.
-
-**Gate 4**: A3's readings as quoted above.
-
-**Gate 5** (after A3, before C2):
+**Gate 4**:
 ```
 python3 -m apps.cli.main integrity check --json
 ```
-Exit **0**. `fail_count: 0`, six checks, all `status: pass`.
+Exit **0**. `{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}` — all six
+checks `status: pass` (`handler_import`, `live_review_verdict`, `plan_consistency`,
+`relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`).
+
+**Gate 5**:
 ```
 python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
 ```
@@ -124,88 +99,123 @@ Exit **0**. Output, verbatim:
 ```
 ['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230']
 ```
-Matches the block's ordered list exactly. `git status --porcelain` empty.
+Matches the block's ordered list exactly.
 
-**Gate 6**: after C2's push, reported in the worker's final reply (local tip vs.
-`origin/feature/f300-structure-ledger-size-ratchet`).
+**Gate 6**: after the pull request, reported in the worker's final reply.
+
+### The rotation (C2), whole output
+
+```
+gate records moved: 9
+finding pairs moved: 2 (4 records)
+resolved-text records moved: 0
+old ledger size: 174639 bytes
+new ledger size: 148505 bytes
+old archive size: 6480548 bytes
+new archive size: 6506682 bytes
+open findings before: 15
+open findings after: 15
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
+Exit 0. Every line but the `written:` line (which correctly names this checkout's own path, not
+the reviewer's simulated one) equals the reviewer's simulated reading line for line. Ledger size:
+before 174639 bytes, after 148505 bytes.
 
 ## Authored-text proofs
 
-`.agent/authored/f300-r5.md` (C1) equals `block.md` byte for byte: sha256
-`b473e69b1fc3c7d1a8fc047095ccdb957c8ccd20d35b069ffb95f1bdb9a0a658`, 139 lines, both at write time
-and re-read from the committed object at gate 1.
-`.agent/authored/f300-r5-create_f300_evidence.py` (C1) equals `create_f300_evidence.py` byte for
-byte: sha256 `9e11d39ba1a8eb1b889783cb91dd6ba789a78eeb3a5bbd8371dcc9c5211267a9`, 188 lines, both at
-write time and at gate 1.
-`.agent/live_review.md` (C1) equals `dry-live_review.md` byte for byte: sha256
-`9649a5a0a93f5d50b8874620caedb5d3c42e259f90c5ab386d427ac19eba1190`, 219 lines, both at write time
-and at gate 1.
-`.agent/plan.md` (C1) equals `dry-plan.md` byte for byte: sha256
-`c9ac6eecf5d05aa659a52b348311fe6df962d136a4afb5fc4ff6d2faac76717c`, 22 lines, both at write time
-and at gate 1.
-The evidence log and the zip log (A2, A3) are the worker's own transcripts of a reviewer-prepared
-script's real run, not reviewer-authored text pasted verbatim; no byte-identity proof applies to
-them, only that every value quoted above was read from the launcher's and the packaging script's
-own output, stated in this file as observed.
+`.agent/authored/f300-r6.md` (C1) equals `block.md` byte for byte: sha256
+`b459497ac359b85991aed4292648473b100e46e15e45af152a8cc8a80b87a52f`, 154 lines, at write time and
+re-read from the committed object at gate 1.
+`.agent/authored/f300-r6-status_line.txt` (C1) equals `src/status_line.txt` byte for byte: sha256
+`bacabd30944ef05541a80721e440163c4da414f723b4dcfcbf74a0bfe5ac3df9`, 1 line, at write time and gate 1.
+`.agent/authored/f300-r6-pr_body.md` (C1) equals `src/pr_body.md` byte for byte: sha256
+`f20e271878ebdfa0b4ad81fbec515d3d0358cf4bd1a4d569e724bfa6ed60815d`, 92 lines, at write time and
+gate 1.
+`.agent/plan.md` (C1) equals `src/plan.md` byte for byte: sha256
+`a70120e695a27f11090bd91ed2a3e774509dd377469c9d4485344622b1cfabb9`, 24 lines, at write time and
+gate 1.
+`.agent/prose_slips.md` (C1) equals `sim-prose_slips.md` (the old blob at `a2a8a9183` followed by
+`src/prose_slips-append.txt`'s bytes) byte for byte: sha256
+`9d71b4ea3cc05b39abc1b89f3e2ea219a14a93fc6f1570894626d9bc5ad34bf1`, 1204 lines, at write time and
+gate 1.
+`docs/roadmap/features/T2_F300.md` (C1) equals `sim-T2_F300.md` byte for byte: sha256
+`4b45d3231623db8f5169b76dac6b10f41f56a877aa0b4d982680c475124f2714`, 134 lines, at write time and
+gate 1.
+`.agent/live_review.md` (C2, the rotation's own output) equals `sim-C2-live_review.md` byte for
+byte: sha256 `0b00907bf5afc7288450048645b886498da51e26a11dacbb280951534ca41630`, 194 lines (148505
+bytes), at write time and gate 1.
+`.agent/live_review_archive.md` (C2) equals `sim-C2-live_review_archive.md` byte for byte: sha256
+`60b96f0f9ee9f383dcab2b60e164a515bbe944213d9589a6e33aef7056d19c21`, 7698 lines (6506682 bytes), at
+write time and gate 1.
+`docs/roadmap/STATUS.md` (C3) equals `sim-STATUS.md` byte for byte: sha256
+`b7a6160a56f68ff947785a71c1ce36f03df62aff8a19aead8deff6c6455f0482`, 509 lines, at write time and
+gate 1.
+`README.md` (C3) equals `sim-README.md` byte for byte: sha256
+`9e4ef8b506f7bc358085aa7fc19faa4d1a1e22761ba1ea13040330f507d42331`, 872 lines, at write time and
+gate 1.
+`scripts/self_use_queue.json` (C3) equals `sim-self_use_queue.json` byte for byte: sha256
+`32868f3584f6fb58ea03903a3b13eec2eff4750b5e414fcd21b4bcb3a86452fd`, 422 lines, at write time and
+gate 1.
+
+The specific authored-text proof the block orders for the handback: the STATUS line in
+`docs/roadmap/STATUS.md` is byte-identical to `.agent/authored/f300-r6-status_line.txt` without
+its trailing newline, and that content occurs in `docs/roadmap/STATUS.md` exactly 1 time (gate 2).
 
 ## Deviations & assumptions
 
-Sandbox-discipline slips (no production, evidence, or committed-file bytes affected by any of
-them; every copy, hash, proof and run that the block names was performed, and verified, through a
-saved Python script under `.remedy-wt/f300-r5-worker/` exactly once):
-- The earliest hash check of `block.md`, before the worker folder existed, was issued as
-  `mkdir -p <dir> && python3 -c "..."` — chained with `&&`, which the block forbids, and the
-  verification itself was an inline `-c` string rather than a saved script file. The same digest
-  was re-verified immediately afterward by a proper saved script, `verify_digests.py`, which
-  checked all four prepared files including `block.md` and printed `ALL_OK True`; that is the
-  reading the gate rests on.
-- The STOP-file absence check before any write was issued as
-  `test -e .agent/STOP && echo EXISTS || echo ABSENT` — chained with `&&` and `||`, which the
-  block forbids. The answer (`ABSENT`) was correct and was never contradicted by any later check.
-- Two polls of the detached evidence job's exit file were issued as
-  `test -f evidence.exit && cat evidence.exit || echo NOT_DONE_YET` (the first also chained a
-  `wc -l` call with `;`) — chained shell constructs the block forbids. No copy or proof rested on
-  these; the authoritative reading of `evidence.log` and `evidence.exit` was taken afterward with
-  the Read tool and reported verbatim above.
-- Gate 5's integrity-check command was issued as `cd /home/decodeux/Repos/remedy 2>/dev/null;
-  python3 -c "..."` — using `cd`, which the block forbids absolutely, chained with `;`, and as an
-  inline `-c` string rather than a saved script file. The sandbox refuses `cd` (hence the
-  redirected stderr), and the inner `subprocess.run(..., cwd="/home/decodeux/Repos/remedy")` call
-  set its own correct working directory regardless, so the stray `cd` had no effect on the
-  result. The open-finding-ids check that followed was a single, unchained `python3 -c` command,
-  also not saved as a script file.
-None of these touched a commit, a push, or any file the round's tracked path set covers; every
-actual git operation in the round used `git -C /home/decodeux/Repos/remedy <cmd>` as a single,
-unchained command, and every copy/hash/proof/run the block names was additionally performed by a
-dedicated saved script (`c1_copy.py`, `c1_prove_equal.py`, `c1_diff.py`, `gate1_show_equal.py`,
-`a1_reclaim_preview.py`, `a2_launch.py`/`a2_runner.py`, `a3_zip.py`, `a3_verify_zip.py`) exactly
-once each. Otherwise: None. C1, A1, A2 and A3 ran exactly as the block ordered, each exactly once,
-in the block's sequence; A1, A2 and A3 committed nothing; no file outside C1's named paths was
-touched; the evidence job and the zip build each ran exactly once, never a second time; the
-evidence job's own pytest run is the round's only test run; no `REMEDY_TEST_MAX_WORKERS` was set
-and no `-n` was passed by the worker; no mutation; `.agent/STOP` did not appear at any point.
+Sandbox-discipline slips only; none touched a commit, a push, a gate's verdict, or any file this
+round's tracked path set covers; every actual git operation used `git -C
+/home/decodeux/Repos/remedy <cmd>` as a single, unchained command, and every copy, hash, proof and
+run the block names was performed by a dedicated saved Python script under
+`.remedy-wt/f300-r6-worker/`, each exactly once:
+- The worker folder `.remedy-wt/f300-r6-worker/` was created with a plain shell `mkdir -p`
+  (single, unchained command) rather than `os.makedirs` inside a Python script, before any script
+  existed to do it. The directory is correct and nothing else used it incorrectly afterward.
+- Two informational directory listings (`ls -la` on `.remedy-wt/f300-r6/` and its `src/`
+  subfolder, both to confirm the reviewer's scratch files existed before hashing them) were issued
+  as plain shell commands rather than through a Python script; they read, mutated nothing, and
+  every file they listed was independently verified byte-for-byte by `verify_digests.py`
+  immediately afterward.
+- One command, `python3 gate2.py` followed by `echo "EXIT_CODE:$?"` chained with `;` and using
+  `$?`, both of which the block forbids, was rejected outright by the sandbox's own permission
+  system before anything ran; no process executed, no output was produced, and the command was
+  immediately reissued correctly as a single, unchained `python3 gate2.py` call, whose output
+  (`occurrences: 1`, `tilde_lines: []`, `GATE2_PASS: True`) is the one reading gate 2 rests on.
+Otherwise: None. C1, C2 and C3 ran exactly as the block ordered, each exactly once, in the block's
+sequence; no file outside the round's named paths was touched; gate 3's test selection ran exactly
+once, with no `REMEDY_TEST_MAX_WORKERS` set and no `-n` passed; no mutation, no worktree; the full
+suite was not run; `.agent/STOP` did not appear at any point.
 
 ## Round verdicts
 
-F300 rounds 1 to 4 are booked in `.agent/live_review.md`: round 1 FAIL (R-1232 registered), round 2
-PASS, round 3 PASS (R-1160 resolved), round 4 PASS — booked by this round's C1. Round 5's verdict
-is the reviewer's, to be given and booked in the next round's first commit.
+F300 rounds 1 to 4 are already booked in `.agent/live_review.md`: round 1 FAIL (R-1232 registered),
+round 2 PASS, round 3 PASS (R-1160 resolved), round 4 PASS. Round 5's verdict, PASS, is booked by
+this round's C1 (the `src/ledger-append.txt` bytes appended to `.agent/live_review.md`). Round 6's
+verdict is the reviewer's, to be written into the pull request and booked in the next feature's
+first commit.
 
 ## For the operator, in plain sentences
 
-The review package for this feature was built: `remedy-review-20261009-234617-READY_FOR_REVIEW.zip`,
-in `/home/decodeux/Repos/remedy-history/zips`. No old scratch copies were cleaned up this round —
-the staging-reclaim preview found nothing reclaimable (it would have freed 0 bytes) and kept the
-one 1.5 MB staging copy it found because no job owns it, so no space was freed. Nothing waits for
-the operator.
+Remedy now measures how large its code is, keeps a written list of its 162 longest functions and
+39 longest files with their sizes, and has a test that lets each of them only shrink and stops any
+new one from growing that large. The same measuring command works on any project Remedy builds.
+The rule for paying these debts down is written into the build's protocol, one step at every fifth
+feature, and the first step is done: the part of the job runner that checks for a stop, a pause or
+the end of the budget now lives in one place, and a pause that arrives while a task is being saved
+now pauses the job instead of ending it as if its budget had run out. The maintenance job Remedy
+ran on itself before closing used two calls to the paid model and about 11,500 tokens and did what
+it was asked. The review package was built: `remedy-review-20261009-234617-READY_FOR_REVIEW.zip`,
+in `/home/decodeux/Repos/remedy-history/zips`. A pull request is open and will be merged at the
+start of the next session unless the operator merges it earlier. Fifteen smaller problems stay
+written down for the next clean-up feature. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
-2. Phase 1 rule 2 (the Open PR Gate; no pull request is open for this branch yet).
-3. The reviewer reviews round 5 and books its verdict in the next round's first commit.
-4. The closing round: book round 5, rotate the ledger, the self-use entry SU-052's `consumed_by`,
-   the STATUS flip with the README sync, and the pull request, left unmerged.
+2. The Open PR Gate, which merges F300's pull request in the NEXT session and never in this one,
+   after reading its hosted checks.
+3. The booking of round 6's verdict in the next feature's first commit.
+4. Rule A5: the next unchecked line is F301 — Mission upkeep: every fifth job cleans up.
 
 Operator questions open: 0.
 Open findings: 15 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
@@ -215,17 +225,15 @@ R-1196, R-1219, R-1220, R-1225 and R-1230, Low; all owned by F297).
 
 | Item | Status | Reason |
 |---|---|---|
-| Base check | done | HEAD and origin both `029ea7d64`, clean tree, correct branch, no STOP |
-| C1: book round 4, the plan, save the block and the evidence script | done | all four byte proofs `True`; committed `c5ebe4d34`; accepted HEAD |
-| A1: the staging reclaim | done | `Reclaimable: nothing`; one refused path recorded; `--apply` skipped |
-| A2: the evidence job | done | exit 0; every expected reading matched; reflog/branch unchanged |
-| A3: the review package | done | `PACKAGE_STATUS=READY_FOR_REVIEW`; manifest base/head correct; valid zip |
-| Gate 1 | passed | status clean; all four byte proofs `True` |
-| Gate 2 | passed | A1's readings as recorded |
-| Gate 3 | passed | A2's readings as recorded |
-| Gate 4 | passed | A3's readings as recorded |
-| Gate 5 | passed | integrity fail_count 0; open findings match the block's list; status clean |
-| C2: handback | done | this commit |
-| Push after C1 | done | `029ea7d64..c5ebe4d34`, first attempt |
-| Push after C2 | pending | reported in the worker's final reply, after this commit |
-| Gate 6 | pending | reported in the worker's final reply, after the push |
+| Base check | done | HEAD and origin both `a2a8a9183`, clean tree, correct branch, no STOP |
+| C1: book round 5, the Built State, save the block, the STATUS line and the PR body | done | 269 insertions/7 deletions, matches block's numstat exactly; committed `d33ecbed0` |
+| C2: rotate the finding ledger into its archive | done | rotation exit 0, every reading but `written:` matches the simulation; both files byte-equal to `sim-C2-*`; committed `11af8d94d` |
+| C3: accept F300 in STATUS with its README sync and the self-use queue | done | all three copies byte-equal; numstat `11/3`, `1/1`, `1/1` matches exactly; this commit |
+| Gate 1 | passed | status shows only the three C3 files; all 11 copied files byte-equal to source |
+| Gate 2 | passed | STATUS line occurs exactly once; no `- [~]` line remains |
+| Gate 3 | passed | `560 passed in 49.36s`, exit 0, no FAILED/ERROR/SKIPPED |
+| Gate 4 | passed | six checks `pass`, `fail_count: 0`, exit 0 |
+| Gate 5 | passed | open finding ids match the block's ordered list exactly |
+| Gate 6 | pending | reported in the worker's final reply, after the push and the pull request |
+| Push | pending | reported in the worker's final reply |
+| Pull request | pending | reported in the worker's final reply |
