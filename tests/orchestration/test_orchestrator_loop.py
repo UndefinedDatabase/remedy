@@ -1399,7 +1399,7 @@ class TestTheContractHoldsTheAchievedClaim:
         reason = self._reason(tmp_path, mission, self._contract(
             self._criterion("C001", "done")))
 
-        assert "status is open, met or unmet" in reason
+        assert "status is open, met, unmet or unchecked" in reason
 
 
 # ---------------------------------------------------------------------------

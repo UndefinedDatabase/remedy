@@ -309,6 +309,27 @@ class TestReportMatrix:
         assert ("For pt, no check ran, because the project names no "
                "test command.") in report
 
+    def test_a_held_gate_counts_only_the_truly_red_check_not_the_one_that_did_not_run(self):
+        """DECISION F299 D2 (4): a `no_test_command` check held nothing and ran nothing,
+        so the held sentence's count and its named checks leave it out, naming only the
+        check that is really red."""
+        from packages.orchestration.run_report import (
+            MODE_FINAL,
+            DoDCheckRow,
+            ReportSources,
+            render_report_from_sources,
+        )
+
+        report = render_report_from_sources(ReportSources(
+            job_id="abc", dod_released=False,
+            dod_checks=(
+                DoDCheckRow("red", "pytest", True, "failed", "nonzero_exit", 5),
+                DoDCheckRow("pt", "project_tests", True, "failed", "no_test_command", 9),
+            ),
+        ), mode=MODE_FINAL)
+
+        assert "The gate is HOLDING this job open: 1 blocking check(s) red (red)." in report
+
 
 # ---------------------------------------------------------------------------
 # The `dod` section of `remedy job show <id> --full` (formerly its own command)
@@ -323,12 +344,16 @@ class TestJobDodCommand:
         return job
 
     def _show(self, capsys, job_id: str):
-        """`job show <id> --full`: the dod section's envelope, and its text (the last section) on stderr."""
+        """`job show <id> --full`: the dod section's envelope, and its own text, scoped to
+        between its header and the next section's (`Tour`, which echoes the same
+        `no_test_command` sentence) — an assertion on this text is pinned to `_dod_section`'s
+        own line and is not satisfied by `Tour`'s repeat of it."""
         from apps.cli.grouped import main
 
         main(["job", "show", job_id, "--full"])
         shown = capsys.readouterr()
-        return json.loads(shown.out)["sections"]["dod"], shown.err.split("--- Dod ---\n", 1)[1]
+        dod_text = shown.err.split("--- Dod ---\n", 1)[1].split("\n--- Tour ---", 1)[0]
+        return json.loads(shown.out)["sections"]["dod"], dod_text
 
     def _text(self, capsys, job_id: str) -> str:
         return self._show(capsys, job_id)[1]
