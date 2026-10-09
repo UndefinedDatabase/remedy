@@ -1937,7 +1937,9 @@ def test_the_run_route_is_pinned_with_its_body_and_its_statuses():
     assert "job_already_running" in route.description
 
 
-def test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_record():
+def test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_record(monkeypatch):
+    # The answer reads `lost`; the grace it would wait for an end is not what this test is about.
+    monkeypatch.setattr(SR, "RECORDED_END_GRACE_SECONDS", 0)
     full = _saved_job_in("")
     calls, start = _recording_run_starter()
     status, body, headers = _post_run(full, {}, start)
