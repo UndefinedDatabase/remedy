@@ -511,6 +511,21 @@ end the response with:
   and R-1186 is item 34's. R-1184 was a defect of the product that the second gate test found
   while it was being built, and R-1185 was found by the hardening stage's audit, which exists to
   find a promise no test holds.
+  Consolidated again at F253's closure on 2026-10-09: nothing joined and no two items were merged,
+  because none of F253's five lines in `.agent/prose_slips.md` names a lesson the list lacks. An
+  import ordered into a module without the generated reachability list it extends, and a cleanup
+  step that assumed every record's folder is named by the record's own id, are item 34's reading of
+  the list and the code the order reaches; a ledger sentence and a refusal sentence ordered
+  together with a group rule that accepted any group, and a registration ordered "as the contract
+  test does" while that test registers none, are item 18's reading of an ordered recipe and a named
+  precedent against the property each must establish; and a worker command begun with `cd`, with a
+  staged diff read in part, is a slip in following a block, which no item about a block's text can
+  prevent. Its authoring defect that left the branch red, R-1221, a namespace deleted while a page
+  the named-path guard reads still named its file, is item 34's reading of the tests that already
+  guard a path. R-1222, R-1223 and R-1224, defects of the feature's own earlier rounds, each sat
+  under a guard no round's selection named until the closure's own checks ran it, which is item
+  34's reading as well; and R-1209 to R-1218 were found by the round gates and the hardening
+  stage's audits, which exist to find a promise no test holds. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
