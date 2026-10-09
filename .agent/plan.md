@@ -8,12 +8,15 @@ operator writes and a ledger entry for every call (docs/roadmap/features/T12_F25
 amendments, and DECISIONs F253 D1 to D27, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 35, the closure's evidence round: book round 34's verdict; the commit that saves
-this round's block and evidence script is the accepted head; preview and apply the staging-copy
-reclaim, build the evidence job `f253r35e1001` and build the review package from that head.
+BLOCKED on operator question Q16 (R-1226): five early commit subjects carry slash-led route tokens
+that the review package's metadata scan rejects, and rewording pushed history needs the operator's
+leave (guardrail G2). Everything else of the closure is done: hardening, self-use run, a green full
+suite, the consolidation pass and a green evidence run that failed only on those subjects.
 
 ## Next Steps
-1. The ledger rotation, the owner lines, the self-use entry's `consumed_by`, the STATUS line, the
+1. On the operator's leave: reword the five subjects as Q16 describes, then run the evidence job
+   and the package again from the new accepted head.
+2. The ledger rotation, the owner lines, the self-use entry's `consumed_by`, the STATUS line, the
    README and the pull request, left unmerged.
 
 ## Risks
@@ -37,4 +40,5 @@ reclaim, build the evidence job `f253r35e1001` and build the review package from
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297.
+  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297; R-1226 (Medium),
+  the closure blocker, is owned by F253.
