@@ -45,8 +45,8 @@ step changes no behaviour, keeps every import path working, and leaves the tests
 - `run_job` (`packages/orchestration/pingpong_job.py`). Boundary: its own phases — the pre-flight
   guards, the configuration it resolves for the job, the budget accumulators and their nested
   helpers, the episode start, and the main loop over the tasks with the job's terminal steps after
-  it; and the stop, pause and budget check written out at each of its safe points. Steps: (1) the
-  safe points become one function every safe point calls (F300 T004); (2) the configuration
+  it; and the stop, pause and budget check that each of its safe points once wrote out. Steps: (1)
+  done by F300 T004, every safe point calls `_settle_safe_point`; (2) the configuration
   resolution becomes a function of its own; (3) the terminal steps after the task loop become a
   function of their own; (4) the handling of one task's result becomes a function of its own;
   (5) the budget helpers become one object in a module of their own, holding the accumulators.
@@ -145,7 +145,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1664 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1652 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -313,7 +313,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
-| 5731 | `packages/orchestration/pingpong_job.py` |
+| 5719 | `packages/orchestration/pingpong_job.py` |
 | 5283 | `packages/orchestration/pingpong_loop.py` |
 | 4834 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
