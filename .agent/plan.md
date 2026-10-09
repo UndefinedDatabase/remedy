@@ -8,16 +8,13 @@ operator writes and a ledger entry for every call (docs/roadmap/features/T12_F25
 amendments, and DECISIONs F253 D1 to D27, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 33, the closure's first repair round (DECISION F253 D27): book round 32's FAIL
-and register R-1223 and R-1224; the launchers write their records with `durable_write_json`, and
-`run_record_for_job_value` reads a run's record for the command and the route; then the full suite
-runs once more on the repaired tree and its transcript replaces the first.
+Session 6, round 34, the checklist's consolidation pass: book round 33's verdict, resolve R-1223
+and R-1224, register R-1225 for the closure suite's cost; one dated paragraph in section 3 of
+docs/agents/planner_reviewer_prompt.md classifies F253's prose slips and its authoring defects.
 
 ## Next Steps
-1. A repair round for every bad node the suite names, or, with a green suite, the checklist's
-   consolidation pass.
-2. The evidence bundle, the reclaim of staging copies and the review package.
-3. The ledger rotation, the owner lines, the STATUS line, the README and the pull request.
+1. The evidence bundle, the reclaim of staging copies and the review package.
+2. The ledger rotation, the owner lines, the STATUS line, the README and the pull request.
 
 ## Risks
 - The installed `remedy` command on this machine runs the code of a stale job worktree (Q13);
@@ -39,5 +36,5 @@ runs once more on the repaired tree and its transcript replaces the first.
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1223 and R-1224 (Low) are open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156,
-  R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220 (Low) and R-1160 (Medium) by F297.
+- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
+  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297.
