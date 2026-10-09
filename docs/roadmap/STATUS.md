@@ -234,7 +234,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 7 — The process as the product: upkeep inside every mission (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F301 — Mission upkeep: every fifth job cleans up
+- [~] F301 — Mission upkeep: every fifth job cleans up
 
 ## Tier 3 — Token economy: the worker's tokens per call (operator amendment amend1007b-luna-api-upkeep)
 

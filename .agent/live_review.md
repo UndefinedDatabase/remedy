@@ -1,32 +1,30 @@
-# Live Review — F300 Structure ledger and size ratchet
+# Live Review — F301 Mission upkeep: every fifth job cleans up
 
-> Round-by-round review record, re-headed at the F300 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F299, whose STATUS line
-> went `[x]` on its own branch. Both hosted CI jobs of its pull request 318, Python 3.10 and Python
-> 3.12 of run 37967972130 on `cbef86fa1`, passed, and the Open PR Gate merged pull request 318 into
-> `main` as `b25d87a24`, whose second parent is `cbef86fa1` and whose tree equals that commit's.
-> F299's round 9 was reviewed after its own handback and its verdict was written into that pull
-> request, so operator amendment amend0827-process-diet rule 1 books it here, in the first commit of
-> the next round that is happening anyway; it is appended at the end of this record by this claim.
-> Only the heading, this paragraph and the Steps section below are rewritten, and one line is
-> inserted directly after R-1160's paragraph, its owner line naming F300 (DECISION F300 D1);
-> everything else from the Findings heading to the end of the file as it stood at `b25d87a24` is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `b25d87a24`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157',
-> 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225',
-> 'R-1230']`; F300 owns R-1160 from this claim, and F297, the rolling findings paydown, owns the
-> other fifteen.
+> Round-by-round review record, re-headed at the F301 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F300, whose STATUS line
+> went `[x]` on its own branch. Both hosted CI jobs of its pull request 319, Python 3.10 and Python
+> 3.12 of run 37997408738 on `0d49a59b5`, passed, and the Open PR Gate merged pull request 319 into
+> `main` as `fdbf0802e`, whose second parent is `0d49a59b5`. F300's round 6 was reviewed after its
+> own handback and its verdict was written into that pull request, so operator amendment
+> amend0827-process-diet rule 1 books it here, in the first commit of the next round that is
+> happening anyway; it is appended at the end of this record by this claim. Only the heading, this
+> paragraph and the Steps section below are rewritten; everything else from the Findings heading to
+> the end of the file as it stood at `fdbf0802e` is carried forward BYTE-IDENTICAL, and finding ids
+> continue the monotonic R-XXXX series across the re-head. The open set at `fdbf0802e`, computed
+> with `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
+> 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219',
+> 'R-1220', 'R-1225', 'R-1230']`, all fifteen owned by F297, the rolling findings paydown. This
+> claim registers R-1233, owned by F301, at the end of this record, after F300's round 6.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F300 D1's. The first round claims F300, re-heads this record, books
-F299's round 9, saves the claim's measurement as `.agent/f300_inventory.md`, moves R-1160 to
-F300, and lands T001: the module `packages/orchestration/structure_measure.py` and the command
-`remedy integrity structure`. Then T002 and T003: Remedy's ledger page, the ratchet test with its
-record of sizes, and the rule in the self-drive protocol. Then T004: R-1160's repair in a commit
-of its own, then `run_job`'s safe points drawn into one function, its recorded size lowered. Then
-closure.
+THE ORDER BELOW IS DECISION F301 D1's. The first round claims F301, re-heads this record, books
+F300's round 6, saves T001's inventory as `.agent/f301_inventory.md`, and takes the structural
+step the loop needs first: the dispatch branch of `execute_move` becomes `dispatch_milestone_job`
+in `packages/orchestration/orchestrator_dispatch.py`. Then T002, the project's upkeep ledger in
+`packages/orchestration/mission_upkeep.py`. Then T003: the boundary and one step of `config.py`,
+then the setting `mission.upkeep_every`, the cadence, the compiled step and both ways of adding a
+job. Then T004 and T005, then a fixture mission of six jobs, then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -192,3 +190,7 @@ Gate: F300 R3 — the F300 round 3 entry, over `041b6e6ed`..`39bc4c755` (6 commi
 Gate: F300 R4 — the F300 round 4 entry, the closure's first round and its integration gate, over `39bc4c755`..`029ea7d64` (5 commits, each single-parent; insertions by `git show --numstat`: `4733163ba` 349, `252b0a075` 9, `fb23d424e` 126, `bd0081765` 14, `029ea7d64` 188). VERDICT PASS. At `029ea7d64` the saved block and the saved self-use script, `.agent/live_review.md`, `.agent/plan.md`, the feature file with its Built State and `docs/agents/planner_reviewer_prompt.md` with F300's consolidation paragraph equal their prepared files, six of six (`.remedy-wt/f300-rev/review_r4.py`); the reviewer's dry run of C1 and C2 read `404 passed, 1 skipped` over `tests/docs/`, the block lint, the agent tooling, the integrity gate and the ratchet, and six integrity checks `pass` once committed. The self-use run, `.agent/selfuse_f300/`: `SU-052`, "Narrow the excused handler at apps/cli/commands/job.py:1309", appended by the generator's tier 4 with an empty `consumed_by`, ran as job `449935c821c54023` with `claude-cli` and `claude-sonnet-4-6` for builder and reviewer, ended `completed` with T001 `applied_to_job_workspace`, verdict `pass`, in 205.1 wall seconds and two provider calls priced at 1.0041813 US dollars, and was never applied. Unlike F299's run its change meets its three acceptance lines: the mark is gone, the handler reads `except (ValueError, KeyError) as exc:`, and `MAX_EXCUSED` falls from 285 to 284; `describe_self_use_run_defects` returned nothing to register. The reviewer's reading of `OllamaBuilder.__init__` finds the narrowing plausible for its configuration, environment and profile lookups, and notes that an unreadable configuration file would now surface as a traceback instead of "builder unavailable"; the change lives only on its job branch, so nothing on disk is wrong. The one full suite, `.agent/authored/f300-closure-suite.txt`, ran on `fb23d424e`, the tree that ships, with the reflog unchanged: `22289 passed, 22 skipped, 1 warning in 366.78s`, exit 0, no bad node id and no leftover process; `scripts/closure_suite_cost.py` read 1264.11 CPU seconds, 8.4 percent more than F299's 1166.53, within the 10 percent limit, exit 0.
 
 Gate: F300 R5 — the F300 round 5 entry, the closure's evidence round, over `029ea7d64`..`a2a8a9183` (2 commits, each single-parent; insertions by `git show --numstat`: `c5ebe4d34` 334, `a2a8a9183` 162). VERDICT PASS. At `c5ebe4d34`, the round's accepted head, the saved block, the saved evidence script, `.agent/live_review.md` and `.agent/plan.md` equal their prepared files, and the ledger is unchanged at `a2a8a9183` (`.remedy-wt/f300-rev/review_r5.py`). The evidence script, derived from F299's round 8 script by the differences its docstring names, was pre-checked read-only at `029ea7d64`: 47 test files present and sorted, `2287/2300 tests collected (13 deselected)`, and no unsafe id once `tests/cli/test_job_pause.py`, whose parameter `../etc` the packaging scan reads as a local path, was left out of the selection. The staging reclaim previewed nothing to free and refused one 1.5 MB review staging copy that no job owns, so `--apply` was rightly skipped. The worker's log `.remedy-wt/f300-r5-worker/evidence.log`: head `c5ebe4d340f198c5bd48f9f6964812c8867fdaf7`, ancestry-path and plain counts 24 and 24 from the fork point `b25d87a24`, 2287 node ids with 13 deselected, no unsafe id and the planted id answering `a local absolute path`, pytest exit 0 at 2283 passed, 0 failed and 4 skipped, `validate_verification_tests` with no problem, `is_valid_current_run True` and no validation error. The package `remedy-review-20261009-234617-READY_FOR_REVIEW.zip`, read by the reviewer in `/home/decodeux/Repos/remedy-history/zips`: SHA-256 `9fa8f77003f4fb19f4793907ec4cacedc0f8fe7fce93d96a005f21877f6dff5a`, a valid zip whose `testzip()` is None, its `.review_zip_manifest.json` with `package_status` `READY_FOR_REVIEW` and a committed review subject from `b25d87a2436fefbdc9d6ce5df40c2ba8e6e39697` to `c5ebe4d340f198c5bd48f9f6964812c8867fdaf7` over 24 commits; the zip log read `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. The local tip equalled the pushed branch and the tree was clean.
+
+Gate: F300 R6 — the F300 round 6 entry, the closing round, over `a2a8a9183`..`0d49a59b5` (3 commits, each single-parent; insertions by `git show --numstat`: `d33ecbed0` 269, `11af8d94d` 27, `0d49a59b5` 185). VERDICT PASS, written into pull request 319 after the round's handback and booked here by F301's claim. Verified by dry run, bytes identical (amend0930-test-load rule 3): every committed file equals the reviewer's simulation of the round on the base `a2a8a9183`, twelve of twelve — at `d33ecbed0` the saved block, the STATUS line, the pull request body, the ledger with round 5's gate entry appended, the prose slips, the feature file's Built State and the plan; at `11af8d94d` the rotated ledger and its archive; at `0d49a59b5` `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json`. The rotation printed the simulation's figures: 9 gate records, F299's rounds 1 to 9, and 2 finding pairs, R-1160 and R-1232, moved, the ledger from 174,639 to 148,505 bytes, 15 open findings before and after. The STATUS line occurs once and no line is left in progress; the README reads 134 of 304 and the Tier 2 row 43 of 44; SU-052 is consumed by F300. The simulation's selection read `560 passed` at exit 0 with six integrity checks `pass`, and its red control, the README count left at 133, turned exactly `test_the_readme_accepted_count_equals_the_status_count` red; the worker's one run read `560 passed`. The pull request's body equals `.agent/authored/f300-r6-pr_body.md`, and the local tip equalled the pushed branch with a clean tree. The closure's preconditions held, and F300 was accepted PASS_WITH_RISKS, the risks being the fifteen open findings owned by F297.
+
+- R-1233 — Low, NO TEST SEES THE LOOP'S DISPATCH PATH SKIP THE AUDITED APPROVAL OF A JOB WHOSE PLAN GATE IS OPEN. Raised by the reviewer of F301's first session while proving that session's structural step, which moves that path unchanged out of `execute_move`. SEARCHED BEFORE MINTING (checklist item 30): no open finding names the unattended approval, `_auto_approve_if_gated` or the dispatch path. MEASURED in a disposable worktree on the reviewer's simulation of round 1, over `tests/orchestration/test_orchestrator_loop.py`, `test_mission_contract.py`, `test_mission_gate.py` and `test_mission_e2e.py`, the unmutated control green at 383 passed: replacing `approved = loop._auto_approve_if_gated(job)` with `approved = False` in `dispatch_milestone_job` stays green at 383 passed, while seven other mutations of the same function each turn a test red. The same mutation, run over the whole of round 1's selection with `tests/orchestration/test_plan_edit_execution.py` added, stays green at 6051 passed and 5 skipped; and the same line mutated in `execute_move` at `fdbf0802e` stays green over the four files at 383 passed, so the gap is older than the move. The helper itself is held by two tests that call it directly; what no test holds is that the dispatch path calls it. THE REPAIR: a test that dispatches, through the loop, a job whose plan gate is open and asserts the job was approved, audited, before it ran; F301's T003 rewrites that path and lands it. Owner: F301. OPEN.
