@@ -538,6 +538,15 @@ end the response with:
   R-1228, a reworded sentence that a second test file pinned, is item 34's reading of the tests
   that already guard a path. R-1230 was found by the closure's self-use run. The list stays at 34
   items.
+  Consolidated again at F300's closure on 2026-10-09: nothing joined and no two items were merged,
+  because F300's one line in `.agent/prose_slips.md` names no lesson the list lacks: a worker reply
+  that misreported a commit's insertions while the handback on disk was right is a slip in
+  following a block, which no item about a block's text can prevent. Its authoring defect that left
+  something unguarded was registered as a finding, R-1232: a block that ordered the tests of a
+  command without one for the order, the keys and the check that its own decision and specification
+  promise is item 18's reading of an ordered recipe, here a list of tests, against the property it
+  must establish. R-1160 was a defect of the product, registered at F295 and repaired here. The
+  list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
