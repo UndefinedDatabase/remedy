@@ -1,41 +1,34 @@
-# Handoff — F253 round 26: book round 25, and a poll that would read lost waits for the recorded end (the hardening stage's third repair round)
+# Handoff — F253 round 27: book round 26 and the repeated audit, and its two gaps closed by tests (the hardening stage's third repair round)
 
 ## Session
 
-SESSION 6 of feature F253 · round 26 · rounds so far 26
+SESSION 6 of feature F253 · round 27 · rounds so far 27
 
-Context self-assessment: the reviewer's context holds; the session continues with the repeated audit and the closure sequence.
+Context self-assessment: the reviewer's context holds; the session continues with the audit repeated for statements 18 and 23 and then the closure sequence.
 
-Fortschritt: ~97 % (S1 to S7, audit, three repair rounds · repeated audit, closure open) — Schätzung
+Fortschritt: ~98 % (S1 to S7, audit, repeated audit, three repair rounds · last audit, closure open) — Schätzung
 
 ## Range
 
-Review of `eba4b1d65d1a6b0039677caeb0870754810f7f4b`..`e402ab58a1b61fbb98ded37c266b18e5f0415983` (the last commit before this handback, C3).
+Review of `ea8f3e9af70702c7ec88e4a37ac7dead4c252a5d`..`88170f1ede06b7320adbed74a3d2c61cb5e298a8` (the last commit before this handback, C2).
 
 ## Commits
 
-### b6a32b4dd F253 R26 C1: book round 25, resolve R-1210 and R-1207, register R-1216, DECISION F253 D23, the plan and the block
+### 4f0311b18 F253 R27 C1: book round 26, resolve R-1216, the repeated audit, register R-1217 and R-1218, DECISION F253 D24, the plan and the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f253-r26.md` | 166/0 | new file, byte copy of `block.md` (166 lines, sha256 `f9101915003426f0a941d3316ca3a507f766102b47f79fba13fcf07f88c237f0`) |
-| `.agent/decisions.md` | 10/0 | `append-decisions.txt`'s bytes appended: DECISION F253 D23 |
-| `.agent/live_review.md` | 8/0 | `append-live_review.txt`'s bytes appended: round 25's gate entry, R-1210 and R-1207 resolved, R-1216 registered |
-| `.agent/plan.md` | 10/12 | `dry-plan.md`, byte for byte |
+| `.agent/authored/f253-r27.md` | 150/0 | new file, byte copy of `block.md` (150 lines, sha256 `1ae1e19faa2d198b02b1d68b76c37c8ff650b6e707a285f7ade8d0237fa71162`) |
+| `.agent/decisions.md` | 10/0 | `append-decisions.txt`'s bytes appended: DECISION F253 D24 |
+| `.agent/f253_acceptance_reaudit1.md` | 149/0 | new file, byte copy of `reaudit.md` (149 lines, sha256 `6006f4aa11982895d4540a400d185b38b74ed60ccb140f223c008f2822e95a01`) |
+| `.agent/live_review.md` | 10/0 | `append-live_review.txt`'s bytes appended: round 26's gate entry, R-1216 resolved, the repeated audit, R-1217 and R-1218 registered |
+| `.agent/plan.md` | 9/8 | `dry-plan.md`, byte for byte |
 
-### dc1cb12a0 F253 R26 C2: an answer that would read lost waits up to two seconds for the recorded end (R-1216, DECISION F253 D23)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/serve_runs.py` | 43/2 | `RECORDED_END_GRACE_SECONDS = 2.0`, `_recorded_end_within`, and the re-read in `order_record_payload` and `run_record_payload` when the state reads `lost` |
-| `tests/orchestration/test_serve_runs.py` | 84/0 | the constant's value; a run and an order whose end is written 0.3 seconds later answer `ended`; a run and an order with no end answer `lost` after at least 0.3 seconds |
-| `tests/ui_server/test_public_api.py` | 3/1 | existing test: the run POST test, whose answer reads `lost`, sets `RECORDED_END_GRACE_SECONDS` to 0 with `monkeypatch` so that it does not wait; no assertion changed |
-
-### e402ab58a F253 R26 C3: the page says a poll waits up to two seconds for a recorded end (R-1216)
+### 88170f1ed F253 R27 C2: tests for the apply route's success answer and the no-TLS reach (R-1217, R-1218)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/public-http-api-v1.md` | 8/3 | "Orders" and "Runs": one sentence each on the wait; the generated section is untouched |
+| `tests/orchestration/test_serve_daemon.py` | 63/15 | new `test_an_apply_post_answers_what_the_apply_command_prints` (R-1217); `test_the_supervisors_listener_source_imports_no_ssl_and_binds_127_0_0_1_only` widened to the six modules of the API's path (R-1218), name unchanged |
 
 ### This commit (self-reference)
 
@@ -50,56 +43,56 @@ Review of `eba4b1d65d1a6b0039677caeb0870754810f7f4b`..`e402ab58a1b61fbb98ded37c2
 
 ## Verification
 
-0. Preconditions, before any write: `block.md` read whole; every file in `digests.txt` matched its sha256 (Python `hashlib`), `block.md` 166 lines; `git rev-parse HEAD` and `origin/feature/f253-public-http-api` both read `eba4b1d65d1a6b0039677caeb0870754810f7f4b`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f253-public-http-api` before each commit.
-1. **Gate 1**: `git status --porcelain` empty after C3 (exit 0); C1's byte proofs, run by `.remedy-wt/f253-r26-worker/c1.py` before the commit: live_review post equals pre plus slice True, decisions post equals pre plus slice True, authored copy equals `block.md` True, plan equals `dry-plan.md` True.
-2. **Gate 2**: the block's selection from the primary checkout, once: exit 0, `770 passed in 140.22s (0:02:20)`, no FAILED, ERROR or SKIPPED line. Saved at `.remedy-wt/f253-r26-worker/g2.out`.
-3. **Gate 3**: `python3 -m ruff check packages/orchestration/serve_runs.py tests/orchestration/test_serve_runs.py tests/ui_server/test_public_api.py` — exit 0, `All checks passed!`.
+0. Preconditions, before any write: `block.md` read whole; every file in `digests.txt` and `reaudit.md` matched its sha256 (Python `hashlib`, `.remedy-wt/f253-r27-worker/check_digests.py`), `block.md` 150 lines, `reaudit.md` 149; `git rev-parse HEAD` and `origin/feature/f253-public-http-api` both read `ea8f3e9af70702c7ec88e4a37ac7dead4c252a5d`; `git status --porcelain` empty; `.agent/STOP` absent. `git branch --show-current` read `feature/f253-public-http-api` before each commit.
+1. **Gate 1**: `git status --porcelain` empty (exit 0) after C2; C1's byte proofs (`g1_proof.py`, against the committed blobs): authored copy True, reaudit copy True, live_review equals base plus slice True, decisions equals base plus slice True, plan equals `dry-plan.md` True.
+2. **Gate 2**: the block's selection from the primary checkout, once: exit 0, `674 passed in 130.36s (0:02:10)`, no FAILED, ERROR or SKIPPED line. Saved at `.remedy-wt/f253-r27-worker/g2.out`.
+3. **Gate 3**: `python3 -m ruff check tests/orchestration/test_serve_daemon.py` — exit 0, `All checks passed!`.
 4. **Gate 4**: `python3 -m apps.cli.main integrity check --json` — exit 0, `"check_count": 6`, all six `pass`, `"fail_count": 0`.
-5. **Gate 5**: the open-finding reader — exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1216']`, as ordered.
+5. **Gate 5**: the open-finding reader — exit 0, `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1160', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1217', 'R-1218']`, as ordered.
 6. Gate 6 (after the push): reported in the worker's reply, not here.
 
-While writing: `tests/orchestration/test_serve_runs.py` alone once, `83 passed in 5.65s`, exit 0.
+While writing C2: `-x -k test_an_apply_post_answers_what` on the test file twice with an empty set-aside tuple (red by design, to read what the two envelopes hold; `probe1.out`, `probe2.out`), then the two changed tests by `-k`, `2 passed in 4.77s`, exit 0.
 
 ## Authored-text proofs
 
-- `block.md` to `.agent/authored/f253-r26.md`: 166 lines, byte-equal, sha256 `f9101915003426f0a941d3316ca3a507f766102b47f79fba13fcf07f88c237f0`.
-- `append-live_review.txt` and `append-decisions.txt` each appended to their base blob at `eba4b1d65`: "post equals pre plus slice" True for both.
+- `block.md` to `.agent/authored/f253-r27.md`: 150 lines, byte-equal, sha256 `1ae1e19faa2d198b02b1d68b76c37c8ff650b6e707a285f7ade8d0237fa71162`.
+- `reaudit.md` to `.agent/f253_acceptance_reaudit1.md`: 149 lines, byte-equal, sha256 `6006f4aa11982895d4540a400d185b38b74ed60ccb140f223c008f2822e95a01`.
+- `append-live_review.txt` and `append-decisions.txt` each appended to their base blob at `ea8f3e9af`: "post equals pre plus slice" True for both.
 - `dry-plan.md` to `.agent/plan.md`: byte-equal.
 
 ## Deviations & assumptions
 
-- C1's staged diff: the block copy (lines 1 to 172 of the diff) was not read as hunks, as it is proven byte-equal to `block.md`, which I had read; the decisions, live_review and plan hunks were read whole.
-- C3: in "Runs" the inserted sentence sits between "printed." and "An unknown job", so the existing lines "An unknown job, or a job with no run, answers 404 / `run_not_found`. The supervisor" were re-wrapped (3 deleted lines in all, none changed in meaning); the block said no other line of the page changes.
-- Choices left to me: the helper sleeps `min(0.05, time remaining)` so the last read falls at the grace's end; its poll interval is the private constant `_RECORDED_END_POLL_SECONDS`; the helper's return type is `Any` because it serves both record classes; the ended-test records are written by a daemon thread through `_atomic_write_json` after 0.3 seconds.
-- The one existing test changed, `test_a_run_post_starts_the_run_by_the_full_id_and_answers_202_with_its_record` in `tests/ui_server/test_public_api.py`, sets the grace to 0 by `monkeypatch`. Other tests in that file and in `tests/cli/` that read `lost` through a payload without asserting it keep the wait of two seconds each; none was changed.
-- The `remedy` command installed on this machine was never run; every Remedy call was `python3 -m apps.cli.main` from the checkout.
+- C1's staged diff: the two new file copies (`block.md`, `reaudit.md`) were not read as hunks, as they are proven byte-equal to files I had read or digested; the decisions, live_review and plan hunks were read whole. C2's diff was read whole.
+- The set-aside tuple of R-1217's test, read from what the two envelopes really held (the keys that differed in the probe run): `commit_sha` (its commit), `finished_at` and `started_at` (times), `job_apply_id` (an apply record's id), `job_id` (the job), `task_summaries` (each item names the job's task and run by `task_id` and `run_id`). No other key differed. Choice left to me: because setting `task_summaries` aside whole would blind its other contents, the test also compares the two lists with `run_id` and `task_id` removed from each item, and asserts the two `job_id` values are the two jobs posted and run, and that both `commit_sha` values are 40 characters long.
+- The test applies the first job by its full id (the existing test posts the 8-character prefix), so `job_id` can be asserted equal to the job made.
+- R-1218's test keeps its name: it still reads the supervisor's listener source for `ssl` and for the host; the `ThreadingHTTPServer` search stays on `serve_daemon.py` only, as ordered.
+- While writing C2 I ran the one test file's two tests with `-k` (and once with `-x`), as the block allows; no other test command ran apart from gate 2.
 
 ## Round verdicts
 
-Round 25's PASS, with R-1210 and R-1207 resolved and R-1216 registered, is booked by C1 above. Round 26's verdict is the reviewer's.
+Round 26's PASS, with R-1216 resolved, and the repeated audit with its two gaps, are booked by C1 above. Round 27's verdict is the reviewer's.
 
 ## For the operator, in plain sentences
 
-Round twenty-five's work passed review: a program can now give an order a name, and a resent order with that name is refused while the first one's work is still going. Its test run also showed a rare timing fault: when a program asked about a run in the split second after it finished, Remedy could call it lost although it had ended normally. This round makes Remedy look again for up to two seconds before it calls a run or an order lost. What remains is a repeat of the final check and the closing steps.
+Round twenty-six's fix passed review: Remedy no longer calls a run lost in the split second after it ends. A fresh checker then tested again the six promises that had lacked a test: four now hold, and two had a small hole each. One was that no test compared the answer to a successful approval over the web with the answer the command line gives; the other was that the test guarding against encrypted connections looked at only one of the files involved. This round added a test for the first and widened the second. What remains is one last check of those two promises and the closing steps.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): if it appears, finish the commit in hand, write the handback and stop.
 2. Then the Open PR Gate (rule 2): no pull request for this branch, none to merge.
-3. Then book round 26's verdict and resolve what it repaired in the next round's first commit.
-4. Then the acceptance audit repeated for the six statements that had gaps.
+3. Then book round 27's verdict and resolve what it repaired in the next round's first commit.
+4. Then the acceptance audit repeated for statements 18 and 23.
 5. Then the closure sequence per docs/roadmap/STATUS_closure_protocol.md.
 
 Operator questions open: 4.
-Open findings: 13 (R-1216, Medium, owned by F253; R-1160, Medium, and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 and R-1196, Low, owned by F297) — the count names the set before this round's repair is booked.
+Open findings: 14 (R-1217 and R-1218, Low, owned by F253; R-1160, Medium, and R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176 and R-1196, Low, owned by F297) — the count names the set before this round's repairs are booked.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 25, resolve R-1210 and R-1207, register R-1216, DECISION F253 D23, the plan and the block | done | `b6a32b4dd` |
-| C2: the wait for the recorded end (R-1216) | done | `dc1cb12a0` |
-| C3: the page states the wait (R-1216) | done | `e402ab58a` |
+| C1: book round 26, resolve R-1216, the repeated audit, register R-1217 and R-1218, DECISION F253 D24, the plan and the block | done | `4f0311b18` |
+| C2: tests for R-1217 and R-1218 | done | `88170f1ed` |
 | Gates 1 to 5 | done | green |
-| C4: this handback | done | this commit |
+| C3: this handback | done | this commit |
 | Push, Gate 6 | pending | reported in the worker's reply |
