@@ -15,6 +15,7 @@ nothing runs outside the temporary worktree the test built.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -303,6 +304,51 @@ class TestProjectTestsKind:
         red = run_check(check("pytest", {"selector": "tests"}), worktree, timeout_sec=60)
         assert red.status == STATUS_FAILED
         assert "No module named" in red.output_tail
+
+    def test_the_checkouts_virtualenv_and_node_bin_reach_the_checks_own_process(
+            self, tmp_path: Path):
+        """R-1227: no test read what the child process actually received — dropping
+        the environment overlay at the runner or at the spawn left every test green.
+        This one runs a configured command that prints its own `os.environ` back, so
+        either drop turns it red.
+        """
+        repo = tmp_path / "env-target"
+        _init_repo(repo)
+        (repo / ".gitignore").write_text(".venv/\nnode_modules/\n")
+
+        program = ("import json, os; print(json.dumps({'PATH': os.environ.get('PATH'), "
+                  "'VIRTUAL_ENV': os.environ.get('VIRTUAL_ENV')}))")
+        command = ["python3", "-c", program]
+        toml_array = "[" + ", ".join(json.dumps(part) for part in command) + "]"
+        conf = repo / ".remedy"
+        conf.mkdir()
+        (conf / "config.toml").write_text(f"[tests]\ncommand = {toml_array}\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+
+        # Created AFTER the commit, in the checkout only (both are gitignored): the
+        # worktree below has neither, so `project_lookup_dirs` must fall back to it.
+        venv = repo / ".venv"
+        (venv / "bin").mkdir(parents=True)
+        (venv / "pyvenv.cfg").write_text("home = /usr\n")
+        python_stub = venv / "bin" / "python"
+        python_stub.write_text("#!/bin/sh\nexit 0\n")
+        python_stub.chmod(0o755)
+        (repo / "node_modules" / ".bin").mkdir(parents=True)
+
+        worktree_dir = repo / ".remedy-wt"
+        worktree_dir.mkdir()
+        worktree = worktree_dir / "wt-env"
+        _git(repo, "worktree", "add", str(worktree), "-b", "wt-env-branch")
+
+        ev = run_check(project_tests_check(), worktree, timeout_sec=60)
+        assert ev.status == STATUS_PASSED, ev.output_tail
+
+        last_line = ev.output_tail.strip().splitlines()[-1]
+        received = json.loads(last_line)
+        assert received["VIRTUAL_ENV"] == str(venv)
+        parts = received["PATH"].split(os.pathsep)
+        assert parts[:2] == [str(venv / "bin"), str(repo / "node_modules" / ".bin")]
 
     def test_the_node_target_runs_for_real_with_npm_test(self, tmp_path: Path):
         repo = tmp_path / "node-target"
