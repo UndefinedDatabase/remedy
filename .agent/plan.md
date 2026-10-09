@@ -5,12 +5,13 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result, submits orders and starts and follows runs, with a token whose policy the
 operator writes and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its
-amendments, and DECISIONs F253 D1 to D26, which fix the order and the shape).
+amendments, and DECISIONs F253 D1 to D27, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 32, the closure's integration-gate round: book round 31's verdict and resolve
-R-1222; run the feature's one full suite on the tree that ships, then the cost script, and commit
-the transcript `.agent/authored/f253-closure-suite.txt`.
+Session 6, round 33, the closure's first repair round (DECISION F253 D27): book round 32's FAIL
+and register R-1223 and R-1224; the launchers write their records with `durable_write_json`, and
+`run_record_for_job_value` reads a run's record for the command and the route; then the full suite
+runs once more on the repaired tree and its transcript replaces the first.
 
 ## Next Steps
 1. A repair round for every bad node the suite names, or, with a green suite, the checklist's
@@ -38,5 +39,5 @@ the transcript `.agent/authored/f253-closure-suite.txt`.
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220 (Low) and R-1160 (Medium) are open, all owned by F297.
+- R-1223 and R-1224 (Low) are open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156,
+  R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220 (Low) and R-1160 (Medium) by F297.
