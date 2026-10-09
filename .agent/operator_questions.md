@@ -99,3 +99,28 @@ note saying so.
 
 **What happens if you say nothing.** The recommendation is already in effect and stands until you
 say otherwise: the feature finishes its final check and closes without a new feature being made.
+
+### Q16 — Five early titles block packaging (2026-10-09, F253, round 35)
+
+**What needs deciding.** The feature that lets a program drive Remedy over a local web interface is
+finished and every test of it passes, but its review package cannot be built. Early in the work,
+five of the saved changes on its branch were given titles that contain web addresses starting with
+a slash, such as the address of the page that describes the interface. The check that builds the
+review package reads anything that starts with a slash as a file path on this computer, and refuses
+the whole package. The only fix is to rewrite those five titles in the branch's history. That gives
+every later change a new identifier and needs a forced upload to the shared copy of the branch,
+which the loop is never allowed to do on its own. You allowed exactly this once before, in July,
+for a title that named a command with a leading slash.
+
+**Why it matters.** Without the package the feature cannot be closed and handed to you for review,
+and the next feature in line waits behind it. Nothing in the product is wrong; only five titles are.
+
+**My recommendation.** Allow the loop, in its next session, to reword those five titles so that each
+names the web address in words instead of with a slash, by copying the branch's history onto a new
+branch with a new name, so that the old branch stays untouched as the record, and then to build the
+package from the new branch and open the pull request from it. If you prefer to do the rewording
+yourself, the five titles are listed in the handoff.
+
+**What happens if you say nothing.** The loop cannot carry out this recommendation without your
+leave, so nothing moves: the feature stays finished but unpackaged, and each new session stops at
+this point and writes its handoff again until you answer.
