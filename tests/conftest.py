@@ -57,7 +57,7 @@ def _data_root_allocator(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def _isolated_data_root(_data_root_allocator):
+def _isolated_data_root(request, _data_root_allocator):
     """Give every test its own temporary Remedy data root (finding R-0803).
 
     ``resolve_data_root()`` answers ``$REMEDY_DATA_DIR``, else the configured
@@ -69,22 +69,30 @@ def _isolated_data_root(_data_root_allocator):
     inherits ``os.environ``; the environment variable outranks both
     ``remedy.toml`` files, so a cwd or user config cannot route around it.
 
-    ``pytest_configure`` removes an inherited value, so a variable that is
-    already set here was set by a module- or class-scoped fixture that owns
-    the root for its whole scope, and it is left alone: measured, overriding
-    it made ``test_manual_completion_bundle.py`` look its module-built job up
-    in the wrong root. A test that sets its own value still wins, and one that
-    deletes it to exercise the default resolution gets the default. Like
-    ``_no_live_ollama_reach`` this does not request ``monkeypatch``, so it
-    stays out of that fixture's teardown ordering.
+    ``pytest_configure`` replaces an inherited value with the import-time root
+    (DECISION F253 D8), so a variable that holds anything else here was set by
+    a module- or class-scoped fixture that owns the root for its whole scope,
+    and it is left alone: measured, overriding it made
+    ``test_manual_completion_bundle.py`` look its module-built job up in the
+    wrong root. A test that sets its own value still wins, and one that deletes
+    it to exercise the default resolution gets the default. Afterwards the
+    variable names the import-time root again, so an environment a later
+    module-scoped fixture copies, before the next test starts, still names a
+    temporary root. Like ``_no_live_ollama_reach`` this does not request
+    ``monkeypatch``, so it stays out of that fixture's teardown ordering.
     """
     import os
-    if os.environ.get("REMEDY_DATA_DIR"):
+    import_root = getattr(request.config, "_remedy_import_data_root", None)
+    current = os.environ.get("REMEDY_DATA_DIR")
+    if current and current != import_root:
         yield
         return
     os.environ["REMEDY_DATA_DIR"] = str(_data_root_allocator())
     yield
-    os.environ.pop("REMEDY_DATA_DIR", None)
+    if import_root:
+        os.environ["REMEDY_DATA_DIR"] = import_root
+    else:
+        os.environ.pop("REMEDY_DATA_DIR", None)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -139,13 +147,19 @@ def _data_root_fingerprint(root):
 
 
 def pytest_configure(config):
-    """Record the configured data root, then drop an inherited ``REMEDY_DATA_DIR`` (R-0803).
+    """Record the configured data root, then replace an inherited ``REMEDY_DATA_DIR`` (R-0803).
 
-    The root is recorded BEFORE the variable is dropped, so a value exported in
+    The root is recorded BEFORE the variable is replaced, so a value exported in
     the operator's shell is the root the guard protects. Only the controller
     records it — comparing once, at the end of the whole run, is the claim —
-    and xdist workers start after this hook, so they inherit the dropped
+    and xdist workers start after this hook, so they inherit the replaced
     variable.
+
+    The replacement is a new empty temporary folder of this process, the
+    import-time root (DECISION F253 D8): test modules are imported before any
+    fixture runs, so an environment a module copies at import names this folder
+    and not the operator's data root, which is where such a copy sent a seeding
+    ``remedy do`` in F253 round 4. ``pytest_unconfigure`` removes the folder.
     """
     import os
     if not hasattr(config, "workerinput"):
@@ -163,7 +177,9 @@ def pytest_configure(config):
         # F293 T003: every process this run starts inherits the mark, workers included.
         config._remedy_run_mark = load_governor.new_run_mark()
         os.environ[load_governor.RUN_MARK_VARIABLE] = config._remedy_run_mark
-    os.environ.pop("REMEDY_DATA_DIR", None)
+    import tempfile
+    config._remedy_import_data_root = tempfile.mkdtemp(prefix="remedy-import-data-")
+    os.environ["REMEDY_DATA_DIR"] = config._remedy_import_data_root
 
 
 def pytest_xdist_auto_num_workers(config):
@@ -222,7 +238,16 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 def pytest_unconfigure(config):
-    """Append ONE line to the run record; xdist workers have exited, so their CPU time counts."""
+    """Remove the import-time root; append ONE line to the run record.
+
+    The import-time root is removed whole, whatever a test wrote into it, so a run leaves no
+    folder behind (DECISION F253 D8). The run record is appended after xdist workers have
+    exited, so their CPU time counts.
+    """
+    import_root = getattr(config, "_remedy_import_data_root", None)
+    if import_root:
+        import shutil
+        shutil.rmtree(import_root, ignore_errors=True)
     load = getattr(config, "_remedy_load_log", None)
     if load is None or load[0] is None:
         return

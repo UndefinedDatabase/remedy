@@ -142,6 +142,16 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         env_only=True,
     ),
     ConfigKeySpec(
+        key="serve.api_port",
+        env_var="REMEDY_SERVE_API_PORT",
+        description=(
+            "When set, the `remedy serve start` supervisor also answers the public HTTP API "
+            "(F253) on 127.0.0.1 at this port, and nothing else there; 0 picks a free port"
+        ),
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="ollama.host",
         env_var="REMEDY_OLLAMA_HOST",
         description="Ollama server URL",

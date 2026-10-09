@@ -1066,12 +1066,15 @@ def _cmd_job_apply(
 
 # WHY: a program must be able to say no to a result without applying it, and the no is the
 # operator's own act, kept on the job (T003 of docs/roadmap/features/T12_F304.md, DECISION F304 D5).
-def _cmd_job_decline(job_id: str, *, reason: str = "", json_output: bool = False) -> None:
+def _cmd_job_decline(job_id: str, *, reason: str = "", source: str = "cli",
+                     json_output: bool = False) -> None:
     """Decline a completed job's result with a reason, recorded on the job; nothing is applied.
 
     A blank reason is refused with `missing_argument` and exit 2; a job that is not completed
     with `job_not_declinable`, and one whose result already landed with `job_already_applied`,
     both exit 3. A second decline answers the first, unchanged, with `already_declined` true.
+    SOURCE names the door the decline came through, `cli` unless the public HTTP API passes
+    `api` (DECISION F253 D11), as `job stop` takes its own (DECISION F200 D3).
     """
     from datetime import datetime, timezone
 
@@ -1104,7 +1107,8 @@ def _cmd_job_decline(job_id: str, *, reason: str = "", json_output: bool = False
     if not already_declined and job_apply_landed(job_id):
         fail("job_already_applied", f"Job {job_id}'s result is already applied, so it cannot be "
              f"declined; nothing was recorded.", json_output=json_output, exit_code=3)
-    decline = decline_job_result(job, reason=reason, source="cli", now=datetime.now(timezone.utc))
+    decline = decline_job_result(job, reason=reason, source=source or "cli",
+                                 now=datetime.now(timezone.utc))
     if not already_declined:
         save_job_plan(job)
     if json_output:
@@ -1232,6 +1236,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.decline": lambda args: _cmd_job_decline(
         args.job_id,
         reason=getattr(args, "reason", None) or "",
+        source=getattr(args, "source", None) or "cli",
         json_output=getattr(args, "json", False),
     ),
     "job.evidence": lambda args: _cmd_job_evidence(

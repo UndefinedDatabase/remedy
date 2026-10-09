@@ -77,6 +77,7 @@ packages.orchestration
 packages.orchestration._symbols
 packages.orchestration.agent_loop
 packages.orchestration.agent_run_trace
+packages.orchestration.api_clients
 packages.orchestration.approval_queue
 packages.orchestration.archive_plan
 packages.orchestration.artifact_contract_gate
@@ -109,6 +110,7 @@ packages.orchestration.chat_turn
 packages.orchestration.checkpoints
 packages.orchestration.ci_run
 packages.orchestration.ci_stages
+packages.orchestration.client_changes
 packages.orchestration.client_digest
 packages.orchestration.cockpit
 packages.orchestration.command_audit
@@ -229,6 +231,7 @@ packages.orchestration.proof_chain
 packages.orchestration.proposed_tasks
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
+packages.orchestration.public_api
 packages.orchestration.rate_governor
 packages.orchestration.real_test_execution
 packages.orchestration.repair_attest

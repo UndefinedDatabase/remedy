@@ -106,7 +106,16 @@ provider, which spends nothing, although the digest's `calls` still counts it.
    unverified: no check ran, a task without a reviewer's verdict, a blocking criterion still
    `open`, or a contract that cannot be read; else `apply`. `risk` is `high` when no check ran
    or more than 20 files changed; else `medium` when a task took a repair round or more than 5
-   files changed; else `low`.
+   files changed; else `low`. After the first read, a client need not read the whole digest
+   again: it asks `remedy client changes --since <read_at> --json` for what changed since, and
+   passes the `cursor` each answer gives to the next. A record counts as CHANGED when its file
+   was written at or after the cursor, less a five-second overlap that covers a write landing in
+   the same second as the read that just finished. The answer carries `jobs` and `decisions`
+   exactly as the digest would for the jobs that changed, `closed_decisions` naming each
+   decision resolved since, `missions` naming each mission whose record changed and `applies`
+   naming each apply record that changed. An item can be named on two answers in a row, and a
+   client keeps the newest copy by its id. Without `--since` the answer carries only a `cursor`,
+   with every list empty.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
    decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
    raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
@@ -241,7 +250,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.1`.
+Interface version: `1.5`.
 
 ### Envelope
 
@@ -531,6 +540,7 @@ Description: Decline a completed job's result under its mission, with your reaso
 |---|---|---|---|---|---|
 | `job_id` | no | yes | yes | no | UUID of the job (under its mission) |
 | `--reason` | yes | yes | yes | no | Why you decline the result, in your own words; kept with the decline |
+| `--source` | yes | no | yes | no | Which door the decline came through, kept with it (default: cli; the public HTTP API passes api) |
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
@@ -711,6 +721,64 @@ Keys under the answer keys: see below.
 - `exit_codes`: `code`, `meaning`, `name`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
+
+#### `remedy client changes`
+
+Command id: `client.changes`.
+Description: List what changed since a cursor: jobs, open and resolved decisions, missions and applies, with a cursor for the next read (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--since` | yes | no | yes | no | The cursor of the last read: a time with its offset, such as the digest's read_at or the cursor the last read answered |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `invalid_cursor`.
+Answer keys: `applies`, `closed_decisions`, `cursor`, `decisions`, `degraded`, `jobs`, `missions`, `overlap_seconds`, `read_at`, `since`, `skipped_files`.
+Keys under the answer keys: see below.
+
+- `applies`: `finished_at`, `job_apply_id`, `job_id`, `status`
+- `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
+- `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+  - `clarifications`: `default`, `id`, `question`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
+    - `blocking_criteria`: `id`, `status`, `text`
+    - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
+  - `cost`: `basis`, `value_usd`
+  - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
+  - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
+- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `status`
+
+#### `remedy client order`
+
+Command id: `client.order`.
+Description: Read an order (an order file or text) the supervisor started, as a record of its own: its state, its exit code and the answer remedy do printed (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `order_not_found`.
+Answer keys: `answer`, `ended_at`, `exit_code`, `order_file`, `order_id`, `started_at`, `state`.
+Keys under the answer keys: none.
+
+#### `remedy client run`
+
+Command id: `client.run`.
+Description: Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed once its tasks ended (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose task run the supervisor started |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `run_not_found`.
+Answer keys: `answer`, `ended_at`, `err_log`, `exit_code`, `job_id`, `out_log`, `pid`, `started_at`, `state`.
+Keys under the answer keys: none.
 
 ### Digest
 

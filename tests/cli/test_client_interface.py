@@ -92,7 +92,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.1"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.5"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -483,6 +483,13 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_changes:**changes": (
+        frozenset({
+            "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
+            "overlap_seconds", "read_at", "since", "skipped_files",
+        }),
+        "the keys build_client_changes in packages/orchestration/client_changes.py returns",
+    ),
     "apps.cli.commands.job:_cmd_job_resume:**preview": (
         frozenset({
             "action", "budget_stop", "checkpoint_index", "job_id", "pending_tasks",
@@ -514,6 +521,23 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
             "safety_summary", "would_run_stage",
         }),
         "the keys export_dry_run_json in packages/orchestration/event_replay.py returns",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_order:**payload": (
+        frozenset({
+            "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+        }),
+        "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
+        "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
+        "F253 D14 (4))",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_run:**payload": (
+        frozenset({
+            "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid",
+            "started_at", "state",
+        }),
+        "the keys run_record_payload in packages/orchestration/serve_runs.py returns, shared "
+        "with GET /api/v1/jobs/{job}/run and the 202 answer of POST /api/v1/jobs/{job}/run "
+        "(DECISION F253 D20)",
     ),
 }
 
@@ -1334,11 +1358,22 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     answer("patch.reject", ["patch", "reject", job_id, "no-such-intent"], 1)
     abandoned = answer("mission.abandon", ["mission", "abandon", done["mission_id"]], 0)
     interfaced = answer("client.interface", ["client", "interface"], 0)
+    changes = answer("client.changes",
+                     ["client", "changes", "--since", "2000-01-01T00:00:00Z"], 0)
+    # No order the supervisor started exists on this data root; the refusal alone is this
+    # combined run's coverage of client.order (DECISION F253 D13); its own real run, through
+    # `OrderLauncher`, is tests/cli/test_client_order_cmd.py's.
+    refused_order = answer("client.order", ["client", "order", "0123456789abcdef"], 3)
+    assert refused_order["error"] == "order_not_found"
+    # Likewise no run the supervisor started exists here; the refusal is this run's coverage of
+    # client.run (DECISION F253 D20); its real run is tests/cli/test_client_run_cmd.py's.
+    refused_run = answer("client.run", ["client", "run", "0123456789abcdef"], 3)
+    assert refused_run["error"] == "run_not_found"
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
     # `remedy job evidence`, `remedy mission abandon`, `remedy client interface`,
-    # `remedy decision resolve` and `remedy job resume`'s preview.
+    # `remedy decision resolve`, `remedy job resume`'s preview and `remedy client changes`.
     assert {("contract", "criteria", "check", "kind"), ("jobs", "tasks", "deliverable"),
             ("steps", "detail")} <= _key_paths(_key_tree(done))
     assert {("tasks", "apply_manifest", "applied_file_proofs", "final_mode"),
@@ -1378,6 +1413,8 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
         _key_paths(_key_tree(resolved)))
     assert {("stop_request", "pending"), ("worktree_head", "outcome"),
             ("budget_stop", "decision_id")} <= _key_paths(_key_tree(previewed))
+    assert {("jobs", "evidence", "run_manifest_path"), ("missions", "job_ids")} <= (
+        _key_paths(_key_tree(changes)))
     for command_id, bodies in answers.items():
         for body in bodies:
             returned = set(body) - _ENVELOPE_KEYS

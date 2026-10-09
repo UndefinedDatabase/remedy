@@ -24,6 +24,15 @@ SOCKET_NAME = "serve.sock"
 PID_NAME = "serve.pid"
 TOKEN_NAME = "serve.token"
 RUNS_NAME = "runs"
+#: The file the supervisor's public HTTP API listener writes its bound port to (S6a, DECISION
+#: F253 D6); absent when no listener runs.
+API_PORT_NAME = "api.port"
+#: One folder per order the supervisor starts as a record of its own (S5a, DECISION F253 D13):
+#: `orders/<order id>/` holds `order.md`, its record `order.json`, and `out.log`/`err.log`.
+ORDERS_NAME = "orders"
+#: The folder of the files of orders sent with a key (DECISION F253 D22): `order-keys/<key>.md`
+#: holds the text of the last order sent with that key, outside `orders/`.
+ORDER_KEYS_NAME = "order-keys"
 
 #: The longest socket path both Linux and macOS accept: 104 bytes less the NUL.
 SOCKET_PATH_MAX_BYTES = 103
@@ -38,6 +47,8 @@ class ServePaths:
     pid_file: Path
     token_file: Path
     runs_dir: Path
+    api_port_file: Path
+    orders_dir: Path
 
 
 def serve_paths(root: Path | None = None) -> ServePaths:
@@ -49,6 +60,8 @@ def serve_paths(root: Path | None = None) -> ServePaths:
         pid_file=base / PID_NAME,
         token_file=base / TOKEN_NAME,
         runs_dir=base / RUNS_NAME,
+        api_port_file=base / API_PORT_NAME,
+        orders_dir=base / ORDERS_NAME,
     )
 
 

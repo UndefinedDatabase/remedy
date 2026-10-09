@@ -31,6 +31,7 @@ own data root resolution says it is:
 | process id file | `serve.pid` | read only to send `stop`'s SIGTERM |
 | token file | `serve.token` | the bearer token a client reads to talk to the socket |
 | run registry | `runs/` | one `<job id>.json` record per run the supervisor started, plus its `.out`/`.err` logs |
+| order registry | `orders/` | one `<order id>/` folder per order the supervisor started: its text (`order.md`), its record (`order.json`) and its `out.log`/`err.log` |
 
 The `serve` directory, the socket and the token file are all created readable
 by their owner only (mode `0700` for the directory, `0600` for the socket and
@@ -38,6 +39,13 @@ the token file). Access control is the file system: nothing beyond the
 owner's permission to read the token can reach the socket's commands. A
 supervisor counts as running exactly when its socket accepts a connection;
 the process id file is read only to stop it, never to decide whether it runs.
+
+Each order gets its own folder under `orders/`, also created readable by its
+owner only (mode `0700`; F253 S5a, DECISION F253 D13). `POST /api/v1/orders`
+starts an order through this registry's own `OrderLauncher` (F253 S5b,
+DECISION F253 D14); `remedy client order <order>` and `GET
+/api/v1/orders/{order}` both read a record that launcher began, through the
+same code (`order_record_payload` in `packages/orchestration/serve_runs.py`).
 
 A data root whose socket path would exceed a unix socket's length limit (104
 bytes on macOS, 108 on Linux, including the terminating NUL) is refused at

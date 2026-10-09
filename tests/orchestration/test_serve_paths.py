@@ -22,6 +22,8 @@ def test_every_file_lives_in_the_serve_class_of_the_given_root(tmp_path):
         pid_file=tmp_path / "serve" / "serve.pid",
         token_file=tmp_path / "serve" / "serve.token",
         runs_dir=tmp_path / "serve" / "runs",
+        api_port_file=tmp_path / "serve" / "api.port",
+        orders_dir=tmp_path / "serve" / "orders",
     )
 
 

@@ -119,3 +119,17 @@ def test_the_text_answer_names_the_job_and_the_reason(repo, monkeypatch, capsys)
     out = capsys.readouterr().out
     assert f"The result of job {job.job_id} is declined: not wanted" in out
     assert "Nothing was applied" in out
+
+
+def test_a_decline_keeps_the_door_its_source_names(repo, monkeypatch, capsys):
+    """DECISION F253 D11: the public HTTP API passes `--source api`, and the record keeps it."""
+    job = _completed(repo, monkeypatch)
+
+    data = _answer(capsys, "job", "decline", job.job_id, "--reason", "not wanted",
+                   "--source", "api")
+
+    assert data["source"] == "api"
+    assert job_result_decline(load_job_plan(job.job_id))["source"] == "api"
+    [declined] = [e for e in _answer(capsys, "job", "ownership", job.job_id)["entries"]
+                  if e["action"] == "result_declined"]
+    assert (declined["actor"]["door"], declined["actor"]["recorded_as"]) == ("", "api")

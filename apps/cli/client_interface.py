@@ -42,13 +42,16 @@ from pathlib import Path
 from typing import Any
 
 #: The document's own version. Its major number changes only when a name is removed or changes
-#: its meaning; adding a name raises the minor number.
-CLIENT_INTERFACE_VERSION = "1.1"
+#: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
+#: to `1.2` for `client.changes`, F253 S4b (DECISION F253 D11) to `1.3` for `job decline`'s
+#: `--source`, F253 S5a (DECISION F253 D13) to `1.4` for `client.order`, and F253 round 23
+#: (DECISION F253 D20) to `1.5` for `client.run`.
+CLIENT_INTERFACE_VERSION = "1.5"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
-#: budget refusal of `job resume`, declining a result, abandoning a mission, and this document's
-#: own command.
+#: budget refusal of `job resume`, declining a result, abandoning a mission, this document's own
+#: command, and what changed since a cursor (F253 S3a, DECISION F253 D4 (3)).
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "project.register",
     "do.run",
@@ -66,6 +69,9 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "patch.reject",
     "mission.abandon",
     "client.interface",
+    "client.changes",
+    "client.order",
+    "client.run",
 )
 
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
@@ -123,6 +129,9 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "patch.reject": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
     "mission.abandon": ("mission_error", "mission_not_found", "no_project"),
     "client.interface": (),
+    "client.changes": ("invalid_cursor",),
+    "client.order": ("order_not_found",),
+    "client.run": ("run_not_found",),
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
@@ -194,6 +203,17 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
         "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
         "mission_statuses", "operations",
+    ),
+    "client.changes": (
+        "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
+        "overlap_seconds", "read_at", "since", "skipped_files",
+    ),
+    "client.order": (
+        "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+    ),
+    "client.run": (
+        "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
+        "state",
     ),
 }
 
@@ -661,6 +681,21 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "answers": {"*": {}},
         "answer_trees": {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}},
     },
+    "client.changes": {
+        # F253 S3a (DECISION F253 D4 (3)): `jobs` and `decisions` are the digest's own trees,
+        # read from `DIGEST_KEY_TREE` rather than written again.
+        "jobs": DIGEST_KEY_TREE["jobs"],
+        "decisions": DIGEST_KEY_TREE["decisions"],
+        "closed_decisions": {"job_id": {}, "decision_id": {}, "resolved_at": {}},
+        "missions": {"project_id": {}, **DIGEST_KEY_TREE["projects"]["missions"]},
+        "applies": {"job_id": {}, "job_apply_id": {}, "status": {}, "finished_at": {}},
+    },
+    # F253 S5a (DECISION F253 D13): `answer` is the envelope `remedy do` printed, read only
+    # once the order is not `running`; no tree is declared under it in this round.
+    "client.order": {},
+    # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
+    # the run is not `running`; no tree is declared under it.
+    "client.run": {},
 }
 
 

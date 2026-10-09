@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from packages.orchestration.public_api import is_public_api_path
+
 # ---------------------------------------------------------------------------
 # Path sanitization (no absolute path leaks in dashboard JSON)
 # ---------------------------------------------------------------------------
@@ -2965,6 +2967,20 @@ class _RemedyHandler(BaseHTTPRequestHandler):
     #: command line sends with those three commands is recorded as given, as its
     #: `--source` option is when the command runs direct (DECISION F200 D3).
     client_names_source: bool = False
+    #: The `CommandRunner` that answers a write under `/api/v1` (DECISION F253 D9): set only
+    #: on the handlers the `remedy serve start` supervisor binds, so the cockpit's own server
+    #: answers every such write 405.
+    command_runner: Any = None
+    #: The `OrderLauncher` that answers `POST /api/v1/orders` (DECISION F253 D14 (3)): set only
+    #: on the handlers the `remedy serve start` supervisor binds, so a handler without one, the
+    #: cockpit's own server included, answers that route 405 like every other write it has none
+    #: of.
+    order_launcher: Any = None
+    #: The `RunLauncher` that answers `POST /api/v1/jobs/{job}/run` (DECISION F253 D18 (4)): set
+    #: only on the handlers the `remedy serve start` supervisor binds, so a handler without one,
+    #: the cockpit's own server included, answers that route 405 like every other write it has
+    #: none of.
+    run_launcher: Any = None
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         """Suppress default stderr logging."""
@@ -2990,6 +3006,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # Static assets from React dist/ (JS/CSS bundles)
         if path.startswith("/assets/"):
             self._serve_static(path)
+            return
+
+        # F253: the public HTTP API namespace. It takes its token in the
+        # Authorization header, never the query, and answers in the command line's
+        # envelope rather than the cockpit's own shape.
+        if is_public_api_path(path):
+            self._send_public_api_get(path, parsed.query)
             return
 
         # API routes — token required
@@ -3237,6 +3260,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # has none, and such a request must get 405 rather than an exception.
         parsed = urlparse(getattr(self, "path", ""))
         path = parsed.path.rstrip("/") or "/"
+        # F253 R-1188: the public HTTP API's own namespace decides its own refusal,
+        # in its own envelope, BEFORE the commands door is even considered.
+        if is_public_api_path(path):
+            if self.command_runner is not None:   # DECISION F253 D9
+                self._send_public_api_post(path, parsed.query)
+            else:
+                self._send_public_api_refused_method("POST", path)
+            return
         parts = path.split("/")
         if (len(parts) == 5 and parts[1] == "api" and parts[2] == "jobs"
                 and parts[4] == "commands"):
@@ -4308,6 +4339,136 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return False
         return server_token_matches(supplied, self.server_token)
 
+    def _public_api_caller(self) -> tuple[bool, Any]:
+        """Who calls under `/api/v1`: `(accepted, client)` (DECISION F253 D16 (3)).
+
+        `(False, None)` for no token and for a token nobody holds; `(True, None)` for the
+        server's own token, which is decided first; `(True, client)` for a client token read
+        from the operator's file at this call. Only the routes under `/api/v1` use it: the
+        cockpit's command door keeps `_bearer_token_accepted`, which refuses a client token.
+        """
+        from packages.orchestration.api_clients import load_api_clients, match_api_client
+
+        supplied = self._supplied_bearer_token()
+        if not supplied:
+            return False, None
+        if server_token_matches(supplied, self.server_token):
+            return True, None
+        client = match_api_client(supplied, load_api_clients())
+        return (client is not None), client
+
+    def _send_public_api_answer(self, method: str, path: str, status: int,
+                                 body: dict[str, Any], headers: dict[str, str],
+                                 client_name: str = "") -> None:
+        """Ledger one call under the public HTTP API, then send its decided answer.
+
+        CLIENT_NAME is the name of the client whose token the call presented, empty for the
+        server's token and for a refused one (DECISION F253 D16 (7)).
+
+        The shared tail of `_send_public_api_get` and `_send_public_api_refused_method`:
+        both decide their own `(status, body, headers)` first, so every attempt under this
+        namespace, refused or not, appends one line to the call ledger before the answer is
+        sent (DECISION F253 D2 (1)). A failed append (DECISION F009 D14 clause four) changes
+        nothing in the answer: the exception dies here.
+        """
+        from packages.orchestration.public_api import append_public_api_call
+
+        error = "" if body.get("ok") else body.get("error", "")
+        try:
+            append_public_api_call(
+                token_fp=token_fingerprint(self._supplied_bearer_token()),
+                client=client_name, method=method, path=path, status=status, error=error)
+        except OSError:   # DECISION F253 D2 (1), F009 D14 clause four
+            pass
+        self._send_json(status, body, headers=headers)
+
+    def _send_public_api_get(self, path: str, query: str) -> None:
+        """Answer a GET under the public HTTP API namespace (F253, DECISIONs F253 D1 and D2).
+
+        Authentication is decided BEFORE the route, the same order the write door
+        uses: an unauthenticated caller must learn nothing about which paths exist.
+        """
+        from packages.orchestration.public_api import (
+            answer_public_api_get,
+            public_api_token_refusal,
+        )
+
+        accepted, client = self._public_api_caller()
+        if not accepted:
+            status, body = public_api_token_refusal()
+            headers: dict[str, str] = {}
+        else:
+            status, body, headers = answer_public_api_get(path, query)
+        self._send_public_api_answer("GET", path, status, body, headers,
+                                     client_name=client.name if client else "")
+
+    def _send_public_api_post(self, path: str, query: str) -> None:
+        """Answer a POST under the public HTTP API namespace through `command_runner` (DECISION
+        F253 D9).
+
+        The token is decided first, before the body is read, so an unauthenticated caller
+        starts no child and learns nothing; a body above `COMMAND_REQUEST_MAX_BYTES` is refused
+        without being read, and a query string is refused, as no write route takes one.
+        """
+        from apps.cli.json_envelope import build_error
+        from packages.orchestration.public_api import (
+            answer_public_api_post,
+            public_api_token_refusal,
+        )
+
+        headers: dict[str, str] = {}
+        accepted, client = self._public_api_caller()
+        if not accepted:
+            status, body = public_api_token_refusal()
+        else:
+            declared = self.headers.get("Content-Length") or "0"
+            try:
+                length = int(declared)
+            except ValueError:
+                length = -1
+            if length < 0 or length > COMMAND_REQUEST_MAX_BYTES:
+                status, body = 400, build_error(
+                    "api_body_invalid",
+                    f"the body must be at most {COMMAND_REQUEST_MAX_BYTES} bytes, "
+                    "given by a Content-Length")
+            elif query:
+                status, body = 400, build_error(
+                    "api_query_invalid", f"'{path}' accepts no query string")
+            else:
+                raw_body = self.rfile.read(length) if length else b""
+                start_order = self.order_launcher.start if self.order_launcher is not None else None
+                start_run = (
+                    (lambda job, options: self.run_launcher.start(
+                        job, json_output=True, options=options))
+                    if self.run_launcher is not None else None)
+                status, body, headers = answer_public_api_post(
+                    path, raw_body, self.command_runner.run, start_order, client=client,
+                    start_run=start_run)
+        self._send_public_api_answer("POST", path, status, body, headers,
+                                     client_name=client.name if client else "")
+
+    def _send_public_api_refused_method(self, method: str, path: str) -> None:
+        """Answer POST, PUT or DELETE under the public HTTP API namespace (R-1188, DECISION
+        F253 D3 (4)).
+
+        The token is decided first (401 `api_token_invalid`), the same order
+        `_send_public_api_get` uses, so an unauthenticated caller learns nothing before
+        authenticating; only once the token is accepted does the namespace answer its own
+        405 `api_method_not_allowed`.
+        """
+        from packages.orchestration.public_api import (
+            public_api_method_refusal,
+            public_api_token_refusal,
+        )
+
+        accepted, client = self._public_api_caller()
+        if not accepted:
+            status, body = public_api_token_refusal()
+        else:
+            status, body = public_api_method_refusal()
+        self._send_public_api_answer(method, path, status, body, {},
+                                     client_name=client.name if client else "")
+
     def _read_command_payload(self) -> tuple[Any, Any]:
         """Return `(payload, None)` for a well-formed body, else `(None, error)`."""
         try:
@@ -4451,17 +4612,32 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802
+        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        if is_public_api_path(path):  # F253 R-1188
+            self._send_public_api_refused_method("PUT", path)
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
 
     def do_DELETE(self) -> None:  # noqa: N802
+        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
+        parsed = urlparse(getattr(self, "path", ""))
+        path = parsed.path.rstrip("/") or "/"
+        if is_public_api_path(path):  # F253 R-1188
+            self._send_public_api_refused_method("DELETE", path)
+            return
         self._send_json(*_safe_error(405, "method not allowed"))
 
-    def _send_json(self, code: int, data: dict[str, Any]) -> None:
+    def _send_json(self, code: int, data: dict[str, Any],
+                   headers: dict[str, str] | None = None) -> None:
         body = json.dumps(data, default=str).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 

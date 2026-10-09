@@ -2675,7 +2675,7 @@ The following empty `__init__.py` files received module docstrings describing pl
 | `packages/memory/__init__.py` | MemPalace memory backend (post-Step 35) |
 | `packages/runtimes/__init__.py` | Pluggable runtime backends (Step 36+) |
 | `packages/verification/__init__.py` | Pluggable verification backends (Step 37+) |
-| `apps/api/__init__.py` | HTTP API server (Step 38+) |
+| `apps/api` (deleted by F253, DECISION F253 D25; the HTTP API is `packages/orchestration/public_api.py`) | HTTP API server (Step 38+) |
 | `apps/worker/__init__.py` | Background worker/daemon (Step 39+) |
 | `packages/providers/claude_agent/__init__.py` | Claude Agent SDK provider (reserved; lands with Tier 2/3 economy features — live Claude path is the `claude -p` subprocess provider in `pingpong_provider.py`) |
 | `packages/providers/docker_runtime/__init__.py` | Docker container runtime (Step 40+) |
