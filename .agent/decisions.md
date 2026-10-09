@@ -28668,3 +28668,53 @@ CHOSEN: (1) `RunLauncher._write` and `OrderLauncher._write` in `packages/orchest
 ALTERNATIVES: Adding the helper to the guard's `STILL_TO_MIGRATE`, REJECTED: that set only shrinks, and a new entry is the copy it forbids. Raising `client_cmd.py` into `_LOOKUP_CALLERS`, REJECTED: that pin only falls. Moving `remedy client run` onto `resolve_job_id_or_fail`, REJECTED: it refuses a bad value with `invalid_job_id` or `ambiguous_job_id`, while DECISION F253 D20 refuses every value that names no run with `run_not_found` at exit 3, and the route answers the same.
 
 HOW TO REVERSE: Restore the helper and the two copies of the lookup from git history at `7266d2a00`; the two nodes turn red again.
+
+## DECISION F253 D28 — the operator answers Q12: keep the fix for a resent order with the same name running twice (2026-10-09)
+
+CONTEXT: Operator question Q12 in `.agent/operator_questions.md`, written at F253 round 22 on 2026-10-09, described a program sending Remedy the same order twice through the web interface and Remedy starting it twice; the loop's fix, already in effect, lets a program give each order a name of its own choosing, and while the work started by the first order of that name is still going, a second order with the same name is refused, naming the work already running, while an order sent without a name behaves as before. The loop's recommendation was to keep the fix. The operator answered via remedy-answer, quoted in full: "Keep the fix"
+
+CHOSEN: The operator confirms the recommendation: the fix stands as built, and no further change follows from this answer.
+
+ALTERNATIVES: none; the operator's answer confirms the recommendation already in effect rather than choosing an alternative.
+
+HOW TO REVERSE: Delete this paragraph; Q12 then stands unanswered as it did before this entry.
+
+## DECISION F253 D29 — the operator answers Q13: accepts the recommendation to reinstall `remedy` in editable form from the main folder (2026-10-09)
+
+CONTEXT: Operator question Q13, written at F253 round 23 on 2026-10-09, found that the `remedy` command installed for the operator's user does not run the code in the main Remedy folder, because Python's installed-package pointer was moved on October 7, by a job's own working copy or by hand, and has not changed since. The loop's recommendation was to open a terminal in the main Remedy folder and install it again for the operator's user in editable form, for example with `python3 -m pip install --user -e .`, and, if the operator did not make that change themselves, to tell the loop so a later feature can look into whether a job can change the operator's installed packages. The operator answered via remedy-answer, quoted in full: "Your recommendation"
+
+CHOSEN: The operator accepts the recommendation: reinstalling the editable package in the main folder is the operator's own action, outside the loop's reach; this paragraph records the acceptance, and the loop takes no further action on the installed-package pointer itself.
+
+ALTERNATIVES: none; the operator chose the recommendation offered rather than naming an alternative.
+
+HOW TO REVERSE: Delete this paragraph; Q13 then stands unanswered as it did before this entry.
+
+## DECISION F253 D30 — the operator answers Q14: keeps the design where a write under `/api/v1` runs its command-line twin rather than widening the F009 door (2026-10-09)
+
+CONTEXT: Operator question Q14, written at F253 round 24 on 2026-10-09, raised that writes over the web interface run the matching command-line command itself as a separate process rather than passing through the cockpit's F009 door, a departure from the words of the operator's ruling though not its purpose; DECISION F253 D9 and D21 (2) already chose and recorded this design. The loop's recommendation was to keep the design as built, since the alternative would copy every command's logic into a second place by widening the F009 door. The operator answered via remedy-answer, quoted in full: "As you recommend"
+
+CHOSEN: The operator confirms the recommendation: the design stands as DECISION F253 D9 and D21 (2) record it, and the feature file's amendment section stating so and why needs no change.
+
+ALTERNATIVES: none; the operator's answer confirms the recommendation rather than choosing the rejected alternative of widening the F009 door.
+
+HOW TO REVERSE: Delete this paragraph; Q14 then stands unanswered as it did before this entry.
+
+## DECISION F253 D31 — the operator answers Q15: lets the feature finish its final check and close past the 25-round soft limit without a follow-up feature (2026-10-09)
+
+CONTEXT: Operator question Q15, written at F253 round 25 on 2026-10-09, described the feature reaching the 25-round soft limit with one problem still open from the hardening stage's final check, a resent order starting the work twice, and the loop's decision, recorded in DECISION F253 D22, to fix that problem within the round that reached the limit rather than moving it to a new feature. The loop's recommendation was to let it stand: if the fix does not hold within the rounds the final check allows, the feature closes anyway and the problem is handed to the next clean-up feature with a note saying so. The operator answered via remedy-answer, quoted in full: "Perfect"
+
+CHOSEN: The operator confirms the recommendation: F253 finishes its final check and closes through the normal closure sequence without a new feature being registered for this problem alone.
+
+ALTERNATIVES: none; the operator's answer confirms the recommendation rather than choosing an alternative.
+
+HOW TO REVERSE: Delete this paragraph; Q15 then stands unanswered as it did before this entry.
+
+## DECISION F253 D32 — the operator answers Q16: allows the loop to reword the five slash-led commit subjects onto a new branch and build the package from it (2026-10-09)
+
+CONTEXT: Operator question Q16, written at F253 round 35 on 2026-10-09, found that five commit subjects on the branch, `bb01d85cf`, `00be6f560`, `352e1d17b`, `c3fe32384` and `300105d0f`, each hold a slash-led token under `/api/v1` that the review-package check mistakes for a file path, blocking the package from being built, and that the only fix is to rewrite those five titles in the branch's history, which needs a forced upload the loop may never make on its own; the operator had allowed exactly this once before, in July, for a title that named a command with a leading slash. The loop's recommendation was to allow the loop, in its next session, to reword those five titles to name the web address in words instead of with a slash, by copying the branch's history onto a new branch with a new name so the old branch stays untouched as the record, then to build the package from the new branch and open the pull request from it. The operator answered via remedy-answer, quoted in full: "As you say"
+
+CHOSEN: The operator grants the leave the recommendation asked for: the loop's next session may copy the branch's history onto a new branch with a new name, reword the five subjects named above to name the web address in words rather than with a leading slash, leave the old branch `feature/f253-public-http-api` untouched as the record, and build the review package and open the pull request from the new branch.
+
+ALTERNATIVES: Rewording the titles on the operator's own machine, offered in the question as a path the operator could take instead; REJECTED by the operator's answer, which hands the rewording to the loop.
+
+HOW TO REVERSE: Delete this paragraph; Q16 then stands unanswered as it did before this entry, and the loop again has no leave to rewrite the branch's history.
