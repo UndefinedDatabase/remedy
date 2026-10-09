@@ -21,7 +21,6 @@ RESERVED_INIT_FILES = [
     "packages/artifacts/__init__.py",
     "packages/runtimes/__init__.py",
     "packages/verification/__init__.py",
-    "apps/api/__init__.py",
     "apps/worker/__init__.py",
     "packages/providers/claude_agent/__init__.py",
     "packages/providers/docker_runtime/__init__.py",
