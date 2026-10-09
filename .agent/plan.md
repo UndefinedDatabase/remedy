@@ -5,12 +5,12 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result, submits orders and starts and follows runs, with a token whose policy the
 operator writes and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its
-amendments, and DECISIONs F253 D1 to D25, which fix the order and the shape).
+amendments, and DECISIONs F253 D1 to D26, which fix the order and the shape).
 
 ## Current Step
-Session 6, round 28, the first round of the closure sequence (DECISION F253 D25): book round 27's
-verdict, resolve R-1217 and R-1218, save the second repeated audit and register its gaps R-1219 and
-R-1220 for F297; delete the reserved namespace `apps/api`; write the feature file's Built State.
+Session 6, round 29, the repair of round 28 (DECISION F253 D26): book round 28's FAIL and register
+R-1221; the Step 32 row of `docs/system/architecture.md` names the deleted namespace `apps/api`
+without a file path, so `tests/docs/test_named_source_paths.py` passes again.
 
 ## Next Steps
 1. The closure's self-use item, run to its approval gate and never applied.
@@ -39,5 +39,5 @@ R-1220 for F297; delete the reserved namespace `apps/api`; write the feature fil
   change until the overlap covers it (DECISION F253 D4).
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
-- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220 (Low) and R-1160 (Medium) are open, all owned by F297.
+- R-1221 (Low) is open, owned by F253; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
+  R-1162, R-1172, R-1176, R-1196, R-1219, R-1220 (Low) and R-1160 (Medium) by F297.
