@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.common.secure_fs import durable_write_json
 from packages.orchestration import serve_runs as SR
 from packages.orchestration.serve_paths import serve_paths
 
@@ -780,7 +781,7 @@ def _write_later(target: Path, payload: dict, delay: float) -> threading.Thread:
     """A started thread that writes PAYLOAD to TARGET, as a launcher's reaper does, after DELAY."""
     def write() -> None:
         time.sleep(delay)
-        SR._atomic_write_json(target, payload)
+        durable_write_json(target, payload)
 
     writer = threading.Thread(target=write, daemon=True)
     writer.start()

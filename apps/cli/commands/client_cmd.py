@@ -109,20 +109,16 @@ def _cmd_client_order(order_id: str, *, json_output: bool = False) -> None:
 
 
 def _cmd_client_run(job: str, *, json_output: bool = False) -> None:
-    from packages.orchestration.data_paths import JobIdError, lookup_job_id
     from packages.orchestration.serve_paths import serve_paths
     from packages.orchestration.serve_runs import (
-        read_run_record,
         run_not_found_message,
+        run_record_for_job_value,
         run_record_payload,
     )
 
     paths = serve_paths()
-    try:
-        job_id = lookup_job_id(job)
-    except JobIdError:
-        job_id = None
-    record = read_run_record(paths, job_id) if job_id is not None else None
+    # The job's id is read where `GET /api/v1/jobs/{job}/run` reads it (R-1224).
+    record = run_record_for_job_value(paths, job)
     if record is None:
         fail(
             "run_not_found",
