@@ -52,27 +52,27 @@ nor unmet:
 
 - the gate lists the check under `not_run`, never as red, so it holds no job;
 - the mission's blockers leave the criterion out, so it holds neither `remedy mission achieve`
-  nor the contract's remainder, and `remedy do --json` does not list it under
+  nor the contract's remainder, and `remedy do run --json` does not list it under
   `unmet_blocking_criteria`;
 - the approval card recommends `review`, never `apply` and never `hold`;
 - a push is not refused, because a push is refused only for an `unmet` blocking criterion; the
   push names the criterion instead, under `push_unchecked_criteria` in `remedy job apply --json`
-  and under `unchecked_blocking_criteria` in the `push` object of `remedy do --json`.
+  and under `unchecked_blocking_criteria` in the `push` object of `remedy do run --json`.
 
 A check that found a command and failed makes its criterion `unmet`, and so does a configured
 command that cannot run: a project that names a command is judged by it.
 
 ## Where it is said
 Each of these says "no check ran, because the project names no test command" for an `unchecked`
-criterion or for its check: the `Contract:` line that `remedy do` prints, the tables of
+criterion or for its check: the `Contract:` line that `remedy do run` prints, the tables of
 `remedy mission contract` and `remedy job contract`, the definition-of-done section of
-`remedy job show --full`, the run report, the guided tour, and the push sentence of `remedy do`
+`remedy job show --full`, the run report, the guided tour, and the push sentence of `remedy do run`
 and `remedy job apply`. The approval card carries the state word `unchecked`.
 
 ## Tests
 `tests/orchestration/test_project_tests.py` holds the order of the sources and the lookup of the
 environment. `tests/orchestration/test_dod_runners.py` runs a Python project with a module that
 only its own virtual environment holds, and a Node project through `npm test`.
-`tests/cli/test_do_project_targets.py` drives `remedy do` with the fake providers through to the
+`tests/cli/test_do_project_targets.py` drives `remedy do run` with the fake providers through to the
 push on four scratch projects: a Python project with its own virtual environment, a Node project
 whose tests run with `npm test`, a project with no tests, and a Python project whose test fails.
