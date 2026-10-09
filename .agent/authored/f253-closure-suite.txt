@@ -1,16 +1,17 @@
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 436.45s (measured wrapper); pytest's own reported wall time 435.70s (0:07:15)
-summary line: 2 failed, 22201 passed, 22 skipped, 1 warning in 435.70s (0:07:15)
+real exit code: 0
+wall time: 328.24s (measured wrapper); pytest's own reported wall time 327.45s (0:05:27)
+summary line: 22203 passed, 22 skipped, 1 warning in 327.45s (0:05:27)
 bad node ids (failed + errors):
-  - tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common
-  - tests/cli/test_job_refusal_envelope.py::TestLookupJobIdIsPinnedToItsTwoHandlers::test_the_call_sites_match_the_measured_dict
+  - NONE
 leftover processes: NONE
-tree it ran on: 40a2b642b (F253 R32 C1: book round 31, resolve R-1222, the plan, save the block)
-reflog before: 40a2b642b HEAD@{2026-10-09 04:20:00 +0200}: commit: F253 R32 C1: book round 31, resolve R-1222, the plan, save the block
-reflog after: 40a2b642b HEAD@{2026-10-09 04:20:00 +0200}: commit: F253 R32 C1: book round 31, resolve R-1222, the plan, save the block
+tree it ran on: 7df0d2681 (F253 R33 C2: the launchers write records with durable_write_json, and one function reads a run's record for the command and the route (R-1223, R-1224, DECISION F253 D27))
+reflog before: 7df0d2681 HEAD@{2026-10-09 04:37:58 +0200}: commit: F253 R33 C2: the launchers write records with durable_write_json, and one function reads a run's record for the command and the route (R-1223, R-1224, DECISION F253 D27)
+reflog after: 7df0d2681 HEAD@{2026-10-09 04:37:58 +0200}: commit: F253 R33 C2: the launchers write records with durable_write_json, and one function reads a run's record for the command and the route (R-1223, R-1224, DECISION F253 D27)
 reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F253 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 1211.20 CPU seconds, 435.71 wall seconds, 22225 tests collected, exit status 1, recorded 2026-10-09T02:27:24Z
-This closure's suite used 1211.20 CPU seconds, 7.5 percent more than F304's 1126.33, within the 10 percent limit.
+cost exit code: 1
+Test load: 1253.62 CPU seconds, 327.46 wall seconds, 22225 tests collected, exit status 0, recorded 2026-10-09T02:43:31Z
+This closure's suite used 1253.62 CPU seconds, 11.3 percent more than F304's 1126.33; that is above the 10 percent limit, so this closure registers a finding owned by the rolling findings paydown.
+bad set of the previous run: tests/orchestration/test_durable_write_guard.py::test_no_private_atomic_write_helper_outside_packages_common, tests/cli/test_job_refusal_envelope.py::TestLookupJobIdIsPinnedToItsTwoHandlers::test_the_call_sites_match_the_measured_dict
+bad set shrank with no node newly bad: yes
