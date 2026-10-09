@@ -1,8 +1,9 @@
 # Context — F253 Headless API contract: the public HTTP API
 
 ## Active Branch
-feature/f253-public-http-api, cut from `main` at `1474a65ea` (the merge commit of pull request
-316, F304).
+feature/f253-public-http-api-v2, the copy of `feature/f253-public-http-api` with five commit
+subjects reworded (DECISIONs F253 D32 and D33); both start from `main` at `1474a65ea` (the merge
+commit of pull request 316, F304), and the old branch stays at `83d266f5c` as the record.
 
 ## Scope
 F253 (Tier 12, Luna gate A, part two): the public HTTP API a machine client uses, as

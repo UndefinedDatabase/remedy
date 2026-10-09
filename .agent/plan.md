@@ -5,23 +5,22 @@ A machine client drives Remedy through a public, versioned HTTP API under `/api/
 interface, the digest, the proof and what changed since a cursor, answers decisions, approves or
 declines a result, submits orders and starts and follows runs, with a token whose policy the
 operator writes and a ledger entry for every call (docs/roadmap/features/T12_F253.md, its
-amendments, and DECISIONs F253 D1 to D27, which fix the order and the shape).
+amendments, and DECISIONs F253 D1 to D33, which fix the order and the shape).
 
 ## Current Step
-BLOCKED on operator question Q16 (R-1226): five early commit subjects carry slash-led route tokens
-that the review package's metadata scan rejects, and rewording pushed history needs the operator's
-leave (guardrail G2). Everything else of the closure is done: hardening, self-use run, a green full
-suite, the consolidation pass and a green evidence run that failed only on those subjects.
+Round 37, on `feature/f253-public-http-api-v2`: the copy of the branch with the five subjects of
+R-1226 reworded (DECISIONs F253 D32 and D33); the closure's one full suite taken again on the
+copy, then the evidence job and the review package from the copy's accepted head.
 
 ## Next Steps
-1. On the operator's leave: reword the five subjects as Q16 describes, then run the evidence job
-   and the package again from the new accepted head.
-2. The ledger rotation, the owner lines, the self-use entry's `consumed_by`, the STATUS line, the
-   README and the pull request, left unmerged.
+1. The closing round: book round 37, resolve R-1226 once the package reads ready, rotate the
+   ledger, the open findings stay with F297, the self-use entry's `consumed_by`, the STATUS line
+   with the README, and the pull request from the copy, left unmerged.
 
 ## Risks
-- The installed `remedy` command on this machine runs the code of a stale job worktree (Q13);
-  every test and gate of this loop runs from the checkout and is not affected.
+- The installed `remedy` command on this machine may run the code of a stale job worktree until
+  the operator reinstalls it (DECISION F253 D29); every test and gate of this loop runs from the
+  checkout and is not affected.
 - Client tokens live as plain text in `api/clients.json`, readable by its owner only, as the
   supervisor's own token does in `serve.token`; no command writes them yet (DECISION F253 D16).
 - The cockpit's own routes take the token in the query and answer errors in another shape, and
@@ -40,5 +39,5 @@ suite, the consolidation pass and a green evidence run that failed only on those
 - A decline sent over HTTP reads "You (recorded as api)" in the job's ownership record, because
   the vocabulary of doors has no `api` yet (DECISION F253 D11).
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196,
-  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297; R-1226 (Medium),
-  the closure blocker, is owned by F253.
+  R-1219, R-1220, R-1225 (Low) and R-1160 (Medium) are open, all owned by F297; R-1226 (Medium)
+  is owned by F253 and is repaired by this round's copy.
