@@ -451,14 +451,27 @@ def _preview_stop(context: TourAnchorContext) -> dict | None:
 
 
 def _definition_of_done_stop(sources: ReportSources) -> dict | None:
+    """DECISION F299 D2 (4): a check whose reason is `no_test_command` ran nothing,
+    so it is pulled out of the passed/total count and out of `Not passed`, and
+    named by its own sentence instead."""
     if sources.dod_released is None:
         return None
-    total = len(sources.dod_checks)
-    passed = sum(1 for check in sources.dod_checks if check.status == STATUS_PASSED)
+    from packages.orchestration.dod_runners import REASON_NO_TEST_COMMAND
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+
+    unrun = [check.check_id for check in sources.dod_checks
+            if check.reason == REASON_NO_TEST_COMMAND]
+    others = [check for check in sources.dod_checks
+             if check.reason != REASON_NO_TEST_COMMAND]
     verb = "released" if sources.dod_released else "held"
-    body = f"{passed} of {total} checks passed; the gate {verb} the job."
-    not_passed = [check.check_id for check in sources.dod_checks
-                  if check.status != STATUS_PASSED]
+    if others:
+        passed = sum(1 for check in others if check.status == STATUS_PASSED)
+        body = f"{passed} of {len(others)} checks passed; the gate {verb} the job."
+    else:
+        body = f"The gate {verb} the job."
+    if unrun:
+        body += f" For {', '.join(unrun)}, {NO_CHECK_RAN_WORDS}."
+    not_passed = [check.check_id for check in others if check.status != STATUS_PASSED]
     if not_passed:
         body += f" Not passed: {', '.join(not_passed)}."
     return {

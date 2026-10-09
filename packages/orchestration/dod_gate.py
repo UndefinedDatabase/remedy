@@ -33,6 +33,7 @@ from typing import Any
 from packages.orchestration.data_paths import DOD_FILENAME
 from packages.orchestration.dod_runners import (
     CHECK_TIMEOUT_DEFAULT_SEC,
+    REASON_NO_TEST_COMMAND,
     STATUS_PASSED,
     CheckEvidence,
     UnsupportedCheckKindError,
@@ -110,6 +111,10 @@ class GateResult:
     blocking_red: tuple[str, ...] = ()
     #: Check ids of red NON-blocking checks: reported, never gating.
     reported_red: tuple[str, ...] = ()
+    #: DECISION F299 D2 (3): check ids whose evidence reason is `no_test_command` —
+    #: neither green nor red, because nothing ran to judge. Never in `blocking_red`
+    #: or `reported_red`, so such a check holds no job, blocking or not.
+    not_run: tuple[str, ...] = ()
     #: Non-empty when the gate could not evaluate the DoD it was given.
     error: str = ""
 
@@ -122,6 +127,7 @@ class GateResult:
             "released": self.released,
             "blocking_red": list(self.blocking_red),
             "reported_red": list(self.reported_red),
+            "not_run": list(self.not_run),
             "error": self.error,
             "checks": [_evidence_json(e) for e in self.evidence],
         }
@@ -146,6 +152,7 @@ def _evidence_json(ev: CheckEvidence) -> dict[str, Any]:
 class _Tally:
     blocking_red: list[str] = field(default_factory=list)
     reported_red: list[str] = field(default_factory=list)
+    not_run: list[str] = field(default_factory=list)
 
 
 def evaluate_dod(
@@ -176,7 +183,10 @@ def evaluate_dod(
                 output_tail=str(exc),
             )
         evidence.append(ev)
-        if ev.status != STATUS_PASSED:
+        if ev.reason == REASON_NO_TEST_COMMAND:
+            # DECISION F299 D2 (3): nothing ran, so it is neither green nor red.
+            tally.not_run.append(ev.check_id)
+        elif ev.status != STATUS_PASSED:
             (tally.blocking_red if ev.blocking else tally.reported_red).append(
                 ev.check_id)
 
@@ -185,6 +195,7 @@ def evaluate_dod(
         evidence=tuple(evidence),
         blocking_red=tuple(tally.blocking_red),
         reported_red=tuple(tally.reported_red),
+        not_run=tuple(tally.not_run),
     )
 
 

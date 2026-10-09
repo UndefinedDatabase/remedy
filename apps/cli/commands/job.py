@@ -647,14 +647,21 @@ def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
     lines.append("  ".join("-" * w for w in widths))
     lines.extend("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)) for row in rows)
     lines.append("")
+    not_run = recorded.get("not_run") or []
     if recorded.get("released"):
-        lines.append("Gate: RELEASED — every blocking check is green.")
+        # DECISION F299 D2 (3): a not-run check holds nothing, so a job released
+        # with one in its matrix is not released because "every" check is green.
+        lines.append("Gate: RELEASED — no blocking check is red." if not_run
+                     else "Gate: RELEASED — every blocking check is green.")
     else:
         blocking = ", ".join(recorded.get("blocking_red") or []) or "unnamed"
         lines.append(f"Gate: HOLDING — blocking check(s) red: {blocking}")
     reported = recorded.get("reported_red") or []
     if reported:
         lines.append(f"Non-blocking reds (reported, not gating): {', '.join(reported)}")
+    if not_run:
+        from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+        lines.append(f"For {', '.join(not_run)}, {NO_CHECK_RAN_WORDS}.")
     return data, lines
 
 
