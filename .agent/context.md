@@ -1,27 +1,26 @@
-# Context — F299 Acceptance checks on a repository that is not Remedy's own
+# Context — F300 Structure ledger and size ratchet
 
 ## Active Branch
-feature/f299-acceptance-checks-other-repos, from `main` at `1acd5ac39` (the merge commit of pull
-request 317, F253).
+feature/f300-structure-ledger-size-ratchet, from `main` at `b25d87a24` (the merge commit of pull
+request 318, F299).
 
 ## Scope
-F299 (Tier 7, Luna gate A, part two): a mission's acceptance checks on a repository that is not
-Remedy's own, as `docs/roadmap/features/T7_F299.md` lists them; DECISION F299 D1 fixes the order
-and the shape. T001 measures, T002 runs the project's own test command in the project's own
-environment, T003 says "no check ran" instead of judging red, T004 is the page and the proof.
+F300 (Tier 2, the process as the product): a measure of a repository's structure as a product
+command, Remedy's ledger of its large functions and files, a ratchet test that lets each recorded
+size fall and never rise, the paydown rule, and the first structural step, as
+`docs/roadmap/features/T2_F300.md` lists them; DECISION F300 D1 fixes the measure.
 
 ## Do not touch
-The closed list of executables, which grows only by its own review; the approval gate; the push
-rule of F270 for a criterion that really is unmet; the compiler's fallback for a job's own
-definition of done; anything in the universe workspace.
+Behaviour, except R-1160's repair, which lands alone with its red-proof. Any public import path.
+The limits never rise to let a change through.
 
 ## Active assumptions
-- Remedy's checks on Remedy's own repository stay unchanged, and a test pins it.
+- The measure reads only and assumes nothing about Remedy's own layout, because F301 uses it on
+  every project Remedy builds.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation.
-- Every probe runs with the fake providers on scratch repositories and a scratch data root; a
-  folder that must not be a repository gets `GIT_CEILING_DIRECTORIES`, because `.remedy-wt/` sits
-  inside the primary checkout.
+- A test that needs a repository builds one under `tmp_path`; a folder that must not be a
+  repository gets `GIT_CEILING_DIRECTORIES`, because `.remedy-wt/` sits inside the checkout.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

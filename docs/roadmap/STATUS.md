@@ -230,7 +230,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — The process as the product: the structure ledger and its ratchet (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F300 — Structure ledger and size ratchet: what is large may only shrink, and nothing new grows large
+- [~] F300 — Structure ledger and size ratchet: what is large may only shrink, and nothing new grows large
 
 ## Tier 7 — The process as the product: upkeep inside every mission (operator amendment amend1007b-luna-api-upkeep)
 
