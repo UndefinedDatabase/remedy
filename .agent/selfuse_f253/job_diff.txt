@@ -1,0 +1,42 @@
+$ git diff HEAD...remedy/job-ad0292aa498b4ce7  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 9db1b6ad8..9ae22f22b 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -843,6 +843,14 @@ def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
+             except OSError:
+                 pass
+ 
++    try:
++        import ollama as _ollama_mod
++        _plan_error_types: tuple[type[BaseException], ...] = (
++            OSError, RuntimeError, ValueError,
++            _ollama_mod.RequestError, _ollama_mod.ResponseError,
++        )
++    except ImportError:
++        _plan_error_types = (OSError, RuntimeError, ValueError)
+     start = time.monotonic()
+     try:
+         result: PlanJobResult = plan_job_with_llm(
+@@ -864,7 +872,7 @@ def _cmd_plan_job_local(job_id_str: str, *, json_output: bool = False) -> None:
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+         fail("missing_dependency", str(exc), json_output=json_output)
+-    except Exception as exc:  # noqa: BLE001 — any planner failure is reported, never crashes the CLI
++    except _plan_error_types as exc:
+         _persist_plan_traces()
+         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                 outcome="error", message="planning failed", error_category=type(exc).__name__)
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
