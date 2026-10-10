@@ -4,22 +4,21 @@
 One order can name several registered projects: the mission plans one job per repository, each
 job is applied, committed and pushed in its own repository, every record stays in its own project,
 and the digest and the public API name each job's repository
-(docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D4).
+(docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D5).
 
 ## Current Step
-Round 4 on `feature/f205-multi-repo-missions`: book round 3, and the walk over several projects —
-the order file names one project per `project` line; `remedy do` plans one job in each project's
-repository under one mission, applies and commits each in its own repository and pushes each
-repository once; client interface 1.8 (DECISION F205 D4).
+Round 5 on `feature/f205-multi-repo-missions`: book round 4, and the next job of a mission over
+several projects works in the project and repository of the job its chain ends with, for the loop
+and `remedy mission continue` alike; the fixture mission chains three jobs across two
+repositories (DECISION F205 D5).
 
 ## Next Steps
-1. The loop switches project per job.
-2. The digest and the public API name each job's repository; a mission answers references only.
-3. The upkeep across repositories; the fixture mission over two repositories; the leak regression.
-4. Closure, with the cockpit's chips registered as a follow-up feature.
+1. The digest and the public API name each job's repository; a mission answers references only.
+2. The upkeep across repositories, and the leak regression over mission data.
+3. Closure, with the cockpit's chips registered as a follow-up feature.
 
 ## Risks
-- `mission_state.py` stands at 991 lines with no row; the next round that grows it first takes
+- `mission_state.py` stands at 994 lines with no row; the next round that grows it first takes
   step (2) of its boundary on the structure page.
 - `orchestrator_loop.py`, `job_apply.py` and `public_api.py` are on the structure page; each round
   that touches one moves code out first.
