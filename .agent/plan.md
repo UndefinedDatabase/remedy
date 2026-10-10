@@ -6,13 +6,15 @@ sources and cut by the configuration Remedy starts the worker with; `remedy stat
 kind per call and per landed change (docs/roadmap/features/T3_F302.md; DECISIONs F302 D1 to D4).
 
 ## Current Step
-Round 5 on `feature/f302-claude-cli-tokens`: book round 4, record DECISION F302 D4 and the feature
-file's Built State for T001 to T003, then T004: `remedy stats calls`, tokens by kind per provider
-call and per landed change, by role and provider, read from the run records, with its page section.
+Round 6 on `feature/f302-claude-cli-tokens`, the closure's first round: book round 5, the
+checklist's consolidation pass, the closure's self-use item run to its approval gate and never
+applied, and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. Closure: the one full suite, the self-use item, the checklist consolidation, the evidence and
-   the package, the ledger rotation, the STATUS line and the pull request.
+1. The evidence bundle and the review package, after the staging copies are reclaimed; or a repair
+   round naming every bad node id if the suite is red.
+2. The ledger rotation, the STATUS line with the README, the self-use queue's `consumed_by`, and
+   the pull request, left unmerged.
 
 ## Risks
 - R-1235 (Low) is open and owned by F297. R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158,
