@@ -237,11 +237,16 @@ Files must remain:
   finding (Medium). "Accepted, not a precedent" may appear at most once
   per feature — by construction.
 - Never mix refactoring with new features in the same commit.
-- Commit subjects never contain leading-slash tokens ('/foo'), absolute
-  paths, or secret-like strings — the evidence-packaging metadata scanner
-  rejects such subjects and blocks closure. Write 'add review-remedy
-  slash command', never 'add /review-remedy command'. (Learned 2026-07-23:
-  one such subject blocked the F081 closure for several rounds.)
+- Commit subjects never contain single-segment leading-slash tokens ('/foo'),
+  absolute paths, or secret-like strings — the evidence-packaging metadata
+  scanner rejects such subjects and blocks closure. Write 'add review-remedy
+  slash command', never 'add /review-remedy command'. A web route under /api/
+  (such as /api/v1/digest) is the one exception: since operator amendment
+  amend1010-cadence-guards (2026-10-10) the scanner reads it as a route, and
+  the commit-msg hook in .githooks/ (installed with
+  `git config core.hooksPath .githooks`) refuses any other unsafe subject
+  before the commit exists. (Learned 2026-07-23 at F081 and again 2026-10-09
+  at F253, which needed a copy of its whole branch to reword five subjects.)
 
 If changes become too large:
 

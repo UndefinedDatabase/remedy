@@ -28878,3 +28878,13 @@ CHOSEN: `_SLASH_CMD_RE` also matches further segments; `_neutralize_slash_comman
 ALTERNATIVES: Reading every multi-segment token as safe, REJECTED: missing a real path is worse. Requiring subjects to avoid routes, REJECTED: it was the rule and it was broken.
 
 HOW TO REVERSE: Restore the regular expression and the function from the commit before this one and delete `_ROUTE_ROOTS` and the test class `TestRouteTokensAreNotPaths`.
+
+## DECISION amend1010-cadence-guards D3 — a commit-msg hook under .githooks refuses an unsafe subject before it exists; the hook is installed per checkout with core.hooksPath (2026-10-10)
+
+CONTEXT: AGENTS.md has forbidden slash-led tokens in commit subjects since July 2026, and the rule was broken anyway at F253 because nothing checks a subject at commit time.
+
+CHOSEN: `scripts/check_commit_subject.py` reads the subject and asks `_metadata_is_safe`; `.githooks/commit-msg` runs it; `git config core.hooksPath .githooks` installs it in a checkout and in every worktree of it. The script fails open (exit 0 with a line on stderr) when Remedy's modules cannot be imported. `tests/test_commit_subject_check.py` runs it as a subprocess. The AGENTS.md bullet names the hook and the route exception.
+
+ALTERNATIVES: A rule in prose only, REJECTED: it failed. A check at the gate only, REJECTED: it finds the subject after the commits exist.
+
+HOW TO REVERSE: `git config --unset core.hooksPath`; delete `.githooks/`, the script and its test; restore the earlier AGENTS.md bullet.
