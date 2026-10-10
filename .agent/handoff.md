@@ -1,72 +1,32 @@
-# Handback — F205 round 8: book round 7, the consolidation pass, F305's registration, the self-use run and the one full suite
+# Handback — F205 round 9: book round 8, the staging reclaim, the evidence job and the review package
 
 ## Session
 
-SESSION 1 of feature F205 · round 8 · rounds so far 8
+SESSION 1 of feature F205 · round 9 · rounds so far 9
 
-Context self-assessment: the reviewer's context holds; the session continues with the closure
-sequence.
+Context self-assessment: the reviewer's context holds; the closing round follows in this session.
 
-Fortschritt: ~88 % (building, the consolidation pass, F305's registration, the self-use run and the
-one full suite done · the evidence, the package and the closing commit remain) — Schätzung
+Fortschritt: ~95 % (everything but the closing commit and the pull request is done) — Schätzung
 
 ## Range
 
-Review of `a796194fc`..`5221452d8` (5 commits on `feature/f205-multi-repo-missions` — C1
-`5ece7e7ba`, C2 `f40595351`, C3 `b5e5b0768`, C4 `4956793d2`, C5 `5221452d8` — plus this handback,
-C6).
+Review of `801dd494b`..`1ee1bac31` (1 commit on `feature/f205-multi-repo-missions` — C1
+`1ee1bac31` — plus this handback, C2).
 
 ## Commits
 
-### `5ece7e7ba` F205 R8 C1: book round 7, the plan, save the block and the self-use script
+### `1ee1bac31` F205 R9 C1: book round 8, the plan, save the block and the evidence script
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f205-r8-selfuse.py` | 122/0 | NEW FILE — byte copy of `selfuse.py` |
-| `.agent/authored/f205-r8.md` | 189/0 | NEW FILE — byte copy of `block.md` |
-| `.agent/live_review.md` | 2/0 | appended `src/ledger-append.txt` — books F205 R7 PASS |
-| `.agent/plan.md` | 6/9 | rewritten with `prep/c1/.agent/plan.md` — round 8's goal, current step and next steps |
+| `.agent/authored/f205-r9.md` | 141/0 | NEW FILE — byte copy of `block.md` |
+| `.agent/authored/f205-r9-create_f205_evidence.py` | 209/0 | NEW FILE — byte copy of `create_f205_evidence.py` |
+| `.agent/live_review.md` | 2/0 | appended `src/ledger-append.txt` — books F205 R8 PASS |
+| `.agent/plan.md` | 5/5 | rewritten with `src/plan.md` — round 9's goal, current step and next steps |
 
-### `f40595351` F205 R8 C2: the checklist's consolidation pass for F205
+This is the closure's ACCEPTED HEAD: full sha `1ee1bac3184b134701bbef5dd4ed7f74ed5c766b`.
 
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | 12/0 | the consolidation paragraph; nothing joined, the list stays at 34 items |
-
-### `b5e5b0768` F205 R8 C3: register F305, the cockpit's chain band, directly after F205 (DECISION F205 D1 (5))
-
-| Path | +/- | Reason |
-|---|---|---|
-| `README.md` | 2/2 | `136 of 305` counter; Tier 13 total `9` |
-| `docs/roadmap/STATUS.md` | 1/0 | F305's `[ ]` line, directly after F205's |
-| `docs/roadmap/features/T13_F206.md` | 1/1 | "Depends on" gains F305 |
-| `docs/roadmap/features/T13_F207.md` | 1/1 | "Depends on" gains F305 |
-| `docs/roadmap/features/T13_F305.md` | 32/0 | NEW FILE — F305's feature file |
-| `tests/docs/test_docs_consistency.py` | 4/1 | `TOTAL_FEATURES = 305` with its comment |
-
-### `4956793d2` F205 R8 C4: the closure's self-use item run to its approval gate, never applied
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/selfuse_f205/SU-055.md` | 13/0 | NEW FILE — the generated job's markdown |
-| `.agent/selfuse_f205/changed_paths.txt` | 2/0 | NEW FILE — the job's changed paths |
-| `.agent/selfuse_f205/entry_and_job_file.txt` | 5/0 | NEW FILE — entry + job file pointer |
-| `.agent/selfuse_f205/execution_config.txt` | 39/0 | NEW FILE — the run's execution config |
-| `.agent/selfuse_f205/full_transcript.txt` | 14/0 | NEW FILE — the job's task summary |
-| `.agent/selfuse_f205/job_diff.txt` | 27/0 | NEW FILE — the job branch's diff over HEAD |
-| `.agent/selfuse_f205/result_state.txt` | 12/0 | NEW FILE — job/task state and budgets |
-| `.agent/selfuse_f205/run_defects.txt` | 1/0 | NEW FILE — `describe_self_use_run_defects()`, empty |
-| `.agent/selfuse_f205/staleness_after.txt` | 2/0 | NEW FILE — staleness catalog read from the job branch |
-| `.agent/selfuse_f205/timing.txt` | 3/0 | NEW FILE — start/finish/wall seconds |
-| `scripts/self_use_queue.json` | 8/0 | the generator's one appended entry, SU-055, `consumed_by` empty |
-
-### `5221452d8` F205 R8 C5: the closure's one full suite and its CPU cost
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f205-closure-suite.txt` | 14/0 | NEW FILE — the suite transcript, exit 0, cost script's two lines |
-
-### This commit — F205 R8 C6: handback
+### This commit — F205 R9 C2: handback with the evidence and package readings
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -74,89 +34,97 @@ C6).
 
 ## External actions
 
-- `git -C /home/decodeux/Repos/remedy push origin feature/f205-multi-repo-missions` — reported in
-  the worker's final reply only (runs after this commit).
-- No `gh pr create`, no `gh pr list` run this round. No merge, no branch creation/move/deletion, no
-  force-push, no stash entry touched, no worktree of the worker's own added or removed (the
-  self-use script added and removed its own temporary job worktree, `.remedy-wt/f205-r8-jobtree`,
-  internally — see the self-use run section).
-- One `claude` invocation this round: the self-use run's own builder/reviewer calls in C4, through
-  `self_use_runner.run_next_self_use_item`, via `claude-cli` — never started any other way.
+- `git -C /home/decodeux/Repos/remedy push origin feature/f205-multi-repo-missions` — after C1:
+  succeeded on attempt 1 of 3 (`801dd494b..1ee1bac31`).
+- The same push after this commit (C2) — reported in the worker's final reply only (runs after this
+  commit).
+- No `gh pr create`, no `gh pr list`, no `gh pr merge` run this round. No merge, no branch
+  creation/move/deletion, no force-push, no stash entry touched, no worktree added or removed by
+  the worker.
+- No `claude`/provider call this round: A1 to A3 ran local CLI commands and scripts only.
 
 ## Verification
 
 **Opening verification** (`verify_block.py`, run as `python3 -I <path>`, before the block was read
-whole): `block.md` sha256 `034f72f1484e659d1fb6b4ef70e5b3f95ee0409d4847d6ef79838f85014a2e89`, 189
+whole): `block.md` sha256 `c4cbbc793b349375f38de3634b5b437391a097b2bb4b665d12e8b6289e793d0d`, 141
 lines — both equal the order's stated values.
 
-**Digest check** (`verify_digests.py`, before anything else was read): all 17 entries of
-`digests.txt` checked against the file each names — 17 of 17 `True`.
+**Digest check** (`verify_digests.py`, before anything else was read): all 4 entries of
+`digests.txt` checked against the file each names — 4 of 4 `True` (`block.md`,
+`create_f205_evidence.py`, `src/ledger-append.txt`, `src/plan.md`).
 
-**Preconditions**: `git rev-parse HEAD` read `a796194fcd75f1cf9177bccd24e20e55ad281d7c`, equal to
+**Preconditions**: `git rev-parse HEAD` read `801dd494b66f737a086bdcf0034adcdd6e8e6051`, equal to
 `origin/feature/f205-multi-repo-missions`; `git status --porcelain` empty; `.agent/STOP` absent. No
 pull, no branch created, no stash touched. `git branch --show-current` re-run explicitly as a
-command of its own immediately before C1, C2, C3 and C4, and read
-`feature/f205-multi-repo-missions` every time.
+command of its own immediately before C1, and read `feature/f205-multi-repo-missions`.
 
-**C1** (`c1_copy.py`, ran once; `c1_verify.py`, read-only): copied `block.md` to
-`.agent/authored/f205-r8.md`, `selfuse.py` to `.agent/authored/f205-r8-selfuse.py`, and the two
-`prep/c1/.agent/` files over their paths. Proofs: all four copies byte-equal to their prepared
-file, `True` (4 of 4); `.agent/live_review.md` equal to `git show a796194fc:.agent/live_review.md`
-followed by the bytes of `src/ledger-append.txt`, `True` (lengths 169327 + 1312 = 170639, matching
-the actual file). `git status --porcelain` before commit showed exactly the four ordered paths (two
-modified, two untracked). Committed as `5ece7e7ba`; `git show --numstat` matched (319 insertions, 9
-deletions).
+**C1** (`c1_copy.py`, ran once; `c1_proof_pre.py` and `c1_proof_live_review.py`, both read-only):
+copied `block.md` to `.agent/authored/f205-r9.md`, `create_f205_evidence.py` to
+`.agent/authored/f205-r9-create_f205_evidence.py`, `src/plan.md` over `.agent/plan.md`, and
+appended `src/ledger-append.txt` to `.agent/live_review.md`. Proofs: all three plain copies
+byte-equal to their prepared file, `True` (3 of 3); `.agent/live_review.md` equal to
+`git show 801dd494b:.agent/live_review.md` followed by the bytes of `src/ledger-append.txt`, `True`
+(lengths 170639 + 2044 = 172683, matching the actual file). `git status --porcelain` before commit
+showed exactly the four ordered paths (two modified, two untracked). Committed as `1ee1bac31`;
+`git show --numstat` matched (209/0, 141/0, 2/0, 5/5 — 357 insertions, 5 deletions).
 
-**C2** (`c2_copy.py`, ran once; `c2_verify.py`, read-only): copied the one prepared file over its
-path. Proof: the copy byte-equal to the prepared file, `True`. `git diff` before commit showed 12
-insertions and 0 deletions — the consolidation paragraph added, nothing else touched, nothing
-joined and no two items merged (verified by reading the diff whole). `git status --porcelain`
-before commit showed exactly the one ordered path. Committed as `f40595351`; `git show --numstat`
-matched (12 insertions, 0 deletions).
+**Gate 1** (`gate1_proof.py`, run once, after C1): `git status --porcelain` empty. One Python
+script reading every one of the four changed paths with `git show 1ee1bac3184b134701bbef5dd4ed7f74ed5c766b:<path>`
+against its prepared file (the live-review path against the base-plus-slice concatenation): 4 of 4
+`True`.
 
-**C3** (`c3_copy.py`, ran once; `c3_verify.py`, read-only): copied the six prepared files over
-their paths. Proofs: all six copies byte-equal to their prepared file, `True` (6 of 6). `git
-status --porcelain` before commit showed exactly the six ordered paths (one new file, five
-modified) and nothing else. Checked: the STATUS line of F305 lands directly after F205's; `README.md`
-reads `136 of 305` and Tier 13 total `9`; `TOTAL_FEATURES = 305` with its comment;
-`T13_F206.md`/`T13_F207.md` "Depends on" lines gain F305. Committed as `b5e5b0768`; `git
-show --numstat` matched (41 insertions, 5 deletions).
+**Push after C1**: `git push origin feature/f205-multi-repo-missions` — attempt 1 of 3, output
+`801dd494b..1ee1bac31  feature/f205-multi-repo-missions -> feature/f205-multi-repo-missions`. No
+retry needed.
 
-**C4** (self-use run): launched once via `launch_selfuse.py`, waited on via `wait_selfuse.py` (one
-`running` read, then `exit 0`). `generate_and_append_if_empty()` answered `SU-055`, "Narrow the
-excused handler at apps/cli/commands/job.py:1981", tier 4 — matching the block's stated prediction
-exactly. The run went to `staged_review_passed` (reviewer verdict `pass`), never applied. After the
-run, `git status --porcelain` showed exactly `scripts/self_use_queue.json` modified and
-`.agent/selfuse_f205/` new (10 files, all non-empty); `git diff scripts/self_use_queue.json` showed
-exactly one appended entry, id `SU-055`, `consumed_by` empty. Committed as `4956793d2`; `git
-show --numstat` matched (126 insertions, 0 deletions).
+**A1** (`a1_reclaim.py`, ran once, `python3 -m apps.cli.main data reclaim --orphans`): exit 0.
+Reading: "Reclaimable: nothing"; "Would free 0 B in 0 paths — nothing deleted; re-run with
+--apply". One refused path, with its reason: `review_staging.n4o46eq_` —
+`class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only` (1.5 MB).
+Per the block's rule, no candidate was listed, so `--apply` was SKIPPED. Commits nothing.
 
-**C5** (full suite): reflog before the run: `4956793d2 HEAD@{2026-10-10 17:55:24 +0200}: commit:
-F205 R8 C4: the closure's self-use item run to its approval gate, never applied`. Launched once via
-`launch_suite.py`, waited on via `wait_suite.py` (one `running` read, then `exit 0 wall 360.1`).
-Reflog after the run: identical to the reflog before — the branch did not move during the run.
-`grep -c '^FAILED'` and a case-insensitive `error` grep over the transcript both read `0`; no
-"process(es) behind" line. Cost script run once:
-`python3 scripts/closure_suite_cost.py --feature F205 --record ~/.remedy-loop/test_load.jsonl`,
-exit 0, both printed lines recorded verbatim in the transcript file. Wrote
-`.agent/authored/f205-closure-suite.txt` in the exact shape of
-`.agent/authored/f302-closure-suite.txt`. `git status --porcelain` before commit showed exactly the
-one ordered path. Committed as `5221452d8`; `git show --numstat` matched (14 insertions, 0
-deletions).
+**A2** (`a2_launch.py` launched `a2_runner.py` detached via `subprocess.Popen(..., start_new_session=True)`;
+polled by `a2_poll.py`, both run as `python3 -I <path>`): reflog before (`git reflog -n 3 --date=iso`):
+`1ee1bac31 HEAD@{2026-10-10 18:10:49 +0200}: commit: F205 R9 C1: ...`, `801dd494b HEAD@{2026-10-10
+18:04:59 +0200}: commit: F205 R8 C6: handback`, `5221452d8 HEAD@{2026-10-10 18:02:32 +0200}: commit:
+F205 R8 C5: ...`; branch before: `feature/f205-multi-repo-missions`. Ran once:
+`python3 .agent/authored/f205-r9-create_f205_evidence.py .remedy-wt/f205-r9-evidence`, cwd
+`/home/decodeux/Repos/remedy`, whole output captured to
+`.remedy-wt/f205-r9-worker/evidence.log` (31 lines, quoted whole below), exit 0. Decisive lines:
+`head 1ee1bac3184b134701bbef5dd4ed7f74ed5c766b`; `ancestry-path count 38`; `plain count 38`;
+`collected node ids 3124, deselected 26`; `red control: unsafe among the real ids 0 []`; `red
+control: planted id -> a local absolute path`; `pytest exit 0, {'passed': 3120, 'failed': 0,
+'skipped': 4}, output_hash 1de6f485cc00557bc6c8f6454061caa3d271b98bf3a4569f5a00ea6777893841`;
+`validate_verification_tests problems [] passed 3120`; `is_valid_current_run True`;
+`validation_errors []`; `gates written: ['artifact_contract_gate.json',
+'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json',
+'runtime_integration_gate.json', 'final_verifier_report.json']`; summary JSON `verdict
+"PASS_WITH_RISKS"`, `commit_count 38`, `total_passed 3120`. Every expected reading in the block
+matched exactly (head = C1's full sha; ancestry-path and plain counts both 38; collected 3124,
+deselected 26; no unsafe id; planted id answered "a local absolute path"; pytest exit 0;
+`validate_verification_tests` problems `[]`; `is_valid_current_run True`; `validation_errors []`;
+exit 0). Reflog and branch re-read after the run: byte-identical to the readings before — the
+branch did not move during the run. Commits nothing.
 
-**Gate 1** (`git status --porcelain` + `gate1_byteproofs.py`, after C5): status empty. The byte
-proofs of C1, C2 and C3 re-run at this commit against `git show <commit>:<path>` for each commit's
-own paths: 11 of 11 comparisons `True`.
+**A3** (`a3_launch.py` launched `a3_runner.py` detached the same way; polled by `a3_poll.py`; a
+separate read-only `a3_verify.py` opened the finished zip): from the clean, pushed tree at C1, ran
+once: `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f205-r9-evidence`, cwd
+`/home/decodeux/Repos/remedy`, `REMEDY_REVIEW_DIR` explicitly absent from the subprocess
+environment, whole output captured to `.remedy-wt/f205-r9-worker/zip.log` (24 lines), exit 0.
+Decisive lines: `PACKAGE_STATUS=READY_FOR_REVIEW`; `REVIEW_SUBJECT_ALIGNMENT=PASS`;
+`EVIDENCE_AUTHORITATIVE=true`; `ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261010-182009-READY_FOR_REVIEW.zip`;
+`"final_sha256": "c52ca63b254ed55d95b04237f6d50422f2d2f0752e4578a1a24778645335e9d3"`; `Commit:
+1ee1bac3184b134701bbef5dd4ed7f74ed5c766b`. `a3_verify.py` read the zip directly from disk:
+`zipfile.is_zipfile` `True`, `testzip()` `None`, sha256 recomputed from the bytes on disk
+`c52ca63b254ed55d95b04237f6d50422f2d2f0752e4578a1a24778645335e9d3` (matches the tool's own
+printed value), size 38047072 bytes (37M). `.review_zip_manifest.json` read from inside the
+package: `committed_review_subject` = `{"base_commit": "c72d2a7ec7f3784a82e6d61b9cd828dae6714d96",
+"base_is_ancestor": true, "commit_count": 38, "file_count": 70, "head_commit":
+"1ee1bac3184b134701bbef5dd4ed7f74ed5c766b", "tombstones": []}` — head equals C1's full sha, base
+equals `c72d2a7ec7f3784a82e6d61b9cd828dae6714d96`, exactly as ordered. Package directory:
+`/home/decodeux/Repos/remedy-history/zips`. Commits nothing.
 
-**Gate 2** (`gate2_selfuse_files.py`, after C5): all ten files under `.agent/selfuse_f205/`
-non-empty — `SU-055.md` 921B, `entry_and_job_file.txt` 366B, `execution_config.txt` 1203B,
-`result_state.txt` 810B, `timing.txt` 105B, `changed_paths.txt` 54B, `full_transcript.txt` 1417B,
-`staleness_after.txt` 59B, `job_diff.txt` 1139B, `run_defects.txt` 5B.
-
-**Gate 3**: C5's own transcript: exit code 0, summary line `22462 passed, 22 skipped, 1 warning in
-359.02s (0:05:59)`, bad node ids `NONE`.
-
-**Gate 4** (`gate4.py`, run once, both calls through its `subprocess.run`):
+**Gate 5** (`gate5.py`, run once, both calls through its `subprocess.run`, after A3, before C2):
 ```
 python3 -m apps.cli.main integrity check --json
 ```
@@ -167,82 +135,19 @@ python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(ope
 ```
 exit 0: `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172',
 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235']` — matches the block's ordered
-list exactly.
+list exactly. `git status --porcelain` empty before C2.
 
-**After the push** — reported in the worker's final reply only.
-
-## Self-use run
-
-- Entry id: `SU-055`.
-- Title: "Narrow the excused handler at apps/cli/commands/job.py:1981".
-- Job id: `0fcd1aef0852454d`.
-- Builder: `claude-cli`, model `claude-sonnet-4-6`, effort `medium`.
-- Reviewer: `claude-cli`, model `claude-sonnet-4-6`, effort `medium`.
-- Job state: `completed`. Stop reason: (empty).
-- Task `T001`: status `applied_to_job_workspace`; reviewer verdict `pass`; final status
-  `staged_review_passed`; repair rounds used: 1.
-- Wall seconds: `209.0`.
-- Changed paths: `apps/cli/commands/job.py`, `tests/test_ble001_ratchet.py`.
-- Job diff (`job_diff.txt`, VERBATIM):
-```
-$ git diff HEAD...remedy/job-0fcd1aef0852454d  (exit 0)
-diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
-index 160b61157..5c4eb730f 100644
---- a/apps/cli/commands/job.py
-+++ b/apps/cli/commands/job.py
-@@ -1978,7 +1978,7 @@ def _open_decisions_view(job: JobPlan) -> dict:
-                                for d in open_decisions(decisions)],
-             'next_action': open_decisions_next_action(decisions),
-         }
--    except Exception:  # noqa: BLE001 — a read-only view never fails on this
-+    except (ImportError, OSError, ValueError):
-         return {'lines': [], 'open_decisions': [], 'next_action': ''}
- 
- 
-diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
-index ff1f68ae3..cb21e641a 100644
---- a/tests/test_ble001_ratchet.py
-+++ b/tests/test_ble001_ratchet.py
-@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
- 
- #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
- #: commit that removes a mark lowers this number in the same commit, and it is never raised.
--MAX_EXCUSED = 285
-+MAX_EXCUSED = 284
- 
- 
- def _marks() -> list[tuple[str, int, str]]:
-```
-- `run_defects.txt` (VERBATIM): `NONE`. No finding registered by the worker from this run; the
-  reviewer mints ids from the quote above if it finds any.
-
-## Closure suite
-
-`.agent/authored/f205-closure-suite.txt`, quoted whole and verbatim:
-```
-command: python3 -m pytest -n auto -q
-real exit code: 0
-wall time: 360.1s (measured wrapper); pytest's own reported wall time 359.02s (0:05:59)
-summary line: 22462 passed, 22 skipped, 1 warning in 359.02s (0:05:59)
-bad node ids (failed + errors): NONE
-leftover processes: NONE
-tree it ran on: 4956793d2 (F205 R8 C4: the closure's self-use item run to its approval gate, never applied)
-reflog before: 4956793d2 HEAD@{2026-10-10 17:55:24 +0200}: commit: F205 R8 C4: the closure's self-use item run to its approval gate, never applied
-reflog after: 4956793d2 HEAD@{2026-10-10 17:55:24 +0200}: commit: F205 R8 C4: the closure's self-use item run to its approval gate, never applied
-reflog unchanged during the run: yes
-cost command: python3 scripts/closure_suite_cost.py --feature F205 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 1228.60 CPU seconds, 359.04 wall seconds, 22484 tests collected, exit status 0, recorded 2026-10-10T16:01:33Z
-This closure's suite used 1228.60 CPU seconds, 1.3 percent more than F302's 1213.06, within the 10 percent limit.
-```
+**Gate 6** — after C2's push: reported in the worker's final reply only.
 
 ## Authored-text proofs
 
-`.agent/authored/f205-r8.md` = `block.md`, sha256 and line count both equal, proven in C1 and
-re-proven at the opening check. `.agent/authored/f205-r8-selfuse.py` = `selfuse.py`, byte-equal,
-proven in C1. `docs/agents/planner_reviewer_prompt.md`'s added paragraph, the six `prep/c3/` files,
-and the two `prep/c1/.agent/` files were each applied by a plain byte copy and proven byte-equal
-against the prepared file, not authored free text from the worker.
+`.agent/authored/f205-r9.md` = `block.md`, sha256 and line count both equal, proven at the opening
+check and re-proven in C1/Gate 1. `.agent/authored/f205-r9-create_f205_evidence.py` =
+`create_f205_evidence.py`, byte-equal, proven in C1/Gate 1. `.agent/plan.md` = `src/plan.md`,
+byte-equal, proven in C1/Gate 1. `.agent/live_review.md`'s appended slice = `src/ledger-append.txt`
+bytes appended to the `801dd494b` copy, byte-equal, proven in C1/Gate 1. No free-authored text from
+the worker was applied to any tracked path this round; `.agent/handoff.md` is the worker's own
+writing, not a reviewer-authored text under this protocol.
 
 ## Deviations & assumptions
 
@@ -250,31 +155,25 @@ None.
 
 ## Round verdicts
 
-Round 7's PASS is booked by C1 (appended into `.agent/live_review.md` as the "Gate: F205 R7" entry,
-part of `src/ledger-append.txt`). Round 8's verdict is the reviewer's, to be booked in the next
-round's first commit.
+Rounds 1 to 8 are booked in the ledger (round 8 by this round's C1: PASS). Round 9's verdict is the
+reviewer's to give and book in the next round's first commit.
 
 ## For the operator, in plain sentences
 
-Before a feature closes, Remedy runs one real piece of work on itself with a paid model, to show it
-is used on itself, and then runs its whole test collection once on the code that will ship. The
-paid run was asked to narrow an overly broad error handler in the job command's decisions view down
-to the specific exceptions it can actually raise, and it finished successfully, passing its
-reviewer's check without being applied to the real codebase. That run made 4 provider calls and used
-12,441 tokens. The test run passed 22,462 tests and skipped 22, with none failing, in just under six
-minutes. The cost script found this feature's test run used about 1.3 percent more computer time
-than the previous feature's, which is within the normal range. The part of this feature that draws
-each project's repository as a chip in the cockpit's mission view was set aside as a feature of its
-own, F305, next in line after this one. Nothing waits for you.
+The review package for this feature was built: `remedy-review-20261010-182009-READY_FOR_REVIEW.zip`,
+in `/home/decodeux/Repos/remedy-history/zips`, status `READY_FOR_REVIEW`. Before building it, the
+session checked for old staging scratch copies it could clean up and found none to clean: the
+reclaim tool reported nothing reclaimable and would have freed 0 B in 0 paths, so nothing was
+deleted. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Rule 2 (Open PR Gate; no pull request is open for this branch yet).
-3. The reviewer reviews round 8, books its verdict and registers every self-use run defect in the
-   next round's first commit.
-4. The evidence bundle and the review package (a green suite).
-5. The Built State, the rotation, the STATUS line and the pull request.
+3. The reviewer reviews round 9 and books its verdict in the next round's first commit.
+4. The closing round: book round 9, the Built State's readings, rotate the ledger, the self-use
+   entry SU-055's `consumed_by`, the STATUS flip with the README sync, and the pull request, left
+   unmerged.
 
 Operator questions open: 0.
 Open findings: 16 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
@@ -285,15 +184,18 @@ R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235, Low; all owned by F297).
 | Item | Status | Reason |
 |---|---|---|
 | Opening verification | done | sha256 and line count both matched |
-| Digest check | done | 17 of 17 `True` |
-| Preconditions | done | HEAD == base == origin; clean tree; no STOP; branch confirmed before every commit |
-| C1: book round 7, the plan, save the block and the self-use script | done | 4 of 4 byte proofs `True`, 1 of 1 concatenation proof `True`; committed `5ece7e7ba` |
-| C2: the checklist's consolidation pass for F205 | done | 1 of 1 byte proof `True`; 12 lines added, 0 deleted; committed `f40595351` |
-| C3: register F305, the cockpit's chain band | done | 6 of 6 byte proofs `True`; committed `b5e5b0768` |
-| C4: the closure's self-use item run to its approval gate, never applied | done | `SU-055` run to `staged_review_passed`, never applied; exit 0; committed `4956793d2` |
-| C5: the closure's one full suite and its CPU cost | done | exit 0, `22462 passed, 22 skipped`, cost exit 0; committed `5221452d8` |
-| Gate 1 | passed | status clean; 11 of 11 byte proofs re-run `True` |
-| Gate 2 | passed | 10 of 10 selfuse files non-empty |
-| Gate 3 | passed | exit 0, bad node ids `NONE` |
-| Gate 4 | passed | integrity 6/6 `pass`, `fail_count 0`; open-findings list matches exactly |
-| Push | pending | reported in the worker's final reply |
+| Digest check | done | 4 of 4 `True` |
+| Preconditions | done | HEAD == base == origin; clean tree; no STOP; branch confirmed before C1 |
+| C1: book round 8, the plan, save the block and the evidence script | done | 4 of 4 byte proofs `True`; committed `1ee1bac31`, the accepted head |
+| A1: the staging reclaim | done | no candidate; `--apply` skipped; one refused path recorded with reason; commits nothing |
+| A2: the evidence job | done | exit 0; every expected reading matched exactly; reflog/branch unchanged; commits nothing |
+| A3: the review package | done | exit 0; `PACKAGE_STATUS=READY_FOR_REVIEW`; manifest base/head match; zip integrity verified; commits nothing |
+| C2: handback with the evidence and package readings | done | this commit |
+| Gate 1 | passed | status clean; 4 of 4 byte proofs `True` |
+| Gate 2 (A1's readings) | passed | empty reclaim reading + refused path recorded |
+| Gate 3 (A2's readings) | passed | all expected values matched, exit 0 |
+| Gate 4 (A3's readings) | passed | `READY_FOR_REVIEW`, alignment `PASS`, authoritative `true`, zip integrity `True`/`None` |
+| Gate 5 | passed | integrity 6/6 `pass`, `fail_count 0`; open-findings list matches exactly |
+| Gate 6 | pending | reported in the worker's final reply |
+| Push after C1 | done | attempt 1 of 3, `801dd494b..1ee1bac31` |
+| Push after C2 | pending | reported in the worker's final reply |
