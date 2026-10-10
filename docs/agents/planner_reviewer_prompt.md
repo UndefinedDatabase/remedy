@@ -565,6 +565,18 @@ end the response with:
   no item about a block's text can prevent. R-1235 is a part of the feature that the structure page
   and the run manifest's validation leave no room for, registered for the next findings paydown.
   The list stays at 34 items.
+  Consolidated again at F205's closure on 2026-10-10: nothing joined and no two items were merged,
+  because none of F205's lines in `.agent/prose_slips.md` names a lesson the list lacks. Each is a
+  worker's departure from a block's constraints or a miscount in a report about its own round: a
+  `cd` with a `&&`, a selection run outside a saved script, a script written into the reviewer's
+  prepared folder, a branch check skipped before one commit, and two counts of the proofs a gate
+  re-ran, each leaving nothing on disk wrong: slips in following a block, which no item about a
+  block's text can prevent. Its authoring defect that left something wrong on disk was registered
+  as a finding and repaired inside the feature: R-1236, a field whose meaning one round widened, an
+  order's projects, while a second reader of it, the public API's order route, kept reading the
+  first value alone, is item 34's reading of the code the order reaches, here every reader of the
+  field the order changes. R-1237 was a defect of an earlier feature's test that this feature's
+  selection met first. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
