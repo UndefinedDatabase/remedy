@@ -28868,3 +28868,13 @@ CHOSEN: In `docs/roadmap/STATUS.md` the heading "Tier 2 — Findings paydown" wi
 ALTERNATIVES: Leaving F297 behind F199, REJECTED: the cadence stays broken. Moving it behind the last `[~]` line, NOT NEEDED: nothing was claimed.
 
 HOW TO REVERSE: Move the two lines back directly above the heading "Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)" and restore that heading above F203.
+
+## DECISION amend1010-cadence-guards D2 — a multi-segment slash token under /api/ is a web route to the metadata scanner; every other multi-segment token is still a path (2026-10-10)
+
+CONTEXT: F253 lost three rounds and needed a copy of its whole branch (DECISIONs F253 D32 and D33) because five commit subjects named a web route such as `/api/v1/interface`, which `_contains_local_path` in `packages/orchestration/run_manifest.py` read as a local path. F303 and every later API feature will name routes again.
+
+CHOSEN: `_SLASH_CMD_RE` also matches further segments; `_neutralize_slash_commands` neutralizes the token, turning its slashes into colons, when the first segment is in `_ROUTE_ROOTS` (`api`) or the token is single-segment and not a real root directory. Everything else, such as `/home/user/x`, `/etc/passwd` and `/workspace/jobs/x`, is still flagged. The file stays at 6558 lines (two comment lines joined).
+
+ALTERNATIVES: Reading every multi-segment token as safe, REJECTED: missing a real path is worse. Requiring subjects to avoid routes, REJECTED: it was the rule and it was broken.
+
+HOW TO REVERSE: Restore the regular expression and the function from the commit before this one and delete `_ROUTE_ROOTS` and the test class `TestRouteTokensAreNotPaths`.
