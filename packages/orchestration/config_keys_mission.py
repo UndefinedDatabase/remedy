@@ -36,4 +36,16 @@ MISSION_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=10,
     ),
+    ConfigKeySpec(
+        key="mission.upkeep_every",
+        env_var="REMEDY_MISSION_UPKEEP_EVERY",
+        description=(
+            "After how many completed jobs of a mission its next job is an upkeep job that "
+            "Remedy plans from the project's upkeep ledger: the findings earlier jobs left open, "
+            "the largest code over the structure limits, and the files replaced and not deleted "
+            "(F301, DECISION F301 D1). A whole number of at least 1; it counts jobs, never time."
+        ),
+        value_type=int,
+        default=5,
+    ),
 )
