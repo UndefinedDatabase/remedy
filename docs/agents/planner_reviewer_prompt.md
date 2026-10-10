@@ -557,6 +557,14 @@ end the response with:
   numbers are printed by scripts rather than typed already governs. R-1233 and R-1234 were defects
   of the product, found by the reviewer's own probes and repaired inside the feature. The list
   stays at 34 items.
+  Consolidated again at F302's closure on 2026-10-10: nothing joined and no two items were merged,
+  because F302's lines in `.agent/prose_slips.md` name no lesson the list lacks. Each is a worker's
+  departure from a block's shell constraints or from its rule that a script that copies runs once:
+  a `cd`, a `&&`, a `;`, a pipe, a second launcher, or a copy script run again for a proof, each
+  leaving every proof on its own script and nothing on disk wrong: slips in following a block, which
+  no item about a block's text can prevent. R-1235 is a part of the feature that the structure page
+  and the run manifest's validation leave no room for, registered for the next findings paydown.
+  The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
