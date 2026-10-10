@@ -238,7 +238,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Token economy: the worker's tokens per call (operator amendment amend1007b-luna-api-upkeep)
 
-- [~] F302 — The claude-cli worker's tokens per call: measure, attribute, cut
+- [x] F302 — The claude-cli worker's tokens per call: measure, attribute, cut (T001–T004 complete; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235 open — owned by F297; accepted 2026-10-10 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f302r7e1001 · package remedy-review-20261010-110542-READY_FOR_REVIEW.zip · SHA-256 f6139e2cda0c61198d62947ad819184bccbb7c058b49d6af5e5b9807b5ff75fd · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD eff8cf434baaa7199dce6c8b953a26d25dc2e79d)
 
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 

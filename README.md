@@ -26,14 +26,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-135 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+136 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 43 | 44 |
-| 3 | Full Token Economy & Autonomy | 8 | 29 |
+| 3 | Full Token Economy & Autonomy | 9 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -380,6 +380,17 @@ relaunch always takes that fallback; the Anthropic API and Ollama providers
 cannot resume, and the run record names the role and the reason under
 `resume_declined` instead of starting fresh silently; the page
 `docs/system/session-resume-v1.md` names which providers resume).
+
+F302 the claude-cli worker's tokens per call (every builder, reviewer and planner call of the
+`claude-cli` provider now starts Claude Code in its safe mode, without the operator's and the
+project's instruction files, skills, plugins, hooks and tool servers, and with only the tools its
+role uses; a one-word question that read about 21,500 tokens in an empty project and about 28,000
+in Remedy's own now reads about 7,000 to 7,400, and a small real repair passed its review with the same
+change while its builder's first call read about 435,000 tokens instead of about 726,000; the
+settings `claude_cli.customizations` and `claude_cli.all_tools` turn each part back on;
+`remedy stats calls` shows the tokens of each kind one call reads and writes, by role and provider,
+and what one change that reached its repository cost; the page
+`docs/system/claude-cli-worker-launch-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —
