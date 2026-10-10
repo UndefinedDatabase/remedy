@@ -4,19 +4,18 @@
 A mission keeps its project clean by itself: after every fifth completed job, the next job is an
 upkeep job Remedy plans from its own records — the findings earlier jobs left open, the project's
 structure measure, and what was replaced and not deleted — by rules a person can read, with a skip
-only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 and D2).
+only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 to D3).
 
 ## Current Step
-Round 3 on `feature/f301-mission-upkeep`: book round 2 and DECISION F301 D2, then the two
-structural steps T003 needs first: the command catalog's types, shorthands and `mission` group to
-modules of their own, and `ConfigKeySpec` with the mission orchestrator's keys, each lowering its
-row on the structure page.
+Round 4 on `feature/f301-mission-upkeep`: book round 3 and DECISION F301 D3, then T003's setting
+`mission.upkeep_every` in `config_keys_mission.py` with the environment guide, and T003's rules in
+`packages/orchestration/mission_upkeep.py`: the cadence, the plan, the compiled step, the upkeep
+job and the recorded skip, with their tests.
 
 ## Next Steps
-1. T003: `mission.upkeep_every` in `config_keys_mission.py`, the cadence, the structure measure
-   and the replaced scan at planning, the compiled step, and the upkeep job through
-   `remedy mission continue` with `--skip-upkeep` in `command_catalog_mission.py`; the page
-   `docs/system/mission-upkeep-v1.md`.
+1. T003 through the command line: `remedy mission continue` makes the upkeep job when it is due,
+   `--skip-upkeep <reason>` in `command_catalog_mission.py` records a skip, the lessons test of
+   DECISION F301 D2 (4), and the page `docs/system/mission-upkeep-v1.md`.
 2. The loop's dispatch path: the upkeep job in place of a dispatch, with R-1233's test of the
    dispatch path's approval; T004, the replaced pairs through a run.
 3. T005: the upkeep in `remedy mission show` and the client digest; a fixture mission of six jobs
