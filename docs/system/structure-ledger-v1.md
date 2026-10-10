@@ -128,8 +128,11 @@ with the code that calls it.
   its summaries, each to a module of its own; the dashboard builders stay.
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
-- `apps/cli/command_catalog.py`: the catalog's data to a module of its own in its present order,
-  the types and the lookups staying; a split by command group would change the order of the help.
+- `apps/cli/command_catalog.py`: the types and the argument shorthands to
+  `apps/cli/command_catalog_types.py`, then the catalog's data one contiguous group at a time, each
+  to a module of its own that `_BASE_CATALOG` splices in at the group's own place, so the help keeps
+  its order; the lookups stay. Step (1), done by F301: the types, the shorthands and the `mission`
+  group, `apps/cli/command_catalog_mission.py`.
 - `packages/orchestration/job_evidence.py`: the manual-completion bundle, the verification runner,
   and the run-manifest cross-checks with the postmortems, each to a module of its own.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
@@ -320,8 +323,8 @@ with the code that calls it.
 | 5283 | `packages/orchestration/pingpong_loop.py` |
 | 4834 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
-| 3148 | `apps/cli/command_catalog.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
+| 2788 | `apps/cli/command_catalog.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
