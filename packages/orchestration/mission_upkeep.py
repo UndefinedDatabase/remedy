@@ -3,8 +3,9 @@
 One append-only JSON-lines file per project, ``<data root>/projects/<project_id>/upkeep_ledger.jsonl``,
 beside ``bench_history.jsonl``. Every line carries ``version``, ``kind``, ``recorded_at`` and
 ``mission_id``. A ``job_closed`` line is written ONCE per job of a mission, when the job has ended
-completed, failed or cancelled, by :func:`record_closed_jobs`, which runs before the mission's
-next job is made; ``run_job`` writes nothing here, because it may not grow (the structure rule).
+completed, failed or cancelled, or has halted blocked or stopped and a later job of the mission is
+linked, by :func:`record_closed_jobs`, which runs before the mission's next job is made;
+``run_job`` writes nothing here, because it may not grow (the structure rule).
 
 Which findings a job leaves open is one fixed rule: every finding of its ``final_job_review.json``
 and the last-round reviewer findings of each blocked task, keyed by job, task and id, because no
@@ -45,6 +46,9 @@ UPKEEP_LINE_KINDS = (LINE_JOB_CLOSED, LINE_UPKEEP_PLANNED, LINE_UPKEEP_SKIPPED,
 
 #: A job in one of these states has ended and gets its ``job_closed`` line.
 CLOSED_JOB_STATES = ("completed", "failed", "cancelled")
+#: A job halted in one of these states counts as ended once a later job of its mission is linked,
+#: because the mission has moved on past it (R-1234, DECISION F301 D4).
+HALTED_JOB_STATES = ("blocked", "stopped")
 #: The round hygiene rule's id for an added file that sits beside the one it replaces.
 REPLACED_FINDING_PREFIX = "HYG-replaced-"
 
@@ -147,7 +151,9 @@ def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = Non
                        now: datetime | None = None) -> list[dict[str, Any]]:
     """Write the ``job_closed`` line of every ended job of the mission that has none yet.
 
-    In link order. A job whose record cannot be read is passed over and tried again next time.
+    In link order. A job ends completed, failed or cancelled; a job halted blocked or stopped counts
+    as ended once a later job is linked, because the mission has moved on past it (R-1234). A job
+    whose record cannot be read is passed over and tried again next time.
     Answers the lines written.
     """
     from packages.orchestration.data_paths import normalize_job_id
@@ -158,7 +164,8 @@ def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = Non
     seen = {line.get("job_id") for line in read_upkeep_ledger(project_id, root)
             if line.get("kind") == LINE_JOB_CLOSED}
     written: list[dict[str, Any]] = []
-    for job_id in mission.job_ids():
+    job_ids = mission.job_ids()
+    for index, job_id in enumerate(job_ids):
         if job_id in seen:
             continue
         try:
@@ -168,7 +175,8 @@ def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = Non
         if job is None:
             continue
         state = str(getattr(job.state, "value", job.state))
-        if state not in CLOSED_JOB_STATES:
+        moved_on = index < len(job_ids) - 1
+        if state not in CLOSED_JOB_STATES and not (moved_on and state in HALTED_JOB_STATES):
             continue
         findings = job_open_findings(job, root)
         resolved = _carried_keys(job) if state == "completed" else []

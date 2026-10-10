@@ -530,3 +530,75 @@ class TestTheSkip:
         assert (line["kind"], line["reason"], line["after_jobs"], line["after_job_id"]) == (
             LINE_UPKEEP_SKIPPED, "a release is due", 2, str(jobs[1].job_id))
         assert upkeep_cadence(PROJECT, mission_id, config=EVERY_TWO).completed == 0
+
+
+class TestAHaltedJob:
+    """R-1234: a job halted blocked or stopped counts as ended once a later job of its mission is
+    linked; before that it may still be taken up again, and a paused job is never ended by one."""
+
+    @pytest.mark.parametrize("state", ["blocked", "stopped"])
+    def test_it_is_recorded_once_the_mission_moves_on(self, data_root, state):
+        mission = create_mission(PROJECT, "Keep the importer working")
+        halted = _job(state, [TaskEntry(task_id="T001", status="blocked", run_id="run-h")])
+        _run_record("run-h", [BLOCKED_FINDING])
+        link_job_to_mission(PROJECT, mission.id, str(halted.job_id), "initial")
+        assert record_closed_jobs(PROJECT, mission.id) == []
+
+        later = _job("planned")
+        link_job_to_mission(PROJECT, mission.id, str(later.job_id), "follow_up")
+        [line] = record_closed_jobs(PROJECT, mission.id)
+
+        assert (line["job_id"], line["job_state"]) == (str(halted.job_id), state)
+        assert [f["finding_id"] for f in line["open_findings"]] == ["R1"]
+
+    def test_a_paused_job_is_not_ended_by_a_later_one(self, data_root):
+        mission = create_mission(PROJECT, "Keep the importer working")
+        for index, state in enumerate(("paused", "planned")):
+            link_job_to_mission(PROJECT, mission.id, str(_job(state).job_id), "initial" if index == 0 else "follow_up")
+        assert record_closed_jobs(PROJECT, mission.id) == []
+
+
+class TestAReplacementThroughARun:
+    """F301 T004, DECISION F301 D1 (10): the round hygiene rule fails a round that leaves a file beside
+    the one it replaces; the halted job's line records the pair, and an upkeep plan carries it while
+    both files are in the repository."""
+
+    def test_the_chain_from_the_round_to_the_upkeep_plan(self, data_root, tmp_path):
+        from packages.orchestration.config import reset_config
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.project_registry import RemyProject, save_project
+
+        repo = tmp_path / "importer-repo"
+        (repo / "src").mkdir(parents=True)
+        (repo / "README.md").write_text("# Importer\n", encoding="utf-8")
+        (repo / "src" / "importer.py").write_text("OLD = 1\n", encoding="utf-8")
+        for args in (("init", "-q"), ("config", "user.email", "f@example.com"), ("config", "user.name", "F"),
+                     ("config", "commit.gpgsign", "false"), ("add", "-A"), ("commit", "-qm", "base")):
+            _git(repo, *args)
+        reset_config()
+        project = RemyProject(name="Importer", slug="importer", canonical_repo_path=str(repo))
+        save_project(project)
+        project_id = str(project.id)
+        mission = create_mission(project_id, "Replace the importer")
+        job = parse_job_file("# Job: Replace\n\n## Task 1\nReplace the importer.\n\nAcceptance:\n- done\n",
+                             str(repo))
+        save_job_plan(job)
+        link_job_to_mission(project_id, mission.id, str(job.job_id), "initial")
+        provider = FakeProvider(builder_files=["src/importer_v2.py"], pass_on_round=1, fail_on_round=99)
+
+        ended = run_job(job.job_id, builder_provider=provider, reviewer_provider=provider, repair_rounds=0)
+
+        assert str(getattr(ended.state, "value", ended.state)) == "blocked"
+        assert ended.tasks[0].reviewer_verdict == "needs_repair"
+        later = _job("planned")
+        link_job_to_mission(project_id, mission.id, str(later.job_id), "follow_up")
+        [line] = record_closed_jobs(project_id, mission.id)
+        pair = {"path": "src/importer_v2.py", "original": "src/importer.py"}
+        assert line["replaced"] == [pair]
+        assert "HYG-replaced-src/importer_v2.py" in [f["finding_id"] for f in line["open_findings"]]
+
+        cadence = upkeep_cadence(project_id, mission.id, config={})
+        assert plan_upkeep(project_id, mission.id, cadence, read_upkeep_ledger(project_id))["replaced"] == []
+        (repo / "src" / "importer_v2.py").write_text("NEW = 2\n", encoding="utf-8")
+        assert plan_upkeep(project_id, mission.id, cadence, read_upkeep_ledger(project_id))["replaced"] == [pair]
