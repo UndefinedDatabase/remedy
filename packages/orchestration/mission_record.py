@@ -72,6 +72,16 @@ class MissionVerifyFirstError(MissionError):
     so a caller cannot ship a follow-up whose verification is optional.
     """
 
+
+class MissionProjectError(MissionError):
+    """The projects of a mission over several repositories do not fit (DECISION F205 D2).
+
+    Raised when the projects given at creation are not the lead project first and each once, and
+    when a job is linked to such a mission whose project the mission does not span or whose
+    record cannot be read to tell.
+    """
+
+
 # ---------------------------------------------------------------------------
 # The record
 # ---------------------------------------------------------------------------
@@ -79,15 +89,24 @@ class MissionVerifyFirstError(MissionError):
 
 @dataclass(frozen=True)
 class MissionJobLink:
-    """One job's place in a mission's chain."""
+    """One job's place in a mission's chain.
+
+    ``project_id`` (F205, DECISION F205 D2) is the project the linked job works in, ADDITIVE and
+    OPTIONAL on ``Mission.mission_plan``'s terms: it is set and written only on a mission that
+    spans several projects, so every other link keeps the bytes it has on disk.
+    """
 
     job_id: str
     role: str
     created_at: str
+    project_id: str = ""
 
     def to_json(self) -> dict[str, Any]:
-        return {"job_id": self.job_id, "role": self.role,
+        body = {"job_id": self.job_id, "role": self.role,
                 "created_at": self.created_at}
+        if self.project_id:
+            body["project_id"] = self.project_id
+        return body
 
     @classmethod
     def from_json(cls, body: Any) -> MissionJobLink:
@@ -100,7 +119,8 @@ class MissionJobLink:
         if not job_id:
             raise ValueError("mission job link carries no job id")
         return cls(job_id=job_id, role=role,
-                   created_at=str(body.get("created_at", "")))
+                   created_at=str(body.get("created_at", "")),
+                   project_id=str(body.get("project_id", "")))
 
 
 # Three fields rather than a union, because they answer different questions.
@@ -166,6 +186,11 @@ class Mission:
     validates it on read and on write and is its only production writer; this
     module stores the body and defines no shape for it.  ``None`` and an absent
     key both mean "no contract compiled yet".
+
+    ``project_ids`` (F205, DECISION F205 D2) are the projects a mission over several repositories
+    spans, ``project_id`` first, each once; ADDITIVE and OPTIONAL on ``mission_plan``'s terms, the
+    key is written only on such a mission, and an empty tuple means the mission's own project
+    alone (:meth:`spanned_project_ids`).
     """
 
     id: str
@@ -179,6 +204,7 @@ class Mission:
     mission_plan: dict[str, Any] | None = None
     order: MissionOrder | None = None
     contract: dict[str, Any] | None = None
+    project_ids: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         body = {
@@ -204,6 +230,9 @@ class Mission:
             body["order"] = self.order.to_json()
         if self.contract is not None:
             body["contract"] = self.contract
+        # Written only on a mission over several projects, for the same reason (DECISION F205 D2).
+        if self.project_ids:
+            body["project_ids"] = list(self.project_ids)
         return body
 
     @classmethod
@@ -230,6 +259,12 @@ class Mission:
         contract = body.get("contract")
         if contract is not None and not isinstance(contract, dict):
             raise ValueError("mission contract must be an object")
+        spanned = body.get("project_ids")
+        if spanned is not None:
+            if not isinstance(spanned, list):
+                raise ValueError("mission project_ids must be a list")
+            spanned = tuple(str(project) for project in spanned)
+            check_spanned_project_ids(project_id, spanned)
         return cls(
             id=mission_id,
             project_id=project_id,
@@ -242,6 +277,7 @@ class Mission:
             mission_plan=plan,
             order=MissionOrder.from_json(order) if order is not None else None,
             contract=contract,
+            project_ids=spanned or (),
         )
 
     def job_ids(self) -> tuple[str, ...]:
@@ -250,3 +286,21 @@ class Mission:
     def latest_link(self) -> MissionJobLink | None:
         """The last job linked into the chain, or None for an empty mission."""
         return self.job_links[-1] if self.job_links else None
+
+    def spanned_project_ids(self) -> tuple[str, ...]:
+        """Every project this mission's jobs may work in, its own project first."""
+        return self.project_ids or (self.project_id,)
+
+
+def check_spanned_project_ids(lead: str, project_ids: tuple[str, ...]) -> None:
+    """Raise ValueError unless *project_ids* is at least two projects, *lead* first, each once.
+
+    The one rule for the projects a mission spans (DECISION F205 D2), read by
+    :meth:`Mission.from_json` and by ``create_mission``.
+    """
+    if len(project_ids) < 2:
+        raise ValueError("a mission over several projects spans at least two")
+    if project_ids[0] != lead:
+        raise ValueError(f"the projects a mission spans begin with its own project {lead!r}")
+    if len(set(project_ids)) != len(project_ids):
+        raise ValueError("the projects a mission spans name each project once")

@@ -92,7 +92,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.6"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.7"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:

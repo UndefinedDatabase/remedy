@@ -78,7 +78,9 @@ from packages.orchestration.mission_record import (
     MissionLinkRoleError,
     MissionNotFoundError,
     MissionOrder,
+    MissionProjectError,
     MissionVerifyFirstError,
+    check_spanned_project_ids,
 )
 from packages.orchestration.mission_record import (
     MISSION_STATUS_PAUSED as MISSION_STATUS_PAUSED,
@@ -232,12 +234,15 @@ def list_missions(project_id: str, root: Path | None = None) -> list[Mission]:
 
 
 def create_mission(project_id: str, goal: str, *,
+                   project_ids: tuple[str, ...] | list[str] = (),
                    now: datetime | None = None,
                    root: Path | None = None) -> Mission:
     """Create and persist a mission.  This is the ONLY way one comes into being.
 
     Called by ``remedy mission start`` and by the plan-approval opt-in — never
-    as a side effect of running work.
+    as a side effect of running work.  *project_ids* names every project a mission
+    over several repositories spans, *project_id* first (DECISION F205 D2); one
+    project, or none given, makes the record every mission had before.
     """
     text = str(goal).strip()
     if not text:
@@ -246,12 +251,22 @@ def create_mission(project_id: str, goal: str, *,
         raise MissionError(
             f"mission goal exceeds {MAX_MISSION_GOAL_CHARS} characters "
             f"(got {len(text)})")
+    lead = _validate_path_id(project_id, "project id")
+    spanned = tuple(_validate_path_id(project, "project id") for project in project_ids)
+    if spanned == (lead,):
+        spanned = ()
+    if spanned:
+        try:
+            check_spanned_project_ids(lead, spanned)
+        except ValueError as exc:
+            raise MissionProjectError(str(exc)) from exc
     mission = Mission(
         id=uuid4().hex,
-        project_id=_validate_path_id(project_id, "project id"),
+        project_id=lead,
         goal=text,
         status=MISSION_STATUS_ACTIVE,
         created_at=_utc_now_iso(now),
+        project_ids=spanned,
     )
     save_mission(mission, root)
     return mission
@@ -309,6 +324,8 @@ def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
       refused, whichever mission holds it.
     * A chain begins with exactly one ``initial`` job; every later link is a
       ``follow_up``.
+    * On a mission over several projects, the job's own record names a project
+      the mission spans, and the link records it (DECISION F205 D2).
     """
     if role not in MISSION_ROLES:
         raise MissionLinkRoleError(
@@ -329,11 +346,35 @@ def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
             f"mission {mission.id} has no jobs yet — the first link is "
             f"{MISSION_ROLE_INITIAL}, not {role}")
 
+    project = ""
+    if mission.project_ids:
+        found = _linked_job_project(job_id, root)
+        if found is None:
+            raise MissionProjectError(
+                f"job {job_id} has no readable record, so mission {mission.id}, which spans "
+                f"several projects, cannot tell which of them it works in")
+        if found not in mission.project_ids:
+            raise MissionProjectError(
+                f"job {job_id} works in project {found or '(none)'}, which mission "
+                f"{mission.id} does not span ({', '.join(mission.project_ids)})")
+        project = found
+
     link = MissionJobLink(job_id=str(job_id), role=role,
-                          created_at=_utc_now_iso(now))
+                          created_at=_utc_now_iso(now), project_id=project)
     updated = replace(mission, job_links=(*mission.job_links, link))
     save_mission(updated, root)
     return updated
+
+
+def _linked_job_project(job_id: str, root: Path | None) -> str | None:
+    """The project a job's own record names, "" when it names none, None when it cannot be read."""
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+
+    try:
+        job, _degraded = load_job_plan_safe(normalize_job_id(str(job_id)), root)
+    except (TypeError, ValueError):
+        return None
+    return None if job is None else str(job.project_id or "")
 
 
 def set_mission_status(project_id: str, mission_id: str, status: str,

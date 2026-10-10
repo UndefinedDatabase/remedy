@@ -46,8 +46,9 @@ from typing import Any
 #: to `1.2` for `client.changes`, F253 S4b (DECISION F253 D11) to `1.3` for `job decline`'s
 #: `--source`, F253 S5a (DECISION F253 D13) to `1.4` for `client.order`, and F253 round 23
 #: (DECISION F253 D20) to `1.5` for `client.run`, and F301 T005 (DECISION F301 D5) to `1.6` for a
-#: mission's upkeep counts in the digest.
-CLIENT_INTERFACE_VERSION = "1.6"
+#: mission's upkeep counts in the digest, and F205 (DECISION F205 D2) to `1.7` for the projects a
+#: mission spans and the project of each of its job links.
+CLIENT_INTERFACE_VERSION = "1.7"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -635,7 +636,8 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "project_id": {},
             "goal": {},
             "status": {},
-            "job_links": {"job_id": {}, "role": {}, "created_at": {}, "job_state": {}},
+            "job_links": {"job_id": {}, "role": {}, "created_at": {}, "project_id": {},
+                          "job_state": {}},
             "dossier_ref": {},
             "created_at": {},
             "mission_plan": {
@@ -658,6 +660,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             },
             "order": {"text": {}, "source_path": {}, "source_sha256": {}},
             "contract": MISSION_CONTRACT_KEY_TREE,
+            "project_ids": {},
         },
     },
     "decision.resolve": {

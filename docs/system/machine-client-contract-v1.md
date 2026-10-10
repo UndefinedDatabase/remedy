@@ -252,7 +252,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.6`.
+Interface version: `1.7`.
 
 ### Envelope
 
@@ -689,12 +689,12 @@ Refusal tokens: `mission_error`, `mission_not_found`, `no_project`.
 Answer keys: `mission`, `unmet_blocking_criteria`, `version`.
 Keys under the answer keys: see below.
 
-- `mission`: `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `project_id`, `schema_version`, `status`
+- `mission`: `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `project_id`, `project_ids`, `schema_version`, `status`
   - `contract`: `amendments`, `criteria`, `schema`, `template`
     - `amendments`: `acknowledged_in`, `applies_from`, `criteria`, `id`, `received_at`, `text`, `understood`
     - `criteria`: `blocking`, `check`, `evidence_ref`, `id`, `milestones`, `origin`, `status`, `text`
       - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
-  - `job_links`: `created_at`, `job_id`, `job_state`, `role`
+  - `job_links`: `created_at`, `job_id`, `job_state`, `project_id`, `role`
   - `mission_plan`: `_milestones_done`, `_version`, `_versions` (repeats the object that holds it), `assumptions`, `compiled`, `milestones`, `origin`, `risks`, `schema_v`
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
