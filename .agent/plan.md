@@ -7,21 +7,20 @@ structure measure, and what was replaced and not deleted — by rules a person c
 only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 to D5).
 
 ## Current Step
-Round 7 on `feature/f301-mission-upkeep`: book round 6 with the resolutions of R-1233 and R-1234,
-record DECISION F301 D5, then T005: `upkeep_preview`, the digest's three upkeep counts with the
-client interface at 1.6, and the upkeep section of `remedy mission show`, with the page.
+Round 8 on `feature/f301-mission-upkeep`: book round 7, then the acceptance fixture of six jobs
+through the command line, `tests/regression/test_f301_acceptance.py`, and the feature file's Built
+State with the mission upkeep page marked built. Session 1 ends after this round; the closure
+starts fresh.
 
 ## Next Steps
-1. The acceptance fixture: a mission of six jobs whose sixth is the upkeep job naming the planted
-   finding, the planted oversized file and the planted replacement, an old mission and job record
-   loading and running unchanged, and the digest naming the jobs left; the Built State.
-2. Closure: the one full suite, the self-use item, the evidence package, the STATUS line, the pull
-   request.
+1. The closure's first round, in a new session: the consolidation of the §3 checklist, the
+   self-use item run to its approval gate, and the one full suite on the tree that ships.
+2. The evidence round: the evidence job and the review package.
+3. The closing round: the Built State's readings, the ledger rotation, the STATUS line, the README
+   sync and the pull request.
 
 ## Risks
-- The structure ratchet holds every round: no line may be added to a listed function or file, so
-  new code goes into the new modules and a listed one is cut first.
-- The mission, job and task records change no shape; an upkeep job is known by a key of its
-  job's free metadata.
+- The structure ratchet holds every round: no line may be added to a listed function or file.
+- The closure suite runs once, in the primary checkout; a red node is this feature's to repair.
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219,
   R-1220, R-1225 and R-1230 (Low) are open and owned by F297.
