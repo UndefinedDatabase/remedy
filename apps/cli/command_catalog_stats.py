@@ -102,6 +102,28 @@ STATS_COMMANDS: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — tokens by kind per call (F302) ───────────────────────────
+    CommandEntry(
+        command_id="stats.calls",
+        group_id="stats",
+        subcommand="calls",
+        description=(
+            "Tokens by kind per provider call and per landed change, by role and "
+            "provider: input, output, cache creation and cache read, read from each "
+            "task's run evidence. A figure no call reported prints 'unmeasured', "
+            "never 0 (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.cost", "stats.cache"),
+        args=(
+            ArgDef("--since", "Only calls whose task run finished at or after this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls (under its mission)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     # ── stats — the cost report (F115) ───────────────────────────────────
     # Deliberately NO --all-projects, and the description says so where a
     # reader looks for it: `remedy stats --help` prints the description, and a
