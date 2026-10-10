@@ -145,8 +145,10 @@ with the code that calls it.
   file sourced in place, after the tests that read the script's text are pointed at both.
 - `packages/runtimes/dev_server.py`: the spec, paths and lock, the ports and the probe, and the
   shutdown of a process tree, each to a module of its own.
-- `packages/orchestration/pingpong_provider.py`: the output contracts, the parsing of the
-  reviewer's answer, the fake provider and the Ollama provider, each to a module of its own.
+- `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
+  contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
+  to a module of its own. Step (1), done by F302: the claude CLI's command line,
+  `packages/orchestration/claude_cli_command.py`.
 - `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
   then the key registry one contiguous group at a time, each to a module of its own that
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
@@ -335,7 +337,7 @@ with the code that calls it.
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
 | 2052 | `packages/runtimes/dev_server.py` |
-| 2024 | `packages/orchestration/pingpong_provider.py` |
+| 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1856 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |

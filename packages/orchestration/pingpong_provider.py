@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import locale
 import os
-import re
 import shutil
 import signal
 import subprocess
@@ -24,6 +23,22 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     prepare_call_input,
 )
+
+# DECISION F302 D1: the claude CLI's command line lives in a module of its own; every name is
+# imported back here by name, so every import path keeps working.
+from packages.orchestration.claude_cli_command import (
+    _ALLOWED_TOOLS_ARGS as _ALLOWED_TOOLS_ARGS,
+)
+from packages.orchestration.claude_cli_command import (
+    _CLI_SESSION_REF_PATTERN as _CLI_SESSION_REF_PATTERN,
+)
+from packages.orchestration.claude_cli_command import (
+    _DANGEROUS_SKIP_ARGS as _DANGEROUS_SKIP_ARGS,
+)
+from packages.orchestration.claude_cli_command import (
+    _VALID_CLI_WRITE_MODES as _VALID_CLI_WRITE_MODES,
+)
+from packages.orchestration.claude_cli_command import build_claude_cli_args
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.schemas import (
@@ -862,12 +877,6 @@ def _parse_reviewer_json(
 # Claude CLI provider (local `claude -p` subprocess)
 # ---------------------------------------------------------------------------
 
-_VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
-
-_ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
-_DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
-
-
 def _extract_cli_result_text(raw: str) -> str:
     """Extract Builder/Reviewer text from claude CLI stdout, Usage-independent.
 
@@ -1001,62 +1010,6 @@ class StructuredCliOutcome:
     usage_actuals: dict[str, Any] | None = None
     error_class: str = ""         # "" | "parse" | "config"
     error_detail: str = ""
-
-
-#: Read back from run records on disk; must never become an option of the child's command line.
-_CLI_SESSION_REF_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z_-]{0,127}")
-
-
-def build_claude_cli_args(
-    claude_path: str,
-    prompt: str,
-    *,
-    write_mode: str = "none",
-    model: str = "",
-    stream_evidence: bool = False,
-    json_schema: str = "",
-    resume_session: str = "",
-) -> list[str]:
-    """Build safe CLI argv for claude invocation.
-
-    write_mode:
-      none: no write tools (reviewer mode, or builder without permission)
-      allowed-tools: --allowedTools Edit,Write,MultiEdit
-      dangerous-skip: --dangerously-skip-permissions (explicit opt-in only)
-    model: if non-empty, passed as --model <model> to claude CLI.
-    stream_evidence: opt-in F004 mode. Uses ``--output-format stream-json``
-      (which the CLI requires ``--verbose`` for in print mode). The DEFAULT
-      remains ``--output-format json`` — the accepted F003 behaviour.
-    json_schema: F005 native structured output. When non-empty, passed as
-      ``--json-schema <schema>`` so the provider enforces the schema itself
-      instead of relying on prompt prose. Kept compact by the caller.
-    resume_session: F287 DECISION D2. When non-empty, must fully match ``_CLI_SESSION_REF_PATTERN`` (else ``ValueError``), and is passed as ``--resume <ref>``.
-    """
-    if stream_evidence:
-        argv = [claude_path, "-p", prompt, "--output-format", "stream-json", "--verbose"]
-    else:
-        argv = [claude_path, "-p", prompt, "--output-format", "json"]
-    if model:
-        argv.extend(["--model", model])
-    if json_schema:
-        argv.extend(["--json-schema", json_schema])
-    if resume_session:
-        if _CLI_SESSION_REF_PATTERN.fullmatch(resume_session) is None:
-            raise ValueError(
-                "refusing to resume: the session reference is not a plain session id"
-            )
-        argv.extend(["--resume", resume_session])
-    if write_mode == "allowed-tools":
-        argv.extend(_ALLOWED_TOOLS_ARGS)
-    elif write_mode == "dangerous-skip":
-        argv.extend(_DANGEROUS_SKIP_ARGS)
-    return argv
-
-# F005 Finding 6: there is deliberately NO ``claude --help`` preflight. Claude
-# Code's help does not list every supported flag, so its absence is not proof
-# ``--json-schema`` is unsupported. Support is proven by the actual invocation;
-# an unknown-option error from that invocation is classified ``config`` (see
-# ``_looks_like_unknown_json_schema_option`` / ``_call_reviewer_structured``).
 
 
 def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:

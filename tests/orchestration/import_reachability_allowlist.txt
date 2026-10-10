@@ -112,6 +112,7 @@ packages.orchestration.chat_turn
 packages.orchestration.checkpoints
 packages.orchestration.ci_run
 packages.orchestration.ci_stages
+packages.orchestration.claude_cli_command
 packages.orchestration.client_changes
 packages.orchestration.client_digest
 packages.orchestration.cockpit
