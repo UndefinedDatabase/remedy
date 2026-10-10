@@ -1,9 +1,10 @@
 # Claude CLI worker launch v1: what a worker loads before it does any work
 
-> Status (F302, 2026-10-10): being built. DECISIONs F302 D1 to D3 in `.agent/decisions.md` hold
-> the rules this page states; the feature is `docs/roadmap/features/T3_F302.md`. Built so far: the
-> lean start and its two keys. The measurement before and after comes next. A job's record does
-> not yet name the configuration its calls ran under; finding R-1235 carries that to F297.
+> Status (F302, 2026-10-10): being built. DECISIONs F302 D1 to D4 in `.agent/decisions.md` hold
+> the rules this page states; the feature is `docs/roadmap/features/T3_F302.md`. Built: the lean
+> start, its two keys, the measurement before and after it, and `remedy stats calls`. A job's
+> record does not yet name the configuration its calls ran under; finding R-1235 carries that to
+> F297.
 
 Remedy starts Claude Code as a worker for every builder, reviewer and planner call of the
 `claude-cli` provider: `claude -p <prompt> --output-format json`, with the model, the reviewer's
@@ -49,3 +50,19 @@ environment variable; both are false unless set.
 With both true, the command line is the one Remedy used before F302. The keys are read through the
 process's cached configuration, `get_config()`, so every call one Remedy process makes reads the
 same values.
+
+## Before and after
+`.agent/f302_after.md` holds the same fixed question asked with the command line before F302 and
+with the lean start: in an empty repository its call read 21,533 tokens before and 7,051 after,
+and in a worktree of Remedy 28,056 before and 7,407 after. One small real repair ran as a job each
+way and passed its review in two calls with the same change; its builder's first call read 725,658
+tokens before and 435,183 after.
+
+## Reading the tokens: `remedy stats calls`
+`remedy stats calls` prints, by role and provider, how many provider calls the run records hold,
+how many of them reported their tokens, and the mean tokens per call of each kind: input, output,
+cache creation and cache read. Its last line divides the tokens of all those calls by the number
+of jobs among them whose `remedy job apply` landed, which is what one landed change cost, failed
+attempts included. A figure no call reported prints `unmeasured`, never 0. `--since` keeps the
+calls whose task run finished at or after a time, `--job` the calls of one job, and `--json`
+answers the same figures as data; the code is `packages/orchestration/call_tokens.py`.
