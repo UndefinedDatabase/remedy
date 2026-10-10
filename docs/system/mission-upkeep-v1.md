@@ -1,9 +1,9 @@
 # Mission upkeep v1: every fifth job cleans up
 
-> Status (F301, 2026-10-10): being built. DECISIONs F301 D1 to D3 in `.agent/decisions.md` hold the
+> Status (F301, 2026-10-10): being built. DECISIONs F301 D1 to D4 in `.agent/decisions.md` hold the
 > rules this page states; the feature is `docs/roadmap/features/T7_F301.md`. Built so far: the
-> upkeep ledger, the cadence, the planned step and `remedy mission continue`. The orchestrator's
-> own dispatch and the views of `remedy mission show` and the client digest come next.
+> upkeep ledger, the cadence, the planned step, `remedy mission continue` and the orchestrator's
+> own dispatch. The views of `remedy mission show` and the client digest come next.
 
 A mission that runs for many jobs leaves things behind: problems a reviewer still saw when a job
 ended, code that grew past the size limits, and files that a newer file replaced and nobody
@@ -14,8 +14,9 @@ code is `packages/orchestration/mission_upkeep.py`.
 ## The ledger
 Each project has one append-only file, `upkeep_ledger.jsonl`, in its folder under the data root's
 `projects/`. A line is written and never changed. When a job of a mission has ended — completed,
-failed or cancelled — its `job_closed` line records the findings it left open and the files it
-replaced and did not delete. The ledger also records each upkeep job Remedy planned, each upkeep
+failed or cancelled, or halted blocked or stopped while a later job of the mission exists, because
+the mission has moved on past it — its `job_closed` line records the findings it left open and
+the files it replaced and did not delete. The ledger also records each upkeep job Remedy planned, each upkeep
 job the operator skipped with its reason, and each time upkeep was due and nothing was left.
 
 A job's open findings are the findings of its final job review, and the findings the reviewer
@@ -53,3 +54,16 @@ that job has run. `--skip-upkeep "<reason>"` skips the upkeep job that is due an
 reason; a skip without a reason, or with nothing due, exits 2 and changes nothing. There is no
 other way to skip one. Under `--json` the answer's `upkeep` key holds the ledger line this call
 wrote, or `null`.
+
+## The orchestrator's dispatch
+When `remedy mission run` asks for a job for a milestone and upkeep is due, the upkeep job runs
+instead, approved the same audited way as any job the orchestrator starts. It serves no milestone,
+so no milestone's Definition of Done, contract slice or repository grant is attached to it, and
+its outcome, `upkeep_dispatched`, is never read as the milestone's blocked completion. The
+orchestrator never skips an upkeep job; at its next move it asks for the milestone's job again.
+
+## A replaced file through a run
+The round's hygiene rule fails a round whose added file sits beside the file it replaces, so such
+a task does not pass. When its job halts with that finding, the job's `job_closed` line records the
+pair. A job that never applied its change left both files only in its own copy, so an upkeep job
+carries the pair once both files are in the project's repository.
