@@ -45,8 +45,9 @@ from typing import Any
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
 #: to `1.2` for `client.changes`, F253 S4b (DECISION F253 D11) to `1.3` for `job decline`'s
 #: `--source`, F253 S5a (DECISION F253 D13) to `1.4` for `client.order`, and F253 round 23
-#: (DECISION F253 D20) to `1.5` for `client.run`.
-CLIENT_INTERFACE_VERSION = "1.5"
+#: (DECISION F253 D20) to `1.5` for `client.run`, and F301 T005 (DECISION F301 D5) to `1.6` for a
+#: mission's upkeep counts in the digest.
+CLIENT_INTERFACE_VERSION = "1.6"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -243,6 +244,9 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "job_ids": {},
             "order_source_path": {},
             "order_source_sha256": {},
+            "upkeep_every": {},
+            "upkeep_jobs_left": {},
+            "upkeep_open_findings": {},
         },
         "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {},
                        "tokens": TOKENS_BY_KIND_KEY_TREE},

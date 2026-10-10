@@ -23,105 +23,39 @@ Public API::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
-from typing import Literal
+from dataclasses import replace
 
-from apps.cli.exit_codes import EXIT_CODE_FLOOR
-
-# ---------------------------------------------------------------------------
-# Types
-# ---------------------------------------------------------------------------
-
-ActionClass = Literal[
-    "read_only",
-    "write_metadata",
-    "approval_gate",
-    "apply_write",
-    "test_execution",
-    "dev_helper",
-    "local_state_change",
-    "controlled_builder_execution",
-]
-
-#: The product path that reaches a command group (DECISION amend0905-vocab D11 (a)).
-Reach = Literal[
-    "golden-path",
-    "job-path",
-    "mission-path",
-    "self-use",
-    "teacher",
-    "cockpit",
-    "self-build",
-]
-
-
-@dataclass(frozen=True)
-class GroupDef:
-    """A top-level command group (e.g. 'job', 'brain')."""
-
-    id: str
-    label: str
-    description: str
-    user_facing: bool = True
-    #: A hidden group appears in no help at all, neither `remedy --help` nor
-    #: `remedy --all-commands`, and stays callable: its own help and its commands
-    #: still work (DECISION amend0905-vocab D4).
-    hidden: bool = False
-    #: Further words that reach this same group (DECISION amend0831 D-D): one
-    #: `GroupDef` and one set of commands, never a duplicated definition.
-    #: `resolve_group` maps each of them to `id` for every group lookup.
-    aliases: tuple[str, ...] = ()
-    #: The owning feature id, e.g. "F261", and the path that reaches the group
-    #: (DECISION amend0905-vocab D11 (a)). Defaulted so that a group missing
-    #: either is refused by the catalog ownership test, not by a TypeError.
-    feature: str = ""
-    reach: Reach | None = None
-
-
-@dataclass(frozen=True)
-class ArgDef:
-    """A single CLI argument or option."""
-
-    name: str
-    help: str
-    required: bool = True
-    is_option: bool = False
-    default: str | None = None
-    #: A boolean flag takes NO value (`--status`), a valued option does (`--status pending`).
-    #: Declared per ARGUMENT, because the same option name means different things to
-    #: different commands: `job stop --status` is a flag, `propose list --status pending`
-    #: is not. F011 briefly special-cased the NAME in the parser and broke `propose list`.
-    is_flag: bool = False
-    #: A repeatable option collects every occurrence into a list
-    #: (`--answer q1=a --answer q2=b`) instead of last-one-wins.
-    is_repeatable: bool = False
-
-
-@dataclass(frozen=True)
-class CommandEntry:
-    """One entry in the command catalog."""
-
-    command_id: str
-    group_id: str
-    subcommand: str
-    description: str
-    action_class: ActionClass
-    args: tuple[ArgDef, ...] = ()
-    supports_json: bool = False
-    requires_permission: bool = False
-    may_mutate_repo: bool = False
-    may_execute_commands: bool = False
-    #: True marks a command whose real-money spend requires an upfront
-    #: estimate and, above a configured threshold, operator confirmation
-    #: before it runs (F114). Explicit and reviewable per command - never
-    #: derived from another flag such as may_execute_commands.
-    is_expensive: bool = False
-    related: tuple[str, ...] = ()
-    #: The codes this command's handler can exit with (DECISION F283 D12 (4)),
-    #: ascending, always the floor plus whatever it reaches above it.
-    #: `tests/cli/test_exit_codes.py` asserts this against a static reading.
-    exit_codes: tuple[int, ...] = EXIT_CODE_FLOOR
-
+# DECISION F301 D2: the types, the shorthands and the mission group live in modules of their own;
+# every name is imported back here by name, so every import path keeps working.
+from apps.cli.command_catalog_mission import MISSION_COMMANDS
+from apps.cli.command_catalog_types import (
+    _ALL_PROJECTS_FLAG,
+    _ANSWER_OPT,
+    _APPLY_ID_OPT,
+    _APPROVE_HUNK_OPT,
+    _AS_MISSION_FLAG,
+    _INTENT_ID,
+    _JOB_ID,
+    _JSON_OPT,
+    _PLAN_TASK_ID,
+    _PLAN_VERSION_OPT,
+    _PROJECT_ID,
+    _PROJECT_SCOPE_OPT,
+    _REASON_OPT,
+    _REJECT_HUNK_OPT,
+    _TASK_OPT,
+    _TASK_RUN_OPT,
+    _TASK_RUN_SHOW_OPT,
+    ArgDef,
+    CommandEntry,
+    GroupDef,
+)
+from apps.cli.command_catalog_types import (
+    ActionClass as ActionClass,
+)
+from apps.cli.command_catalog_types import (
+    Reach as Reach,
+)
 
 # ---------------------------------------------------------------------------
 # Groups
@@ -182,70 +116,6 @@ VISIBLE_GROUP_ORDER: tuple[str, ...] = (
     "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
     "absorb", "chat",
 )
-
-
-# ---------------------------------------------------------------------------
-# Argument shorthands
-# ---------------------------------------------------------------------------
-
-_JOB_ID = ArgDef("job_id", "UUID of the job (under its mission)")
-_PROJECT_ID = ArgDef("project_id", "UUID or name of the project (its repo)")
-_INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
-_JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
-#: F107: names ONE task of a job — its planned id (`T001`) or a prefix of its
-#: task UUID. A valued option, never a flag, and never defaulted to a guess.
-_TASK_OPT = ArgDef(
-    "--task", "Task to select from the job plan: planned id (T001) or task-id prefix",
-    required=False, is_option=True)
-_REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
-#: F015 T002: every job plan edit names the version it was made against, as
-#: `remedy job plan-show` prints it, so an edit made on an older reading is refused.
-_PLAN_VERSION_OPT = ArgDef(
-    "--plan-version", "The version `remedy job plan-show` prints for the job plan and its tasks; "
-    "an edit made against an older one is refused (required)", required=False, is_option=True)
-_PLAN_TASK_ID = ArgDef("task_id", "The task's id, as `remedy job plan-show` prints it")
-_ANSWER_OPT = ArgDef(
-    "--answer",
-    'Answer one bundled clarification (--answer q1="use PostgreSQL") or raise a '
-    "budget decision's limit (--answer max_cost_usd=2.5); repeatable",
-    required=False, is_option=True, is_repeatable=True)
-_APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
-#: F033: names ONE task run whose diff to decide hunks over. Deliberately NOT
-#: `_TASK_OPT`, which promises "planned id (T001) or task-id prefix":
-#: `diff_view_source.build_diff_view` does no prefix resolution at all — it
-#: requires exact membership in the real `task_runs/` listing — and promising a
-#: prefix match the code does not perform is worse than a second option name.
-_TASK_RUN_OPT = ArgDef(
-    "--task-run",
-    "Task run to decide over, exactly as it is named under task_runs/ (T001); "
-    "omit it to decide over the job-level diff",
-    required=False, is_option=True)
-#: DECISION F295 D14: the same option for `patch.hunks`, which shows a diff
-#: rather than deciding over one, so its help says so.
-_TASK_RUN_SHOW_OPT = ArgDef(
-    "--task-run",
-    "Task run whose hunks to show, exactly as it is named under task_runs/ (T001); "
-    "omit it for the job-level diff",
-    required=False, is_option=True)
-#: F033: repeatable, one hunk id per occurrence.
-_APPROVE_HUNK_OPT = ArgDef(
-    "--approve-hunk", "Approve one hunk by id (repeatable)",
-    required=False, is_option=True, is_repeatable=True)
-#: F033: repeatable. The reason is kept VERBATIM — T003 quotes it into the next
-#: repair prompt — so the shape is shown rather than described away.
-_REJECT_HUNK_OPT = ArgDef(
-    "--reject-hunk",
-    'Reject one hunk with a reason: --reject-hunk <hunk-id>=<reason>, '
-    'e.g. --reject-hunk h3="renames a public name" (repeatable)',
-    required=False, is_option=True, is_repeatable=True)
-#: F056: the plan-approval opt-in. Its ABSENCE is the default — approving
-#: without it creates no mission, which is the whole point of the opt-in.
-_AS_MISSION_FLAG = ArgDef(
-    "--as-mission",
-    "When approving: also create a mission for this goal and link this job as its initial job",
-    required=False, is_option=True, is_flag=True)
-_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to a project's repo (slug or UUID)", required=False, is_option=True)
-_ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1430,237 +1300,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.list", "worker.resources"),
     ),
 
-    # ── mission (the F070 orchestrator, keyed on a mission id) ──────────
-    CommandEntry(
-        command_id="mission.run",
-        group_id="mission",
-        subcommand="run",
-        description="Execute the F070 orchestrator for one mission's jobs. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("run_id", "Mission id (F070 orchestrator) that owns the jobs"),
-            ArgDef("--iterations", "Max iterations before the orchestrator stops", required=False, is_option=True),
-            ArgDef("--no-llm", "Execute without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.report", "mission.watchdog"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.watchdog",
-        group_id="mission",
-        subcommand="watchdog",
-        description="Evaluate a mission's autonomy tripwires over its jobs and report what fired, with the run's evidence behind it — read-only: it pauses nothing and answers no decision.",
-        action_class="read_only",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.resume"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.handoff",
-        group_id="mission",
-        subcommand="handoff",
-        description="Compose this mission's handoff artifact — dossier, checkpoint reference, open decisions, next intent and its jobs — so a fresh context can resume from it (F079).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id that owns the jobs"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.watchdog"),
-    ),
-    CommandEntry(
-        command_id="mission.report",
-        group_id="mission",
-        subcommand="report",
-        description="Read-only morning-style report for a mission, built from its job's current run evidence.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--markdown", "Render the report as markdown",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("mission.readiness", "mission.show"),
-    ),
-
-    # ── mission (F056: the persistent goal above a chain of jobs) ────────
-    CommandEntry(
-        command_id="mission.start",
-        group_id="mission",
-        subcommand="start",
-        description="Create a mission — a persistent goal above the jobs that will serve it (explicit; never automatic).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("goal", "The persistent goal this mission exists for, before any job is created"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.list", "mission.show"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.list",
-        group_id="mission",
-        subcommand="list",
-        description="List missions (scoped to the current project by default; unreadable records are skipped and counted).",
-        action_class="read_only",
-        args=(
-            _PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG,
-            ArgDef("--status", "Only missions in this status: active, paused, achieved, abandoned, or planned (active, and no job started yet)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.start", "mission.show"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.continue",
-        group_id="mission",
-        subcommand="continue",
-        description="Add the next job to a mission — its plan always begins with a task (a step) that verifies the previous job's Definition of Done.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            ArgDef("next_step", "What this next job, under its mission, should do"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.start"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.plan",
-        group_id="mission",
-        subcommand="plan",
-        description="Compile a mission's goal into a milestone plan (recompiles keep prior versions; refused once a milestone is in progress). Creates no jobs and starts nothing.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            ArgDef("--no-llm", "Compile deterministically (no LLM provider call)", required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.start"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.show",
-        group_id="mission",
-        subcommand="show",
-        description="Show one mission and its job chain, each job with the state the job store reports now, then every entry of the ledger its runs wrote (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.list", "mission.start"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.contract",
-        group_id="mission",
-        subcommand="contract",
-        description="Show a mission's contract — its acceptance criteria, each with the milestones of its plan it covers (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "job.contract"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    # Status transitions are their own explicit subcommands (R-0163): the verb
-    # names the status, and nothing else in Remedy ever moves it.
-    CommandEntry(
-        command_id="mission.achieve",
-        group_id="mission",
-        subcommand="achieve",
-        description="Mark a mission achieved — an explicit human judgement, never inferred from its jobs.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.list"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.abandon",
-        group_id="mission",
-        subcommand="abandon",
-        description="Mark a mission abandoned — the goal is dropped; its jobs and their run evidence stay.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.list"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.pause",
-        group_id="mission",
-        subcommand="pause",
-        description="Mark a mission paused — the goal still stands, work on its jobs does not.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.show", "mission.list"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.resume",
-        group_id="mission",
-        subcommand="resume",
-        description="Mark a mission active again — the pause on its jobs is lifted; the tripwire that caused it is not cleared.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.pause", "mission.watchdog"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    CommandEntry(
-        command_id="mission.readiness",
-        group_id="mission",
-        subcommand="readiness",
-        description="Read-only: is this job, under its mission, safe to execute unattended?",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("mission.show", "mission.watchdog"),
-    ),
+    *MISSION_COMMANDS,
 
     # ── doctor (product spine health check) ──────────────────────────────
     CommandEntry(

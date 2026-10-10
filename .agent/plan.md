@@ -1,24 +1,21 @@
-# Plan — F300 Structure ledger and size ratchet
+# Plan — F301 Mission upkeep: every fifth job cleans up
 
 ## Goal
-Remedy's structure has a measure, a ledger and a ratchet: a product command that measures any
-repository, a page and a test that let each of Remedy's recorded sizes fall and never rise and
-refuse a new function or file above the limit, a rule that pays the debts down every fifth
-feature, and the first step, `run_job`'s safe points in one function
-(docs/roadmap/features/T2_F300.md; DECISIONs F300 D1 and D2).
+A mission keeps its project clean by itself: after every fifth completed job, the next job is an
+upkeep job Remedy plans from its own records — the findings earlier jobs left open, the project's
+structure measure, and what was replaced and not deleted — by rules a person can read, with a skip
+only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 to D5).
 
 ## Current Step
-Round 6 on `feature/f300-structure-ledger-size-ratchet`, the closing round: book round 5, bring
-the Built State current with the closure's readings, rotate the ledger, accept F300 in STATUS with
-the README sync and SU-052's `consumed_by`, and open the pull request, left unmerged.
+Round 11 on `feature/f301-mission-upkeep`, the closing round: book round 10, the Built State's
+closure readings, the ledger rotation, F301 accepted in STATUS with the README sync and SU-053's
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The next session's Open PR Gate merges F300's pull request after reading its hosted checks;
-   round 6's verdict is booked in the next feature's first commit.
-2. Rule A5: the next unchecked line of `docs/roadmap/STATUS.md`.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F301's pull request after its
+   hosted checks are read, and round 11's verdict is booked in the next feature's first commit.
+2. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
 
 ## Risks
-- The ratchet now holds every later round: a change that grows a listed function or adds one
-  above 100 lines is red until it is cut back.
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219,
-  R-1220, R-1225 and R-1230 (Low) are open and owned by F297.
+  R-1220, R-1225 and R-1230 (Low) are open and owned by F297; F301 owns none.

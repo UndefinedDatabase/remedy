@@ -189,6 +189,45 @@ def _load_mission_or_exit(project_id: str, mission_id: str, *,
         fail("mission_error", str(exc), json_output=json_output)
 
 
+def _upkeep_preview_or_error(project_id: str, mission_id: str) -> dict[str, Any]:
+    """DECISION F301 D5: the mission's upkeep preview, or ``{"error": ...}`` for a bad setting; read-only."""
+    from packages.orchestration.mission_upkeep import UpkeepError, upkeep_preview
+
+    try:
+        return upkeep_preview(project_id, mission_id)
+    except UpkeepError as exc:
+        return {"error": str(exc)}
+
+
+def _print_upkeep_preview(preview: dict[str, Any]) -> None:
+    """When the next upkeep job comes and what it would carry, in plain sentences."""
+    print("")
+    if "error" in preview:
+        print(f"Upkeep: {preview['error']}")
+        return
+    every, left = preview["every"], preview["jobs_left"]
+    if preview["due"]:
+        print(f"Upkeep: due now, after {preview['completed']} completed jobs; the next "
+              f"`remedy mission continue` makes the upkeep job.")
+    else:
+        print(f"Upkeep: every {every} completed jobs; {left} more before the next upkeep job.")
+    carries = preview["carries"]
+    items = []
+    if carries["findings"]:
+        count = len(carries["findings"])
+        items.append(f"{count} open finding{'' if count == 1 else 's'}")
+    structure = carries["structure"]
+    if structure.get("largest_function"):
+        function = structure["largest_function"]
+        items.append(f"the function {function['name']} in {function['path']} ({function['lines']} lines)")
+    if structure.get("largest_file"):
+        items.append(f"the file {structure['largest_file']['path']} ({structure['largest_file']['lines']} lines)")
+    if carries["replaced"]:
+        count = len(carries["replaced"])
+        items.append(f"{count} replaced file{'' if count == 1 else 's'} to delete")
+    print(f"  It would carry: {', '.join(items)}." if items else "  It would carry nothing yet.")
+
+
 def _cmd_mission_show(mission_id: str, *, project: str | None = None,
                       json_output: bool = False) -> None:
     """``remedy mission show <id>`` — one mission's chain, led by why it stopped.
@@ -225,10 +264,11 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
 
         trips = latest_trips_from_ledger(ledger)
 
+    upkeep = _upkeep_preview_or_error(project_id, mission.id) if mission.job_links else None
     if json_output:
         emit_ok(version=1, mission=_mission_json(mission),
                 watchdog_trips=[t.to_json() for t in trips],
-                ledger=ledger)
+                ledger=ledger, upkeep=upkeep)
         return
 
     # Empty trips print NOTHING, so an unpaused mission's output is byte for
@@ -245,6 +285,9 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         print("")
     for line in render_mission_chain(mission):
         print(line)
+    # A mission with no job yet prints no upkeep section, so its output is unchanged.
+    if upkeep is not None:
+        _print_upkeep_preview(upkeep)
     # An unrun mission prints no section, so its output is unchanged.
     if ledger:
         print("")
@@ -398,9 +441,46 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     print(f"  Status: {updated.status}")
 
 
+def _upkeep_before_continue(project_id: str, mission_id: str, skip_upkeep: str | None, *,
+                            json_output: bool) -> tuple[Any, dict[str, Any] | None]:
+    """DECISION F301 D1 (9): the upkeep job that is due, in place of the step, or the recorded skip.
+
+    Answers the upkeep job, or None when the step's own job comes next, and the ledger line written.
+    Both calls first record the mission's ended jobs in the project's upkeep ledger.
+    """
+    from packages.orchestration.mission_state import MissionError
+    from packages.orchestration.mission_upkeep import UpkeepError, make_upkeep_job_if_due, record_upkeep_skip
+
+    try:
+        if skip_upkeep is not None:
+            return None, record_upkeep_skip(project_id, mission_id, skip_upkeep)
+        outcome = make_upkeep_job_if_due(project_id, mission_id)
+    except UpkeepError as exc:
+        fail("upkeep_refused", str(exc), json_output=json_output, exit_code=2)
+    except MissionError as exc:
+        fail("mission_error", str(exc), json_output=json_output)
+    return outcome.job, outcome.line
+
+
+def _print_upkeep_line(line: dict[str, Any] | None) -> None:
+    """One plain sentence about the upkeep this call made, skipped or found not needed."""
+    if line is None:
+        return
+    count = line.get("after_jobs", 0)
+    jobs = f"{count} completed job{'' if count == 1 else 's'}"
+    if line.get("kind") == "upkeep_planned":
+        print(f"  Upkeep: after {jobs} of this mission, Remedy made this upkeep job in place of your step.")
+        print("  Give your step again once it has run, or give it with --skip-upkeep and a reason to skip the upkeep.")
+    elif line.get("kind") == "upkeep_skipped":
+        print(f"  Upkeep skipped after {jobs}; the reason is recorded: {line.get('reason', '')}")
+    else:
+        print(f"  Upkeep was due after {jobs}, and nothing was left to clean up; that is recorded.")
+
+
 def _cmd_mission_continue(mission_id: str, next_step: str, *,
                           project: str | None = None,
-                          json_output: bool = False) -> None:
+                          json_output: bool = False,
+                          skip_upkeep: str | None = None) -> None:
     from packages.orchestration.mission_state import (
         MissionError,
         continue_mission,
@@ -409,11 +489,12 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
 
     project_id = _resolve_project_id(project, json_output=json_output)
     mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
-
-    try:
-        job = continue_mission(project_id, mission.id, next_step)
-    except MissionError as exc:
-        fail("mission_error", str(exc), json_output=json_output)
+    job, upkeep_line = _upkeep_before_continue(project_id, mission.id, skip_upkeep, json_output=json_output)
+    if job is None:
+        try:
+            job = continue_mission(project_id, mission.id, next_step)
+        except MissionError as exc:
+            fail("mission_error", str(exc), json_output=json_output)
 
     verify = job.tasks[0] if job.tasks and is_verify_task(job.tasks[0]) else None
     if json_output:
@@ -427,11 +508,13 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
                  "verify_command": verify.inputs.get("verify_command", "")}
                 if verify is not None else None),
             tasks=[t.title for t in job.tasks],
+            upkeep=upkeep_line,
         )
         return
 
     print(str(job.job_id))
     print(f"  Mission: {mission.id[:12]}  ({job.metadata.get('mission_role', '')})")
+    _print_upkeep_line(upkeep_line)
     if verify is not None:
         print(f"  Task 1 (injected): {verify.title}")
         print("  The follow-up work cannot start until that task completes.")
@@ -685,6 +768,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.next_step,
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
+        skip_upkeep=getattr(args, "skip_upkeep", None),
     ),
     "mission.plan": lambda args: _cmd_mission_plan(
         args.mission_id,

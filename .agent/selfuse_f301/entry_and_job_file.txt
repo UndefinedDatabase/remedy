@@ -1,0 +1,5 @@
+Entry ID: SU-053
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:1761
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception:  # noqa: BLE001 — one session's retain failure must not skip the rest)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f301-r9-selfuse/SU-053.md

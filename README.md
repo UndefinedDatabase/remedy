@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-134 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+135 of 304 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -37,7 +37,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
-| 7 | Quality & Trust | 1 | 17 |
+| 7 | Quality & Trust | 2 | 17 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
@@ -746,7 +746,15 @@ is now checked by that project's own test command, run with the project's own Py
 or Node packages: the command the project names in its `.remedy/config.toml`, else `npm test`,
 else Python's tests in its `tests` folder; a project with no tests is told plainly that no check
 ran instead of being marked as failing, and its push goes ahead and says so, while a project whose
-own test fails is still refused the push; the rule's page is `docs/system/acceptance-checks-v1.md`).
+own test fails is still refused the push; the rule's page is `docs/system/acceptance-checks-v1.md`),
+F301 mission upkeep (after every fifth finished job of a mission, `remedy mission continue` and
+the orchestrator make the next job a cleanup job, planned by fixed rules from what Remedy wrote
+down about the project: the oldest problems earlier jobs left open, the longest function and file
+above the size limits, and the files that were replaced but never deleted; the number five is the
+setting `mission.upkeep_every`; skipping a cleanup job needs `--skip-upkeep` with a reason, which
+is recorded, and the orchestrator never skips one; `remedy mission show` and the client digest say
+how many jobs are left before the next one and what it will carry; the rule's page is
+`docs/system/mission-upkeep-v1.md`).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and

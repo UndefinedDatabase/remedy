@@ -1,26 +1,25 @@
-# Context — F300 Structure ledger and size ratchet
+# Context — F301 Mission upkeep: every fifth job cleans up
 
 ## Active Branch
-feature/f300-structure-ledger-size-ratchet, from `main` at `b25d87a24` (the merge commit of pull
-request 318, F299).
+feature/f301-mission-upkeep, from `main` at `fdbf0802e` (the merge commit of pull request 319,
+F300).
 
 ## Scope
-F300 (Tier 2, the process as the product): a measure of a repository's structure as a product
-command, Remedy's ledger of its large functions and files, a ratchet test that lets each recorded
-size fall and never rise, the paydown rule, and the first structural step, as
-`docs/roadmap/features/T2_F300.md` lists them; DECISION F300 D1 fixes the measure.
+F301 (Tier 7, the process as the product): the project's upkeep ledger, the cadence of an upkeep
+job after every fifth completed job of a mission, the upkeep job compiled from the ledger by fixed
+rules, the replaced files a job leaves, and what `remedy mission show` and the client digest say
+of it, as `docs/roadmap/features/T7_F301.md` lists them; DECISION F301 D1 fixes the design.
 
 ## Do not touch
-Behaviour, except R-1160's repair, which lands alone with its red-proof. Any public import path.
-The limits never rise to let a change through.
+The shape of the mission, job and task records. The approval gate. No clock: the cadence counts
+jobs. The structure limits never rise to let a change through.
 
 ## Active assumptions
-- The measure reads only and assumes nothing about Remedy's own layout, because F301 uses it on
-  every project Remedy builds.
+- An upkeep job is an ordinary follow-up job made by `continue_mission`; it is known by the key
+  `mission_upkeep` in its job's metadata.
+- A finding is keyed by its job, its task and its id, because no id is stable across jobs.
 - Every production change lands with a test that is red without it, proved by the reviewer's
-  mutation.
-- A test that needs a repository builds one under `tmp_path`; a folder that must not be a
-  repository gets `GIT_CEILING_DIRECTORIES`, because `.remedy-wt/` sits inside the checkout.
+  mutation; a structural step is proved by the unchanged tests.
 
 ## Constraints
 - Every pytest run in a round is targeted; `tests/regression/test_resource_safety.py`'s budgets

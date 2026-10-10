@@ -5,6 +5,8 @@
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.client_interface
 apps.cli.command_catalog
+apps.cli.command_catalog_mission
+apps.cli.command_catalog_types
 apps.cli.commands
 apps.cli.commands.absorb_cmd
 apps.cli.commands.bench_cmd
@@ -118,6 +120,8 @@ packages.orchestration.command_discovery
 packages.orchestration.command_nonce
 packages.orchestration.commit_execution_gate
 packages.orchestration.config
+packages.orchestration.config_key_spec
+packages.orchestration.config_keys_mission
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector
@@ -193,8 +197,10 @@ packages.orchestration.mission_dossier
 packages.orchestration.mission_plan_schema
 packages.orchestration.mission_readiness
 packages.orchestration.mission_state
+packages.orchestration.mission_upkeep
 packages.orchestration.model_aliases
 packages.orchestration.model_routing
+packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_file

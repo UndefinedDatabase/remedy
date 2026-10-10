@@ -644,6 +644,162 @@ class TestContinue:
         assert "Traceback" not in proc.stderr
 
 
+class TestContinueWithUpkeep:
+    """F301 T003, DECISION F301 D1 (9): after every fifth completed job, `continue` makes the upkeep
+    job in place of the step; `--skip-upkeep <reason>` is the one way to skip it, and it is recorded."""
+
+    def _five_done(self, data_root: Path, project_id: str, *, finding: bool = True) -> str:
+        from packages.orchestration.data_paths import job_dir
+
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        first = ""
+        for index in range(5):
+            job_id = _link_job(data_root, project_id, mission_id, role="initial" if index == 0 else "follow_up")
+            first = first or job_id
+        if finding:
+            with _in_data_root(data_root):
+                path = job_dir(first) / "final_job_review.json"
+            path.write_text(json.dumps({"findings": [{
+                "id": "F-TASK-001", "severity": "repairable", "category": "task_verdict",
+                "message": "T001 did not pass review", "task_id": "T001"}]}), encoding="utf-8")
+        return mission_id
+
+    def _continue(self, data_root: Path, project_id: str, mission_id: str, *extra: str,
+                  expect_ok: bool = True, env: dict[str, str] | None = None):
+        args = ["mission", "continue", mission_id, "Add the CSV path", "--project", project_id, *extra]
+        if env is None:
+            return _run(args, data_root, expect_ok=expect_ok)
+        proc = subprocess.run([sys.executable, "-m", "apps.cli.grouped", *args], cwd=str(REPO_ROOT),
+                              capture_output=True, text=True, timeout=120,
+                              env={**os.environ, "REMEDY_DATA_DIR": str(data_root), **env})
+        return proc
+
+    def _ledger(self, data_root: Path, project_id: str) -> list[dict]:
+        from packages.orchestration.mission_upkeep import read_upkeep_ledger
+
+        return read_upkeep_ledger(project_id, data_root)
+
+    def test_the_option_is_in_the_catalog(self):
+        from apps.cli.command_catalog import get_command
+
+        [option] = [a for a in get_command("mission.continue").args if a.name == "--skip-upkeep"]
+        assert option.is_option and not option.is_flag and not option.required
+
+    def test_the_sixth_job_is_the_upkeep_job_in_place_of_the_step(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+
+        body = json.loads(self._continue(data_root, project_id, mission_id, "--json").stdout)
+
+        assert body["upkeep"]["kind"] == "upkeep_planned"
+        assert body["upkeep"]["job_id"] == body["job_id"] and body["upkeep"]["after_jobs"] == 5
+        assert body["tasks"][-1].startswith("Upkeep after 5 completed jobs of this mission")
+        assert "finding F-TASK-001" in body["tasks"][-1]
+        assert "Add the CSV path" not in body["tasks"]
+        shown = json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                                data_root).stdout)
+        assert [link["job_id"] for link in shown["mission"]["job_links"]][-1] == body["job_id"]
+
+    def test_the_text_says_so_and_the_next_continue_makes_the_step(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+
+        out = self._continue(data_root, project_id, mission_id).stdout
+        assert ("  Upkeep: after 5 completed jobs of this mission, Remedy made this upkeep job in place "
+                "of your step.") in out
+        assert "--skip-upkeep" in out
+
+        body = json.loads(self._continue(data_root, project_id, mission_id, "--json").stdout)
+        assert body["upkeep"] is None and body["tasks"][-1] == "Add the CSV path"
+
+    def test_a_skip_with_its_reason_is_recorded_and_the_step_comes_next(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+
+        out = self._continue(data_root, project_id, mission_id, "--skip-upkeep", "a release is due").stdout
+
+        assert "  Upkeep skipped after 5 completed jobs; the reason is recorded: a release is due" in out
+        [line] = [line for line in self._ledger(data_root, project_id) if line["kind"] == "upkeep_skipped"]
+        assert line["reason"] == "a release is due" and line["mission_id"] == mission_id
+        body = json.loads(self._continue(data_root, project_id, mission_id, "--json").stdout)
+        assert body["upkeep"] is None and body["tasks"][-1] == "Add the CSV path"
+
+    def test_a_skip_without_a_reason_or_with_nothing_due_is_refused_and_makes_no_job(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+        early_id = _start(data_root, project_id, "Another goal")
+        _link_job(data_root, project_id, early_id, role="initial")
+
+        for target, reason, said in ((mission_id, "  ", "needs its reason"), (early_id, "why", "no upkeep job is due")):
+            proc = self._continue(data_root, project_id, target, "--skip-upkeep", reason, expect_ok=False)
+            assert proc.returncode == 2 and said in proc.stderr and "Traceback" not in proc.stderr
+        shown = json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                                data_root).stdout)
+        assert len(shown["mission"]["job_links"]) == 5
+        assert "upkeep_skipped" not in [line["kind"] for line in self._ledger(data_root, project_id)]
+
+    def test_due_with_nothing_to_carry_the_step_comes_and_that_is_recorded(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id, finding=False)
+
+        out = self._continue(data_root, project_id, mission_id).stdout
+
+        assert "  Upkeep was due after 5 completed jobs, and nothing was left to clean up; that is recorded." in out
+        assert [line["kind"] for line in self._ledger(data_root, project_id)][-1] == "upkeep_not_needed"
+
+    def test_the_setting_changes_the_cadence_and_a_bad_one_is_refused(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        _link_job(data_root, project_id, mission_id, role="initial")
+        _link_job(data_root, project_id, mission_id, role="follow_up")
+
+        proc = self._continue(data_root, project_id, mission_id, "--json", env={"REMEDY_MISSION_UPKEEP_EVERY": "2"})
+        assert proc.returncode == 0, proc.stderr
+        assert json.loads(proc.stdout)["upkeep"]["kind"] == "upkeep_not_needed"
+        proc = self._continue(data_root, project_id, mission_id, env={"REMEDY_MISSION_UPKEEP_EVERY": "0"})
+        assert proc.returncode == 2 and "mission.upkeep_every" in proc.stderr
+
+
+    def test_show_says_when_the_upkeep_job_comes_and_what_it_carries(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+
+        out = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        body = json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                               data_root).stdout)
+
+        assert ("Upkeep: due now, after 5 completed jobs; the next `remedy mission continue` makes "
+                "the upkeep job.") in out
+        assert "  It would carry: 1 open finding." in out
+        assert (body["upkeep"]["due"], body["upkeep"]["jobs_left"], body["upkeep"]["open_findings"]) == (True, 0, 1)
+        assert self._ledger(data_root, project_id) == []
+
+    def test_show_counts_down_and_says_nothing_for_a_mission_without_jobs(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        empty = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        assert "Upkeep" not in empty
+        assert json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                               data_root).stdout)["upkeep"] is None
+
+        _link_job(data_root, project_id, mission_id, role="initial")
+        out = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        assert "Upkeep: every 5 completed jobs; 4 more before the next upkeep job." in out
+        assert "  It would carry nothing yet." in out
+
+    def test_show_names_a_bad_setting_and_still_shows_the_mission(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+        proc = self._continue(data_root, project_id, mission_id, env={"REMEDY_MISSION_UPKEEP_EVERY": "0"},
+                              expect_ok=False)
+        assert proc.returncode == 2
+        shown = subprocess.run([sys.executable, "-m", "apps.cli.grouped", "mission", "show", mission_id,
+                                "--project", project_id], cwd=str(REPO_ROOT), capture_output=True, text=True,
+                               timeout=120, env={**os.environ, "REMEDY_DATA_DIR": str(data_root),
+                                                 "REMEDY_MISSION_UPKEEP_EVERY": "0"})
+        assert shown.returncode == 0 and "Upkeep: mission.upkeep_every must be a whole number" in shown.stdout
+
+
 class TestStatusTransitions:
     """R-0163 — the explicit command surface the feature file promises.
 

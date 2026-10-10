@@ -383,8 +383,9 @@ def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
     return rows
 
 
-#: The one file whose changed lines can name a command by its id.
-CATALOG_PATH = "apps/cli/command_catalog.py"
+#: The files whose changed lines can name a command by its id: the catalog and its mission
+#: group, which lives in a module of its own (DECISION F301 D2).
+CATALOG_PATHS = ("apps/cli/command_catalog.py", "apps/cli/command_catalog_mission.py")
 _CATALOG_ID = re.compile(r'command_id="([a-z0-9_.-]+)"')
 
 
@@ -414,7 +415,7 @@ def lesson_commands(diff_text: str) -> list[dict[str, str]]:
     for line in diff_text.splitlines():
         if line.startswith("+++ "):
             current = line[6:].strip() if line.startswith("+++ b/") else ""
-        elif current == CATALOG_PATH and line[:1] in "+-" and not line.startswith("---"):
+        elif current in CATALOG_PATHS and line[:1] in "+-" and not line.startswith("---"):
             touched.update(_CATALOG_ID.findall(line))
     commands: list[dict[str, str]] = []
     for command_id in sorted(touched):
