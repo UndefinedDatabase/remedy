@@ -5,6 +5,8 @@ F301's structural step (DECISION F301 D1): ``execute_move`` in
 :func:`dispatch_milestone_job` unchanged, along the boundary
 ``docs/system/structure-ledger-v1.md`` writes for it. The loop's own helpers are read from
 the loop's module at call time, so a name a test replaces there is the name this path calls.
+F301 T003 adds the mission's upkeep: when an upkeep job is due, :func:`run_upkeep_job` runs it
+in place of the dispatch.
 """
 from __future__ import annotations
 
@@ -24,11 +26,18 @@ def dispatch_milestone_job(project_id: str, mission_id: str, payload: dict[str, 
     The job comes from ``dispatch`` or ``mission_state.continue_mission``; its milestone's
     DoD, contract slice, repository grant and milestone key are attached before it runs
     through ``execute`` or ``execute_dispatched_job``, and its gate result then decides the
-    milestone's contract criteria. Answers the loop's ``MoveOutcome``.
+    milestone's contract criteria. Answers the loop's ``MoveOutcome``. When the mission's upkeep
+    job is due, that job runs instead, through :func:`run_upkeep_job`.
     """
     from packages.orchestration import orchestrator_loop as loop
     from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.mission_upkeep import make_upkeep_job_if_due
 
+    # DECISION F301 D1 (9): when upkeep is due, its job runs in place of this dispatch. The loop
+    # never skips one; the model is asked again at its next iteration.
+    upkeep = make_upkeep_job_if_due(project_id, mission_id, root, now=now)
+    if upkeep.job is not None:
+        return run_upkeep_job(upkeep, payload["milestone_id"], execute=execute)
     create = dispatch or continue_mission
     job = create(project_id, mission_id, payload["step"], root=root,
                  now=now)
@@ -74,3 +83,26 @@ def dispatch_milestone_job(project_id: str, mission_id: str, payload: dict[str, 
     return loop.MoveOutcome(status="dispatched",
                             detail=detail + loop.execution_detail(run),
                             job_id=str(job.job_id))
+
+
+def run_upkeep_job(upkeep: Any, milestone_id: str, *,
+                   execute: Callable[[Any], Any] | None = None) -> Any:
+    """Approve and RUN the upkeep job made in place of a dispatch for ``milestone_id``.
+
+    It serves no milestone, so no DoD, contract slice, repository grant or milestone key is
+    attached and no contract result is recorded; and its detail names no gate, so the loop never
+    reads it as the milestone's blocked completion. Answers the outcome ``upkeep_dispatched``.
+    """
+    from packages.orchestration import orchestrator_loop as loop
+
+    job = upkeep.job
+    approved = loop._auto_approve_if_gated(job)
+    count = upkeep.cadence.completed
+    detail = (f"upkeep job {job.job_id} dispatched in place of {milestone_id}'s step after {count} "
+              f"completed job{'' if count == 1 else 's'} (DECISION F301 D1)")
+    if approved:
+        detail += " (plan auto-approved, audited)"
+    run = (execute or loop.execute_dispatched_job)(job)
+    detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
+               f" job_status={getattr(run, 'job_status', '')}")
+    return loop.MoveOutcome(status="upkeep_dispatched", detail=detail, job_id=str(job.job_id))
