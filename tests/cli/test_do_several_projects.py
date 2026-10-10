@@ -188,6 +188,26 @@ def test_one_project_named_twice_fails_the_init_step(projects, tmp_path, capsys)
     _no_mission_and_no_job()
 
 
+def test_the_fixture_mission_chains_three_jobs_across_two_repositories(projects, tmp_path, capsys):
+    """DECISION F205 D5: the third job, `remedy mission continue`'s, continues in the second's."""
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    (a, project_a), (b, project_b) = projects["a"], projects["b"]
+    planned = _do_json(capsys, _order(tmp_path, project_a.slug, project_b.slug), "--plan-only")
+
+    main(["mission", "continue", planned["mission_id"], "Link the guide from the README", "--json"])
+    continued = json.loads(capsys.readouterr().out)
+
+    mission = load_mission(str(project_a.id), planned["mission_id"])
+    jobs = [load_job_plan(job_id) for job_id in mission.job_ids()]
+    assert [job.repo_path for job in jobs] == [str(a), str(b), str(b)]
+    assert [link.project_id for link in mission.job_links] == [
+        str(project_a.id), str(project_b.id), str(project_b.id)]
+    assert continued["job_id"] == str(jobs[2].job_id)
+    assert str(jobs[1].job_id) in continued["verify_first_task"]["description"]
+
+
 def test_project_beside_a_header_naming_several_is_refused_before_any_step(projects, tmp_path, capsys):
     (_, project_a), (_, project_b) = projects["a"], projects["b"]
 

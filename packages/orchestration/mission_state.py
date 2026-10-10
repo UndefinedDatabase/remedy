@@ -81,6 +81,7 @@ from packages.orchestration.mission_record import (
     MissionProjectError,
     MissionVerifyFirstError,
     check_spanned_project_ids,
+    follow_up_target,
 )
 from packages.orchestration.mission_record import (
     MISSION_STATUS_PAUSED as MISSION_STATUS_PAUSED,
@@ -868,7 +869,8 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
 
     On an empty mission there is nothing to verify yet, so this creates the
     ``initial`` job with the work alone — an honest plan, not a verify task
-    pointed at a job that does not exist.
+    pointed at a job that does not exist. On a mission over several projects
+    the job works in the previous job's project and repository (DECISION F205 D5).
     """
     from packages.core.models import RunState
     from packages.orchestration.pingpong_job import (
@@ -887,6 +889,7 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
     previous = mission.latest_link()
 
     work = build_follow_up_task(text)
+    previous_job = None
     if previous is None:
         tasks = [work]
         role = MISSION_ROLE_INITIAL
@@ -914,7 +917,7 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         job_title=text[:80],
         mission=mission.goal,
         user_prompt=text,
-        project_id=str(mission.project_id),
+        **{"project_id": str(mission.project_id), **follow_up_target(mission, previous_job)},
         tasks=tasks,
         state=RunState.PLANNED,
         metadata={"mission_id": mission.id, "mission_role": role},

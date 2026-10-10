@@ -304,3 +304,25 @@ def check_spanned_project_ids(lead: str, project_ids: tuple[str, ...]) -> None:
         raise ValueError(f"the projects a mission spans begin with its own project {lead!r}")
     if len(set(project_ids)) != len(project_ids):
         raise ValueError("the projects a mission spans name each project once")
+
+
+def follow_up_target(mission: Mission, previous_job: Any) -> dict[str, str]:
+    """Where the next job of *mission* works: the previous job's project and repository.
+
+    A mission over several projects continues in the project and repository of the job its
+    chain ends with, so the next job's verify-first task re-checks that job where it worked
+    (DECISION F205 D5); the next job's record carries both. ``{}`` for a mission of one project,
+    or one with no job yet, whose next job is planned as before. Raises
+    :class:`MissionProjectError` when the previous job names no repository, or a project the
+    mission does not span.
+    """
+    if not mission.project_ids or previous_job is None:
+        return {}
+    project = str(getattr(previous_job, "project_id", "") or "")
+    repo = str(getattr(previous_job, "repo_path", "") or "")
+    if not repo or project not in mission.project_ids:
+        raise MissionProjectError(
+            f"the previous job {getattr(previous_job, 'job_id', '')} works in project "
+            f"{project or '(none)'} and repository {repo or '(none)'}, so mission {mission.id}, "
+            f"which spans several projects, cannot tell where its next job works")
+    return {"project_id": project, "repo_path": repo}

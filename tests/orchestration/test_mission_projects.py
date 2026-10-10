@@ -17,13 +17,14 @@ from packages.orchestration.mission_state import (
     MISSION_ROLE_INITIAL,
     MissionError,
     MissionProjectError,
+    continue_mission,
     create_mission,
     link_job_to_mission,
     load_mission,
     mission_for_job,
     mission_record_path,
 )
-from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, list_job_plans, save_job_plan
 
 _LEAD = "proj-toolbox"
 _OTHER = "proj-brain"
@@ -126,3 +127,52 @@ class TestTheProjectsMustFit:
         assert MissionJobLink.from_json(link.to_json()) == link
         assert "project_id" not in MissionJobLink(job_id="j", role=MISSION_ROLE_INITIAL,
                                                   created_at="t").to_json()
+
+
+class TestTheNextJobContinuesWhereTheChainIs:
+    """DECISION F205 D5: the next job works in the project and repository of the chain's last job."""
+
+    @pytest.fixture(autouse=True)
+    def _data_root(self, tmp_path, monkeypatch):
+        """continue_mission reads and saves jobs through the default data root."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+    def _chain(self, tmp_path, last_repo: str = "/repos/brain"):
+        mission = create_mission(_LEAD, "two repositories", project_ids=(_LEAD, _OTHER),
+                                 root=tmp_path)
+        first = JobPlan(job_title="the toolbox part", project_id=_LEAD, repo_path="/repos/toolbox")
+        last = JobPlan(job_title="the brain part", project_id=_OTHER, repo_path=last_repo)
+        for job, role in ((first, MISSION_ROLE_INITIAL), (last, MISSION_ROLE_FOLLOW_UP)):
+            save_job_plan(job, root=tmp_path)
+            link_job_to_mission(_LEAD, mission.id, str(job.job_id), role, root=tmp_path)
+        return mission, last
+
+    def test_the_next_job_works_in_the_project_and_repository_of_the_last(self, tmp_path):
+        mission, last = self._chain(tmp_path)
+
+        following = continue_mission(_LEAD, mission.id, "Wire the brain to the app", root=tmp_path)
+
+        assert (following.project_id, following.repo_path) == (_OTHER, "/repos/brain")
+        assert following.tasks[0].inputs["previous_job_id"] == str(last.job_id)
+        assert load_mission(_LEAD, mission.id, tmp_path).job_links[-1].project_id == _OTHER
+
+    def test_a_last_job_without_a_repository_refuses_the_next_and_saves_nothing(self, tmp_path):
+        mission, _last = self._chain(tmp_path, last_repo="")
+        saved = len(list_job_plans())
+
+        with pytest.raises(MissionProjectError, match="cannot tell where its next job works"):
+            continue_mission(_LEAD, mission.id, "Wire the brain to the app", root=tmp_path)
+
+        assert len(load_mission(_LEAD, mission.id, tmp_path).job_links) == 2
+        assert len(list_job_plans()) == saved
+
+    def test_a_mission_of_one_project_plans_its_next_job_as_before(self, tmp_path):
+        mission = create_mission(_LEAD, "one repository", root=tmp_path)
+        first = JobPlan(job_title="first", project_id=_LEAD, repo_path="/repos/toolbox")
+        save_job_plan(first, root=tmp_path)
+        link_job_to_mission(_LEAD, mission.id, str(first.job_id), MISSION_ROLE_INITIAL,
+                            root=tmp_path)
+
+        following = continue_mission(_LEAD, mission.id, "next", root=tmp_path)
+
+        assert (following.project_id, following.repo_path) == (_LEAD, "")
