@@ -149,6 +149,7 @@ packages.orchestration.diff_repair
 packages.orchestration.diff_repair_apply
 packages.orchestration.diff_repair_response
 packages.orchestration.diff_view_source
+packages.orchestration.do_apply
 packages.orchestration.do_cockpit
 packages.orchestration.do_context
 packages.orchestration.do_run

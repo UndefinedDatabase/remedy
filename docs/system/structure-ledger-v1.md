@@ -167,6 +167,8 @@ with the code that calls it.
   targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
   Step (2), done by F205: the cockpit and the summaries,
   `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
+  Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
+  left the table.
 
 ## Functions above 100 lines
 
@@ -371,7 +373,6 @@ with the code that calls it.
 | 1133 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
-| 1079 | `packages/orchestration/do_sequence.py` |
 | 1077 | `packages/orchestration/ui_view_model.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |

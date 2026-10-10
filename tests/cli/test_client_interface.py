@@ -770,6 +770,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     do_sequence = "packages/orchestration/do_sequence.py"
     do_context = "packages/orchestration/do_context.py"
     do_summary = "packages/orchestration/do_summary.py"
+    do_apply = "packages/orchestration/do_apply.py"
     contracts = "packages/orchestration/mission_contract.py"
     trees = ANSWER_KEY_TREES["do.run"]
     contract = trees["contract"]
@@ -785,9 +786,9 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
                                                             "do_job_task_listing")
     assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
-    assert set(trees["landed"]) == _expression_keys(do_sequence, "ctx.landed")
-    assert set(trees["push"]) == (_returned_dict_keys(do_sequence, "_do_push_record")
-                                  | _expression_keys(do_sequence, "ctx.push_outcome"))
+    assert set(trees["landed"]) == _expression_keys(do_apply, "ctx.landed")
+    assert set(trees["push"]) == (_returned_dict_keys(do_apply, "_do_push_record")
+                                  | _expression_keys(do_apply, "ctx.push_outcome"))
 
 
 def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
