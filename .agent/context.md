@@ -1,23 +1,24 @@
-# Context — F301 Mission upkeep: every fifth job cleans up
+# Context — F302 The claude-cli worker's tokens per call: measure, attribute, cut
 
 ## Active Branch
-feature/f301-mission-upkeep, from `main` at `fdbf0802e` (the merge commit of pull request 319,
-F300).
+feature/f302-claude-cli-tokens, from `main` at `6689c581e` (the merge commit of pull request 320,
+F301).
 
 ## Scope
-F301 (Tier 7, the process as the product): the project's upkeep ledger, the cadence of an upkeep
-job after every fifth completed job of a mission, the upkeep job compiled from the ledger by fixed
-rules, the replaced files a job leaves, and what `remedy mission show` and the client digest say
-of it, as `docs/roadmap/features/T7_F301.md` lists them; DECISION F301 D1 fixes the design.
+F302 (Tier 3, token economy): what one `claude-cli` call spends before it does any work, measured
+from the records, attributed to the sources the worker loads, cut by the configuration Remedy
+starts it with, and shown by `remedy stats`, as `docs/roadmap/features/T3_F302.md` lists them;
+DECISION F302 D1 fixes the order.
 
 ## Do not touch
-The shape of the mission, job and task records. The approval gate. No clock: the cadence counts
-jobs. The structure limits never rise to let a change through.
+Which model a task class is routed to (F110, F296). The reviewer's independence from the builder.
+The approval gate. A cost in US dollars is never shown to the operator (DECISION amend1007b D7).
 
 ## Active assumptions
-- An upkeep job is an ordinary follow-up job made by `continue_mission`; it is known by the key
-  `mission_upkeep` in its job's metadata.
-- A finding is keyed by its job, its task and its id, because no id is stable across jobs.
+- The data root is read only through Remedy's own commands; `.claude/settings.json` closes it to
+  every agent of the loop.
+- A cut that makes a builder worse is no cut; each source switched off keeps a key that turns it
+  back on.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 
@@ -28,6 +29,8 @@ jobs. The structure limits never rise to let a change through.
 - Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
   larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
 - Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
+- `packages/orchestration/pingpong_provider.py`, `pingpong_loop.py`, `config.py`,
+  `token_ledger.py` and `apps/cli/command_catalog.py` are on the structure page and may not grow.
 
 ## Steps
 The item-status table for each round lives in that round's handback, `.agent/handoff.md`.

@@ -1,21 +1,26 @@
-# Plan — F301 Mission upkeep: every fifth job cleans up
+# Plan — F302 The claude-cli worker's tokens per call: measure, attribute, cut
 
 ## Goal
-A mission keeps its project clean by itself: after every fifth completed job, the next job is an
-upkeep job Remedy plans from its own records — the findings earlier jobs left open, the project's
-structure measure, and what was replaced and not deleted — by rules a person can read, with a skip
-only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 to D5).
+The tokens one `claude-cli` call spends before it does any work are measured, attributed to their
+sources and cut by the configuration Remedy starts the worker with; `remedy stats` shows tokens by
+kind per call and per landed change (docs/roadmap/features/T3_F302.md; DECISION F302 D1).
 
 ## Current Step
-Round 11 on `feature/f301-mission-upkeep`, the closing round: book round 10, the Built State's
-closure readings, the ledger rotation, F301 accepted in STATUS with the README sync and SU-053's
-`consumed_by`, and the pull request, left unmerged.
+Round 1 on `feature/f302-claude-cli-tokens`: claim F302, book F301's round 11, save T001's
+inventory as `.agent/f302_inventory.md`, record DECISION F302 D1, and move `build_claude_cli_args`
+with its constants to `packages/orchestration/claude_cli_command.py` unchanged (structure rule 2).
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F301's pull request after its
-   hosted checks are read, and round 11's verdict is booked in the next feature's first commit.
-2. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
+1. T002: the attribution — one fixed task, everything loaded and each source switched off, in a
+   scratch repository and in a worktree of Remedy, at most twenty provider calls, the readings
+   saved under `.agent/`.
+2. T003: the cut — the leanest configuration that keeps a builder good becomes the default, each
+   source with a key that turns it back on, and a run's evidence names the configuration.
+3. T004: `remedy stats` gains tokens by kind per call and per landed change, per role and provider.
+4. Closure: the one full suite, the self-use item, the evidence and the package, the STATUS line.
 
 ## Risks
+- The `claude` binary refused to run for the loop's agents in this session; T002 starts it only
+  through Remedy's own provider path, as every job does.
 - R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219,
-  R-1220, R-1225 and R-1230 (Low) are open and owned by F297; F301 owns none.
+  R-1220, R-1225 and R-1230 (Low) are open and owned by F297; F302 owns none.

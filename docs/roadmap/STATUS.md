@@ -238,7 +238,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Token economy: the worker's tokens per call (operator amendment amend1007b-luna-api-upkeep)
 
-- [ ] F302 — The claude-cli worker's tokens per call: measure, attribute, cut
+- [~] F302 — The claude-cli worker's tokens per call: measure, attribute, cut
 
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 

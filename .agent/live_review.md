@@ -1,30 +1,29 @@
-# Live Review — F301 Mission upkeep: every fifth job cleans up
+# Live Review — F302 The claude-cli worker's tokens per call: measure, attribute, cut
 
-> Round-by-round review record, re-headed at the F301 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F300, whose STATUS line
-> went `[x]` on its own branch. Both hosted CI jobs of its pull request 319, Python 3.10 and Python
-> 3.12 of run 37997408738 on `0d49a59b5`, passed, and the Open PR Gate merged pull request 319 into
-> `main` as `fdbf0802e`, whose second parent is `0d49a59b5`. F300's round 6 was reviewed after its
+> Round-by-round review record, re-headed at the F302 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F301, whose STATUS line
+> went `[x]` on its own branch. Both hosted CI jobs of its pull request 320, Python 3.10 and Python
+> 3.12 of run 38024312937 on `f441fa01b`, passed, and the Open PR Gate merged pull request 320 into
+> `main` as `6689c581e`, whose second parent is `f441fa01b`. F301's round 11 was reviewed after its
 > own handback and its verdict was written into that pull request, so operator amendment
 > amend0827-process-diet rule 1 books it here, in the first commit of the next round that is
 > happening anyway; it is appended at the end of this record by this claim. Only the heading, this
 > paragraph and the Steps section below are rewritten; everything else from the Findings heading to
-> the end of the file as it stood at `fdbf0802e` is carried forward BYTE-IDENTICAL, and finding ids
-> continue the monotonic R-XXXX series across the re-head. The open set at `fdbf0802e`, computed
+> the end of the file as it stood at `6689c581e` is carried forward BYTE-IDENTICAL, and finding ids
+> continue the monotonic R-XXXX series across the re-head. The open set at `6689c581e`, computed
 > with `open_finding_ids` from `scripts/rotate_live_review.py`, is `['R-1138', 'R-1139', 'R-1143',
 > 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219',
-> 'R-1220', 'R-1225', 'R-1230']`, all fifteen owned by F297, the rolling findings paydown. This
-> claim registers R-1233, owned by F301, at the end of this record, after F300's round 6.
+> 'R-1220', 'R-1225', 'R-1230']`, all fifteen owned by F297, the rolling findings paydown.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F301 D1's. The first round claims F301, re-heads this record, books
-F300's round 6, saves T001's inventory as `.agent/f301_inventory.md`, and takes the structural
-step the loop needs first: the dispatch branch of `execute_move` becomes `dispatch_milestone_job`
-in `packages/orchestration/orchestrator_dispatch.py`. Then T002, the project's upkeep ledger in
-`packages/orchestration/mission_upkeep.py`. Then T003: the boundary and one step of `config.py`,
-then the setting `mission.upkeep_every`, the cadence, the compiled step and both ways of adding a
-job. Then T004 and T005, then a fixture mission of six jobs, then closure.
+THE ORDER BELOW IS DECISION F302 D1's. The first round claims F302, re-heads this record, books
+F301's round 11, saves T001's inventory as `.agent/f302_inventory.md`, and takes the structural
+step the worker's command line needs first: `build_claude_cli_args` and its constants leave
+`packages/orchestration/pingpong_provider.py` for `packages/orchestration/claude_cli_command.py`.
+Then T002, the attribution with one fixed task and at most twenty provider calls. Then T003, the
+cut, with a key per source that turns it back on. Then T004, tokens by kind in `remedy stats`,
+then closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -200,3 +199,5 @@ Gate: F301 R8 — the F301 round 8 entry, over `cd475d4fa`..`b7ef34fcc` (5 commi
 Gate: F301 R9 — the F301 round 9 entry, over `b7ef34fcc`..`4bee0bd52` (5 commits, each single-parent; insertions by `git show --numstat`: `c05e17559` 309, `d6b724304` 10, `80d177c29` 126, `aef17bbb6` 14, `4bee0bd52` 218). VERDICT PASS. C1 and C2 verified by bytes identical to the reviewer's prepared files (amend0930-test-load rule 3): read with `git show`, the saved block, the self-use script, the ledger, the prose slips and the plan at `c05e17559`, and `docs/agents/planner_reviewer_prompt.md` at `d6b724304`, each equal its prepared file, six of six; the reviewer's simulation of both commits on `b7ef34fcc` read `404 passed, 1 skipped` at exit 0 over `tests/docs/`, the block lint, the agent tooling, the integrity gate and the structure ratchet, six integrity checks `pass`, and the open set unchanged at fifteen. C2 adds the ten-line consolidation paragraph and deletes nothing; the checklist stays at 34 items. C3 appends `SU-053`, "Narrow the excused handler at apps/cli/commands/job.py:1761", with an empty `consumed_by`, and the ten files of `.agent/selfuse_f301/`: job `cc06c6f178de4931` on `claude-cli` with `claude-sonnet-4-6` ended `completed`, task T001 `applied_to_job_workspace` with verdict `pass`, two provider calls, measured cost 0.93 US dollars of a 6.00 budget, never applied; its diff narrows the handler to `except OSError` and lowers `MAX_EXCUSED` from 285 to 284 on its own branch, and `run_defects.txt` reads `NONE`, so no finding is minted. C4's transcript records the feature's one full suite on `80d177c29`: `22362 passed, 22 skipped, 1 warning in 358.42s (0:05:58)`, exit 0, no bad node id, no leftover process, the reflog unchanged during the run, and the cost script at exit 0, 1228.95 CPU seconds, 2.8 percent less than F300's 1264.11. The worker declared shell constructs the block forbade, among them heredocs inside `$(...)` for four commit messages, and the cost script run three times; the script only reads and its three readings are identical (`.agent/prose_slips.md`).
 
 Gate: F301 R10 — the F301 round 10 entry, over `4bee0bd52`..`2c871774c` (2 commits, each single-parent; insertions by `git show --numstat`: `1a49c7938` 347, `2c871774c` 175). VERDICT PASS. C1, the closure's accepted head `1a49c793811308ee6a31022c346fceff98efbb6c`, verified by bytes identical to the reviewer's prepared files (amend0930-test-load rule 3): read with `git show`, the saved block, the evidence script, the ledger, the prose slips and the plan each equal their prepared file, five of five, and the reviewer's simulation of C1 on `4bee0bd52` read six integrity checks `pass` and `356 passed` over `tests/docs/` and the ledger rotation's tests. A1: `data reclaim --orphans` read `Reclaimable: nothing`, one path refused as `class_not_job_keyed` (1.5 MB), so `--apply` was skipped. A2: the evidence job `f301r10e1001` on the accepted head, ancestry-path and plain counts both 46 over the fork point `fdbf0802e`, 3120 node ids with 12 deselected, no unsafe id and the planted one refused, pytest exit 0 at 3116 passed and 4 skipped, `validate_verification_tests problems []`, `is_valid_current_run True`, `validation_errors []`. A3: `remedy-review-20261010-061122-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, read by the reviewer: SHA-256 `d3512a9709dbfda22fb99e99dd2a172c2122e81d8eec24c4fa205b252f267ba5`, `testzip()` None, `package_status` `READY_FOR_REVIEW`, and `committed_review_subject` from `fdbf0802e677a6d9e48843528eb24e28ef0d373a` to the accepted head; the zip log reads `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. C2 changes `.agent/handoff.md` alone. The worker declared two read-only shell calls with pipes before it had read the block, and one extra read-only check of `.agent/STOP` (`.agent/prose_slips.md`).
+
+Gate: F301 R11 — the F301 round 11 entry, over `2c871774c`..`f441fa01b` (3 commits, each single-parent; insertions by `git show --numstat`: `f97a0015c` 288, `2f79351e5` 20, `f441fa01b` 224). VERDICT PASS. Verified by dry run, bytes identical (amend0930-test-load rule 3): read with `git show`, the saved block, the STATUS line and the pull request body, the ledger, the prose slips, the feature file and the plan at `f97a0015c`, the ledger and its archive at `2f79351e5`, and `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` at `f441fa01b` each equal the reviewer's prepared file in `.remedy-wt/f301-r11/`, twelve of twelve, re-read by F302's first session with `.remedy-wt/f302-r1/verify_f301_r11.py`. The readings of the reviewer's simulation: the rotation moved six gate records and two finding pairs, the ledger fell from 179298 to 160872 bytes and the open set stayed at fifteen; the round's selection read `560 passed` at exit 0; six integrity checks `pass`. C3 flips F301 to `[x]` with the README at 135 of 304 and Tier 7 at 2 of 17, and gives `SU-053` its `consumed_by`. The worker opened pull request 320 and left it unmerged; both of its hosted checks passed on run 38024312937, and F302's first session merged it at the Open PR Gate as `6689c581e`. The worker declared one part of the block it skipped: C2's whole cached diff was not read line by line, both files being proven byte-equal whole first, which the block permitted.
