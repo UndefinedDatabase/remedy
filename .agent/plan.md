@@ -4,22 +4,19 @@
 One order can name several registered projects: the mission plans one job per repository, each
 job is applied, committed and pushed in its own repository, every record stays in its own project,
 and the digest and the public API name each job's repository
-(docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D3).
+(docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D4).
 
 ## Current Step
-Round 3 on `feature/f205-multi-repo-missions`: book round 2, and the structural steps the walk
-over several projects needs first — the walk's context, targets, cockpit, apply and push and
-summaries leave `do_sequence.py`, and what `remedy do` reads before any step leaves `do_cmd.py`
-(DECISION F205 D3); no behaviour changes.
+Round 4 on `feature/f205-multi-repo-missions`: book round 3, and the walk over several projects —
+the order file names one project per `project` line; `remedy do` plans one job in each project's
+repository under one mission, applies and commits each in its own repository and pushes each
+repository once; client interface 1.8 (DECISION F205 D4).
 
 ## Next Steps
-1. The order file names several projects; `remedy do` plans one job per repository, and each job
-   is applied, committed and pushed in its own repository; an unreachable one ends the walk
-   honestly.
-2. The loop switches project per job.
-3. The digest and the public API name each job's repository; a mission answers references only.
-4. The upkeep across repositories; the fixture mission over two repositories; the leak regression.
-5. Closure, with the cockpit's chips registered as a follow-up feature.
+1. The loop switches project per job.
+2. The digest and the public API name each job's repository; a mission answers references only.
+3. The upkeep across repositories; the fixture mission over two repositories; the leak regression.
+4. Closure, with the cockpit's chips registered as a follow-up feature.
 
 ## Risks
 - `mission_state.py` stands at 991 lines with no row; the next round that grows it first takes
