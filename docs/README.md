@@ -26,6 +26,7 @@
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
 | luna control plane | [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) | roadmap |
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
+| claude-cli worker | [claude-cli-worker-launch-v1.md](system/claude-cli-worker-launch-v1.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
 | contract templates | [website.md](contracts/website.md), [api-service.md](contracts/api-service.md), [cli-tool.md](contracts/cli-tool.md), [python-library.md](contracts/python-library.md) | contracts |
@@ -91,6 +92,7 @@ Specifications and design documents for the built system.
 | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | Mission tripwires (no-progress, burn anomaly, goal drift), the pause-only action, and the mission watchdog/resume/show surface |
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
+| [claude-cli-worker-launch-v1.md](system/claude-cli-worker-launch-v1.md) | What a claude-cli worker loads before it does any work: the measured cost of each source, the lean start by write mode, and the two keys that turn a source back on |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
 | [cost-anomaly-alarm-v1.md](system/cost-anomaly-alarm-v1.md) | The burn alarm: the one burn detector, what it compares, when a job's alarm trips, the unattended pause, and where a person sees a trip |
