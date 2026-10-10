@@ -7,19 +7,18 @@ structure measure, and what was replaced and not deleted — by rules a person c
 only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 to D3).
 
 ## Current Step
-Round 4 on `feature/f301-mission-upkeep`: book round 3 and DECISION F301 D3, then T003's setting
-`mission.upkeep_every` in `config_keys_mission.py` with the environment guide, and T003's rules in
-`packages/orchestration/mission_upkeep.py`: the cadence, the plan, the compiled step, the upkeep
-job and the recorded skip, with their tests.
+Round 5 on `feature/f301-mission-upkeep`: book round 4, then T003 through the command line:
+`remedy mission continue` makes the upkeep job in place of the step when it is due, and
+`--skip-upkeep <reason>` records a skip, with the lessons test of DECISION F301 D2 (4); and the
+page `docs/system/mission-upkeep-v1.md` with its two rows in the docs index.
 
 ## Next Steps
-1. T003 through the command line: `remedy mission continue` makes the upkeep job when it is due,
-   `--skip-upkeep <reason>` in `command_catalog_mission.py` records a skip, the lessons test of
-   DECISION F301 D2 (4), and the page `docs/system/mission-upkeep-v1.md`.
-2. The loop's dispatch path: the upkeep job in place of a dispatch, with R-1233's test of the
-   dispatch path's approval; T004, the replaced pairs through a run.
-3. T005: the upkeep in `remedy mission show` and the client digest; a fixture mission of six jobs
-   whose sixth is the upkeep job; then closure.
+1. The loop's dispatch path: `dispatch_milestone_job` makes the upkeep job in place of a dispatch
+   and attaches no milestone to it, with R-1233's test of the dispatch path's approval; T004, the
+   replaced pairs through a run.
+2. T005: the upkeep in `remedy mission show` and the client digest; a fixture mission of six jobs
+   whose sixth is the upkeep job.
+3. Closure: the one full suite, the self-use item, the evidence package, the STATUS line.
 
 ## Risks
 - The structure ratchet holds every round: no line may be added to a listed function or file, so
