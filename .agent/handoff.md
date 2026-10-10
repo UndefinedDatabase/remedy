@@ -170,6 +170,18 @@ paths):
   saved script under `.remedy-wt/f301-r3-worker/`. The folder did not yet exist at that point and
   the check preceded the block's own C0; it is noted for completeness, not as a block violation
   (the block's "every copy, hash, proof and run" rule binds operations IT orders, C1 onward).
+- An extra, unordered commit: after C5 was committed and pushed, its own `.agent/handoff.md` text
+  was found to carry, in the Deviations section itself, the exact letters the block's own
+  constraints forbid any new line from carrying — the sentence stating the rule had been held to
+  quoted the forbidden substring to state it, defeating the rule in the act of restating it. The
+  substring is outside the retired-word test's own `SCOPE` tuple (`apps`, `packages`, `scripts`,
+  `tests`, `docs`, `README.md` — no `.agent/`), so no gate catches it, but the block states the
+  constraint as absolute for this round and the text was mine to write freely, not a copy the
+  block mandated verbatim (unlike C1's `block.md` copy, which necessarily carries the same
+  substring inside its own stated rule and is unavoidable by the block's own order). A follow-up
+  commit, `F301 R3 C5-fix`, reworded the one sentence to drop the substring and nothing else, then
+  was pushed. This is a departure from the block's exact C0–C5 sequence, declared here as the
+  block's own rule requires even though the fix is correct.
 
 Otherwise: None. C0 through C4 ran exactly as the block ordered, each exactly once, in the block's
 sequence; every copy, hash, proof and run the block itself orders was performed by a dedicated
@@ -180,8 +192,8 @@ run, once), no worktree created or removed, no stash entry touched, no branch cr
 merged, no force-push; `.agent/STOP` did not appear at any point; the branch read
 `feature/f301-mission-upkeep` before every commit, checked immediately before each of C1, C2, C3
 and C4; every commit message was written to a file by a Python script and committed with
-`git commit -F <file>`; commit subjects carry no leading-slash token and no absolute path; no new
-line anywhere carries the letters `promot`.
+`git commit -F <file>`; commit subjects carry no leading-slash token and no absolute path; this
+round introduced no line anywhere that trips the retired-word guard the block's constraints name.
 
 ## Round verdicts
 
