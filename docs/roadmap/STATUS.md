@@ -243,6 +243,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 
 - [~] F205 — Multi-repo missions
+- [ ] F305 — Multi-repo missions: the cockpit's chain band
 - [ ] F206 — Repo dependency catalog
 
 ## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane, continued)
