@@ -671,7 +671,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
 
     project_id = str(ctx.project.id)
     try:
-        mission = create_mission(project_id, ctx.order)
+        mission = create_mission(project_id, ctx.order, project_ids=ctx.project_ids)
         set_mission_order(project_id, mission.id, MissionOrder(
             text=ctx.order, source_path=ctx.order_source_path,
             source_sha256=ctx.order_source_sha256))
@@ -748,18 +748,19 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
 
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
-                                         force_mission=ctx.force_mission)
+                                         force_mission=ctx.force_mission,
+                                         projects=len(ctx.projects))
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    for order, tasks, milestone_id in _shape_job_orders(ctx, shape):
+    for order, tasks, milestone_id, target in _shape_job_orders(ctx, shape):
         try:
             shaped = plan_order_job(
                 order,
-                project=ctx.project,
-                repo_path=ctx.repo_root,
+                project=target.project,
+                repo_path=target.repo,
                 no_llm=ctx.no_llm,
                 yes=ctx.yes,
                 deterministic_tasks=tasks,
@@ -912,7 +913,8 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
         ran.append(
             f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
             f"before it is applied and committed, because a job's workspace is cut from "
-            f"{ctx.repo_root}'s HEAD commit (DECISION F268 D12)")
+            f"{'its own repository' if ctx.projects else ctx.repo_root}'s HEAD commit "
+            f"(DECISION F268 D12)")
     return DO_STEP_DONE, "; ".join(ran)
 
 

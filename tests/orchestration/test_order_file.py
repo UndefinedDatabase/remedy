@@ -145,13 +145,25 @@ def test_an_empty_header_value_names_its_line_number():
     assert "line 2" in str(exc)
 
 
-def test_a_repeated_project_key_names_its_line_number():
-    raw = "---\nproject: demo\nproject: other\n---\nOrder text.\n"
+def test_the_same_project_named_twice_names_its_line_number():
+    raw = "---\nproject: demo\nproject: demo\n---\nOrder text.\n"
     with pytest.raises(OrderFileError) as exc_info:
         parse_order_file_text(raw, "order.md")
     exc = exc_info.value
     assert exc.error == "order_file_invalid_header"
     assert "line 3" in str(exc)
+
+
+def test_several_projects_are_read_in_their_order():
+    """DECISION F205 D4: each `project` line names one more project; the first is `project`."""
+    several = parse_order_file_text("---\nproject: demo\nproject: other\n---\nOrder text.\n",
+                                    "order.md")
+    assert (several.project, several.projects) == ("demo", ("demo", "other"))
+    assert several.project_selector == ("demo", "other")
+    one = parse_order_file_text("---\nproject: demo\n---\nOrder text.\n", "order.md")
+    assert (one.projects, one.project_selector) == (("demo",), "demo")
+    none = parse_order_file_text("Order text.\n", "order.md")
+    assert (none.project, none.projects, none.project_selector) == (None, (), None)
 
 
 # ── order_file_empty (D2 (5)) ─────────────────────────────────────────────────

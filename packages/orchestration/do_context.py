@@ -15,10 +15,13 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from packages.orchestration.project_registry import RemyProject
 
-#: The two shapes (DECISION F268 D5), and where the one in force came from.
+#: The two shapes (DECISION F268 D5), and where the one in force came from; an order over
+#: several projects has a third, one job per repository, from its projects (DECISION F205 D4).
 DO_SHAPE_ONE_JOB = "one job"
 DO_SHAPE_MILESTONES = "milestones"
+DO_SHAPE_REPOSITORIES = "one job per repository"
 DO_SHAPE_SOURCE_PLANNER = "planner"
+DO_SHAPE_SOURCE_PROJECTS = "the order's projects"
 DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
 DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
 
@@ -56,8 +59,9 @@ class DoContext:
     builder_provider: str | None = None
     reviewer_provider: str | None = None
     #: `--project <slug-or-id>`: the init step selects this project instead of
-    #: resolving or registering the repository (DECISION F268 D16 (4)).
-    project_selector: str | None = None
+    #: resolving or registering the repository (DECISION F268 D16 (4)); a tuple is every
+    #: project an order file names, one job each (DECISION F205 D4).
+    project_selector: str | tuple[str, ...] | None = None
     #: The resolved `JobBudgets` as a dict, set only when a budget flag was given;
     #: the run step passes it to `run_job` as `job run` does (DECISION F268 D16 (5)).
     budgets: dict[str, Any] | None = None
@@ -110,6 +114,10 @@ class DoContext:
     halt_reason: str = ""
     repo_root: str = ""
     project: RemyProject | None = None
+    #: Every project of an order over several, the first being `project`; empty otherwise.
+    projects: list[RemyProject] = field(default_factory=list)
+    #: Each of those projects' repository root, by project id (DECISION F205 D4).
+    project_repos: dict[str, str] = field(default_factory=dict)
     mission_id: str = ""
     mission_plan: Any = None
     mission_plan_path: str = ""
@@ -128,6 +136,11 @@ class DoContext:
     def run_job_ids(self) -> list[str]:
         """The walk's jobs that are not waiting, in job order: the ones run, ui and apply act on."""
         return [job_id for job_id in self.job_ids if job_id not in self.waiting_job_ids]
+
+    @property
+    def project_ids(self) -> list[str]:
+        """The ids of every project an order over several names, in its order; empty otherwise."""
+        return [str(project.id) for project in self.projects]
 
     @property
     def commit_mode(self) -> str:

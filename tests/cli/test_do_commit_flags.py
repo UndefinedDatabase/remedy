@@ -132,7 +132,8 @@ def test_commit_lands_one_commit_with_that_first_line_and_the_trailers(repo, cap
     assert f"Remedy-Job: {job_id}" in trailers
     assert "Co-authored-by: Remedy <remedy@local>" in trailers
     assert _git(repo, "log", "-1", "--format=%an <%ae>").strip() == "T <t@e.com>"
-    assert data["landed"] == [{"job_id": job_id, "sha": landed, "branch": branch}]
+    assert data["landed"] == [{"job_id": job_id, "sha": landed, "branch": branch,
+                               "repo": str(repo)}]
     assert data["stopped_before_apply"] is False and data["push"] is None
     assert _clean(repo)
 

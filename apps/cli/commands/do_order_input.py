@@ -19,7 +19,7 @@ class DoOrderInput:
     """What `_cmd_do` reads from its order argument before any step (DECISION F295 D2)."""
 
     goal: str
-    project: str | None
+    project: str | tuple[str, ...] | None
     contract: str | None
     max_cost_usd: str | None
     max_total_tokens: str | None
@@ -28,7 +28,7 @@ class DoOrderInput:
     order_source_kwargs: dict[str, str]
 
 
-def read_do_order(goal: str, *, project: str | None, contract: str | None,
+def read_do_order(goal: str, *, project: str | tuple[str, ...] | None, contract: str | None,
                   max_cost_usd: str | None, max_total_tokens: str | None,
                   max_provider_calls: str | None, max_wall_clock_minutes: str | None,
                   json_output: bool) -> DoOrderInput:
@@ -70,8 +70,14 @@ def read_do_order(goal: str, *, project: str | None, contract: str | None,
                  "Nothing was run.",
                  json_output=json_output, exit_code=2)
         goal = order_file.text
+        if project is not None and len(order_file.projects) > 1:
+            fail("invalid_argument",
+                 f"{goal.strip()} names several projects in its header "
+                 f"({', '.join(order_file.projects)}), and --project names one; leave "
+                 "--project out, and each job runs in its own project. Nothing was run.",
+                 json_output=json_output, exit_code=2)
         if project is None:
-            project = order_file.project
+            project = order_file.project_selector
         if contract is None:
             contract = order_file.contract
         order_source_kwargs = {
@@ -84,7 +90,8 @@ def read_do_order(goal: str, *, project: str | None, contract: str | None,
 
 # WHY: the project an order names files its records, so the work must happen in that project's
 # repository too, wherever the client stands (F298's claim measurement, DECISION F304 D2).
-def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> str:
+def _order_repo(project: str | tuple[str, ...] | None, repo: str | None, *,
+                json_output: bool) -> str:
     """The repository an order runs in, or exit 2 before any step.
 
     Without a project, `--repo` or else the current directory, as before. With one, that
@@ -92,10 +99,12 @@ def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> 
     `project_has_no_repo` and exit 3 (R-1183), and a `--repo` that is not one of its
     repositories with `repo_not_in_project` and exit 2. A selector that names no single
     project is left to the init step, which fails on it as it always has (DECISION F268
-    D16 (4)).
+    D16 (4)). With several, their first's registered repository (DECISION F205 D4).
     """
     if project is None:
         return repo or "."
+    if isinstance(project, tuple):
+        return _several_projects_repo(project, repo, json_output=json_output)
     from pathlib import Path
 
     from packages.orchestration.project_registry import (
@@ -129,3 +138,43 @@ def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> 
              f"repository is {registered}; leave --repo out to run there. Nothing was "
              "run.", json_output=json_output, exit_code=2)
     return repo
+
+
+# WHY: an order over several projects runs each job in its own project's repository, so each
+# project must have one before any step, and one `--repo` cannot name them all (DECISION F205 D4).
+def _several_projects_repo(projects: tuple[str, ...], repo: str | None, *,
+                           json_output: bool) -> str:
+    """The first project's registered repository, or exit before any step.
+
+    `--repo` is refused with `repo_not_in_project` and exit 2, and a project without a
+    registered repository with `project_has_no_repo` and exit 3, as for one project. A
+    selector that names no single project is left to the init step, which fails on it.
+    """
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    if repo is not None:
+        fail("repo_not_in_project",
+             f"--repo {repo} names one repository, and the order names several projects "
+             f"({', '.join(projects)}), each of whose jobs runs in its own project's "
+             "repository; leave --repo out. Nothing was run.",
+             json_output=json_output, exit_code=2)
+    lead = "."
+    for position, selector in enumerate(projects):
+        try:
+            selected, _source = select_project(selector, ".")
+        except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+            continue
+        if not selected.canonical_repo_path:
+            fail("project_has_no_repo",
+                 f"project {selected.slug} has no registered repository, so its job has "
+                 f"nowhere to run; attach one with `remedy project attach --project "
+                 f"{selected.slug} --repo <path>`. Nothing was run.",
+                 json_output=json_output, exit_code=3)
+        if position == 0:
+            lead = selected.canonical_repo_path
+    return lead

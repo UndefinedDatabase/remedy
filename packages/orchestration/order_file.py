@@ -6,9 +6,10 @@ in `.md` in any letter case; every other argument is order text. The file is
 UTF-8, a leading byte-order mark allowed. When its first line is exactly
 `---`, the lines up to the next line that is exactly `---` are its header;
 otherwise the whole file is the order. A header line is `key: value`, a
-blank line is ignored, the keys are `project`, `contract`, the four caps
-`max-cost-usd`, `max-total-tokens`, `max-provider-calls` and
-`max-wall-clock-minutes` (each at most once; DECISION F304 D14 added the last
+blank line is ignored, the keys are `project` (once, or once per project of an
+order over several projects, each project at most once; DECISION F205 D4),
+`contract`, the four caps `max-cost-usd`, `max-total-tokens`, `max-provider-calls`
+and `max-wall-clock-minutes` (each at most once; DECISION F304 D14 added the last
 three) and `constraint` (as often as needed). The constraints
 reach the planner appended to the order text. This module knows nothing of
 the command line; `apps/cli/commands/do_cmd.py` calls it first. DECISION
@@ -33,7 +34,7 @@ ORDER_FILE_CAP_KEYS = ("max-cost-usd", "max-total-tokens", "max-provider-calls",
 ORDER_FILE_HEADER_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS, "constraint")
 
 #: The single-valued keys — repeating one of these is `order_file_invalid_header`.
-_SINGLE_VALUED_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS)
+_SINGLE_VALUED_KEYS = ("contract", *ORDER_FILE_CAP_KEYS)
 
 #: The header's opening and closing delimiter, matched by exact line equality.
 _HEADER_DELIMITER = "---"
@@ -73,6 +74,15 @@ class OrderFile:
     max_total_tokens: str | None = None
     max_provider_calls: str | None = None
     max_wall_clock_minutes: str | None = None
+    #: Every project the header names, in its order (DECISION F205 D4); `project` is the first.
+    projects: tuple[str, ...] = ()
+
+    @property
+    def project_selector(self) -> str | tuple[str, ...] | None:
+        """The one project the header names, every project when it names several, or None."""
+        if len(self.projects) > 1:
+            return self.projects
+        return self.project
 
 
 # WHY: the one predicate that decides text-vs-file, read by both `_cmd_do` and
@@ -99,6 +109,7 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
     lines = raw.splitlines()
     single_values: dict[str, str] = {}
     constraints: list[str] = []
+    projects: list[str] = []
     order_lines = lines
 
     if lines and lines[0] == _HEADER_DELIMITER:
@@ -144,6 +155,14 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
                         f"key {key!r}.",
                     )
                 single_values[key] = value
+            elif key == "project":
+                if value in projects:
+                    raise OrderFileError(
+                        "order_file_invalid_header",
+                        f"{path}: line {line_no} ({line!r}) names the project {value!r} a "
+                        f"second time.",
+                    )
+                projects.append(value)
             else:
                 constraints.append(value)
         order_lines = lines[close_index + 1:]
@@ -159,12 +178,13 @@ def parse_order_file_text(raw: str, path: str) -> OrderFile:
         text = order_text
 
     return OrderFile(
-        path=path, text=text, project=single_values.get("project"),
+        path=path, text=text, project=projects[0] if projects else None,
         contract=single_values.get("contract"),
         max_cost_usd=single_values.get("max-cost-usd"), constraints=tuple(constraints),
         max_total_tokens=single_values.get("max-total-tokens"),
         max_provider_calls=single_values.get("max-provider-calls"),
         max_wall_clock_minutes=single_values.get("max-wall-clock-minutes"),
+        projects=tuple(projects),
     )
 
 

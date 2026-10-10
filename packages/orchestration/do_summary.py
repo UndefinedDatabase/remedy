@@ -86,8 +86,8 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     """The walk's measured tokens per role and cost, or None when no job ran.
 
     Read through `token_ledger.query_cost(..., job_id=<id>, by="role")` for each
-    job the run step mirrored, and summed over them; a figure no call reported
-    stays None, never 0. A job whose mirror failed is named in
+    job the run step mirrored, from the ledger of the job's own project (DECISION
+    F205 D4), and summed over them; a figure no call reported stays None, never 0. A job whose mirror failed is named in
     `mirror_failed_job_ids`, with its error, and contributes nothing.
     """
     if not ctx.cost_mirrors:
@@ -101,7 +101,7 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     for job_id in ctx.cost_mirrors:
         if job_id in failed:
             continue
-        report = query_cost(project_id=str(ctx.project.id), job_id=job_id, by="role")
+        report = query_cost(project_id=_job_ledger_project(ctx, job_id), job_id=job_id, by="role")
         for row in report.rows:
             role = roles.setdefault(row.bucket, {
                 "role": row.bucket, "calls": 0, "tokens_in": None, "tokens_out": None,
@@ -119,6 +119,17 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
         "mirror_failed_job_ids": list(failed),
         "mirror_errors": failed,
     }
+
+
+def _job_ledger_project(ctx: DoContext, job_id: str) -> str:
+    """The project whose ledger holds a job's calls: the walk's own, or, in a walk over several
+    projects, the job's own project (DECISION F205 D4)."""
+    if not ctx.projects:
+        return str(ctx.project.id)
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id)
+    return str(job.project_id) if job is not None and job.project_id else str(ctx.project.id)
 
 
 def _measured(value: float | int | None) -> str:

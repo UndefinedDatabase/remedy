@@ -53,6 +53,17 @@ before any step with `order_already_running` and exit code 2, and the refusal na
 under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
 holds whitespace is planned as text, never read as a file.
 
+A header may name `project` once for each project of an order that spans several repositories,
+each project at most once (DECISION F205 D4). The mission lives in the first project and spans
+them all, and `remedy do` plans one job in each project's registered repository, in the order
+the header names them; under a commit flag each job is applied and committed in its own
+repository, and `--push` pushes each repository once, after asking every repository's upstream
+first. Such an order is refused before any step with `invalid_argument` and exit code 2 beside
+`--project`, with `repo_not_in_project` and exit code 2 beside `--repo`, and with
+`project_has_no_repo` and exit code 3 when one of its projects has no registered repository;
+`--force-job` and `--force-mission` fail its shape step. In `--json`, each commit under `landed`
+names its `repo`, and `push` lists one entry per repository pushed under `repositories`.
+
 With the deterministic planner of `--no-llm`, an order is held to one blocking criterion of the
 planner's own, that the mission goal is met in full, checked by the project's own test command,
 run in the project's own environment when the check runs (DECISION F299 D1); a model planner
@@ -252,7 +263,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.7`.
+Interface version: `1.8`.
 
 ### Envelope
 
@@ -347,8 +358,9 @@ Keys under the answer keys: see below.
   - `roles`: `cache_read`, `calls`, `cost_usd`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
-- `landed`: `branch`, `job_id`, `sha`
-- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `sha`, `source`, `unchecked_blocking_criteria`
+- `landed`: `branch`, `job_id`, `repo`, `sha`
+- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `repositories`, `sha`, `source`, `unchecked_blocking_criteria`
+  - `repositories`: `branch`, `error`, `pushed`, `ref`, `remote`, `repo`, `sha`
 - `steps`: `detail`, `name`, `status`
 
 #### `remedy status run`

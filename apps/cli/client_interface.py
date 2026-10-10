@@ -47,8 +47,9 @@ from typing import Any
 #: `--source`, F253 S5a (DECISION F253 D13) to `1.4` for `client.order`, and F253 round 23
 #: (DECISION F253 D20) to `1.5` for `client.run`, and F301 T005 (DECISION F301 D5) to `1.6` for a
 #: mission's upkeep counts in the digest, and F205 (DECISION F205 D2) to `1.7` for the projects a
-#: mission spans and the project of each of its job links.
-CLIENT_INTERFACE_VERSION = "1.7"
+#: mission spans and the project of each of its job links, and (DECISION F205 D4) to `1.8` for the
+#: repository of each commit `remedy do` lands and of each push it makes.
+CLIENT_INTERFACE_VERSION = "1.8"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -479,7 +480,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         },
         "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}},
         "steps": {"name": {}, "status": {}, "detail": {}},
-        "landed": {"job_id": {}, "sha": {}, "branch": {}},
+        "landed": {"job_id": {}, "sha": {}, "branch": {}, "repo": {}},
         "push": {
             "pushed": {},
             "sha": {},
@@ -489,6 +490,15 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "source": {},
             "open_blocking_criteria": {},
             "unchecked_blocking_criteria": {},
+            "repositories": {
+                "repo": {},
+                "sha": {},
+                "branch": {},
+                "pushed": {},
+                "remote": {},
+                "ref": {},
+                "error": {},
+            },
         },
     },
     "status.run": {
