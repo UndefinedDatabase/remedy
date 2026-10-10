@@ -1,78 +1,54 @@
-# Handback — F205 round 3: book round 2, and the structural steps `remedy do` needs before it walks several projects
+# Handback — F205 round 4: book round 3, and `remedy do` over an order that names several projects
 
 ## Session
 
-SESSION 1 of feature F205 · round 3 · rounds so far 3
+SESSION 1 of feature F205 · round 4 · rounds so far 4
 
 Context self-assessment: the reviewer's context is comfortable; the session continues.
 
-Fortschritt: ~30 % (claim, the record over several projects and the steps remedy do needs · the walk over several projects, the loop, the digest and API, the upkeep and the fixture mission open) — Schätzung
+Fortschritt: ~50 % (the record and remedy do over several projects · the loop, the digest and API, the upkeep and the fixture mission open) — Schätzung
 
 ## Range
 
-Review of `7f7b07914`..`8dd25dc0e` (5 commits on `feature/f205-multi-repo-missions` — C1
-`b0eb913fb`, C2 `a4caa2c71`, C3 `6b9dd3786`, C4 `d1739e267`, C5 `8dd25dc0e` — plus this handback,
-C6).
+Review of `58e141e51`..`4f45bcb5c` (3 commits on `feature/f205-multi-repo-missions` — C1
+`d3c91c11d`, C2 `92fe3cd27`, C3 `4f45bcb5c` — plus this handback, C4).
 
 ## Commits
 
-### `b0eb913fb` F205 R3 C1: book round 2, a prose slip, DECISION F205 D3, the plan, save the block
+### `d3c91c11d` F205 R4 C1: book round 3, a prose slip, DECISION F205 D4, the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f205-r3.md` | 151/0 | NEW FILE — byte copy of `block.md` |
-| `.agent/decisions.md` | 10/0 | appended `src/append-decisions.txt` — DECISION F205 D3 |
-| `.agent/live_review.md` | 2/0 | appended `src/ledger-append.txt` — books F205 R2 PASS |
-| `.agent/plan.md` | 14/13 | rewritten with `prep/c1/.agent/plan.md` — round 3's goal, current step and next steps |
-| `.agent/prose_slips.md` | 1/0 | appended `src/prose-append.txt` — one round 2 prose slip |
+| `.agent/authored/f205-r4.md` | 136/0 | NEW FILE — byte copy of `block.md` |
+| `.agent/decisions.md` | 10/0 | appended `src/append-decisions.txt` — DECISION F205 D4 |
+| `.agent/live_review.md` | 2/0 | appended `src/ledger-append.txt` — books F205 R3 PASS |
+| `.agent/plan.md` | 9/12 | rewritten with `prep/c1/.agent/plan.md` — round 4's goal, current step and next steps |
+| `.agent/prose_slips.md` | 1/0 | appended `src/prose-append.txt` — one round 3 prose slip |
 
-### `a4caa2c71` F205 R3 C2: the walk's context and targets leave do_sequence.py (structure rule 2, DECISION F205 D3)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/system/structure-ledger-v1.md` | 6/1 | `do_sequence.py` boundary gains step (1); row 1477→1263 |
-| `packages/orchestration/do_context.py` | 168/0 | NEW FILE — the shapes, step statuses, `DoStepResult`, `DoContext`, `_job_run_role_flags`, `do_stopped_walk_note`, moved unchanged |
-| `packages/orchestration/do_sequence.py` | 42/256 | loses the moved names, imports both modules back by name |
-| `packages/orchestration/do_targets.py` | 128/0 | NEW FILE — `_step_init`, `mission_plan_outlines`, `do_shape_of_plan`, `resolve_do_shape`, `_shape_job_orders`, moved unchanged |
-| `tests/cli/test_client_interface.py` | 2/1 | reads `DoStepResult.to_json` from `do_context.py` |
-| `tests/orchestration/import_reachability_allowlist.txt` | 2/0 | gains both new modules |
-| `tests/test_structure_ratchet.py` | 1/1 | `MAX_FILE_LINES` 77604→77390 |
-
-### `6b9dd3786` F205 R3 C3: the walk's cockpit and summaries leave do_sequence.py (structure rule 2, DECISION F205 D3)
+### `92fe3cd27` F205 R4 C2: an order names several projects, and remedy do runs one job in each project's repository (DECISION F205 D4)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/structure-ledger-v1.md` | 3/1 | boundary gains step (2); row 1263→1079 |
-| `packages/orchestration/do_cockpit.py` | 115/0 | NEW FILE — the cockpit and `_step_ui`, moved unchanged |
-| `packages/orchestration/do_sequence.py` | 42/226 | loses the moved names, imports both modules back by name |
-| `packages/orchestration/do_summary.py` | 141/0 | NEW FILE — the contract and cost summaries, moved unchanged |
-| `tests/cli/test_client_interface.py` | 2/1 | reads the cost tree from `do_summary.py` |
-| `tests/orchestration/import_reachability_allowlist.txt` | 2/0 | gains both new modules |
-| `tests/test_structure_ratchet.py` | 1/1 | `MAX_FILE_LINES` 77390→77206 |
+| `apps/cli/client_interface.py` | 13/3 | interface rises to `1.8`; `landed.repo` and `push.repositories` key trees added |
+| `apps/cli/commands/do_order_input.py` | 54/5 | refuses `--project`/`--repo` beside several projects; `_several_projects_repo` picks the first project's registered repository |
+| `docs/system/machine-client-contract-v1.md` | 15/3 | page regenerated: version `1.8`, new paragraph on an order naming several projects, `landed`/`push` key lists updated |
+| `packages/orchestration/do_apply.py` | 76/30 | `do_job_repo`, `do_landed_by_repo`; each job applies and lands in its own repository, each repository's upstream asked before any push, each repository pushed once |
+| `packages/orchestration/do_context.py` | 16/3 | third shape `DO_SHAPE_REPOSITORIES`; `DoContext.projects`, `project_repos`, `project_ids` |
+| `packages/orchestration/do_sequence.py` | 8/6 | `create_mission` gets `project_ids`; each job's plan uses its own `DoJobTarget` |
+| `packages/orchestration/do_summary.py` | 14/3 | `_job_ledger_project`; each job's cost read from its own project's ledger |
+| `packages/orchestration/do_targets.py` | 95/14 | `DoJobTarget`; `_init_several_projects` selects every project; `resolve_do_shape` refuses a force flag with several projects; `do_project_order` |
+| `packages/orchestration/order_file.py` | 25/5 | `project` may repeat, one per project; `OrderFile.projects`, `project_selector` |
+| `tests/cli/test_client_interface.py` | 1/1 | interface-version assertion moves to `1.8` |
+| `tests/cli/test_do_commit_flags.py` | 2/1 | a landed entry now carries `repo` |
+| `tests/orchestration/test_order_file.py` | 14/2 | repeated-project test renamed to same-project-twice; new test for several projects read in order |
 
-### `d1739e267` F205 R3 C4: the walk's apply and push leave do_sequence.py (structure rule 2, DECISION F205 D3)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/system/structure-ledger-v1.md` | 2/1 | boundary gains step (3), "the file left the table"; row removed |
-| `packages/orchestration/do_apply.py` | 188/0 | NEW FILE — the apply step, the waiting jobs' Next lines, the mission's one push, moved unchanged |
-| `packages/orchestration/do_sequence.py` | 16/167 | loses the moved names, imports the module back by name; falls to 928 lines, below the 1,000-line limit |
-| `tests/cli/test_client_interface.py` | 4/3 | reads the `landed` and `push` trees from `do_apply.py` |
-| `tests/orchestration/import_reachability_allowlist.txt` | 1/0 | gains the new module |
-| `tests/test_structure_ratchet.py` | 2/2 | `MAX_FILE_ROWS` 38→37, `MAX_FILE_LINES` 77206→76127 |
-
-### `8dd25dc0e` F205 R3 C5: what remedy do reads before any step leaves do_cmd.py (structure rule 2, DECISION F205 D3)
+### `4f45bcb5c` F205 R4 C3: the tests of an order over several projects (DECISION F205 D4)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/do_cmd.py` | 13/88 | `_order_repo` and the order-file block (now `read_do_order`) leave; imports both back by name; falls to 1173 lines |
-| `apps/cli/commands/do_order_input.py` | 131/0 | NEW FILE — `DoOrderInput`, `read_do_order` (the order-file block, unchanged apart from indentation) and `_order_repo`, moved unchanged |
-| `docs/system/structure-ledger-v1.md` | 6/2 | gains the `do_cmd.py` bullet with step (1); file row 1248→1173, `_cmd_do` row 139→110 |
-| `tests/cli/test_client_interface.py` | 2/2 | the order-file refusal site now named `apps.cli.commands.do_order_input:read_do_order` |
-| `tests/orchestration/import_reachability_allowlist.txt` | 1/0 | gains the new module |
-| `tests/test_structure_ratchet.py` | 2/2 | `MAX_FUNCTION_LINES` 31102→31073, `MAX_FILE_LINES` 76127→76052 |
+| `tests/cli/test_do_several_projects.py` | 242/0 | NEW FILE — the plan, the per-repository commit and push, the upstream-first refusal, the ignore entries, and every refusal of DECISION F205 D4 |
 
-### This commit — F205 R3 C6: handback
+### This commit — F205 R4 C4: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -82,7 +58,7 @@ C6).
 
 - `git -C /home/decodeux/Repos/remedy push origin feature/f205-multi-repo-missions` — pending,
   reported in the worker's final reply only (runs after this commit, per the block's `THEN`).
-- No `gh pr create`, no `gh pr list` run this round (the block's C0 did not order it; round 2 left
+- No `gh pr create`, no `gh pr list` run this round (the block's C0 did not order it; round 3 left
   no PR open and the Open PR Gate is deferred to the next round's `## Next`). No `claude` process
   started. No merge, no branch creation/move/deletion, no force-push, no stash entry touched, no
   worktree added or removed.
@@ -91,89 +67,70 @@ C6).
 
 **Opening verification** (one Python sha256/line-count reader, run as `python3 -I <path>`, before
 the block was read whole): `block.md` sha256
-`1e8e0421ea308f8cb885affb508832a10dafc63db939a65988c485ee8b23eaef`, 151 lines — both equal the
+`0ed30b00845091a1f27fc822d8f773ccf104b60271a65265ac905466e6e54e30`, 136 lines — both equal the
 order's stated values.
 
-**Gate 1** (`gate1_digests.py`, after C0 and before C1): every line of `digests.txt` (34 entries)
-checked against the file it names — `ALL_TRUE`, all 34 `True`.
+**Gate 1** (`gate1_digests.py`, after C0 and before C1): every line of `digests.txt` (23 entries)
+checked against the file it names — all 23 `True`.
 
-**C0 preconditions**: `git rev-parse HEAD` read `7f7b079147b5c9926d0cb22b9d86dabfda2b1986`, equal to
-`origin/feature/f205-multi-repo-missions`; `git status --porcelain` empty; `.agent/STOP` absent.
-No pull. `git branch --show-current` re-checked before every commit and read
-`feature/f205-multi-repo-missions` each time.
+**C0 preconditions** (`c0_checks.py`): `git rev-parse HEAD` read `58e141e51a8fe90810ca2fed4673c8124cff7ea3`,
+equal to `origin/feature/f205-multi-repo-missions`; `git status --porcelain` empty; `.agent/STOP`
+absent; `git branch --show-current` read `feature/f205-multi-repo-missions`. No pull. Branch
+re-checked before every commit and read `feature/f205-multi-repo-missions` each time.
 
-**C1** (`c1_apply.py`, ran once; `c1_proof.py`, read-only): copied `block.md` to
-`.agent/authored/f205-r3.md`, and the four `prep/c1/.agent/` files over their paths. Proofs: each
-of the five copies byte-equal to its prepared file, `True` (5 of 5); and `live_review.md`,
-`prose_slips.md`, `decisions.md` each equal `git show 7f7b07914:<path>` followed by its slice
-(`ledger-append.txt`, `prose-append.txt`, `append-decisions.txt`), `True` (3 of 3) — 8 of 8 in all.
-Self-review: the whole `git diff --cached` (239 lines) written to
-`.remedy-wt/f205-r3-worker/c1_diff_cached.txt` and read whole — exactly the five ordered paths, one
-new file, no unrelated edit. `git diff --cached --numstat` matched the table above. Committed as
-`b0eb913fb`; `git show --numstat` matched.
+**C1** (`c1_copy.py`, ran once; `c1_equality_proof.py`, `c1_concat_proof.py`, read-only): copied
+`block.md` to `.agent/authored/f205-r4.md`, and the four `prep/c1/.agent/` files over their paths.
+Proofs: each of the five copies byte-equal to its prepared file, `True` (5 of 5); the new authored
+file's sha256/line count re-read as `0ed30b00845091a1f27fc822d8f773ccf104b60271a65265ac905466e6e54e30`/136,
+matching the opening check; and `live_review.md`, `prose_slips.md`, `decisions.md` each equal
+`git show 58e141e51:<path>` followed by its slice (`ledger-append.txt`, `prose-append.txt`,
+`append-decisions.txt`), `True` (3 of 3). Self-review: the whole `git diff --cached` (215 lines)
+written to `.remedy-wt/f205-r4-worker/c1_cached_diff.txt` and read whole — exactly the five ordered
+paths, one new file, no unrelated edit. `git diff --cached --numstat` matched the table above.
+Committed as `d3c91c11d`; `git show --numstat` matched.
 
-**C2** (`c2_apply.py`, ran once; `c2_proof.py`, read-only): copied the seven prepared files over
-their paths. Checked against the block's C2 section before committing: `do_context.py` holds the
-shapes, the step statuses, `DoStepResult`, `DoContext`, `_job_run_role_flags` and
-`do_stopped_walk_note` unchanged; `do_targets.py` holds `_step_init` with `mission_plan_outlines`,
-`do_shape_of_plan`, `resolve_do_shape` and `_shape_job_orders` unchanged; `do_sequence.py` imports
-every name back by name; the structure page gains the `do_sequence.py` bullet with step (1) and the
-row falls 1477→1263; the reachability list gains both modules; `test_client_interface.py` reads
-`DoStepResult.to_json` from `do_context.py`. All held and nothing more was found changed. Proofs:
-all seven copied files byte-equal to their prepared file, `True` (7 of 7). `git diff --cached` (732
-lines) written to `.remedy-wt/f205-r3-worker/c2_diff_cached.txt` and read whole — exactly the seven
-ordered paths, two new files, no unrelated edit; 349 insertions, under the 500-line cap. Committed
-as `a4caa2c71`; `git show --numstat` matched.
+**C2** (`c2_copy.py`, ran once; `c2_equality_proof.py`, read-only): copied the twelve prepared files
+over their paths. Checked against DECISION F205 D4's CHOSEN (1) to (8) and nothing more:
+`order_file.py` reads one project per `project` line; `do_order_input.py` refuses `--project`,
+`--repo` and a project without a repository beside several projects; `do_context.py` gains the
+third shape, `projects`, `project_repos`, `project_ids`; `do_targets.py` selects every project,
+refuses a force flag and gives each job its project's repository; `do_sequence.py` passes the
+projects to the mission, the shape and the plan of each job; `do_apply.py` applies each job in its
+own repository and pushes each repository once; `do_summary.py` reads each job's cost from its own
+project; `client_interface.py` adds `landed.repo` and `push.repositories` at `1.8`, the contract
+page is regenerated with one new paragraph; the three test files change only where DECISION F205 D4
+changes what they assert. All held and nothing more was found changed. Proofs: all twelve copied
+files byte-equal to their prepared file, `True` (12 of 12). `git diff --cached` (859 lines) written
+to `.remedy-wt/f205-r4-worker/c2_cached_diff.txt` and read whole — exactly the twelve ordered paths,
+no unrelated edit; 333 insertions, under the 500-line cap. Committed as `92fe3cd27`; `git show
+--numstat` matched.
 
-**C3** (`c3_apply.py`, ran once; `c3_proof.py`, read-only): copied the seven prepared files over
-their paths. Checked: the cockpit with `_step_ui` and the contract/cost summaries move unchanged
-and are imported back; the bullet gains step (2); the row falls again, 1263→1079;
-`test_client_interface.py` reads the cost tree from `do_summary.py`. All held. Proofs: 7 of 7
-`True`. `git diff --cached` (657 lines) written to `.remedy-wt/f205-r3-worker/c3_diff_cached.txt`
-and read whole — exactly the seven ordered paths, two new files, no unrelated edit; 306 insertions.
-Committed as `6b9dd3786`; `git show --numstat` matched.
+**C3** (`c3_copy_and_proof.py`, ran once and read-only in the same script): copied the one prepared
+file over its path, a confirmed new file. Proof: byte-equal to its prepared file, `True`.
+`git diff --cached` (248 lines) written to `.remedy-wt/f205-r4-worker/c3_cached_diff.txt` and read
+whole — exactly the one ordered path, one new file, no unrelated edit; 242 insertions. Committed as
+`4f45bcb5c`; `git show --numstat` matched.
 
-**C4** (`c4_apply.py`, ran once; `c4_proof.py`, read-only): copied the six prepared files over
-their paths. Checked: the apply step, the waiting jobs' Next lines and the mission's one push move
-unchanged and are imported back; the bullet gains step (3); `do_sequence.py` falls to 928 lines and
-its "Files above 1,000 lines" row is gone; `test_client_interface.py` reads the `landed` and `push`
-trees from `do_apply.py`. All held. Proofs: 6 of 6 `True`. `git diff --cached` (471 lines) written
-to `.remedy-wt/f205-r3-worker/c4_diff_cached.txt` and read whole — exactly the six ordered paths,
-one new file, no unrelated edit; 213 insertions. Committed as `d1739e267`; `git show --numstat`
-matched.
+**Gate 2** (`gate2.py`, after C3): `git status --porcelain` empty. The byte proofs of C1 to C3
+re-run at this commit against `git show <commit>:<path>` for each commit's own paths: 18 of 18
+comparisons `True`.
 
-**C5** (`c5_apply.py`, ran once; `c5_proof.py`, read-only): copied the six prepared files over
-their paths. Checked: `_order_repo` moves unchanged; the order-file block of `_cmd_do` becomes
-`read_do_order`, body unchanged apart from indentation, answering a `DoOrderInput`; `_cmd_do` calls
-it and keeps every later line; the page gains the `do_cmd.py` bullet and lowers the file's row
-(1248→1173) and `_cmd_do`'s (139→110); `test_client_interface.py`'s order-file refusal site names
-`apps.cli.commands.do_order_input:read_do_order`. All held. Proofs: 6 of 6 `True`. `git diff
---cached` (362 lines) written to `.remedy-wt/f205-r3-worker/c5_diff_cached.txt` and read whole —
-exactly the six ordered paths, one new file, no unrelated edit; 155 insertions. Committed as
-`8dd25dc0e`; `git show --numstat` matched.
-
-**Gate 2** (after C5, `gate2.py`): `git status --porcelain` empty. The byte proofs of C1 to C5
-re-run at this commit against `git show <commit>:<path>` for each commit's own paths, compared
-against the prepared file each commit's own paths came from (so a path two later commits also
-touched, e.g. `do_sequence.py`, is proven from the commit's own historical snapshot rather than the
-now-further-edited working tree): 31 of 31 comparisons `True`.
-
-**Gate 3** (`gate3.py`, run once, from the primary checkout):
+**Gate 3** (`gate3_pytest.py`, run once, from the primary checkout):
 ```
-python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f205-r3/selection.txt
+python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f205-r4/selection.txt
 ```
-exit 0; `5696 passed, 3 skipped in 536.47s (0:08:56)`, no FAILED or ERROR line. The three SKIPPED
+exit 0; `7512 passed, 3 skipped in 728.81s (0:12:08)`, no FAILED or ERROR line. The three SKIPPED
 lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252, pre-existing),
 `tests/test_install_smoke.py:175` (install smoke is opt-in),
 `tests/test_repair_context_reviewer_memory.py:257` (UI source not found).
 
-**Gate 4** (`gate4.py`):
+**Gate 4** (`gate4_ruff.py`):
 ```
-python3 -m ruff check packages/orchestration/do_sequence.py packages/orchestration/do_context.py packages/orchestration/do_targets.py packages/orchestration/do_cockpit.py packages/orchestration/do_summary.py packages/orchestration/do_apply.py apps/cli/commands/do_cmd.py apps/cli/commands/do_order_input.py tests/cli/test_client_interface.py tests/test_structure_ratchet.py
+python3 -m ruff check packages/orchestration/order_file.py apps/cli/commands/do_order_input.py packages/orchestration/do_context.py packages/orchestration/do_targets.py packages/orchestration/do_sequence.py packages/orchestration/do_apply.py packages/orchestration/do_summary.py apps/cli/client_interface.py tests/cli/test_client_interface.py tests/cli/test_do_commit_flags.py tests/orchestration/test_order_file.py tests/cli/test_do_several_projects.py
 ```
 exit 0: `All checks passed!`.
 
-**Gate 5** (`gate5.py`):
+**Gate 5** (`gate5_integrity.py`):
 ```
 python3 -m apps.cli.main integrity check --json
 ```
@@ -186,49 +143,58 @@ exit 0: `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 
 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235']` — matches the block's ordered
 list exactly.
 
-**No new line in this round's commits (`7f7b07914`..`8dd25dc0e`) carries `promot`** except the one
-line inside `.agent/authored/f205-r3.md` quoting that very constraint — `.agent/` is outside
+**No new line in this round's commits (`58e141e51`..`4f45bcb5c`) carries `promot`** except the one
+line inside `.agent/authored/f205-r4.md` quoting that very constraint — `.agent/` is outside
 `tests/docs/test_retired_promote_word.py`'s scanned scope (`apps`, `packages`, `scripts`, `tests`,
-`docs`, `README.md`), the same situation round 1 and round 2's saved block carried without a
-finding.
+`docs`, `README.md`), the same situation every earlier round's saved block carried without a
+finding (checked with `promot_check.py`: one hit, that line, 0 elsewhere).
 
 **After the push** — reported in the worker's final reply only.
 
 ## Authored-text proofs
 
-`.agent/authored/f205-r3.md` = `block.md`, sha256 and line count both equal, proven in C1 and
+`.agent/authored/f205-r4.md` = `block.md`, sha256 and line count both equal, proven in C1 and
 re-proven at the opening check. No other reviewer-authored free text was applied this round; every
-C1 append and every C2–C5 path was applied by a plain byte copy or a bytes-append of a prepared
+C1 append and every C2–C3 path was applied by a plain byte copy or a bytes-append of a prepared
 file and proven byte-equal against that file, not authored free text from the worker.
 
 ## Deviations & assumptions
 
-None. C0 through C5 ran in the block's order, each copy script ran exactly once, every later proof
-ran as a separate read-only script, every script ran as `python3 -I <absolute path>` with the
-explicit working directory of `/home/decodeux/Repos/remedy`, no `cd`/`&&`/pipes/heredocs were used
-in any shell call, gate 3 ran once as a saved script capturing pytest's own exit code with no extra
-flags and no pipe, and gates 1, 2, 4 and 5 ran at the point and in the command the block orders.
+Before C0, the worker's own opening sha256/line-count verification script for `block.md` was first
+written to `.remedy-wt/f205-r4/verify_block.py` — inside the reviewer's prepared folder — instead of
+`.remedy-wt/f205-r4-worker/`, where the block's constraints require every worker script to live. It
+was deleted immediately on discovery, before C0 or any other action ran, and it never read or
+altered the contents of any prepared file; no prepared file was modified, and the opening
+sha256/line-count readings it produced were correct and unaffected. Every later script ran under
+`.remedy-wt/f205-r4-worker/` throughout. Apart from this, C0 through C3 and gates 1 through 5 ran
+in the block's order, each copy script ran exactly once, every later proof ran as a separate
+read-only script, every script ran as `python3 -I <absolute path>` with the explicit working
+directory of `/home/decodeux/Repos/remedy`, no `cd`/`&&`/pipes/heredocs were used in any shell
+call, gate 3 ran once as a saved script capturing pytest's own exit code with no extra flags and
+no pipe, and gates 1, 2, 4 and 5 ran at the point and in the command the block orders.
 
 ## Round verdicts
 
-Round 2's PASS is booked by C1 (appended into `.agent/live_review.md` as the "Gate: F205 R2" entry,
-part of `src/ledger-append.txt`). Round 3's verdict is the reviewer's.
+Round 3's PASS is booked by C1 (appended into `.agent/live_review.md` as the "Gate: F205 R3" entry,
+part of `src/ledger-append.txt`). Round 4's verdict is the reviewer's.
 
 ## For the operator, in plain sentences
 
-This round changed no behaviour. It moved the parts of `remedy do` that the next round must change
-into files of their own, because the size rule lets the two large files it came from only shrink.
-The larger file is now below the size limit, and the other is smaller. Every test of `remedy do`
-passes unchanged. The next round lets one order name several projects and run one job in each.
-Nothing waits for the operator.
+An order file can now name several projects, one line each. `remedy do` then plans one job in each
+project's own repository, in the order the file names them, under one mission. With a commit flag
+each job is applied and committed in its own repository, and with `--push` each repository is
+pushed once, but only after Remedy has checked that every repository can be pushed. An order like
+this refuses `--project` and `--repo`, because each job already has its repository. Programs that
+read `remedy do`'s answer see which repository each commit and each push belongs to, in a new
+version of the interface, 1.8. The next round lets the mission loop run each job in its own
+project. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Rule 2 (the Open PR Gate).
-3. Book round 3's verdict in the next round's first commit.
-4. The order file names several projects; `remedy do` plans one job per repository and applies,
-   commits and pushes each in its own repository.
+3. Book round 4's verdict in the next round's first commit.
+4. The mission loop runs each job in its own project's repository.
 
 Operator questions open: 0.
 Open findings: 16 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
@@ -239,14 +205,12 @@ R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235, Low, owned by F297).
 | Item | Status | Reason |
 |---|---|---|
 | C0: base and branch | done | preconditions all confirmed; no pull; branch checked before every commit |
-| Gate 1 | passed | 34 of 34 digest comparisons `True` |
-| C1: book round 2, a prose slip, DECISION F205 D3, the plan, save the block | done | 8 of 8 byte proofs `True`; committed `b0eb913fb` |
-| C2: the walk's context and targets leave do_sequence.py | done | 7 of 7 byte proofs `True`; properties re-checked against the block's C2 section; committed `a4caa2c71` |
-| C3: the walk's cockpit and summaries leave do_sequence.py | done | 7 of 7 byte proofs `True`; properties re-checked against the block's C3 section; committed `6b9dd3786` |
-| C4: the walk's apply and push leave do_sequence.py | done | 6 of 6 byte proofs `True`; `do_sequence.py` leaves the structure page; committed `d1739e267` |
-| C5: what remedy do reads before any step leaves do_cmd.py | done | 6 of 6 byte proofs `True`; committed `8dd25dc0e` |
-| Gate 2 | passed | status clean; 31 of 31 byte proofs re-run `True` |
-| Gate 3 | passed | `5696 passed, 3 skipped` at exit 0, no FAILED/ERROR, run once as a saved script |
+| Gate 1 | passed | 23 of 23 digest comparisons `True` |
+| C1: book round 3, a prose slip, DECISION F205 D4, the plan, save the block | done | 5 of 5 byte proofs `True`, 3 of 3 concatenation proofs `True`; committed `d3c91c11d` |
+| C2: an order names several projects, and remedy do runs one job in each project's repository | done | 12 of 12 byte proofs `True`; checked against DECISION F205 D4's CHOSEN (1)-(8); committed `92fe3cd27` |
+| C3: the tests of an order over several projects | done | 1 of 1 byte proof `True`; committed `4f45bcb5c` |
+| Gate 2 | passed | status clean; 18 of 18 byte proofs re-run `True` |
+| Gate 3 | passed | `7512 passed, 3 skipped` at exit 0, no FAILED/ERROR, run once as a saved script |
 | Gate 4 | passed | ruff `All checks passed!`, exit 0 |
 | Gate 5 | passed | integrity 6/6 `pass`, `fail_count 0`; open-findings list matches exactly |
 | Push | pending | reported in the worker's final reply |
