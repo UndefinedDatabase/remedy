@@ -180,6 +180,34 @@ class TestSlashCommandFalsePositive:
         assert _contains_local_path(value), f"missed real path in: {value!r}"
 
 
+class TestRouteTokensAreNotPaths:
+    """amend1010-cadence-guards: a multi-segment token under /api/ is a web route to the metadata
+    scanner (F253 lost three rounds to five subjects naming routes); every other multi-segment
+    token is still a path."""
+
+    @pytest.mark.parametrize("value", [
+        "F253 R3: add /api/v1/digest route",
+        "serve /api/v1/jobs/{job}/run",
+        "poll /api/v1/orders/{order}",
+        "F303 R1: the cockpit reads /api/v1/interface",
+    ])
+    def test_route_tokens_are_safe(self, value):
+        from packages.orchestration.run_manifest import _contains_local_path
+        assert not _contains_local_path(value), f"route read as a path: {value!r}"
+
+    def test_a_route_subject_is_safe_metadata(self):
+        from packages.orchestration.review_subject import _metadata_is_safe
+        assert _metadata_is_safe("F303 R1: the cockpit reads /api/v1/digest") is True
+
+    @pytest.mark.parametrize("value", [
+        "log at /workspace/jobs/x",
+        "ship to /home/decodeux/Repos/remedy",
+    ])
+    def test_other_multi_segment_tokens_are_still_paths(self, value):
+        from packages.orchestration.run_manifest import _contains_local_path
+        assert _contains_local_path(value), f"missed real path in: {value!r}"
+
+
 # --------------------------------------------------------------------------- bounds
 
 

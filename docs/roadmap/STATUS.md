@@ -240,6 +240,11 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F302 — The claude-cli worker's tokens per call: measure, attribute, cut (T001–T004 complete; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235 open — owned by F297; accepted 2026-10-10 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f302r7e1001 · package remedy-review-20261010-110542-READY_FOR_REVIEW.zip · SHA-256 f6139e2cda0c61198d62947ad819184bccbb7c058b49d6af5e5b9807b5ff75fd · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD eff8cf434baaa7199dce6c8b953a26d25dc2e79d)
 
+<!-- operator amendment amend1010-cadence-guards (2026-10-10): F297 moved here from behind F199 so that the findings paydown follows the cadence of five again (self_drive_protocol, rule B and the structure rule); amend1007b had placed nine features in front of it. Reversible by moving the two lines back directly above the heading "## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)". -->
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F297 — Findings paydown v7
+
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 
 - [ ] F205 — Multi-repo missions
@@ -252,13 +257,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
 
 - [ ] F199 — Self-health & crash reports
-
-## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
-
-- [ ] F297 — Findings paydown v7
-
-## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)
-
 - [ ] F203 — Structured logging & correlation
 
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
