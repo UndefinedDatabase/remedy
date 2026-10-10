@@ -10,11 +10,49 @@ build_claude_cli_args` keeps working.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
 _ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
 _DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
+
+#: The built-in tools a worker's role uses (DECISION F302 D2): a reader reads and searches, and a
+#: builder that may write also edits. Claude Code describes every tool it offers in each call's
+#: context, so the others are left out unless the key `claude_cli.all_tools` is true.
+_READER_TOOLS = "Read,Glob,Grep"
+_WRITER_TOOLS = "Read,Glob,Grep,Edit,Write,MultiEdit"
+
+
+def _claude_cli_flag(config: Any, key: str) -> bool:
+    """A boolean key read as `push_after_mission_enabled` reads one: a string is true only for
+    ``1``, ``true`` or ``yes``, and any value Remedy cannot read is false."""
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    value = config.get(key)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes")
+    return False
+
+
+def claude_cli_launch_switches(write_mode: str, *, config: Any = None) -> list[str]:
+    """The switches that keep a worker's first call lean (F302 T003, DECISION F302 D2).
+
+    `--safe-mode` unless `claude_cli.customizations` is true, and `--tools` naming the role's
+    tools unless `claude_cli.all_tools` is true; a builder started with dangerous-skip keeps every
+    tool, because the operator gave it the right to run commands. `config` defaults to the
+    process's cached `get_config()`, the same reading every call of the process makes.
+    """
+    switches: list[str] = []
+    if not _claude_cli_flag(config, "claude_cli.customizations"):
+        switches.append("--safe-mode")
+    if write_mode != "dangerous-skip" and not _claude_cli_flag(config, "claude_cli.all_tools"):
+        switches.extend(["--tools", _WRITER_TOOLS if write_mode == "allowed-tools" else _READER_TOOLS])
+    return switches
 
 
 #: Read back from run records on disk; must never become an option of the child's command line.
@@ -30,6 +68,7 @@ def build_claude_cli_args(
     stream_evidence: bool = False,
     json_schema: str = "",
     resume_session: str = "",
+    config: Any = None,
 ) -> list[str]:
     """Build safe CLI argv for claude invocation.
 
@@ -45,6 +84,8 @@ def build_claude_cli_args(
       ``--json-schema <schema>`` so the provider enforces the schema itself
       instead of relying on prompt prose. Kept compact by the caller.
     resume_session: F287 DECISION D2. When non-empty, must fully match ``_CLI_SESSION_REF_PATTERN`` (else ``ValueError``), and is passed as ``--resume <ref>``.
+    config: F302 DECISION D2. The configuration `claude_cli_launch_switches` reads; the switches
+      it answers end every command line.
     """
     if stream_evidence:
         argv = [claude_path, "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -64,6 +105,7 @@ def build_claude_cli_args(
         argv.extend(_ALLOWED_TOOLS_ARGS)
     elif write_mode == "dangerous-skip":
         argv.extend(_DANGEROUS_SKIP_ARGS)
+    argv.extend(claude_cli_launch_switches(write_mode, config=config))
     return argv
 
 # F005 Finding 6: there is deliberately NO ``claude --help`` preflight. Claude
