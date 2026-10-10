@@ -56,11 +56,9 @@ walk and asks every job of the walk to stop through `safe_points.request_stop`.
 from __future__ import annotations
 
 import hashlib
-import json
 import shlex
 import subprocess
 import sys
-import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,6 +71,27 @@ if TYPE_CHECKING:
 # DECISION F205 D3: the walk's context, its targets, its apply and push and its summaries
 # live in modules of their own; every name is imported back here by name, so every
 # import path keeps working.
+from packages.orchestration.do_cockpit import (
+    DO_COCKPIT_STOP_COMMAND as DO_COCKPIT_STOP_COMMAND,
+)
+from packages.orchestration.do_cockpit import (
+    DO_COCKPIT_WAIT_SECONDS as DO_COCKPIT_WAIT_SECONDS,
+)
+from packages.orchestration.do_cockpit import (
+    DoCockpitLaunchError as DoCockpitLaunchError,
+)
+from packages.orchestration.do_cockpit import (
+    _step_ui,
+)
+from packages.orchestration.do_cockpit import (
+    do_cockpit_argv as do_cockpit_argv,
+)
+from packages.orchestration.do_cockpit import (
+    do_cockpit_paths as do_cockpit_paths,
+)
+from packages.orchestration.do_cockpit import (
+    launch_do_cockpit as launch_do_cockpit,
+)
 from packages.orchestration.do_context import (
     DO_SHAPE_MILESTONES as DO_SHAPE_MILESTONES,
 )
@@ -98,6 +117,27 @@ from packages.orchestration.do_context import (
     DoStepResult,
     _job_run_role_flags,
     do_stopped_walk_note,
+)
+from packages.orchestration.do_summary import (
+    _add_measured as _add_measured,
+)
+from packages.orchestration.do_summary import (
+    _measured as _measured,
+)
+from packages.orchestration.do_summary import (
+    do_contract_summary_line as do_contract_summary_line,
+)
+from packages.orchestration.do_summary import (
+    do_cost_summary as do_cost_summary,
+)
+from packages.orchestration.do_summary import (
+    do_cost_summary_lines as do_cost_summary_lines,
+)
+from packages.orchestration.do_summary import (
+    do_mission_contract as do_mission_contract,
+)
+from packages.orchestration.do_summary import (
+    do_unmet_blocking_criteria as do_unmet_blocking_criteria,
 )
 from packages.orchestration.do_targets import (
     _shape_job_orders,
@@ -860,100 +900,6 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     return DO_STEP_DONE, "; ".join(ran)
 
 
-# ---------------------------------------------------------------------------
-# The cockpit, opened detached (DECISION F268 D9 (1)).
-# ---------------------------------------------------------------------------
-
-
-#: How long the ui step waits for the detached cockpit to write its info file.
-DO_COCKPIT_WAIT_SECONDS = 15.0
-
-#: The stop command the ui step reports; it stops every running UI session.
-DO_COCKPIT_STOP_COMMAND = "remedy ui stop"
-
-
-class DoCockpitLaunchError(Exception):
-    """The detached cockpit did not come up; the message says why and where its log is."""
-
-
-def do_cockpit_argv(job_id: str, info_file: Path | str) -> list[str]:
-    """The detached cockpit's command line: `remedy ui start` on an automatic port."""
-    return [sys.executable, "-m", "apps.cli.grouped", "ui", "start", job_id,
-            "--port", "0", "--info-file", str(info_file)]
-
-
-def do_cockpit_paths(job_id: str) -> tuple[Path, Path]:
-    """``(info_file, log_file)`` under the data root, which init keeps out of `git status`.
-
-    The info file sits in the UI session registry `remedy ui start` itself
-    writes to, so `remedy ui status` and `remedy ui stop` see the cockpit.
-    """
-    from packages.orchestration.data_paths import resolve_data_root
-
-    ui_root = Path(resolve_data_root()) / "ui"
-    return ui_root / "sessions" / f"do-{job_id}.json", ui_root / "do_logs" / f"{job_id}.log"
-
-
-def launch_do_cockpit(
-    job_id: str,
-    *,
-    wait_seconds: float = DO_COCKPIT_WAIT_SECONDS,
-    spawn: Callable[..., Any] = subprocess.Popen,
-    sleep: Callable[[float], None] = time.sleep,
-) -> str:
-    """Start the cockpit for *job_id* in its own session and return its URL.
-
-    The child outlives `remedy do`: it runs in a new session with its output in
-    a log file. Waits at most ``wait_seconds`` for the info file; a child that
-    exits first or does not come up in time raises `DoCockpitLaunchError`
-    (a child still starting is terminated, so no half-started server is left).
-    """
-    info_file, log_file = do_cockpit_paths(job_id)
-    info_file.parent.mkdir(parents=True, exist_ok=True)
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-    info_file.unlink(missing_ok=True)
-    with open(log_file, "ab") as log:
-        child = spawn(do_cockpit_argv(job_id, info_file), stdin=subprocess.DEVNULL,
-                      stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-    deadline = time.monotonic() + wait_seconds
-    while True:
-        try:
-            url = json.loads(info_file.read_text(encoding="utf-8")).get("url", "")
-        except (OSError, ValueError):
-            url = ""
-        if url:
-            return url
-        code = child.poll()
-        if code is not None:
-            raise DoCockpitLaunchError(
-                f"the cockpit exited with code {code} before it came up; its log: {log_file}")
-        if time.monotonic() >= deadline:
-            child.terminate()
-            raise DoCockpitLaunchError(
-                f"the cockpit did not come up within {wait_seconds:g}s; its log: {log_file}")
-        sleep(0.1)
-
-
-def _step_ui(ctx: DoContext) -> tuple[str, str]:
-    """Open the cockpit for the last job that ran, detached, unless `--no-ui` (DECISIONs F268 D9, D12)."""
-    if ctx.no_ui:
-        return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
-    job_id = ctx.run_job_ids[-1]
-    command = f"remedy ui start {job_id}"
-    if ctx.ui_launcher is None:
-        ctx.next_lines.append(command)
-        return DO_STEP_SKIPPED, f"no cockpit launcher on this walk; open it with: {command}"
-    try:
-        url = ctx.ui_launcher(job_id)
-    except (DoCockpitLaunchError, OSError) as exc:
-        ctx.next_lines.append(command)
-        return DO_STEP_SKIPPED, f"the cockpit was not opened: {exc}; open it with: {command}"
-    ctx.next_lines.append(DO_COCKPIT_STOP_COMMAND)
-    return DO_STEP_DONE, (
-        f"the cockpit for job {job_id} is open at {url}; "
-        f"stop it with: {DO_COCKPIT_STOP_COMMAND}")
-
-
 def do_waiting_job_next_lines(ctx: DoContext) -> list[str]:
     """One line per waiting job, with real ids: commit its predecessor's applied output, then run it.
 
@@ -1119,136 +1065,6 @@ def do_push_mission(ctx: DoContext) -> tuple[str, str]:
             f"{last['branch']}, so push it by hand once the cause is fixed{named}")
     return DO_STEP_DONE, (f"pushed {last['sha'][:12]} to {outcome.remote} {outcome.ref} once, "
                           f"never forced ({ctx.push_source}){named}")
-
-
-# ---------------------------------------------------------------------------
-# The measured cost of the walk, read from the F103 ledger (DECISION F268 D11).
-# ---------------------------------------------------------------------------
-
-
-def _add_measured(total: float | int | None, value: float | int | None) -> float | int | None:
-    """Sum two ledger figures as the ledger's own SUM does: None only when both are None."""
-    if value is None:
-        return total
-    return value if total is None else total + value
-
-
-def do_mission_contract(ctx: DoContext) -> dict[str, Any] | None:
-    """The walk's mission contract body as its record holds it, or None.
-
-    None when the walk created no mission or the mission has no contract
-    (DECISION F269 D4 (6)); read from the record, so it is the contract as
-    the walk left it.
-    """
-    if not ctx.mission_id or ctx.project is None:
-        return None
-    from packages.orchestration.mission_state import load_mission
-
-    body = load_mission(str(ctx.project.id), ctx.mission_id).contract
-    return body if isinstance(body, dict) else None
-
-
-def do_unmet_blocking_criteria(contract: dict[str, Any] | None) -> list[str]:
-    """The contract's blocking criteria not met after the walk, in contract order.
-
-    DECISION F269 D6 (4): the blockers of D4 (5), read from the body
-    `do_mission_contract` returns; empty when the walk left no contract.
-    """
-    from packages.orchestration.mission_contract import MissionContract, contract_blockers
-
-    return list(contract_blockers(
-        None if contract is None else MissionContract.from_json(contract)))
-
-
-def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
-    """The one text line naming the contract's state after the walk, or None without one.
-
-    DECISION F269 D6 (4): the met criteria counted against all of them, and
-    each blocking criterion not met named with its status, `open` or `unmet`.
-    DECISION F299 D2 (4): a blocking criterion that is `unchecked` — its
-    project named no test command, so nothing ran — is named separately, after
-    the ones genuinely not met, with the one phrase every surface uses.
-    """
-    if contract is None:
-        return None
-    from packages.orchestration.mission_contract import (
-        CRITERION_STATUS_UNCHECKED,
-        MissionContract,
-    )
-    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
-
-    criteria = MissionContract.from_json(contract).criteria
-    met = sum(1 for c in criteria if c.status == "met")
-    not_met = [f"{c.id} ({c.status})" for c in criteria
-              if c.blocking and c.status in ("open", "unmet")]
-    unchecked = [c.id for c in criteria
-                if c.blocking and c.status == CRITERION_STATUS_UNCHECKED]
-    parts = []
-    if not_met:
-        parts.append(f"blocking criteria not met: {', '.join(not_met)}")
-    if unchecked:
-        parts.append(f"for {', '.join(unchecked)}, {NO_CHECK_RAN_WORDS}")
-    tail = "; ".join(parts) if parts else "every blocking criterion is met"
-    return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
-
-
-def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
-    """The walk's measured tokens per role and cost, or None when no job ran.
-
-    Read through `token_ledger.query_cost(..., job_id=<id>, by="role")` for each
-    job the run step mirrored, and summed over them; a figure no call reported
-    stays None, never 0. A job whose mirror failed is named in
-    `mirror_failed_job_ids`, with its error, and contributes nothing.
-    """
-    if not ctx.cost_mirrors:
-        return None
-    from packages.orchestration.token_ledger import query_cost
-
-    failed = {job_id: str(mirror.get("error") or "")
-              for job_id, mirror in ctx.cost_mirrors.items()
-              if not mirror.get("ledger_mirrored")}
-    roles: dict[str | None, dict[str, Any]] = {}
-    for job_id in ctx.cost_mirrors:
-        if job_id in failed:
-            continue
-        report = query_cost(project_id=str(ctx.project.id), job_id=job_id, by="role")
-        for row in report.rows:
-            role = roles.setdefault(row.bucket, {
-                "role": row.bucket, "calls": 0, "tokens_in": None, "tokens_out": None,
-                "cache_read": None, "cost_usd": None})
-            role["calls"] += row.calls
-            for key in ("tokens_in", "tokens_out", "cache_read", "cost_usd"):
-                role[key] = _add_measured(role[key], getattr(row, key))
-    cost_usd = None
-    for role in roles.values():
-        cost_usd = _add_measured(cost_usd, role["cost_usd"])
-    return {
-        "roles": sorted(roles.values(), key=lambda r: str(r["role"])),
-        "cost_usd": cost_usd,
-        "job_ids": [job_id for job_id in ctx.cost_mirrors if job_id not in failed],
-        "mirror_failed_job_ids": list(failed),
-        "mirror_errors": failed,
-    }
-
-
-def _measured(value: float | int | None) -> str:
-    return "not reported" if value is None else f"{value}"
-
-
-def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
-    """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror."""
-    if summary is None:
-        return []
-    lines = [f"Tokens {role['role'] or '(role not named)'}: input {_measured(role['tokens_in'])}, "
-             f"output {_measured(role['tokens_out'])}, "
-             f"cache read {_measured(role['cache_read'])} ({role['calls']} call(s))"
-             for role in summary["roles"]]
-    cost = summary["cost_usd"]
-    lines.append("Cost: not reported by the provider" if cost is None
-                 else f"Cost: ${cost:.6f} (measured, from the ledger)")
-    lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
-                 for job_id, error in summary["mirror_errors"].items())
-    return lines
 
 
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.

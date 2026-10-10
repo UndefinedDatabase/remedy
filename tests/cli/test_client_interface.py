@@ -769,6 +769,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
 
     do_sequence = "packages/orchestration/do_sequence.py"
     do_context = "packages/orchestration/do_context.py"
+    do_summary = "packages/orchestration/do_summary.py"
     contracts = "packages/orchestration/mission_contract.py"
     trees = ANSWER_KEY_TREES["do.run"]
     contract = trees["contract"]
@@ -779,7 +780,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
         _returned_dict_keys(contracts, "ContractCriterion.to_json"))
     assert set(contract["amendments"]) == set(mission_contract._AMENDMENT_FIELDS)
     assert set(contract["criteria"]["check"]) == set(DoDCheck.model_fields)
-    assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
+    assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_summary,
                                                             "do_cost_summary")
     assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
                                                             "do_job_task_listing")

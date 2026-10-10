@@ -165,6 +165,8 @@ with the code that calls it.
   table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
   test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
   targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
+  Step (2), done by F205: the cockpit and the summaries,
+  `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
 
 ## Functions above 100 lines
 
@@ -357,7 +359,6 @@ with the code that calls it.
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1263 | `packages/orchestration/do_sequence.py` |
 | 1248 | `apps/cli/commands/do_cmd.py` |
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
@@ -370,6 +371,7 @@ with the code that calls it.
 | 1133 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
+| 1079 | `packages/orchestration/do_sequence.py` |
 | 1077 | `packages/orchestration/ui_view_model.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |
