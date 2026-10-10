@@ -413,3 +413,12 @@ def test_a_completed_jobs_entry_references_its_evidence_and_the_project_its_cost
     assert cost_today["calls"] >= 1
     assert cost_today["value_usd"] is None
     assert cost_today["basis"] == "absent"
+
+
+def test_the_digest_names_the_jobs_left_until_the_next_upkeep_job(repo, capsys):
+    """F301 T005, DECISION F301 D5: each mission entry carries its upkeep counts."""
+    _do_json(capsys, ORDER, "--plan-only")
+
+    [mission] = _status_json(capsys)["client"]["projects"][0]["missions"]
+
+    assert (mission["upkeep_every"], mission["upkeep_jobs_left"], mission["upkeep_open_findings"]) == (5, 5, 0)

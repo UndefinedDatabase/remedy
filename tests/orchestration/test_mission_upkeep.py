@@ -34,9 +34,11 @@ from packages.orchestration.mission_upkeep import (
     record_upkeep_skip,
     replaced_pairs_from_findings,
     upkeep_cadence,
+    upkeep_digest_counts,
     upkeep_every_setting,
     upkeep_has_work,
     upkeep_ledger_path,
+    upkeep_preview,
 )
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
@@ -602,3 +604,66 @@ class TestAReplacementThroughARun:
         assert plan_upkeep(project_id, mission.id, cadence, read_upkeep_ledger(project_id))["replaced"] == []
         (repo / "src" / "importer_v2.py").write_text("NEW = 2\n", encoding="utf-8")
         assert plan_upkeep(project_id, mission.id, cadence, read_upkeep_ledger(project_id))["replaced"] == [pair]
+
+
+class TestThePreview:
+    """F301 T005, DECISION F301 D5: what a person and a client see, computed without writing."""
+
+    def test_it_writes_nothing_and_counts_the_ended_jobs_not_yet_recorded(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=2)
+
+        preview = upkeep_preview(PROJECT, mission_id, config=EVERY_TWO)
+
+        assert (preview["every"], preview["completed"], preview["jobs_left"], preview["due"]) == (2, 2, 0, True)
+        assert preview["open_findings"] == 2 and len(preview["carries"]["findings"]) == 2
+        assert not upkeep_ledger_path(PROJECT).exists()
+
+    def test_without_the_measure_it_carries_no_plan(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed"], findings=1)
+        preview = upkeep_preview(PROJECT, mission_id, config={}, measure=False)
+        assert "carries" not in preview and (preview["jobs_left"], preview["open_findings"]) == (4, 1)
+
+    def test_it_carries_the_structure_and_the_replaced_file(self, registered):
+        mission_id, _ = _chain(registered, ["completed"])
+        carries = upkeep_preview(registered, mission_id, config={})["carries"]
+        assert carries["structure"]["largest_file"]["path"] == "src/big.py"
+        assert carries["replaced"] == [{"path": "src/importer_v2.py", "original": "src/importer.py"}]
+
+    def test_a_bad_setting_is_refused(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed"])
+        with pytest.raises(UpkeepError):
+            upkeep_preview(PROJECT, mission_id, config={UPKEEP_EVERY_KEY: 0})
+
+
+class TestTheDigestCounts:
+    def test_they_are_the_setting_the_jobs_left_and_the_open_findings(self, data_root):
+        from packages.orchestration.config import reset_config
+
+        reset_config()
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=3)
+        assert upkeep_digest_counts(PROJECT, mission_id) == {"every": 5, "jobs_left": 3, "open_findings": 3}
+
+    def test_they_never_read_the_repository(self, registered, monkeypatch):
+        from packages.orchestration import structure_measure
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError("the digest's counts read the project's repository")
+
+        monkeypatch.setattr(structure_measure, "measure_repository", tripwire)
+        monkeypatch.setattr(structure_measure, "tracked_files", tripwire)
+        mission_id, _ = _chain(registered, ["completed"])
+        assert upkeep_digest_counts(registered, mission_id)["jobs_left"] == 4
+
+    def test_they_read_none_and_never_raise_when_unreadable(self, data_root, monkeypatch):
+        from packages.orchestration.config import reset_config
+
+        nothing = {"every": None, "jobs_left": None, "open_findings": None}
+        assert upkeep_digest_counts(PROJECT, "0" * 32) == nothing
+        mission_id, _ = _chain(PROJECT, ["completed"])
+        monkeypatch.setenv("REMEDY_MISSION_UPKEEP_EVERY", "0")
+        reset_config()
+        try:
+            assert upkeep_digest_counts(PROJECT, mission_id) == nothing
+        finally:
+            monkeypatch.delenv("REMEDY_MISSION_UPKEEP_EVERY")
+            reset_config()

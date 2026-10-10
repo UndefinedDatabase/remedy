@@ -147,26 +147,20 @@ def _carried_keys(job: Any) -> list[str]:
     return [str(k) for k in keys] if isinstance(keys, list) else []
 
 
-def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = None, *,
-                       now: datetime | None = None) -> list[dict[str, Any]]:
-    """Write the ``job_closed`` line of every ended job of the mission that has none yet.
+def _closed_bodies(mission: Any, recorded: set[str], root: Path | None) -> list[dict[str, Any]]:
+    """The ``job_closed`` body of every ended job of the mission that ``recorded`` does not hold.
 
     In link order. A job ends completed, failed or cancelled; a job halted blocked or stopped counts
     as ended once a later job is linked, because the mission has moved on past it (R-1234). A job
     whose record cannot be read is passed over and tried again next time.
-    Answers the lines written.
     """
     from packages.orchestration.data_paths import normalize_job_id
-    from packages.orchestration.mission_state import load_mission
     from packages.orchestration.pingpong_job import load_job_plan_safe
 
-    mission = load_mission(project_id, mission_id, root)
-    seen = {line.get("job_id") for line in read_upkeep_ledger(project_id, root)
-            if line.get("kind") == LINE_JOB_CLOSED}
-    written: list[dict[str, Any]] = []
+    bodies: list[dict[str, Any]] = []
     job_ids = mission.job_ids()
     for index, job_id in enumerate(job_ids):
-        if job_id in seen:
+        if job_id in recorded:
             continue
         try:
             job, _unreadable = load_job_plan_safe(normalize_job_id(job_id), root)
@@ -179,13 +173,25 @@ def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = Non
         if state not in CLOSED_JOB_STATES and not (moved_on and state in HALTED_JOB_STATES):
             continue
         findings = job_open_findings(job, root)
-        resolved = _carried_keys(job) if state == "completed" else []
-        written.append(append_upkeep_line(project_id, mission.id, LINE_JOB_CLOSED, {
-            "job_id": job_id, "job_state": state, "open_findings": findings,
-            "replaced": replaced_pairs_from_findings(findings), "resolved": resolved,
-        }, root, now=now))
-        seen.add(job_id)
-    return written
+        bodies.append({"job_id": job_id, "job_state": state, "open_findings": findings,
+                       "replaced": replaced_pairs_from_findings(findings),
+                       "resolved": _carried_keys(job) if state == "completed" else []})
+    return bodies
+
+
+def _recorded_jobs(lines: list[dict[str, Any]]) -> set[str]:
+    return {str(line.get("job_id")) for line in lines if line.get("kind") == LINE_JOB_CLOSED}
+
+
+def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = None, *,
+                       now: datetime | None = None) -> list[dict[str, Any]]:
+    """Write the ``job_closed`` line of every ended job of the mission that has none yet; answer them."""
+    from packages.orchestration.mission_state import load_mission
+
+    mission = load_mission(project_id, mission_id, root)
+    recorded = _recorded_jobs(read_upkeep_ledger(project_id, root))
+    return [append_upkeep_line(project_id, mission.id, LINE_JOB_CLOSED, body, root, now=now)
+            for body in _closed_bodies(mission, recorded, root)]
 
 
 def open_findings(lines: list[dict[str, Any]], mission_id: str | None = None) -> list[dict[str, Any]]:
@@ -440,3 +446,45 @@ def record_upkeep_skip(project_id: str, mission_id: str, reason: str, root: Path
                           f"this mission come first")
     return append_upkeep_line(project_id, mission_id, LINE_UPKEEP_SKIPPED, {
         "reason": text, "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id}, root, now=now)
+
+
+# ---------------------------------------------------------------------------
+# F301 T005, DECISION F301 D5: what a person and a client see of a mission's upkeep
+# ---------------------------------------------------------------------------
+
+def upkeep_preview(project_id: str, mission_id: str, root: Path | None = None, *,
+                   config: Any = None, measure: bool = True) -> dict[str, Any]:
+    """How many completed jobs come before the mission's next upkeep job, and what it would carry.
+
+    Writes nothing: the ended jobs not yet in the ledger are read as the lines they would get.
+    With ``measure`` false the project's repository is not read, so the answer holds no
+    ``carries``. A bad setting raises ``UpkeepError``.
+    """
+    from packages.orchestration.mission_state import load_mission
+
+    mission = load_mission(project_id, mission_id, root)
+    lines = read_upkeep_ledger(project_id, root)
+    lines = lines + [{**body, "kind": LINE_JOB_CLOSED, "mission_id": mission.id}
+                     for body in _closed_bodies(mission, _recorded_jobs(lines), root)]
+    cadence = upkeep_cadence(project_id, mission.id, root, config=config, lines=lines)
+    preview: dict[str, Any] = {"every": cadence.every, "completed": cadence.completed,
+                               "jobs_left": cadence.jobs_left, "due": cadence.due,
+                               "open_findings": len(open_findings(lines, mission_id=mission.id))}
+    if measure:
+        plan = plan_upkeep(project_id, mission.id, cadence, lines)
+        preview["carries"] = {"findings": plan["findings"], "structure": plan["structure"],
+                              "replaced": plan["replaced"]}
+    return preview
+
+
+def upkeep_digest_counts(project_id: str, mission_id: str, root: Path | None = None) -> dict[str, Any]:
+    """The client digest's three counts of a mission's upkeep — ``every``, ``jobs_left`` and
+    ``open_findings`` — which never raise and never read the repository: each reads ``None`` when
+    the mission, its jobs or the setting cannot be read."""
+    from packages.orchestration.mission_state import MissionError
+
+    try:
+        preview = upkeep_preview(project_id, mission_id, root, measure=False)
+    except (UpkeepError, MissionError, OSError):
+        return {"every": None, "jobs_left": None, "open_findings": None}
+    return {key: preview[key] for key in ("every", "jobs_left", "open_findings")}

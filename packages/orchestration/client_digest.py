@@ -293,8 +293,15 @@ def _decision_entry(
 
 
 def _mission_entry(mission: Mission) -> dict[str, Any]:
-    """One mission's DECISION F295 D4 (2) shape; an order given as text leaves two keys empty."""
+    """One mission's DECISION F295 D4 (2) shape; an order given as text leaves two keys empty.
+
+    DECISION F301 D5 adds the mission's upkeep counts: the setting, the completed jobs left before
+    the next upkeep job, and the open findings it would carry, each ``None`` when unreadable.
+    """
+    from packages.orchestration.mission_upkeep import upkeep_digest_counts
+
     order = mission.order
+    upkeep = upkeep_digest_counts(mission.project_id, mission.id)
     return {
         "mission_id": mission.id,
         "status": mission.status,
@@ -302,6 +309,9 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
         "job_ids": list(mission.job_ids()),
         "order_source_path": order.source_path if order is not None else "",
         "order_source_sha256": order.source_sha256 if order is not None else "",
+        "upkeep_every": upkeep["every"],
+        "upkeep_jobs_left": upkeep["jobs_left"],
+        "upkeep_open_findings": upkeep["open_findings"],
     }
 
 
