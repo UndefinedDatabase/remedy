@@ -263,7 +263,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.8`.
+Interface version: `1.9`.
 
 ### Envelope
 
@@ -384,7 +384,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -394,7 +394,7 @@ Keys under the answer keys: see below.
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
     - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
       - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
 - `jobs`: `*`
   - `*`: `job_id`, `name`, `short_id`, `state`
@@ -755,14 +755,14 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 
 #### `remedy client order`
 
@@ -803,7 +803,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -813,6 +813,6 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
   - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 - `supervisor`: `answers`
 <!-- END GENERATED by render_client_interface_markdown() -->

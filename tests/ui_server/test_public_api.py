@@ -1634,6 +1634,43 @@ def test_a_client_order_for_a_project_listed_by_slug_or_by_id_is_202(tmp_path):
         assert len(calls) == 1
 
 
+def test_a_client_order_naming_several_projects_is_held_to_every_one(tmp_path):
+    """R-1236, DECISION F205 D6: an order over several projects is inside a client's policy only
+    when every project it names is."""
+    from packages.orchestration.project_registry import register_project_repo
+
+    first = _registered_project(tmp_path)
+    second_repo = tmp_path / "second-route-repo"
+    second_repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(second_repo)], check=True)
+    second = register_project_repo("second-route-repo", second_repo)
+    text = (f"---\nproject: {first.slug}\nproject: {second.slug}\n---\n"
+            "Add a line saying hello to README.md\n")
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(_client_policy(projects=(first.slug,)), text, start)
+    assert (status, answer["error"]) == (403, "api_client_policy_refused")
+    assert calls == []
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order_as(
+        _client_policy(projects=(first.slug, str(second.id))), text, start)
+    assert status == 202, answer
+    assert len(calls) == 1
+
+
+def test_an_order_naming_a_second_project_no_one_registered_is_409_and_starts_nothing(tmp_path):
+    first = _registered_project(tmp_path)
+    text = (f"---\nproject: {first.slug}\nproject: nowhere\n---\n"
+            "Add a line saying hello to README.md\n")
+    calls, start = _recording_order_starter(_fixture_order_record())
+
+    status, answer, _headers = _post_order_as(None, text, start)
+
+    assert (status, answer["error"]) == (409, "api_order_project_unknown")
+    assert "'nowhere'" in answer["message"] and calls == []
+
+
 @pytest.mark.parametrize("ceiling_key,header", [
     ("max_total_tokens", "max-total-tokens"), ("max_provider_calls", "max-provider-calls")])
 def test_a_client_order_is_held_to_its_ceilings(tmp_path, ceiling_key, header):

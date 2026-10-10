@@ -48,8 +48,9 @@ from typing import Any
 #: (DECISION F253 D20) to `1.5` for `client.run`, and F301 T005 (DECISION F301 D5) to `1.6` for a
 #: mission's upkeep counts in the digest, and F205 (DECISION F205 D2) to `1.7` for the projects a
 #: mission spans and the project of each of its job links, and (DECISION F205 D4) to `1.8` for the
-#: repository of each commit `remedy do` lands and of each push it makes.
-CLIENT_INTERFACE_VERSION = "1.8"
+#: repository of each commit `remedy do` lands and of each push it makes, and (DECISION F205 D6)
+#: to `1.9` for the repository of each job and the projects of each mission in the digest.
+CLIENT_INTERFACE_VERSION = "1.9"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -244,6 +245,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "status": {},
             "goal": {},
             "job_ids": {},
+            "project_ids": {},
             "order_source_path": {},
             "order_source_sha256": {},
             "upkeep_every": {},
@@ -256,6 +258,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
     "jobs": {
         "job_id": {},
         "project_id": {},
+        "repo_path": {},
         "mission_id": {},
         "title": {},
         "state": {},

@@ -297,6 +297,7 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
 
     DECISION F301 D5 adds the mission's upkeep counts: the setting, the completed jobs left before
     the next upkeep job, and the open findings it would carry, each ``None`` when unreadable.
+    DECISION F205 D6 adds the projects the mission spans, its own first, as references.
     """
     from packages.orchestration.mission_upkeep import upkeep_digest_counts
 
@@ -307,6 +308,7 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
         "status": mission.status,
         "goal": mission.goal,
         "job_ids": list(mission.job_ids()),
+        "project_ids": list(mission.spanned_project_ids()),
         "order_source_path": order.source_path if order is not None else "",
         "order_source_sha256": order.source_sha256 if order is not None else "",
         "upkeep_every": upkeep["every"],
@@ -326,6 +328,7 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
     return {
         "job_id": str(plan.job_id),
         "project_id": plan.project_id,
+        "repo_path": plan.repo_path,
         "mission_id": mission.id if mission is not None else None,
         "title": plan.job_title,
         "state": plan.state.value,

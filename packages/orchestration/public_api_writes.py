@@ -107,7 +107,9 @@ def _order_text_and_options(body: dict[str, Any],
     through `select_project`, exactly as `_order_repo` in `apps/cli/commands/do_cmd.py` resolves
     it for `remedy do`, except a missing or unresolved project REFUSES here rather than falling
     back to the current folder — the supervisor's own working folder is not one this order's
-    caller chose, and running the order there is exactly what this refusal prevents.
+    caller chose, and running the order there is exactly what this refusal prevents. An order
+    over several projects has each of them resolved, and a client's policy must list each one
+    (R-1236, DECISION F205 D6).
     """
     from packages.orchestration.api_clients import client_order_refusal
     from packages.orchestration.order_file import OrderFileError, parse_order_file_text
@@ -130,14 +132,17 @@ def _order_text_and_options(body: dict[str, Any],
             409, "api_order_project_unknown",
             "the order's header names no project, so it is not known where to run it; "
             "nothing was run")
-    try:
-        project, _source = select_project(order_file.project, ".")
-    except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
-        raise PublicApiWriteRefusal(
-            409, "api_order_project_unknown",
-            f"the order's header names the project {order_file.project!r}, which is not "
-            "registered as exactly one; nothing was run")
-    if client is not None:
+    projects = []
+    for selector in order_file.projects:
+        try:
+            project, _source = select_project(selector, ".")
+        except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+            raise PublicApiWriteRefusal(
+                409, "api_order_project_unknown",
+                f"the order's header names the project {selector!r}, which is not "
+                "registered as exactly one; nothing was run")
+        projects.append(project)
+    for project in projects if client is not None else []:
         refusal = client_order_refusal(
             client, (project.slug or "", str(project.id)),
             order_file.max_total_tokens, order_file.max_provider_calls)

@@ -638,6 +638,51 @@ def test_a_job_of_an_abandoned_mission_no_longer_waits_for_its_apply(root, tmp_p
     assert digest["awaiting_apply"] == [str(kept.job_id)]
 
 
+def test_a_mission_over_two_projects_names_both_and_each_job_its_repository(root, tmp_path):
+    """DECISION F205 D6: the mission, listed under its first project, names both projects, and
+    each job names its repository, the second project's job naming the mission too."""
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_FOLLOW_UP,
+        MISSION_ROLE_INITIAL,
+        create_mission,
+        link_job_to_mission,
+    )
+    from packages.orchestration.project_registry import register_project_repo
+
+    toolbox, brain = (register_project_repo(name, _git_folder(tmp_path / name))
+                      for name in ("toolbox", "brain"))
+    lead, other = str(toolbox.id), str(brain.id)
+    mission = create_mission(lead, "Two repositories", project_ids=(lead, other))
+    first = JobPlan(job_title="toolbox part", project_id=lead, repo_path=str(tmp_path / "toolbox"))
+    second = JobPlan(job_title="brain part", project_id=other, repo_path=str(tmp_path / "brain"))
+    for job, role in ((first, MISSION_ROLE_INITIAL), (second, MISSION_ROLE_FOLLOW_UP)):
+        save_job_plan(job)
+        link_job_to_mission(lead, mission.id, str(job.job_id), role)
+
+    digest = build_client_digest(now=NOW)
+
+    missions = {project["project_id"]: project["missions"] for project in digest["projects"]}
+    assert [entry["project_ids"] for entry in missions[lead]] == [[lead, other]]
+    assert missions[other] == []
+    jobs = {entry["job_id"]: entry for entry in digest["jobs"]}
+    assert (jobs[str(first.job_id)]["repo_path"], jobs[str(first.job_id)]["mission_id"]) == (
+        str(tmp_path / "toolbox"), mission.id)
+    assert (jobs[str(second.job_id)]["repo_path"], jobs[str(second.job_id)]["mission_id"]) == (
+        str(tmp_path / "brain"), mission.id)
+
+
+def test_a_mission_of_one_project_names_that_project_alone(root, tmp_path):
+    from packages.orchestration.mission_state import create_mission
+    from packages.orchestration.project_registry import register_project_repo
+
+    project_id = str(register_project_repo("alone", _git_folder(tmp_path / "alone")).id)
+    create_mission(project_id, "One repository")
+
+    [project] = build_client_digest(now=NOW)["projects"]
+
+    assert [entry["project_ids"] for entry in project["missions"]] == [[project_id]]
+
+
 # ── a completed job's approval card (F304 T005, DECISION F304 D10) ──────────
 
 
