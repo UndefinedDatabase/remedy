@@ -1,0 +1,12 @@
+Job ID: 0fcd1aef0852454d
+Job State: completed
+Stop Reason: 
+Stop Source: 
+Error: 
+Run Manifest Error: 
+Budgets: {"deadline": null, "max_cost_usd": 6.0, "max_provider_calls": 8, "max_total_tokens": null, "max_wall_clock_minutes": null, "min_free_disk_bytes": null}
+Budget Actuals: {"actual_call_count": 4, "actual_sources": ["pingpong_live"], "measured_cost_usd": 1.0464818999999999, "priced_call_count": 4, "provider_call_count": 4, "schema_version": "2.0.0", "started_at": "2026-10-10T15:51:32.185335+00:00", "total_tokens": 12441, "unmeasured_call_count": 0, "unpriced_call_count": 0}
+Job Workspace: /home/decodeux/Repos/remedy/.remedy-wt/job-0fcd1aef0852454d
+
+Task States:
+  T001: applied_to_job_workspace (verdict: pass; final_status: staged_review_passed; repair_rounds_used: 1; run_id: 086a6f33e9a84240)
