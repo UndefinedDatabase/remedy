@@ -383,9 +383,10 @@ def job_lessons_overview(tasks: Sequence[Any], *, enabled: bool,
     return rows
 
 
-#: The files whose changed lines can name a command by its id: the catalog and its mission
-#: group, which lives in a module of its own (DECISION F301 D2).
-CATALOG_PATHS = ("apps/cli/command_catalog.py", "apps/cli/command_catalog_mission.py")
+#: The files whose changed lines can name a command by its id: the catalog and its mission and
+#: stats groups, which live in modules of their own (DECISIONs F301 D2 and F302 D1).
+CATALOG_PATHS = ("apps/cli/command_catalog.py", "apps/cli/command_catalog_mission.py",
+                 "apps/cli/command_catalog_stats.py")
 _CATALOG_ID = re.compile(r'command_id="([a-z0-9_.-]+)"')
 
 

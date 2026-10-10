@@ -6,6 +6,7 @@
 apps.cli.client_interface
 apps.cli.command_catalog
 apps.cli.command_catalog_mission
+apps.cli.command_catalog_stats
 apps.cli.command_catalog_types
 apps.cli.commands
 apps.cli.commands.absorb_cmd
