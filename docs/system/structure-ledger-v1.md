@@ -156,6 +156,10 @@ with the code that calls it.
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
+- `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
+  three types a mission is stored as — then the verify-first follow-up path, each to a module of
+  its own; the locations, the store and the links stay. Step (1), done by F205: the record,
+  `packages/orchestration/mission_record.py`, and the file left the table.
 
 ## Functions above 100 lines
 
@@ -354,7 +358,6 @@ with the code that calls it.
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
-| 1166 | `packages/orchestration/mission_state.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
 | 1138 | `packages/orchestration/test_execution_service.py` |

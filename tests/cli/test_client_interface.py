@@ -1164,13 +1164,13 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     from packages.orchestration.mission_plan_schema import MissionPlan
     from packages.orchestration.orchestrator_loop import MILESTONES_DONE_KEY
 
-    mission_state = "packages/orchestration/mission_state.py"
+    mission_record = "packages/orchestration/mission_record.py"
     mission_cmd = "apps/cli/commands/mission_cmd.py"
     compiler = "packages/orchestration/mission_compiler.py"
     loop = "packages/orchestration/orchestrator_loop.py"
     mission = ANSWER_KEY_TREES["mission.abandon"]["mission"]
     # The answer's mission is the record's own export, whose job links `_mission_json` widens.
-    assert set(mission) == _returned_dict_keys(mission_state, "Mission.to_json")
+    assert set(mission) == _returned_dict_keys(mission_record, "Mission.to_json")
     assert _bound_sources(mission_cmd, "_mission_json", "body") == {"mission.to_json()"}
     assert _stored_keys(mission_cmd, "_mission_json", "body") == {"job_links"}
     [link] = [node.elt for node in ast.walk(_function_def(mission_cmd, "_mission_json"))
@@ -1178,9 +1178,9 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     assert [ast.unparse(value) for key, value in zip(link.keys, link.values) if key is None] == [
         "link.to_json()"]
     assert set(mission["job_links"]) == (
-        _returned_dict_keys(mission_state, "MissionJobLink.to_json")
+        _returned_dict_keys(mission_record, "MissionJobLink.to_json")
         | _dict_value_keys(mission_cmd, "_mission_json", "job_links"))
-    assert set(mission["order"]) == _returned_dict_keys(mission_state, "MissionOrder.to_json")
+    assert set(mission["order"]) == _returned_dict_keys(mission_record, "MissionOrder.to_json")
     assert mission["contract"] is MISSION_CONTRACT_KEY_TREE
     # A mission's plan is the plan model's dump with the keys its two writers store into it.
     plan = mission["mission_plan"]

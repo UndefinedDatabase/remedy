@@ -59,27 +59,30 @@ from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
 
-#: Bumped whenever the record body changes shape.  A reader meeting a version
-#: it does not know refuses that record rather than guessing at its meaning.
-MISSION_SCHEMA_VERSION = 1
-
-MISSION_STATUS_ACTIVE = "active"
-MISSION_STATUS_PAUSED = "paused"
-MISSION_STATUS_ACHIEVED = "achieved"
-MISSION_STATUS_ABANDONED = "abandoned"
-#: Every status a mission may hold.  Nothing in this feature moves a mission
-#: between them on its own — see the module docstring.
-MISSION_STATUSES = (
-    MISSION_STATUS_ACTIVE,
-    MISSION_STATUS_PAUSED,
-    MISSION_STATUS_ACHIEVED,
+# DECISION F205 D1: the mission record lives in a module of its own; every name is imported
+# back here by name, so every import path keeps working.
+from packages.orchestration.mission_record import (
+    MISSION_ROLE_FOLLOW_UP,
+    MISSION_ROLE_INITIAL,
+    MISSION_ROLES,
+    MISSION_SCHEMA_VERSION,
     MISSION_STATUS_ABANDONED,
+    MISSION_STATUS_ACHIEVED,
+    MISSION_STATUS_ACTIVE,
+    MISSION_STATUSES,
+    Mission,
+    MissionError,
+    MissionGoalImmutableError,
+    MissionJobAlreadyLinkedError,
+    MissionJobLink,
+    MissionLinkRoleError,
+    MissionNotFoundError,
+    MissionOrder,
+    MissionVerifyFirstError,
 )
-
-#: The two roles a linked job can play in a mission's chain.
-MISSION_ROLE_INITIAL = "initial"
-MISSION_ROLE_FOLLOW_UP = "follow_up"
-MISSION_ROLES = (MISSION_ROLE_INITIAL, MISSION_ROLE_FOLLOW_UP)
+from packages.orchestration.mission_record import (
+    MISSION_STATUS_PAUSED as MISSION_STATUS_PAUSED,
+)
 
 #: A goal is operator input: it is small, or it is not a goal.
 MAX_MISSION_GOAL_CHARS = 8_000
@@ -92,225 +95,6 @@ UNREADABLE_JOB_LABEL = "(unreadable job)"
 
 #: Anything that becomes a path component.
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
-
-
-class MissionError(RuntimeError):
-    """A mission operation failed in a way the caller must handle."""
-
-
-class MissionNotFoundError(MissionError):
-    """No mission with this id exists in this project."""
-
-
-class MissionGoalImmutableError(MissionError):
-    """An attempt to change a persisted mission's goal.
-
-    A changed goal is a NEW mission (feature-file rule).  Rewriting one in
-    place would retroactively relabel every job already linked below it.
-    """
-
-
-class MissionJobAlreadyLinkedError(MissionError):
-    """This job already belongs to a mission — one job, at most one mission."""
-
-    def __init__(self, job_id: str, mission_id: str) -> None:
-        super().__init__(
-            f"job {job_id} is already linked to mission {mission_id}")
-        self.job_id = job_id
-        self.mission_id = mission_id
-
-
-class MissionLinkRoleError(MissionError):
-    """The role does not fit the chain: exactly one initial job, and it is first."""
-
-
-class MissionVerifyFirstError(MissionError):
-    """A follow-up plan does not begin with the injected verify task.
-
-    Raised by :func:`assert_verify_first`.  This is the structural half of the
-    verify-first rule: the plan is BUILT verify-first and then CHECKED to be,
-    so a caller cannot ship a follow-up whose verification is optional.
-    """
-
-
-# ---------------------------------------------------------------------------
-# The record
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class MissionJobLink:
-    """One job's place in a mission's chain."""
-
-    job_id: str
-    role: str
-    created_at: str
-
-    def to_json(self) -> dict[str, Any]:
-        return {"job_id": self.job_id, "role": self.role,
-                "created_at": self.created_at}
-
-    @classmethod
-    def from_json(cls, body: Any) -> MissionJobLink:
-        if not isinstance(body, dict):
-            raise ValueError("mission job link must be an object")
-        role = str(body.get("role", ""))
-        if role not in MISSION_ROLES:
-            raise ValueError(f"unknown mission job role: {role!r}")
-        job_id = str(body.get("job_id", ""))
-        if not job_id:
-            raise ValueError("mission job link carries no job id")
-        return cls(job_id=job_id, role=role,
-                   created_at=str(body.get("created_at", "")))
-
-
-# Three fields rather than a union, because they answer different questions.
-@dataclass(frozen=True)
-class MissionOrder:
-    """What a mission was ASKED for, and where the asking came from.
-
-    DECISION F260 D1 words the order as "text, or file path + sha256".  All
-    three are carried instead of a union because they are not alternatives: the
-    text is what Remedy actually acted on, while the path and the digest are
-    what a later reader checks the file against to see whether the order has
-    moved underneath the mission since.  ``source_sha256`` is spelled to match
-    ``JobPlan.job_file_sha256``, which the vocabulary page's Order row names as
-    the same concept under another name — one spelling per concept.
-
-    Every field defaults to the empty string: an order given as pasted text has
-    no file, and one given as a file has no separate text.
-    """
-
-    text: str = ""
-    source_path: str = ""
-    source_sha256: str = ""
-
-    def to_json(self) -> dict[str, Any]:
-        return {"text": self.text, "source_path": self.source_path,
-                "source_sha256": self.source_sha256}
-
-    @classmethod
-    def from_json(cls, body: Any) -> MissionOrder:
-        if not isinstance(body, dict):
-            raise ValueError("mission order must be an object")
-        return cls(text=str(body.get("text", "")),
-                   source_path=str(body.get("source_path", "")),
-                   source_sha256=str(body.get("source_sha256", "")))
-
-
-@dataclass(frozen=True)
-class Mission:
-    """A persistent goal plus the ordered chain of jobs that served it.
-
-    ``dossier_ref`` is RESERVED for the later dossier feature and is never
-    filled by this one.  It exists now so that the record shape does not have
-    to change when the dossier lands — an empty string means "no dossier",
-    which is the truth today for every mission.
-
-    ``mission_plan`` (F069) is the compiled MissionPlan, ADDITIVE and OPTIONAL:
-    the key is written only once a plan exists, so every record written before
-    F069 stays byte-identical and every reader that predates F069 keeps working
-    — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move for it.  The
-    body is the plan's ``model_dump()`` plus the ``_versions``/``_version``
-    keys the task plan's versioning established; ``None`` and an absent
-    key both mean "not compiled yet".
-
-    ``order`` and ``contract`` (F272) are the last two fields DECISION F260 D1
-    names, and both are ADDITIVE and OPTIONAL on exactly ``mission_plan``'s
-    terms: each key is written only once its value exists, so every record
-    written before F272 stays byte-identical and every reader that predates it
-    keeps working — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move
-    for them either.  ``order`` is the :class:`MissionOrder` this mission came
-    from.  ``contract`` is the mission's acceptance criteria (DECISION
-    amend0905-vocab D9).  Its SHAPE is owned by
-    ``packages/orchestration/mission_contract.py`` (DECISION F269 D2), which
-    validates it on read and on write and is its only production writer; this
-    module stores the body and defines no shape for it.  ``None`` and an absent
-    key both mean "no contract compiled yet".
-    """
-
-    id: str
-    project_id: str
-    goal: str
-    status: str = MISSION_STATUS_ACTIVE
-    job_links: tuple[MissionJobLink, ...] = ()
-    dossier_ref: str = ""
-    created_at: str = ""
-    schema_version: int = MISSION_SCHEMA_VERSION
-    mission_plan: dict[str, Any] | None = None
-    order: MissionOrder | None = None
-    contract: dict[str, Any] | None = None
-
-    def to_json(self) -> dict[str, Any]:
-        body = {
-            "schema_version": self.schema_version,
-            "id": self.id,
-            "project_id": self.project_id,
-            "goal": self.goal,
-            "status": self.status,
-            "job_links": [link.to_json() for link in self.job_links],
-            "dossier_ref": self.dossier_ref,
-            "created_at": self.created_at,
-        }
-        # Written only when there IS one: an absent key is how a pre-F069
-        # record says "no plan", and a record that never gained a plan must not
-        # start differing from the bytes already on disk.
-        if self.mission_plan is not None:
-            body["mission_plan"] = self.mission_plan
-        # Each written only when there IS one, on the same terms and for the
-        # same reason as the plan above: an absent key is how a pre-F272 record
-        # says "no order" and "no contract", and a record that never gained
-        # either must not start differing from the bytes already on disk.
-        if self.order is not None:
-            body["order"] = self.order.to_json()
-        if self.contract is not None:
-            body["contract"] = self.contract
-        return body
-
-    @classmethod
-    def from_json(cls, body: Any) -> Mission:
-        if not isinstance(body, dict):
-            raise ValueError("mission record must be an object")
-        version = int(body.get("schema_version", 0))
-        if version != MISSION_SCHEMA_VERSION:
-            raise ValueError(f"unknown mission schema version: {version}")
-        status = str(body.get("status", ""))
-        if status not in MISSION_STATUSES:
-            raise ValueError(f"unknown mission status: {status!r}")
-        mission_id = str(body.get("id", ""))
-        project_id = str(body.get("project_id", ""))
-        if not mission_id or not project_id:
-            raise ValueError("mission record carries no id or project id")
-        links = body.get("job_links") or []
-        if not isinstance(links, list):
-            raise ValueError("mission job_links must be a list")
-        plan = body.get("mission_plan")
-        if plan is not None and not isinstance(plan, dict):
-            raise ValueError("mission_plan must be an object")
-        order = body.get("order")
-        contract = body.get("contract")
-        if contract is not None and not isinstance(contract, dict):
-            raise ValueError("mission contract must be an object")
-        return cls(
-            id=mission_id,
-            project_id=project_id,
-            goal=str(body.get("goal", "")),
-            status=status,
-            job_links=tuple(MissionJobLink.from_json(link) for link in links),
-            dossier_ref=str(body.get("dossier_ref", "")),
-            created_at=str(body.get("created_at", "")),
-            schema_version=version,
-            mission_plan=plan,
-            order=MissionOrder.from_json(order) if order is not None else None,
-            contract=contract,
-        )
-
-    def job_ids(self) -> tuple[str, ...]:
-        return tuple(link.job_id for link in self.job_links)
-
-    def latest_link(self) -> MissionJobLink | None:
-        """The last job linked into the chain, or None for an empty mission."""
-        return self.job_links[-1] if self.job_links else None
 
 
 # ---------------------------------------------------------------------------
