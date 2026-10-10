@@ -7,13 +7,14 @@ and the digest and the public API name each job's repository
 (docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D7).
 
 ## Current Step
-Round 9 on `feature/f205-multi-repo-missions`, the closure's evidence round: book round 8, the
-staging reclaim, the evidence job on this round's first commit, the closure's accepted head, and
-the review package.
+Round 10 on `feature/f205-multi-repo-missions`, the closing round: book round 9, the Built State's
+closure readings, the ledger rotation, F205 accepted in STATUS with the README sync and `SU-055`'s
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: book round 9, the Built State's closure readings, rotate the ledger, SU-055's
-   `consumed_by`, the STATUS flip with the README sync, and the pull request, left unmerged.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F205's pull request after its
+   hosted checks are read, and round 10's verdict is booked in the next feature's first commit.
+2. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
 
 ## Risks
 - `mission_state.py` stands at 994 lines with no row; the next round that grows it first takes
