@@ -1,10 +1,8 @@
 # Mission upkeep v1: every fifth job cleans up
 
-> Status (F301, 2026-10-10): being built. DECISIONs F301 D1 to D5 in `.agent/decisions.md` hold the
-> rules this page states; the feature is `docs/roadmap/features/T7_F301.md`. Built so far: the
-> upkeep ledger, the cadence, the planned step, `remedy mission continue`, the orchestrator's own
-> dispatch, and what `remedy mission show` and the client digest say. A fixture mission of six jobs
-> that proves the whole comes next.
+> Status (F301, 2026-10-10): built. DECISIONs F301 D1 to D5 in `.agent/decisions.md` hold the rules
+> this page states; the feature is `docs/roadmap/features/T7_F301.md`, and
+> `tests/regression/test_f301_acceptance.py` holds its acceptance through the command line.
 
 A mission that runs for many jobs leaves things behind: problems a reviewer still saw when a job
 ended, code that grew past the size limits, and files that a newer file replaced and nobody
