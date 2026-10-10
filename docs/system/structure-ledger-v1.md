@@ -155,6 +155,7 @@ with the code that calls it.
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
+  Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
 
 ## Functions above 100 lines
 
@@ -340,7 +341,7 @@ with the code that calls it.
 | 2052 | `packages/runtimes/dev_server.py` |
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
-| 1856 | `packages/orchestration/config.py` |
+| 1838 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
