@@ -1,44 +1,60 @@
-# Handoff — F301 round 2: book round 1, T002 — the project's upkeep ledger
+# Handoff — F301 round 3: book round 2, DECISION F301 D2, two structural steps
 
 ## Session
 
-SESSION 1 of feature F301 · round 2 · rounds so far 2
+SESSION 1 of feature F301 · round 3 · rounds so far 3
 
 Context self-assessment: the reviewer's context is comfortable; the session continues.
 
-Fortschritt: ~30 % (claim, T001, the loop's structural step and T002 · T003 to T005 open) — Schätzung
+Fortschritt: ~40 % (claim, T001, T002 and the three structural steps · T003 to T005 open) — Schätzung
 
 ## Range
 
-Review of `5b0cc5879`..HEAD (four commits on `feature/f301-mission-upkeep` — C1, C2, C3, and this
-handback, C4).
+Review of `221fe8dbd`..HEAD (five commits on `feature/f301-mission-upkeep` — C1, C2, C3, C4, and
+this handback, C5).
 
 ## Commits
 
-### `7763d1928` F301 R2 C1: save the round 2 block
+### `0e1db26a4` F301 R3 C1: save the round 3 block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f301-r2.md` | 150/0 | NEW FILE — byte copy of `block.md`; sha256 `4a601be8a5f5f98faff364ec6e2f66dbd9f71791470e030e7c6822c9fc383d70`, 150 lines |
+| `.agent/authored/f301-r3.md` | 164/0 | NEW FILE — byte copy of `block.md`; sha256 `cbb182c5c2a0f18f55df9cfe4e12c87c458aef7039bfbd80fd3bcce018e8fddc`, 164 lines, equal to `block.md`'s own |
 
-### `789efae86` F301 R2 C2: book round 1, the plan, a prose slip
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | 2/0 | the base blob at `5b0cc5879` followed by `append-live_review.txt`'s bytes: F301 round 1's Gate entry, VERDICT PASS, booked |
-| `.agent/plan.md` | 13/13 | replaced with `dry-plan.md`: round 2's current step, T002, the project's upkeep ledger |
-| `.agent/prose_slips.md` | 1/0 | the base blob at `5b0cc5879` followed by `append-prose_slips.txt`'s bytes: the round 1 sandbox-discipline slip line |
-
-### `93b6cd1a9` F301 R2 C3: the project's upkeep ledger, written by mission continue (T002, DECISION F301 D1)
+### `45f924489` F301 R3 C2: book round 2, DECISION F301 D2, the plan, two prose slips
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/mission_cmd.py` | 4/0 | `_cmd_mission_continue` calls `record_closed_jobs(project_id, mission.id)` after the mission is loaded and before `continue_mission`, with a two-line comment naming DECISION F301 D1; its output is unchanged |
-| `packages/orchestration/mission_upkeep.py` | 194/0 | NEW FILE — the project's upkeep ledger: `upkeep_ledger_path`, `append_upkeep_line` (refuses a kind outside `UPKEEP_LINE_KINDS`), `read_upkeep_ledger` (skips a torn line), `finding_key`, `job_open_findings`, `replaced_pairs_from_findings`, `record_closed_jobs`, `open_findings` |
-| `tests/orchestration/import_reachability_allowlist.txt` | 1/0 | `packages.orchestration.mission_upkeep` added directly after `packages.orchestration.mission_state` |
-| `tests/orchestration/test_mission_upkeep.py` | 276/0 | NEW FILE — the module's test suite, including a subprocess test of `remedy mission continue` through the CLI |
+| `.agent/decisions.md` | 10/0 | base blob at `221fe8dbd` + `append-decisions.txt`'s bytes: DECISION F301 D2, this round's structural order, booked |
+| `.agent/live_review.md` | 2/0 | base blob at `221fe8dbd` + `append-live_review.txt`'s bytes: round 2's Gate entry, VERDICT PASS, booked |
+| `.agent/plan.md` | 8/8 | replaced with `dry-plan.md`: round 3's current step, the two structural commits |
+| `.agent/prose_slips.md` | 2/0 | base blob at `221fe8dbd` + `append-prose_slips.txt`'s bytes: two prose-slip lines appended |
 
-### This commit — F301 R2 C4: handback
+### `a25e3aee2` F301 R3 C3: the catalog's types, shorthands and mission group to modules of their own (structure rule 2, DECISION F301 D2)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/cli/command_catalog.py` | 34/394 | imports `ActionClass`, `Reach`, the types, the shorthands and `MISSION_COMMANDS` back by name; `*MISSION_COMMANDS,` splices the mission group in at its old place |
+| `apps/cli/command_catalog_mission.py` | 250/0 | NEW FILE — the `mission` group's 15 `CommandEntry` rows, byte for byte, as `MISSION_COMMANDS` |
+| `apps/cli/command_catalog_types.py` | 172/0 | NEW FILE — `ActionClass`, `Reach`, `GroupDef`, `ArgDef`, `CommandEntry` and the argument shorthands, byte for byte |
+| `docs/system/structure-ledger-v1.md` | 6/3 | the catalog's "Files" entry names the new boundary and step (1), done by F301; its row moves to 2788, below `job_evidence.py`'s |
+| `packages/orchestration/lessons.py` | 4/3 | `CATALOG_PATH` → `CATALOG_PATHS` naming both files; `lesson_commands` reads ids from either |
+| `tests/orchestration/import_reachability_allowlist.txt` | 2/0 | the two new modules, sorted, right after `apps.cli.command_catalog` |
+| `tests/test_structure_ratchet.py` | 1/1 | `MAX_FILE_LINES` 79404 → 79044 |
+
+### `a1c1dcf43` F301 R3 C4: ConfigKeySpec and the orchestrator's keys to modules of their own (structure rule 2, DECISION F301 D2)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/system/structure-ledger-v1.md` | 6/1 | `config.py`'s "Files" entry names the new boundary and step (1), done by F301; its row moves to 1856, below `token_ledger.py`'s |
+| `packages/orchestration/config.py` | 5/57 | imports `ConfigKeySpec` and `MISSION_KEY_SPECS` back by name; `*MISSION_KEY_SPECS,` splices the two keys in at their old place |
+| `packages/orchestration/config_key_spec.py` | 44/0 | NEW FILE — `ConfigKeySpec`, byte for byte |
+| `packages/orchestration/config_keys_mission.py` | 39/0 | NEW FILE — `orchestrator.model` and `orchestrator.max_iterations`, byte for byte, as `MISSION_KEY_SPECS` |
+| `packages/orchestration/role_config.py` | 2/2 | its two sentences now name `config_keys_mission.py` instead of `config.py` |
+| `tests/orchestration/import_reachability_allowlist.txt` | 2/0 | the two new modules, sorted |
+| `tests/test_structure_ratchet.py` | 1/1 | `MAX_FILE_LINES` 79404 → 78992 |
+
+### This commit — F301 R3 C5: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -51,35 +67,42 @@ worker's final reply after this commit. No pull request is opened this round.
 
 ## Verification
 
-**Gate 1** (after C0, before C1): a Python script (`gate1_digests.py`) checked every line of
-`digests.txt` against the file it names in `.remedy-wt/f301-r2/` — 11 of 11 files, sha256 and line
-count both `True`. Exit implicit 0 (script printed `ALL_TRUE True`).
+**Gate 1** (after C0, before C1): `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r3-worker/run_gate1.py`
+(internally `impl_gate1_digests.py`, sha256 over every file `digests.txt` names in
+`.remedy-wt/f301-r3/`). All 24 lines `True`; `ALL_TRUE True`; exit 0.
 
-**Gate 2** (after C3): `git -C /home/decodeux/Repos/remedy status --porcelain` read empty. The C2
-step 2 byte proofs (`gate2_reproofs.py`) re-run at this commit: `.agent/live_review.md` equals the
-base blob at `5b0cc5879` plus `append-live_review.txt`'s bytes, `True`; `.agent/prose_slips.md`
-equals the base blob at `5b0cc5879` plus `append-prose_slips.txt`'s bytes, `True`; and the three C2
-copied files each equal their prepared file, `True` — 5 of 5 `True`. The C3 step 3 byte proofs
-re-run at this commit: all four C3 copied files equal their prepared file, 4 of 4 `True`.
+**Gate 2** (after C4): `git -C /home/decodeux/Repos/remedy status --porcelain` read empty.
+`run_gate2.py` re-ran: the C2 step 2 proofs (3 append-proofs + 4 copy-equal checks, 7 of 7 `True`);
+the C3 step 3 proofs **against the C3 commit's own blobs** (`git cat-file blob a25e3aee2:<path>`,
+since C4 touched 3 of the same shared paths afterward — `structure-ledger-v1.md`,
+`test_structure_ratchet.py`, the allowlist — 7 of 7 `True`); the C4 step 3 proofs at HEAD (7 of 7
+`True`). 21 of 21 `True`; exit 0.
 
 **Gate 3** (the round's one test selection, run once):
 ```
-python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f301-r2/selection.txt
+python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f301-r3/selection.txt
 ```
-Exit code 0 (captured directly by the running script's own `subprocess.run`, printed as
-`GATE3_EXIT_CODE 0`). Summary line: `6235 passed, 4 skipped in 339.50s (0:05:39)`. SKIPPED lines,
-verbatim:
+Exit code 0 (`PYTEST_EXIT 0`, captured by `subprocess.run` inside `impl_gate3_pytest.py`).
+Summary line: `11587 passed, 13 skipped, 1 warning in 821.35s (0:13:41)`. No `FAILED` or `ERROR`
+line anywhere. SKIPPED lines, verbatim:
 ```
+SKIPPED [3] tests/orchestration/test_model_routing.py:455: covered by the violating fixture above
 SKIPPED [1] tests/regression/test_f293_acceptance.py:191: main holds F293, so its own changes are history
+SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+SKIPPED [1] tests/regression/test_named_bugs.py:383: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+SKIPPED [1] tests/regression/test_named_bugs.py:392: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
+SKIPPED [1] tests/regression/test_named_bugs.py:399: D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+).
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
 ```
-No `FAILED` or `ERROR` line anywhere in the output.
+One `UserWarning` (role-routing fixture, `model_routing.py:1393`), unrelated to this round's change.
 
 **Gate 4**:
 ```
-python3 -m ruff check packages/orchestration/mission_upkeep.py tests/orchestration/test_mission_upkeep.py apps/cli/commands/mission_cmd.py
+python3 -m ruff check apps/cli/command_catalog.py apps/cli/command_catalog_types.py apps/cli/command_catalog_mission.py packages/orchestration/lessons.py packages/orchestration/config.py packages/orchestration/config_key_spec.py packages/orchestration/config_keys_mission.py packages/orchestration/role_config.py
 ```
 Exit 0. Output: `All checks passed!`
 
@@ -87,9 +110,9 @@ Exit 0. Output: `All checks passed!`
 ```
 python3 -m apps.cli.main integrity check --json
 ```
-Exit 0. `{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}` — all six checks
-`status: pass` (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`,
-`repo_root_hygiene`, `high_blockers_open`).
+Exit 0. `{"check_count": 6, ..., "fail_count": 0, "ok": true, "passed": true, ...}` — all six
+checks `status: pass` (`handler_import`, `live_review_verdict`, `plan_consistency`,
+`relevant_untracked`, `repo_root_hygiene`, `high_blockers_open`).
 ```
 python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
 ```
@@ -99,61 +122,91 @@ Exit 0. Output, verbatim:
 ```
 Matches the block's ordered list exactly.
 
-**Gate 6** (the push): after this commit, reported in the worker's final reply.
+**THEN (the push)**: after this commit, reported in the worker's final reply.
 
 ## Authored-text proofs
 
-`.agent/authored/f301-r2.md` (C1) equals `block.md` byte for byte: sha256
-`4a601be8a5f5f98faff364ec6e2f66dbd9f71791470e030e7c6822c9fc383d70`, 150 lines, checked at write
-time (C1). Gate 2 re-checks only the C2 step 2 and C3 step 3 proofs the block names; C1's proof is
-not among them and was not re-run at gate 2.
+`.agent/authored/f301-r3.md` (C1) equals `block.md` byte for byte: sha256
+`cbb182c5c2a0f18f55df9cfe4e12c87c458aef7039bfbd80fd3bcce018e8fddc`, 164 lines, checked at write
+time (C1). Gate 2 re-checks only the C2 step 2, C3 step 3 (against the C3 commit's blobs) and C4
+step 3 proofs the block names; C1's proof is not among them and was not re-run at gate 2.
 
 ## Deviations & assumptions
 
-One sandbox-discipline slip, which touched no commit's content, no push, no gate's verdict and no
-file outside the round's named paths:
-- Before gate 1, C0's four read-only checks (`git branch --show-current`, `git rev-parse HEAD`,
-  `git rev-parse origin/feature/f301-mission-upkeep`, `git status --porcelain`, and `ls` for
-  `.agent/STOP`) were run as separate commands within a single shell tool call (newline-separated;
-  no `&&`, `;`, pipe, `$(...)` or other compound operator was used), rather than each as its own
-  tool call as the block's "every git command is a single `git -C` call" discipline intends. Every
-  individual result was read correctly: branch `feature/f301-mission-upkeep`, HEAD and origin both
-  `5b0cc58793501c0575132caffe2c524a69039b23`, an empty `status --porcelain`, and `.agent/STOP`
-  absent (confirmed by the `ls` error). No later command in the round was combined this way; every
-  git command, python3 script and proof from gate 1 onward ran as its own single tool call.
+Sandbox-discipline slips during this round's read-only reconnaissance and self-review (none
+touched a commit's content, a proof, a gate's verdict, or any file outside the round's named
+paths):
+- One compound command: `test -e /home/decodeux/Repos/remedy/.agent/STOP && echo EXISTS || echo ABSENT`,
+  run as a single tool call during the C0 precondition check, combining two commands with `&&`
+  and `||`. The block forbids `&&`/`||`/`;` even where the sandbox would let one through. The read
+  itself was correct (`.agent/STOP` absent, matching a separate directory listing), but the
+  command should have been a plain `ls` or `test -e` alone, read for its exit code, with no
+  conjunction.
+- Four piped commands, all read-only, all for my own review of diffs/listings rather than for any
+  proof, copy or gate: `grep -n "The ratchet\|Boundaries and steps" -A 60
+  docs/system/structure-ledger-v1.md | head -200` (reading the structure-ledger excerpt the
+  bundle names); `ls /home/decodeux/Repos/remedy/.agent/authored/ | head -20` (checking the
+  directory existed before C1); and two `git -C ... diff 221fe8dbd...` reads of
+  `apps/cli/command_catalog.py` piped through `head -200` then `sed -n '200,400p'` /
+  `sed -n '400,460p'` to page through the 128KB diff during C3's mandated self-review. The block's
+  "no pipes" rule has no stated exception for read-only reconnaissance; each of these should have
+  used the Read tool directly against the file or the git blob, or a single ungated `git diff`
+  call accepted in full, instead of a shell pipe. No command's OUTPUT was wrong — the self-review
+  conclusions this round reports were independently confirmed by the byte-equality proof scripts
+  under `.remedy-wt/f301-r3-worker/`, which used no pipes — but the tool calls themselves departed
+  from the block's single-command rule and are declared here in full.
+- Interpretation, not a rule violation: every copy, hash, proof and test/lint/integrity run this
+  round was implemented as TWO files under `.remedy-wt/f301-r3-worker/` — an `impl_*.py` holding
+  the actual work (the hash comparisons, or the external command via its own `subprocess.run` for
+  pytest/ruff/`apps.cli.main`/`scripts.rotate_live_review`), and a `run_*.py` that invoked the
+  `impl_*.py` via `subprocess.run` with `cwd=/home/decodeux/Repos/remedy` and printed its stdout,
+  stderr and exit code. This satisfies the letter of "a python3 script ... which runs its command
+  with subprocess.run and prints that command's own exit code" at both layers, but is one specific
+  reading of a sentence that could also mean a single script performing the operation directly
+  and printing its own exit code without an extra subprocess hop. Flagging the reading rather than
+  asserting it is the only one.
+- The very first sha256 check of `block.md` against the hash the operator's own instructions
+  stated (before this worker's folder existed) was run as an inline `python3 -c` command, not a
+  saved script under `.remedy-wt/f301-r3-worker/`. The folder did not yet exist at that point and
+  the check preceded the block's own C0; it is noted for completeness, not as a block violation
+  (the block's "every copy, hash, proof and run" rule binds operations IT orders, C1 onward).
 
-Otherwise: None. C0 through C3 ran exactly as the block ordered, each exactly once, in the block's
-sequence; every copy, hash, run and proof besides the one slip above was performed by a dedicated
-Python script under `.remedy-wt/f301-r2-worker/`, run with an explicit working directory of
+Otherwise: None. C0 through C4 ran exactly as the block ordered, each exactly once, in the block's
+sequence; every copy, hash, proof and run the block itself orders was performed by a dedicated
+Python script under `.remedy-wt/f301-r3-worker/`, run with an explicit working directory of
 `/home/decodeux/Repos/remedy`; no file outside the round's named paths was touched; no
-`REMEDY_TEST_MAX_WORKERS` was set and no `-n` was passed; no mutation, no full suite, no worktree
-created or removed; `.agent/STOP` did not appear at any point; the branch read
-`feature/f301-mission-upkeep` before every commit, checked immediately before each of C1, C2 and
-C3.
+`REMEDY_TEST_MAX_WORKERS` was set and no `-n` was passed; no mutation, no full suite (one selection
+run, once), no worktree created or removed, no stash entry touched, no branch created, nothing
+merged, no force-push; `.agent/STOP` did not appear at any point; the branch read
+`feature/f301-mission-upkeep` before every commit, checked immediately before each of C1, C2, C3
+and C4; every commit message was written to a file by a Python script and committed with
+`git commit -F <file>`; commit subjects carry no leading-slash token and no absolute path; no new
+line anywhere carries the letters `promot`.
 
 ## Round verdicts
 
-F301 round 1's PASS verdict (the Gate: F301 R1 entry, over `fdbf0802e`..`5b0cc5879`) is booked by
-C2 — the `dry-live_review.md` bytes, proved equal to the base blob at `5b0cc5879` plus
-`append-live_review.txt`'s bytes, now carry that entry forward in `.agent/live_review.md`. Round
-2's verdict is the reviewer's, to be booked in the next round's first commit.
+F301 round 2's PASS verdict is booked by C2 — the `dry-decisions.md` and `dry-live_review.md`
+bytes, proved equal to the base blob at `221fe8dbd` plus the two append files' bytes, now carry
+DECISION F301 D2 and round 2's Gate entry forward in `.agent/decisions.md` and
+`.agent/live_review.md`. Round 3's verdict is the reviewer's, to be booked in the next round's
+first commit.
 
 ## For the operator, in plain sentences
 
-Remedy now keeps, for each project, a written record of what the jobs of its missions left
-unfinished: the problems a reviewer still saw when a job ended, and any file that was replaced by a
-new one and not deleted. The record only grows, and a problem leaves it only when a cleanup job
-that took it on has finished. When the operator continues a mission, Remedy first writes down what
-the jobs that have ended left behind. The next round makes Remedy start the cleanup job itself
-after every fifth finished job. Nothing waits for the operator.
+Remedy's own rule on code size lets two crowded files only shrink: the list of every command and
+option, and the list of every setting. The next round must add one option and one setting to
+them. So this round moved the mission commands, and the two settings of the mission loop, each
+into a file of their own, without changing any command, option or setting. Both crowded files are
+smaller now, and the next option and setting go into the new files. Nothing waits for the
+operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Phase 1 rule 2 (the Open PR Gate).
-3. Book round 2's verdict in the next round's first commit.
-4. T003: the boundary and one step of `config.py`, then the setting, the cadence and the upkeep job
-   through `remedy mission continue`.
+3. Book round 3's verdict in the next round's first commit.
+4. T003: `mission.upkeep_every`, the cadence, the compiled step and the upkeep job through
+   `remedy mission continue` with `--skip-upkeep`.
 
 Operator questions open: 0.
 Open findings: 16 (R-1233, Low, owned by F301; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157,
@@ -163,14 +216,15 @@ R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225 and R-1230, Low, 
 
 | Item | Status | Reason |
 |---|---|---|
-| C0: base and branch | done | HEAD `5b0cc5879`, equal to origin, clean tree, no STOP, branch `feature/f301-mission-upkeep` |
-| C1: save the round 2 block | done | 150 lines, sha256 matches `block.md`; committed `7763d1928` |
-| C2: book round 1, the plan, a prose slip | done | all 5 proofs `True`, numstat matches exactly; committed `789efae86` |
-| C3: the project's upkeep ledger (T002) | done | all 4 proofs `True`, numstat matches exactly (475 insertions); committed `93b6cd1a9` |
-| Gate 1 | passed | 11 of 11 digests `True` |
-| Gate 2 | passed | status empty; 5+4 byte proofs `True` |
-| Gate 3 | passed | `6235 passed, 4 skipped`, no FAILED/ERROR, exit 0 |
-| Gate 4 | passed | `All checks passed!`, exit 0 |
-| Gate 5 | passed | six checks `pass`, `fail_count: 0`; open finding ids match exactly; exit 0 |
-| C4: handback | done | this commit |
-| Gate 6 (push) | pending | reported in the worker's final reply |
+| C0: base and branch preconditions | done | branch `feature/f301-mission-upkeep`, HEAD = origin = `221fe8dbd3f9edd05a785c858e53912babe53c28`, `status --porcelain` empty, `.agent/STOP` absent |
+| Gate 1 | passed | all 24 digests `True`, exit 0 |
+| C1: save the round 3 block | done | sha256/line count equal to `block.md`; committed `0e1db26a4` |
+| C2: book round 2, DECISION F301 D2, the plan, two prose slips | done | all 7 byte proofs `True`; committed `45f924489` |
+| C3: catalog types, shorthands, mission group to modules of their own | done | self-review checks all held; 469 insertions matches the block's measurement; all 7 byte proofs `True`; committed `a25e3aee2` |
+| C4: ConfigKeySpec and the orchestrator's keys to modules of their own | done | self-review checks all held; 99 insertions matches the block's measurement; all 7 byte proofs `True`; committed `a1c1dcf43` |
+| Gate 2 | passed | status clean; 21 of 21 re-run byte proofs `True` (C3's against the C3 commit's own blobs) |
+| Gate 3 | passed | `11587 passed, 13 skipped, 1 warning in 821.35s`, exit 0, no FAILED/ERROR |
+| Gate 4 | passed | ruff exit 0, `All checks passed!` |
+| Gate 5 | passed | integrity six checks pass, fail_count 0; open findings match the block's list exactly |
+| C5: handback | done | this commit |
+| Push | pending | reported in the worker's final reply, after this commit |
