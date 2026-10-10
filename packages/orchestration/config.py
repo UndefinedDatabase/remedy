@@ -40,9 +40,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# DECISION F301 D2: `ConfigKeySpec` and the mission orchestrator's keys live in modules of their
-# own; both are imported back here by name, so every import path keeps working.
+# DECISIONs F301 D2 and F302 D2: `ConfigKeySpec`, the mission orchestrator's keys and the Claude
+# CLI's keys live in modules of their own; each is imported back here by name, so every import
+# path keeps working.
 from packages.orchestration.config_key_spec import ConfigKeySpec
+from packages.orchestration.config_keys_claude import CLAUDE_KEY_SPECS
 from packages.orchestration.config_keys_mission import MISSION_KEY_SPECS
 from packages.orchestration.model_aliases import resolve_model_alias
 
@@ -281,27 +283,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=".agent",
         env_only=True,
     ),
-    ConfigKeySpec(
-        key="claude_planner.model",
-        env_var="REMEDY_CLAUDE_PLANNER_MODEL",
-        description=(
-            "Model for the Claude CLI planner; beats planner.model and the alias table's "
-            "default (env-only)"
-        ),
-        value_type=str,
-        default=None,
-        env_only=True,
-    ),
-    ConfigKeySpec(
-        key="claude_planner.timeout_seconds",
-        env_var="REMEDY_CLAUDE_PLANNER_TIMEOUT",
-        description=(
-            "Per-call wall timeout of the Claude CLI planner, in whole seconds (env-only)"
-        ),
-        value_type=int,
-        default=300,
-        env_only=True,
-    ),
+    *CLAUDE_KEY_SPECS,
     ConfigKeySpec(
         key="planner.freetext",
         env_var="REMEDY_PLANNER_FREETEXT",

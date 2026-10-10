@@ -6,6 +6,7 @@
 apps.cli.client_interface
 apps.cli.command_catalog
 apps.cli.command_catalog_mission
+apps.cli.command_catalog_stats
 apps.cli.command_catalog_types
 apps.cli.commands
 apps.cli.commands.absorb_cmd
@@ -50,6 +51,7 @@ apps.cli.commands.runtime_cmd
 apps.cli.commands.self_cmd
 apps.cli.commands.serve_cmd
 apps.cli.commands.snapshot_cmds
+apps.cli.commands.stats_calls_cmd
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.status_cmd
 apps.cli.commands.study_cmd
@@ -100,6 +102,7 @@ packages.orchestration.builder_bridge
 packages.orchestration.builder_models
 packages.orchestration.burn_detector
 packages.orchestration.call_identity
+packages.orchestration.call_tokens
 packages.orchestration.capability_bench
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
@@ -112,6 +115,7 @@ packages.orchestration.chat_turn
 packages.orchestration.checkpoints
 packages.orchestration.ci_run
 packages.orchestration.ci_stages
+packages.orchestration.claude_cli_command
 packages.orchestration.client_changes
 packages.orchestration.client_digest
 packages.orchestration.cockpit
@@ -121,6 +125,7 @@ packages.orchestration.command_nonce
 packages.orchestration.commit_execution_gate
 packages.orchestration.config
 packages.orchestration.config_key_spec
+packages.orchestration.config_keys_claude
 packages.orchestration.config_keys_mission
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage

@@ -132,7 +132,8 @@ with the code that calls it.
   `apps/cli/command_catalog_types.py`, then the catalog's data one contiguous group at a time, each
   to a module of its own that `_BASE_CATALOG` splices in at the group's own place, so the help keeps
   its order; the lookups stay. Step (1), done by F301: the types, the shorthands and the `mission`
-  group, `apps/cli/command_catalog_mission.py`.
+  group, `apps/cli/command_catalog_mission.py`. Step (2), done by F302: the `stats` group,
+  `apps/cli/command_catalog_stats.py`.
 - `packages/orchestration/job_evidence.py`: the manual-completion bundle, the verification runner,
   and the run-manifest cross-checks with the postmortems, each to a module of its own.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
@@ -145,13 +146,16 @@ with the code that calls it.
   file sourced in place, after the tests that read the script's text are pointed at both.
 - `packages/runtimes/dev_server.py`: the spec, paths and lock, the ports and the probe, and the
   shutdown of a process tree, each to a module of its own.
-- `packages/orchestration/pingpong_provider.py`: the output contracts, the parsing of the
-  reviewer's answer, the fake provider and the Ollama provider, each to a module of its own.
+- `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
+  contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
+  to a module of its own. Step (1), done by F302: the claude CLI's command line,
+  `packages/orchestration/claude_cli_command.py`.
 - `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
   then the key registry one contiguous group at a time, each to a module of its own that
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
+  Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
 
 ## Functions above 100 lines
 
@@ -329,15 +333,15 @@ with the code that calls it.
 | 4834 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2788 | `apps/cli/command_catalog.py` |
+| 2631 | `apps/cli/command_catalog.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
 | 2052 | `packages/runtimes/dev_server.py` |
-| 2024 | `packages/orchestration/pingpong_provider.py` |
+| 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
-| 1856 | `packages/orchestration/config.py` |
+| 1838 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |

@@ -1,0 +1,5 @@
+Entry ID: SU-054
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:1818
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as exc:  # noqa: BLE001 — a session's cleanup failure must not strand its lock)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f302-r6-selfuse/SU-054.md
