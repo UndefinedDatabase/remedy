@@ -173,6 +173,10 @@ with the code that calls it.
   handlers, then the `run` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
   stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
   `apps/cli/commands/do_order_input.py`.
+- `packages/orchestration/public_api.py`: the write routes' argument builders and refusals,
+  then the route table, then the page's rendering, each to a module of its own; the answer
+  functions stay. Step (1), done by F205: the write routes' argument builders and refusals,
+  `packages/orchestration/public_api_writes.py`, and the file left the table.
 
 ## Functions above 100 lines
 
@@ -373,7 +377,6 @@ with the code that calls it.
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
 | 1138 | `packages/orchestration/test_execution_service.py` |
-| 1136 | `packages/orchestration/public_api.py` |
 | 1133 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
