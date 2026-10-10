@@ -169,6 +169,10 @@ with the code that calls it.
   `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
   Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
   left the table.
+- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `job`
+  handlers, then the `run` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
+  stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
+  `apps/cli/commands/do_order_input.py`.
 
 ## Functions above 100 lines
 
@@ -260,7 +264,6 @@ with the code that calls it.
 | 140 | `apps/cli/commands/job.py` | `_cmd_plan_job_local` |
 | 140 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge_loop` |
 | 140 | `packages/orchestration/change_set.py` | `derive_change_set` |
-| 139 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 139 | `packages/orchestration/pingpong_job.py` | `_export_job` |
 | 138 | `apps/cli/commands/job.py` | `_cmd_job_run_cycles` |
 | 138 | `scripts/build_review_manifest.py` | `validate_verification_tests` |
@@ -319,6 +322,7 @@ with the code that calls it.
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
 | 111 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 111 | `packages/orchestration/ui_view_model.py` | `build_next_action` |
+| 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_ledger_chain` |
 | 109 | `apps/cli/commands/init_cmd.py` | `_handle_init` |
@@ -361,10 +365,10 @@ with the code that calls it.
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1248 | `apps/cli/commands/do_cmd.py` |
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
+| 1173 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |

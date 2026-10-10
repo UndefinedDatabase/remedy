@@ -23,6 +23,7 @@ apps.cli.commands.data_cmd
 apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
+apps.cli.commands.do_order_input
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file

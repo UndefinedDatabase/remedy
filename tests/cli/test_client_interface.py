@@ -276,7 +276,7 @@ _TOKEN_CALLS = frozenset({"fail", "emit_error", "build_error"})
 #: `<module>:<function>:<expression>`, with the tokens a reader verified by hand and why. A site
 #: absent from this mapping fails the reading test with its location.
 UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
-    "apps.cli.commands.do_cmd:_cmd_do:exc.error": (
+    "apps.cli.commands.do_order_input:read_do_order:exc.error": (
         frozenset({"order_file_empty", "order_file_invalid_header", "order_file_not_found",
                    "order_file_unreadable"}),
         "an OrderFileError's token; every OrderFileError(...) in "
@@ -396,7 +396,7 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
     raised = {node.args[0].value for node in ast.walk(order_file)
               if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
               and node.func.id == "OrderFileError" and isinstance(node.args[0], ast.Constant)}
-    assert raised == UNRESOLVED_TOKEN_SITES["apps.cli.commands.do_cmd:_cmd_do:exc.error"][0]
+    assert raised == UNRESOLVED_TOKEN_SITES["apps.cli.commands.do_order_input:read_do_order:exc.error"][0]
     hunk_codes = ({value for name, value in vars(hunk_approval).items() if name.startswith("REFUSAL_")}
                   | {value for name, value in vars(hunk_decision_record).items()
                      if name.startswith("HUNK_RECORD_REFUSAL_")})
