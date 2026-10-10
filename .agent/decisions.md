@@ -28888,3 +28888,13 @@ CHOSEN: `scripts/check_commit_subject.py` reads the subject and asks `_metadata_
 ALTERNATIVES: A rule in prose only, REJECTED: it failed. A check at the gate only, REJECTED: it finds the subject after the commits exist.
 
 HOW TO REVERSE: `git config --unset core.hooksPath`; delete `.githooks/`, the script and its test; restore the earlier AGENTS.md bullet.
+
+## DECISION amend1010-cadence-guards D4 — seven findings of the orchestrator's review of 2026-10-10 are registered, owned by F297 (2026-10-10)
+
+CONTEXT: The orchestrator's review of the packages of 2026-10-07 to 2026-10-10 found seven defects in the accepted features F299, F301, F116 and F298 that no finding named.
+
+CHOSEN: R-1236 (Medium, F299's acceptance check reads its command and interpreter from the job's worktree), R-1237 (F301's upkeep carries one mission's findings), R-1238 (`mission continue` discards the step when upkeep is due), R-1239 (F301's structure limits and finding count are fixed), R-1240 (`client changes` watches four files), R-1241 (F116's burn handler), R-1242 (F298's spec version and the contract page's exit-code table), each owned by F297 with its repair in `.agent/live_review.md`.
+
+ALTERNATIVES: Waiting for the paydown's own survey, REJECTED: the paydown repairs what the ledger names.
+
+HOW TO REVERSE: Delete the seven lines from `.agent/live_review.md` and this paragraph.
