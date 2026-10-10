@@ -667,3 +667,46 @@ class TestTheDigestCounts:
         finally:
             monkeypatch.delenv("REMEDY_MISSION_UPKEEP_EVERY")
             reset_config()
+
+
+class TestTheUpkeepOfAMissionOverSeveralProjects:
+    """DECISION F205 D7: the cadence counts the jobs of every repository; the upkeep job works, is
+    measured and carries findings where the mission's next job works."""
+
+    OTHER = "b" * 32
+
+    def _mission(self, tmp_path):
+        """Five completed jobs, three in the first project and two in the second, the second last;
+        a finding open in one job of each project."""
+        repos = {PROJECT: tmp_path / "first-repo", self.OTHER: tmp_path / "second-repo"}
+        mission = create_mission(PROJECT, "Keep both repositories working",
+                                 project_ids=(PROJECT, self.OTHER))
+        jobs = []
+        for index, project in enumerate((PROJECT, PROJECT, PROJECT, self.OTHER, self.OTHER)):
+            job = JobPlan(job_title=f"job {index}", state=RunState.COMPLETED, project_id=project,
+                          repo_path=str(repos[project]))
+            save_job_plan(job)
+            link_job_to_mission(PROJECT, mission.id, str(job.job_id),
+                                "initial" if index == 0 else "follow_up")
+            jobs.append(job)
+        for job in (jobs[0], jobs[3]):
+            _final_review(str(job.job_id), [{"id": "F-TASK-001", "severity": "repairable",
+                                             "message": f"left by {job.job_title}", "task_id": "T001"}])
+        return mission, jobs, repos
+
+    def test_the_cadence_counts_the_completed_jobs_of_every_repository(self, data_root, tmp_path):
+        mission, _jobs, _repos = self._mission(tmp_path)
+
+        cadence = upkeep_cadence(PROJECT, mission.id)
+
+        assert (cadence.completed, cadence.due) == (5, True)
+
+    def test_the_upkeep_job_works_and_carries_where_the_chain_ends(self, data_root, tmp_path):
+        mission, jobs, repos = self._mission(tmp_path)
+
+        outcome = make_upkeep_job_if_due(PROJECT, mission.id)
+
+        assert (outcome.job.project_id, outcome.job.repo_path) == (self.OTHER, str(repos[self.OTHER]))
+        assert outcome.plan["repository"] == str(repos[self.OTHER])
+        assert outcome.plan["findings"] == [finding_key(str(jobs[3].job_id), "T001", "F-TASK-001")]
+        assert str(jobs[0].job_id) not in compile_upkeep_step(outcome.plan)

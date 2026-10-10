@@ -208,6 +208,33 @@ def test_the_fixture_mission_chains_three_jobs_across_two_repositories(projects,
     assert str(jobs[1].job_id) in continued["verify_first_task"]["description"]
 
 
+def test_each_project_lists_its_own_job_and_the_mission_names_both_by_reference(
+        projects, tmp_path, capsys, monkeypatch):
+    """F148's leak property over mission data (DECISION F205 D7): a listing in one project shows
+    that project's job alone, the mission is listed in its first project only, and what the
+    mission shows of its jobs is their ids, roles, states and projects, never their content."""
+    (a, project_a), (b, project_b) = projects["a"], projects["b"]
+    planned = _do_json(capsys, _order(tmp_path, project_a.slug, project_b.slug), "--plan-only")
+    job_a, job_b = planned["job_ids"]
+
+    listed = {}
+    for repo in (a, b):
+        monkeypatch.chdir(repo)
+        main(["job", "list", "--json"])
+        jobs = [entry["id"] for entry in json.loads(capsys.readouterr().out)["jobs"]]
+        main(["mission", "list", "--json"])
+        missions = [entry["id"] for entry in json.loads(capsys.readouterr().out)["missions"]]
+        listed[repo] = (jobs, missions)
+    assert listed == {a: ([job_a], [planned["mission_id"]]), b: ([job_b], [])}
+
+    monkeypatch.chdir(a)
+    main(["mission", "show", planned["mission_id"], "--json"])
+    mission = json.loads(capsys.readouterr().out)["mission"]
+    assert mission["project_ids"] == [str(project_a.id), str(project_b.id)]
+    assert [sorted(link) for link in mission["job_links"]] == [
+        ["created_at", "job_id", "job_state", "project_id", "role"]] * 2
+
+
 def test_project_beside_a_header_naming_several_is_refused_before_any_step(projects, tmp_path, capsys):
     (_, project_a), (_, project_b) = projects["a"], projects["b"]
 

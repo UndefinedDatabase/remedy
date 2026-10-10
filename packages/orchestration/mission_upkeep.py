@@ -308,6 +308,29 @@ def project_repository(project_id: str) -> str:
     return project.canonical_repo_path or (project.repo_paths[0] if project.repo_paths else "")
 
 
+def upkeep_target(mission: Any, root: Path | None = None) -> tuple[str, str]:
+    """The project and repository an upkeep job of *mission* works in (DECISION F205 D7).
+
+    Where the mission's next job works: for a mission over several projects, the project and
+    repository of the job its chain ends with (``follow_up_target``, DECISION F205 D5); else the
+    mission's own project and its registered repository.
+    """
+    from packages.orchestration.data_paths import normalize_job_id
+    from packages.orchestration.mission_record import follow_up_target
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+
+    last = mission.latest_link()
+    if mission.project_ids and last is not None:
+        try:
+            job, _unreadable = load_job_plan_safe(normalize_job_id(last.job_id), root)
+        except ValueError:
+            job = None
+        target = follow_up_target(mission, job)
+        if target:
+            return target["project_id"], target["repo_path"]
+    return str(mission.project_id), project_repository(mission.project_id)
+
+
 def _structure_item(repository: str) -> dict[str, Any]:
     """The largest Python function and the largest code file above the limits (DECISION F301 D3 (2))."""
     from packages.orchestration.contract_hygiene import CODE_FILE_SUFFIXES
@@ -356,9 +379,21 @@ def _replaced_pairs(repository: str, lines: list[dict[str, Any]], mission_id: st
 
 
 def plan_upkeep(project_id: str, mission_id: str, cadence: UpkeepCadence,
-                lines: list[dict[str, Any]]) -> dict[str, Any]:
-    """What an upkeep job due now would carry, by DECISION F301 D1 (3) to (5) and D3 (2)."""
-    repository = project_repository(project_id)
+                lines: list[dict[str, Any]], root: Path | None = None) -> dict[str, Any]:
+    """What an upkeep job due now would carry, by DECISION F301 D1 (3) to (5) and D3 (2).
+
+    It measures the repository the upkeep job works in (``upkeep_target``), and for a mission over
+    several projects carries the findings and replaced files of the jobs of that project alone; the
+    others wait for an upkeep job in theirs (DECISION F205 D7).
+    """
+    from packages.orchestration.mission_state import load_mission
+
+    mission = load_mission(project_id, mission_id, root)
+    target_project, repository = upkeep_target(mission, root)
+    if mission.project_ids:
+        theirs = {link.job_id for link in mission.job_links if link.project_id == target_project}
+        lines = [line for line in lines
+                 if line.get("kind") != LINE_JOB_CLOSED or line.get("job_id") in theirs]
     carried = open_findings(lines, mission_id=mission_id)[:UPKEEP_MAX_FINDINGS]
     return {"after_jobs": cadence.completed, "after_job_id": cadence.after_job_id, "every": cadence.every,
             "repository": repository, "findings": [f["key"] for f in carried], "carried": carried,
@@ -418,7 +453,7 @@ def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None =
     cadence = upkeep_cadence(project_id, mission_id, root, config=config, lines=lines)
     if not cadence.due:
         return UpkeepOutcome(cadence, None, None, None)
-    plan = plan_upkeep(project_id, mission_id, cadence, lines)
+    plan = plan_upkeep(project_id, mission_id, cadence, lines, root)
     if not upkeep_has_work(plan):
         line = append_upkeep_line(project_id, mission_id, LINE_UPKEEP_NOT_NEEDED, {
             "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id}, root, now=now)
@@ -471,7 +506,7 @@ def upkeep_preview(project_id: str, mission_id: str, root: Path | None = None, *
                                "jobs_left": cadence.jobs_left, "due": cadence.due,
                                "open_findings": len(open_findings(lines, mission_id=mission.id))}
     if measure:
-        plan = plan_upkeep(project_id, mission.id, cadence, lines)
+        plan = plan_upkeep(project_id, mission.id, cadence, lines, root)
         preview["carries"] = {"findings": plan["findings"], "structure": plan["structure"],
                               "replaced": plan["replaced"]}
     return preview
