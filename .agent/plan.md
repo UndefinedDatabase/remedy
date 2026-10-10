@@ -7,13 +7,13 @@ and the digest and the public API name each job's repository
 (docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D7).
 
 ## Current Step
-Round 8 on `feature/f205-multi-repo-missions`, the closure's first round: book round 7, the
-checklist's consolidation pass, F305 registered directly after F205 for the cockpit's chain band,
-the closure's self-use item run to its approval gate, and the one full suite with its cost.
+Round 9 on `feature/f205-multi-repo-missions`, the closure's evidence round: book round 8, the
+staging reclaim, the evidence job on this round's first commit, the closure's accepted head, and
+the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package, or a repair round naming every bad node id.
-2. The Built State, the ledger rotation, the STATUS line and the pull request.
+1. The closing round: book round 9, the Built State's closure readings, rotate the ledger, SU-055's
+   `consumed_by`, the STATUS flip with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - `mission_state.py` stands at 994 lines with no row; the next round that grows it first takes
