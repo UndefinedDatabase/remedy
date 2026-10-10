@@ -485,11 +485,11 @@ def resolve_role_config(
 
 # The orchestrator's model must have ONE answer: `orchestrator.model` when the
 # operator set it, and otherwise the same resolution every other role gets —
-# which is what config.py already promises the key means, stated here in code.
+# which is what the key's registration already promises it means, stated here in code.
 def resolve_orchestrator_model() -> str:
     """Return the model id the ``orchestrator`` role should run on.
 
-    ``orchestrator.model`` (packages/orchestration/config.py) is the ONLY
+    ``orchestrator.model`` (packages/orchestration/config_keys_mission.py) is the ONLY
     orchestrator-specific routing surface, and its own documented promise is
     that "Unset means the role resolves exactly like every other one". So a set,
     non-empty value wins, and anything else — unset, empty, whitespace-only, or

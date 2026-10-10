@@ -147,6 +147,11 @@ with the code that calls it.
   shutdown of a process tree, each to a module of its own.
 - `packages/orchestration/pingpong_provider.py`: the output contracts, the parsing of the
   reviewer's answer, the fake provider and the Ollama provider, each to a module of its own.
+- `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
+  then the key registry one contiguous group at a time, each to a module of its own that
+  `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
+  keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
+  `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
 
 ## Functions above 100 lines
 
@@ -331,8 +336,8 @@ with the code that calls it.
 | 2134 | `scripts/remedy_smoke.sh` |
 | 2052 | `packages/runtimes/dev_server.py` |
 | 2024 | `packages/orchestration/pingpong_provider.py` |
-| 1908 | `packages/orchestration/config.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
+| 1856 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |

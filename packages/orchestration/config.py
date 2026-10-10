@@ -40,6 +40,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# DECISION F301 D2: `ConfigKeySpec` and the mission orchestrator's keys live in modules of their
+# own; both are imported back here by name, so every import path keeps working.
+from packages.orchestration.config_key_spec import ConfigKeySpec
+from packages.orchestration.config_keys_mission import MISSION_KEY_SPECS
 from packages.orchestration.model_aliases import resolve_model_alias
 
 if sys.version_info >= (3, 11):
@@ -72,37 +76,6 @@ class ConfigValue:
     @property
     def is_default(self) -> bool:
         return self.source == ConfigSource.DEFAULT
-
-
-@dataclass(frozen=True)
-class ConfigKeySpec:
-    """Definition of one config key.
-
-    value_type supports: str, int, float, bool, list, dict.
-    When value_type is list, values are list-of-strings. Env var values
-    are split on commas. TOML arrays are used as-is.
-    When value_type is dict the key is TABLE-VALUED: the whole TOML sub-table
-    named by ``key`` resolves as one value (see the module docstring), and TOML
-    is the only source that can carry it.
-
-    ``entry_type`` names the type each ENTRY of such a table holds — ``str`` for
-    a flat map of strings, ``dict`` for a table of RECORDS — and defaults to
-    ``None``, which means the entries are not shape-checked at all. IT IS A
-    PER-KEY DECLARATION AND NOT ONE RULE FOR EVERY TABLE, because both kinds of
-    table are well formed: checking every table's entries as strings reports a
-    perfectly good record table as a fault, and hard-coding a key NAME inside
-    :func:`validate_config` would put routing policy in this, the lower, layer.
-    """
-
-    key: str
-    env_var: str
-    description: str
-    value_type: type = str
-    entry_type: type | None = None
-    default: Any = None
-    env_only: bool = False
-    secret: bool = False
-    fallback_key: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -849,32 +822,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=5,
     ),
-    ConfigKeySpec(
-        key="orchestrator.model",
-        env_var="REMEDY_ORCHESTRATOR_MODEL",
-        description=(
-            "Model for the mission orchestrator role (F070). Quality at the "
-            "decision layer is the point, so this is where a top-tier model is "
-            "named. Unset means the role resolves exactly like every other one "
-            "— this key is the ONLY orchestrator-specific routing surface, and "
-            "docs/agents/model_routing_policy.md is unchanged by it."
-        ),
-        value_type=str,
-        default=None,
-    ),
-    ConfigKeySpec(
-        key="orchestrator.max_iterations",
-        env_var="REMEDY_ORCHESTRATOR_MAX_ITERATIONS",
-        description=(
-            "How many iterations one `remedy mission run` may take (F070). "
-            "Conservative by default: an unattended loop that mis-decides is "
-            "cheaper to stop early than to let run. Reaching the limit is a "
-            "NORMAL terminal with an honest status, never a failure and never "
-            "a silent continuation."
-        ),
-        value_type=int,
-        default=10,
-    ),
+    *MISSION_KEY_SPECS,
     ConfigKeySpec(
         key="self_use.provider",
         env_var="REMEDY_SELF_USE_PROVIDER",
