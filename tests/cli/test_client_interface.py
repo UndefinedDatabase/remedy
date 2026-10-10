@@ -768,6 +768,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     from packages.orchestration.dod_schema import DoDCheck
 
     do_sequence = "packages/orchestration/do_sequence.py"
+    do_context = "packages/orchestration/do_context.py"
     contracts = "packages/orchestration/mission_contract.py"
     trees = ANSWER_KEY_TREES["do.run"]
     contract = trees["contract"]
@@ -782,7 +783,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
                                                             "do_cost_summary")
     assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
                                                             "do_job_task_listing")
-    assert set(trees["steps"]) == _returned_dict_keys(do_sequence, "DoStepResult.to_json")
+    assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
     assert set(trees["landed"]) == _expression_keys(do_sequence, "ctx.landed")
     assert set(trees["push"]) == (_returned_dict_keys(do_sequence, "_do_push_record")
                                   | _expression_keys(do_sequence, "ctx.push_outcome"))

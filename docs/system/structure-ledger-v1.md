@@ -160,6 +160,11 @@ with the code that calls it.
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
   `packages/orchestration/mission_record.py`, and the file left the table.
+- `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
+  cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
+  table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
+  test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
+  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
 
 ## Functions above 100 lines
 
@@ -349,10 +354,10 @@ with the code that calls it.
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
-| 1477 | `packages/orchestration/do_sequence.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
+| 1263 | `packages/orchestration/do_sequence.py` |
 | 1248 | `apps/cli/commands/do_cmd.py` |
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
