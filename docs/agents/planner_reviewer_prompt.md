@@ -547,6 +547,16 @@ end the response with:
   promise is item 18's reading of an ordered recipe, here a list of tests, against the property it
   must establish. R-1160 was a defect of the product, registered at F295 and repaired here. The
   list stays at 34 items.
+  Consolidated again at F301's closure on 2026-10-10: nothing joined and no two items were merged,
+  because F301's nine lines in `.agent/prose_slips.md` name no lesson the list lacks. Eight are a
+  worker's departures from a block's shell constraints, a `cd`, a `&&`, a pipe, a heredoc or an
+  inline `python3 -c` where a saved script was ordered, each leaving every proof on its own script
+  and nothing on disk wrong: slips in following a block, which no item about a block's text can
+  prevent. The ninth is the reviewer's own misstatement of which skips in a simulation's count
+  belonged to the worktree, the counts themselves right, which the standing rule that a block's
+  numbers are printed by scripts rather than typed already governs. R-1233 and R-1234 were defects
+  of the product, found by the reviewer's own probes and repaired inside the feature. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
