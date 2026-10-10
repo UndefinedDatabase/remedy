@@ -1,9 +1,9 @@
 # Claude CLI worker launch v1: what a worker loads before it does any work
 
-> Status (F302, 2026-10-10): being built. DECISIONs F302 D1 and D2 in `.agent/decisions.md` hold
+> Status (F302, 2026-10-10): being built. DECISIONs F302 D1 to D3 in `.agent/decisions.md` hold
 > the rules this page states; the feature is `docs/roadmap/features/T3_F302.md`. Built so far: the
-> lean start and its two keys. Which configuration a job ran under, and the measurement before and
-> after, come next.
+> lean start and its two keys. The measurement before and after comes next. A job's record does
+> not yet name the configuration its calls ran under; finding R-1235 carries that to F297.
 
 Remedy starts Claude Code as a worker for every builder, reviewer and planner call of the
 `claude-cli` provider: `claude -p <prompt> --output-format json`, with the model, the reviewer's
