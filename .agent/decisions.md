@@ -28858,3 +28858,13 @@ CHOSEN: (1) A new read-only subcommand, `remedy stats calls`, with `--since`, `-
 ALTERNATIVES: A view of the token ledger, REJECTED: it holds a small part of the calls. A landed change counted from tasks applied into the job's workspace, REJECTED: those changes have not reached the repository. Dividing only the landed jobs' own calls, REJECTED: a change that lands after failed attempts cost those attempts too.
 
 HOW TO REVERSE: Delete this paragraph, `apps/cli/commands/stats_calls_cmd.py` with its line in `apps/cli/commands/__init__.py`, `packages/orchestration/call_tokens.py`, the `stats.calls` entry, the two reachability lines and both test files.
+
+## DECISION amend1010-cadence-guards D1 — F297 moves directly behind F302 so the paydown cadence of five holds again (2026-10-10)
+
+CONTEXT: The rolling findings paydown comes after every fifth accepted feature (self_drive_protocol, amend0911-feedback rule B, the structure rule of F300). Operator amendment amend1007b of 2026-10-07 put nine features in front of the waiting F297; nine are accepted since, sixteen Low findings are open and all owned by F297, and F297 still stood behind F302, F205, F206, F058 and F199.
+
+CHOSEN: In `docs/roadmap/STATUS.md` the heading "Tier 2 — Findings paydown" with the line of F297 moved to directly after the F302 line, before the Tier 13 block of F205 and F206 (neither read `[~]` at run time). The heading "Luna gate B: operations of a service … continued" was deleted, so F203 joins the list under the F199 heading. No counter changed.
+
+ALTERNATIVES: Leaving F297 behind F199, REJECTED: the cadence stays broken. Moving it behind the last `[~]` line, NOT NEEDED: nothing was claimed.
+
+HOW TO REVERSE: Move the two lines back directly above the heading "Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)" and restore that heading above F203.
