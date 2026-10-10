@@ -242,7 +242,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 
-- [~] F205 — Multi-repo missions
+- [x] F205 — Multi-repo missions (T001 complete; T002's leak regression complete and its chain band moved to F305; R-1236 and R-1237 resolved; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235 open — owned by F297; accepted 2026-10-10 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f205r9e1001 · package remedy-review-20261010-182009-READY_FOR_REVIEW.zip · SHA-256 c52ca63b254ed55d95b04237f6d50422f2d2f0752e4578a1a24778645335e9d3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 1ee1bac3184b134701bbef5dd4ed7f74ed5c766b)
 - [ ] F305 — Multi-repo missions: the cockpit's chain band
 - [ ] F206 — Repo dependency catalog
 

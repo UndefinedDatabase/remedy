@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-136 of 305 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+137 of 305 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -43,7 +43,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
 | 12 | Observability & Operations | 5 | 13 |
-| 13 | Multi-Repo & Organization | 0 | 9 |
+| 13 | Multi-Repo & Organization | 1 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
 | 16 | Cockpit v2 | 0 | 10 |
@@ -822,6 +822,17 @@ a token, a client's token carries the operator's policy for it, which names its 
 largest limits and whether it may apply, and every call is written down; the interface's page is
 `docs/system/public-http-api-v1.md`, and moving the shipped cockpit onto it is a later feature's
 work).
+
+Accepted in Tier 13 so far:
+F205 multi-repo missions (one order can now name several registered projects, one `project:` line
+each, and `remedy do` then plans one job in each project's repository under one mission, applies
+and commits each job in its own repository and pushes each repository once, never forced and
+stopping at the first refusal; the mission's record stays in the first project and names the
+projects it spans, while every job's records stay in its own project; the next job of the mission
+works where its chain ends, and so does its cleanup job; the status digest and the local web
+interface name each job's repository and each mission's projects, and a client token may start an
+order only when its policy names every project in it; the cockpit's band of repository chips is
+the follow-up feature the STATUS ledger registers directly behind this one).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
