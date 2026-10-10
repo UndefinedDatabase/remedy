@@ -1,58 +1,49 @@
-# Handback — F301 round 7: book round 6, R-1233 and R-1234, DECISION F301 D5; then T005: upkeep_preview, the digest's upkeep counts, client interface 1.6, and `remedy mission show`
+# Handback — F301 round 8: book round 7, the plan, a prose slip; then the acceptance fixture of six jobs through the command line, and the Built State
 
 ## Session
 
-SESSION 1 of feature F301 · round 7 · rounds so far 7
+SESSION 1 of feature F301 · round 8 · rounds so far 8
 
-Context self-assessment: the reviewer's context still serves; the session takes one more round,
-the acceptance fixture, and then ends so that the closure starts fresh.
+Context self-assessment: the session ends here, at its eighth round, its target; the closure
+begins in a fresh session.
 
-Fortschritt: ~85 % (claim, T001 to T005, the structural steps · the six-job fixture and closure
-open) — Schätzung
+Fortschritt: ~90 % (T001 to T005 and their acceptance · the closure open) — Schätzung
 
 ## Range
 
-Review of `4752f7812`..HEAD (five commits on `feature/f301-mission-upkeep` — C1, C2, C3, C4, and
+Review of `cd475d4fa`..HEAD (five commits on `feature/f301-mission-upkeep` — C1, C2, C3, C4, and
 this handback, C5).
 
 ## Commits
 
-### `958844f44` F301 R7 C1: save the round 7 block
+### `c31bb5e9c` F301 R8 C1: save the round 8 block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f301-r7.md` | 153/0 | NEW FILE — byte copy of `block.md`; sha256 `5f556031e3c682e9cab95532d45e780d127ecf2bb8868a8cc92f91c00d8d0202`, 153 lines, equal to `block.md`'s own |
+| `.agent/authored/f301-r8.md` | 143/0 | NEW FILE — byte copy of `block.md`; sha256 `ba005ce676e33f6d1b1ed370af1424f139089eeb0a06cabecd4d13f427a96b9c`, 143 lines, equal to `block.md`'s own |
 
-### `22e0c6152` F301 R7 C2: book round 6, resolve R-1233 and R-1234, DECISION F301 D5, the plan, a prose slip
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/decisions.md` | 10/0 | base blob at `4752f7812` + `append-decisions.txt`'s bytes: DECISION F301 D5 appended — `upkeep_preview`, `upkeep_digest_counts`, the three `_mission_entry` keys, and `CLIENT_INTERFACE_VERSION` rising to `1.6` |
-| `.agent/live_review.md` | 6/0 | base blob at `4752f7812` + `append-live_review.txt`'s bytes: round 6's Gate entry, VERDICT PASS, and the resolutions of R-1233 and R-1234 booked |
-| `.agent/plan.md` | 9/9 | replaced with `dry-plan.md`: round 7's current step and the T005/fixture/closure next steps |
-| `.agent/prose_slips.md` | 1/0 | base blob at `4752f7812` + `append-prose_slips.txt`'s bytes: one prose-slip line appended |
-
-### `004dd6a30` F301 R7 C3: the upkeep preview and the digest's upkeep counts, client interface 1.6 (T005, DECISION F301 D5)
+### `1851936f1` F301 R8 C2: book round 7, the plan, a prose slip
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/client_interface.py` | 6/2 | `CLIENT_INTERFACE_VERSION` raised `"1.5"` → `"1.6"`; the `missions` tree gains `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings` |
-| `docs/system/machine-client-contract-v1.md` | 4/4 | regenerated: interface version `1.6`; all three rendered lists of a mission's keys gain the upkeep keys |
-| `packages/orchestration/client_digest.py` | 11/1 | `_mission_entry` gains the three upkeep keys as literals, read from `upkeep_digest_counts` |
-| `packages/orchestration/mission_upkeep.py` | 65/17 | `record_closed_jobs` refactored onto a new shared `_closed_bodies` helper; `upkeep_preview` added (reads the ledger plus the in-memory lines the mission's ended jobs would get, writes nothing, raises `UpkeepError` on a bad setting); `upkeep_digest_counts` added (never raises, never reads the repository, answers `None`s on failure) |
-| `tests/cli/test_client_interface.py` | 1/1 | asserts `CLIENT_INTERFACE_VERSION == "1.6"` |
-| `tests/cli/test_status_cmd.py` | 9/0 | `test_the_digest_names_the_jobs_left_until_the_next_upkeep_job` |
-| `tests/orchestration/test_mission_upkeep.py` | 65/0 | `TestThePreview` and `TestTheDigestCounts` added |
+| `.agent/live_review.md` | 2/0 | base blob at `cd475d4fa` + `append-live_review.txt`'s bytes: round 7's Gate entry, VERDICT PASS, booked |
+| `.agent/plan.md` | 11/12 | replaced with `dry-plan.md`: round 8's current step (book round 7, the acceptance fixture, the Built State) and the closure's next steps |
+| `.agent/prose_slips.md` | 1/0 | base blob at `cd475d4fa` + `append-prose_slips.txt`'s bytes: one prose-slip line appended (round 7's three inline `python3 -c` commands) |
 
-### `b3e225e6d` F301 R7 C4: remedy mission show says when the upkeep job comes and what it carries (T005, DECISION F301 D5)
+### `2d25ff0bf` F301 R8 C3: the acceptance fixture of six jobs, through the command line
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/mission_cmd.py` | 44/1 | `_upkeep_preview_or_error` and `_print_upkeep_preview` added; `_cmd_mission_show` computes the preview for a mission with at least one job (`None` for a mission with none), prints the upkeep section, and adds `upkeep` to the `--json` answer; a bad setting is shown in the printed text and the `--json` `error` key, the command still exiting 0 |
-| `docs/system/mission-upkeep-v1.md` | 14/3 | new "What a person and a client see" section naming both the `remedy mission show` view and the digest's three counts; status banner updated to DECISIONs F301 D1–D5 and the new built-so-far line |
-| `tests/cli/test_mission_cmd.py` | 40/0 | three new tests in `TestContinueWithUpkeep`: `test_show_says_when_the_upkeep_job_comes_and_what_it_carries`, `test_show_counts_down_and_says_nothing_for_a_mission_without_jobs`, `test_show_names_a_bad_setting_and_still_shows_the_mission` |
+| `tests/regression/test_f301_acceptance.py` | 158/0 | NEW FILE — byte copy of `c3-tests__regression__test_f301_acceptance.py`; `test_the_sixth_job_is_the_upkeep_job_and_a_skip_needs_its_reason` starts a mission, continues it five times through `remedy`, completes each job (the first leaving a planted finding), reads the digest's upkeep counts through `remedy status --json`, has a reasonless `--skip-upkeep` refused (exit 2), and finds the sixth job the upkeep job naming the planted finding, the oversized `src/big.py` and the `src/importer.py`→`src/importer_v2.py` replacement, all three also in the ledger's `upkeep_planned` line; `test_a_mission_and_a_job_written_before_this_feature_load_and_run_unchanged` writes a mission and a job record in the pre-feature shape, finds both load and run through `remedy mission show`/`continue`, and finds neither record rewritten |
 
-### This commit — F301 R7 C5: handback
+### `95cbfb17a` F301 R8 C4: the Built State, and the mission upkeep page marked built
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/features/T7_F301.md` | 40/0 | gains `## Built State (F301, 2026-10-10)` at its end: T001–T005 against DECISIONs F301 D1–D5, the structural steps, the ledger, the cadence, the narrowed T004, T005's visibility, and the acceptance test naming R-1233/R-1234 resolved |
+| `docs/system/mission-upkeep-v1.md` | 3/5 | banner rewritten to `Status (F301, 2026-10-10): built`, naming the DECISIONs, the feature file and `tests/regression/test_f301_acceptance.py` |
+
+### This commit — F301 R8 C5: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -65,22 +56,27 @@ worker's final reply after this commit. No pull request is opened this round.
 
 ## Verification
 
-**Gate 1** (after C0, before C1): `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r7-worker/gate1_check_digests.py`
-— sha256 and line-count check of every file `digests.txt` names in `.remedy-wt/f301-r7/`. All 19
-files' hash and line-count checks `True`; `ALL_TRUE: True`.
+**C0** (before any write, before gate 1): `git -C /home/decodeux/Repos/remedy branch --show-current`
+read `feature/f301-mission-upkeep`; `git -C /home/decodeux/Repos/remedy rev-parse HEAD` and
+`git -C /home/decodeux/Repos/remedy rev-parse origin/feature/f301-mission-upkeep` both read
+`cd475d4fa2ef4569ae4812d8e30434f573eb941f`; `git -C /home/decodeux/Repos/remedy status --porcelain`
+read empty; `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r8-worker/02_check_stop.py` read
+`STOP exists: False`. No pull ran.
+
+**Gate 1** (after C0, before C1): `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r8-worker/gate1_digests.py`
+— sha256 and EOF-adjusted line-count check of every one of the 10 files `digests.txt` names in
+`.remedy-wt/f301-r8/`. Every file `True`; `ALL_TRUE: True`. Exit 0.
 
 **Gate 2** (after C4): `git -C /home/decodeux/Repos/remedy status --porcelain` read empty. Re-ran,
-via `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r7-worker/c2_proof.py`,
-`c3_copy_and_proof.py` and `c4_copy_and_proof.py`, the C2 step 2 proofs (3 blob-at-`4752f7812`-plus-
-append proofs + 4 copy-equal checks), the C3 byte proofs (7 of 7) and the C4 byte proofs (3 of 3),
-all at this commit's own HEAD. All `True`; `ALL_TRUE: True` in each script. `git status --porcelain`
-read empty again after the re-run.
+via `python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r8-worker/gate2_reproof.py`, the C2 step 2
+proofs (2 blob-at-`cd475d4fa`-plus-append proofs + 3 copy-equal checks), the C3 byte proof and the
+C4 byte proofs (2), all at this commit's own HEAD. All `True`; `ALL_TRUE: True`. Exit 0.
 
 **Gate 3** (the round's one test selection, run once, after C4):
 ```
-python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f301-r7/selection.txt
+python3 -m pytest -q -rfEs @/home/decodeux/Repos/remedy/.remedy-wt/f301-r8/selection.txt
 ```
-Exit code 0. Summary line: `7175 passed, 4 skipped in 508.84s (0:08:28)`. No `FAILED` or `ERROR`
+Exit code 0. Summary line: `7177 passed, 4 skipped in 513.09s (0:08:33)`. No `FAILED` or `ERROR`
 line anywhere. SKIPPED lines, verbatim:
 ```
 SKIPPED [1] tests/regression/test_f293_acceptance.py:191: main holds F293, so its own changes are history
@@ -88,12 +84,13 @@ SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agent
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
 ```
-This full selection run includes `tests/docs/` (line 20 of `selection.txt`), so the retired-word
-guard `tests/docs/test_retired_promote_word.py` ran clean over every file this round touched.
+This selection includes `tests/docs/` (line 20 of `selection.txt`), so the retired-word guard
+`tests/docs/test_retired_promote_word.py` ran clean over every file this round touched, including
+the new `tests/regression/test_f301_acceptance.py` and the two rewritten docs files.
 
 **Gate 4**:
 ```
-python3 -m ruff check packages/orchestration/mission_upkeep.py packages/orchestration/client_digest.py apps/cli/client_interface.py apps/cli/commands/mission_cmd.py tests/orchestration/test_mission_upkeep.py tests/cli/test_client_interface.py tests/cli/test_status_cmd.py tests/cli/test_mission_cmd.py
+python3 -m ruff check tests/regression/test_f301_acceptance.py
 ```
 Exit 0. Output: `All checks passed!`
 
@@ -111,73 +108,83 @@ Exit 0. Output, verbatim:
 ```
 ['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230']
 ```
-Matches the block's ordered list exactly.
+Matches the block's ordered list exactly. Both commands ran through
+`python3 /home/decodeux/Repos/remedy/.remedy-wt/f301-r8-worker/gate5_integrity_and_findings.py`'s
+`subprocess.run` calls, exactly as the block's exception names.
 
 **THEN (the push)**: after this commit, reported in the worker's final reply.
 
 ## Authored-text proofs
 
-`.agent/authored/f301-r7.md` (C1) equals `block.md` byte for byte: sha256
-`5f556031e3c682e9cab95532d45e780d127ecf2bb8868a8cc92f91c00d8d0202`, 153 lines, checked at write
-time (C1) and not among gate 2's re-run proofs (the block names only C2 step 2, C3 step 3 and C4
-step 3 for the re-run).
+`.agent/authored/f301-r8.md` (C1) equals `block.md` byte for byte: sha256
+`ba005ce676e33f6d1b1ed370af1424f139089eeb0a06cabecd4d13f427a96b9c`, 143 lines, checked at write
+time (C1) and not among gate 2's re-run proofs (the block names only C2 step 2, C3 and C4 for the
+re-run).
 
 ## Deviations & assumptions
 
-- Three one-off checks ran as inline `python3 -c "..."` commands rather than as script files saved
-  under `.remedy-wt/f301-r7-worker/`: the block.md sha256 pre-check done before reading AGENTS.md
-  (required "before anything else" by the governing instructions), the `os.makedirs` creation of
-  `.remedy-wt/f301-r7-worker/` together with a second sha256 re-check and a directory listing, and
-  the `.agent/STOP`-absence check in C0. None of the three wrote, copied or compared a tracked file
-  — each only read `block.md`, created an empty directory, or checked for an absent file — and every
-  result each printed is shown verbatim earlier in this round's transcript and in the worker's final
-  reply. Declared because the constraint "every script lives under
-  `/home/decodeux/Repos/remedy/.remedy-wt/f301-r7-worker/`" names scripts generally, and these three
-  snippets, though each is a single Python invocation rather than a saved `.py` file, fall under
-  that wording on a strict reading. Every script from C1 onward (`gate1_check_digests.py`,
-  `c1_copy_block.py`, `c1_msg.py`, `c2_copy.py`, `c2_proof.py`, `c2_msg.py`, `c3_copy_and_proof.py`,
-  `c3_msg.py`, `c4_copy_and_proof.py`, `c4_msg.py`, `gate3_pytest.py`, `gate4_ruff.py`,
-  `gate5_integrity_and_findings.py`) was saved under `.remedy-wt/f301-r7-worker/` and run from there
-  with absolute paths to `/home/decodeux/Repos/remedy`, as the block requires.
+- The very first action of this round — the sha256 check of `block.md` against the hash the
+  governing instructions stated, via the saved script `00_start.py`, required before anything else
+  including before reading the block itself — was run as `cd /home/decodeux/Repos/remedy &&
+  python3 -I .remedy-wt/f301-r8-worker/00_start.py`, one tool call combining `cd` and `&&` and a
+  relative path. The block's own Constraints section (and the governing instructions) forbid `cd`
+  and `&&` in any tool call, with no exception for this pre-block check. The script itself only
+  read `block.md` and printed a hash comparison; it wrote nothing and compared no tracked file.
+  Every later invocation of a saved script in this round used a single `python3 -I
+  /home/decodeux/Repos/remedy/.remedy-wt/f301-r8-worker/<script>.py` call with an absolute path, no
+  `cd`, no `&&`.
+- Before C0's checks, a diagnostic script (`gate1_check_digests.py`, not the gate's official run)
+  was written and run to determine `digests.txt`'s line-count convention (EOF-adjusted newline
+  count, not `splitlines()` or raw byte size) ahead of writing the gate's canonical script. This
+  satisfied the Bundle section's "check every digest... before use" instruction, which is not
+  itself ordered after C0; the gates list's Gate 1 ("after C0, before C1") was still run as its own
+  script (`gate1_digests.py`) strictly after C0's checks and strictly before C1, so the gate's own
+  ordering held. Declared because it is a second script doing materially the same check, which a
+  strict reading of "a Python script that checks every line of digests.txt" (singular) could flag.
 
 Otherwise: None. C0 through C4 ran exactly as the block ordered, each exactly once, in the block's
 sequence; `git branch --show-current` was the literal call immediately before each of the four
 `git commit` calls, with nothing between; every copy and byte-equality proof the block names was a
-Python file operation inside a saved script (`c1_copy_block.py`, `c2_copy.py`, `c2_proof.py`,
-`c3_copy_and_proof.py`, `c4_copy_and_proof.py`), and every other command a script ran
-(`git show`, `pytest`, `ruff`, the integrity check, the open-finding-ids check) went through
-`subprocess.run` with its own exit code printed; every git command outside a script was its own
-single `git -C /home/decodeux/Repos/remedy ...` call; no file outside the round's named paths was
-touched; no `REMEDY_TEST_MAX_WORKERS` was set and no `-n` was passed; no mutation, no full suite
-(one selection run, once, after C4); no worktree created or removed, no stash entry touched, no
-branch created, nothing merged, no force-push; `.agent/STOP` did not appear at any point; commit
-subjects carry no leading-slash token and no absolute path; this round introduced no new line
-under `packages/`, `apps/`, `tests/` or `docs/` that carries the retired word
+Python file operation inside a saved script (`c1_copy_block.py`, `c2_copy_and_prove.py`,
+`c3_copy.py`, `c4_copy.py`); `git show` (inside `c2_copy_and_prove.py` and `gate2_reproof.py`) and
+`pytest` (gate 3) and the integrity check and the open-finding-ids check (gate 5) each ran through
+a saved script's `subprocess.run` with its own exit code printed; `ruff` (gate 4) ran directly, as
+the gate names it, with no script — Gate 4's wording, unlike Gates 3 and 5, does not order it
+through one; every git command outside a script was its own single
+`git -C /home/decodeux/Repos/remedy ...` call; no file outside the round's named
+paths was touched; no `REMEDY_TEST_MAX_WORKERS` was set and no `-n` was passed; no mutation, no
+full suite (one selection run, once, after C4); no worktree created or removed, no stash entry
+touched, no branch created, nothing merged, no force-push; `.agent/STOP` did not appear at any
+point; commit subjects carry no leading-slash token and no absolute path; this round introduced no
+new line under `packages/`, `apps/`, `tests/` or `docs/` that carries the retired word
 `tests/docs/test_retired_promote_word.py` guards, confirmed by gate 3's full pass of `tests/docs/`,
 which includes that guard's own test.
 
 ## Round verdicts
 
-F301 round 6's PASS verdict is booked by C2 — the `dry-live_review.md` bytes, proved equal to the
-base blob at `4752f7812` plus `append-live_review.txt`'s bytes, now carry round 6's Gate entry
-forward in `.agent/live_review.md`, together with the resolutions of R-1233 and R-1234. Round 7's
-verdict is the reviewer's, to be booked in the next round's first commit.
+F301 round 7's PASS verdict is booked by C2 — the `dry-live_review.md` bytes, proved equal to the
+base blob at `cd475d4fa` plus `append-live_review.txt`'s bytes, now carry round 7's Gate entry
+forward in `.agent/live_review.md`. Round 8's verdict is the reviewer's, to be booked in the next
+round's first commit.
 
 ## For the operator, in plain sentences
 
-`remedy mission show` now says how many more finished jobs come before the next cleanup job, or
-that it is due now, and what it would take on. The status that a program reads from Remedy, and
-the same answer the web interface gives, now carry three numbers per mission: after how many
-finished jobs a cleanup job comes, how many are left, and how many problems are waiting for it.
-Showing these never changes anything, and it never reads through the project's whole code. The two
-gaps written down earlier in this feature are closed. Nothing waits for the operator.
+The mission cleanup is built. A test now walks a whole mission of six jobs through Remedy's command
+line and finds the sixth job to be the cleanup job, naming the problem left by the first job, the
+code file that grew too large and the file that was replaced and never deleted. The same test finds
+that a skip without a reason is refused, and that the status a program reads counts the jobs left
+before the next cleanup. A second test finds that missions and jobs saved before this feature still
+load and run, and are never rewritten. What remains is the closing work: the full test run, a small
+task Remedy does on itself, the review package and the pull request, in the next session. Nothing
+waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
 2. Phase 1 rule 2 (the Open PR Gate).
-3. Book round 7's verdict in the next round's first commit.
-4. The acceptance fixture of six jobs and the Built State, then the closure.
+3. Book round 8's verdict in the next round's first commit.
+4. The closure's first round: the §3 checklist's consolidation, the self-use item to its approval
+   gate, and the one full suite.
 
 Operator questions open: 0.
 Open findings: 15 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
@@ -187,15 +194,15 @@ R-1196, R-1219, R-1220, R-1225 and R-1230, Low, owned by F297).
 
 | Item | Status | Reason |
 |---|---|---|
-| C0: base and branch preconditions | done | branch `feature/f301-mission-upkeep`, HEAD = origin = `4752f7812e8cb722ee071431ae860df82448fde5`, `status --porcelain` empty, `.agent/STOP` absent |
-| Gate 1 | passed | all 19 digests `True` (hash and line count) |
-| C1: save the round 7 block | done | sha256/line count equal to `block.md`; committed `958844f44` |
-| C2: book round 6, resolve R-1233 and R-1234, DECISION F301 D5, the plan, a prose slip | done | all 7 byte proofs `True` (3 blob+append, 4 copy-equal); 26 insertions; committed `22e0c6152` |
-| C3: the upkeep preview and the digest's upkeep counts, client interface 1.6 | done | self-review checks held (`_closed_bodies` shared, `upkeep_preview` writes nothing, `upkeep_digest_counts` never raises/never reads the repo, literal `_mission_entry` keys, interface tree + version 1.6, three contract-page mission-key lists, `TestThePreview`/`TestTheDigestCounts`/the new status test); 161 insertions; all 7 byte proofs `True`; committed `004dd6a30` |
-| C4: remedy mission show says when the upkeep job comes and what it carries | done | self-review checks held (upkeep section + `upkeep` key for a mission with a job, none for a mission without one, a bad setting shown with exit 0, three `TestContinueWithUpkeep` tests, the page); 98 insertions; all 3 byte proofs `True`; committed `b3e225e6d` |
-| Gate 2 | passed | status clean; all re-run byte proofs `True` |
-| Gate 3 | passed | `7175 passed, 4 skipped in 508.84s`, exit 0, no FAILED/ERROR |
+| C0: base and branch preconditions | done | branch `feature/f301-mission-upkeep`, HEAD = origin = `cd475d4fa2ef4569ae4812d8e30434f573eb941f`, `status --porcelain` empty, `.agent/STOP` absent |
+| Gate 1 | passed | all 10 digests `True` (hash and line count); exit 0 |
+| C1: save the round 8 block | done | sha256/line count equal to `block.md`; committed `c31bb5e9c` |
+| C2: book round 7, the plan, a prose slip | done | all 5 byte proofs `True` (2 blob+append, 3 copy-equal); 14 insertions, 12 deletions; committed `1851936f1` |
+| C3: the acceptance fixture of six jobs, through the command line | done | byte proof `True`; file read whole and matches the block's description (two tests as named above); 158 insertions; committed `2d25ff0bf` |
+| C4: the Built State, and the mission upkeep page marked built | done | both byte proofs `True`; both files read whole — Built State section present, banner reads built and names the acceptance test; 43 insertions, 5 deletions; committed `95cbfb17a` |
+| Gate 2 | passed | status clean; all re-run byte proofs `True`; exit 0 |
+| Gate 3 | passed | `7177 passed, 4 skipped in 513.09s`, exit 0, no FAILED/ERROR |
 | Gate 4 | passed | ruff exit 0, `All checks passed!` |
-| Gate 5 | passed | integrity six checks pass, fail_count 0; open findings match the block's list exactly |
+| Gate 5 | passed | integrity six checks pass, fail_count 0; open findings match the block's list exactly; exit 0 both commands |
 | C5: handback | done | this commit |
 | Push | pending | reported in the worker's final reply, after this commit |
