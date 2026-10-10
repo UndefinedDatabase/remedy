@@ -120,6 +120,8 @@ MISSION_COMMANDS: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             ArgDef("next_step", "What this next job, under its mission, should do"),
+            ArgDef("--skip-upkeep", "Skip the upkeep job this mission has due, recording this reason for it",
+                   required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
