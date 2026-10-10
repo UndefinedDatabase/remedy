@@ -36,7 +36,7 @@ MAX_FUNCTION_ROWS = 161
 #: The summed `Lines` column of "Functions above 100 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FUNCTION_LINES = 31073
+MAX_FUNCTION_LINES = 31061
 #: The row count of "Files above 1,000 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.

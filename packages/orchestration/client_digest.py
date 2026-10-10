@@ -315,6 +315,29 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
     }
 
 
+def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
+               cost: dict[str, Any] | None, calls: int | None, usage: CostRow | None,
+               approval_card: dict[str, Any] | None) -> dict[str, Any]:
+    """One job's entry under the digest's `jobs`, from what `build_client_digest` read for it.
+
+    Moved out of `build_client_digest` unchanged, as step (1) of that function's boundary on
+    `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D6).
+    """
+    return {
+        "job_id": str(plan.job_id),
+        "project_id": plan.project_id,
+        "mission_id": mission.id if mission is not None else None,
+        "title": plan.job_title,
+        "state": plan.state.value,
+        "waits_for_apply": waits_for_apply,
+        "cost": cost,
+        "calls": calls,
+        "tokens": _tokens_by_kind(usage),
+        "evidence": _job_evidence(plan),
+        "approval_card": approval_card,
+    }
+
+
 # DECISION F295 D4 (2): the one builder of the `client` key `_cmd_status` adds to its answer.
 def build_client_digest(now: datetime | None = None, *,
                         every_ended_job: bool = False,
@@ -444,19 +467,7 @@ def build_client_digest(now: datetime | None = None, *,
         # A job no ledger names made no recorded call, unless a ledger could not be read.
         usage = usage_by_job_id.get(job_id)
         calls = usage.calls if usage is not None else (0 if every_ledger_read else None)
-        entry = {
-            "job_id": job_id,
-            "project_id": plan.project_id,
-            "mission_id": mission.id if mission is not None else None,
-            "title": plan.job_title,
-            "state": state,
-            "waits_for_apply": waits_for_apply,
-            "cost": cost,
-            "calls": calls,
-            "tokens": _tokens_by_kind(usage),
-            "evidence": _job_evidence(plan),
-            "approval_card": approval_card,
-        }
+        entry = _job_entry(plan, mission, waits_for_apply, cost, calls, usage, approval_card)
         decisions_before = len(decision_entries)
         decisions_read = True
         try:

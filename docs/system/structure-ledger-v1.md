@@ -111,6 +111,11 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   of move, the dispatch branch holding most of its lines. Steps: (1) done by F301, the dispatch
   branch is `dispatch_milestone_job` in `packages/orchestration/orchestrator_dispatch.py`, which
   reads the loop's helpers from the loop's module, and the function left the table.
+- `build_client_digest` (`packages/orchestration/client_digest.py`). Boundary: one entry per
+  kind it builds — a project, a job, a decision — and the window over the ended jobs. Steps:
+  (1) done by F205, one job's entry is `_job_entry`; (2) the reading of each project's
+  missions and ledgers becomes a function; (3) the window over the ended jobs becomes a
+  function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -227,7 +232,6 @@ with the code that calls it.
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
-| 186 | `packages/orchestration/client_digest.py` | `build_client_digest` |
 | 186 | `packages/orchestration/pingpong_job.py` | `run_job._stop_check` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
@@ -236,6 +240,7 @@ with the code that calls it.
 | 179 | `scripts/build_review_manifest.py` | `validate_evidence_candidate` |
 | 178 | `packages/orchestration/subtree_rerun.py` | `prepare_subtree_rerun` |
 | 177 | `apps/cli/commands/job.py` | `_cmd_job_resume` |
+| 174 | `packages/orchestration/client_digest.py` | `build_client_digest` |
 | 171 | `scripts/build_observability_index.py` | `_build_task_section` |
 | 168 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_serve` |
 | 168 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge` |
