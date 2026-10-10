@@ -1,4 +1,5 @@
-"""F301 T002, DECISION F301 D1 — the project's upkeep ledger and the findings a job leaves open."""
+"""F301 T002 and T003, DECISIONs F301 D1 and D3 — the project's upkeep ledger, the findings a job
+leaves open, and the cadence, plan, step, upkeep job and skip built on it."""
 from __future__ import annotations
 
 import json
@@ -14,15 +15,27 @@ from packages.orchestration.data_paths import job_dir, run_dir
 from packages.orchestration.mission_state import create_mission, link_job_to_mission
 from packages.orchestration.mission_upkeep import (
     LINE_JOB_CLOSED,
+    LINE_UPKEEP_NOT_NEEDED,
+    LINE_UPKEEP_PLANNED,
     LINE_UPKEEP_SKIPPED,
+    UPKEEP_EVERY_DEFAULT,
+    UPKEEP_EVERY_KEY,
     UPKEEP_METADATA_KEY,
+    UpkeepError,
     append_upkeep_line,
+    compile_upkeep_step,
     finding_key,
     job_open_findings,
+    make_upkeep_job_if_due,
     open_findings,
+    plan_upkeep,
     read_upkeep_ledger,
     record_closed_jobs,
+    record_upkeep_skip,
     replaced_pairs_from_findings,
+    upkeep_cadence,
+    upkeep_every_setting,
+    upkeep_has_work,
     upkeep_ledger_path,
 )
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
@@ -274,3 +287,246 @@ def test_mission_continue_records_the_ended_jobs_before_the_next_one(tmp_path):
     assert [(line["kind"], line["job_id"]) for line in lines] == [(LINE_JOB_CLOSED, str(first.job_id))]
     assert lines[0]["open_findings"][0]["key"] == f"{first.job_id}:T001:F-TASK-001"
     assert body["role"] == "follow_up"
+
+
+# ---------------------------------------------------------------------------
+# F301 T003, DECISIONs F301 D1 and D3: the cadence, the plan, the upkeep job and the skip
+# ---------------------------------------------------------------------------
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=str(repo), check=True, capture_output=True, timeout=60)
+
+
+@pytest.fixture()
+def repository(tmp_path) -> Path:
+    """A committed repository with one long function, a long code file, a longer data file, and a
+    file that sits beside the one it replaces."""
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    body = "".join(f"    x = {n}\n" for n in range(119))
+    filler = "".join(f"VALUE_{n} = {n}\n" for n in range(1000))
+    (repo / "src" / "big.py").write_text(f"def very_long():\n{body}\n\n{filler}", encoding="utf-8")
+    (repo / "notes.txt").write_text("line\n" * 1500, encoding="utf-8")
+    (repo / "src" / "importer.py").write_text("OLD = 1\n", encoding="utf-8")
+    (repo / "src" / "importer_v2.py").write_text("NEW = 2\n", encoding="utf-8")
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "fixture@example.com")
+    _git(repo, "config", "user.name", "Fixture")
+    _git(repo, "config", "commit.gpgsign", "false")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "fixture")
+    return repo
+
+
+@pytest.fixture()
+def registered(data_root, repository) -> str:
+    """A project registered with the repository above; answers its id."""
+    from packages.orchestration.config import reset_config
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    reset_config()
+    project = RemyProject(name="Upkeep Fixture", slug="upkeep-fixture", canonical_repo_path=str(repository))
+    save_project(project)
+    return str(project.id)
+
+
+def _chain(project_id: str, states: list[str], *, findings: int = 0) -> tuple[str, list[JobPlan]]:
+    mission = create_mission(project_id, "Keep the importer working")
+    jobs = []
+    for index, state in enumerate(states):
+        job = _job(state)
+        if index == 0 and findings:
+            _final_review(str(job.job_id), [
+                {"id": f"F-TASK-{n:03d}", "severity": "repairable", "category": "task_verdict",
+                 "message": f"finding number {n}", "task_id": "T001"} for n in range(1, findings + 1)])
+        link_job_to_mission(project_id, mission.id, str(job.job_id), "initial" if index == 0 else "follow_up")
+        jobs.append(job)
+    return mission.id, jobs
+
+
+EVERY_TWO = {"mission.upkeep_every": 2}
+
+
+class TestTheSetting:
+    def test_it_is_registered_with_its_default_and_its_variable(self):
+        from packages.orchestration.config import get_key_spec
+
+        spec = get_key_spec(UPKEEP_EVERY_KEY)
+        assert (spec.default, spec.value_type, spec.env_var) == (5, int, "REMEDY_MISSION_UPKEEP_EVERY")
+
+    def test_unset_reads_five_and_a_number_reads_itself(self):
+        assert upkeep_every_setting({}) == UPKEEP_EVERY_DEFAULT == 5
+        assert upkeep_every_setting({UPKEEP_EVERY_KEY: 3}) == 3
+
+    @pytest.mark.parametrize("value", [0, -1, True, "5", 2.5])
+    def test_anything_but_a_whole_number_of_at_least_one_is_refused(self, value):
+        with pytest.raises(UpkeepError):
+            upkeep_every_setting({UPKEEP_EVERY_KEY: value})
+
+    def test_the_variable_reaches_the_setting(self, monkeypatch):
+        from packages.orchestration.config import reset_config
+
+        monkeypatch.setenv("REMEDY_MISSION_UPKEEP_EVERY", "7")
+        reset_config()
+        try:
+            assert upkeep_every_setting() == 7
+        finally:
+            monkeypatch.delenv("REMEDY_MISSION_UPKEEP_EVERY")
+            reset_config()
+
+
+class TestTheCadence:
+    def test_only_completed_jobs_count(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "failed", "completed", "running", "completed"])
+        cadence = upkeep_cadence(PROJECT, mission_id, config={})
+        assert (cadence.every, cadence.completed, cadence.due, cadence.jobs_left) == (5, 3, False, 2)
+        assert upkeep_cadence(PROJECT, mission_id, config={UPKEEP_EVERY_KEY: 3}).due
+
+    def test_a_skip_or_a_not_needed_line_ends_the_slot_at_the_job_it_names(self, data_root):
+        mission_id, jobs = _chain(PROJECT, ["completed", "completed", "completed"])
+        append_upkeep_line(PROJECT, mission_id, LINE_UPKEEP_SKIPPED, {"after_job_id": str(jobs[1].job_id)})
+        assert upkeep_cadence(PROJECT, mission_id, config={}).completed == 1
+        append_upkeep_line(PROJECT, mission_id, LINE_UPKEEP_NOT_NEEDED, {"after_job_id": str(jobs[2].job_id)})
+        assert upkeep_cadence(PROJECT, mission_id, config={}).completed == 0
+
+    def test_an_upkeep_job_ends_the_slot_and_is_not_counted(self, data_root):
+        mission_id, jobs = _chain(PROJECT, ["completed", "completed", "completed", "completed"])
+        append_upkeep_line(PROJECT, mission_id, LINE_UPKEEP_PLANNED, {"job_id": str(jobs[1].job_id)})
+        assert upkeep_cadence(PROJECT, mission_id, config={}).completed == 2
+
+    def test_another_missions_lines_do_not_count(self, data_root):
+        mission_id, jobs = _chain(PROJECT, ["completed", "completed"])
+        append_upkeep_line(PROJECT, "another", LINE_UPKEEP_SKIPPED, {"after_job_id": str(jobs[1].job_id)})
+        assert upkeep_cadence(PROJECT, mission_id, config={}).completed == 2
+
+
+class TestThePlanAndItsStep:
+    def test_it_carries_the_oldest_findings_the_largest_code_and_the_replaced_file(self, registered):
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=7)
+        record_closed_jobs(registered, mission_id)
+        lines = read_upkeep_ledger(registered)
+
+        plan = plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config=EVERY_TWO), lines)
+
+        assert [key.rsplit(":", 1)[1] for key in plan["findings"]] == [
+            "F-TASK-001", "F-TASK-002", "F-TASK-003", "F-TASK-004", "F-TASK-005"]
+        assert plan["structure"]["largest_function"] == {
+            "path": "src/big.py", "name": "very_long", "line": 1, "lines": 120}
+        assert plan["structure"]["largest_file"] == {"path": "src/big.py", "lines": 1122}
+        assert plan["structure"]["limits"] == {"function_lines": 100, "file_lines": 1000}
+        assert plan["replaced"] == [{"path": "src/importer_v2.py", "original": "src/importer.py"}]
+        assert upkeep_has_work(plan)
+
+        step = compile_upkeep_step(plan)
+        assert step.splitlines()[0] == ("Upkeep after 2 completed jobs of this mission, planned by "
+                                        "Remedy's fixed rules (DECISION F301 D1).")
+        for needle in ("finding F-TASK-001", "finding F-TASK-005", "very_long in src/big.py (line 1), 120 lines",
+                       "the file src/big.py, 1122 lines", "- src/importer.py, replaced by src/importer_v2.py"):
+            assert needle in step
+        assert "F-TASK-006" not in step and "notes.txt" not in step
+        order = [step.index(n) for n in ("finding F-TASK-001", "very_long", "the file src/big.py", "- src/importer.py")]
+        assert order == sorted(order)
+
+    def test_a_project_without_a_repository_carries_findings_alone(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed"], findings=1)
+        record_closed_jobs(PROJECT, mission_id)
+        plan = plan_upkeep(PROJECT, mission_id, upkeep_cadence(PROJECT, mission_id, config={}),
+                           read_upkeep_ledger(PROJECT))
+        assert plan["structure"] == {"unmeasured": "the project names no repository"}
+        assert plan["replaced"] == [] and len(plan["findings"]) == 1
+
+    def test_only_the_missions_own_findings_ride(self, data_root):
+        other_id, _ = _chain(PROJECT, ["completed"], findings=2)
+        mission_id, jobs = _chain(PROJECT, ["completed"], findings=1)
+        record_closed_jobs(PROJECT, other_id)
+        record_closed_jobs(PROJECT, mission_id)
+        plan = plan_upkeep(PROJECT, mission_id, upkeep_cadence(PROJECT, mission_id, config={}),
+                           read_upkeep_ledger(PROJECT))
+        assert [f["job_id"] for f in plan["carried"]] == [str(jobs[0].job_id)]
+
+    def test_a_replaced_pair_a_job_left_is_carried_while_both_files_exist(self, registered, repository):
+        mission_id, jobs = _chain(registered, ["completed"])
+        append_upkeep_line(registered, mission_id, LINE_JOB_CLOSED, {
+            "job_id": str(jobs[0].job_id), "open_findings": [], "resolved": [],
+            "replaced": [{"path": "src/importer_v2.py", "original": "src/importer.py"},
+                         {"path": "src/extra_new.py", "original": "src/extra.py"},
+                         {"path": "src/gone_new.py", "original": "src/gone.py"}]})
+        (repository / "src" / "importer_v2.py").unlink()
+        _git(repository, "commit", "-qam", "drop the replacement")
+        for name in ("extra.py", "extra_new.py"):  # untracked, so only the job's line can name them
+            (repository / "src" / name).write_text("X = 1\n", encoding="utf-8")
+        plan = plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config={}),
+                           read_upkeep_ledger(registered))
+        assert plan["replaced"] == [{"path": "src/extra_new.py", "original": "src/extra.py"}]
+
+
+class TestTheUpkeepJob:
+    def test_nothing_happens_before_it_is_due(self, registered):
+        mission_id, _ = _chain(registered, ["completed"], findings=1)
+        outcome = make_upkeep_job_if_due(registered, mission_id, config=EVERY_TWO)
+        assert (outcome.job, outcome.plan, outcome.line, outcome.cadence.completed) == (None, None, None, 1)
+        assert [line["kind"] for line in read_upkeep_ledger(registered)] == [LINE_JOB_CLOSED]
+
+    def test_when_due_it_is_an_ordinary_follow_up_job_known_by_its_metadata(self, registered):
+        from packages.orchestration.mission_state import load_mission
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        mission_id, jobs = _chain(registered, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(registered, mission_id, config=EVERY_TWO)
+
+        job = load_job_plan(str(outcome.job.job_id))
+        assert job.metadata["mission_role"] == "follow_up"
+        assert job.metadata[UPKEEP_METADATA_KEY]["findings"] == outcome.plan["findings"]
+        assert job.metadata[UPKEEP_METADATA_KEY]["after_job_id"] == str(jobs[1].job_id)
+        assert job.tasks[-1].title == compile_upkeep_step(outcome.plan)
+        assert load_mission(registered, mission_id).job_ids()[-1] == str(job.job_id)
+        assert outcome.line["kind"] == LINE_UPKEEP_PLANNED and outcome.line["job_id"] == str(job.job_id)
+        assert upkeep_cadence(registered, mission_id, config=EVERY_TWO).completed == 0
+
+    def test_findings_alone_are_work_enough_for_a_job(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO)
+        assert outcome.plan["structure"] == {"unmeasured": "the project names no repository"}
+        assert outcome.job is not None and outcome.line["kind"] == LINE_UPKEEP_PLANNED
+
+    def test_when_due_with_nothing_to_carry_no_job_is_made_and_that_is_recorded(self, data_root):
+        mission_id, jobs = _chain(PROJECT, ["completed", "completed"])
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO)
+        assert outcome.job is None and outcome.line["kind"] == LINE_UPKEEP_NOT_NEEDED
+        assert outcome.line["after_job_id"] == str(jobs[1].job_id)
+        assert upkeep_cadence(PROJECT, mission_id, config=EVERY_TWO).completed == 0
+
+    def test_a_completed_upkeep_job_resolves_what_it_carried_and_the_rest_comes_next(self, registered):
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=7)
+        outcome = make_upkeep_job_if_due(registered, mission_id, config=EVERY_TWO)
+        job = load_job_plan(str(outcome.job.job_id))
+        job.state = RunState.COMPLETED
+        save_job_plan(job)
+        record_closed_jobs(registered, mission_id)
+
+        left = open_findings(read_upkeep_ledger(registered), mission_id=mission_id)
+        assert [f["finding_id"] for f in left] == ["F-TASK-006", "F-TASK-007"]
+
+
+class TestTheSkip:
+    def test_a_skip_needs_a_reason(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"])
+        for reason in ("", "   ", None):
+            with pytest.raises(UpkeepError, match="reason"):
+                record_upkeep_skip(PROJECT, mission_id, reason, config=EVERY_TWO)
+        assert [line["kind"] for line in read_upkeep_ledger(PROJECT)] == []
+
+    def test_a_skip_needs_an_upkeep_job_that_is_due(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed"])
+        with pytest.raises(UpkeepError, match="1 more completed job of this mission"):
+            record_upkeep_skip(PROJECT, mission_id, "a release is due", config=EVERY_TWO)
+        assert LINE_UPKEEP_SKIPPED not in [line["kind"] for line in read_upkeep_ledger(PROJECT)]
+
+    def test_a_recorded_skip_carries_its_reason_and_ends_the_slot(self, data_root):
+        mission_id, jobs = _chain(PROJECT, ["completed", "completed"])
+        line = record_upkeep_skip(PROJECT, mission_id, "  a release is due  ", config=EVERY_TWO)
+        assert (line["kind"], line["reason"], line["after_jobs"], line["after_job_id"]) == (
+            LINE_UPKEEP_SKIPPED, "a release is due", 2, str(jobs[1].job_id))
+        assert upkeep_cadence(PROJECT, mission_id, config=EVERY_TWO).completed == 0

@@ -12,10 +12,16 @@ finding id is stable across jobs. A finding stays open until an upkeep job that 
 completed; that job's own ``job_closed`` line names it in ``resolved``. Nothing else resolves one.
 The mission, job and task records gain nothing: an upkeep job is known by the key
 :data:`UPKEEP_METADATA_KEY` of its job's free metadata.
+
+F301 T003 adds the cadence: after ``mission.upkeep_every`` completed jobs of a mission (default
+5), :func:`make_upkeep_job_if_due` makes the mission's next job an upkeep job whose one step
+:func:`compile_upkeep_step` writes from the ledger by fixed rules, or records that nothing was
+left to clean up; :func:`record_upkeep_skip` is the one way to skip it, with a reason.
 """
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -192,3 +198,237 @@ def open_findings(lines: list[dict[str, Any]], mission_id: str | None = None) ->
             keys.add(key)
             found.append({**finding, "job_id": line.get("job_id", "")})
     return found
+
+
+# ---------------------------------------------------------------------------
+# F301 T003, DECISIONs F301 D1 and D3: the cadence, the plan, the upkeep job and the skip
+# ---------------------------------------------------------------------------
+
+#: The setting that says after how many completed jobs upkeep is due (DECISION F301 D1 (6)).
+UPKEEP_EVERY_KEY = "mission.upkeep_every"
+UPKEEP_EVERY_DEFAULT = 5
+#: At most this many open findings ride in one upkeep job; the rest wait for the next one.
+UPKEEP_MAX_FINDINGS = 5
+
+
+class UpkeepError(ValueError):
+    """An upkeep request the rules refuse: a bad setting, a skip without a reason or with
+    nothing due."""
+
+
+def upkeep_every_setting(config: Any = None) -> int:
+    """``mission.upkeep_every``: unset reads 5; a value that is not a whole number of at
+    least 1 is refused."""
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    value = config.get(UPKEEP_EVERY_KEY)
+    if value is None:
+        return UPKEEP_EVERY_DEFAULT
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise UpkeepError(f"{UPKEEP_EVERY_KEY} must be a whole number of at least 1, not {value!r}")
+    return value
+
+
+@dataclass(frozen=True)
+class UpkeepCadence:
+    """Where a mission stands against its cadence (DECISION F301 D3 (1))."""
+
+    every: int
+    completed: int
+    after_job_id: str
+
+    @property
+    def due(self) -> bool:
+        return self.completed >= self.every
+
+    @property
+    def jobs_left(self) -> int:
+        return max(self.every - self.completed, 0)
+
+
+def _job_state(job_id: str, root: Path | None) -> str:
+    from packages.orchestration.data_paths import normalize_job_id
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+
+    try:
+        job, _unreadable = load_job_plan_safe(normalize_job_id(job_id), root)
+    except ValueError:
+        return ""
+    return "" if job is None else str(getattr(job.state, "value", job.state))
+
+
+def upkeep_cadence(project_id: str, mission_id: str, root: Path | None = None, *,
+                   config: Any = None, lines: list[dict[str, Any]] | None = None) -> UpkeepCadence:
+    """Count the mission's completed jobs since its last upkeep slot.
+
+    A slot ends at an upkeep job, and at the job a skip or a not-needed line names as
+    ``after_job_id``. The count is the linked jobs after the last such job, in link order, whose
+    state is completed; an upkeep job is never among them, because it ends its own slot.
+    """
+    from packages.orchestration.mission_state import load_mission
+
+    mission = load_mission(project_id, mission_id, root)
+    lines = read_upkeep_ledger(project_id, root) if lines is None else lines
+    mine = [line for line in lines if line.get("mission_id") == mission.id]
+    upkeep_ids = {line.get("job_id") for line in mine if line.get("kind") == LINE_UPKEEP_PLANNED}
+    ends = upkeep_ids | {line.get("after_job_id") for line in mine
+                         if line.get("kind") in (LINE_UPKEEP_SKIPPED, LINE_UPKEEP_NOT_NEEDED)}
+    job_ids = list(mission.job_ids())
+    start = max((index + 1 for index, job_id in enumerate(job_ids) if job_id in ends), default=0)
+    completed = sum(1 for job_id in job_ids[start:] if _job_state(job_id, root) == "completed")
+    return UpkeepCadence(upkeep_every_setting(config), completed, job_ids[-1] if job_ids else "")
+
+
+def project_repository(project_id: str) -> str:
+    """The project's repository folder: ``canonical_repo_path``, else its first ``repo_paths``."""
+    from uuid import UUID
+
+    from packages.orchestration.project_registry import ProjectNotFoundError, load_project
+
+    try:
+        project = load_project(UUID(str(project_id)))
+    except (ValueError, ProjectNotFoundError, OSError):
+        return ""
+    return project.canonical_repo_path or (project.repo_paths[0] if project.repo_paths else "")
+
+
+def _structure_item(repository: str) -> dict[str, Any]:
+    """The largest Python function and the largest code file above the limits (DECISION F301 D3 (2))."""
+    from packages.orchestration.contract_hygiene import CODE_FILE_SUFFIXES
+    from packages.orchestration.structure_measure import NotAGitRepository, measure_repository
+
+    if not repository:
+        return {"unmeasured": "the project names no repository"}
+    try:
+        measure = measure_repository(Path(repository))
+    except (NotAGitRepository, OSError) as exc:
+        return {"unmeasured": f"the repository could not be measured: {exc}"}
+    function = measure.large_functions[0] if measure.large_functions else None
+    code_files = [f for f in measure.large_files if f.path.endswith(CODE_FILE_SUFFIXES)]
+    return {
+        "limits": {"function_lines": measure.function_limit, "file_lines": measure.file_limit},
+        "largest_function": None if function is None else {
+            "path": function.path, "name": function.name, "line": function.line, "lines": function.lines},
+        "largest_file": {"path": code_files[0].path, "lines": code_files[0].lines} if code_files else None,
+    }
+
+
+def _replaced_pairs(repository: str, lines: list[dict[str, Any]], mission_id: str) -> list[dict[str, str]]:
+    """Every replaced file beside its original, found now or left by a job, while both exist."""
+    from packages.orchestration.contract_hygiene import find_replaced_files, replaced_originals
+    from packages.orchestration.structure_measure import NotAGitRepository, tracked_files
+
+    if not repository:
+        return []
+    top = Path(repository)
+    pairs: list[dict[str, str]] = []
+    try:
+        for finding in find_replaced_files(top, tracked_files(top)):
+            original = next((o for o in replaced_originals(finding.path) if (top / o).is_file()), "")
+            if original:
+                pairs.append({"path": finding.path, "original": original})
+    except (NotAGitRepository, OSError):
+        return []
+    for line in lines:
+        if line.get("kind") == LINE_JOB_CLOSED and line.get("mission_id") == mission_id:
+            pairs.extend(pair for pair in line.get("replaced", [])
+                         if (top / pair["path"]).is_file() and (top / pair["original"]).is_file())
+    unique: dict[str, dict[str, str]] = {}
+    for pair in pairs:
+        unique.setdefault(pair["path"], pair)
+    return list(unique.values())
+
+
+def plan_upkeep(project_id: str, mission_id: str, cadence: UpkeepCadence,
+                lines: list[dict[str, Any]]) -> dict[str, Any]:
+    """What an upkeep job due now would carry, by DECISION F301 D1 (3) to (5) and D3 (2)."""
+    repository = project_repository(project_id)
+    carried = open_findings(lines, mission_id=mission_id)[:UPKEEP_MAX_FINDINGS]
+    return {"after_jobs": cadence.completed, "after_job_id": cadence.after_job_id, "every": cadence.every,
+            "repository": repository, "findings": [f["key"] for f in carried], "carried": carried,
+            "structure": _structure_item(repository), "replaced": _replaced_pairs(repository, lines, mission_id)}
+
+
+def upkeep_has_work(plan: dict[str, Any]) -> bool:
+    structure = plan["structure"]
+    return bool(plan["findings"] or plan["replaced"]
+                or structure.get("largest_function") or structure.get("largest_file"))
+
+
+def compile_upkeep_step(plan: dict[str, Any]) -> str:
+    """The upkeep job's one step, in the fixed order of DECISION F301 D1 (8)."""
+    count = plan["after_jobs"]
+    text = [f"Upkeep after {count} completed job{'' if count == 1 else 's'} of this mission, planned by "
+            f"Remedy's fixed rules (DECISION F301 D1)."]
+    if plan["carried"]:
+        text.append("Repair these findings that earlier jobs left open, oldest first:")
+        text.extend(f"- {f['severity']} finding {f['finding_id']} left by job {f['job_id']}"
+                    f"{' in ' + f['file'] if f['file'] else ''}: {f['summary']}" for f in plan["carried"])
+    structure = plan["structure"]
+    if structure.get("largest_function"):
+        function, limit = structure["largest_function"], structure["limits"]["function_lines"]
+        text.append(f"Shorten the function {function['name']} in {function['path']} (line {function['line']}), "
+                    f"{function['lines']} lines against a limit of {limit}, without changing what it does.")
+    if structure.get("largest_file"):
+        largest, limit = structure["largest_file"], structure["limits"]["file_lines"]
+        text.append(f"Shorten the file {largest['path']}, {largest['lines']} lines against a limit of {limit}, "
+                    f"without changing what it does.")
+    if plan["replaced"]:
+        text.append("Delete each file that a newer one replaced:")
+        text.extend(f"- {pair['original']}, replaced by {pair['path']}" for pair in plan["replaced"])
+    return "\n".join(text)
+
+
+@dataclass(frozen=True)
+class UpkeepOutcome:
+    """What one look at the cadence did: the cadence, the plan when due, the job when made, and the
+    ledger line written."""
+
+    cadence: UpkeepCadence
+    plan: dict[str, Any] | None
+    job: Any
+    line: dict[str, Any] | None
+
+
+def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None = None, *,
+                           config: Any = None, now: datetime | None = None) -> UpkeepOutcome:
+    """Record the ended jobs, then, when upkeep is due, make the upkeep job or record that none
+    was needed. The job is an ordinary follow-up job made by ``continue_mission``."""
+    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.pingpong_job import save_job_plan
+
+    record_closed_jobs(project_id, mission_id, root, now=now)
+    lines = read_upkeep_ledger(project_id, root)
+    cadence = upkeep_cadence(project_id, mission_id, root, config=config, lines=lines)
+    if not cadence.due:
+        return UpkeepOutcome(cadence, None, None, None)
+    plan = plan_upkeep(project_id, mission_id, cadence, lines)
+    if not upkeep_has_work(plan):
+        line = append_upkeep_line(project_id, mission_id, LINE_UPKEEP_NOT_NEEDED, {
+            "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id}, root, now=now)
+        return UpkeepOutcome(cadence, plan, None, line)
+    job = continue_mission(project_id, mission_id, compile_upkeep_step(plan), root=root, now=now)
+    planned = {"job_id": str(job.job_id), "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id,
+               "findings": plan["findings"], "structure": plan["structure"], "replaced": plan["replaced"]}
+    job.metadata[UPKEEP_METADATA_KEY] = planned
+    save_job_plan(job)
+    line = append_upkeep_line(project_id, mission_id, LINE_UPKEEP_PLANNED, planned, root, now=now)
+    return UpkeepOutcome(cadence, plan, job, line)
+
+
+def record_upkeep_skip(project_id: str, mission_id: str, reason: str, root: Path | None = None, *,
+                       config: Any = None, now: datetime | None = None) -> dict[str, Any]:
+    """Record the operator's decision to skip the upkeep job that is due, with its reason."""
+    text = str(reason or "").strip()
+    if not text:
+        raise UpkeepError("a skipped upkeep job needs its reason")
+    record_closed_jobs(project_id, mission_id, root, now=now)
+    cadence = upkeep_cadence(project_id, mission_id, root, config=config)
+    if not cadence.due:
+        left = cadence.jobs_left
+        raise UpkeepError(f"no upkeep job is due: {left} more completed job{'' if left == 1 else 's'} of "
+                          f"this mission come first")
+    return append_upkeep_line(project_id, mission_id, LINE_UPKEEP_SKIPPED, {
+        "reason": text, "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id}, root, now=now)
