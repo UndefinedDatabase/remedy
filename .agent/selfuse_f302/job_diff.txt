@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-752a279d6bd14359  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 160b61157..166a2ddad 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1815,7 +1815,7 @@ def _cmd_resume(
+                 else:
+                     out = _wtr.retain_worktree_resume(s, reason)
+                     event = "worktree_retained"
+-            except Exception as exc:  # noqa: BLE001 — a session's cleanup failure must not strand its lock
++            except (OSError, ValueError) as exc:
+                 _wtr.W.release_lock(s.handle)      # never strand the lock
+                 append_run_event(data_dir, job_id, event="worktree_retained", metadata={
+                     "run_id": s.run_id,
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
