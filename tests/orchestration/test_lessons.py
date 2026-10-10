@@ -471,6 +471,14 @@ def test_a_changed_line_of_the_catalogs_mission_module_names_its_command():
     assert [c["command_id"] for c in lessons.lesson_commands(diff)] == ["mission.continue"]
 
 
+def test_a_changed_line_of_the_catalogs_stats_module_names_its_command():
+    """DECISION F302 D1 (4): the stats group's entries live in a module of their own, and a
+    changed line there names its command as a changed line of the catalog does."""
+    diff = ("--- a/apps/cli/command_catalog_stats.py\n+++ b/apps/cli/command_catalog_stats.py\n"
+            '@@ -1 +1 @@\n-        command_id="stats.cost",\n+        command_id="stats.cost",\n')
+    assert [c["command_id"] for c in lessons.lesson_commands(diff)] == ["stats.cost"]
+
+
 def test_a_diff_that_touches_no_command_names_none():
     assert lessons.lesson_commands(DIFF) == []
     assert lessons.lesson_commands("") == []
