@@ -1,9 +1,10 @@
 # Mission upkeep v1: every fifth job cleans up
 
-> Status (F301, 2026-10-10): being built. DECISIONs F301 D1 to D4 in `.agent/decisions.md` hold the
+> Status (F301, 2026-10-10): being built. DECISIONs F301 D1 to D5 in `.agent/decisions.md` hold the
 > rules this page states; the feature is `docs/roadmap/features/T7_F301.md`. Built so far: the
-> upkeep ledger, the cadence, the planned step, `remedy mission continue` and the orchestrator's
-> own dispatch. The views of `remedy mission show` and the client digest come next.
+> upkeep ledger, the cadence, the planned step, `remedy mission continue`, the orchestrator's own
+> dispatch, and what `remedy mission show` and the client digest say. A fixture mission of six jobs
+> that proves the whole comes next.
 
 A mission that runs for many jobs leaves things behind: problems a reviewer still saw when a job
 ended, code that grew past the size limits, and files that a newer file replaced and nobody
@@ -61,6 +62,16 @@ instead, approved the same audited way as any job the orchestrator starts. It se
 so no milestone's Definition of Done, contract slice or repository grant is attached to it, and
 its outcome, `upkeep_dispatched`, is never read as the milestone's blocked completion. The
 orchestrator never skips an upkeep job; at its next move it asks for the milestone's job again.
+
+## What a person and a client see
+`remedy mission show` adds, for a mission with at least one job, when the next upkeep job comes —
+how many more completed jobs, or that it is due now — and what it would carry. Under `--json` the
+answer's `upkeep` key holds the setting, the count, the jobs left, whether it is due, the number of
+open findings and what it would carry. A bad setting is named there and the mission is still
+shown. The client digest of `remedy status --json`, which the public API's `GET /api/v1/digest`
+answers, gives each mission `upkeep_every`, `upkeep_jobs_left` and `upkeep_open_findings`; it
+never reads the project's repository, and each reads `null` when it cannot be read. Neither view
+writes to the ledger.
 
 ## A replaced file through a run
 The round's hygiene rule fails a round whose added file sits beside the file it replaces, so such

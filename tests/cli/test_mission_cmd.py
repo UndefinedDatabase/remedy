@@ -760,6 +760,46 @@ class TestContinueWithUpkeep:
         assert proc.returncode == 2 and "mission.upkeep_every" in proc.stderr
 
 
+    def test_show_says_when_the_upkeep_job_comes_and_what_it_carries(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+
+        out = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        body = json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                               data_root).stdout)
+
+        assert ("Upkeep: due now, after 5 completed jobs; the next `remedy mission continue` makes "
+                "the upkeep job.") in out
+        assert "  It would carry: 1 open finding." in out
+        assert (body["upkeep"]["due"], body["upkeep"]["jobs_left"], body["upkeep"]["open_findings"]) == (True, 0, 1)
+        assert self._ledger(data_root, project_id) == []
+
+    def test_show_counts_down_and_says_nothing_for_a_mission_without_jobs(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        empty = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        assert "Upkeep" not in empty
+        assert json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
+                               data_root).stdout)["upkeep"] is None
+
+        _link_job(data_root, project_id, mission_id, role="initial")
+        out = _run(["mission", "show", mission_id, "--project", project_id], data_root).stdout
+        assert "Upkeep: every 5 completed jobs; 4 more before the next upkeep job." in out
+        assert "  It would carry nothing yet." in out
+
+    def test_show_names_a_bad_setting_and_still_shows_the_mission(self, project):
+        data_root, project_id = project
+        mission_id = self._five_done(data_root, project_id)
+        proc = self._continue(data_root, project_id, mission_id, env={"REMEDY_MISSION_UPKEEP_EVERY": "0"},
+                              expect_ok=False)
+        assert proc.returncode == 2
+        shown = subprocess.run([sys.executable, "-m", "apps.cli.grouped", "mission", "show", mission_id,
+                                "--project", project_id], cwd=str(REPO_ROOT), capture_output=True, text=True,
+                               timeout=120, env={**os.environ, "REMEDY_DATA_DIR": str(data_root),
+                                                 "REMEDY_MISSION_UPKEEP_EVERY": "0"})
+        assert shown.returncode == 0 and "Upkeep: mission.upkeep_every must be a whole number" in shown.stdout
+
+
 class TestStatusTransitions:
     """R-0163 — the explicit command surface the feature file promises.
 

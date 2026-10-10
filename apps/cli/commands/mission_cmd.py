@@ -189,6 +189,45 @@ def _load_mission_or_exit(project_id: str, mission_id: str, *,
         fail("mission_error", str(exc), json_output=json_output)
 
 
+def _upkeep_preview_or_error(project_id: str, mission_id: str) -> dict[str, Any]:
+    """DECISION F301 D5: the mission's upkeep preview, or ``{"error": ...}`` for a bad setting; read-only."""
+    from packages.orchestration.mission_upkeep import UpkeepError, upkeep_preview
+
+    try:
+        return upkeep_preview(project_id, mission_id)
+    except UpkeepError as exc:
+        return {"error": str(exc)}
+
+
+def _print_upkeep_preview(preview: dict[str, Any]) -> None:
+    """When the next upkeep job comes and what it would carry, in plain sentences."""
+    print("")
+    if "error" in preview:
+        print(f"Upkeep: {preview['error']}")
+        return
+    every, left = preview["every"], preview["jobs_left"]
+    if preview["due"]:
+        print(f"Upkeep: due now, after {preview['completed']} completed jobs; the next "
+              f"`remedy mission continue` makes the upkeep job.")
+    else:
+        print(f"Upkeep: every {every} completed jobs; {left} more before the next upkeep job.")
+    carries = preview["carries"]
+    items = []
+    if carries["findings"]:
+        count = len(carries["findings"])
+        items.append(f"{count} open finding{'' if count == 1 else 's'}")
+    structure = carries["structure"]
+    if structure.get("largest_function"):
+        function = structure["largest_function"]
+        items.append(f"the function {function['name']} in {function['path']} ({function['lines']} lines)")
+    if structure.get("largest_file"):
+        items.append(f"the file {structure['largest_file']['path']} ({structure['largest_file']['lines']} lines)")
+    if carries["replaced"]:
+        count = len(carries["replaced"])
+        items.append(f"{count} replaced file{'' if count == 1 else 's'} to delete")
+    print(f"  It would carry: {', '.join(items)}." if items else "  It would carry nothing yet.")
+
+
 def _cmd_mission_show(mission_id: str, *, project: str | None = None,
                       json_output: bool = False) -> None:
     """``remedy mission show <id>`` — one mission's chain, led by why it stopped.
@@ -225,10 +264,11 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
 
         trips = latest_trips_from_ledger(ledger)
 
+    upkeep = _upkeep_preview_or_error(project_id, mission.id) if mission.job_links else None
     if json_output:
         emit_ok(version=1, mission=_mission_json(mission),
                 watchdog_trips=[t.to_json() for t in trips],
-                ledger=ledger)
+                ledger=ledger, upkeep=upkeep)
         return
 
     # Empty trips print NOTHING, so an unpaused mission's output is byte for
@@ -245,6 +285,9 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         print("")
     for line in render_mission_chain(mission):
         print(line)
+    # A mission with no job yet prints no upkeep section, so its output is unchanged.
+    if upkeep is not None:
+        _print_upkeep_preview(upkeep)
     # An unrun mission prints no section, so its output is unchanged.
     if ledger:
         print("")
