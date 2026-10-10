@@ -4,18 +4,18 @@
 A mission keeps its project clean by itself: after every fifth completed job, the next job is an
 upkeep job Remedy plans from its own records — the findings earlier jobs left open, the project's
 structure measure, and what was replaced and not deleted — by rules a person can read, with a skip
-only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISION F301 D1).
+only as a recorded decision (docs/roadmap/features/T7_F301.md; DECISIONs F301 D1 and D2).
 
 ## Current Step
-Round 2 on `feature/f301-mission-upkeep`: book round 1, then T002, the project's upkeep ledger in
-`packages/orchestration/mission_upkeep.py` — its lines, the open findings a job leaves, the
-replaced pairs, what resolves a finding — written by `remedy mission continue` for every ended
-job before the mission's next job is made.
+Round 3 on `feature/f301-mission-upkeep`: book round 2 and DECISION F301 D2, then the two
+structural steps T003 needs first: the command catalog's types, shorthands and `mission` group to
+modules of their own, and `ConfigKeySpec` with the mission orchestrator's keys, each lowering its
+row on the structure page.
 
 ## Next Steps
-1. T003: the boundary and one step of `config.py`, then `mission.upkeep_every`, the cadence, the
-   structure measure and the replaced scan at planning, the compiled step, and the upkeep job
-   through `remedy mission continue` with `--skip-upkeep`; the page
+1. T003: `mission.upkeep_every` in `config_keys_mission.py`, the cadence, the structure measure
+   and the replaced scan at planning, the compiled step, and the upkeep job through
+   `remedy mission continue` with `--skip-upkeep` in `command_catalog_mission.py`; the page
    `docs/system/mission-upkeep-v1.md`.
 2. The loop's dispatch path: the upkeep job in place of a dispatch, with R-1233's test of the
    dispatch path's approval; T004, the replaced pairs through a run.
