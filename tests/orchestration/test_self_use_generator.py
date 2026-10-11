@@ -1279,6 +1279,18 @@ class TestExcusedHandlerTierReadsWhatTheRatchetCounts:
         assert (EXCUSED_HANDLER_MARK.pattern, EXCUSED_HANDLER_MARK.flags) == (MARK.pattern, MARK.flags)
         assert (Path(__file__).resolve().parents[2] / RATCHET_TEST_PATH).is_file()
 
+    def test_the_job_lists_the_handler_and_the_ratchet_under_files(self):
+        """R-1230: both files the task must change are listed, so a pass that leaves one is named."""
+        from packages.orchestration.pingpong_job import parse_job_file
+        from packages.orchestration.self_use_generator import (
+            RATCHET_TEST_PATH,
+            _excused_handler_job_markdown,
+        )
+
+        markdown = _excused_handler_job_markdown("Narrow it", "apps/cli/x.py", 7, "except Exception:")
+        [task] = parse_job_file(markdown, ".").tasks
+        assert task.files_hint == ["apps/cli/x.py", RATCHET_TEST_PATH]
+
     def test_the_generator_spells_no_mark_of_its_own(self):
         from packages.orchestration import self_use_generator
         from packages.orchestration.self_use_generator import EXCUSE_MARK_WORDS

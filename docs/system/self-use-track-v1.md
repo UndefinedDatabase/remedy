@@ -149,7 +149,10 @@ the approval gate, and its `consumed_by` set to the feature's id in the
 closure commit. Any defect the run surfaced —
 `packages.orchestration.self_use_findings.describe_self_use_run_defects`
 read against the run's own `JobPlan` — is registered as a normal finding
-under the standard ledger rules before the close (F258 T003). An EXHAUSTED
+under the standard ledger rules before the close (F258 T003). Among the
+defects it names is a task that passed review while a path its job file's
+`Files:` list names was left unchanged; the excused-handler item lists both
+files it must change there (R-1230). An EXHAUSTED
 queue never blocks a feature — the close records
 `self-use NONE (queue exhausted)` and proceeds, which is the track asking
 for curation rather than stopping work.
