@@ -577,6 +577,18 @@ end the response with:
   first value alone, is item 34's reading of the code the order reaches, here every reader of the
   field the order changes. R-1245 was a defect of an earlier feature's test that this feature's
   selection met first. The list stays at 34 items.
+  Consolidated again at F297's closure on 2026-10-12: nothing joined and no two items were merged,
+  because none of F297's seven lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  block that ordered the handback's context sentence in the reviewer's voice is item 18's reading of
+  an ordered wording against the property it must establish; a question count left standing after
+  the block was rebased onto the operator's answers is item 16's reading of a count against the list
+  it names; and a co-author trailer written for the worker's own model, a function misnamed in a
+  handback's table, and three sentences of a handback's paragraph for the operator that reversed a
+  fact, described a check backwards and credited a merged change to the wrong person are slips in
+  following a block or in writing a handback, which no item about a block's text can prevent, each
+  leaving nothing on disk wrong that the next handback did not rewrite. R-1251, a defect of the
+  product's runtime checks that a round's selection met, was registered for the next findings
+  paydown. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
