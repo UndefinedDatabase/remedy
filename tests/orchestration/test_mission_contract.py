@@ -651,7 +651,7 @@ class TestTheContractBindsAndGrantsItsJobs:
         import subprocess
 
         # Imported before the factories are replaced, so `study` binds the real one through its own
-        # `from … import` and no later test of the process meets this tripwire there (R-1237).
+        # `from … import` and no later test of the process meets this tripwire there (R-1245).
         import packages.orchestration.study  # noqa: F401
         from apps.cli.grouped import main
 

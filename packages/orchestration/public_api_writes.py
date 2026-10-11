@@ -109,7 +109,7 @@ def _order_text_and_options(body: dict[str, Any],
     back to the current folder — the supervisor's own working folder is not one this order's
     caller chose, and running the order there is exactly what this refusal prevents. An order
     over several projects has each of them resolved, and a client's policy must list each one
-    (R-1236, DECISION F205 D6).
+    (R-1244, DECISION F205 D6).
     """
     from packages.orchestration.api_clients import client_order_refusal
     from packages.orchestration.order_file import OrderFileError, parse_order_file_text

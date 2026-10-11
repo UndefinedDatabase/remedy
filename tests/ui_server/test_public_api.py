@@ -1635,7 +1635,7 @@ def test_a_client_order_for_a_project_listed_by_slug_or_by_id_is_202(tmp_path):
 
 
 def test_a_client_order_naming_several_projects_is_held_to_every_one(tmp_path):
-    """R-1236, DECISION F205 D6: an order over several projects is inside a client's policy only
+    """R-1244, DECISION F205 D6: an order over several projects is inside a client's policy only
     when every project it names is."""
     from packages.orchestration.project_registry import register_project_repo
 

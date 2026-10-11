@@ -572,10 +572,10 @@ end the response with:
   prepared folder, a branch check skipped before one commit, and two counts of the proofs a gate
   re-ran, each leaving nothing on disk wrong: slips in following a block, which no item about a
   block's text can prevent. Its authoring defect that left something wrong on disk was registered
-  as a finding and repaired inside the feature: R-1236, a field whose meaning one round widened, an
+  as a finding and repaired inside the feature: R-1244, a field whose meaning one round widened, an
   order's projects, while a second reader of it, the public API's order route, kept reading the
   first value alone, is item 34's reading of the code the order reaches, here every reader of the
-  field the order changes. R-1237 was a defect of an earlier feature's test that this feature's
+  field the order changes. R-1245 was a defect of an earlier feature's test that this feature's
   selection met first. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
