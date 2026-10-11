@@ -801,10 +801,10 @@ def answer_public_api_post(
                 if mission is not None:
                     return 409, build_error(
                         "order_already_running",
-                        f"the order key {order_key!r} is already run by mission {mission.id} "
-                        f"({mission.status}); abandon it with `remedy mission abandon "
-                        f"{mission.id}`, or send the order with new_mission true to start "
-                        "another; nothing was run",
+                        f"the order key {order_key!r} still has unfinished jobs in mission "
+                        f"{mission.id} ({mission.status}); let them finish or stop them, or send "
+                        "the order with new_mission true to run it again as one more order of "
+                        "the same mission; nothing was run",
                         mission_id=mission.id), {}
             try:
                 if order_key is None:

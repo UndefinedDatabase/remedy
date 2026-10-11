@@ -544,6 +544,7 @@ def attach_milestone_dods(
     goal: str,
     evidence_dir: Path,
     call_fn: Callable[[str, int], str] | None = None,
+    ref_prefix: str = "",
 ) -> MissionPlan:
     """Compile a DoD for every milestone, write it, and fill in ``dod_ref``.
 
@@ -561,7 +562,7 @@ def attach_milestone_dods(
         durable_write(
             evidence_dir / filename,
             json.dumps(result.dod.model_dump(), indent=2, sort_keys=True))
-        milestones.append(ms.model_copy(update={"dod_ref": filename}))
+        milestones.append(ms.model_copy(update={"dod_ref": ref_prefix + filename}))
     return plan.model_copy(update={"milestones": milestones})
 
 
@@ -684,6 +685,20 @@ def plan_version_of(mission: Any) -> int:
     return int(body.get(PLAN_VERSION_KEY, 1))
 
 
+def current_order_links(mission: Any) -> tuple[Any, ...]:
+    """The job links of the order the mission's plan slot belongs to (DECISION amend1011b D3).
+
+    A mission with order batches plans each order afresh, so only the jobs of its latest batch
+    can be work in progress on the plan being compiled; one without batches has one plan and
+    all its links.
+    """
+    links = tuple(getattr(mission, "job_links", ()))
+    orders = tuple(getattr(mission, "orders", ()))
+    if not orders:
+        return links
+    return tuple(link for link in links if link.order_id == orders[-1].order_id)
+
+
 def milestones_in_progress(mission: Any) -> tuple[str, ...]:
     """Which milestones of the persisted plan count as already in progress.
 
@@ -704,7 +719,7 @@ def milestones_in_progress(mission: Any) -> tuple[str, ...]:
     compilation is always allowed.
     """
     plan = mission_plan_of(mission)
-    if plan is None or not getattr(mission, "job_links", ()):
+    if plan is None or not current_order_links(mission):
         return ()
     return tuple(m.id for m in plan.milestones)
 
@@ -747,16 +762,23 @@ def plan_mission(
             f"mission {mission.id} cannot be replanned: "
             f"{len(in_progress)} milestone(s) are already in progress "
             f"({', '.join(in_progress)}) because "
-            f"{len(mission.job_links)} job(s) are linked to this mission. "
+            f"{len(current_order_links(mission))} job(s) are linked to its current order. "
             f"Start a new mission for a different route, or achieve/abandon "
             f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
 
     prompt_traces: list[Any] = []
-    result = compile_mission_plan(mission, call_fn, traces=prompt_traces,
+    goal = mission.orders[-1].text if mission.orders else mission.goal
+    result = compile_mission_plan(goal, call_fn, traces=prompt_traces,
                                   provider=provider,
                                   provider_kind=provider_kind,
                                   max_milestones=max_milestones)
     evidence_dir = mission_evidence_dir(project_id, mission.id, root)
+    ref_prefix = ""
+    if mission.orders:
+        # DECISION amend1011b D3: each order's evidence lands in a directory of its own, so a
+        # later order's milestone DoDs never overwrite an earlier order's under the same id.
+        ref_prefix = f"orders/{mission.orders[-1].order_id}/"
+        evidence_dir = evidence_dir / ref_prefix.rstrip("/")
     if prompt_traces:
         # APPEND, never write: the trace file is per MISSION and a recompile is
         # a SECOND command against the same mission, so a write would destroy
@@ -764,8 +786,8 @@ def plan_mission(
         from packages.orchestration.prompt_trace import append_trace_jsonl
         append_trace_jsonl(prompt_traces, evidence_dir / "prompt_trace.jsonl")
     plan = attach_milestone_dods(
-        result.plan, goal=mission.goal, evidence_dir=evidence_dir,
-        call_fn=call_fn)
+        result.plan, goal=goal, evidence_dir=evidence_dir,
+        call_fn=call_fn, ref_prefix=ref_prefix)
     # DECISION F269 D4 (2): one planner criterion per milestone, compiled by
     # F061's compiler with no provider, written before the plan so the record
     # this returns carries both.
@@ -783,7 +805,7 @@ def plan_mission(
     body[PLAN_VERSIONS_KEY] = versions
     body[PLAN_VERSION_KEY] = version
 
-    path = write_mission_plan_md(plan, evidence_dir, mission.goal, version=version)
+    path = write_mission_plan_md(plan, evidence_dir, goal, version=version)
     updated = set_mission_plan(project_id, mission.id, body, root)
 
     return MissionPlanOutcome(

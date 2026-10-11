@@ -125,7 +125,8 @@ def test_one_order_file_started_twice_is_refused_naming_the_mission_that_runs_it
     code, other = _remedy(["do", str(order_file), *UNATTENDED, "--plan-only", "--new-mission"],
                           repo, env)
     assert code == 0, other
-    assert other["mission_id"] != first["mission_id"]
+    # DECISION amend1011b D1: the flag adds an order, never a second mission.
+    assert other["mission_id"] == first["mission_id"] and other["order_id"] != first["order_id"]
 
 
 def _project_order(tmp_path: Path) -> tuple[Path, Path, Path, dict[str, str], dict]:

@@ -483,36 +483,47 @@ def test_a_second_start_of_an_order_file_exits_2_naming_the_running_mission(repo
     assert _mission_ids() == [first["mission_id"]]
 
 
-def test_new_mission_starts_a_second_mission_for_the_same_order_file(repo, capsys):
+def test_new_mission_runs_the_same_order_file_again_as_one_more_order_of_the_one_mission(
+        repo, capsys):
     order_path = _write_order(repo, ORDER_TEXT)
     first = _do_json(capsys, str(order_path), "--plan-only")
 
     second = _do_json(capsys, str(order_path), "--plan-only", "--new-mission")
 
-    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
-    assert _mission_ids() == sorted([first["mission_id"], second["mission_id"]])
-    # A third start without the flag names the newer of the two running missions.
+    # DECISION amend1011b D1: the flag never makes a second mission, it adds a second order.
+    assert second["ok"] is True and second["mission_id"] == first["mission_id"]
+    assert second["order_id"] != first["order_id"]
+    assert _mission_ids() == [first["mission_id"]]
     code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
-    assert (code, json.loads(out)["mission_id"]) == (2, second["mission_id"])
+    assert (code, json.loads(out)["mission_id"]) == (2, first["mission_id"])
 
 
-def test_an_order_file_whose_mission_was_abandoned_starts_again(repo, capsys):
+def test_an_order_to_an_abandoned_repository_mission_waits_for_the_operator_to_resume_it(
+        repo, capsys):
     order_path = _write_order(repo, ORDER_TEXT)
     first = _do_json(capsys, str(order_path), "--plan-only")
     main(["mission", "abandon", first["mission_id"], "--json"])
     capsys.readouterr()
 
-    second = _do_json(capsys, str(order_path), "--plan-only")
+    code, out, _err = _exit_code_and_output(capsys, str(order_path), "--plan-only")
+    body = json.loads(out)
+    assert code != 0 and body["ok"] is False
+    assert f"remedy mission resume {first['mission_id'][:12]}" in json.dumps(body)
+    assert _mission_ids() == [first["mission_id"]]
 
-    assert second["ok"] is True and second["mission_id"] != first["mission_id"]
+    main(["mission", "resume", first["mission_id"], "--json"])
+    capsys.readouterr()
+    second = _do_json(capsys, str(order_path), "--plan-only", "--new-mission")
+    assert second["ok"] is True and second["mission_id"] == first["mission_id"]
 
 
-def test_another_order_file_starts_beside_a_running_mission(repo, capsys):
+def test_another_order_file_is_a_further_order_of_the_same_repository_mission(repo, capsys):
     first = _do_json(capsys, str(_write_order(repo, ORDER_TEXT)), "--plan-only")
 
     other = _do_json(capsys, str(_write_order(repo, ORDER_TEXT, "other.md")), "--plan-only")
 
-    assert other["ok"] is True and other["mission_id"] != first["mission_id"]
+    assert other["ok"] is True and other["mission_id"] == first["mission_id"]
+    assert other["order_id"] != first["order_id"]
 
 
 # ── 14: a provider that reports usage, stopped by a call or token cap (DECISION F304 D15) ──

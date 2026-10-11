@@ -258,6 +258,8 @@ packages.orchestration.repair_attest
 packages.orchestration.repair_context
 packages.orchestration.repo_applicator
 packages.orchestration.repo_ignore
+packages.orchestration.repo_mission
+packages.orchestration.repo_mission_reconcile
 packages.orchestration.repository_snapshot
 packages.orchestration.result_tour
 packages.orchestration.review_scope

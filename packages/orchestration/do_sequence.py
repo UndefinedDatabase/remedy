@@ -63,6 +63,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
@@ -666,10 +667,12 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
 
 
 def _step_plan(ctx: DoContext) -> tuple[str, str]:
-    """Create the mission record for the order, record the order, and plan it (D4).
+    """Accept the order as a batch of the repository's one mission, and plan it (D4).
 
-    Before the plan, the contract template forced by `--contract`, or else the
-    one proposed from the order, is written onto the new mission, so the
+    The mission is the repository's lasting one (DECISION amend1011b D1), found or created
+    once; the order is a new batch in it. Before the plan, the contract template forced by
+    `--contract`, or else the one proposed from the order, is written onto the mission's
+    current-order contract, so the
     planner's criteria are added after it and none of its criteria are dropped
     (DECISION F269 D1 (4)); the detail says whether it was forced or proposed.
     """
@@ -683,31 +686,36 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         plan_mission,
     )
     from packages.orchestration.mission_contract import ContractError
-    from packages.orchestration.mission_state import (
-        MissionError,
-        MissionOrder,
-        create_mission,
-        set_mission_order,
-    )
+    from packages.orchestration.mission_state import MissionError, MissionOrder
+    from packages.orchestration.repo_mission import accept_order
 
     project_id = str(ctx.project.id)
+    order = MissionOrder(text=ctx.order, source_path=ctx.order_source_path,
+                         source_sha256=ctx.order_source_sha256)
+    # DECISION amend1011b D4: the order becomes a batch in the ONE mission of each repository it
+    # touches; an order over several repositories shares a correlation id and no umbrella mission.
+    targets = ctx.projects or [ctx.project]
+    correlation = uuid4().hex if len(targets) > 1 else ""
     try:
-        mission = create_mission(project_id, ctx.order, project_ids=ctx.project_ids)
-        set_mission_order(project_id, mission.id, MissionOrder(
-            text=ctx.order, source_path=ctx.order_source_path,
-            source_sha256=ctx.order_source_sha256))
+        for target in targets:
+            repo = ctx.project_repos.get(str(target.id), ctx.repo_root)
+            accepted, batch = accept_order(target, repo, order, budgets=ctx.budgets,
+                                           correlation_id=correlation)
+            ctx.project_missions[str(target.id)] = (accepted.id, batch.order_id)
     except MissionError as exc:
-        return DO_STEP_FAILED, f"no mission created: {exc}"
-    ctx.mission_id = mission.id
+        return DO_STEP_FAILED, f"no order accepted: {exc}"
+    ctx.mission_id, ctx.order_id = ctx.project_missions[project_id]
 
     template, how = ctx.contract_template, "forced by --contract"
     try:
         if template is None:
             template, how = propose_contract_template(ctx.order), "proposed from the order"
         if template is not None:
-            write_template_contract(project_id, mission.id, template)
+            for target in targets:
+                write_template_contract(str(target.id), ctx.project_missions[str(target.id)][0],
+                                        template)
     except (ContractTemplateError, ContractError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
     contract_note = (f"contract template {template}, {how}" if template is not None
                      else "no contract template, none proposed from the order")
 
@@ -729,14 +737,14 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         # that decides it, so the record cannot say "ollama" of a Claude CLI
         # run (amend0920-selfuse-real, DECISION D1). Without a provider the
         # compiler plans deterministically.
-        outcome = plan_mission(project_id, mission.id, call_fn,
+        outcome = plan_mission(project_id, ctx.mission_id, call_fn,
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
     ctx.mission_plan = outcome.plan
     ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
-        f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
+        f"mission {ctx.mission_id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
         f"{contract_note}")
 
@@ -790,11 +798,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         merge_contract_slice_into_dod,
         record_job_milestone,
     )
-    from packages.orchestration.mission_state import (
-        MISSION_ROLE_FOLLOW_UP,
-        MISSION_ROLE_INITIAL,
-        link_job_to_mission,
-    )
+    from packages.orchestration.repo_mission import link_order_job
 
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
@@ -820,9 +824,10 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
         job_id = str(shaped.job.job_id)
-        role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
-        mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
-        if milestone_id is not None:
+        # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
+        target_mission, target_order = ctx.project_missions[str(target.project.id)]
+        mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)
+        if milestone_id is not None and str(target.project.id) == str(ctx.project.id):
             record_job_milestone(job_id, milestone_id)
         merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
         grant_contract_job_repository(mission, job_id)

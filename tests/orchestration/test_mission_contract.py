@@ -1064,9 +1064,11 @@ class TestTheRemainderAnswer:
 
         follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
 
-        assert follow_up_id and follow_up_id != mission_id
+        # DECISION amend1011b D5: the remainder is a further order of the repository's mission.
+        assert follow_up_id == mission_id
         follow_up = load_mission(PROJECT, follow_up_id, tmp_path)
-        assert follow_up.goal == record["impact"]
+        assert follow_up.orders[-1].text == record["impact"]
+        assert follow_up.orders[-2].sealed["contract"] == source.to_json()
         assert follow_up.order.text == record["impact"]
         contract = read_mission_contract(follow_up)
         assert [(c.id, c.text, c.blocking, c.origin, c.milestones, c.status,

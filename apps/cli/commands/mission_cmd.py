@@ -68,21 +68,79 @@ def _mission_json(mission: Any) -> dict[str, Any]:
 
 def _cmd_mission_start(goal: str, *, project: str | None = None,
                        json_output: bool = False) -> None:
-    from packages.orchestration.mission_state import MissionError, create_mission
+    """Show the repository's one mission, creating it with *goal* as its first order if new.
+
+    DECISION amend1011b D5: a repository has exactly one mission, so `mission start` on a
+    repository that has one reveals it and creates nothing; the goal is not recorded then.
+    """
+    from packages.orchestration.mission_state import MissionError, MissionOrder
+    from packages.orchestration.repo_mission import (
+        accept_order,
+        ensure_project_mission,
+        project_by_id,
+        project_repo_root,
+    )
 
     project_id = _resolve_project_id(project, json_output=json_output)
+    if not str(goal).strip():
+        fail("mission_error", "a mission needs a goal", json_output=json_output)
     try:
-        mission = create_mission(project_id, goal)
+        mission, created = ensure_project_mission(project_id)
+        if created:
+            repo = project_by_id(project_id)
+            mission, _batch = accept_order(repo, project_repo_root(repo), MissionOrder(text=goal))
     except MissionError as exc:
         fail("mission_error", str(exc), json_output=json_output)
 
     if json_output:
-        emit_ok(version=1, mission=_mission_json(mission))
+        emit_ok(version=1, mission=_mission_json(mission), existing=not created)
         return
     print(mission.id)
+    if not created:
+        print("  This repository already has its one mission; no new mission was created and "
+              "the goal was not recorded. Give it work with: remedy do \"<order>\"")
+        return
     print(f"  Goal: {mission.goal}")
     print(f"  Link the first job with: remedy mission continue "
           f"{mission.id[:12]} \"<next step>\"")
+
+
+def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
+                           json_output: bool = False) -> None:
+    """Fold duplicate repository missions (DECISION amend1011b D6): a dry run unless *apply*."""
+    from packages.orchestration.mission_state import MissionError
+    from packages.orchestration.repo_mission_reconcile import (
+        reconcile_repo_missions,
+        restore_reconcile,
+    )
+
+    try:
+        if restore:
+            area = restore_reconcile(restore)
+            report: dict[str, Any] = {"restored_from": restore, "mission_area": str(area)}
+        else:
+            report = reconcile_repo_missions(apply=apply)
+    except (MissionError, OSError) as exc:
+        fail("mission_error", str(exc), json_output=json_output)
+    if json_output:
+        emit_ok(version=1, **report)
+        return
+    if restore:
+        print(f"Restored the mission area from {restore}")
+        return
+    if not report["projects"]:
+        print("Every repository has at most one mission; nothing to fold.")
+    for entry in report["projects"]:
+        for reason in entry["refused"]:
+            print(f"project {entry['project_id']}: NOT folded — {reason}")
+        for group in entry["groups"]:
+            for folded in group["folded"]:
+                print(f"project {entry['project_id']}: {folded['mission']} -> {group['canonical']} "
+                      f"({len(folded['job_ids'])} job(s))")
+        if entry.get("backup"):
+            print(f"  backup: {entry['backup']}  (undo: remedy mission reconcile --restore <dir>)")
+    if not apply and any(entry["groups"] for entry in report["projects"]):
+        print("This was a dry run. Carry it out with: remedy mission reconcile --apply")
 
 
 #: R-0904: `planned` is no stored status. It is an ACTIVE mission no job has
@@ -794,6 +852,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "mission.pause": lambda args: _cmd_mission_set_status(
         args.mission_id, "pause",
         project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.reconcile": lambda args: _cmd_mission_reconcile(
+        apply=getattr(args, "apply", False),
+        restore=getattr(args, "restore", None),
         json_output=getattr(args, "json", False),
     ),
     "mission.resume": lambda args: _cmd_mission_set_status(

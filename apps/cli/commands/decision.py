@@ -197,11 +197,15 @@ def _create_mission_for_job(job: Any, *, json_output: bool = False) -> str:
     leaving an approved plan with a half-built mission behind it.
     """
     from packages.orchestration.mission_state import (
-        MISSION_ROLE_INITIAL,
         MissionError,
-        create_mission,
-        link_job_to_mission,
+        MissionOrder,
         mission_for_job,
+    )
+    from packages.orchestration.repo_mission import (
+        accept_order,
+        link_order_job,
+        project_by_id,
+        project_repo_root,
     )
 
     project_id = str(getattr(job, "project_id", "") or "")
@@ -229,14 +233,15 @@ def _create_mission_for_job(job: Any, *, json_output: bool = False) -> str:
     goal = goal or str(getattr(job, "mission", "") or "") or str(job.job_title)
 
     try:
-        mission = create_mission(project_id, goal)
-        link_job_to_mission(project_id, mission.id, str(job.job_id),
-                            MISSION_ROLE_INITIAL)
+        # DECISION amend1011b D5: the approved goal is an order of the repository's one mission.
+        owner = project_by_id(project_id)
+        mission, batch = accept_order(owner, project_repo_root(owner), MissionOrder(text=goal))
+        mission = link_order_job(project_id, mission.id, batch.order_id, str(job.job_id))
     except MissionError as exc:
         fail("mission_error", f"could not start the mission: {exc}", json_output=json_output)
 
     if not json_output:
-        print(f"Mission {mission.id} started for this goal.")
+        print(f"Mission {mission.id} took this goal as an order.")
         print(f"  Goal:  {mission.goal}")
         print(f"  Chain: remedy mission show {mission.id[:12]}")
     return mission.id
@@ -354,7 +359,7 @@ def _cmd_decision_resolve(
                 json_output=json_output,
             )
         if follow_up is not None and not json_output:
-            print(f"Follow-up mission {follow_up} started with the unmet criteria "
+            print(f"Follow-up order added to mission {follow_up} with the unmet criteria "
                   f"as its contract.")
             print(f"  Next: remedy mission plan {follow_up}")
 

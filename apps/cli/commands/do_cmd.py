@@ -354,7 +354,7 @@ def _cmd_do_order(
 
     if json_output:
         document = {
-            "mission_id": ctx.mission_id or None,
+            "mission_id": ctx.mission_id or None, "order_id": ctx.order_id or None,
             "job_ids": list(ctx.job_ids),
             "waiting_job_ids": list(ctx.waiting_job_ids),
             "contract": contract,
@@ -485,9 +485,9 @@ def _cmd_do(
         running = running_mission_for_order_file(source_path)
         if running is not None:
             fail("order_already_running",
-                 f"{source_path} is already run by mission {running.id} ({running.status}); "
-                 f"abandon it with `remedy mission abandon {running.id}`, or pass --new-mission "
-                 "to start another. Nothing was run.",
+                 f"{source_path} still has unfinished jobs in mission {running.id} ({running.status}); "
+                 "let them finish or stop them, or pass --new-mission to run it again as one "
+                 "more order of the same mission. Nothing was run.",
                  json_output=json_output, exit_code=2, mission_id=running.id)
     _cmd_do_order(goal, repo=repo, **order_source_kwargs,
                   json_output=json_output, no_llm=no_llm,
