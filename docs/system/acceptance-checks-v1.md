@@ -9,8 +9,10 @@ criterion names no test of its own, its check is the project's own test command:
 criterion reads when the project has no test command at all.
 
 ## Where the command comes from
-The check looks for the command when it runs, in the job's worktree, so a job that adds a
-project's first tests is judged by them. It takes the first of these that exists:
+The check looks for the command when it runs, so a job that adds a project's first tests is
+judged by them. The configured command is read from the repository's own checkout, never from the
+job's worktree, whose files the job itself writes; the other two sources are read in the worktree
+(R-1236). It takes the first of these that exists:
 
 1. The `command` list in the `[tests]` table of the project's own `.remedy/config.toml`, the file
    that also holds its `[runtime]` table:
@@ -30,10 +32,16 @@ project's first tests is judged by them. It takes the first of these that exists
 
 A project whose tests run any other way names its command in `.remedy/config.toml`.
 
+When the job's own copy of the file its command comes from — `.remedy/config.toml`, or the
+`package.json` of `npm test` — differs from the checkout's, the check is refused as
+`test_command_changed` and nothing runs: a command the job wrote is never run as the job's own
+check, so a person judges it. `.remedy/config.toml` is among the project's protected paths.
+
 ## Where it runs
 In the job's worktree, with the project's own environment. A job's worktree holds neither the
 project's virtual environment nor its `node_modules`, because git ignores both, so the check
-looks in the worktree first and then at the same place in the repository's own checkout:
+looks for them at the same place in the repository's own checkout, and never in the worktree,
+where a job could plant its own (R-1236):
 
 - a virtual environment is a `.venv` or `venv` folder that holds `pyvenv.cfg` and `bin/python`;
   its `bin` folder goes first on the check's `PATH`, `VIRTUAL_ENV` names it, and its

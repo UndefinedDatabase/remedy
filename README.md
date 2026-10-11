@@ -7,8 +7,8 @@ reaches your repository or your remote without you saying so.
 
 ```mermaid
 flowchart TD
-    Order["Order (text or .md file)"] --> Mission["Mission (contract, plan)"]
-    Mission --> Job["Job 1..n (budget, fences, plan)"]
+    Mission["Mission (one per repository: contract, plan)"] --> Order["Order 1..n (text or .md file): a batch"]
+    Order --> Job["Job 1..n (budget, fences, plan)"]
     Job --> Task["Task 1..n"]
     Task --> Run["Run (one evidence folder per task)"]
     Run --> R1["Round 1 (build · review)"]
@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-137 of 305 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+138 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 43 | 44 |
+| 2 | Minimal Self-Build Runtime | 44 | 45 |
 | 3 | Full Token Economy & Autonomy | 9 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
@@ -299,7 +299,18 @@ sizes in `docs/system/structure-ledger-v1.md`, the 29 largest with where to cut 
 lets each size shrink and never grow and refuses a new one; the rolling findings paydown now takes
 one such step every fifth feature, and the first was taken here: the job runner's four places that
 check for a stop, a pause or the end of the budget became one, and a pause that arrives while a
-task is being saved now parks the job instead of ending it as if its budget had run out).
+task is being saved now parks the job instead of ending it as if its budget had run out),
+F297 findings paydown v7 (26 review findings were repaired, each with a test that
+fails without its repair: among them, a program reading the public web interface
+now sees a job whose check results or whose mission's acceptance list changed;
+the words page says a mission is a repository's lasting record and an order is one
+batch of work in it; a job paused by its spending alarm keeps the spending history
+it had when it continues; every test run records the processor time of each test
+file, and a closure names the files whose time rose; and the code of the spending
+alarm left the job runner's largest function for a module of its own. Remedy then
+narrowed one more error handler in its own `remedy job budget` command in a
+self-repair run that stopped, as it should, at its approval gate, and that run
+found one more small fault for the next paydown)..
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

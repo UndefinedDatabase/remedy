@@ -3665,7 +3665,7 @@ def run_pingpong(
 
             # --- Reviewer phase ---
             if builder_no_changes:
-                diff_summary = "(no changes — builder confirmed code already correct)"
+                diff_summary = "(no changes — the builder changed no file)"
             else:
                 diff_summary = "\n".join(f"M {f}" for f in result.staged_files)
             # Compute safe diff for reviewer (before reviewer runs)

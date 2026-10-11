@@ -107,13 +107,34 @@ class TestRunRecord:
         assert len(lines) == 1
         record = json.loads(lines[0])
         assert set(record) == {"utc", "command", "collected", "exit_status", "wall_seconds",
-                               "cpu_seconds", "workers"}
+                               "cpu_seconds", "workers", "module_cpu_seconds"}
+        # R-1139: the two workers' module totals reach the controller's one line.
+        assert list(record["module_cpu_seconds"]) == [SMALL_TEST_FILE]
+        assert record["module_cpu_seconds"][SMALL_TEST_FILE] > 0
         assert record["collected"] > 0
         assert record["exit_status"] == 0
         assert record["workers"] == 2
         assert record["cpu_seconds"] > 0
         assert record["wall_seconds"] > 0
         assert len(record["command"]) <= load_governor.LOAD_LOG_COMMAND_CHARS
+
+    def test_a_run_without_workers_records_its_modules_too(self, tmp_path):
+        """R-1139: the controller's own totals, when no xdist worker runs the tests."""
+        log = tmp_path / "load.jsonl"
+        done = _child_run(["-n", "0"], {"REMEDY_TEST_LOAD_LOG": str(log)})
+        assert done.returncode == 0, done.stdout + done.stderr
+        [line] = log.read_text(encoding="utf-8").splitlines()
+        modules = json.loads(line)["module_cpu_seconds"]
+        assert list(modules) == [SMALL_TEST_FILE] and modules[SMALL_TEST_FILE] > 0
+
+    def test_module_totals_are_added_by_the_module_a_node_id_names(self):
+        totals: dict = {}
+        load_governor.add_module_cpu(totals, load_governor.test_module("tests/a.py::T::test_x"), 1.5)
+        load_governor.add_module_cpu(totals, load_governor.test_module("tests/a.py::test_y[1]"), 0.25)
+        load_governor.add_module_cpu(totals, load_governor.test_module("tests/b.py::test_z"), 2.0)
+        assert totals == {"tests/a.py": 1.75, "tests/b.py": 2.0}
+        record = load_governor.build_record(load_governor.note_start(), 3, 0, 1, "pytest", totals)
+        assert record["module_cpu_seconds"] == {"tests/a.py": 1.75, "tests/b.py": 2.0}
 
     def test_an_empty_variable_writes_nothing(self):
         default_file = load_governor.load_log_path({})

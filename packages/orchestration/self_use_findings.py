@@ -35,7 +35,10 @@ Deliberate absences:
     reviewed work changed lies outside ``.agent/``. SU-030's reviewer passed
     exactly that — a `Done:` paragraph its builder wrote into
     ``.agent/live_review.md`` and nothing else — and a closure must not book
-    such a pass as a landed repair.
+    such a pass as a landed repair. A SECOND CHECK names a task that passed review while a path
+    its job file's ``Files:`` list names is not among the paths the reviewed work changed
+    (R-1230): SU-051's reviewer passed a change to the handler alone, while its item asked for
+    the ratchet test's count to be lowered in the same change.
 """
 
 from __future__ import annotations
@@ -87,7 +90,10 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
     Last, when any task's ``final_status`` is ``staged_review_passed`` and no
     path the reviewed work changed lies outside ``.agent/``, one string names
     that pass and every such path (``"job {job_id} ({status}): a task passed
-    review but no path outside .agent/ changed: {paths}"``, R-1058).
+    review but no path outside .agent/ changed: {paths}"``, R-1058); and one
+    string per passed task whose ``files_hint`` names a path the reviewed work
+    did not change (``"{task_id} ({status}): passed review but left unchanged a
+    path its Files: list names: {paths}"``, R-1230).
     """
     defects: list[str] = []
     if result.error:
@@ -114,4 +120,10 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
                 f"job {result.job_id} ({result.state}): a task passed review but no "
                 f"path outside {_RECORD_DIR} changed: {', '.join(changed) or '(none)'}"
             )
+    changed_set = set(_paths_the_reviewed_work_changed(result))
+    for task in result.tasks:
+        unchanged = [path for path in task.files_hint if path not in changed_set]
+        if task.final_status == "staged_review_passed" and unchanged:
+            defects.append(f"{task.task_id} ({task.status}): passed review but left unchanged a "
+                           f"path its Files: list names: {', '.join(unchanged)}")
     return tuple(defects)

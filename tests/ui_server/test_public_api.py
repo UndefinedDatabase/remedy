@@ -2218,6 +2218,102 @@ def test_the_run_poll_route_refuses_a_value_that_is_no_id(tcp_server):
         tcp_server, "GET", "/api/v1/jobs/..%2Fx/run", headers=_bearer(SERVER_TOKEN))
     assert status == 404, body
     assert body["error"] == "run_not_found"
+    assert body == _run_command_answer("../x", ok=False)  # R-1219
+
+
+# -- the refusals the two starts make before anything starts are the route's own (R-1219) --
+# `remedy do` words the same tokens for an order file it was given by name and for its own
+# `--new-mission` option, and `remedy job run` does not read the job before its run starts, so no
+# command answers these with the same envelope: the page says so, and each is held whole here.
+
+
+def _refusal(error: str, message: str, **payload) -> dict:
+    return {"schema_version": 1, "ok": False, "error": error, "message": message, **payload}
+
+
+@pytest.mark.parametrize("body, status, envelope", [
+    ({}, 400, _refusal("api_body_invalid", "'order' is required")),
+    ({"order": "---\nnot a valid line\n---\nDo it\n"}, 400, _refusal(
+        "order_file_invalid_header", "order.md: line 2 ('not a valid line') is not `key: value`.")),
+    ({"order": "---\n---\n   \n"}, 400, _refusal(
+        "order_file_empty", "order.md carries no order text.")),
+    ({"order": "---\nmax-cost-usd: 1\n---\nDo it\n"}, 409, _refusal(
+        "api_order_project_unknown",
+        "the order's header names no project, so it is not known where to run it; nothing was run")),
+    ({"order": "---\nproject: no-such-project-xyz\n---\nDo it\n"}, 409, _refusal(
+        "api_order_project_unknown", "the order's header names the project "
+        "'no-such-project-xyz', which is not registered as exactly one; nothing was run")),
+])
+def test_the_order_starts_own_refusals_are_held_whole(body, status, envelope):
+    calls, start = _recording_order_starter(_fixture_order_record())
+    assert _post_order(body, start)[:2] == (status, envelope)
+    assert calls == []
+
+
+def test_the_order_starts_refusal_of_a_key_a_running_mission_records_is_held_whole(
+        registered_project_slug, monkeypatch):
+    from types import SimpleNamespace
+
+    _stand_in_running_mission(monkeypatch, SimpleNamespace(id="m-running", status="active"))
+    calls, start = _keyed_order_starter(_fixture_order_record())
+    answer = _post_order(
+        {"order": _order_text(registered_project_slug), "order_key": "k-1"}, start)[:2]
+    assert answer == (409, _refusal(
+        "order_already_running", "the order key 'k-1' still has unfinished jobs in mission "
+        "m-running (active); let them finish or stop them, or send the order with new_mission "
+        "true to run it again as one more order of the same mission; nothing was run",
+        mission_id="m-running"))
+    assert calls == []
+
+
+@pytest.mark.parametrize("value, envelope", [
+    ("not-a-job", _refusal("invalid_job_id", "No job matches 'not-a-job'. Try: remedy job list.")),
+    ("6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a", _refusal(
+        "job_not_found", "job 6f1c2a9e-3b4d-4c5e-8f7a-0b1c2d3e4f5a has no record that can be "
+        "read; nothing was run")),
+    ("0123abcd", _refusal("job_not_found", "No job matches '0123abcd'.")),
+])
+def test_the_run_starts_own_refusals_of_a_value_that_names_no_job_are_held_whole(value, envelope):
+    calls, start = _recording_run_starter()
+    assert _post_run(value, {}, start)[:2] == (404, envelope)
+    assert calls == []
+
+
+def test_the_run_starts_own_refusals_of_a_job_it_can_name_are_held_whole(tmp_path):
+    unreadable = _saved_job_with_unreadable_record("", str(tmp_path))
+    calls, start = _recording_run_starter()
+    assert _post_run(unreadable, {}, start)[:2] == (404, _refusal(
+        "job_not_found", f"job {unreadable} has no record that can be read; nothing was run"))
+    first = _saved_job_in("")
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    twin = first[:-1] + ("0" if first[-1] != "0" else "1")
+    shutil.copytree(data_root / "jobs" / first, data_root / "jobs" / twin)
+    matches = sorted([first, twin])
+    listed = "\n".join(f"  {match[:8]}" for match in matches)
+    assert _post_run(first[:8], {}, start)[:2] == (400, _refusal(
+        "ambiguous_job_id", f"ambiguous job id prefix '{first[:8]}' matches 2 jobs:\n{listed}",
+        matches=matches))
+    assert calls == []
+    running = SR.RunRefused("job_already_running", f"the serve supervisor is already running "
+                            f"job {unreadable}")
+    _calls, refusing = _recording_run_starter(running)
+    assert _post_run(unreadable, {}, refusing)[:2] == (404, _refusal(
+        "job_not_found", f"job {unreadable} has no record that can be read; nothing was run"))
+    assert _post_run(first, {}, refusing)[:2] == (409, _refusal(
+        "job_already_running", f"the serve supervisor is already running job {unreadable}"))
+    _calls, failing = _recording_run_starter(OSError("cannot start"))
+    assert _post_run(first, {}, failing)[:2] == (500, _refusal(
+        "api_command_failed",
+        f"the run for '/api/v1/jobs/{first}/run' could not be started; nothing runs"))
+
+
+def test_the_page_says_the_two_starts_refusals_are_the_routes_own():
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    hand_written = page[:page.index(public_api.PUBLIC_API_PAGE_BEGIN)]
+    orders = hand_written[hand_written.index("## Orders"):hand_written.index("## Runs")]
+    runs = hand_written[hand_written.index("## Runs"):]
+    for section in (orders, runs):
+        assert "are the route's own" in " ".join(section.split()), section[:40]
 
 
 # -- the 202 answers equal what the commands that read what they start print (R-1212) --

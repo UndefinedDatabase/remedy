@@ -279,6 +279,10 @@ class TestReplan:
         assert follow_up.metadata["replan_of"] == {
             "job_id": job.job_id, "task_id": a_id, "request_id": result["request_id"],
         }
+        # R-1149: the follow-up records the sha256 of the goal it was planned from.
+        import hashlib
+        assert follow_up.job_file_sha256 == hashlib.sha256(
+            follow_up.user_prompt.encode("utf-8")).hexdigest()
 
         assert original_path.read_bytes() == before
 

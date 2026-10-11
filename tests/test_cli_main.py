@@ -749,6 +749,20 @@ class TestProjectCommandsCLI:
         job = load_job_plan(normalize_job_id(job_id))
         assert job.metadata.get("project_id") == target_id
 
+    def test_create_job_records_the_digest_of_its_prompt(self, tmp_path, monkeypatch, capsys):
+        """R-1149: the job records the sha256 of the prompt it was made from."""
+        import hashlib
+
+        self._env(tmp_path, monkeypatch)
+        from apps.cli.commands.job import _cmd_create_job
+        from apps.cli.commands.project import _cmd_create_project
+        from packages.orchestration.pingpong_job import load_job_plan
+        _cmd_create_project("Digest", None)
+        project_id = capsys.readouterr().out.strip()
+        _cmd_create_job("digest prompt", project_id=project_id)
+        job = load_job_plan(normalize_job_id(capsys.readouterr().out.strip()))
+        assert job.job_file_sha256 == hashlib.sha256(b"digest prompt").hexdigest()
+
     def test_create_job_with_valid_project_links(self, tmp_path, monkeypatch, capsys):
         import json
         self._env(tmp_path, monkeypatch)

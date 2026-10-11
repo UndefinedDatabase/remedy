@@ -199,6 +199,21 @@ def ensure_repo_mission(project: Any, repo_root: str | Path, *,
     return mission, not existing
 
 
+def _refusal(mission: Mission | None) -> str:
+    """Why *mission* takes no order: a paused or abandoned one waits for the operator; empty otherwise."""
+    if mission is None or mission.status not in (MISSION_STATUS_PAUSED, MISSION_STATUS_ABANDONED):
+        return ""
+    return (f"mission {mission.id} of this repository is {mission.status}; "
+            f"resume it first: remedy mission resume {mission.id[:12]}")
+
+
+def order_refusal(project: Any, repo_root: str | Path, root: Path | None = None) -> str:
+    """Why the repository's mission would refuse an order, read without creating or changing
+    anything; empty when it would take one (R-1250)."""
+    candidates = canonical_candidates(str(project.id), repo_key(project, repo_root), root)
+    return _refusal(candidates[0] if candidates else None)
+
+
 def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
                  kind: str = ORDER_KIND_BUILD, budgets: dict[str, Any] | None = None,
                  correlation_id: str = "", root: Path | None = None,
@@ -213,10 +228,8 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
     key = repo_key(project, repo_root)
     with repo_mission_lock(project_id, root):
         mission = _find_or_create(project, key, root)
-        if mission.status in (MISSION_STATUS_PAUSED, MISSION_STATUS_ABANDONED):
-            raise RepoMissionError(
-                f"mission {mission.id} of this repository is {mission.status}; "
-                f"resume it first: remedy mission resume {mission.id[:12]}")
+        if _refusal(mission):
+            raise RepoMissionError(_refusal(mission))
         reopened = mission.status if mission.status == MISSION_STATUS_ACHIEVED else ""
         batch = MissionOrderBatch(
             order_id=uuid4().hex, text=order.text, source_path=order.source_path,
@@ -230,6 +243,27 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
     return mission, batch
 
 
+def accept_order_in_each(targets: list[tuple[Any, str]], order: MissionOrder, *,
+                         budgets: dict[str, Any] | None = None,
+                         root: Path | None = None) -> dict[str, tuple[str, str]]:
+    """Accept *order* as a batch in the mission of each (project, repository) of TARGETS, and in
+    none unless every one can take it (R-1250): each is asked first, then each accepts.
+
+    An order over several repositories shares one correlation id and no umbrella mission
+    (DECISION amend1011b D4). Answers each project id's (mission id, order id).
+    """
+    for project, repo_root in targets:
+        if order_refusal(project, repo_root, root):
+            raise RepoMissionError(order_refusal(project, repo_root, root))
+    correlation = uuid4().hex if len(targets) > 1 else ""
+    accepted: dict[str, tuple[str, str]] = {}
+    for project, repo_root in targets:
+        mission, batch = accept_order(project, repo_root, order, budgets=budgets,
+                                      correlation_id=correlation, root=root)
+        accepted[str(project.id)] = (mission.id, batch.order_id)
+    return accepted
+
+
 def link_order_job(project_id: str, mission_id: str, order_id: str, job_id: str,
                    root: Path | None = None) -> Mission:
     """Link a job to the mission under an order batch: the first job ever is ``initial``, then ``follow_up``."""
@@ -238,6 +272,21 @@ def link_order_job(project_id: str, mission_id: str, order_id: str, job_id: str,
         role = MISSION_ROLE_FOLLOW_UP if current.job_links else MISSION_ROLE_INITIAL
         return link_job_to_mission(project_id, mission_id, job_id, role,
                                    order_id=order_id, root=root)
+
+
+def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],
+                      root: Path | None = None) -> Mission:
+    """Take jobs that will never run out of the mission's chain (R-1247), so none of them is ever
+    its latest link; a job id the chain does not hold is passed over."""
+    drop = set(job_ids)
+    with repo_mission_lock(project_id, root):
+        current = load_mission(project_id, mission_id, root)
+        kept = tuple(link for link in current.job_links if link.job_id not in drop)
+        if len(kept) == len(current.job_links):
+            return current
+        mission = replace(current, job_links=kept)
+        save_mission(mission, root)
+    return mission
 
 
 def order_batch_view(mission: Mission) -> list[dict[str, Any]]:

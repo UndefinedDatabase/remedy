@@ -4,9 +4,11 @@ A client reads the digest once (`packages.orchestration.client_digest.build_clie
 then asks this module what changed since that read, rather than reading the whole digest again —
 measured at 7.7 seconds over 11,654 jobs on the operator's own data root. A record CHANGED when
 its file's modification time is at or after the cursor less `CLIENT_CHANGES_OVERLAP_SECONDS`: a
-job when its `job.json`, a file of its run log or one of its apply records changed; a mission
-when its own record changed. The overlap covers a write that lands between two reads at the same
-second. This module reads only and never writes.
+job when its `job.json`, a file of its run log, one of its apply records or its gate result
+changed, or when the record of a mission it belongs to changed, because that record holds the
+contract the job's approval card reads (R-1240); a mission when its own record changed. The
+overlap covers a write that lands between two reads at the same second. This module reads only
+and never writes.
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ from typing import Any
 from packages.orchestration.client_digest import _mission_entry, build_client_digest
 from packages.orchestration.data_paths import job_record_path, jobs_dir, resolve_data_root, run_log_dir
 from packages.orchestration.decision_queue import budget_stop_answer, list_decisions
+from packages.orchestration.dod_gate import result_path
 from packages.orchestration.job_apply import _job_apply_records_dir
 from packages.orchestration.mission_state import list_missions_safe, mission_dir_for_project
 from packages.orchestration.pingpong_job import load_job_plan_safe
@@ -90,9 +93,9 @@ def _parsed_time(value: str | None) -> datetime | None:
 def _changed_job_ids_and_applies(
     cutoff: datetime,
 ) -> tuple[set[str], list[dict[str, Any]], bool, list[str]]:
-    """Job ids changed by their own record or their run log, the apply records that changed (and
-    the job ids they add), `degraded`, and `skipped_files` — one pass each over `jobs/` and
-    `job_apply_records/`.
+    """Job ids changed by their own record, their gate result or their run log, the apply records
+    that changed (and the job ids they add), `degraded`, and `skipped_files` — one pass each over
+    `jobs/` and `job_apply_records/`.
     """
     degraded = False
     skipped_files: list[str] = []
@@ -104,7 +107,8 @@ def _changed_job_ids_and_applies(
             if not job_path.is_dir():
                 continue
             job_id = job_path.name
-            if _mtime_at_or_after(job_record_path(job_id), cutoff):
+            if (_mtime_at_or_after(job_record_path(job_id), cutoff)
+                    or _mtime_at_or_after(result_path(job_id), cutoff)):
                 changed_job_ids.add(job_id)
                 continue
             log_dir = run_log_dir(job_id)
@@ -215,8 +219,9 @@ def build_client_changes(since: datetime | None, now: datetime | None = None) ->
     """What changed since *since*, less the overlap; reads only, never writes.
 
     Without *since* every list is empty and `cursor` is the time of this read. With it, `jobs`
-    and `decisions` are `build_client_digest`'s own, for the jobs whose `job.json`, a run-log file
-    or an apply record changed at or after `since` minus `CLIENT_CHANGES_OVERLAP_SECONDS`;
+    and `decisions` are `build_client_digest`'s own, for the jobs whose `job.json`, gate result,
+    a run-log file or an apply record changed at or after `since` minus
+    `CLIENT_CHANGES_OVERLAP_SECONDS`, and for every job of a mission whose record changed;
     `closed_decisions` names each decision of a changed job resolved at or after that time;
     `missions` lists each mission whose record changed; `applies` lists each apply record that
     changed. An item may be listed on two reads in a row, kept by a client by its id.
@@ -247,6 +252,14 @@ def build_client_changes(since: datetime | None, now: datetime | None = None) ->
     degraded = degraded or applies_degraded
     skipped_files.extend(applies_skipped)
 
+    # R-1240: a gate's verdict and a contract's amendment rewrite the mission's record, which the
+    # approval card of each of its jobs reads, so a changed mission lists its jobs too.
+    missions, missions_degraded, missions_skipped = _changed_missions(cutoff)
+    degraded = degraded or missions_degraded
+    skipped_files.extend(missions_skipped)
+    for mission in missions:
+        changed_job_ids.update(mission["job_ids"])
+
     digest = build_client_digest(now=when, job_ids=sorted(changed_job_ids))
     degraded = degraded or digest["degraded"]
     skipped_files.extend(digest["skipped_files"])
@@ -258,10 +271,6 @@ def build_client_changes(since: datetime | None, now: datetime | None = None) ->
         degraded = degraded or job_degraded
         skipped_files.extend(job_skipped)
     closed_decisions.sort(key=lambda d: (d["job_id"], d["decision_id"]))
-
-    missions, missions_degraded, missions_skipped = _changed_missions(cutoff)
-    degraded = degraded or missions_degraded
-    skipped_files.extend(missions_skipped)
 
     return {
         "read_at": read_at,

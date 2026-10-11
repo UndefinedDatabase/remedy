@@ -312,12 +312,14 @@ def test_a_job_whose_decisions_cannot_be_read_marks_degraded_and_skips_only_that
     "[1]\n",
     '{"timestamp": 1}\n{"timestamp": "2026-01-01T00:00:00"}\n',
 ], ids=["a-line-that-is-json-but-not-an-object", "timestamps-of-mixed-types"])
-def test_a_job_whose_run_log_holds_a_malformed_record_marks_degraded_and_skips_only_that_job(
-        root, run_log):
+def test_a_job_whose_run_log_holds_a_malformed_record_still_lists_its_decisions(root, run_log):
+    """R-1143: the run-log reader skips a line whose JSON is not an object and sorts timestamps
+    of mixed types as strings, so such a log degrades nothing and both jobs' decisions are listed."""
     from packages.orchestration.data_paths import run_log_dir
 
     bad_job = JobPlan(job_title="bad-log-job", project_id="proj-1", metadata=_job_metadata())
-    enqueue_task_decision(bad_job, task_id="T001", question="Q1", options=["a"], now=NOW)
+    bad_record = enqueue_task_decision(
+        bad_job, task_id="T001", question="Q1", options=["a"], now=NOW)
     save_job_plan(bad_job)
     log_dir = run_log_dir(bad_job.job_id, root)
     log_dir.mkdir(parents=True)
@@ -330,10 +332,10 @@ def test_a_job_whose_run_log_holds_a_malformed_record_marks_degraded_and_skips_o
 
     digest = build_client_digest(now=NOW)
 
-    assert digest["degraded"] is True
-    assert f"decisions of job {bad_job.job_id}" in digest["skipped_files"]
-    [entry] = digest["decisions"]
-    assert entry["decision_id"] == good_record["decision_id"]
+    assert digest["degraded"] is False
+    assert digest["skipped_files"] == []
+    assert sorted(entry["decision_id"] for entry in digest["decisions"]) == sorted(
+        [bad_record["decision_id"], good_record["decision_id"]])
 
 
 def test_an_error_outside_the_named_read_errors_is_not_hidden_as_degradation(

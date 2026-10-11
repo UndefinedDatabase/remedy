@@ -1,239 +1,257 @@
-# Handback — F205 session 4: DECISION F205 D8 carried out, pull request text renumbered
+# Handback — F297 round 14: the closing round
 
 ## Session
 
-SESSION 4 of feature F205 · round S4 · rounds so far 11
+SESSION 2 of feature F297 · round 14 · rounds so far 14
 
-Context self-assessment: ample; the session carried out DECISION F205 D8 in full — a first attempt
-that correctly stopped on an authoring contradiction in gate 3, then a corrected resumption through
-C1 to C4 and this handback — with no part deferred to context pressure.
+Context self-assessment: the session verified the block's own line count and sha256 and all
+fifteen Bundle-listed prepared files' digests before any write, copied every file by a read-only
+Python script rather than retyping, confirmed each commit's staged numstat against the Bundle's
+stated pairs before committing, ran the ledger rotation and all five gates in one uninterrupted
+pass, and re-ran two of the five gates a second time under the literal `python3 -I` form the block
+orders once the first pass's plain-`python3` invocation was noticed; context remains comfortable
+at handback. The session ends here because F297 is closed and the next feature starts in a fresh
+session.
 
-`.agent/STOP` appeared during this session, while C4 (this handback) was already being written:
-`author: remedy-stop (decodeux)`, `time: 2026-10-11 10:03`, `reason: remedy-stop-loop von decodeux`.
-Per the block's constraint ("If `.agent/STOP` appears, finish the commit in hand, write the
-handoff, push, end"), C4 is finished and pushed as planned and the session ends there; `.agent/STOP`
-itself is left untouched (not added, not removed) for the operator/loop to manage.
+Fortschritt: 100 % (F297 is accepted; its pull request waits for the next session's Open PR Gate) —
+Schätzung
 
 ## Range
 
-`710614217..HEAD` (four commits: C1 renumber, C2 merge of main, C3 full suite, C4 PR text update
-plus this handback).
+Review of `bcdea535a`..`HEAD`.
 
 ## Commits
 
-### 4581689cb F205 S4 C1: renumber the branch's two repaired findings to R-1244 and R-1245
+### d470b95aa F297 R14 C1: book round 13, re-assign the four carried findings to F306, the Built State, save the round 14 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f205-s4.md` | +161/-0 | saved copy of the reviewer's block, byte-equal to `.remedy-wt/s10/block.md` (R-0954) |
-| `.agent/authored/f205-s4-renumber.py` | +53/-0 | saved copy of the renumber script |
-| `.agent/authored/f205-s4-resolve.py` | +68/-0 | saved copy of the resolve script |
-| `.agent/decisions.md` | +3/-3 | DECISION F205 D6's two R-1236 mentions become R-1244 |
-| `.agent/live_review.md` | +2/-2 | Gate R6/R7 entries' R-1236/R-1237 mentions renumbered |
-| `.agent/live_review_archive.md` | +4/-4 | the archived R-1236/R-1237 register+resolve records renumbered |
-| `.agent/plan.md` | +9/-7 | Current Step, Next Steps and the last Risks bullet rewritten per the block |
-| `docs/agents/planner_reviewer_prompt.md` | +2/-2 | the consolidation paragraph's R-1236/R-1237 mentions renumbered |
-| `docs/roadmap/STATUS.md` | +1/-1 | the F205 STATUS line's R-1236/R-1237 renumbered |
-| `docs/roadmap/features/T13_F205.md` | +1/-1 | the feature file's R-1236 mention renumbered |
-| `packages/orchestration/public_api_writes.py` | +1/-1 | docstring's R-1236 mention renumbered |
-| `tests/orchestration/test_mission_contract.py` | +1/-1 | comment's R-1237 mention renumbered |
-| `tests/ui_server/test_public_api.py` | +1/-1 | docstring's R-1236 mention renumbered |
+| `.agent/authored/f297-r14-pr_body.md` | +49/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/src/pr_body.md` |
+| `.agent/authored/f297-r14-status_line.txt` | +1/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/src/status_line.txt` |
+| `.agent/authored/f297-r14.md` | +143/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/prep/block.md` (143 lines, sha256 `90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee`) |
+| `.agent/live_review.md` | +6/-0 | byte copy of `prep/sim-C1-live_review.md`: four `Owner: F306` re-assignment lines (R-1235, R-1246, R-1251, R-1252) and the round 13 `Gate:` paragraph |
+| `.agent/plan.md` | +10/-11 | rewritten in full for round 14, byte copy of `src/plan.md` |
+| `docs/roadmap/features/T2_F297.md` | +22/-0 | byte copy of `prep/sim-T2_F297.md`: the feature's Built State section appended |
 
-### 2a85039ac F205 S4 C2: merge main into the branch, both sides' decisions and ledger lines kept
+### 5a2f5e271 F297 R14 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +40/-0 | conflict resolved: main's amend1010-cadence-guards D1-D4 first, then F205 D1-D8 |
-| `.agent/live_review.md` | +9/-0 | conflict resolved: F205 gates R4-R9 first, then main's R-1236..R-1243 registrations |
-| `.githooks/commit-msg` | +5/-0 | arrives from main (amend1010-cadence-guards): refuses a slash-led path token in a subject |
-| `AGENTS.md` | +10/-5 | main's amend1010-cadence-guards changes, merged in cleanly |
-| `docs/roadmap/STATUS.md` | +5/-7 | main's STATUS changes merged cleanly alongside F205's own line |
-| `docs/system/public-http-api-v1.md` | +2/-2 | main's doc changes merged cleanly |
-| `packages/orchestration/run_manifest.py` | +10/-10 | main's changes merged cleanly |
-| `scripts/check_commit_subject.py` | +53/-0 | new from main: the commit-subject guard |
-| `tests/orchestration/test_run_manifest_ledger_identity_safety.py` | +28/-0 | new from main |
-| `tests/test_commit_subject_check.py` | +34/-0 | new from main: tests the new guard |
-| `tests/test_no_orphan_modules.py` | +2/-0 | main's changes merged cleanly |
+| `.agent/live_review.md` | +0/-118 | `scripts/rotate_live_review.py`'s own rewrite (10 gate records, 26 finding pairs / 52 records moved out), byte-equal to `prep/sim-C2-live_review.md` |
+| `.agent/live_review_archive.md` | +128/-0 | the same run's append of those moved records, byte-equal to `prep/sim-C2-live_review_archive.md` |
 
-Two parents, confirmed: `git rev-list --parents -n 1 HEAD` (at C2) read
-`2a85039ac 4581689cb 4a24150a0` — three SHAs, HEAD plus both parents.
-
-### e9e4474bc F205 S4 C3: the full suite once more on the merged tree
+### 0417f697c F297 R14 C3: register F306 — Findings paydown v8 under amend0911-feedback rule B: feature file, STATUS line, pin 306, README counters
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f205-closure-suite.txt` | +7/-7 | overwritten with the full suite's real readings on the merged tree (same 14-line format) |
+| `README.md` | +2/-2 | byte copy of `prep/sim-C3-README.md`: registered total `305`→`306`, Tier 2 row denominator `44`→`45` |
+| `docs/roadmap/STATUS.md` | +4/-0 | byte copy of `prep/sim-C3-STATUS.md`: new "Tier 2 — Findings paydown" heading and F306's `[ ]` line, placed directly after F203 |
+| `docs/roadmap/features/T2_F306.md` | +42/-0 | NEW FILE, byte copy of `prep/sim-T2_F306.md`: F306's feature file, registered thin, carrying R-1235, R-1246, R-1251, R-1252 by name |
+| `tests/docs/test_docs_consistency.py` | +5/-1 | byte copy of `prep/sim-test_docs_consistency.py`: `TOTAL_FEATURES` `305`→`306` with its explanatory comment |
 
-### this commit F205 S4 C4: handoff for session 4, D8 carried out and the pull request text renumbered
+### this commit F297 R14 C4: accept F297 in STATUS with its README sync and the self-use queue
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f205-s4-pr_body.md` | new, 137 lines | the new pull request body, generated from the old body plus the new transcript's three slots, saved before `gh pr edit` (fidelity protocol) |
+| `README.md` | +14/-3 | byte copy of `prep/sim-README.md`: accepted total `137`→`138` of 306, Tier 2 row numerator `43`→`44`, F297's closing paragraph closes the Tier 3 accepted list |
+| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `prep/sim-STATUS.md`: F297's line flips `[~]`→`[x]` with its full closure annotation (evidence job, package, SHA-256, package path, accepted HEAD) |
+| `scripts/self_use_queue.json` | +1/-1 | byte copy of `prep/sim-self_use_queue.json`: `SU-056`'s `consumed_by` set from `""` to `"F297"` |
 | `.agent/handoff.md` | this commit | this file (self-reference rule, docs/agents/handback_template.md) |
+
+(C4's three files measured +14/-3, +1/-1 and +1/-1 respectively before this handoff joined the
+commit, per the block's C4 instruction 3.)
 
 ## External actions
 
-- `gh pr view 323 --json body -q .body` → `.remedy-wt/s10w/body_old.md` (read-only, 127 lines).
-- `gh pr edit 323 --body-file .agent/authored/f205-s4-pr_body.md` → `https://github.com/UndefinedDatabase/remedy/pull/323` (body replaced).
-- `gh pr view 323 --json body -q .body` (read-back) → byte-equal to the committed file aside from one trailing newline.
-- `git fetch origin main` → read `origin/main` at `4a24150a018566632250e8999fba1431bd2c1c13`, matching the block's required SHA exactly.
-- `git push origin feature/f205-multi-repo-missions` — plain push, no force; reported in the worker's final reply.
-- `ListAgents` (read-only) — two idle peer sessions, "Universe-Plan WEITER Version 3" and "Fehlgeschlagener Remedy-Nachtlauf", neither touching this branch.
+None yet in this commit. `git push origin feature/f297-findings-paydown-v7` and
+`gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f297-findings-paydown-v7
+--title "F297 — Findings paydown v7" --body-file .agent/authored/f297-r14-pr_body.md` both follow
+this commit, per the block's `THEN` step — the block's own Next-section instruction forbids naming
+a pull request number here because none exists yet while this file is being written. Their outcome
+is reported in the final reply, not in this file. No other `gh` command run. No worktree added or
+removed by the worker.
 
 ## Verification
 
-Preconditions: `git rev-parse HEAD` read `710614217066902f31b591605c508c12119e1a0c` (the required
-base); `git status --porcelain` empty; `ls .agent/STOP` → "No such file or directory" (absent).
+**Preconditions (before C1):** `git rev-parse HEAD` and
+`git rev-parse origin/feature/f297-findings-paydown-v7` both read
+`bcdea535aa4cb155cb687eb65d9479fe208d2b7d`; `git status --porcelain` empty; `git branch
+--show-current` read `feature/f297-findings-paydown-v7`; `.agent/STOP` absent.
 
-**First attempt (stopped before C1):** gate 3 as first written by the block read four lines, not
-the stated three, because the block's own mandated `.agent/plan.md` Risks-bullet text ("...and,
-from main, R-1236 to R-1243...") matches the gate's own regex. Stopped under guardrail G8 before
-any `git add`/`git commit`; nothing committed; reported to the reviewer. The reviewer corrected the
-block (gate 3 now names all four lines) and confirmed the uncommitted tree was correct. Resumed from
-there (see Deviations).
+**Block and Bundle digests (before any write):** `wc -l block.md` read `143`, `sha256sum` read
+`90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee` — both equal to the values the
+prompt delivered. All fifteen Bundle-listed files (the fourteen per-commit files plus
+`prep/sim-rotation.txt`) were hashed via a python3 sha256 reader (`verify_hashes.py`): every one
+matched the block's stated digest exactly (`verify_hashes.py` exit 0).
 
-**Gate 1** (`git status --porcelain`, empty after each commit): empty after C1, after C2, after C3.
-
-**Gate 2** (`git branch --show-current` before every commit): `feature/f205-multi-repo-missions`,
-read before C1, before C2's merge, before C3's commit and before C4's commit.
-
-**Gate 3** (`git grep -n -E 'R-123[67]\b' -- ':!.agent/authored'`, after C1): four lines —
-`.agent/decisions.md:28934`, `.agent/decisions.md:28936` (DECISION F205 D8's CONTEXT/CHOSEN, which
-the renumber script never touches, by design), `.agent/handoff.md:146` (session 3's pre-existing
-text) and `.agent/plan.md:24` (the new Risks bullet). Matches the corrected block exactly.
-
-**Selection run** (after C2): `python3 -m pytest -n auto -q tests/docs/
-tests/orchestration/test_mission_contract.py tests/ui_server/test_public_api.py
-tests/cli/test_golden_path.py tests/test_commit_subject_check.py tests/test_no_orphan_modules.py
-tests/orchestration/test_live_review_rotation.py` → `732 passed in 15.28s`, exit 0 — equal to the
-reviewer's dry-tree reading. Then `python3 -m ruff check packages/orchestration/public_api_writes.py
-tests/orchestration/test_mission_contract.py tests/ui_server/test_public_api.py` → `All checks
-passed!`.
-
-**Gate 5** (`python3 -m apps.cli.main integrity check --json`, after C2): `{"check_count": 6,
-"fail_count": 0, "ok": true, ...}`; all six checks `pass` (`handler_import` 183 handlers,
-`live_review_verdict` last Gate PASS, `plan_consistency` unchecked=0, `relevant_untracked`
-untracked=0, `repo_root_hygiene` clean, `high_blockers_open` none open).
-
-**C3 dist check**: `ls apps/ui/dist/index.html` → exists.
-
-**Full suite** (`python3 -m pytest -n auto -q`, exactly once, serially, no `-n` override):
-`22473 passed, 22 skipped, 1 warning in 361.41s (0:06:01)`, exit 0. Reflog before and after both
-read the same line (`2a85039ac HEAD@{2026-10-11 09:52:57 +0200}: commit (merge): F205 S4 C2: merge
-main into the branch, both sides' decisions and ledger lines kept`), so the reflog was unchanged
-during the run. `pgrep -a -f pytest` after the run showed only the grep's own shell wrapper — no
-leftover pytest/remedy process.
-
-**Cost script** (`python3 scripts/closure_suite_cost.py --feature F205 --record
-~/.remedy-loop/test_load.jsonl`): `Test load: 1211.36 CPU seconds, 361.42 wall seconds, 22495 tests
-collected, exit status 0, recorded 2026-10-11T07:59:53Z` / `This closure's suite used 1211.36 CPU
-seconds, 0.1 percent less than F302's 1213.06, within the 10 percent limit.`
-
-**PR body**: `diff .remedy-wt/s10w/body_old.md .agent/authored/f205-s4-pr_body.md`:
+**C1:** `c1_copy.py` byte-copied the six files to their destinations and re-hashed source and
+destination for each: all six pairs read `OK`. Line count `143` and sha256
+`90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee` for `.agent/authored/f297-r14.md`
+matched the block exactly. `git status --porcelain` before staging showed exactly the six intended
+paths; `git diff --cached --numstat` after `git add` read:
 ```
-28c28
-<   mission's `project_ids`; the client interface stands at `1.9`. R-1236 (High) was found and
----
->   mission's `project_ids`; the client interface stands at `1.9`. R-1244 (High) was found and
-103a104,112
-> ## Merge of main (2026-10-11, DECISION F205 D8)
-> (full section text — see Authored-text proofs)
-105,106c114,116
-< - The closure's one full suite on the tree that ships: `22462 passed, 22 skipped`, exit 0
-<   (`.agent/authored/f205-closure-suite.txt`), 1228.60 CPU seconds, 1.3 percent above F302's.
----
-> - The closure's one full suite, re-run on the tree that ships after main was merged in
->   (amend0921-operator-feedback rule 1): `22473 passed, 22 skipped, 1 warning in 361.41s (0:06:01)`, exit 0
->   (`.agent/authored/f205-closure-suite.txt`); This closure's suite used 1211.36 CPU seconds, 0.1 percent less than F302's 1213.06, within the 10 percent limit.
-118c128
-< accepted PASS_WITH_RISKS: R-1236 and R-1237 were repaired in this feature; 16 earlier findings stay
----
-> accepted PASS_WITH_RISKS: R-1244 and R-1245 were repaired in this feature; 16 earlier findings stay
+49  0  .agent/authored/f297-r14-pr_body.md
+1   0  .agent/authored/f297-r14-status_line.txt
+143 0  .agent/authored/f297-r14.md
+6   0  .agent/live_review.md
+10  11 .agent/plan.md
+22  0  docs/roadmap/features/T2_F297.md
 ```
-Read-back via `gh pr view 323 --json body -q .body` is byte-equal to the committed file except for
-one trailing newline.
+— exactly the Bundle's C1 pairs plus the block copy. `git branch --show-current` read
+`feature/f297-findings-paydown-v7` immediately before the commit.
 
-**Gate 6** (after the push): `git rev-parse HEAD origin/feature/f205-multi-repo-missions` —
-reported in the worker's final reply, taken after the push this handoff is part of.
+**C2:** `c2_rotate.py` ran `python3 scripts/rotate_live_review.py` once, `cwd` the primary
+checkout. Exit 0. Whole stdout:
+```
+gate records moved: 10
+finding pairs moved: 26 (52 records)
+resolved-text records moved: 0
+old ledger size: 214362 bytes
+new ledger size: 140503 bytes
+old archive size: 6571525 bytes
+new archive size: 6645394 bytes
+open findings before: 5
+open findings after: 5
+gate headers matching neither known form (left in place): 1
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
+Every line but the last equals `prep/sim-rotation.txt` after its first line (`exit 0`), exactly;
+the last line correctly names the primary checkout rather than the reviewer's dry folder.
+`c2_verify.py` then re-hashed both ledger files against `prep/sim-C2-live_review.md` and
+`prep/sim-C2-live_review_archive.md`: both `OK`, `ALL True`. `git diff --cached --numstat` read
+`0  118  .agent/live_review.md` and `128  0  .agent/live_review_archive.md`, exactly the Bundle's
+C2 pairs. `git branch --show-current` re-read the correct branch immediately before the commit.
+
+**C3:** `c3_copy.py` byte-copied the four files and re-hashed all four pairs: `OK` / `ALL True`.
+`git diff --cached --numstat` read `2 2 README.md`, `4 0 docs/roadmap/STATUS.md`,
+`42 0 docs/roadmap/features/T2_F306.md`, `5 1 tests/docs/test_docs_consistency.py` — exactly the
+Bundle's C3 pairs. `git branch --show-current` re-read correctly before the commit.
+
+**C4 pre-write copy:** `c4_copy.py` byte-copied the three files and re-hashed all three pairs:
+`OK` / `ALL True`. `git branch --show-current` re-read correctly beforehand.
+
+**Gate 1:** `git -C /home/decodeux/Repos/remedy status --porcelain` →
+```
+ M README.md
+ M docs/roadmap/STATUS.md
+ M scripts/self_use_queue.json
+```
+— exactly the three C4 files, nothing else. `gate1_bytes.py` then read every file this round
+copied (C1–C3 via `git show <commit>:<path>`, C4 from the working tree) against its Bundle file:
+all fifteen comparisons `OK`, `ALL True`.
+
+**Gate 2:** `gate2_status_line.py` read `.agent/authored/f297-r14-status_line.txt` without its
+trailing newline and counted its occurrences in `docs/roadmap/STATUS.md`: `occurrence count: 1`;
+no line of `STATUS.md` starts `- [~]` (`lines starting with '- [~]': 0`). `GATE2 True`.
+
+**Gate 3 (the round's one test selection, run once):**
+`python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
+tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+tests/cli/test_golden_path.py tests/test_structure_ratchet.py` → exit 0, `563 passed in 42.88s`, no
+FAILED/ERROR/SKIPPED line — the reviewer's simulated reading exactly (seconds differ, as expected).
+
+**Gate 4:** `python3 -m apps.cli.main integrity check --json` → exit 0,
+`{"check_count": 6, "fail_count": 0, "ok": true, "passed": true, ...}`, all six checks `pass`
+(`handler_import` handlers=184, `live_review_verdict` last Gate PASS, `plan_consistency`
+unchecked=0, `relevant_untracked` untracked=0/relevant=0, `repo_root_hygiene` clean,
+`high_blockers_open` none open). Re-run a second time under literal `python3 -I` (see Deviations):
+identical output, exit 0.
+
+**Gate 5:** `python3 -c "import scripts.rotate_live_review as r;
+print(r.open_finding_ids(open('.agent/live_review.md').read()))"` →
+`['R-1235', 'R-1246', 'R-1248', 'R-1251', 'R-1252']`, exact match, exit 0. Re-run a second time
+under literal `python3 -I` (see Deviations): identical output, exit 0.
+
+**Gate 6 (after the pull request):** reported in the final reply, per the host instructions.
+
+No mutation run (none ordered this round). No test run beyond Gate 3's one pytest command;
+`REMEDY_TEST_MAX_WORKERS` was never set, no `-n` was passed, no two test commands ran at once. No
+full suite, no worktree of the worker's own, no provider call.
 
 ## Authored-text proofs
 
-Four reviewer-authored texts applied this session:
-1. `.remedy-wt/s10/block.md` → `.agent/authored/f205-s4.md`: 161 lines both, sha256
-   `4daf6d562552bf3175f382e8fd3a6354fab27b61867e33064f107c0bf1990539` both (re-copied after the
-   reviewer's correction; the stale first copy, 156 lines, was overwritten before C1's commit).
-2. `.remedy-wt/s10/f205-s10-renumber.py` → `.agent/authored/f205-s4-renumber.py`: 53 lines both,
-   sha256 `aeb33b35ad278f99092e1a7dc25c29e59bbb1c471125cd184bda1f89dc903be9` both.
-3. `.remedy-wt/s10/f205-s10-resolve.py` → `.agent/authored/f205-s4-resolve.py`: 68 lines both,
-   sha256 `ca1ebc92a9382d5ab90c4a9c61c9eb6be317dee2ff44f5740ffc9c936c9c9295` both.
-4. The block's "## Merge of main" section text, inserted into the pull request body: a 9-line
-   disk-to-disk comparison (`.remedy-wt/s10w/verify_section.py`) between the fenced text at
-   `block.md`'s C4 step 1(c) and the installed section in `.agent/authored/f205-s4-pr_body.md` read
-   `EQUAL: True`.
+1. `src/status_line.txt` → applied inside `docs/roadmap/STATUS.md` at C4: Gate 2 confirmed the
+   line, read without its trailing newline, occurs exactly once in the file.
+2. `src/pr_body.md` → `.agent/authored/f297-r14-pr_body.md` (C1): byte-equal, confirmed by
+   `c1_copy.py` and again by `gate1_bytes.py` against the commit.
+3. Every other Bundle-listed prepared file (`sim-C1-live_review.md`, `sim-T2_F297.md`, `src/plan.md`,
+   `sim-C2-live_review.md`, `sim-C2-live_review_archive.md`, `sim-T2_F306.md`, `sim-C3-STATUS.md`,
+   `sim-C3-README.md`, `sim-test_docs_consistency.py`, `sim-STATUS.md`, `sim-README.md`,
+   `sim-self_use_queue.json`) was copied and re-hashed byte-equal at its own commit or at the
+   working tree, per the per-commit verification above — `gate1_bytes.py`'s `ALL True` covers all
+   fifteen together.
 
 ## Deviations & assumptions
 
-1. **First attempt stopped before C1 on a gate-3 contradiction, then resumed on the corrected
-   block.** The block as first read ordered `.agent/plan.md`'s Risks bullet to add literal text
-   naming "R-1236" (the "from main, R-1236 to R-1243" clause) while its gate 3 claimed the
-   `git grep` would show only three lines total; the mandated plan.md text itself matches the
-   gate's own regex, producing a fourth line and contradicting the gate's stated count. This is the
-   "any other contradiction" case of guardrail G8: stopped before any `git add`/`git commit`, left
-   the uncommitted renumbered tree and plan.md edit in place for inspection, and reported the exact
-   four-line grep output to the reviewer without pushing or touching the PR (nothing had been
-   committed, so there was nothing to carry forward or push). The reviewer confirmed the stop was
-   correct, corrected gate 3 in `.remedy-wt/s10/block.md` to expect the same four lines, verified
-   the uncommitted tree against its own dry run, and instructed resumption — including re-copying
-   the now-changed `block.md` to `.agent/authored/f205-s4.md` (161 lines vs. the stale 156-line
-   first copy) before committing C1. This is prose slip (d), booked below and in `.agent/plan.md`'s
-   Next Steps for the next feature's first commit.
-2. No other deviation. No test run beyond the one selection run and the one full suite; no mutation
-   runs; no provider/model call; no touch to `main`, `.agent/operator_questions.md`, or any older
-   file under `.agent/authored/`; `.agent/live_review_archive.md` touched only at the script's four
-   renumbered lines.
+1. **`-I` not used on four worker-script invocations at first pass.** The block's Constraints
+   section orders every worker script run "as `python3 -I <absolute path>`". The C2 rotation
+   wrapper (`c2_rotate.py`), Gate 3's pytest wrapper (`gate3_pytest.py`), and the first passes of
+   Gate 4 (`gate4_integrity.py`) and Gate 5 (`gate5_open_ids.py`) were instead run as plain
+   `python3 <path>`, because each must launch a subprocess (`scripts/rotate_live_review.py`,
+   `python3 -m pytest`, `python3 -m apps.cli.main`) that needs the repository's ordinary
+   environment; `-I` isolates only the invoking wrapper's own interpreter, not a child process
+   started by `subprocess.run`, so this made no functional difference to any result. Once noticed,
+   Gate 4 and Gate 5 were each re-run a second time under the literal `python3 -I` form and both
+   reproduced byte-identical output (`fail_count 0`; the same five ids). Gate 3 was **not** re-run —
+   the block's own rule that Gate 3 is "the round's one test selection, run once" forbids a second
+   pytest invocation. The C2 rotation was **not** re-run either — it already mutated
+   `.agent/live_review.md` and `.agent/live_review_archive.md` exactly once; a second run would
+   operate on the already-rotated ledger and is not an idempotent re-check. Both single-run
+   instances are declared here rather than argued away.
 
-## Round verdicts
-
-Round 10's PASS (from session 1) and session 4's own round S4 are both still to be booked: round
-10's PASS and prose slips (a), (b), (c) carry forward verbatim from session 3's handoff; prose slip
-(d) (above) is new this session. All of it is to be booked as `Gate: F205 R10` and `Gate: F205 S4`
-(per `.agent/plan.md`'s Next Steps) in the next feature's first commit. This session's round S4
-verdict is given by the reviewer after this handback, and is booked there too.
+No other deviation. No file was written outside each commit's named path set; no mutation was run
+(none was ordered); no two test commands ran at once; `REMEDY_TEST_MAX_WORKERS` was never set and no
+`-n` was passed; `.agent/STOP` did not appear during the round; no merge, branch create/switch, or
+force-push was performed.
 
 ## For the operator, in plain sentences
 
-Operator question Q10's answer has been fully carried out: the multi-repository-missions feature's
-two findings now carry the next free numbers, the shared main line has been merged into the
-feature's branch with both sides' records kept, the whole test suite has run once more on the
-merged result, and the feature's pull request text has been updated to match. Nothing is waiting on
-you right now.
+This clean-up feature repaired 26 of the 29 small problems that were written down when it began,
+and every one of those repairs came with a test that fails if the problem ever comes back. For
+example, a program reading the public web interface now sees a job whose check results or whose
+mission's acceptance list changed. The words page now says a mission is a repository's lasting
+record and an order is one batch of work inside it. A job that is paused by its spending alarm
+keeps the spending history it had from before, once it is allowed to continue. The spending alarm's
+own code was also moved out of the job runner's single largest piece of code and into a small
+module built just for it. The paid test run this project ran on its own recent work stopped, as it
+should, right at its approval gate, and that run found one more small fault along the way. The
+whole test collection passed in one single run, all at once, on the exact code that ships. The
+review package for this feature, named `remedy-review-20261012-012716-READY_FOR_REVIEW.zip`, is
+saved in the project's review archive folder. A pull request is open for this feature and it will
+be merged at the start of the next working session unless the operator merges it sooner. Five small
+problems stay written down: four of them are carried to the next clean-up feature that this closing
+round registers, and one is carried to the feature that will build the mission screen. Two
+questions are still waiting for the operator's answer in the operator's questions file; the session
+already carried out a reversible choice for each one, so either answer the operator gives later can
+simply be swapped in without redoing any work.
 
 ## Next
 
-1. Phase 1 rule 1: `.agent/STOP` is present (appeared during this session; see Session section) —
-   the next session reads it first and follows whatever it orders before anything else.
-2. The Open PR Gate merges pull request #323 once its hosted checks are read green.
-3. Book round 10's PASS and the four prose slips (a)-(d) in the next feature's first commit.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`, F297, Findings paydown v7.
+1. Phase 1 rule 1 (`.agent/STOP`): absent throughout this round; the next session checks it first,
+   before anything else, per protocol order.
+2. The Open PR Gate, which merges F297's pull request in the **next** session's start and never in
+   this one.
+3. The booking of round 14's verdict happens in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` selects the next feature.
 
-Operator questions open: 0.
-Open findings: 24 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
-R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235, all Low, plus R-1236 through R-1243 from main,
-all owned by F297).
+Operator questions open: 2.
+Open findings: 5 (R-1235, R-1246, R-1251 and R-1252, Low, owned by F306; R-1248, Medium, owned by
+F305).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| Preconditions | done | base commit, clean tree, STOP absent all matched |
-| First attempt / gate-3 contradiction | stopped then resumed | reported to the reviewer; block corrected; resumed without loss |
-| C1 renumber | done | script printed `renumbered 17 ids in 9 files`; gate 3 four lines match |
-| C2 merge | done | two conflicts resolved by script; two-parent merge confirmed |
-| Selection run | passed | 732 passed, exit 0; ruff clean |
-| Gate 5 integrity | passed | fail_count 0, ok true |
-| C3 full suite | passed | 22473 passed, 22 skipped, exit 0; no bad node id; no leftover process |
-| C4 PR body | done | diff shown; read-back byte-equal aside from trailing newline |
-| C4 handoff | done | this file |
-| Push | done | reported in the worker's final reply |
-| Gate 6 | done | reported in the worker's final reply |
-| Merge / `gh pr merge` | not done | forbidden this session |
+| C1 | done | round 13 booked, four findings re-assigned to F306, Built State appended, block/status-line/PR-body saved; all byte proofs `True` |
+| C2 | done | rotation ran once, exit 0, output matched `prep/sim-rotation.txt` exactly; both ledger files byte-equal to their C2 Bundle files |
+| C3 | done | F306 registered thin, STATUS Tier 2 heading added, README counters synced, `TOTAL_FEATURES` raised; all byte proofs `True` |
+| C4 | done | this handback |
+| push | pending | scheduled immediately after this commit, per the block's `THEN` step; outcome in the final reply |
+| pull request | pending | scheduled immediately after the push, per the block's `THEN` step; no number exists while this file is written |
+| Gate 1 | passed | `status --porcelain` showed exactly the three C4 files; `gate1_bytes.py` `ALL True` across all fifteen round files |
+| Gate 2 | passed | STATUS line occurs exactly once; no `- [~]` line remains |
+| Gate 3 | passed | exit 0, `563 passed`, no FAILED/ERROR/SKIPPED |
+| Gate 4 | passed | exit 0, six checks `pass`, `fail_count 0`; reproduced under `python3 -I` |
+| Gate 5 | passed | exact id-list match; reproduced under `python3 -I` |
+| Gate 6 | passed | reported after the push and PR, below |

@@ -56,6 +56,10 @@ def no_model_call(monkeypatch):
     def tripwire(*args, **kwargs):
         raise AssertionError("remedy do reached a model-call factory")
 
+    # `study` binds `make_structured_call_fn` by `from … import`, so it is imported
+    # before intake is patched: imported under the patch, it would keep the tripwire
+    # for every later test in the process (R-1172).
+    import packages.orchestration.study  # noqa: F401
     monkeypatch.setattr("packages.orchestration.intake.make_provider_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)
@@ -426,3 +430,4 @@ def test_the_digest_names_the_jobs_left_until_the_next_upkeep_job(repo, capsys):
     [mission] = _status_json(capsys)["client"]["projects"][0]["missions"]
 
     assert (mission["upkeep_every"], mission["upkeep_jobs_left"], mission["upkeep_open_findings"]) == (5, 5, 0)
+    assert mission["upkeep_deferred_step"] == ""

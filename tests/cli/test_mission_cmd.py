@@ -708,9 +708,14 @@ class TestContinueWithUpkeep:
         assert body["tasks"][-1].startswith("Upkeep after 5 completed jobs of this mission")
         assert "finding F-TASK-001" in body["tasks"][-1]
         assert "Add the CSV path" not in body["tasks"]
+        assert body["step_deferred"] is True and body["deferred_step"] == "Add the CSV path"
         shown = json.loads(_run(["mission", "show", mission_id, "--project", project_id, "--json"],
                                 data_root).stdout)
         assert [link["job_id"] for link in shown["mission"]["job_links"]][-1] == body["job_id"]
+        # R-1238: the digest, which the public HTTP API serves, names the deferred step too.
+        client = json.loads(_run(["status", "--json"], data_root).stdout)["client"]
+        [entry] = [m for p in client["projects"] for m in p["missions"] if m["mission_id"] == mission_id]
+        assert entry["upkeep_deferred_step"] == "Add the CSV path"
 
     def test_the_text_says_so_and_the_next_continue_makes_the_step(self, project):
         data_root, project_id = project
@@ -720,9 +725,11 @@ class TestContinueWithUpkeep:
         assert ("  Upkeep: after 5 completed jobs of this mission, Remedy made this upkeep job in place "
                 "of your step.") in out
         assert "--skip-upkeep" in out
+        assert "  Your step, not taken yet: Add the CSV path" in out
 
         body = json.loads(self._continue(data_root, project_id, mission_id, "--json").stdout)
         assert body["upkeep"] is None and body["tasks"][-1] == "Add the CSV path"
+        assert body["step_deferred"] is False and body["deferred_step"] == ""
 
     def test_a_skip_with_its_reason_is_recorded_and_the_step_comes_next(self, project):
         data_root, project_id = project

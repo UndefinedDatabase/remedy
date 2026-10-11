@@ -268,8 +268,9 @@ class RunLauncher:
         """Reconcile every run this data root's registry still names as open.
 
         DECISION F200 D7. Called once, when the supervisor starts, before it
-        answers its socket. Every ``runs/<job id>.json`` whose ``exit_code`` is
-        None — its end was never recorded — is one of these:
+        answers its socket. Every ``runs/<job id>.json`` whose ``ended_at`` and
+        ``exit_code`` are both None — its end was never recorded; an adopted or a
+        lost run's end is written with ``exit_code`` None (R-1176) — is one of these:
 
         * its process is still running THAT job (:func:`_process_is_this_job`) —
           ADOPTED: a second `start` of it is refused exactly as for a child this
@@ -299,7 +300,7 @@ class RunLauncher:
         outcomes: list[dict[str, str]] = []
         for job_id in sorted(p.stem for p in self._paths.runs_dir.glob("*.json")):
             record = read_run_record(self._paths, job_id)
-            if record is None or record.exit_code is not None:
+            if record is None or record.exit_code is not None or record.ended_at is not None:
                 continue
             if _process_is_this_job(record.pid, job_id):
                 self._adopt(record)

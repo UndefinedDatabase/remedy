@@ -60,7 +60,9 @@ a value is never empty. A query key a route's table row does not list, a key giv
 once, a flag's value other than `true`/`false`, or an empty value for a key that takes one,
 answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)); and every other refusal a
 route answers is one its table row's `Refusals` column names, sharing its HTTP status, its
-`error` token and its `message` sentence with the route's own twin command. `PUT` and `DELETE`
+`error` token and its `message` sentence with the route's own twin command. The two routes that
+start work, `POST /api/v1/orders` and `POST /api/v1/jobs/{job}/run`, are the exception: what they
+refuse before anything starts is their own, as the sections Orders and Runs say. `PUT` and `DELETE`
 under `/api/v1` answer 401 with `api_token_invalid` without the token, and 405 with
 `api_method_not_allowed` with it; each such request is written to the ledger below like any
 other. A `POST` is a write, and the next section says how a write is answered.
@@ -132,7 +134,10 @@ no project, or one that names a project this machine does not register as exactl
 before anything starts, with 409 `api_order_project_unknown` — because the order would otherwise
 run in a folder nobody chose; every other refusal is `remedy do`'s own, read back only once the
 order is polled. When the order's child process cannot be started at all, nothing is left behind:
-the order's folder is removed and the call answers 500 with `api_command_failed`.
+the order's folder is removed and the call answers 500 with `api_command_failed`. The refusals
+this paragraph and the paragraph on keys below name are the route's own, not `remedy do`'s:
+`remedy do` words the same tokens for an order file it was given by name and for its own
+`--new-mission` option, so a test holds each of these answers whole (DECISION F297 D10).
 
 Two orders sent at once both run: the supervisor starts each as it arrives and keeps no waiting
 line, so the second never waits for the first to end, and the route refuses neither order for the
@@ -165,7 +170,9 @@ well-formed id that no job has, or a job whose record cannot be read, answers 40
 a prefix that matches several jobs answers 400 `ambiguous_job_id`; and a client token's job
 outside its projects answers 403 `api_client_policy_refused`, as for every write on a job. A job
 whose run has not ended answers 409 `job_already_running`, and a run that cannot start answers 500
-`api_command_failed`.
+`api_command_failed`. These refusals are the route's own: `remedy job run` does not read the job
+before its run starts, so no command answers them, and a test holds each of these answers whole
+(DECISION F297 D10).
 
 The route answers when the run has started, not when it ends. A client polls `GET
 /api/v1/jobs/{job}/run` until `state` is not `running`, and only then reads the digest or applies,
@@ -175,7 +182,8 @@ The poll answers what `remedy client run <job> --json` answers: the record, `sta
 what `remedy job run --json` printed. A poll that finds the run's process gone and no end in its
 record reads the record again for up to two seconds, because the supervisor writes an end only after
 the process has finished, and answers `ended` once the end is there, `lost` otherwise. An unknown
-job, or a job with no run, answers 404 `run_not_found`. The supervisor
+job, or a job with no run, answers 404 `run_not_found`, the envelope `remedy client run <job>
+--json` answers for the same value. The supervisor
 hands the one launcher that starts runs to its socket and to its port alike, so both answer from
 one list of runs; a server that has no such launcher, the cockpit's own among them, answers the
 route 405 `api_method_not_allowed` (DECISION F253 D18).

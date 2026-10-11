@@ -49,8 +49,9 @@ from typing import Any
 #: mission's upkeep counts in the digest, and F205 (DECISION F205 D2) to `1.7` for the projects a
 #: mission spans and the project of each of its job links, and (DECISION F205 D4) to `1.8` for the
 #: repository of each commit `remedy do` lands and of each push it makes, and (DECISION F205 D6)
-#: to `1.9` for the repository of each job and the projects of each mission in the digest.
-CLIENT_INTERFACE_VERSION = "1.9"
+#: to `1.9` for the repository of each job and the projects of each mission in the digest, and
+#: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of.
+CLIENT_INTERFACE_VERSION = "1.10"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -251,6 +252,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "upkeep_every": {},
             "upkeep_jobs_left": {},
             "upkeep_open_findings": {},
+            "upkeep_deferred_step": {},
         },
         "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {},
                        "tokens": TOKENS_BY_KIND_KEY_TREE},

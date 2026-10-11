@@ -295,7 +295,7 @@ def _build_tests_txt(run_data: dict[str, Any]) -> str:
         return "\n".join(parts)
     final_status = run_data.get("final_status", "")
     if final_status == "builder_no_changes":
-        return "builder_no_changes: code already correct, no tests required\n"
+        return "builder_no_changes: the builder changed no file, and no test ran\n"
     return ""
 
 
@@ -327,7 +327,7 @@ def _build_review_json(run_data: dict[str, Any]) -> dict[str, Any]:
             "kind": "no_changes_verification",
             "verdict": "no_changes_verified",
             "confidence": "",
-            "summary": "Builder confirmed code already correct; no changes produced.",
+            "summary": "The builder changed no file, and no reviewer ran.",
             "finding_count": 0,
             "findings": [],
         })

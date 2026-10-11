@@ -20,6 +20,9 @@ from packages.orchestration.mission_upkeep import (
     LINE_UPKEEP_SKIPPED,
     UPKEEP_EVERY_DEFAULT,
     UPKEEP_EVERY_KEY,
+    UPKEEP_FILE_LINES_KEY,
+    UPKEEP_FUNCTION_LINES_KEY,
+    UPKEEP_MAX_FINDINGS_KEY,
     UPKEEP_METADATA_KEY,
     UpkeepError,
     append_upkeep_line,
@@ -34,6 +37,7 @@ from packages.orchestration.mission_upkeep import (
     record_upkeep_skip,
     replaced_pairs_from_findings,
     upkeep_cadence,
+    upkeep_deferred_step,
     upkeep_digest_counts,
     upkeep_every_setting,
     upkeep_has_work,
@@ -234,7 +238,8 @@ class TestWhatResolvesAFinding:
         assert lines[1]["resolved"] == []
         assert [f["key"] for f in open_findings(read_upkeep_ledger(PROJECT))] == [key]
 
-    def test_open_findings_are_oldest_first_once_each_and_scoped_to_a_mission(self, data_root):
+    def test_open_findings_are_the_projects_oldest_first_once_each(self, data_root):
+        """R-1237: a finding is read once whichever mission's line names it, its mission id kept."""
         mission_id, key = self._two_jobs("failed")
         record_closed_jobs(PROJECT, mission_id)
         lines = read_upkeep_ledger(PROJECT)
@@ -244,8 +249,7 @@ class TestWhatResolvesAFinding:
 
         assert [f["key"] for f in found] == [key]
         assert found[0]["job_id"] == lines[0]["job_id"]
-        assert open_findings(lines, mission_id="m2") == []
-        assert [f["key"] for f in open_findings(lines, mission_id=mission_id)] == [key]
+        assert found[0]["mission_id"] == mission_id
 
 
 def test_mission_continue_records_the_ended_jobs_before_the_next_one(tmp_path):
@@ -365,6 +369,18 @@ class TestTheSetting:
         with pytest.raises(UpkeepError):
             upkeep_every_setting({UPKEEP_EVERY_KEY: value})
 
+    @pytest.mark.parametrize(("key", "default", "variable"), [
+        (UPKEEP_MAX_FINDINGS_KEY, 5, "REMEDY_MISSION_UPKEEP_MAX_FINDINGS"),
+        (UPKEEP_FUNCTION_LINES_KEY, 100, "REMEDY_MISSION_UPKEEP_FUNCTION_LINES"),
+        (UPKEEP_FILE_LINES_KEY, 1000, "REMEDY_MISSION_UPKEEP_FILE_LINES"),
+    ])
+    def test_the_findings_carried_and_the_limits_are_registered_settings(self, key, default, variable):
+        """R-1239: today's fixed values are the defaults of three settings."""
+        from packages.orchestration.config import get_key_spec
+
+        spec = get_key_spec(key)
+        assert (spec.default, spec.value_type, spec.env_var) == (default, int, variable)
+
     def test_the_variable_reaches_the_setting(self, monkeypatch):
         from packages.orchestration.config import reset_config
 
@@ -429,6 +445,29 @@ class TestThePlanAndItsStep:
         order = [step.index(n) for n in ("finding F-TASK-001", "very_long", "the file src/big.py", "- src/importer.py")]
         assert order == sorted(order)
 
+    def test_the_settings_name_the_findings_carried_and_the_structure_limits(self, registered):
+        """R-1239: the plan reads how many findings ride and the limits it measures against."""
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=7)
+        record_closed_jobs(registered, mission_id)
+        config = {**EVERY_TWO, UPKEEP_MAX_FINDINGS_KEY: 2, UPKEEP_FUNCTION_LINES_KEY: 150,
+                  UPKEEP_FILE_LINES_KEY: 2000}
+
+        plan = plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config=config),
+                           read_upkeep_ledger(registered), config=config)
+
+        assert [key.rsplit(":", 1)[1] for key in plan["findings"]] == ["F-TASK-001", "F-TASK-002"]
+        assert plan["structure"]["limits"] == {"function_lines": 150, "file_lines": 2000}
+        assert plan["structure"]["largest_function"] is None
+        assert plan["structure"]["largest_file"] is None
+
+    @pytest.mark.parametrize("key", [UPKEEP_MAX_FINDINGS_KEY, UPKEEP_FUNCTION_LINES_KEY,
+                                     UPKEEP_FILE_LINES_KEY])
+    def test_a_setting_that_is_not_a_whole_number_of_at_least_one_is_refused(self, registered, key):
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=1)
+        with pytest.raises(UpkeepError, match=key):
+            plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config=EVERY_TWO),
+                        read_upkeep_ledger(registered), config={key: 0})
+
     def test_a_project_without_a_repository_carries_findings_alone(self, data_root):
         mission_id, _ = _chain(PROJECT, ["completed"], findings=1)
         record_closed_jobs(PROJECT, mission_id)
@@ -437,14 +476,18 @@ class TestThePlanAndItsStep:
         assert plan["structure"] == {"unmeasured": "the project names no repository"}
         assert plan["replaced"] == [] and len(plan["findings"]) == 1
 
-    def test_only_the_missions_own_findings_ride(self, data_root):
-        other_id, _ = _chain(PROJECT, ["completed"], findings=2)
+    def test_the_projects_findings_ride_whichever_mission_left_them(self, data_root):
+        """R-1237: the ledger is kept per project, so an earlier mission's open findings ride too,
+        oldest first."""
+        other_id, other_jobs = _chain(PROJECT, ["completed"], findings=2)
         mission_id, jobs = _chain(PROJECT, ["completed"], findings=1)
         record_closed_jobs(PROJECT, other_id)
         record_closed_jobs(PROJECT, mission_id)
         plan = plan_upkeep(PROJECT, mission_id, upkeep_cadence(PROJECT, mission_id, config={}),
                            read_upkeep_ledger(PROJECT))
-        assert [f["job_id"] for f in plan["carried"]] == [str(jobs[0].job_id)]
+        assert [(f["job_id"], f["mission_id"]) for f in plan["carried"]] == [
+            (str(other_jobs[0].job_id), other_id), (str(other_jobs[0].job_id), other_id),
+            (str(jobs[0].job_id), mission_id)]
 
     def test_a_replaced_pair_a_job_left_is_carried_while_both_files_exist(self, registered, repository):
         mission_id, jobs = _chain(registered, ["completed"])
@@ -485,6 +528,24 @@ class TestTheUpkeepJob:
         assert outcome.line["kind"] == LINE_UPKEEP_PLANNED and outcome.line["job_id"] == str(job.job_id)
         assert upkeep_cadence(registered, mission_id, config=EVERY_TWO).completed == 0
 
+    def test_the_step_an_upkeep_job_was_made_in_place_of_is_kept_until_a_later_job(self, data_root):
+        """R-1238: the planned line records the step, and it reads back while the upkeep job is the
+        mission's latest job; a later job ends it."""
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO, step="Add the CSV path")
+
+        assert outcome.line["deferred_step"] == "Add the CSV path"
+        assert outcome.job.metadata[UPKEEP_METADATA_KEY]["deferred_step"] == "Add the CSV path"
+        assert upkeep_deferred_step(PROJECT, mission_id) == "Add the CSV path"
+        link_job_to_mission(PROJECT, mission_id, str(_job("pending").job_id), "follow_up")
+        assert upkeep_deferred_step(PROJECT, mission_id) == ""
+
+    def test_an_upkeep_job_made_with_no_step_defers_none(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO)
+        assert "deferred_step" not in outcome.line
+        assert upkeep_deferred_step(PROJECT, mission_id) == ""
+
     def test_findings_alone_are_work_enough_for_a_job(self, data_root):
         mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
         outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO)
@@ -508,7 +569,7 @@ class TestTheUpkeepJob:
         save_job_plan(job)
         record_closed_jobs(registered, mission_id)
 
-        left = open_findings(read_upkeep_ledger(registered), mission_id=mission_id)
+        left = open_findings(read_upkeep_ledger(registered))
         assert [f["finding_id"] for f in left] == ["F-TASK-006", "F-TASK-007"]
 
 

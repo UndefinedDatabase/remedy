@@ -81,10 +81,12 @@ from packages.orchestration.mission_record import (
     MissionProjectError,
     MissionVerifyFirstError,
     check_spanned_project_ids,
-    follow_up_target,
 )
 from packages.orchestration.mission_record import (
     MISSION_STATUS_PAUSED as MISSION_STATUS_PAUSED,
+)
+from packages.orchestration.mission_record import (
+    follow_up_target as follow_up_target,
 )
 
 #: A goal is operator input: it is small, or it is not a goal.
@@ -843,97 +845,6 @@ def read_mission_verify_record(job_id: str) -> dict[str, Any] | None:
 
 #: The task type a follow-up's own work carries, so the verify task and the
 #: work it gates are distinguishable in a plan without reading descriptions.
-MISSION_FOLLOW_UP_TASK_TYPE = "mission_follow_up"
-
-
-def build_follow_up_task(next_step: str) -> Any:
-    """The single work task a ``mission continue`` step asks for.
-
-    Deliberately ONE task: planning a follow-up into a DAG is the planner's
-    job, not this module's.  What this module owns is that whatever the plan
-    turns out to be, verification comes first.
-    """
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import TaskEntry
-
-    return TaskEntry(
-        title=str(next_step).strip(),
-        inputs={"task_type": MISSION_FOLLOW_UP_TASK_TYPE},
-        status=RunState.PENDING,
-    )
-
-
-def continue_mission(project_id: str, mission_id: str, next_step: str, *,
-                     now: datetime | None = None,
-                     root: Path | None = None) -> Any:
-    """Create the next job in a mission's chain and link it.
-
-    With a previous job in the chain, the new job's plan is built verify-first
-    and then validated as such: the injected verify task is task 0 and the work
-    declares it as a dependency, so ``dag_schedule.ready_set`` withholds the
-    work until the verification has COMPLETED.
-
-    On an empty mission there is nothing to verify yet, so this creates the
-    ``initial`` job with the work alone — an honest plan, not a verify task
-    pointed at a job that does not exist. On a mission over several projects
-    the job works in the previous job's project and repository (DECISION F205 D5).
-    """
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import (
-        JobNotFoundError,
-        JobPlan,
-        JobStoreError,
-        require_job_plan,
-        save_job_plan,
-    )
-
-    text = str(next_step).strip()
-    if not text:
-        raise MissionError("a follow-up needs a step to take")
-
-    mission = load_mission(project_id, mission_id, root)
-    previous = mission.latest_link()
-
-    work = build_follow_up_task(text)
-    previous_job = None
-    if previous is None:
-        tasks = [work]
-        role = MISSION_ROLE_INITIAL
-    else:
-        try:
-            previous_job = require_job_plan(normalize_job_id(previous.job_id))
-        except (ValueError, JobNotFoundError) as exc:
-            raise MissionError(
-                f"the previous job {previous.job_id} is gone, so its Definition "
-                f"of Done cannot be verified — a follow-up would be starting "
-                f"blind") from exc
-        except JobStoreError as exc:
-            raise MissionError(
-                f"the previous job {previous.job_id} cannot be read, so its "
-                f"Definition of Done cannot be verified: {exc}") from exc
-        tasks = inject_verify_first(previous_job, [work])
-        role = MISSION_ROLE_FOLLOW_UP
-
-    # Built verify-first above; CHECKED here, so the rule cannot be skipped by
-    # a future caller that assembles the plan some other way.
-    if role == MISSION_ROLE_FOLLOW_UP:
-        assert_verify_first(tasks)
-
-    job = JobPlan(
-        job_title=text[:80],
-        mission=mission.goal,
-        user_prompt=text,
-        **{"project_id": str(mission.project_id), **follow_up_target(mission, previous_job)},
-        tasks=tasks,
-        state=RunState.PLANNED,
-        metadata={"mission_id": mission.id, "mission_role": role},
-    )
-    save_job_plan(job)
-    link_job_to_mission(project_id, mission.id, str(job.job_id), role, now=now,
-                        root=root)
-    return job
-
-
 def execute_mission_followup(job: Any, *, cwd: Path | None = None,
                              runner: Any = None, work_runner: Any = None,
                              now: datetime | None = None) -> MissionFollowupRun:
@@ -998,3 +909,17 @@ def execute_mission_followup(job: Any, *, cwd: Path | None = None,
     save_job_plan(job)
     write_mission_verify_record(run)
     return run
+
+
+# DECISION F297 D7: the follow-up job's creation lives in a module of its own, step (2) of this
+# file's boundary on docs/system/structure-ledger-v1.md; every name is imported back here by name.
+# It is imported last, because that module imports this one's store inside its own functions.
+from packages.orchestration.mission_followup import (  # noqa: E402
+    MISSION_FOLLOW_UP_TASK_TYPE as MISSION_FOLLOW_UP_TASK_TYPE,
+)
+from packages.orchestration.mission_followup import (  # noqa: E402
+    build_follow_up_task as build_follow_up_task,
+)
+from packages.orchestration.mission_followup import (  # noqa: E402
+    continue_mission as continue_mission,
+)

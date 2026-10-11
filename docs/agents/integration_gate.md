@@ -15,9 +15,12 @@
    a later run finds red is attributed by step 3 like any other.
    Then, once, `python3 scripts/closure_suite_cost.py --feature F<id> --record
    ~/.remedy-loop/test_load.jsonl` (or the file `REMEDY_TEST_LOAD_LOG` names).
-   Both lines it prints and its exit code go into the transcript. Exit 1 owes a
-   finding (STATUS_closure_protocol.md precondition 2); exit 2 means the record
-   holds no line for the run, so the worker stops and reports (F293 T003).
+   Every line it prints and its exit code go into the transcript: the run's
+   CPU seconds, the comparison with the previous closure, the limit and how it
+   was derived (R-1158), and the test modules whose CPU time rose most since
+   the previous closure's run (R-1139). Exit 1 owes a finding
+   (STATUS_closure_protocol.md precondition 2); exit 2 means the record holds
+   no line for the run, so the worker stops and reports (F293 T003).
 2. **No base run (amend0917-throughput, 2026-09-17).** The base is main
    at the merge base, and the hosted CI record of that commit is the only
    base evidence; no base worktree, base run or compare step exists. Every

@@ -198,13 +198,40 @@ def pytest_cmdline_main(config):
     return None
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    """R-1139: each test's CPU time, setup and teardown included, joins its module's total in the
+    process that runs it."""
+    before = load_governor.process_cpu_seconds()
+    yield
+    totals = getattr(item.config, "_remedy_module_cpu", None)
+    if totals is None:
+        totals = item.config._remedy_module_cpu = {}
+    load_governor.add_module_cpu(totals, load_governor.test_module(item.nodeid),
+                                 load_governor.process_cpu_seconds() - before)
+
+
+@pytest.hookimpl(optionalhook=True)
+def pytest_testnodedown(node, error):
+    """R-1139: an xdist worker's module totals join the controller's when the worker ends."""
+    totals = getattr(node.config, "_remedy_module_cpu", None)
+    if totals is None:
+        totals = node.config._remedy_module_cpu = {}
+    for module, seconds in getattr(node, "workeroutput", {}).get("remedy_module_cpu", {}).items():
+        load_governor.add_module_cpu(totals, module, seconds)
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
     """Fail the run when it left a process behind (F293 T003) or changed the data root (R-0803).
 
     ``trylast`` puts this after pytest-xdist's own hook, which shuts the workers down, so a worker
-    is never counted as left behind.
+    is never counted as left behind. An xdist worker hands its module totals to the controller
+    here (R-1139).
     """
+    workeroutput = getattr(session.config, "workeroutput", None)
+    if workeroutput is not None:
+        workeroutput["remedy_module_cpu"] = getattr(session.config, "_remedy_module_cpu", {})
     mark = getattr(session.config, "_remedy_run_mark", None)
     if mark is not None:
         factory = getattr(session.config, "_tmp_path_factory", None)
@@ -256,7 +283,8 @@ def pytest_unconfigure(config):
     record = load_governor.build_record(
         start, start.get("collected", 0), start.get("exit_status", -1),
         workers if isinstance(workers, int) and workers > 0 else 1,
-        "pytest " + " ".join(config.invocation_params.args))
+        "pytest " + " ".join(config.invocation_params.args),
+        getattr(config, "_remedy_module_cpu", None))
     load_governor.append_record(path, record)
 
 

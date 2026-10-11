@@ -57,6 +57,7 @@ def _cmd_create_job(
     max_cost_usd: str | None = None,
     deadline: str | None = None,
 ) -> None:
+    from packages.orchestration.call_identity import sha_text
     from packages.orchestration.run_log import RunLogWriter
 
     if task_description is not None and task_type is None:
@@ -86,8 +87,7 @@ def _cmd_create_job(
             json_output=False, exit_code=3,
         )
 
-    metadata: dict = {}
-    metadata["project_id"] = project_id
+    metadata: dict = {"project_id": project_id}
 
     tasks: list[TaskEntry] = []
     state = RunState.PENDING
@@ -114,7 +114,7 @@ def _cmd_create_job(
 
     job = JobPlan(
         job_title=prompt[:50],
-        user_prompt=prompt,
+        user_prompt=prompt, job_file_sha256=sha_text(prompt),
         state=state,
         tasks=tasks,
         metadata=metadata,

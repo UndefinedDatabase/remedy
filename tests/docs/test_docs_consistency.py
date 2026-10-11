@@ -141,7 +141,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F305 (multi-repo missions: the cockpit's chain band), was registered on
 #: 2026-10-10 at F205's closure as F205's T002, directly after F205 under the same
 #: Tier 13 heading (amend0906-split-placement); see T13_F305.md.
-TOTAL_FEATURES = 305
+#: One more, F306 (findings paydown v8), was registered on 2026-10-12 by
+#: F297's closure under operator amendment amend0911-feedback rule B and
+#: placed after F203, the fifth unaccepted line below F297, under its own
+#: Tier 2 heading; see T2_F306.md.
+TOTAL_FEATURES = 306
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

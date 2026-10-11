@@ -28,7 +28,7 @@ thing, or one word for two things.
 |---|---|---|---|---|---|
 | **Project** | The frame: one or more repos and every mission inside them. | `project_id` in `packages/core/models.py` and in `packages/orchestration/mission_state.py`, which also defines `mission_dir_for_project` and `project_ids_with_missions`; the store path is `projects_dir` in `packages/orchestration/data_paths.py` | unchanged | the `project` group: `create`, `list`, `show`, `attach-repo`, `attach-job`, `brain`, `context`, `summary`, `current`, `adopt` | — |
 | **Order** | Everything the human gives Remedy: the initial text or file behind `remedy do`, and every later message during a run. | no symbol spells it; the same thing is carried under two other names — `parse_job_file`, `plan_job_from_file` and `job_file_sha256` in `packages/orchestration/pingpong_job.py`, and the `--job-file` and `--task-file` options in `apps/cli/command_catalog.py` | `order`; both option spellings are deleted and the argument becomes the positional `<order>`, text or a `.md` path (DECISION F259 D2) | none today; `do <order>` after F261 | the Job — the Order is the input, the Job is Remedy's response |
-| **Mission** | What every Order becomes: one persistent record holding the Order, the Contract, the mission Plan and an ordered list of 1..n Jobs. | `Mission`, `MissionJobLink`, the `MISSION_STATUS_` and `MISSION_ROLE_` constants and the `Mission*Error` family, all in `packages/orchestration/mission_state.py` | unchanged as a type; a mission is created for EVERY order, which reverses F056's "a mission is never created automatically" (DECISION amend0905-vocab D2) | the `mission` group: `list`, `show`, `plan`, `contract`, `run`, `continue`, `pause`, `resume`, `achieve`, `abandon`, `start` | a schedule; a job |
+| **Mission** | The lasting record of one repository: it holds the Contract, the mission Plan and every Order given for that repository, each Order a batch of 1..n Jobs in it. | `Mission`, `MissionJobLink`, the `MISSION_STATUS_` and `MISSION_ROLE_` constants and the `Mission*Error` family, all in `packages/orchestration/mission_state.py`; `packages/orchestration/repo_mission.py` finds a repository's mission | unchanged as a type; one mission per repository, found from the repository, and every order joins it as a batch (DECISION amend1011b D1), which replaces the mission per order of DECISION amend0905-vocab D2 (DECISION F297 D11) | the `mission` group: `list`, `show`, `plan`, `contract`, `run`, `continue`, `pause`, `resume`, `achieve`, `abandon`, `start` | a schedule; a job; one order |
 | **Contract** | The acceptance criteria of a Mission, compiled to machine-checkable checks — its Definition of Done. One per mission; a job's contract is the derived slice for that job. | nothing in the seven sources spells this concept; its two halves are `PlannedTask.acceptance` in `packages/orchestration/schemas/models.py` and `packages/orchestration/dod_compiler.py`. The catalog's `contract` group today is a DIFFERENT concept wearing the word: the run-permission object, as `contract.inspect`, `contract.check` and `contract.set` | `contract` names the acceptance criteria and nothing else; the run-permission group is deleted and its idea folded into permissions and fences (DECISION amend0905-vocab D4) | `mission contract <id>` and `job contract <id>` after F261 | the run-permission object once called the "run contract" |
 | **Job** | The administrative unit under a mission: identity, budget, fences, permissions, decisions, the job Plan with its Tasks, and references to its Runs. | the record, which is also the plan, is `JobPlan` in `packages/orchestration/pingpong_job.py`, beside the state constants `JOB_PLANNED`, `JOB_RUNNING`, `JOB_BLOCKED`, `JOB_COMPLETED`, `JOB_PAUSED` and `JOB_STOPPED`; its parts `JobBudgets` and `JobFences` are in `packages/core/models.py`. Every job lives in one store, one `job.json` per job directory, whose path `job_record_path` in `packages/orchestration/data_paths.py` builds | one store and one id shape (F260) | the `job` group | the Run |
 | **Plan** | The ordered "what will be done" of a level: the mission plan lists the milestones, each of which becomes a job; the job plan lists the tasks. | two dialects side by side. `packages/orchestration/schemas/models.py` defines `TaskPlan`, `TaskPlanClarification`, `PlannerPlan`, `PlannedTask` and `TASK_PLAN_SCHEMA_V`; `packages/orchestration/job_plan.py` defines `TaskPlanResult` and `map_task_plan_to_tasks`; and `packages/orchestration/pingpong_job.py` carries `JobPlan` beside them | `flight_plan.py` becomes `job_plan.py` and the noun "flight plan" is deleted from code, catalog, docs and feature files (DECISION amend0905-vocab D6) | `job plan` and `mission plan` are the only two commands that make a plan; `job plan-show` and the `job plan-*` edit commands read and edit a job plan while its approval is open (F015); today's `plan status` and `plan next` become the hidden group `roadmap` | the Roadmap |
@@ -91,7 +91,7 @@ It was two words for one thing, or one word for two things.
 | **Order / Job** | The Order is what the human gives Remedy. The Job is what Remedy makes of it. Input against response. | The order arrives as a file and the job is parsed straight out of it, so one phrase — "job file" — has been naming both ends at once. |
 | **Task / Round** | A Task is one step of a job plan. A Round is one pass inside a single Run of a single Task: build, then tests, then review. A task that fails takes a second Round, never a second Task. | Both are counted and both are capped, and casual prose calls either one a "step". |
 | **Contract / permissions** | The Contract is what the mission must ACHIEVE — acceptance criteria compiled to checks. Permissions and fences are what Remedy is ALLOWED TO DO while trying. Goal against boundary. | The catalog's `contract` group today is the permission object, not the acceptance criteria, so the word currently points at the wrong one of the two. |
-| **Mission / schedule** | A Mission is one order and everything that came of it. It has no recurrence and no clock. | the `loop` group and the `overnight` group made recurrence look like a property of a mission; DECISION amend0905-vocab D7 deletes both, and a recurring order becomes an order file started by hand. |
+| **Mission / schedule** | A Mission is a repository's lasting record, and every order is a batch in it. It has no recurrence and no clock. | the `loop` group and the `overnight` group made recurrence look like a property of a mission; DECISION amend0905-vocab D7 deletes both, and a recurring order becomes an order file started by hand. |
 | **Worker / role** | A Worker is a model IN a role. The role is Builder, Reviewer, Planner or Teacher; the worker is whichever model is bound to that role for this task. | Reports have printed "Worker: fake", which names the provider in the place a reader expects the role. |
 | **template / order file** | A template is a CONTRACT template — website, api-service, cli-tool, python-library — proposed by the planner or forced with `--contract`. An order file is a Markdown file holding one human's order, started with `remedy do <file>`. | Both are files you keep in the repo and hand to Remedy, and the deleted `loop` tables called order files templates. |
 
@@ -99,8 +99,8 @@ It was two words for one thing, or one word for two things.
 
 ```mermaid
 flowchart TD
-    Order["Order (text or .md file)"] --> Mission["Mission (contract, plan)"]
-    Mission --> Job["Job 1..n (budget, fences, plan)"]
+    Mission["Mission (one per repository: contract, plan)"] --> Order["Order 1..n (text or .md file): a batch"]
+    Order --> Job["Job 1..n (budget, fences, plan)"]
     Job --> Task["Task 1..n"]
     Task --> Run["Run (one evidence folder per task)"]
     Run --> R1["Round 1 (build · review)"]
@@ -108,9 +108,10 @@ flowchart TD
 ```
 
 In words, for a first read. You give Remedy an **Order** — a sentence, or a
-Markdown file. Remedy turns it into a **Mission**, the record of that order,
-which holds the **Contract**: the acceptance criteria the finished work must
-meet. The mission is carried out by one or more **Jobs**, and each job has its
+Markdown file. Remedy files it in the repository's **Mission**, the lasting
+record of that repository, as one more batch; the mission holds the
+**Contract**: the acceptance criteria the finished work must meet. An order is
+carried out by one or more **Jobs**, and each job has its
 own budget, its fences and its own **Plan** — and that plan is a list of
 **Tasks**. Each task is executed by exactly one **Run**, which owns exactly one
 evidence folder. Inside a run the work happens in **Rounds**: round 1 builds and
@@ -337,7 +338,7 @@ above; these are the handles a test can grip.
 |---|---|
 | **Project** | `repo`, `mission` |
 | **Order** | `order file`, `what you ask`, `text or` |
-| **Mission** | `order`, `job`, `contract` |
+| **Mission** | `order`, `job`, `contract`, `repository` |
 | **Contract** | `acceptance`, `definition of done`, `criteria` |
 | **Job** | `mission`, `budget`, `fence`, `task` |
 | **Plan** | `task`, `milestone`, `step` |

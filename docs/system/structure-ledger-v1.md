@@ -116,6 +116,11 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   (1) done by F205, one job's entry is `_job_entry`; (2) the reading of each project's
   missions and ledgers becomes a function; (3) the window over the ended jobs becomes a
   function.
+- `plan_order_job` (`packages/orchestration/do_sequence.py`). Boundary: the intake call, the
+  first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the
+  deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
+  `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
+  (3) the deterministic plan becomes a function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -164,7 +169,10 @@ with the code that calls it.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
-  `packages/orchestration/mission_record.py`, and the file left the table.
+  `packages/orchestration/mission_record.py`, and the file left the table. Step (2), begun by
+  F297: the follow-up job's creation, `packages/orchestration/mission_followup.py`; the verify task
+  and its run follow, with `run_guarded_test_command`, which a test replaces on this module,
+  staying beside the code that calls it.
 - `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
   cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
   table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
@@ -187,12 +195,12 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1652 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1559 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
-| 438 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
+| 428 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
@@ -210,7 +218,7 @@ with the code that calls it.
 | 279 | `packages/orchestration/repository_snapshot.py` | `create_snapshot` |
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 269 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 252 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
@@ -232,7 +240,6 @@ with the code that calls it.
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
-| 186 | `packages/orchestration/pingpong_job.py` | `run_job._stop_check` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
 | 183 | `packages/orchestration/task_edit_runtime.py` | `edit_task_at_runtime` |
@@ -354,7 +361,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
-| 5719 | `packages/orchestration/pingpong_job.py` |
+| 5626 | `packages/orchestration/pingpong_job.py` |
 | 5283 | `packages/orchestration/pingpong_loop.py` |
 | 4834 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |

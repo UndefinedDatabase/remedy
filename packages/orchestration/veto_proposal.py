@@ -26,6 +26,7 @@ from typing import Any
 
 from packages.core.models import RunState
 from packages.orchestration import task_veto as _tv
+from packages.orchestration.call_identity import sha_text
 from packages.orchestration.decision_evidence import (
     DecisionEvidenceRef,
     DecisionEvidenceTriple,
@@ -350,6 +351,8 @@ def build_follow_up_job(job: Any, entry: Any, unreachable_ids: list[str], *,
         job_title=f"Replan after veto of {vetoed_title}",
         user_prompt=goal,
         mission=goal,
+        # R-1149: the digest of the goal it was planned from, as DECISION F295 D10 rules.
+        job_file_sha256=sha_text(goal),
         metadata={
             "replan_of": {
                 "job_id": job.job_id,

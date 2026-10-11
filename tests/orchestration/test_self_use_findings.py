@@ -207,3 +207,42 @@ class TestAPassConfinedToTheRecordIsNamed:
         job = self._job([".agent/live_review.md"])
         job.tasks[0].final_status = "review_failed"
         assert all("passed review" not in d for d in describe_self_use_run_defects(job))
+
+
+class TestAPassThatLeftAFilesPathUnchangedIsNamed:
+    """R-1230: SU-051's reviewer passed a change to the handler alone.
+
+    Job 8f5ab7fd0fc947ed ended completed with T001 `staged_review_passed`, and the one path its
+    work changed was `apps/cli/commands/job.py` (`.agent/selfuse_f299/changed_paths.txt`), while
+    its item asked for `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` lowered in the same change.
+    The item's job file now lists both paths under `Files:`.
+    """
+
+    @staticmethod
+    def _job(changed: list[str], files: list[str], final_status: str = "staged_review_passed") -> JobPlan:
+        manifest = ApplyManifest(
+            task_id="T001", status="applied", applied_files=list(changed),
+            applied_file_proofs=[AppliedFileProof(path=p, task_id="T001") for p in changed])
+        return JobPlan(
+            job_id="8f5ab7fd0fc947ed", state=RunState.COMPLETED,
+            tasks=[TaskEntry(task_id="T001", status="applied_to_job_workspace",
+                             final_status=final_status, apply_manifest=manifest,
+                             files_hint=list(files))])
+
+    def test_the_su_051_shape_names_the_ratchet_it_left_unchanged(self):
+        defects = describe_self_use_run_defects(self._job(
+            ["apps/cli/commands/job.py"], ["apps/cli/commands/job.py", "tests/test_ble001_ratchet.py"]))
+        assert defects == (
+            "T001 (applied_to_job_workspace): passed review but left unchanged a path its Files: "
+            "list names: tests/test_ble001_ratchet.py",
+        )
+
+    def test_a_pass_that_changed_every_listed_path_is_not_named(self):
+        both = ["apps/cli/commands/job.py", "tests/test_ble001_ratchet.py"]
+        assert describe_self_use_run_defects(self._job(both, both)) == ()
+
+    def test_a_task_that_did_not_pass_is_not_named_for_its_files(self):
+        job = self._job(["apps/cli/commands/job.py"],
+                        ["apps/cli/commands/job.py", "tests/test_ble001_ratchet.py"],
+                        final_status="review_failed")
+        assert all("Files:" not in d for d in describe_self_use_run_defects(job))

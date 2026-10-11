@@ -222,6 +222,33 @@ class TestLoadRunEvents:
         assert len(loaded) == 1
         assert loaded[0]["event"] == "job_created"
 
+    def test_ignores_lines_whose_json_is_not_an_object(self, tmp_path):
+        """R-1143: `[1]`, a string and a number are JSON but not events."""
+        job_id = uuid4()
+        run_dir = _runs_path(tmp_path, job_id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "r.jsonl").write_text(
+            '[1]\n"text"\n7\n'
+            '{"event":"job_created","job_id":"x","run_id":"r","timestamp":"t","metadata":{}}\n',
+            encoding="utf-8",
+        )
+        loaded = load_run_events(tmp_path, job_id)
+        assert [e["event"] for e in loaded] == ["job_created"]
+
+    def test_sorts_timestamps_of_mixed_types_as_strings(self, tmp_path):
+        """R-1143: a number beside a string timestamp sorts as its text, never raising."""
+        job_id = uuid4()
+        run_dir = _runs_path(tmp_path, job_id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "r.jsonl").write_text(
+            '{"event":"b","timestamp":"2026-01-01T00:00:00"}\n'
+            '{"event":"a","timestamp":1}\n'
+            '{"event":"c"}\n',
+            encoding="utf-8",
+        )
+        loaded = load_run_events(tmp_path, job_id)
+        assert [e["event"] for e in loaded] == ["c", "a", "b"]
+
     def test_accepts_uuid_or_str_job_id(self, tmp_path):
         job_id = uuid4()
         events = _simple_events(str(job_id))

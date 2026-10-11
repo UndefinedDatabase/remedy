@@ -31,16 +31,19 @@ in time.
 
 ## What an upkeep job carries
 The rules, in the order the job's step lists them:
-1. The oldest findings the mission's jobs left open, at most five; the others wait for the next
-   upkeep job.
-2. The longest Python function above 100 lines and the longest code file above 1,000 lines in the
+1. The oldest findings the project's jobs left open, whichever of its missions ran them, because
+   the ledger is kept per project (R-1237), at most `mission.upkeep_max_findings`, five unless
+   set; the others wait for the next upkeep job.
+2. The longest Python function above `mission.upkeep_function_lines` lines, 100 unless set, and
+   the longest code file above `mission.upkeep_file_lines` lines, 1,000 unless set, in the
    project's repository, measured as `remedy integrity structure` measures, each to be shortened
    without a change of behaviour. A code file is one whose name ends in `.py`, `.js`, `.jsx`, `.ts`
    or `.tsx`, so a lockfile or a data file is never picked.
 3. Every file that sits beside the file it replaces, found in the repository or recorded by a job,
    while both still exist, with the replaced one to be deleted.
 
-When none of these holds anything, no job is made and the ledger says so.
+When none of these holds anything, no job is made and the ledger says so. Each of the three
+settings is a whole number of at least 1, and any other value is refused (R-1239).
 
 An upkeep job is an ordinary job of the mission: it begins with the task that checks the previous
 job, runs under the ordinary budgets, and waits at the ordinary approval. It is known by the key
@@ -54,11 +57,13 @@ in their own project.
 
 ## The command line
 `remedy mission continue <mission> "<step>"` records the jobs that have ended first. When upkeep is
-due, it makes the upkeep job in place of the step, says so, and the step can be given again once
-that job has run. `--skip-upkeep "<reason>"` skips the upkeep job that is due and records the
+due, it makes the upkeep job in place of the step, says so with the step's text, and the step can
+be given again once that job has run; the job's ledger line records the step as `deferred_step`
+(R-1238). `--skip-upkeep "<reason>"` skips the upkeep job that is due and records the
 reason; a skip without a reason, or with nothing due, exits 2 and changes nothing. There is no
 other way to skip one. Under `--json` the answer's `upkeep` key holds the ledger line this call
-wrote, or `null`.
+wrote, or `null`, and `step_deferred` and `deferred_step` say whether the step was taken and, when
+it was not, its text.
 
 ## The orchestrator's dispatch
 When `remedy mission run` asks for a job for a milestone and upkeep is due, the upkeep job runs
@@ -73,8 +78,9 @@ how many more completed jobs, or that it is due now — and what it would carry.
 answer's `upkeep` key holds the setting, the count, the jobs left, whether it is due, the number of
 open findings and what it would carry. A bad setting is named there and the mission is still
 shown. The client digest of `remedy status --json`, which the public API's `GET /api/v1/digest`
-answers, gives each mission `upkeep_every`, `upkeep_jobs_left` and `upkeep_open_findings`; it
-never reads the project's repository, and each reads `null` when it cannot be read. Neither view
+answers, gives each mission `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings` and
+`upkeep_deferred_step`, the step its latest upkeep job was made in place of while that job is
+still its latest job, else empty; it never reads the project's repository, and each reads `null` when it cannot be read. Neither view
 writes to the ledger.
 
 ## A replaced file through a run

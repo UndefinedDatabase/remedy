@@ -18,6 +18,7 @@ from packages.orchestration.project_tests import (
     NPM_PLACEHOLDER_MARK,
     ProjectTestCommand,
     ProjectTestConfigError,
+    changed_source_file,
     find_node_bin,
     find_project_test_command,
     find_virtualenv,
@@ -231,6 +232,47 @@ def test_project_python_is_the_virtualenvs_interpreter_else_the_default(
     venv = checkout / ".venv"
     _make_venv(venv)
     assert project_python(worktree, "default-python") == str(venv / "bin" / "python")
+
+
+def test_a_virtualenv_and_node_bin_only_in_the_worktree_are_never_the_checks_own(
+        checkout: Path, worktree: Path):
+    """R-1236: the job writes its worktree, so a planted interpreter or tool there is not used."""
+    _make_venv(worktree / ".venv")
+    (worktree / "node_modules" / ".bin").mkdir(parents=True)
+    assert project_python(worktree, "default-python") == "default-python"
+    assert project_environment(worktree) == {}
+
+    _make_venv(checkout / ".venv")
+    assert project_python(worktree, "default-python") == str(checkout / ".venv" / "bin" / "python")
+    assert project_environment(worktree)["VIRTUAL_ENV"] == str(checkout / ".venv")
+
+
+def test_in_a_worktree_the_configured_command_is_read_from_the_checkout(
+        checkout: Path, worktree: Path):
+    """R-1236: the worktree's `.remedy/config.toml` never names the command; the checkout's does."""
+    _write_config(checkout, '[tests]\ncommand = ["make", "check"]\n')
+    _write_config(worktree, '[tests]\ncommand = ["python", "-c", "pass"]\n')
+    assert find_project_test_command(worktree, "python3") == ProjectTestCommand(
+        argv=("make", "check"), source="config")
+
+
+def test_a_source_file_the_job_changed_is_named_and_an_unchanged_one_is_not(
+        checkout: Path, worktree: Path):
+    """R-1236: the config, or the package.json a command came from, differing from the checkout's."""
+    config = ProjectTestCommand(argv=("make", "check"), source="config")
+    npm = ProjectTestCommand(argv=("npm", "test"), source="package_json")
+    folder = ProjectTestCommand(argv=("python3", "-m", "pytest"), source="tests_folder")
+    assert changed_source_file(worktree, config) == ""
+
+    _write_config(worktree, '[tests]\ncommand = ["python", "-c", "pass"]\n')
+    assert changed_source_file(worktree, config) == ".remedy/config.toml"
+    _write_config(checkout, '[tests]\ncommand = ["python", "-c", "pass"]\n')
+    assert changed_source_file(worktree, config) == ""
+
+    (worktree / "package.json").write_text('{"scripts": {"test": "true"}}', encoding="utf-8")
+    assert changed_source_file(worktree, npm) == "package.json"
+    assert changed_source_file(worktree, folder) == ""
+    assert changed_source_file(checkout, npm) == ""
 
 
 def test_lookup_dirs_of_a_folder_outside_any_repository_is_itself_alone(

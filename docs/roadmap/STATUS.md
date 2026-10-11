@@ -243,7 +243,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 <!-- operator amendment amend1010-cadence-guards (2026-10-10): F297 moved here from behind F199 so that the findings paydown follows the cadence of five again (self_drive_protocol, rule B and the structure rule); amend1007b had placed nine features in front of it. Reversible by moving the two lines back directly above the heading "## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)". -->
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F297 — Findings paydown v7
+- [x] F297 — Findings paydown v7 (T001–T025 complete; R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219, R-1220, R-1225, R-1230, R-1236 to R-1243, R-1247, R-1249 and R-1250 resolved; R-1235, R-1246, R-1251 and R-1252 open — owned by F306, R-1248 by F305; accepted 2026-10-12 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f297r13e1001 · package remedy-review-20261012-012716-READY_FOR_REVIEW.zip · SHA-256 8f11b8ab92ce64b7aa2a15d699852ba9818b45059e2dd716b5d6ea0de59142e2 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD d10d817b77aaf5af8b4f71a217cfb927cecb2201)
 
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 
@@ -259,6 +259,10 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [ ] F199 — Self-health & crash reports
 - [ ] F203 — Structured logging & correlation
+
+## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
+
+- [ ] F306 — Findings paydown v8
 
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
 

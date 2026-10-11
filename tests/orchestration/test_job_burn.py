@@ -23,6 +23,7 @@ from packages.orchestration.burn_detector import (
 from packages.orchestration.job_burn import (
     BURN_DECISION_MARKER,
     BURN_PAUSE_SOURCE,
+    BURN_SAMPLES_KEY,
     CONFIG_KEY_JOB_BURN_EXPECTED_TOKENS_PER_HOUR,
     CONFIG_KEY_JOB_BURN_MIN_SAMPLES,
     CONFIG_KEY_JOB_BURN_MIN_SPEND_TOKENS,
@@ -599,6 +600,53 @@ def test_an_unattended_trip_blocks_the_job_when_the_pause_request_fails(
     assert job.state == JOB_BLOCKED
     assert job.burn_reading is not None
     assert job.burn_reading["tripped"] is True
+
+
+# ── the samples kept in the job record (R-1241) ───────────────────────────────
+
+
+def test_a_monitor_keeps_every_call_in_its_store_and_a_new_one_reads_them_back():
+    thresholds = BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0)
+    store: dict[str, Any] = {}
+    first = JobBurnMonitor(thresholds, store)
+    for amount in (1500, 1500):
+        first.record_call(_usage(amount), at=_AT)
+
+    assert store[BURN_SAMPLES_KEY] == [
+        {"amount": 1500.0, "at": _AT.isoformat(), "label": 1},
+        {"amount": 1500.0, "at": _AT.isoformat(), "label": 2}]
+    continued = JobBurnMonitor(thresholds, store)
+    continued.record_call(_usage(15000), at=None)
+    reading = continued.reading()
+    assert reading is not None and reading.tripped and reading.since_label == 3
+    assert store[BURN_SAMPLES_KEY][-1] == {"amount": 15000.0, "at": None, "label": 3}
+
+
+def test_a_kept_sample_that_is_not_one_is_left_out_and_never_raises():
+    thresholds = BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0)
+    store: dict[str, Any] = {BURN_SAMPLES_KEY: [
+        "torn", {"amount": 1500.0, "at": None, "label": True},
+        {"amount": "many", "at": None, "label": 2}, {"amount": 1.0, "at": "noon", "label": 3},
+        {"amount": 1500.0, "at": None, "label": 4}]}
+
+    monitor = JobBurnMonitor(thresholds, store)
+
+    monitor.record_call(_usage(1500), at=None)
+    assert [entry["label"] for entry in store[BURN_SAMPLES_KEY][-1:]] == [2]
+    assert JobBurnMonitor(thresholds, {BURN_SAMPLES_KEY: "not a list"}).reading() is None
+
+
+def test_a_paused_jobs_record_keeps_its_samples_and_a_continued_monitor_reads_the_same_trip(
+        tmp_path, monkeypatch):
+    job, counter = _run_unattended_spike(tmp_path, monkeypatch)
+
+    assert job.state == JOB_PAUSED and counter[0] == 3
+    kept = job.metadata[BURN_SAMPLES_KEY]
+    assert [(entry["amount"], entry["label"]) for entry in kept] == [
+        (1500.0, 1), (1500.0, 2), (15000.0, 3)]
+    thresholds = BurnThresholds(window=1, min_samples=2, multiplier=3.0, min_spend=0.0)
+    continued = JobBurnMonitor(thresholds, job.metadata)
+    assert job_burn_record(continued.reading()) == job.burn_reading
 
 
 # ── the job_burn_tripped run-log event ────────────────────────────────────────

@@ -92,7 +92,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.9"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.10"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -1244,8 +1244,10 @@ def test_the_decision_answer_trees_name_exactly_what_their_code_builds():
     budget = "packages/orchestration/budget_decision.py"
     trees = ANSWER_KEY_TREES["decision.resolve"]
     resolve = _function_def(decision, "_cmd_decision_resolve")
+    # The `sr:` branch is a function of its own since F297 (R-1196), and its answer is read with it.
+    branches = (resolve, _function_def(decision, "_resolve_stop_reason_decision"))
     sources: dict[str, set[str]] = {}
-    for node in ast.walk(resolve):
+    for node in (node for branch in branches for node in ast.walk(branch)):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "emit_ok":
             for keyword in node.keywords:
                 sources.setdefault(keyword.arg, set()).add(ast.unparse(keyword.value))
@@ -1557,6 +1559,17 @@ def test_the_pages_generated_section_reads_back_as_the_interface():
     interface["answer_trees"] = {command_id: {key: tree for key, tree in trees.items() if tree != {}}
                                  for command_id, trees in interface["answer_trees"].items()}
     assert _read_page_section(_page_section()) == interface
+
+
+def test_the_paths_exit_code_table_points_at_the_generated_table_of_every_code():
+    """R-1242: the hand-written walk's exit-code table lists the codes its path meets, as F295's
+    gate test holds, and names the generated table where every code a command can answer is."""
+    text = (_REPO_ROOT / CLIENT_INTERFACE_PAGE_PATH).read_text(encoding="utf-8")
+    walk = text[:text.index(CLIENT_INTERFACE_PAGE_BEGIN)]
+    intro = walk[walk.index("\n### Exit codes\n"):]
+    intro = intro[:intro.index("\n| Code | Meaning |")]
+    assert '"Exit codes of every command"' in intro
+    assert "\n### Exit codes of every command\n" in _page_section()
 
 
 def test_the_writer_replaces_only_the_generated_section(tmp_path):

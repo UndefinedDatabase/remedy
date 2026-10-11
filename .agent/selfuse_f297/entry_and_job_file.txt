@@ -1,0 +1,5 @@
+Entry ID: SU-056
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:2057
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception:  # noqa: BLE001 — an unparseable budget still shows its raw stored values)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f297-r12-selfuse/SU-056.md

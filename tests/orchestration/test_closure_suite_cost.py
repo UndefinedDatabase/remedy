@@ -1,5 +1,6 @@
 """F293 T003 (DECISION F293 D9): each closure's suite transcript records its CPU seconds, and a
-closure costing more than 10 percent above the previous feature's says that a finding is owed.
+closure costing more than the limit above the previous feature's says that a finding is owed; the
+limit is the larger of 10 percent and the spread of repeated runs (R-1158).
 
 ``scripts/closure_suite_cost.py`` reads the test load record ``tests/conftest.py`` writes and the
 closure transcripts under ``.agent/authored/``; every test here builds both in ``tmp_path``.
@@ -105,6 +106,69 @@ class TestTheTenPercentLimit:
         assert code == 0 and "nothing to compare" in sentence
 
 
+class TestTheModulesThatCarryARise:
+    """R-1139: the record's CPU time per test module says where a rise lies."""
+
+    def test_rises_are_largest_first_and_a_new_module_rises_from_nothing(self):
+        lines = cost.module_rises({"tests/a.py": 3.0, "tests/b.py": 1.0, "tests/c.py": 2.0},
+                                  {"tests/a.py": 1.0, "tests/b.py": 2.0})
+        assert lines == ["  +2.00 s  tests/a.py (1.00 -> 3.00)",
+                         "  +2.00 s  tests/c.py (0.00 -> 2.00)"]
+
+    def test_only_the_top_modules_are_named(self):
+        now = {f"tests/m{n:02d}.py": float(n) for n in range(1, 21)}
+        assert len(cost.module_rises(now, {})) == cost.TOP_MODULES
+
+    def test_a_previous_run_without_modules_names_none(self, tmp_path):
+        record = _record(tmp_path, _row(cpu=1000.0, utc="2026-09-15T10:00:00Z"))
+        run = {"modules": {"tests/a.py": 1.0}}
+        previous = {"feature": "F102", "utc": "2026-09-15T10:00:00Z", "cpu_seconds": 1000.0}
+        assert cost.module_report(record, run, previous) == [
+            "F102's closure run recorded no CPU time per test module, so no module is named."]
+        assert cost.module_report(record, run, None) == []
+
+
+class TestTheLimitFromRepeatedRuns:
+    """R-1158: the limit is derived from the record's spread between runs of the same tests."""
+
+    def test_the_spread_is_the_largest_between_clean_full_suite_runs_of_the_same_tests(self, tmp_path):
+        record = _record(
+            tmp_path,
+            _row(cpu=1000.0, collected=500, utc="2026-10-01T01:00:00Z"),
+            _row(cpu=1150.0, collected=500, utc="2026-10-01T02:00:00Z"),
+            _row(cpu=1000.0, collected=600, utc="2026-10-01T03:00:00Z"),
+            _row(cpu=1080.0, collected=600, utc="2026-10-01T04:00:00Z"),
+            _row(cpu=5000.0, collected=600, utc="2026-10-01T05:00:00Z", exit_status=1),
+            _row(command="pytest tests/x.py", cpu=9000.0, collected=600, utc="2026-10-01T06:00:00Z"),
+            _row(cpu=9000.0, collected=700, utc="2026-10-01T07:00:00Z"),
+            raw=["{not json"])
+        assert round(cost.run_spread_percent(record), 1) == 15.0
+        assert round(cost.run_spread_percent(record, exclude_utc="2026-10-01T02:00:00Z"), 1) == 8.0
+
+    def test_the_limit_never_falls_below_ten_percent(self):
+        assert cost.cost_limit(0.0) == cost.LIMIT_FLOOR_PERCENT == 10.0
+        assert cost.cost_limit(14.07) == 14.1
+
+    def test_a_rise_inside_the_spread_is_within_the_limit(self):
+        previous = {"feature": "F102", "utc": "2026-09-15T10:00:00Z", "cpu_seconds": 1000.0}
+        sentence, code = cost.compare(1120.0, previous, 14.1)
+        assert code == 0 and sentence.endswith("within the 14.1 percent limit.")
+        assert cost.compare(1150.0, previous, 14.1)[1] == 1
+
+    def test_the_command_line_judges_by_the_derived_limit(self, tmp_path):
+        authored = tmp_path / "authored"
+        _transcript(authored, "f102", 1000.0, "2026-09-15T10:00:00Z")
+        record = _record(tmp_path, _row(cpu=1000.0, collected=500, utc="2026-09-01T01:00:00Z"),
+                         _row(cpu=1200.0, collected=500, utc="2026-09-01T02:00:00Z"),
+                         _row(cpu=1150.0))
+        done = subprocess.run([sys.executable, str(SCRIPT), "--feature", "F103", "--record",
+                               str(record), "--authored", str(authored)],
+                              cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+        assert done.returncode == 0, done.stdout + done.stderr
+        assert "within the 20 percent limit." in done.stdout
+        assert "collected the same tests, 20 percent." in done.stdout
+
+
 class TestTheCommandLine:
     def _run(self, *args):
         return subprocess.run([sys.executable, str(SCRIPT), *args], cwd=REPO_ROOT,
@@ -121,7 +185,27 @@ class TestTheCommandLine:
             "recorded 2026-10-02T10:00:00Z",
             "This closure's suite used 1250.00 CPU seconds, 25.0 percent more than F102's 1000.00; that "
             "is above the 10 percent limit, so this closure registers a finding owned by the rolling "
-            "findings paydown."]
+            "findings paydown.",
+            "The limit is the larger of 10 percent and the largest spread between full-suite runs of "
+            "the record that collected the same tests, 0 percent.",
+            "This run recorded no CPU time per test module, so no module is named."]
+
+    def test_the_modules_that_carry_a_rise_are_named_from_the_previous_closure_runs_line(self, tmp_path):
+        """R-1139: the previous closure's own full-suite line, found by its time, is the baseline."""
+        authored = tmp_path / "authored"
+        _transcript(authored, "f102", 1000.0, "2026-09-15T10:00:00Z")
+        record = _record(
+            tmp_path,
+            _row(cpu=1000.0, utc="2026-09-15T10:00:00Z",
+                 module_cpu_seconds={"tests/a.py": 10.0, "tests/b.py": 5.0}),
+            _row(cpu=1250.0, module_cpu_seconds={"tests/a.py": 12.5, "tests/b.py": 4.0,
+                                                 "tests/c.py": 30.0}))
+        done = self._run("--feature", "F103", "--record", str(record), "--authored", str(authored))
+        assert done.returncode == 1, done.stdout + done.stderr
+        assert done.stdout.splitlines()[3:] == [
+            "The test modules whose CPU time rose most since F102's closure run:",
+            "  +30.00 s  tests/c.py (0.00 -> 30.00)",
+            "  +2.50 s  tests/a.py (10.00 -> 12.50)"]
 
     def test_a_missing_record_exits_two(self, tmp_path):
         done = self._run("--feature", "F103", "--record", str(tmp_path / "absent.jsonl"),

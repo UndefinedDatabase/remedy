@@ -175,6 +175,22 @@ def test_a_failed_llm_task_plan_leaves_its_job_with_the_digest(tmp_path, monkeyp
     assert record["job_file_sha256"] == expected
 
 
+def test_a_task_plan_that_cannot_be_parsed_leaves_its_job_stopped_not_pending(tmp_path, monkeypatch):
+    """R-1247: nothing will run the job an unparsed plan leaves, so it is saved stopped."""
+    from packages.orchestration.do_sequence import OrderJobPlanError
+    from packages.orchestration.pingpong_job import list_job_plans
+
+    repo = _registered_repo(tmp_path, monkeypatch)
+    _setup_llm_mocks(monkeypatch, plan_succeeds=False)
+
+    with pytest.raises(OrderJobPlanError, match="task plan generation failed"):
+        _shape_order(repo, "Write a CONTRIBUTING.md")
+
+    [job] = list_job_plans()
+    assert (job.state.value, job.stop_reason) == ("stopped", "plan_parse_failed")
+    assert job.finished_at
+
+
 def test_the_digest_is_taken_over_the_utf8_bytes_of_the_order(tmp_path, monkeypatch):
     from packages.orchestration.pingpong_job import load_job_plan
 

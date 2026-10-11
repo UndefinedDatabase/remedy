@@ -96,16 +96,26 @@ def test_a_failed_shape_step_leaves_no_planned_job_and_lists_none(tmp_path, monk
     from packages.core.models import RunState
     from packages.orchestration import do_sequence
     from packages.orchestration.do_context import DoContext
+    from packages.orchestration.mission_state import MissionOrder, load_mission
     from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+    from packages.orchestration.project_registry import resolve_project
+    from packages.orchestration.repo_mission import accept_order, link_order_job
 
     _registered = __import__("tests.orchestration.test_do_sequence_order_digest",
                              fromlist=["_registered_repo"])._registered_repo
-    _registered(tmp_path, monkeypatch)
-    job = JobPlan(job_title="t", mission="m", user_prompt="m", state=RunState.PLANNED)
+    repo = _registered(tmp_path, monkeypatch)
+    project = resolve_project(repo)
+    mission, batch = accept_order(project, repo, MissionOrder(text="m"))
+    job = JobPlan(job_title="t", mission="m", user_prompt="m", state=RunState.PLANNED,
+                  project_id=str(project.id))
     save_job_plan(job)
+    link_order_job(str(project.id), mission.id, batch.order_id, str(job.job_id))
     ctx = DoContext.__new__(DoContext)
     ctx.job_ids = [str(job.job_id)]
+    ctx.project_missions = {str(project.id): (mission.id, batch.order_id)}
     note = do_sequence._stop_unrun_shape_jobs(ctx)
     assert load_job_plan(str(job.job_id)).state == RunState.STOPPED
     assert ctx.job_ids == []
     assert str(job.job_id) in note
+    # R-1247: the stopped job leaves the mission's chain, so it is never the mission's latest link.
+    assert load_mission(str(project.id), mission.id).job_ids() == ()

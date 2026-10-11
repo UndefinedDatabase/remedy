@@ -673,6 +673,11 @@ def _excused_handler_job_markdown(title: str, path: str, number: int, text: str)
         "one, because that test holds the number of marks equal to it. Add no mark anywhere "
         "else, and do not edit any file under `.agent/`.\n"
         "\n"
+        # R-1230: the two files the task must change, so a pass that leaves one unchanged is named.
+        "Files:\n"
+        f"- {path}\n"
+        f"- {ratchet}\n"
+        "\n"
         "Acceptance:\n"
         f"- The handler at line {number} of `{path}` no longer carries a `{mark}` mark, and "
         f"`python3 -m ruff check {path}` reports nothing.\n"

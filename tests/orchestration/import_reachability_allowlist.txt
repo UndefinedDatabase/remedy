@@ -205,6 +205,7 @@ packages.orchestration.missing_tests_gate
 packages.orchestration.mission_compiler
 packages.orchestration.mission_contract
 packages.orchestration.mission_dossier
+packages.orchestration.mission_followup
 packages.orchestration.mission_plan_schema
 packages.orchestration.mission_readiness
 packages.orchestration.mission_record

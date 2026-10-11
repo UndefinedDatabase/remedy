@@ -247,6 +247,27 @@ def _create_mission_for_job(job: Any, *, json_output: bool = False) -> str:
     return mission.id
 
 
+# The `sr:` branch of `_cmd_decision_resolve`, a function of its own by step (1) of that
+# function's boundary on docs/system/structure-ledger-v1.md (F297, R-1196).
+def _resolve_stop_reason_decision(
+    job_id_str: str, decision_id: str, reason: str | None, *, json_output: bool,
+) -> None:
+    from packages.orchestration.stop_reasons import resolve_stop_reason
+    # The job is resolved before its stop reasons' file name is built from it, as every
+    # other branch does, so a value holding `/` names no file outside the data folder (R-1196).
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
+    stop_id = decision_id[3:]
+    sr = resolve_stop_reason(job_id, stop_id, reason or "manually resolved")
+    if sr is None:
+        fail("stop_reason_not_found", f"stop reason not found: {stop_id}",
+             json_output=json_output)
+    if json_output:
+        emit_ok(decision_id=decision_id, job_id=job_id_str, outcome="resolved",
+                stop_id=sr.id, reason_code=sr.reason_code)
+    else:
+        print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
+
+
 def _cmd_decision_resolve(
     job_id_str: str,
     decision_id: str,
@@ -277,17 +298,7 @@ def _cmd_decision_resolve(
 
     # Decisions are derived — resolve the underlying record if possible
     if decision_id.startswith("sr:"):
-        from packages.orchestration.stop_reasons import resolve_stop_reason
-        stop_id = decision_id[3:]
-        sr = resolve_stop_reason(job_id_str, stop_id, reason or "manually resolved")
-        if sr is None:
-            fail("stop_reason_not_found", f"stop reason not found: {stop_id}",
-                 json_output=json_output)
-        if json_output:
-            emit_ok(decision_id=decision_id, job_id=job_id_str, outcome="resolved",
-                    stop_id=sr.id, reason_code=sr.reason_code)
-        else:
-            print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
+        _resolve_stop_reason_decision(job_id_str, decision_id, reason, json_output=json_output)
     elif decision_id.startswith(_ESCALATION_PREFIX):
         # F051: a task asked a question mid-run.  ``--reason`` carries the
         # ANSWER, and the same command that the status/report views print is the

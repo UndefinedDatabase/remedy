@@ -126,6 +126,8 @@ _COMMON_PROTECTED = [
     "package-lock.json",
     "requirements.txt",
     ".github/workflows",
+    # R-1236: it names the command the acceptance check runs, so a job may not rewrite it unseen.
+    ".remedy/config.toml",
 ]
 _COMMON_RISKY = [
     ".env",

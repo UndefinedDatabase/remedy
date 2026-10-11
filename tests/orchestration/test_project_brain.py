@@ -967,6 +967,9 @@ class TestContinueRoundtripAggregate:
         result = continue_from_node(parent, parent_graph, parent_graph.nodes[0].id, "child task")
 
         child = load_job_plan(normalize_job_id(result.child_job_id))
+        # R-1149: the child records the sha256 of the prompt it was planned from.
+        import hashlib
+        assert child.job_file_sha256 == hashlib.sha256(b"child task").hexdigest()
 
         # Load events for both jobs
         data_root = resolve_data_root()

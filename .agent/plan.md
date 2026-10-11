@@ -1,25 +1,21 @@
-# Plan — F205 Multi-repo missions
+# Plan — F297 Findings paydown v7
 
 ## Goal
-One order can name several registered projects: the mission plans one job per repository, each
-job is applied, committed and pushed in its own repository, every record stays in its own project,
-and the digest and the public API name each job's repository
-(docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D7).
+Pay down the open findings F297 owns, each by the repair its own text names, with the evidence
+that discharged it (docs/roadmap/features/T2_F297.md; DECISIONs F297 D1 to D12).
 
 ## Current Step
-Side task on `feature/ci-manual-dispatch` (operator amend1011-manual-hosted-ci, 2026-10-11): the
-hosted CI workflow becomes `workflow_dispatch` only; the local gates stay mandatory. Touches
-`ci.yml`, one guard test, AGENTS.md's Open PR Gate and `docs/system/ci-self-check-v1.md`.
+Round 14 on `feature/f297-findings-paydown-v7`, session 2, the closing round: book round 13, the
+Built State, R-1235, R-1246, R-1251 and R-1252 re-assigned to F306, the ledger's rotation, F306
+registered as the next findings paydown, F297 accepted in STATUS with the README sync and SU-056's
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The Open PR Gate merges pull request #323 once its hosted checks are read green.
-2. The next feature's first commit books `Gate: F205 R10` and `Gate: F205 S4` and the prose slips
-   the handoff carries.
-3. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`, F297, Findings paydown v7.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F297's pull
+   request, then the next feature's first commit books round 14's verdict.
+2. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
 
 ## Risks
-- `mission_state.py` stands at 994 lines with no row; the next round that grows it first takes
-  step (2) of its boundary on the structure page.
-- R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176, R-1196, R-1219,
-  R-1220, R-1225, R-1230, R-1235 and, from main, R-1236 to R-1243 are open and owned by F297;
-  F205 owns none.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306; R-1248 by F305.
+- Hosted CI runs only when dispatched by hand (amend1011-manual-hosted-ci); the local evidence in
+  the pull request's body is the record.

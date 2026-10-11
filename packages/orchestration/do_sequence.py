@@ -63,7 +63,6 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
@@ -352,6 +351,33 @@ def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
     raise OrderJobPlanError(f"task plan rejected: {error}") from error
 
 
+# Step (1) of `plan_order_job`'s boundary on docs/system/structure-ledger-v1.md (F297): the
+# record a task plan that could not be parsed leaves. The job is saved stopped, never pending,
+# because nothing will run it (R-1247).
+def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
+    from datetime import datetime, timezone
+
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.failure_postmortem import (
+        FailureSignals,
+        build_job_rollup,
+        write_postmortem,
+    )
+    from packages.orchestration.pingpong_job import JOB_STOPPED, save_job_plan
+
+    job.state, job.stop_reason = JOB_STOPPED, "plan_parse_failed"
+    job.finished_at = datetime.now(timezone.utc).isoformat()
+    save_job_plan(job)
+    signals = FailureSignals(error_class="parse", error_text=error_hint or "task plan parse failure")
+    pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
+    ev_dir = job_evidence_export_dir(str(job.job_id))
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        write_postmortem(ev_dir, pm, root=ev_dir)
+    except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
+        print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+
+
 def plan_order_job(
     order: str,
     *,
@@ -554,24 +580,7 @@ def plan_order_job(
                 intake=intake_result.value.model_dump(),
                 state=RunState.PENDING,
             )
-            save_job_plan(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            from packages.orchestration.failure_postmortem import (
-                FailureSignals,
-                build_job_rollup,
-                write_postmortem,
-            )
-            signals = FailureSignals(
-                error_class="parse",
-                error_text=fp_result.error_hint or "task plan parse failure",
-            )
-            pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
-            ev_dir = job_evidence_export_dir(str(job.job_id))
-            ev_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
-                print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+            _record_unparsed_plan(job, fp_result.error_hint)
             raise OrderJobPlanError(
                 f"task plan generation failed: "
                 f"{fp_result.error_hint or 'parse failure'}"
@@ -687,21 +696,18 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.mission_contract import ContractError
     from packages.orchestration.mission_state import MissionError, MissionOrder
-    from packages.orchestration.repo_mission import accept_order
+    from packages.orchestration.repo_mission import accept_order_in_each
 
     project_id = str(ctx.project.id)
     order = MissionOrder(text=ctx.order, source_path=ctx.order_source_path,
                          source_sha256=ctx.order_source_sha256)
     # DECISION amend1011b D4: the order becomes a batch in the ONE mission of each repository it
-    # touches; an order over several repositories shares a correlation id and no umbrella mission.
+    # touches, and in none unless every one can take it (R-1250).
     targets = ctx.projects or [ctx.project]
-    correlation = uuid4().hex if len(targets) > 1 else ""
     try:
-        for target in targets:
-            repo = ctx.project_repos.get(str(target.id), ctx.repo_root)
-            accepted, batch = accept_order(target, repo, order, budgets=ctx.budgets,
-                                           correlation_id=correlation)
-            ctx.project_missions[str(target.id)] = (accepted.id, batch.order_id)
+        ctx.project_missions.update(accept_order_in_each(
+            [(target, ctx.project_repos.get(str(target.id), ctx.repo_root)) for target in targets],
+            order, budgets=ctx.budgets))
     except MissionError as exc:
         return DO_STEP_FAILED, f"no order accepted: {exc}"
     ctx.mission_id, ctx.order_id = ctx.project_missions[project_id]
@@ -756,11 +762,12 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
     ``planned``. Each job the step saved before the failure is stopped, and the
     walk no longer lists it among its ``job_ids``, so a client that follows the
     first job never waits on a job that will not run. The stopped jobs stay on
-    disk and linked to the mission; the note names them.
+    disk and leave their missions' chains (R-1247); the note names them.
     """
     from datetime import datetime, timezone
 
     from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, save_job_plan
+    from packages.orchestration.repo_mission import unlink_order_jobs
 
     stopped: list[str] = []
     for job_id in ctx.job_ids:
@@ -772,6 +779,8 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
         job.finished_at = datetime.now(timezone.utc).isoformat()
         save_job_plan(job)
         stopped.append(job_id)
+    for project_id, (mission_id, _order_id) in ctx.project_missions.items():
+        unlink_order_jobs(project_id, mission_id, stopped)
     ctx.job_ids.clear()
     if not stopped:
         return ""
