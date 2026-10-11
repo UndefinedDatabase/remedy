@@ -5,11 +5,15 @@
 # own — one source of truth for what CI means (T2_F083).
 name: CI
 
+# DECISION amend1011-manual-hosted-ci (operator, 2026-10-11): MANUAL TRIGGER ONLY,
+# for now. Remedy runs on the operator's own machine, and the 28-34 minute hosted
+# run is not worth paying on every pull request; the local CI entrypoint and the
+# AGENTS.md gates stay mandatory. The matrix below is untouched, so a manual run
+# is the full two-interpreter control run. To reactivate: put the `push` and
+# `pull_request` triggers back (docs/system/ci-self-check-v1.md, "Hosted CI is
+# manual").
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
