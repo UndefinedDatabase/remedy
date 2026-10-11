@@ -82,7 +82,9 @@ def load_run_events(data_dir: Path, job_id: str) -> list[dict[str, Any]]:
 
     Reads every ``*.jsonl`` file under ``<data_dir>/runs/<job_id>/``.
     Returns ``[]`` if the directory does not exist.
-    Skips empty lines and silently ignores malformed JSON lines.
+    Skips empty lines and silently ignores malformed JSON lines and lines whose
+    JSON is not an object; sorts by the timestamp read as a string, so one damaged
+    record cannot end the read (R-1143).
     """
     run_log_path = run_log_dir(job_id, data_dir)
     if not run_log_path.exists():
@@ -94,10 +96,12 @@ def load_run_events(data_dir: Path, job_id: str) -> list[dict[str, Any]]:
             if not raw:
                 continue
             try:
-                events.append(json.loads(raw))
+                event = json.loads(raw)
             except json.JSONDecodeError:
-                pass
-    events.sort(key=lambda e: e.get("timestamp", ""))
+                continue
+            if isinstance(event, dict):
+                events.append(event)
+    events.sort(key=lambda e: str(e.get("timestamp", "")))
     return events
 
 
