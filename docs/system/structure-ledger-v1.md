@@ -208,9 +208,9 @@ with the code that calls it.
 | 282 | `apps/cli/commands/job.py` | `_cmd_run_next_task_local` |
 | 280 | `packages/orchestration/patch_apply.py` | `apply_patch_intent` |
 | 279 | `packages/orchestration/repository_snapshot.py` | `create_snapshot` |
-| 276 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
+| 269 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
