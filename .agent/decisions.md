@@ -28994,3 +28994,67 @@ CHOSEN: `_stop_unrun_shape_jobs` sets each saved job to `stopped` with reason `s
 ALTERNATIVES: create no job before every plan passes. Rejected: a job's plan is made by its own planner call, so the later ones cannot pass before the earlier ones exist.
 
 HOW TO REVERSE: Delete this paragraph and the helper; the saved jobs stay `planned` and `job_ids` lists them.
+
+## DECISION amend1011b D1 — A repository has exactly one lasting mission, found from the repository and never chosen or guessed (2026-10-11)
+
+CHOSEN: `packages/orchestration/repo_mission.py` keys the mission by the project id for the project's canonical repository and by the project id plus a digest of the git common directory for any other repository the project holds. A linked worktree is its repository, two clones with one remote are two, a repository the project does not hold is refused, and a project with no repository is its own identity. `canonical_candidates` picks the oldest mission with jobs, else the oldest; the mission is named `Maintain <slug>`, not by the first order. A legacy mission keeps its goal.
+
+ALTERNATIVES: key by remote URL, REJECTED: two clones would collapse. Ask the operator or a model which mission to continue, REJECTED by the operator ruling.
+
+HOW TO REVERSE: Delete `repo_mission.py`, restore the `create_mission` call in the plan step, and delete this paragraph.
+
+## DECISION amend1011b D2 — Lookup, creation, order acceptance and job links happen under one exclusive per-project lock (2026-10-11)
+
+CHOSEN: `repo_mission_lock` takes `flock` on `.repo-mission.lock` in the project's mission directory around `accept_order`, `ensure_repo_mission` and `link_order_job`. Simultaneous starts become distinct batches of one mission.
+
+ALTERNATIVES: a uniqueness check after creation, REJECTED: it leaves a window with two missions.
+
+HOW TO REVERSE: Remove the `with` blocks and this paragraph.
+
+## DECISION amend1011b D3 — An order is a batch; the mission's order, plan and contract slots hold the current order's and are sealed into its batch when the next order arrives (2026-10-11)
+
+CHOSEN: `Mission.orders` holds `MissionOrderBatch` records; a job link names its batch by `order_id`. `accept_order` seals the previous batch with its plan and contract, clears the contract and keeps the plan's version chain, so the mission gate, the push refusals and the contract commands read the current order. A mission planned from a batch writes its evidence under `evidence/orders/<order id>`. Outcomes and spend are read from the jobs and the ledger.
+
+ALTERNATIVES: a second record per order, REJECTED: a second store to keep consistent. Resetting the plan, REJECTED: its evidence files would be overwritten.
+
+HOW TO REVERSE: Delete the fields, `accept_order` and this paragraph.
+
+## DECISION amend1011b D4 — An order over several repositories adds a batch and its job to each repository's own mission, linked by a correlation id (2026-10-11)
+
+CHOSEN: the plan step accepts the order in every project's mission with one shared `correlation_id`; the shape step links each job to its own project's mission. No umbrella mission is written; `project_ids` is only read on legacy records.
+
+ALTERNATIVES: keep the umbrella, REJECTED by the operator ruling.
+
+HOW TO REVERSE: Restore the single `accept_order` and the single link, and delete this paragraph.
+
+## DECISION amend1011b D5 — Every creator of a mission goes through the repository mission, and a paused or abandoned mission is not replaced (2026-10-11)
+
+CHOSEN: `do`, `mission start`, the plan approval, and the contract remainder use `accept_order` or `ensure_repo_mission`; a test fails on any other production caller of `create_mission`. `mission start` on a repository with a mission shows it and records nothing. An achieved mission is reopened and the batch records `reopened_from`; a paused or abandoned one refuses with the `mission resume` command. `--new-mission` keeps its name and means "accept the order file again although an earlier order of it has unfinished jobs". `continue_mission` is not on the `do` path, so a fresh order adds no verify-first task.
+
+ALTERNATIVES: make `create_mission` itself refuse, REJECTED: it is the store's primitive and the reconcile and the tests use it.
+
+HOW TO REVERSE: Delete the guard test and this paragraph and restore each call.
+
+## DECISION amend1011b D6 — Duplicate missions are folded by `remedy mission reconcile`: dry run first, backup, redirects, rollback (2026-10-11)
+
+CHOSEN: `repo_mission_reconcile.py` reports, and with `--apply` folds, each repository's duplicates into the canonical one: each becomes a sealed legacy batch with goal, status, plan, contract and each job's old role; evidence moves to `evidence/legacy/<old id>`; the old record becomes an `alias_of` redirect that no listing shows and `load_mission` follows. A legacy cross-repository mission gives each job to its own project's mission. The whole mission area is copied first; a record that cannot be read or a running job refuses; a job without exactly one owner afterwards restores the backup. `--restore` puts a backup back. No data is changed unless `--apply` is given.
+
+ALTERNATIVES: hide duplicates in the listing, REJECTED by the operator ruling.
+
+HOW TO REVERSE: Delete the module, the command and this paragraph.
+
+## DECISION amend1011b D7 — The text views of a mission show recent orders and jobs only; the JSON holds all (2026-10-11)
+
+CHOSEN: `render_mission_chain` lists an order table and the last 25 orders and jobs with a count of the earlier ones; the JSON form is the whole record, additive keys only (`repo`, `orders`, `alias_of`, a link's `order_id`, a `do` answer's `order_id`).
+
+ALTERNATIVES: a pager flag, deferred.
+
+HOW TO REVERSE: Remove the cap and this paragraph.
+
+## DECISION amend1011b D8 — Provider neutrality is pinned by a test of the role and adapter boundary (2026-10-11)
+
+CHOSEN: `tests/orchestration/test_provider_neutrality.py` resolves every role through three provider identities and checks each name reaches its own adapter. No code changed.
+
+ALTERNATIVES: a live smoke test, left optional by the order.
+
+HOW TO REVERSE: Delete the test and this paragraph.
