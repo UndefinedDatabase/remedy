@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-0fcd1aef0852454d  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 160b61157..5c4eb730f 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1978,7 +1978,7 @@ def _open_decisions_view(job: JobPlan) -> dict:
+                                for d in open_decisions(decisions)],
+             'next_action': open_decisions_next_action(decisions),
+         }
+-    except Exception:  # noqa: BLE001 — a read-only view never fails on this
++    except (ImportError, OSError, ValueError):
+         return {'lines': [], 'open_decisions': [], 'next_action': ''}
+ 
+ 
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

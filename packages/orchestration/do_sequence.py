@@ -56,13 +56,11 @@ walk and asks every job of the walk to stop through `safe_points.request_stop`.
 from __future__ import annotations
 
 import hashlib
-import json
 import shlex
 import subprocess
 import sys
-import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -70,139 +68,107 @@ if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     from packages.orchestration.project_registry import RemyProject
 
+# DECISION F205 D3: the walk's context, its targets, its apply and push and its summaries
+# live in modules of their own; every name is imported back here by name, so every
+# import path keeps working.
+from packages.orchestration.do_apply import (
+    _do_push_record as _do_push_record,
+)
+from packages.orchestration.do_apply import (
+    _step_apply,
+    do_apply_one_job,
+)
+from packages.orchestration.do_apply import (
+    do_mission_push_refusals as do_mission_push_refusals,
+)
+from packages.orchestration.do_apply import (
+    do_push_mission as do_push_mission,
+)
+from packages.orchestration.do_apply import (
+    do_waiting_job_next_lines as do_waiting_job_next_lines,
+)
+from packages.orchestration.do_cockpit import (
+    DO_COCKPIT_STOP_COMMAND as DO_COCKPIT_STOP_COMMAND,
+)
+from packages.orchestration.do_cockpit import (
+    DO_COCKPIT_WAIT_SECONDS as DO_COCKPIT_WAIT_SECONDS,
+)
+from packages.orchestration.do_cockpit import (
+    DoCockpitLaunchError as DoCockpitLaunchError,
+)
+from packages.orchestration.do_cockpit import (
+    _step_ui,
+)
+from packages.orchestration.do_cockpit import (
+    do_cockpit_argv as do_cockpit_argv,
+)
+from packages.orchestration.do_cockpit import (
+    do_cockpit_paths as do_cockpit_paths,
+)
+from packages.orchestration.do_cockpit import (
+    launch_do_cockpit as launch_do_cockpit,
+)
+from packages.orchestration.do_context import (
+    DO_SHAPE_MILESTONES as DO_SHAPE_MILESTONES,
+)
+from packages.orchestration.do_context import (
+    DO_SHAPE_ONE_JOB as DO_SHAPE_ONE_JOB,
+)
+from packages.orchestration.do_context import (
+    DO_SHAPE_SOURCE_FORCE_JOB as DO_SHAPE_SOURCE_FORCE_JOB,
+)
+from packages.orchestration.do_context import (
+    DO_SHAPE_SOURCE_FORCE_MISSION as DO_SHAPE_SOURCE_FORCE_MISSION,
+)
+from packages.orchestration.do_context import (
+    DO_SHAPE_SOURCE_PLANNER as DO_SHAPE_SOURCE_PLANNER,
+)
+from packages.orchestration.do_context import (
+    DO_STEP_DONE,
+    DO_STEP_FAILED,
+    DO_STEP_SKIPPED,
+    DO_STEP_STOPPED,
+    DO_WALK_ENDING_STATUSES,
+    DoContext,
+    DoStepResult,
+    _job_run_role_flags,
+    do_stopped_walk_note,
+)
+from packages.orchestration.do_summary import (
+    _add_measured as _add_measured,
+)
+from packages.orchestration.do_summary import (
+    _measured as _measured,
+)
+from packages.orchestration.do_summary import (
+    do_contract_summary_line as do_contract_summary_line,
+)
+from packages.orchestration.do_summary import (
+    do_cost_summary as do_cost_summary,
+)
+from packages.orchestration.do_summary import (
+    do_cost_summary_lines as do_cost_summary_lines,
+)
+from packages.orchestration.do_summary import (
+    do_mission_contract as do_mission_contract,
+)
+from packages.orchestration.do_summary import (
+    do_unmet_blocking_criteria as do_unmet_blocking_criteria,
+)
+from packages.orchestration.do_targets import (
+    _shape_job_orders,
+    _step_init,
+    resolve_do_shape,
+)
+from packages.orchestration.do_targets import (
+    do_shape_of_plan as do_shape_of_plan,
+)
+from packages.orchestration.do_targets import (
+    mission_plan_outlines as mission_plan_outlines,
+)
+
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
 DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "ui", "apply")
-
-#: The two shapes (DECISION F268 D5), and where the one in force came from.
-DO_SHAPE_ONE_JOB = "one job"
-DO_SHAPE_MILESTONES = "milestones"
-DO_SHAPE_SOURCE_PLANNER = "planner"
-DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
-DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
-
-DO_STEP_DONE = "done"
-DO_STEP_SKIPPED = "skipped"
-DO_STEP_STOPPED = "stopped"
-DO_STEP_FAILED = "failed"
-
-#: A step reporting one of these ends the walk; later steps are not called.
-DO_WALK_ENDING_STATUSES = frozenset({DO_STEP_STOPPED, DO_STEP_FAILED})
-
-
-@dataclass(frozen=True)
-class DoStepResult:
-    """What one step did: its name, a status word and a sentence with real ids."""
-
-    name: str
-    status: str
-    detail: str
-
-    def to_json(self) -> dict[str, str]:
-        return {"name": self.name, "status": self.status, "detail": self.detail}
-
-
-@dataclass
-class DoContext:
-    """Everything one `remedy do` walk carries from step to step."""
-
-    order: str
-    #: The order file's resolved absolute path (DECISION F295 D3); "" for an order given as text.
-    order_source_path: str = ""
-    #: sha256 (hex) of the order file's exact bytes (DECISION F295 D3); "" for an order given as text.
-    order_source_sha256: str = ""
-    repo: str = "."
-    builder_provider: str | None = None
-    reviewer_provider: str | None = None
-    #: `--project <slug-or-id>`: the init step selects this project instead of
-    #: resolving or registering the repository (DECISION F268 D16 (4)).
-    project_selector: str | None = None
-    #: The resolved `JobBudgets` as a dict, set only when a budget flag was given;
-    #: the run step passes it to `run_job` as `job run` does (DECISION F268 D16 (5)).
-    budgets: dict[str, Any] | None = None
-    builder_model: str | None = None
-    reviewer_model: str | None = None
-    #: `--planner-model`: `model=` of every structured planner call the plan and
-    #: shape steps build (DECISION F268 D16 (7)).
-    planner_model: str | None = None
-    #: `--planner-provider`: which SERVICE plans — `ollama`, `claude-cli`, or
-    #: `None` to take the `planner` role's own answer (operator amendment
-    #: amend0920-selfuse-real, DECISION D1). It reaches every
-    #: `make_structured_call_fn` this walk builds, beside `planner_model`.
-    planner_provider: str | None = None
-    #: `--contract <name>`: the contract template the plan step writes onto the
-    #: new mission; ``None`` applies the one proposed from the order, if any
-    #: (DECISION F269 D1 (4)).
-    contract_template: str | None = None
-    no_ui: bool = False
-    yes: bool = False
-    no_llm: bool = False
-    force_job: bool = False
-    force_mission: bool = False
-    step_by_step: bool = False
-    plan_only: bool = False
-    #: `--apply`: the apply step applies every job instead of stopping (DECISION F268 D9).
-    apply: bool = False
-    #: The commit flag every apply passes to `apply_job`, at most one of the three
-    #: set; each implies `--apply` and chains the walk's jobs (DECISION F270 D4 (1), (2)).
-    commit_message: str | None = None
-    commit_auto: bool = False
-    commit_with_history: bool = False
-    #: Push the mission ONCE after its last job; `push_source` names why: `--push`
-    #: or `apply.push_after_mission`. Never passed to `apply_job` (D4 (4), (5)).
-    push: bool = False
-    push_source: str = ""
-    #: One ``{job_id, sha, branch}`` per commit or merge the walk landed, in job order.
-    landed: list[dict[str, str]] = field(default_factory=list)
-    #: Each job applied so far → the sentence saying so, in apply order.
-    applied: dict[str, str] = field(default_factory=dict)
-    #: The mission's one push (D4 (7)); None while the walk has not asked it.
-    push_outcome: dict[str, Any] | None = None
-    #: Reads one line at a `--step-by-step` halt, raising `EOFError` at end of
-    #: input like `input`, which the CLI supplies; ``None`` reads as end of input.
-    read_line: Callable[[], str] | None = None
-    #: Opens the cockpit for a job id and returns its URL, raising
-    #: `DoCockpitLaunchError` when it does not come up; the CLI supplies
-    #: `launch_do_cockpit`. ``None`` opens nothing and prints the command.
-    ui_launcher: Callable[[str], str] | None = None
-    #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
-    halt_reason: str = ""
-    repo_root: str = ""
-    project: RemyProject | None = None
-    mission_id: str = ""
-    mission_plan: Any = None
-    mission_plan_path: str = ""
-    shape: str = ""
-    shape_source: str = ""
-    job_ids: list[str] = field(default_factory=list)
-    #: The jobs of a multi-job walk the run step did not run: each waits for its
-    #: predecessor's applied output to be committed (DECISION F268 D12).
-    waiting_job_ids: list[str] = field(default_factory=list)
-    #: Each job the run step ran → `mirror_job_run_into_ledger`'s answer for it (DECISION F268 D11).
-    cost_mirrors: dict[str, dict[str, Any]] = field(default_factory=dict)
-    results: list[DoStepResult] = field(default_factory=list)
-    next_lines: list[str] = field(default_factory=list)
-
-    @property
-    def run_job_ids(self) -> list[str]:
-        """The walk's jobs that are not waiting, in job order: the ones run, ui and apply act on."""
-        return [job_id for job_id in self.job_ids if job_id not in self.waiting_job_ids]
-
-    @property
-    def commit_mode(self) -> str:
-        """``message``, ``auto``, ``history`` or ``""``: the walk's commit flag, as `job_apply` names it."""
-        if self.commit_message is not None:
-            return "message"
-        return "auto" if self.commit_auto else "history" if self.commit_with_history else ""
-
-    @property
-    def failed(self) -> bool:
-        return any(r.status == DO_STEP_FAILED for r in self.results)
-
-    @property
-    def stopped_before_apply(self) -> bool:
-        """True unless the apply step itself ran to completion."""
-        return not any(r.name == "apply" and r.status == DO_STEP_DONE
-                       for r in self.results)
 
 
 #: A step takes the context and returns ``(status, detail)``; the walker names it.
@@ -640,48 +606,6 @@ def plan_order_job(
 # ---------------------------------------------------------------------------
 
 
-def _step_init(ctx: DoContext) -> tuple[str, str]:
-    """Register the repository if it is not, and add the ignore entries (D2). Nothing else.
-
-    With `--project` the project is selected through `select_project` instead,
-    and an unknown one fails the step (DECISION F268 D16 (4)).
-    """
-    from packages.orchestration.project_registry import (
-        InvalidProjectSelectorError,
-        ProjectNotFoundError,
-        register_project_repo,
-        resolve_project,
-        select_project,
-    )
-    from packages.orchestration.repo_ignore import ensure_ignore_entry, ignore_entries
-    from packages.orchestration.worktrees import WorktreeError, repo_root
-
-    try:
-        root = repo_root(ctx.repo)
-    except (WorktreeError, OSError, subprocess.SubprocessError):
-        return DO_STEP_FAILED, (
-            f"{Path(ctx.repo).resolve()} is not a git repository — run `git init` first")
-    ctx.repo_root = str(root)
-
-    if ctx.project_selector is not None:
-        try:
-            project, _source = select_project(ctx.project_selector, root)
-        except (ProjectNotFoundError, InvalidProjectSelectorError):
-            return DO_STEP_FAILED, (
-                f"no project matches --project {ctx.project_selector!r}; "
-                f"list them with: remedy project list")
-        detail = f"project {project.slug} ({project.id}) selected by --project"
-    elif (project := resolve_project(root)) is None:
-        project = register_project_repo(root.name, root)
-        detail = f"registered {root} as project {project.slug} ({project.id})"
-    else:
-        detail = f"project {project.slug} ({project.id}) already registered for {root}"
-    ctx.project = project
-    for entry in ignore_entries(root):
-        ensure_ignore_entry(root, entry)
-    return DO_STEP_DONE, detail
-
-
 def _repo_has_committed_file(repo_root: str) -> bool:
     """At least one commit exists and HEAD holds at least one tracked file."""
     proc = subprocess.run(
@@ -747,7 +671,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
 
     project_id = str(ctx.project.id)
     try:
-        mission = create_mission(project_id, ctx.order)
+        mission = create_mission(project_id, ctx.order, project_ids=ctx.project_ids)
         set_mission_order(project_id, mission.id, MissionOrder(
             text=ctx.order, source_path=ctx.order_source_path,
             source_sha256=ctx.order_source_sha256))
@@ -796,67 +720,6 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         f"{contract_note}")
 
 
-def mission_plan_outlines(plan: Any) -> list[Any]:
-    """Every `jobs_draft` outline across the plan's milestones, in milestone order."""
-    if plan is None:
-        return []
-    return [outline for milestone in plan.milestones for outline in milestone.jobs_draft]
-
-
-def do_shape_of_plan(plan: Any) -> str:
-    """The planner's shape (DECISION F268 D5): two or more outlines are milestones."""
-    return DO_SHAPE_MILESTONES if len(mission_plan_outlines(plan)) >= 2 else DO_SHAPE_ONE_JOB
-
-
-def resolve_do_shape(plan: Any, *, force_job: bool = False,
-                     force_mission: bool = False) -> tuple[str, str]:
-    """``(shape, shape_source)``: a force flag wins over the plan; both at once is refused."""
-    if force_job and force_mission:
-        raise ValueError("--force-job and --force-mission cannot be given together")
-    if force_job:
-        return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_FORCE_JOB
-    if force_mission:
-        return DO_SHAPE_MILESTONES, DO_SHAPE_SOURCE_FORCE_MISSION
-    return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
-
-
-def _shape_job_orders(
-        ctx: DoContext, shape: str,
-) -> list[tuple[str, list[TaskEntry] | None, str | None]]:
-    """What to plan, one ``(order, deterministic_tasks, milestone_id)`` per job.
-
-    ``None`` tasks let the planner choose.  ``milestone_id`` is the milestone
-    whose ``jobs_draft`` outline the job came from (R-0977); a job planned
-    from the order itself serves the plan's milestone when the plan has
-    exactly one, and no milestone when it has several.
-    """
-    from packages.orchestration.task_deliverables import (
-        deliverable_check_task,
-        deliverable_task,
-        deterministic_job_plans,
-        extract_order_deliverables,
-    )
-
-    order = ctx.order
-    milestones = list(ctx.mission_plan.milestones) if ctx.mission_plan is not None else []
-    sole = str(milestones[0].id) if len(milestones) == 1 else None
-    if shape == DO_SHAPE_ONE_JOB:
-        slices = deterministic_job_plans(order)
-        if len(slices) == 1:
-            return [(order, None, sole)]
-        return [(order, tasks, sole) for tasks in slices]
-    outlines = [(outline, str(milestone.id)) for milestone in milestones
-                for outline in milestone.jobs_draft]
-    if len(outlines) >= 2:
-        return [(outline.goal, None, milestone_id) for outline, milestone_id in outlines]
-    deliverables = extract_order_deliverables(order)
-    if len(deliverables) >= 2:
-        return [(order, [deliverable_task(d, order)], sole) for d in deliverables]
-    [only] = deliverables
-    return [(order, [deliverable_task(only, order)], sole),
-            (order, [deliverable_check_task(only, order)], sole)]
-
-
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
     """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5).
 
@@ -885,18 +748,19 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
 
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
-                                         force_mission=ctx.force_mission)
+                                         force_mission=ctx.force_mission,
+                                         projects=len(ctx.projects))
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    for order, tasks, milestone_id in _shape_job_orders(ctx, shape):
+    for order, tasks, milestone_id, target in _shape_job_orders(ctx, shape):
         try:
             shaped = plan_order_job(
                 order,
-                project=ctx.project,
-                repo_path=ctx.repo_root,
+                project=target.project,
+                repo_path=target.repo,
                 no_llm=ctx.no_llm,
                 yes=ctx.yes,
                 deterministic_tasks=tasks,
@@ -943,18 +807,6 @@ def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
     return listing
 
 
-def _job_run_role_flags(ctx: DoContext) -> str:
-    """The role flags every `remedy job run` Next line carries: providers, then models (D16 (6))."""
-    flags = ""
-    for flag, value in (("--builder-provider", ctx.builder_provider),
-                        ("--reviewer-provider", ctx.reviewer_provider),
-                        ("--builder-model", ctx.builder_model),
-                        ("--reviewer-model", ctx.reviewer_model)):
-        if value:
-            flags += f" {flag} {shlex.quote(value)}"
-    return flags
-
-
 def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
     """Raise the remainder decision for a job its budget stopped; the detail's tail, or "".
 
@@ -981,15 +833,6 @@ def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
                           f"--reason {CONTRACT_REMAINDER_YES}")
     return (f"; its budget stopped it with blocking contract criteria open, so "
             f"remainder decision {decision_id} was raised")
-
-
-def do_stopped_walk_note(ctx: DoContext) -> str:
-    """The tail of a stopped walk's detail under a commit flag: what stays, and no push (D4 (2))."""
-    if not ctx.landed:
-        return "; no commit landed and nothing was pushed"
-    shas = ", ".join(entry["sha"][:12] for entry in ctx.landed)
-    return (f"; the {len(ctx.landed)} commit(s) that landed ({shas}) stay on "
-            f"{ctx.landed[-1]['branch']}, and nothing was pushed")
 
 
 def _step_run(ctx: DoContext) -> tuple[str, str]:
@@ -1070,399 +913,9 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
         ran.append(
             f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
             f"before it is applied and committed, because a job's workspace is cut from "
-            f"{ctx.repo_root}'s HEAD commit (DECISION F268 D12)")
+            f"{'its own repository' if ctx.projects else ctx.repo_root}'s HEAD commit "
+            f"(DECISION F268 D12)")
     return DO_STEP_DONE, "; ".join(ran)
-
-
-# ---------------------------------------------------------------------------
-# The cockpit, opened detached (DECISION F268 D9 (1)).
-# ---------------------------------------------------------------------------
-
-
-#: How long the ui step waits for the detached cockpit to write its info file.
-DO_COCKPIT_WAIT_SECONDS = 15.0
-
-#: The stop command the ui step reports; it stops every running UI session.
-DO_COCKPIT_STOP_COMMAND = "remedy ui stop"
-
-
-class DoCockpitLaunchError(Exception):
-    """The detached cockpit did not come up; the message says why and where its log is."""
-
-
-def do_cockpit_argv(job_id: str, info_file: Path | str) -> list[str]:
-    """The detached cockpit's command line: `remedy ui start` on an automatic port."""
-    return [sys.executable, "-m", "apps.cli.grouped", "ui", "start", job_id,
-            "--port", "0", "--info-file", str(info_file)]
-
-
-def do_cockpit_paths(job_id: str) -> tuple[Path, Path]:
-    """``(info_file, log_file)`` under the data root, which init keeps out of `git status`.
-
-    The info file sits in the UI session registry `remedy ui start` itself
-    writes to, so `remedy ui status` and `remedy ui stop` see the cockpit.
-    """
-    from packages.orchestration.data_paths import resolve_data_root
-
-    ui_root = Path(resolve_data_root()) / "ui"
-    return ui_root / "sessions" / f"do-{job_id}.json", ui_root / "do_logs" / f"{job_id}.log"
-
-
-def launch_do_cockpit(
-    job_id: str,
-    *,
-    wait_seconds: float = DO_COCKPIT_WAIT_SECONDS,
-    spawn: Callable[..., Any] = subprocess.Popen,
-    sleep: Callable[[float], None] = time.sleep,
-) -> str:
-    """Start the cockpit for *job_id* in its own session and return its URL.
-
-    The child outlives `remedy do`: it runs in a new session with its output in
-    a log file. Waits at most ``wait_seconds`` for the info file; a child that
-    exits first or does not come up in time raises `DoCockpitLaunchError`
-    (a child still starting is terminated, so no half-started server is left).
-    """
-    info_file, log_file = do_cockpit_paths(job_id)
-    info_file.parent.mkdir(parents=True, exist_ok=True)
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-    info_file.unlink(missing_ok=True)
-    with open(log_file, "ab") as log:
-        child = spawn(do_cockpit_argv(job_id, info_file), stdin=subprocess.DEVNULL,
-                      stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-    deadline = time.monotonic() + wait_seconds
-    while True:
-        try:
-            url = json.loads(info_file.read_text(encoding="utf-8")).get("url", "")
-        except (OSError, ValueError):
-            url = ""
-        if url:
-            return url
-        code = child.poll()
-        if code is not None:
-            raise DoCockpitLaunchError(
-                f"the cockpit exited with code {code} before it came up; its log: {log_file}")
-        if time.monotonic() >= deadline:
-            child.terminate()
-            raise DoCockpitLaunchError(
-                f"the cockpit did not come up within {wait_seconds:g}s; its log: {log_file}")
-        sleep(0.1)
-
-
-def _step_ui(ctx: DoContext) -> tuple[str, str]:
-    """Open the cockpit for the last job that ran, detached, unless `--no-ui` (DECISIONs F268 D9, D12)."""
-    if ctx.no_ui:
-        return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
-    job_id = ctx.run_job_ids[-1]
-    command = f"remedy ui start {job_id}"
-    if ctx.ui_launcher is None:
-        ctx.next_lines.append(command)
-        return DO_STEP_SKIPPED, f"no cockpit launcher on this walk; open it with: {command}"
-    try:
-        url = ctx.ui_launcher(job_id)
-    except (DoCockpitLaunchError, OSError) as exc:
-        ctx.next_lines.append(command)
-        return DO_STEP_SKIPPED, f"the cockpit was not opened: {exc}; open it with: {command}"
-    ctx.next_lines.append(DO_COCKPIT_STOP_COMMAND)
-    return DO_STEP_DONE, (
-        f"the cockpit for job {job_id} is open at {url}; "
-        f"stop it with: {DO_COCKPIT_STOP_COMMAND}")
-
-
-def do_waiting_job_next_lines(ctx: DoContext) -> list[str]:
-    """One line per waiting job, with real ids: commit its predecessor's applied output, then run it.
-
-    DECISION F268 D12: a job's workspace is cut from the target's HEAD commit,
-    so a waiting job runs only once the job before it is applied AND committed.
-    """
-    repo = shlex.quote(ctx.repo_root)
-    lines = []
-    for position, job_id in enumerate(ctx.job_ids):
-        if job_id not in ctx.waiting_job_ids:
-            continue
-        before = ctx.job_ids[position - 1]
-        lines.append(f"commit job {before}'s applied output in {repo}, then: "
-                     f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
-    return lines
-
-
-def _step_apply(ctx: DoContext) -> tuple[str, str]:
-    """Stop before apply, printing the apply command per job that ran; `--apply` applies them.
-
-    With `--apply` each job that ran goes through `job_apply.apply_job(...,
-    approve=True)` in run order, and the walk fails at the first job that is not
-    applied, naming it and why (DECISION F268 D9 (2)). The apply gate is
-    `job_apply`'s own. A waiting job is never applied here; the Next lines say
-    how it runs (DECISION F268 D12). Under a commit flag the jobs the run step
-    already applied are not applied again, and a push is asked once after the
-    last job (DECISION F270 D4 (4)); in a walk of one job a red contract
-    refuses it before anything is applied (D4 (6)).
-    """
-    if not ctx.apply:
-        commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
-                    for job_id in ctx.run_job_ids]
-        ctx.next_lines.extend(commands)
-        ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
-        return DO_STEP_STOPPED, (
-            f"stopped before apply; {ctx.repo_root} is untouched. "
-            f"Apply the reviewed result with: {'; then '.join(commands)}")
-
-    if ctx.push and len(ctx.run_job_ids) == 1:
-        # D4 (6): one job's contract is final once it ran, so red refuses before anything.
-        refusals, still_open, unchecked = do_mission_push_refusals(ctx)
-        if refusals:
-            ctx.push_outcome = _do_push_record(
-                ctx, "", still_open, unchecked, error=" ".join(refusals))
-            return DO_STEP_FAILED, (
-                f"{ctx.push_source} was refused, so nothing was applied, committed or "
-                f"pushed: {' '.join(refusals)}")
-
-    for job_id in ctx.run_job_ids:
-        if job_id in ctx.applied:
-            continue
-        failure = do_apply_one_job(ctx, job_id)
-        if failure:
-            return DO_STEP_FAILED, failure + (do_stopped_walk_note(ctx) if ctx.commit_mode else "")
-    ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
-    detail = f"{'; '.join(ctx.applied.values())} to {ctx.repo_root}"
-    if not ctx.push:
-        return DO_STEP_DONE, detail
-    status, sentence = do_push_mission(ctx)
-    return status, f"{detail}; {sentence}"
-
-
-def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
-    """Apply one job with the walk's commit flag and never its push; "" or why it was not applied.
-
-    Without a commit flag the call is `apply_job(job_id, repo, approve=True)`,
-    exactly as before F270. In a walk of several jobs `--commit`'s line gains
-    ` (job <k> of <n>)` and `--commit-auto` asks each job's title first
-    (DECISION F270 D4 (3)). What landed is added to ``ctx.landed``.
-    """
-    from packages.orchestration.job_apply import apply_job
-
-    flags: dict[str, Any] = {}
-    if ctx.commit_mode:
-        total = len(ctx.job_ids)
-        message = ctx.commit_message
-        if message is not None and total > 1:
-            message = f"{message.strip()} (job {ctx.job_ids.index(job_id) + 1} of {total})"
-        # D4 (4): the push is the mission's, asked once after the last job, never here.
-        flags = {"commit_message": message, "commit_auto": ctx.commit_auto,
-                 "commit_with_history": ctx.commit_with_history,
-                 "commit_auto_title_first": total > 1}
-    result = apply_job(job_id, ctx.repo_root, approve=True, **flags)
-    if result.status != "applied":
-        why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
-        ctx.next_lines.append(f"remedy job apply {job_id} --repo "
-                              f"{shlex.quote(ctx.repo_root)} --dry-run")
-        before = (f"; applied before it: {'; '.join(ctx.applied.values())}"
-                  if ctx.applied else "")
-        return (f"job {job_id} was not applied to {ctx.repo_root} "
-                f"(status {result.status}): {why}{before}")
-    said = f"job {job_id} applied {len(result.files_applied)} file(s)"
-    if result.commit_sha:
-        ctx.landed.append({"job_id": job_id, "sha": result.commit_sha,
-                           "branch": result.target_branch})
-        said += f" and landed {result.commit_sha[:12]} on {result.target_branch}"
-    ctx.applied[job_id] = said
-    return ""
-
-
-def do_mission_push_refusals(ctx: DoContext) -> tuple[list[str], list[str], list[str]]:
-    """``(refusals, open, unchecked)`` for the walk's one push: the upstream's, then the
-    mission's; reads only.
-
-    `job_apply`'s own refusals (DECISIONs F270 D3 (5), D4 (6) and F299 D2 (6)),
-    asked of the walk's mission rather than of one job's.
-    """
-    from packages.orchestration.job_apply import mission_push_refusals, upstream_push_refusals
-    from packages.orchestration.mission_state import load_mission
-
-    def read_mission() -> Any:
-        if not ctx.mission_id or ctx.project is None:
-            return None
-        return load_mission(str(ctx.project.id), ctx.mission_id)
-
-    refusals, still_open, unchecked = mission_push_refusals(read_mission)
-    return upstream_push_refusals(Path(ctx.repo_root)) + refusals, still_open, unchecked
-
-
-def _do_push_record(ctx: DoContext, sha: str, still_open: list[str], unchecked: list[str], *,
-                    error: str = "") -> dict[str, Any]:
-    """The `push` object of `do --json` (DECISION F270 D4 (7)), before the push is tried."""
-    return {"pushed": False, "sha": sha, "remote": "", "ref": "", "error": error,
-            "source": ctx.push_source, "open_blocking_criteria": list(still_open),
-            "unchecked_blocking_criteria": list(unchecked)}
-
-
-def do_push_mission(ctx: DoContext) -> tuple[str, str]:
-    """Push the walk's last landed commit ONCE, never forced; ``(status, sentence)``.
-
-    DECISION F270 D4 (4): push is a mission-level act, so it runs once, after
-    the last job, through the push `job apply` uses. The refusals are asked
-    again first; a refused or failed push leaves every commit where it landed
-    and fails the step, so `do` exits 1. The blocking criteria still open and
-    those unchecked are named whatever happens (D4 (6), DECISION F299 D2 (6)).
-    """
-    from packages.orchestration.job_apply import (
-        push_open_criteria_sentence,
-        push_to_upstream,
-        push_unchecked_criteria_sentence,
-    )
-
-    if not ctx.landed:
-        return DO_STEP_DONE, "nothing landed, so nothing was pushed"
-    last = ctx.landed[-1]
-    refusals, still_open, unchecked = do_mission_push_refusals(ctx)
-    ctx.push_outcome = _do_push_record(ctx, last["sha"], still_open, unchecked)
-    sentences = [push_open_criteria_sentence(still_open).rstrip("."),
-                push_unchecked_criteria_sentence(unchecked).rstrip(".")]
-    named = "; ".join(s for s in sentences if s)
-    named = f"; {named}" if named else ""
-    if refusals:
-        ctx.push_outcome["error"] = " ".join(refusals)
-        return DO_STEP_FAILED, (
-            f"{ctx.push_source} was refused after the commits landed, so nothing was pushed "
-            f"and they stay on {last['branch']}: {' '.join(refusals)}")
-    outcome = push_to_upstream(Path(ctx.repo_root), last["sha"], last["branch"])
-    ctx.push_outcome.update(pushed=outcome.pushed, remote=outcome.remote,
-                            ref=outcome.ref, error=outcome.error)
-    if not outcome.pushed:
-        return DO_STEP_FAILED, (
-            f"the push of {last['sha'][:12]} failed ({outcome.error}); the commit stays on "
-            f"{last['branch']}, so push it by hand once the cause is fixed{named}")
-    return DO_STEP_DONE, (f"pushed {last['sha'][:12]} to {outcome.remote} {outcome.ref} once, "
-                          f"never forced ({ctx.push_source}){named}")
-
-
-# ---------------------------------------------------------------------------
-# The measured cost of the walk, read from the F103 ledger (DECISION F268 D11).
-# ---------------------------------------------------------------------------
-
-
-def _add_measured(total: float | int | None, value: float | int | None) -> float | int | None:
-    """Sum two ledger figures as the ledger's own SUM does: None only when both are None."""
-    if value is None:
-        return total
-    return value if total is None else total + value
-
-
-def do_mission_contract(ctx: DoContext) -> dict[str, Any] | None:
-    """The walk's mission contract body as its record holds it, or None.
-
-    None when the walk created no mission or the mission has no contract
-    (DECISION F269 D4 (6)); read from the record, so it is the contract as
-    the walk left it.
-    """
-    if not ctx.mission_id or ctx.project is None:
-        return None
-    from packages.orchestration.mission_state import load_mission
-
-    body = load_mission(str(ctx.project.id), ctx.mission_id).contract
-    return body if isinstance(body, dict) else None
-
-
-def do_unmet_blocking_criteria(contract: dict[str, Any] | None) -> list[str]:
-    """The contract's blocking criteria not met after the walk, in contract order.
-
-    DECISION F269 D6 (4): the blockers of D4 (5), read from the body
-    `do_mission_contract` returns; empty when the walk left no contract.
-    """
-    from packages.orchestration.mission_contract import MissionContract, contract_blockers
-
-    return list(contract_blockers(
-        None if contract is None else MissionContract.from_json(contract)))
-
-
-def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
-    """The one text line naming the contract's state after the walk, or None without one.
-
-    DECISION F269 D6 (4): the met criteria counted against all of them, and
-    each blocking criterion not met named with its status, `open` or `unmet`.
-    DECISION F299 D2 (4): a blocking criterion that is `unchecked` — its
-    project named no test command, so nothing ran — is named separately, after
-    the ones genuinely not met, with the one phrase every surface uses.
-    """
-    if contract is None:
-        return None
-    from packages.orchestration.mission_contract import (
-        CRITERION_STATUS_UNCHECKED,
-        MissionContract,
-    )
-    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
-
-    criteria = MissionContract.from_json(contract).criteria
-    met = sum(1 for c in criteria if c.status == "met")
-    not_met = [f"{c.id} ({c.status})" for c in criteria
-              if c.blocking and c.status in ("open", "unmet")]
-    unchecked = [c.id for c in criteria
-                if c.blocking and c.status == CRITERION_STATUS_UNCHECKED]
-    parts = []
-    if not_met:
-        parts.append(f"blocking criteria not met: {', '.join(not_met)}")
-    if unchecked:
-        parts.append(f"for {', '.join(unchecked)}, {NO_CHECK_RAN_WORDS}")
-    tail = "; ".join(parts) if parts else "every blocking criterion is met"
-    return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
-
-
-def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
-    """The walk's measured tokens per role and cost, or None when no job ran.
-
-    Read through `token_ledger.query_cost(..., job_id=<id>, by="role")` for each
-    job the run step mirrored, and summed over them; a figure no call reported
-    stays None, never 0. A job whose mirror failed is named in
-    `mirror_failed_job_ids`, with its error, and contributes nothing.
-    """
-    if not ctx.cost_mirrors:
-        return None
-    from packages.orchestration.token_ledger import query_cost
-
-    failed = {job_id: str(mirror.get("error") or "")
-              for job_id, mirror in ctx.cost_mirrors.items()
-              if not mirror.get("ledger_mirrored")}
-    roles: dict[str | None, dict[str, Any]] = {}
-    for job_id in ctx.cost_mirrors:
-        if job_id in failed:
-            continue
-        report = query_cost(project_id=str(ctx.project.id), job_id=job_id, by="role")
-        for row in report.rows:
-            role = roles.setdefault(row.bucket, {
-                "role": row.bucket, "calls": 0, "tokens_in": None, "tokens_out": None,
-                "cache_read": None, "cost_usd": None})
-            role["calls"] += row.calls
-            for key in ("tokens_in", "tokens_out", "cache_read", "cost_usd"):
-                role[key] = _add_measured(role[key], getattr(row, key))
-    cost_usd = None
-    for role in roles.values():
-        cost_usd = _add_measured(cost_usd, role["cost_usd"])
-    return {
-        "roles": sorted(roles.values(), key=lambda r: str(r["role"])),
-        "cost_usd": cost_usd,
-        "job_ids": [job_id for job_id in ctx.cost_mirrors if job_id not in failed],
-        "mirror_failed_job_ids": list(failed),
-        "mirror_errors": failed,
-    }
-
-
-def _measured(value: float | int | None) -> str:
-    return "not reported" if value is None else f"{value}"
-
-
-def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
-    """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror."""
-    if summary is None:
-        return []
-    lines = [f"Tokens {role['role'] or '(role not named)'}: input {_measured(role['tokens_in'])}, "
-             f"output {_measured(role['tokens_out'])}, "
-             f"cache read {_measured(role['cache_read'])} ({role['calls']} call(s))"
-             for role in summary["roles"]]
-    cost = summary["cost_usd"]
-    lines.append("Cost: not reported by the provider" if cost is None
-                 else f"Cost: ${cost:.6f} (measured, from the ledger)")
-    lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
-                 for job_id, error in summary["mirror_errors"].items())
-    return lines
 
 
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.

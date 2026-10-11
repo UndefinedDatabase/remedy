@@ -727,8 +727,8 @@ def test_the_supervisors_listener_source_imports_no_ssl_and_binds_127_0_0_1_only
     the listener is the one in `serve_daemon.py`."""
     import ast
 
-    api_path = ("serve_daemon.py", "public_api.py", "ui_server.py", "serve_runs.py",
-                "serve_paths.py", "api_clients.py")
+    api_path = ("serve_daemon.py", "public_api.py", "public_api_writes.py", "ui_server.py",
+                "serve_runs.py", "serve_paths.py", "api_clients.py")
     imported: list[str] = []
     listeners: list[ast.Call] = []
     for filename in api_path:

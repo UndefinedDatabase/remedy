@@ -14,6 +14,9 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+# DECISION F205 D3: what `remedy do` reads before any step lives in a module of its own;
+# both names are imported back here by name, so every import path keeps working.
+from apps.cli.commands.do_order_input import _order_repo, read_do_order
 from apps.cli.commands.run_invocation import (
     RunInvocation,
 )
@@ -196,55 +199,6 @@ def _resolve_do_commit_flags(
     if refusals:
         _refuse_before_any_step(refusals)
     return mode, source
-
-
-# WHY: the project an order names files its records, so the work must happen in that project's
-# repository too, wherever the client stands (F298's claim measurement, DECISION F304 D2).
-def _order_repo(project: str | None, repo: str | None, *, json_output: bool) -> str:
-    """The repository an order runs in, or exit 2 before any step.
-
-    Without a project, `--repo` or else the current directory, as before. With one, that
-    project's registered repository: a project with none is refused with
-    `project_has_no_repo` and exit 3 (R-1183), and a `--repo` that is not one of its
-    repositories with `repo_not_in_project` and exit 2. A selector that names no single
-    project is left to the init step, which fails on it as it always has (DECISION F268
-    D16 (4)).
-    """
-    if project is None:
-        return repo or "."
-    from pathlib import Path
-
-    from packages.orchestration.project_registry import (
-        AmbiguousProjectError,
-        InvalidProjectSelectorError,
-        ProjectNotFoundError,
-        select_project,
-    )
-    from packages.orchestration.worktrees import WorktreeError, repo_root
-
-    try:
-        selected, _source = select_project(project, ".")
-    except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
-        return repo or "."
-    registered = selected.canonical_repo_path
-    if not registered:
-        fail("project_has_no_repo",
-             f"project {selected.slug} has no registered repository, so the order has "
-             f"nowhere to run; attach one with `remedy project attach --project "
-             f"{selected.slug} --repo <path>`. Nothing was run.",
-             json_output=json_output, exit_code=3)
-    if repo is None:
-        return registered
-    try:
-        root = str(Path(repo_root(repo)).resolve())
-    except (WorktreeError, OSError, subprocess.SubprocessError):
-        root = str(Path(repo).resolve())
-    if root not in {registered, *selected.repo_paths}:
-        fail("repo_not_in_project",
-             f"--repo {repo} is not a repository of project {selected.slug}, whose "
-             f"repository is {registered}; leave --repo out to run there. Nothing was "
-             "run.", json_output=json_output, exit_code=2)
-    return repo
 
 
 def _cmd_do_order(
@@ -484,45 +438,16 @@ def _cmd_do(
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
     # cap be any one of the four job budgets an order file's header or the flags can set.
-    from packages.orchestration.order_file import (
-        OrderFileError,
-        order_argument_names_file,
-        read_order_file,
-    )
-
-    order_source_kwargs: dict[str, str] = {}
-    if order_argument_names_file(goal):
-        try:
-            order_file = read_order_file(goal.strip())
-        except OrderFileError as exc:
-            fail(exc.error, f"{exc} Nothing was run.",
-                 json_output=json_output, exit_code=2)
-        if max_cost_usd is None:
-            max_cost_usd = order_file.max_cost_usd
-        if max_total_tokens is None:
-            max_total_tokens = order_file.max_total_tokens
-        if max_provider_calls is None:
-            max_provider_calls = order_file.max_provider_calls
-        if max_wall_clock_minutes is None:
-            max_wall_clock_minutes = order_file.max_wall_clock_minutes
-        if all(cap is None for cap in (max_cost_usd, max_total_tokens, max_provider_calls,
-                                       max_wall_clock_minutes)):
-            fail("order_file_no_cost_cap",
-                 f"{goal.strip()}: an unattended order without a cap is refused; set "
-                 "`max-cost-usd:`, `max-total-tokens:`, `max-provider-calls:` or "
-                 "`max-wall-clock-minutes:` in the header, or pass --max-cost-usd, "
-                 "--max-total-tokens, --max-provider-calls or --max-wall-clock-minutes. "
-                 "Nothing was run.",
-                 json_output=json_output, exit_code=2)
-        goal = order_file.text
-        if project is None:
-            project = order_file.project
-        if contract is None:
-            contract = order_file.contract
-        order_source_kwargs = {
-            "order_source_path": order_file.source_path,
-            "order_source_sha256": order_file.source_sha256,
-        }
+    order = read_do_order(goal, project=project, contract=contract,
+                          max_cost_usd=max_cost_usd, max_total_tokens=max_total_tokens,
+                          max_provider_calls=max_provider_calls,
+                          max_wall_clock_minutes=max_wall_clock_minutes,
+                          json_output=json_output)
+    goal, project, contract = order.goal, order.project, order.contract
+    max_cost_usd, max_total_tokens = order.max_cost_usd, order.max_total_tokens
+    max_provider_calls = order.max_provider_calls
+    max_wall_clock_minutes = order.max_wall_clock_minutes
+    order_source_kwargs = order.order_source_kwargs
 
     # DECISION F304 D2: an order that names a project runs in that project's repository.
     repo = _order_repo(project, repo, json_output=json_output)

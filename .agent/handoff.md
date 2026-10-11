@@ -1,239 +1,239 @@
-# Handback — F302 round 8: the closing round
+# Handback — F205 session 4: DECISION F205 D8 carried out, pull request text renumbered
 
 ## Session
 
-SESSION 1 of feature F302 · round 8 · rounds so far 8
+SESSION 4 of feature F205 · round S4 · rounds so far 11
 
-Context self-assessment: the reviewer's context holds; the session ends here because F302 is
-closed and the next feature starts in a fresh session.
+Context self-assessment: ample; the session carried out DECISION F205 D8 in full — a first attempt
+that correctly stopped on an authoring contradiction in gate 3, then a corrected resumption through
+C1 to C4 and this handback — with no part deferred to context pressure.
 
-Fortschritt: 100 % (F302 is accepted; its pull request waits for the next session's Open PR Gate) —
-Schätzung
+`.agent/STOP` appeared during this session, while C4 (this handback) was already being written:
+`author: remedy-stop (decodeux)`, `time: 2026-10-11 10:03`, `reason: remedy-stop-loop von decodeux`.
+Per the block's constraint ("If `.agent/STOP` appears, finish the commit in hand, write the
+handoff, push, end"), C4 is finished and pushed as planned and the session ends there; `.agent/STOP`
+itself is left untouched (not added, not removed) for the operator/loop to manage.
 
 ## Range
 
-Review of `d1f20f924`..`928c5c0de` (two commits on `feature/f302-claude-cli-tokens` — C1
-`53a41d473`, C2 `928c5c0de` — plus this handback, C3).
+`710614217..HEAD` (four commits: C1 renumber, C2 merge of main, C3 full suite, C4 PR text update
+plus this handback).
 
 ## Commits
 
-### `53a41d473` F302 R8 C1: book round 7, the Built State, save the round 8 block, the STATUS line and the PR body
+### 4581689cb F205 S4 C1: renumber the branch's two repaired findings to R-1244 and R-1245
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f302-r8.md` | 159/0 | NEW FILE — byte copy of `block.md` |
-| `.agent/authored/f302-r8-status_line.txt` | 1/0 | NEW FILE — byte copy of `src/status_line.txt` |
-| `.agent/authored/f302-r8-pr_body.md` | 103/0 | NEW FILE — byte copy of `src/pr_body.md` |
-| `.agent/live_review.md` | 2/0 | appended `src/ledger-append.txt` — books round 7's PASS verdict |
-| `docs/roadmap/features/T3_F302.md` | 20/0 | appended `src/built-state-closure.txt` — the closure's readings |
-| `.agent/plan.md` | 6/6 | replaced with `src/plan.md` |
+| `.agent/authored/f205-s4.md` | +161/-0 | saved copy of the reviewer's block, byte-equal to `.remedy-wt/s10/block.md` (R-0954) |
+| `.agent/authored/f205-s4-renumber.py` | +53/-0 | saved copy of the renumber script |
+| `.agent/authored/f205-s4-resolve.py` | +68/-0 | saved copy of the resolve script |
+| `.agent/decisions.md` | +3/-3 | DECISION F205 D6's two R-1236 mentions become R-1244 |
+| `.agent/live_review.md` | +2/-2 | Gate R6/R7 entries' R-1236/R-1237 mentions renumbered |
+| `.agent/live_review_archive.md` | +4/-4 | the archived R-1236/R-1237 register+resolve records renumbered |
+| `.agent/plan.md` | +9/-7 | Current Step, Next Steps and the last Risks bullet rewritten per the block |
+| `docs/agents/planner_reviewer_prompt.md` | +2/-2 | the consolidation paragraph's R-1236/R-1237 mentions renumbered |
+| `docs/roadmap/STATUS.md` | +1/-1 | the F205 STATUS line's R-1236/R-1237 renumbered |
+| `docs/roadmap/features/T13_F205.md` | +1/-1 | the feature file's R-1236 mention renumbered |
+| `packages/orchestration/public_api_writes.py` | +1/-1 | docstring's R-1236 mention renumbered |
+| `tests/orchestration/test_mission_contract.py` | +1/-1 | comment's R-1237 mention renumbered |
+| `tests/ui_server/test_public_api.py` | +1/-1 | docstring's R-1236 mention renumbered |
 
-### `928c5c0de` F302 R8 C2: rotate the finding ledger into its archive
+### 2a85039ac F205 S4 C2: merge main into the branch, both sides' decisions and ledger lines kept
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 0/22 | `scripts/rotate_live_review.py` moved 11 `Gate:` records out |
-| `.agent/live_review_archive.md` | 22/0 | `scripts/rotate_live_review.py` moved 11 `Gate:` records in |
+| `.agent/decisions.md` | +40/-0 | conflict resolved: main's amend1010-cadence-guards D1-D4 first, then F205 D1-D8 |
+| `.agent/live_review.md` | +9/-0 | conflict resolved: F205 gates R4-R9 first, then main's R-1236..R-1243 registrations |
+| `.githooks/commit-msg` | +5/-0 | arrives from main (amend1010-cadence-guards): refuses a slash-led path token in a subject |
+| `AGENTS.md` | +10/-5 | main's amend1010-cadence-guards changes, merged in cleanly |
+| `docs/roadmap/STATUS.md` | +5/-7 | main's STATUS changes merged cleanly alongside F205's own line |
+| `docs/system/public-http-api-v1.md` | +2/-2 | main's doc changes merged cleanly |
+| `packages/orchestration/run_manifest.py` | +10/-10 | main's changes merged cleanly |
+| `scripts/check_commit_subject.py` | +53/-0 | new from main: the commit-subject guard |
+| `tests/orchestration/test_run_manifest_ledger_identity_safety.py` | +28/-0 | new from main |
+| `tests/test_commit_subject_check.py` | +34/-0 | new from main: tests the new guard |
+| `tests/test_no_orphan_modules.py` | +2/-0 | main's changes merged cleanly |
 
-### This commit — F302 R8 C3: accept F302 in STATUS with its README sync and the self-use queue
+Two parents, confirmed: `git rev-list --parents -n 1 HEAD` (at C2) read
+`2a85039ac 4581689cb 4a24150a0` — three SHAs, HEAD plus both parents.
+
+### e9e4474bc F205 S4 C3: the full suite once more on the merged tree
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | 1/1 | copied `sim-STATUS.md` — F302's `[~]` line becomes `src/status_line.txt`'s `[x]` line |
-| `README.md` | 13/2 | copied `sim-README.md` — `136 of 304`, Tier 3 row `9 \| 29`, F302's paragraph closes "Accepted in Tier 3 so far:" |
-| `scripts/self_use_queue.json` | 1/1 | copied `sim-self_use_queue.json` — `SU-054`'s `consumed_by` becomes `F302` |
-| `.agent/handoff.md` | this commit | this file |
+| `.agent/authored/f205-closure-suite.txt` | +7/-7 | overwritten with the full suite's real readings on the merged tree (same 14-line format) |
 
-(The three content paths' `+/-` cells above were measured by `git diff --numstat` before this
-handoff joined the commit, per the block; they are unchanged by the handoff's own addition.)
+### this commit F205 S4 C4: handoff for session 4, D8 carried out and the pull request text renumbered
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f205-s4-pr_body.md` | new, 137 lines | the new pull request body, generated from the old body plus the new transcript's three slots, saved before `gh pr edit` (fidelity protocol) |
+| `.agent/handoff.md` | this commit | this file (self-reference rule, docs/agents/handback_template.md) |
 
 ## External actions
 
-- `git -C /home/decodeux/Repos/remedy push origin feature/f302-claude-cli-tokens` — pending,
-  reported in the worker's final reply only (runs after this commit, per the block's `THEN`).
-- `gh pr create --repo UndefinedDatabase/remedy ...` — pending, reported in the worker's final
-  reply only.
-- `gh pr list --repo UndefinedDatabase/remedy --state open ...` — pending, reported in the
-  worker's final reply only.
-- No `claude` process started. No merge, no branch creation/move/deletion, no force-push, no
-  stash entry touched, no worktree added or removed.
+- `gh pr view 323 --json body -q .body` → `.remedy-wt/s10w/body_old.md` (read-only, 127 lines).
+- `gh pr edit 323 --body-file .agent/authored/f205-s4-pr_body.md` → `https://github.com/UndefinedDatabase/remedy/pull/323` (body replaced).
+- `gh pr view 323 --json body -q .body` (read-back) → byte-equal to the committed file aside from one trailing newline.
+- `git fetch origin main` → read `origin/main` at `4a24150a018566632250e8999fba1431bd2c1c13`, matching the block's required SHA exactly.
+- `git push origin feature/f205-multi-repo-missions` — plain push, no force; reported in the worker's final reply.
+- `ListAgents` (read-only) — two idle peer sessions, "Universe-Plan WEITER Version 3" and "Fehlgeschlagener Remedy-Nachtlauf", neither touching this branch.
 
 ## Verification
 
-**Opening block check** (`verify_block.py`): `block.md` sha256
-`64d99991c3c2f88daac3fb6fae5fc400774a60aa97e766ec69b90a7669b8f1b8`, line count 159 — both equal
-the order's stated values.
+Preconditions: `git rev-parse HEAD` read `710614217066902f31b591605c508c12119e1a0c` (the required
+base); `git status --porcelain` empty; `ls .agent/STOP` → "No such file or directory" (absent).
 
-**Digest check** (`verify_digests.py`, all 15 entries of `digests.txt`): 15 of 15 comparisons
-`True` (`block.md`, `sim-readings.txt`, `src/status_line.txt`, `src/pr_body.md`,
-`src/ledger-append.txt`, `src/built-state-closure.txt`, `src/plan.md`, `src/readme-entry.txt`,
-`sim-C1-live_review.md`, `sim-T3_F302.md`, `sim-C2-live_review.md`,
-`sim-C2-live_review_archive.md`, `sim-STATUS.md`, `sim-README.md`, `sim-self_use_queue.json`).
-`ALL_OK: True`.
+**First attempt (stopped before C1):** gate 3 as first written by the block read four lines, not
+the stated three, because the block's own mandated `.agent/plan.md` Risks-bullet text ("...and,
+from main, R-1236 to R-1243...") matches the gate's own regex. Stopped under guardrail G8 before
+any `git add`/`git commit`; nothing committed; reported to the reviewer. The reviewer corrected the
+block (gate 3 now names all four lines) and confirmed the uncommitted tree was correct. Resumed from
+there (see Deviations).
 
-**Pre-state** (`precheck.py`, before any write): `git rev-parse HEAD` read
-`d1f20f924c4827d28b540bb8b35032605efaeae8`, equal to `origin/feature/f302-claude-cli-tokens`'s
-tip and to the block's stated base; `git status --porcelain` empty; `git branch --show-current`
-read `feature/f302-claude-cli-tokens`; `.agent/STOP` absent.
+**Gate 1** (`git status --porcelain`, empty after each commit): empty after C1, after C2, after C3.
 
-**C1's byte proofs** (`c1_verify.py`, read-only, run after the one-time `c1_apply.py`):
-`.agent/authored/f302-r8.md` == `block.md` `True`; `.agent/authored/f302-r8-status_line.txt` ==
-`src/status_line.txt` `True`; `.agent/authored/f302-r8-pr_body.md` == `src/pr_body.md` `True`;
-`.agent/plan.md` == `src/plan.md` `True`; `.agent/live_review.md` == `git show
-d1f20f924:.agent/live_review.md` + `src/ledger-append.txt` `True`, and also ==
-`sim-C1-live_review.md` whole `True`; `docs/roadmap/features/T3_F302.md` == `git show
-d1f20f924:docs/roadmap/features/T3_F302.md` + `src/built-state-closure.txt` `True`, and also ==
-`sim-T3_F302.md` whole `True`. Block copy reported: line count 159, sha256
-`64d99991c3c2f88daac3fb6fae5fc400774a60aa97e766ec69b90a7669b8f1b8`. `git status --porcelain`
-before commit showed exactly the six C1 paths; `git diff --stat` and the full diff were read and
-matched the intended change with no bug, debug leftover, broken import or unrelated edit. `git
-branch --show-current` re-checked immediately before the commit: `feature/f302-claude-cli-tokens`.
-Committed as `53a41d473`; `git show --numstat` matched the table above and `sim-readings.txt`'s C1
-numstat exactly.
+**Gate 2** (`git branch --show-current` before every commit): `feature/f205-multi-repo-missions`,
+read before C1, before C2's merge, before C3's commit and before C4's commit.
 
-**C2's rotation** (`c2_rotate.py`, ran once): exit 0, whole output:
+**Gate 3** (`git grep -n -E 'R-123[67]\b' -- ':!.agent/authored'`, after C1): four lines —
+`.agent/decisions.md:28934`, `.agent/decisions.md:28936` (DECISION F205 D8's CONTEXT/CHOSEN, which
+the renumber script never touches, by design), `.agent/handoff.md:146` (session 3's pre-existing
+text) and `.agent/plan.md:24` (the new Risks bullet). Matches the corrected block exactly.
+
+**Selection run** (after C2): `python3 -m pytest -n auto -q tests/docs/
+tests/orchestration/test_mission_contract.py tests/ui_server/test_public_api.py
+tests/cli/test_golden_path.py tests/test_commit_subject_check.py tests/test_no_orphan_modules.py
+tests/orchestration/test_live_review_rotation.py` → `732 passed in 15.28s`, exit 0 — equal to the
+reviewer's dry-tree reading. Then `python3 -m ruff check packages/orchestration/public_api_writes.py
+tests/orchestration/test_mission_contract.py tests/ui_server/test_public_api.py` → `All checks
+passed!`.
+
+**Gate 5** (`python3 -m apps.cli.main integrity check --json`, after C2): `{"check_count": 6,
+"fail_count": 0, "ok": true, ...}`; all six checks `pass` (`handler_import` 183 handlers,
+`live_review_verdict` last Gate PASS, `plan_consistency` unchecked=0, `relevant_untracked`
+untracked=0, `repo_root_hygiene` clean, `high_blockers_open` none open).
+
+**C3 dist check**: `ls apps/ui/dist/index.html` → exists.
+
+**Full suite** (`python3 -m pytest -n auto -q`, exactly once, serially, no `-n` override):
+`22473 passed, 22 skipped, 1 warning in 361.41s (0:06:01)`, exit 0. Reflog before and after both
+read the same line (`2a85039ac HEAD@{2026-10-11 09:52:57 +0200}: commit (merge): F205 S4 C2: merge
+main into the branch, both sides' decisions and ledger lines kept`), so the reflog was unchanged
+during the run. `pgrep -a -f pytest` after the run showed only the grep's own shell wrapper — no
+leftover pytest/remedy process.
+
+**Cost script** (`python3 scripts/closure_suite_cost.py --feature F205 --record
+~/.remedy-loop/test_load.jsonl`): `Test load: 1211.36 CPU seconds, 361.42 wall seconds, 22495 tests
+collected, exit status 0, recorded 2026-10-11T07:59:53Z` / `This closure's suite used 1211.36 CPU
+seconds, 0.1 percent less than F302's 1213.06, within the 10 percent limit.`
+
+**PR body**: `diff .remedy-wt/s10w/body_old.md .agent/authored/f205-s4-pr_body.md`:
 ```
-gate records moved: 11
-finding pairs moved: 0 (0 records)
-resolved-text records moved: 0
-old ledger size: 179049 bytes
-new ledger size: 153578 bytes
-old archive size: 6525108 bytes
-new archive size: 6550579 bytes
-open findings before: 16
-open findings after: 16
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+28c28
+<   mission's `project_ids`; the client interface stands at `1.9`. R-1236 (High) was found and
+---
+>   mission's `project_ids`; the client interface stands at `1.9`. R-1244 (High) was found and
+103a104,112
+> ## Merge of main (2026-10-11, DECISION F205 D8)
+> (full section text — see Authored-text proofs)
+105,106c114,116
+< - The closure's one full suite on the tree that ships: `22462 passed, 22 skipped`, exit 0
+<   (`.agent/authored/f205-closure-suite.txt`), 1228.60 CPU seconds, 1.3 percent above F302's.
+---
+> - The closure's one full suite, re-run on the tree that ships after main was merged in
+>   (amend0921-operator-feedback rule 1): `22473 passed, 22 skipped, 1 warning in 361.41s (0:06:01)`, exit 0
+>   (`.agent/authored/f205-closure-suite.txt`); This closure's suite used 1211.36 CPU seconds, 0.1 percent less than F302's 1213.06, within the 10 percent limit.
+118c128
+< accepted PASS_WITH_RISKS: R-1236 and R-1237 were repaired in this feature; 16 earlier findings stay
+---
+> accepted PASS_WITH_RISKS: R-1244 and R-1245 were repaired in this feature; 16 earlier findings stay
 ```
-Every line but the `written:` line (which names the primary checkout, not the sim's folder,
-because this round ran the real rotation in place) equals `sim-readings.txt`'s rotation output.
-`c2_verify.py` (read-only): `.agent/live_review.md` == `sim-C2-live_review.md` `True`;
-`.agent/live_review_archive.md` == `sim-C2-live_review_archive.md` `True`. `git status
---porcelain` before commit showed exactly the two ledger files; diff matched `sim-readings.txt`'s
-C2 numstat (`0/22` live_review.md, `22/0` live_review_archive.md) exactly. `git branch
---show-current` re-checked before the commit: `feature/f302-claude-cli-tokens`. Committed as
-`928c5c0de`; `git show --numstat` matched the table above.
+Read-back via `gh pr view 323 --json body -q .body` is byte-equal to the committed file except for
+one trailing newline.
 
-**C3 step 1** (`c3_copy.py`, ran once; `c3_verify1.py` and `c3_verify2.py`, read-only): the three
-byte comparisons (`docs/roadmap/STATUS.md` == `sim-STATUS.md`, `README.md` == `sim-README.md`,
-`scripts/self_use_queue.json` == `sim-self_use_queue.json`) all `True`. `git diff --numstat`
-(unstaged): `13/2 README.md`, `1/1 docs/roadmap/STATUS.md`, `1/1 scripts/self_use_queue.json` —
-matches `sim-readings.txt`'s C3 numstat exactly. Content checks: the `status_line.txt` content
-occurs exactly once in `docs/roadmap/STATUS.md` and no line of it begins `- [~]`; README contains
-`136 of 304`, the Tier 3 row `9 | 29`, and F302's paragraph immediately follows "Accepted in Tier 3
-so far:"; `SU-054`'s `"consumed_by"` reads `"F302"`.
-
-**Gate 1** (`gate1.py`): `git status --porcelain` exit 0, showing only the three C3 files modified
-(`README.md`, `docs/roadmap/STATUS.md`, `scripts/self_use_queue.json`); all 9 byte comparisons of
-every file this round copied or appended, against its prepared file (re-checked, including
-`.agent/live_review.md` against its post-rotation form `sim-C2-live_review.md`), `True`.
-`ALL_EQUAL: True`.
-
-**Gate 2** (`gate2.py`): `status_line.txt` content occurs exactly once in `docs/roadmap/STATUS.md`
-(`count = 1`); no line of `docs/roadmap/STATUS.md` begins `- [~]`. `GATE2 PASS: True`.
-
-**Gate 3** (`gate3.py`, run once):
-```
-python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py tests/cli/test_golden_path.py tests/test_structure_ratchet.py
-```
-exit 0, `560 passed in 58.84s` — the block's stated count (`560`) with different seconds (`58.84s`
-vs. `60.32s`); no FAILED, ERROR or SKIPPED line.
-
-**Gates 4 and 5** (`gate45.py`, one saved script, two `subprocess.run` calls):
-```
-python3 -m apps.cli.main integrity check --json
-```
-exit 0: `{"check_count": 6, ... "fail_count": 0, "ok": true, "passed": true, ...}` — six checks
-`pass`, `fail_count 0`.
-```
-python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"
-```
-exit 0: `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172',
-'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235']` — matches the block's
-ordered list exactly.
-
-**Gate 6**: after the push and the pull request — reported in the worker's final reply only.
+**Gate 6** (after the push): `git rev-parse HEAD origin/feature/f205-multi-repo-missions` —
+reported in the worker's final reply, taken after the push this handoff is part of.
 
 ## Authored-text proofs
 
-`.agent/authored/f302-r8.md` = `block.md` (sha256 and line count both equal, proven at the
-opening check, in C1 and re-proven in Gate 1). `.agent/authored/f302-r8-status_line.txt` =
-`src/status_line.txt`, proven byte-equal in C1 and re-proven in Gate 1; its content (without a
-trailing newline) occurs exactly once inside `docs/roadmap/STATUS.md` (Gate 2, count 1).
-`.agent/authored/f302-r8-pr_body.md` = `src/pr_body.md`, proven byte-equal in C1 and re-proven in
-Gate 1 — this is the file passed to `gh pr create --body-file`. The two C1 appends
-(`src/ledger-append.txt`, `src/built-state-closure.txt`) each applied by byte append and proven
-equal to `git show d1f20f924:<path>` followed by the slice, and the resulting whole files also
-proven equal to the reviewer's own simulation (`sim-C1-live_review.md`, `sim-T3_F302.md`);
-`.agent/plan.md` applied by a plain file copy of `src/plan.md` and proven byte-equal. C3's three
-copies (`docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json`) each applied by a
-plain file copy of the corresponding `sim-*` file and proven byte-equal.
+Four reviewer-authored texts applied this session:
+1. `.remedy-wt/s10/block.md` → `.agent/authored/f205-s4.md`: 161 lines both, sha256
+   `4daf6d562552bf3175f382e8fd3a6354fab27b61867e33064f107c0bf1990539` both (re-copied after the
+   reviewer's correction; the stale first copy, 156 lines, was overwritten before C1's commit).
+2. `.remedy-wt/s10/f205-s10-renumber.py` → `.agent/authored/f205-s4-renumber.py`: 53 lines both,
+   sha256 `aeb33b35ad278f99092e1a7dc25c29e59bbb1c471125cd184bda1f89dc903be9` both.
+3. `.remedy-wt/s10/f205-s10-resolve.py` → `.agent/authored/f205-s4-resolve.py`: 68 lines both,
+   sha256 `ca1ebc92a9382d5ab90c4a9c61c9eb6be317dee2ff44f5740ffc9c936c9c9295` both.
+4. The block's "## Merge of main" section text, inserted into the pull request body: a 9-line
+   disk-to-disk comparison (`.remedy-wt/s10w/verify_section.py`) between the fenced text at
+   `block.md`'s C4 step 1(c) and the installed section in `.agent/authored/f205-s4-pr_body.md` read
+   `EQUAL: True`.
 
 ## Deviations & assumptions
 
-None. C1, C2 and C3's copy/append/rotation steps each ran exactly once, through a one-time script,
-with every later proof run by a separate read-only script; `git branch --show-current` was
-checked before every commit and read `feature/f302-claude-cli-tokens` each time; the ledger
-rotation ran exactly once from the primary checkout; the round's only pytest run was Gate 3's
-selection — no `REMEDY_TEST_MAX_WORKERS` set, no `-n` passed, no other test command, no two test
-commands run at the same time; no full suite, no mutation, no worktree; no `cd`, no shell call
-joined two commands, every copy/hash/run/proof ran as a `cwd`-scoped Python script under
-`.remedy-wt/f302-r8-worker/`; no file was written under `/tmp`; no file in `.remedy-wt/f302-r8/`
-was modified; no mutation outside the paths each commit named; no stash entry touched, no branch
-other than the existing one created, no worktree added or removed; nothing merged, no
-force-push, no `git checkout` or `git switch`; no provider call, no `claude` process started;
-`.agent/STOP` did not appear at any point; commit subjects carry no leading-slash token and no
-absolute path.
-
-This section says nothing about this commit's own self-review, per the block; that is reported in
-the worker's final reply only.
+1. **First attempt stopped before C1 on a gate-3 contradiction, then resumed on the corrected
+   block.** The block as first read ordered `.agent/plan.md`'s Risks bullet to add literal text
+   naming "R-1236" (the "from main, R-1236 to R-1243" clause) while its gate 3 claimed the
+   `git grep` would show only three lines total; the mandated plan.md text itself matches the
+   gate's own regex, producing a fourth line and contradicting the gate's stated count. This is the
+   "any other contradiction" case of guardrail G8: stopped before any `git add`/`git commit`, left
+   the uncommitted renumbered tree and plan.md edit in place for inspection, and reported the exact
+   four-line grep output to the reviewer without pushing or touching the PR (nothing had been
+   committed, so there was nothing to carry forward or push). The reviewer confirmed the stop was
+   correct, corrected gate 3 in `.remedy-wt/s10/block.md` to expect the same four lines, verified
+   the uncommitted tree against its own dry run, and instructed resumption — including re-copying
+   the now-changed `block.md` to `.agent/authored/f205-s4.md` (161 lines vs. the stale 156-line
+   first copy) before committing C1. This is prose slip (d), booked below and in `.agent/plan.md`'s
+   Next Steps for the next feature's first commit.
+2. No other deviation. No test run beyond the one selection run and the one full suite; no mutation
+   runs; no provider/model call; no touch to `main`, `.agent/operator_questions.md`, or any older
+   file under `.agent/authored/`; `.agent/live_review_archive.md` touched only at the script's four
+   renumbered lines.
 
 ## Round verdicts
 
-Rounds 1 to 7 booked in the ledger (round 7 by this round's C1: PASS); round 8's verdict is the
-reviewer's, written into the pull request and booked in the next feature's first commit.
+Round 10's PASS (from session 1) and session 4's own round S4 are both still to be booked: round
+10's PASS and prose slips (a), (b), (c) carry forward verbatim from session 3's handoff; prose slip
+(d) (above) is new this session. All of it is to be booked as `Gate: F205 R10` and `Gate: F205 S4`
+(per `.agent/plan.md`'s Next Steps) in the next feature's first commit. This session's round S4
+verdict is given by the reviewer after this handback, and is booked there too.
 
 ## For the operator, in plain sentences
 
-The worker Remedy starts for each step of a job now leaves out the instruction files, skills,
-plugins, hooks and tool servers of the operator and the project, and the descriptions of tools its
-role never uses. A one-word question now costs about 7,000 tokens before it is answered instead of
-21,500 to 28,000, and a small real repair passed its review with the same change both ways while
-its first worker call read about 40 percent fewer tokens. Two settings bring each part back, and
-both together restore the old start. A new command, `remedy stats calls`, shows how many tokens of
-each kind one call reads and writes and what one change that reached its repository cost. One
-promised part, a job writing down which start its worker used, moves to the next cleanup feature
-because the files that would record it may not grow under the size rule. The maintenance job
-Remedy ran on itself before closing used two calls, did what it was asked and was not applied. The
-whole test collection passed once on the code that ships. The review package was built and where
-it is: `remedy-review-20261010-110542-READY_FOR_REVIEW.zip` in
-`/home/decodeux/Repos/remedy-history/zips`. A pull request is open and will be merged at the start
-of the next session unless the operator merges it earlier. Sixteen smaller problems stay written
-down for the next cleanup feature. Nothing waits for the operator.
+Operator question Q10's answer has been fully carried out: the multi-repository-missions feature's
+two findings now carry the next free numbers, the shared main line has been merged into the
+feature's branch with both sides' records kept, the whole test suite has run once more on the
+merged result, and the feature's pull request text has been updated to match. Nothing is waiting on
+you right now.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`).
-2. The Open PR Gate, which merges F302's pull request in the NEXT session and never in this one,
-   after reading its hosted checks.
-3. The booking of round 8's verdict in the next feature's first commit.
-4. Rule A5 (the next unchecked line in `docs/roadmap/STATUS.md`).
+1. Phase 1 rule 1: `.agent/STOP` is present (appeared during this session; see Session section) —
+   the next session reads it first and follows whatever it orders before anything else.
+2. The Open PR Gate merges pull request #323 once its hosted checks are read green.
+3. Book round 10's PASS and the four prose slips (a)-(d) in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`, F297, Findings paydown v7.
 
 Operator questions open: 0.
-Open findings: 16 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
-R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235, Low; all owned by F297).
+Open findings: 24 (R-1138, R-1139, R-1143, R-1149, R-1156, R-1157, R-1158, R-1162, R-1172, R-1176,
+R-1196, R-1219, R-1220, R-1225, R-1230 and R-1235, all Low, plus R-1236 through R-1243 from main,
+all owned by F297).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1: book round 7, the Built State, save the round 8 block, the STATUS line and the PR body | done | 4 of 4 copy proofs + 2 of 2 append proofs `True`; committed `53a41d473` |
-| C2: rotate the finding ledger into its archive | done | rotation exit 0; both ledger files byte-equal to the sim; committed `928c5c0de` |
-| C3: accept F302 in STATUS with its README sync and the self-use queue | done | three byte-equal copies; content checks all `True`; this commit |
-| Gate 1 | passed | status clean to the three C3 files; 9 of 9 byte proofs `True` |
-| Gate 2 | passed | STATUS line occurs exactly once; no stray `[~]` line |
-| Gate 3 | passed | `560 passed in 58.84s`, exit 0, no FAILED/ERROR/SKIPPED |
-| Gate 4 | passed | integrity 6/6 `pass`, `fail_count 0` |
-| Gate 5 | passed | open findings list matches exactly |
-| Gate 6 | pending | reported in the worker's final reply |
-| Push | pending | reported in the worker's final reply |
-| Pull request | pending | reported in the worker's final reply |
+| Preconditions | done | base commit, clean tree, STOP absent all matched |
+| First attempt / gate-3 contradiction | stopped then resumed | reported to the reviewer; block corrected; resumed without loss |
+| C1 renumber | done | script printed `renumbered 17 ids in 9 files`; gate 3 four lines match |
+| C2 merge | done | two conflicts resolved by script; two-parent merge confirmed |
+| Selection run | passed | 732 passed, exit 0; ruff clean |
+| Gate 5 integrity | passed | fail_count 0, ok true |
+| C3 full suite | passed | 22473 passed, 22 skipped, exit 0; no bad node id; no leftover process |
+| C4 PR body | done | diff shown; read-back byte-equal aside from trailing newline |
+| C4 handoff | done | this file |
+| Push | done | reported in the worker's final reply |
+| Gate 6 | done | reported in the worker's final reply |
+| Merge / `gh pr merge` | not done | forbidden this session |

@@ -161,3 +161,25 @@ class TestTheUpkeepJobInPlaceOfADispatch:
 
         assert outcome.status == "dispatched" and "record_contract_results" in recorder.milestone_calls
         assert read_upkeep_ledger(PROJECT, data_root) == []
+
+
+class TestADispatchOverSeveralProjects:
+    """DECISION F205 D5: the loop's job runs in the project and repository of the chain's last job."""
+
+    def test_the_dispatched_job_runs_in_the_last_jobs_repository(self, data_root, recorder):
+        other = "c" * 32
+        mission = create_mission(PROJECT, "Two repositories", project_ids=(PROJECT, other),
+                                 root=data_root)
+        for index, (project, repo) in enumerate(((PROJECT, "/repos/toolbox"), (other, "/repos/brain"))):
+            job = JobPlan(job_title=f"job {index}", state=RunState.COMPLETED, project_id=project,
+                          repo_path=repo)
+            save_job_plan(job)
+            link_job_to_mission(PROJECT, mission.id, str(job.job_id),
+                                "initial" if index == 0 else "follow_up", root=data_root)
+
+        outcome = execute_move(PROJECT, mission.id, MOVE, root=data_root, execute=recorder.execute)
+
+        assert outcome.status == "dispatched"
+        [job] = recorder.executed
+        assert (job.project_id, job.repo_path) == (other, "/repos/brain")
+        assert load_mission(PROJECT, mission.id, data_root).job_links[-1].project_id == other

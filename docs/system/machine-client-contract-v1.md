@@ -53,6 +53,17 @@ before any step with `order_already_running` and exit code 2, and the refusal na
 under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
 holds whitespace is planned as text, never read as a file.
 
+A header may name `project` once for each project of an order that spans several repositories,
+each project at most once (DECISION F205 D4). The mission lives in the first project and spans
+them all, and `remedy do` plans one job in each project's registered repository, in the order
+the header names them; under a commit flag each job is applied and committed in its own
+repository, and `--push` pushes each repository once, after asking every repository's upstream
+first. Such an order is refused before any step with `invalid_argument` and exit code 2 beside
+`--project`, with `repo_not_in_project` and exit code 2 beside `--repo`, and with
+`project_has_no_repo` and exit code 3 when one of its projects has no registered repository;
+`--force-job` and `--force-mission` fail its shape step. In `--json`, each commit under `landed`
+names its `repo`, and `push` lists one entry per repository pushed under `repositories`.
+
 With the deterministic planner of `--no-llm`, an order is held to one blocking criterion of the
 planner's own, that the mission goal is met in full, checked by the project's own test command,
 run in the project's own environment when the check runs (DECISION F299 D1); a model planner
@@ -252,7 +263,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.6`.
+Interface version: `1.9`.
 
 ### Envelope
 
@@ -347,8 +358,9 @@ Keys under the answer keys: see below.
   - `roles`: `cache_read`, `calls`, `cost_usd`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
-- `landed`: `branch`, `job_id`, `sha`
-- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `sha`, `source`, `unchecked_blocking_criteria`
+- `landed`: `branch`, `job_id`, `repo`, `sha`
+- `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `repositories`, `sha`, `source`, `unchecked_blocking_criteria`
+  - `repositories`: `branch`, `error`, `pushed`, `ref`, `remote`, `repo`, `sha`
 - `steps`: `detail`, `name`, `status`
 
 #### `remedy status run`
@@ -372,7 +384,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -382,7 +394,7 @@ Keys under the answer keys: see below.
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
     - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
       - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+    - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
 - `jobs`: `*`
   - `*`: `job_id`, `name`, `short_id`, `state`
@@ -689,12 +701,12 @@ Refusal tokens: `mission_error`, `mission_not_found`, `no_project`.
 Answer keys: `mission`, `unmet_blocking_criteria`, `version`.
 Keys under the answer keys: see below.
 
-- `mission`: `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `project_id`, `schema_version`, `status`
+- `mission`: `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `project_id`, `project_ids`, `schema_version`, `status`
   - `contract`: `amendments`, `criteria`, `schema`, `template`
     - `amendments`: `acknowledged_in`, `applies_from`, `criteria`, `id`, `received_at`, `text`, `understood`
     - `criteria`: `blocking`, `check`, `evidence_ref`, `id`, `milestones`, `origin`, `status`, `text`
       - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
-  - `job_links`: `created_at`, `job_id`, `job_state`, `role`
+  - `job_links`: `created_at`, `job_id`, `job_state`, `project_id`, `role`
   - `mission_plan`: `_milestones_done`, `_version`, `_versions` (repeats the object that holds it), `assumptions`, `compiled`, `milestones`, `origin`, `risks`, `schema_v`
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
@@ -743,14 +755,14 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
   - `cost`: `basis`, `value_usd`
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+- `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_id`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 
 #### `remedy client order`
 
@@ -791,7 +803,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -801,6 +813,6 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
   - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
-  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
+  - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 - `supervisor`: `answers`
 <!-- END GENERATED by render_client_interface_markdown() -->

@@ -1,0 +1,5 @@
+Entry ID: SU-055
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:1981
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception:  # noqa: BLE001 — a read-only view never fails on this)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f205-r8-selfuse/SU-055.md

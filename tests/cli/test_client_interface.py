@@ -92,7 +92,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.6"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.9"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -276,7 +276,7 @@ _TOKEN_CALLS = frozenset({"fail", "emit_error", "build_error"})
 #: `<module>:<function>:<expression>`, with the tokens a reader verified by hand and why. A site
 #: absent from this mapping fails the reading test with its location.
 UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
-    "apps.cli.commands.do_cmd:_cmd_do:exc.error": (
+    "apps.cli.commands.do_order_input:read_do_order:exc.error": (
         frozenset({"order_file_empty", "order_file_invalid_header", "order_file_not_found",
                    "order_file_unreadable"}),
         "an OrderFileError's token; every OrderFileError(...) in "
@@ -396,7 +396,7 @@ def test_the_hand_verified_token_sets_still_equal_what_their_code_names():
     raised = {node.args[0].value for node in ast.walk(order_file)
               if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
               and node.func.id == "OrderFileError" and isinstance(node.args[0], ast.Constant)}
-    assert raised == UNRESOLVED_TOKEN_SITES["apps.cli.commands.do_cmd:_cmd_do:exc.error"][0]
+    assert raised == UNRESOLVED_TOKEN_SITES["apps.cli.commands.do_order_input:read_do_order:exc.error"][0]
     hunk_codes = ({value for name, value in vars(hunk_approval).items() if name.startswith("REFUSAL_")}
                   | {value for name, value in vars(hunk_decision_record).items()
                      if name.startswith("HUNK_RECORD_REFUSAL_")})
@@ -768,6 +768,9 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     from packages.orchestration.dod_schema import DoDCheck
 
     do_sequence = "packages/orchestration/do_sequence.py"
+    do_context = "packages/orchestration/do_context.py"
+    do_summary = "packages/orchestration/do_summary.py"
+    do_apply = "packages/orchestration/do_apply.py"
     contracts = "packages/orchestration/mission_contract.py"
     trees = ANSWER_KEY_TREES["do.run"]
     contract = trees["contract"]
@@ -778,14 +781,14 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
         _returned_dict_keys(contracts, "ContractCriterion.to_json"))
     assert set(contract["amendments"]) == set(mission_contract._AMENDMENT_FIELDS)
     assert set(contract["criteria"]["check"]) == set(DoDCheck.model_fields)
-    assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
+    assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_summary,
                                                             "do_cost_summary")
     assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
                                                             "do_job_task_listing")
-    assert set(trees["steps"]) == _returned_dict_keys(do_sequence, "DoStepResult.to_json")
-    assert set(trees["landed"]) == _expression_keys(do_sequence, "ctx.landed")
-    assert set(trees["push"]) == (_returned_dict_keys(do_sequence, "_do_push_record")
-                                  | _expression_keys(do_sequence, "ctx.push_outcome"))
+    assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
+    assert set(trees["landed"]) == _expression_keys(do_apply, "ctx.landed")
+    assert set(trees["push"]) == (_returned_dict_keys(do_apply, "_do_push_record")
+                                  | _expression_keys(do_apply, "ctx.push_outcome"))
 
 
 def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
@@ -1164,13 +1167,13 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     from packages.orchestration.mission_plan_schema import MissionPlan
     from packages.orchestration.orchestrator_loop import MILESTONES_DONE_KEY
 
-    mission_state = "packages/orchestration/mission_state.py"
+    mission_record = "packages/orchestration/mission_record.py"
     mission_cmd = "apps/cli/commands/mission_cmd.py"
     compiler = "packages/orchestration/mission_compiler.py"
     loop = "packages/orchestration/orchestrator_loop.py"
     mission = ANSWER_KEY_TREES["mission.abandon"]["mission"]
     # The answer's mission is the record's own export, whose job links `_mission_json` widens.
-    assert set(mission) == _returned_dict_keys(mission_state, "Mission.to_json")
+    assert set(mission) == _returned_dict_keys(mission_record, "Mission.to_json")
     assert _bound_sources(mission_cmd, "_mission_json", "body") == {"mission.to_json()"}
     assert _stored_keys(mission_cmd, "_mission_json", "body") == {"job_links"}
     [link] = [node.elt for node in ast.walk(_function_def(mission_cmd, "_mission_json"))
@@ -1178,9 +1181,9 @@ def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
     assert [ast.unparse(value) for key, value in zip(link.keys, link.values) if key is None] == [
         "link.to_json()"]
     assert set(mission["job_links"]) == (
-        _returned_dict_keys(mission_state, "MissionJobLink.to_json")
+        _returned_dict_keys(mission_record, "MissionJobLink.to_json")
         | _dict_value_keys(mission_cmd, "_mission_json", "job_links"))
-    assert set(mission["order"]) == _returned_dict_keys(mission_state, "MissionOrder.to_json")
+    assert set(mission["order"]) == _returned_dict_keys(mission_record, "MissionOrder.to_json")
     assert mission["contract"] is MISSION_CONTRACT_KEY_TREE
     # A mission's plan is the plan model's dump with the keys its two writers store into it.
     plan = mission["mission_plan"]

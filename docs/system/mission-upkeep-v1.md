@@ -46,6 +46,12 @@ An upkeep job is an ordinary job of the mission: it begins with the task that ch
 job, runs under the ordinary budgets, and waits at the ordinary approval. It is known by the key
 `mission_upkeep` in its job's metadata, which holds what it was planned to carry.
 
+A mission over several projects (DECISION F205 D7) counts the completed jobs of every
+repository it spans. Its upkeep job works where its next job works, in the project and
+repository of the job its chain ends with, so it measures that repository and carries the
+findings and replaced files of that project's jobs alone; the others wait for an upkeep job
+in their own project.
+
 ## The command line
 `remedy mission continue <mission> "<step>"` records the jobs that have ended first. When upkeep is
 due, it makes the upkeep job in place of the step, says so, and the step can be given again once

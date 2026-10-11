@@ -111,6 +111,11 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   of move, the dispatch branch holding most of its lines. Steps: (1) done by F301, the dispatch
   branch is `dispatch_milestone_job` in `packages/orchestration/orchestrator_dispatch.py`, which
   reads the loop's helpers from the loop's module, and the function left the table.
+- `build_client_digest` (`packages/orchestration/client_digest.py`). Boundary: one entry per
+  kind it builds — a project, a job, a decision — and the window over the ended jobs. Steps:
+  (1) done by F205, one job's entry is `_job_entry`; (2) the reading of each project's
+  missions and ledgers becomes a function; (3) the window over the ended jobs becomes a
+  function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -156,6 +161,27 @@ with the code that calls it.
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
+- `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
+  three types a mission is stored as — then the verify-first follow-up path, each to a module of
+  its own; the locations, the store and the links stay. Step (1), done by F205: the record,
+  `packages/orchestration/mission_record.py`, and the file left the table.
+- `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
+  cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
+  table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
+  test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
+  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
+  Step (2), done by F205: the cockpit and the summaries,
+  `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
+  Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
+  left the table.
+- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `job`
+  handlers, then the `run` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
+  stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
+  `apps/cli/commands/do_order_input.py`.
+- `packages/orchestration/public_api.py`: the write routes' argument builders and refusals,
+  then the route table, then the page's rendering, each to a module of its own; the answer
+  functions stay. Step (1), done by F205: the write routes' argument builders and refusals,
+  `packages/orchestration/public_api_writes.py`, and the file left the table.
 
 ## Functions above 100 lines
 
@@ -206,7 +232,6 @@ with the code that calls it.
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
-| 186 | `packages/orchestration/client_digest.py` | `build_client_digest` |
 | 186 | `packages/orchestration/pingpong_job.py` | `run_job._stop_check` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
@@ -215,6 +240,7 @@ with the code that calls it.
 | 179 | `scripts/build_review_manifest.py` | `validate_evidence_candidate` |
 | 178 | `packages/orchestration/subtree_rerun.py` | `prepare_subtree_rerun` |
 | 177 | `apps/cli/commands/job.py` | `_cmd_job_resume` |
+| 174 | `packages/orchestration/client_digest.py` | `build_client_digest` |
 | 171 | `scripts/build_observability_index.py` | `_build_task_section` |
 | 168 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_serve` |
 | 168 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge` |
@@ -247,7 +273,6 @@ with the code that calls it.
 | 140 | `apps/cli/commands/job.py` | `_cmd_plan_job_local` |
 | 140 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge_loop` |
 | 140 | `packages/orchestration/change_set.py` | `derive_change_set` |
-| 139 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 139 | `packages/orchestration/pingpong_job.py` | `_export_job` |
 | 138 | `apps/cli/commands/job.py` | `_cmd_job_run_cycles` |
 | 138 | `scripts/build_review_manifest.py` | `validate_verification_tests` |
@@ -306,6 +331,7 @@ with the code that calls it.
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
 | 111 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 111 | `packages/orchestration/ui_view_model.py` | `build_next_action` |
+| 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_ledger_chain` |
 | 109 | `apps/cli/commands/init_cmd.py` | `_handle_init` |
@@ -345,20 +371,17 @@ with the code that calls it.
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
-| 1477 | `packages/orchestration/do_sequence.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1248 | `apps/cli/commands/do_cmd.py` |
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
+| 1173 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
-| 1166 | `packages/orchestration/mission_state.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
 | 1138 | `packages/orchestration/test_execution_service.py` |
-| 1136 | `packages/orchestration/public_api.py` |
 | 1133 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |

@@ -23,6 +23,7 @@ apps.cli.commands.data_cmd
 apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
+apps.cli.commands.do_order_input
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
@@ -149,8 +150,13 @@ packages.orchestration.diff_repair
 packages.orchestration.diff_repair_apply
 packages.orchestration.diff_repair_response
 packages.orchestration.diff_view_source
+packages.orchestration.do_apply
+packages.orchestration.do_cockpit
+packages.orchestration.do_context
 packages.orchestration.do_run
 packages.orchestration.do_sequence
+packages.orchestration.do_summary
+packages.orchestration.do_targets
 packages.orchestration.dod_compiler
 packages.orchestration.dod_gate
 packages.orchestration.dod_runners
@@ -201,6 +207,7 @@ packages.orchestration.mission_contract
 packages.orchestration.mission_dossier
 packages.orchestration.mission_plan_schema
 packages.orchestration.mission_readiness
+packages.orchestration.mission_record
 packages.orchestration.mission_state
 packages.orchestration.mission_upkeep
 packages.orchestration.model_aliases
@@ -244,6 +251,7 @@ packages.orchestration.proposed_tasks
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
 packages.orchestration.public_api
+packages.orchestration.public_api_writes
 packages.orchestration.rate_governor
 packages.orchestration.real_test_execution
 packages.orchestration.repair_attest
