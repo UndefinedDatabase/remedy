@@ -3797,12 +3797,13 @@ def _contains_secret(value: str) -> bool:
 _SLASH_CMD_RE = re.compile(
     r"""(?<!\S)          # preceded by whitespace or start-of-string
     /([A-Za-z][\w-]*)    # slash + one word-like segment (no path separators)
+    ((?:/[\w.{}%-]+)*)   # further segments; kept only when the token is a web route (amend1010)
     (?!\S*/)             # NOT followed by another slash in the same token
     """,
     re.VERBOSE,
 )
-# Trade-off: a slash-command whose name collides with a root dir will still
-# false-positive — acceptable, because missing a real path is worse.
+# Trade-off: a slash-command whose name collides with a root dir will still false-positive; missing a path is worse.
+_ROUTE_ROOTS = frozenset({"api"})  # a multi-segment token under these roots is a web route, not a path
 _REAL_ROOT_DIRS = frozenset({
     # Linux FHS
     "bin", "boot", "dev", "etc", "home", "lib", "lib64", "media", "mnt",
@@ -3816,13 +3817,12 @@ _REAL_ROOT_DIRS = frozenset({
 
 
 def _neutralize_slash_commands(value: str) -> str:
-    """Replace single-segment slash tokens that are NOT real filesystem root dirs
-    with a neutral form so the path scrubber does not false-positive on them."""
+    """Neutralize slash-command tokens and web routes under _ROUTE_ROOTS so the path scrubber skips them."""
     def _repl(m: re.Match) -> str:
-        segment = m.group(1).lower()
-        if segment in _REAL_ROOT_DIRS:
+        segment, rest = m.group(1).lower(), m.group(2)
+        if segment in _REAL_ROOT_DIRS or (rest and segment not in _ROUTE_ROOTS):
             return m.group(0)
-        return m.group(1)
+        return (m.group(1) + rest).replace("/", ":")
     return _SLASH_CMD_RE.sub(_repl, value)
 
 
@@ -3832,9 +3832,9 @@ def _contains_local_path(value: str) -> bool:
     present. An already-redacted reference such as ``[runtime-data]/jobs/x`` is a reference and
     stays safe.
 
-    Single-segment slash tokens (e.g. ``/review-remedy``, ``/build-remedy-large``) that do not
-    name a real filesystem root directory are neutralized before probing — they are slash-command
-    names, not local paths."""
+    Single-segment slash tokens (``/review-remedy``) that name no real root directory, and
+    multi-segment tokens under _ROUTE_ROOTS such as /api/v1/interface, are neutralized before
+    probing — they are slash-command names or web routes, not local paths."""
     if not isinstance(value, str) or not value:
         return False
     try:

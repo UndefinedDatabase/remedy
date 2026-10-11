@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Refuses a commit whose subject the review package's metadata scanner would reject
+# (operator amendment amend1010-cadence-guards, 2026-10-10). Fails open when Remedy's
+# modules cannot be imported. Installed per checkout with: git config core.hooksPath .githooks
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_commit_subject.py" "$1"

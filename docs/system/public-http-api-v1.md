@@ -1,7 +1,7 @@
 # Public HTTP API v1
 
-> Status (F253, 2026-10-08): built in part. This page lists only the routes that are served today;
-> later slices of F253 add the rest (`docs/roadmap/features/T12_F253.md`).
+> Status (F253, accepted 2026-10-09): built. Every route served today is listed below; F303
+> adds the shipped cockpit's migration to this API and the MCP facet (`docs/roadmap/features/T12_F303.md`).
 
 The public HTTP API is the interface through which a program drives Remedy over HTTP instead of
 its command line. Each route answers exactly what its twin command answers with `--json` —

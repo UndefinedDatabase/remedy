@@ -28859,6 +28859,46 @@ ALTERNATIVES: A view of the token ledger, REJECTED: it holds a small part of the
 
 HOW TO REVERSE: Delete this paragraph, `apps/cli/commands/stats_calls_cmd.py` with its line in `apps/cli/commands/__init__.py`, `packages/orchestration/call_tokens.py`, the `stats.calls` entry, the two reachability lines and both test files.
 
+## DECISION amend1010-cadence-guards D1 — F297 moves directly behind F302 so the paydown cadence of five holds again (2026-10-10)
+
+CONTEXT: The rolling findings paydown comes after every fifth accepted feature (self_drive_protocol, amend0911-feedback rule B, the structure rule of F300). Operator amendment amend1007b of 2026-10-07 put nine features in front of the waiting F297; nine are accepted since, sixteen Low findings are open and all owned by F297, and F297 still stood behind F302, F205, F206, F058 and F199.
+
+CHOSEN: In `docs/roadmap/STATUS.md` the heading "Tier 2 — Findings paydown" with the line of F297 moved to directly after the F302 line, before the Tier 13 block of F205 and F206 (neither read `[~]` at run time). The heading "Luna gate B: operations of a service … continued" was deleted, so F203 joins the list under the F199 heading. No counter changed.
+
+ALTERNATIVES: Leaving F297 behind F199, REJECTED: the cadence stays broken. Moving it behind the last `[~]` line, NOT NEEDED: nothing was claimed.
+
+HOW TO REVERSE: Move the two lines back directly above the heading "Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)" and restore that heading above F203.
+
+## DECISION amend1010-cadence-guards D2 — a multi-segment slash token under /api/ is a web route to the metadata scanner; every other multi-segment token is still a path (2026-10-10)
+
+CONTEXT: F253 lost three rounds and needed a copy of its whole branch (DECISIONs F253 D32 and D33) because five commit subjects named a web route such as `/api/v1/interface`, which `_contains_local_path` in `packages/orchestration/run_manifest.py` read as a local path. F303 and every later API feature will name routes again.
+
+CHOSEN: `_SLASH_CMD_RE` also matches further segments; `_neutralize_slash_commands` neutralizes the token, turning its slashes into colons, when the first segment is in `_ROUTE_ROOTS` (`api`) or the token is single-segment and not a real root directory. Everything else, such as `/home/user/x`, `/etc/passwd` and `/workspace/jobs/x`, is still flagged. The file stays at 6558 lines (two comment lines joined).
+
+ALTERNATIVES: Reading every multi-segment token as safe, REJECTED: missing a real path is worse. Requiring subjects to avoid routes, REJECTED: it was the rule and it was broken.
+
+HOW TO REVERSE: Restore the regular expression and the function from the commit before this one and delete `_ROUTE_ROOTS` and the test class `TestRouteTokensAreNotPaths`.
+
+## DECISION amend1010-cadence-guards D3 — a commit-msg hook under .githooks refuses an unsafe subject before it exists; the hook is installed per checkout with core.hooksPath (2026-10-10)
+
+CONTEXT: AGENTS.md has forbidden slash-led tokens in commit subjects since July 2026, and the rule was broken anyway at F253 because nothing checks a subject at commit time.
+
+CHOSEN: `scripts/check_commit_subject.py` reads the subject and asks `_metadata_is_safe`; `.githooks/commit-msg` runs it; `git config core.hooksPath .githooks` installs it in a checkout and in every worktree of it. The script fails open (exit 0 with a line on stderr) when Remedy's modules cannot be imported. `tests/test_commit_subject_check.py` runs it as a subprocess. The AGENTS.md bullet names the hook and the route exception.
+
+ALTERNATIVES: A rule in prose only, REJECTED: it failed. A check at the gate only, REJECTED: it finds the subject after the commits exist.
+
+HOW TO REVERSE: `git config --unset core.hooksPath`; delete `.githooks/`, the script and its test; restore the earlier AGENTS.md bullet.
+
+## DECISION amend1010-cadence-guards D4 — seven findings of the orchestrator's review of 2026-10-10 are registered, owned by F297 (2026-10-10)
+
+CONTEXT: The orchestrator's review of the packages of 2026-10-07 to 2026-10-10 found seven defects in the accepted features F299, F301, F116 and F298 that no finding named.
+
+CHOSEN: R-1236 (Medium, F299's acceptance check reads its command and interpreter from the job's worktree), R-1237 (F301's upkeep carries one mission's findings), R-1238 (`mission continue` discards the step when upkeep is due), R-1239 (F301's structure limits and finding count are fixed), R-1240 (`client changes` watches four files), R-1241 (F116's burn handler), R-1242 (F298's spec version and the contract page's exit-code table), each owned by F297 with its repair in `.agent/live_review.md`.
+
+ALTERNATIVES: Waiting for the paydown's own survey, REJECTED: the paydown repairs what the ledger names.
+
+HOW TO REVERSE: Delete the seven lines from `.agent/live_review.md` and this paragraph.
+
 ## DECISION F205 D1 — A mission over several repositories keeps its record under the first project its order names and holds references only; the record leaves `mission_state.py` first; the jobs follow the order the order names its projects until F206 exists; the cockpit's chips move to a follow-up feature (2026-10-10)
 
 CONTEXT: `docs/roadmap/features/T13_F205.md` asks for a mission that leads jobs across several projects, a manifest under the home folder, per-project evidence, a loop that switches project per job, cockpit chips and a leak regression; its amendment section, DECISION amend1007b D8, governs where the two disagree: the records follow the data root's classes as they stand, the first round measures them before it writes the slice list, an order may name several registered projects, the mission plans one job per repository in the order F206's catalog gives, each job is applied, committed and pushed in its own repository, the digest and the public API name each job's repository, F301's upkeep counts the mission's jobs across its repositories, and the chips may move to a follow-up feature. The measurement, `.agent/f205_inventory.md` at `c72d2a7ec`: every record a mission writes falls in an existing class; the records keyed by a job or by a job's project are already per project, and a job names its own project and repository; what assumes one repository is the mission record's single `project_id` and its links without a project, the order file's single `project` key, `remedy do`'s one project, root and push, the loop's one project id with jobs that carry no `repo_path`, the upkeep's one repository, and the digest's per-project mission and repository-less job entries. `mission_state.py` is a 1166-line row of the structure page, with no boundary written. F206, the catalog, is the line after F205 in `docs/roadmap/STATUS.md` and depends on it.

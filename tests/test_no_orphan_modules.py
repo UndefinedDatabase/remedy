@@ -92,6 +92,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T001)"),
     ("packages/orchestration/self_use_runner.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
+    ("scripts/check_commit_subject.py",
+     "run by .githooks/commit-msg, which git launches, not a shell file this guard reads (amend1010-cadence-guards D3)"),
     ("scripts/closure_suite_cost.py",
      "run by hand in every closure's integration-gate round, docs/agents/integration_gate.md step 1 (F293 T003)"),
     ("scripts/remedy_agent_tooling_doctor.py",
