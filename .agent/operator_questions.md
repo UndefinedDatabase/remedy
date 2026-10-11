@@ -7,38 +7,4 @@
 > Soft cap five; entries leave only by the operator's answer, recorded as a dated
 > DECISION by the operator's next amendment, which deletes the entry.
 
-### Q10 — Pull request conflicts with main (2026-10-10, F205, Open PR Gate)
-
-**What needs deciding.** The loop finished the feature that lets one order lead work in several
-projects at once, and opened its pull request, the request to take the finished work into the main
-line. Your change of 10 October, which moved the next findings paydown forward and recorded new
-findings from your review, was merged into the main line after that pull request was opened. The
-two now disagree, so the pull request can no longer be merged, and the automatic checks never ran
-on it. Two files are the expected case where both sides added text at the end: the decisions file
-and the findings ledger, and both sides' text should simply be kept. The real clash is over two
-finding numbers. Your change gave the numbers 1236 and 1237 to two of your new findings, which are
-still open. The loop had already given the same two numbers to two findings of its own that it
-found and repaired inside the finished feature. I need you to say which side keeps those two
-numbers.
-
-**Why it matters.** The loop may not merge a pull request with conflicts, and it may not start any
-new work while that pull request is open. Until this is settled, every session will stop at the
-same place. Two findings with the same number would make the ledger ambiguous, and the checks that
-count open findings could then count a repaired finding as open, or an open one as repaired.
-
-**My recommendation.** Keep 1236 to 1243 as you registered them on the main line, because they are
-open and the next paydown is planned around them. Give the loop's two repaired findings the next
-free numbers, 1244 and 1245, everywhere the branch names them: the findings ledger, the feature's
-decisions and its description, the feature list line, the checklist note, the pull request text,
-and the comments of the code and tests that cite them. The loop would then merge the main line into
-the branch with both sides' decisions and ledger lines kept, leave your new order as it is, so that
-the paydown is the next feature to start, and record all of it as one decision you can reverse.
-Because the branch changes after its final full test run, the loop would run the full test suite
-once more on the merged result before the pull request is merged. Old commit messages and the
-already built review package keep the old numbers, because history is never rewritten; the
-decision says so.
-
-**What happens if you say nothing.** Nothing moves. Unlike other questions, this recommendation is
-not already carried out, because the repository's top rule says a pull request with conflicts stops
-the loop until the conflict is reported and settled. Each new session will stop again at this pull
-request. If you answer "do what you recommend", the next session carries it out as described above.
+EMPTY — nothing is waiting on the operator.
