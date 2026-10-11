@@ -1,0 +1,2 @@
+Read from: the job workspace /home/decodeux/Repos/remedy/.remedy-wt/job-7119e375144244c2
+NONE

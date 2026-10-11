@@ -1,0 +1,31 @@
+$ git diff HEAD...remedy/job-7119e375144244c2  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 583968cb9..af0381598 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -2051,10 +2051,11 @@ def _cmd_job_budget(
+         _job_display_id = job_plan.job_id
+         if job_plan.budgets is not None:
+             from packages.core.models import JobBudgets
++            from pydantic import ValidationError as _PydanticValidationError
+             try:
+                 _budgets = JobBudgets.model_validate(job_plan.budgets)
+                 _budgets_dict = job_plan.budgets
+-            except Exception:  # noqa: BLE001 — an unparseable budget still shows its raw stored values
++            except _PydanticValidationError:
+                 _budgets_dict = job_plan.budgets
+ 
+         if getattr(job_plan, "budget_actuals", None) is not None:
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
