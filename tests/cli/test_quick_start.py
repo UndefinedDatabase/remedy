@@ -50,6 +50,10 @@ def no_model_call(monkeypatch):
     def tripwire(*args, **kwargs):
         raise AssertionError("a quick-start line reached a model-call factory")
 
+    # `study` binds `make_structured_call_fn` by `from … import`, so it is imported
+    # before intake is patched: imported under the patch, it would keep the tripwire
+    # for every later test in the process (R-1172).
+    import packages.orchestration.study  # noqa: F401
     monkeypatch.setattr("packages.orchestration.intake.make_provider_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", tripwire)
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", tripwire)

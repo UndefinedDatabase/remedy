@@ -19,7 +19,8 @@ WHAT COUNTS AS REACHED. A module is reached when ANY of these names it:
   with a literal argument in such a file;
 - the ENTRY-POINT rule: its repository path (`scripts/build_review_zip.py`) or
   its dotted `-m` name appears in `pyproject.toml`, in a `*.sh` at the root or
-  under `scripts/`, or in a `.yml` / `.yaml` under `.github/`. `pyproject.toml`
+  under `scripts/`, in a `.yml` / `.yaml` under `.github/`, or in any file under
+  `.githooks/`, whose hooks git launches by name (R-1243). `pyproject.toml`
   `[project.scripts]` values name their module as `module:function`.
 Imports inside functions and `if TYPE_CHECKING:` count, as they do in the
 reachability test: counting a module as reached when it might not be is the
@@ -92,8 +93,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T001)"),
     ("packages/orchestration/self_use_runner.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
-    ("scripts/check_commit_subject.py",
-     "run by .githooks/commit-msg, which git launches, not a shell file this guard reads (amend1010-cadence-guards D3)"),
     ("scripts/closure_suite_cost.py",
      "run by hand in every closure's integration-gate round, docs/agents/integration_gate.md step 1 (F293 T003)"),
     ("scripts/remedy_agent_tooling_doctor.py",
@@ -176,7 +175,8 @@ _SH_SIBLING = re.compile(r"(?<![\w.-])(\w+)\.py\b")
 def _entry_point_files(root: Path) -> list[Path]:
     """Every file the ENTRY-POINT rule reads."""
     paths = [root / "pyproject.toml", *sorted(root.glob("*.sh"))]
-    for rel, patterns in (("scripts", ("*.sh",)), (".github", ("*.yml", "*.yaml"))):
+    for rel, patterns in (("scripts", ("*.sh",)), (".github", ("*.yml", "*.yaml")),
+                          (".githooks", ("*",))):
         for pattern in patterns:
             paths.extend(sorted(
                 p for p in (root / rel).rglob(pattern)
@@ -302,6 +302,8 @@ def test_a_planted_orphan_is_reported_and_every_reaching_form_is_not(tmp_path):
             "python3 -m packages.pkg.by_dash_m\n"
             'exec python3 "$(dirname "$0")/sibling_script.py"\n'),
         ".github/workflows/ci.yml": "run: python3 scripts/from_ci.py\n",
+        ".githooks/commit-msg": (
+            'exec python3 "$(git rev-parse --show-toplevel)/scripts/from_hook.py" "$1"\n'),
         "apps/__init__.py": "",
         "apps/cli_main.py": (
             '"""Prose naming scripts/prose_only.py does not reach it."""\n'
@@ -324,6 +326,7 @@ def test_a_planted_orphan_is_reported_and_every_reaching_form_is_not(tmp_path):
         "scripts/entry_script.py": "import helper_mod\n",
         "scripts/helper_mod.py": "",
         "scripts/from_ci.py": "",
+        "scripts/from_hook.py": "",
         "scripts/sibling_script.py": "",
         "scripts/by_path.py": "",
         "scripts/prose_only.py": "",
