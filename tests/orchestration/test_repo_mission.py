@@ -26,9 +26,11 @@ from packages.orchestration.mission_state import (
 from packages.orchestration.repo_mission import (
     RepoMissionError,
     accept_order,
+    accept_order_in_each,
     ensure_repo_mission,
     link_order_job,
     order_batch_view,
+    order_refusal,
     repo_key,
 )
 from packages.orchestration.repo_mission_reconcile import (
@@ -172,6 +174,41 @@ def test_an_achieved_mission_is_reopened_and_says_so_while_paused_and_abandoned_
         with pytest.raises(RepoMissionError, match="mission resume"):
             accept_order(project, repo, _order("three"), root=tmp_path)
         assert len(list_missions(str(project.id), tmp_path)) == 1
+
+
+def test_an_order_is_accepted_by_no_repositorys_mission_unless_every_one_can_take_it(tmp_path):
+    """R-1250: every target's mission is asked before any accepts, so a paused second repository
+    leaves the first repository's mission without a new batch."""
+    one, two = _project(_repo(tmp_path, "one")), _project(_repo(tmp_path, "two"))
+    targets = [(one, one.canonical_repo_path), (two, two.canonical_repo_path)]
+    first, _ = accept_order(one, one.canonical_repo_path, _order("before"), root=tmp_path)
+    second, _ = accept_order(two, two.canonical_repo_path, _order("before"), root=tmp_path)
+    set_mission_status(second.project_id, second.id, MISSION_STATUS_PAUSED, tmp_path)
+
+    assert order_refusal(one, one.canonical_repo_path, tmp_path) == ""
+    assert "mission resume" in order_refusal(two, two.canonical_repo_path, tmp_path)
+    with pytest.raises(RepoMissionError, match="mission resume"):
+        accept_order_in_each(targets, _order("both"), root=tmp_path)
+
+    assert len(load_mission(first.project_id, first.id, tmp_path).orders) == 1
+    assert len(load_mission(second.project_id, second.id, tmp_path).orders) == 1
+
+
+def test_an_order_every_mission_can_take_becomes_a_batch_in_each_with_one_correlation(tmp_path):
+    one, two = _project(_repo(tmp_path, "one")), _project(_repo(tmp_path, "two"))
+    accepted = accept_order_in_each([(one, one.canonical_repo_path), (two, two.canonical_repo_path)],
+                                    _order("both"), root=tmp_path)
+
+    batches = [load_mission(str(project.id), accepted[str(project.id)][0], tmp_path).orders[-1]
+               for project in (one, two)]
+    assert [batch.order_id for batch in batches] == [accepted[str(p.id)][1] for p in (one, two)]
+    assert batches[0].correlation_id == batches[1].correlation_id != ""
+
+
+def test_order_refusal_creates_no_mission(tmp_path):
+    project = _project(_repo(tmp_path, "app"))
+    assert order_refusal(project, project.canonical_repo_path, tmp_path) == ""
+    assert list_missions(str(project.id), tmp_path) == []
 
 
 def test_ensure_repo_mission_creates_once(tmp_path):

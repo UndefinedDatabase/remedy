@@ -63,7 +63,6 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
@@ -687,21 +686,18 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.mission_contract import ContractError
     from packages.orchestration.mission_state import MissionError, MissionOrder
-    from packages.orchestration.repo_mission import accept_order
+    from packages.orchestration.repo_mission import accept_order_in_each
 
     project_id = str(ctx.project.id)
     order = MissionOrder(text=ctx.order, source_path=ctx.order_source_path,
                          source_sha256=ctx.order_source_sha256)
     # DECISION amend1011b D4: the order becomes a batch in the ONE mission of each repository it
-    # touches; an order over several repositories shares a correlation id and no umbrella mission.
+    # touches, and in none unless every one can take it (R-1250).
     targets = ctx.projects or [ctx.project]
-    correlation = uuid4().hex if len(targets) > 1 else ""
     try:
-        for target in targets:
-            repo = ctx.project_repos.get(str(target.id), ctx.repo_root)
-            accepted, batch = accept_order(target, repo, order, budgets=ctx.budgets,
-                                           correlation_id=correlation)
-            ctx.project_missions[str(target.id)] = (accepted.id, batch.order_id)
+        ctx.project_missions.update(accept_order_in_each(
+            [(target, ctx.project_repos.get(str(target.id), ctx.repo_root)) for target in targets],
+            order, budgets=ctx.budgets))
     except MissionError as exc:
         return DO_STEP_FAILED, f"no order accepted: {exc}"
     ctx.mission_id, ctx.order_id = ctx.project_missions[project_id]

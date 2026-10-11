@@ -276,6 +276,29 @@ def test_a_named_project_without_a_repository_is_refused_before_any_step(project
     _no_mission_and_no_job()
 
 
+def test_an_order_a_later_repositorys_mission_refuses_adds_no_batch_to_any(projects, tmp_path, capsys):
+    """R-1250: the plan step asks every repository's mission first; a paused `b` leaves `a` without a
+    batch for the order, and no job is planned."""
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_PAUSED,
+        list_missions,
+        set_mission_status,
+    )
+    from packages.orchestration.pingpong_job import list_job_plans
+    from packages.orchestration.repo_mission import ensure_repo_mission
+
+    (a, project_a), (b, project_b) = projects["a"], projects["b"]
+    mission_b, _ = ensure_repo_mission(project_b, b)
+    set_mission_status(str(project_b.id), mission_b.id, MISSION_STATUS_PAUSED)
+
+    data = _refused(capsys, _order(tmp_path, project_a.slug, project_b.slug), "--plan-only", code=1)
+
+    assert (data["error"], data["failed_step"]) == ("step_failed", "plan")
+    assert "mission resume" in data["message"]
+    assert [len(mission.orders) for mission in list_missions(str(project_a.id))] in ([], [0])
+    assert list_job_plans() == []
+
+
 def test_an_unknown_project_fails_the_init_step_and_plans_nothing(projects, tmp_path, capsys):
     data = _refused(capsys, _order(tmp_path, projects["a"][1].slug, "nowhere"), code=1)
 
