@@ -1244,8 +1244,10 @@ def test_the_decision_answer_trees_name_exactly_what_their_code_builds():
     budget = "packages/orchestration/budget_decision.py"
     trees = ANSWER_KEY_TREES["decision.resolve"]
     resolve = _function_def(decision, "_cmd_decision_resolve")
+    # The `sr:` branch is a function of its own since F297 (R-1196), and its answer is read with it.
+    branches = (resolve, _function_def(decision, "_resolve_stop_reason_decision"))
     sources: dict[str, set[str]] = {}
-    for node in ast.walk(resolve):
+    for node in (node for branch in branches for node in ast.walk(branch)):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "emit_ok":
             for keyword in node.keywords:
                 sources.setdefault(keyword.arg, set()).add(ast.unparse(keyword.value))

@@ -192,7 +192,7 @@ with the code that calls it.
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
-| 438 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
+| 428 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
