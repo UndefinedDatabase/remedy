@@ -102,6 +102,22 @@ that is RUNNING or RED is WORK, not a blocker:
   workflow, at most once (`gh run rerun <run-id> --failed`). A second red run
   is never merged; the session writes an operator question and stops.
   Re-running without registering is forbidden.
+- Operator amendment amend1011-manual-hosted-ci (2026-10-11), TEMPORARY: the
+  hosted CI workflow (`.github/workflows/ci.yml`) runs only by `workflow_dispatch`,
+  so an ordinary pull request carries NO hosted check, and "RUNNING or RED" above
+  applies only to a run the operator or a session actually dispatched. Absence of
+  a hosted run is not a blocker and not a reason to skip anything. The LOCAL
+  gates stay mandatory exactly as the active protocol and the Commit Gate
+  already state them; this amendment adds no new gate and weakens none. They run
+  ONCE per pushed commit, and a green result is reusable evidence for that
+  commit: opening or merging the pull request starts no second full local run
+  when the tree (`git rev-parse HEAD^{tree}`), the commands and the interpreter
+  match what was recorded. Record in the handoff or PR body: commit SHA, the
+  exact commands, interpreter, and result. Any change to the tree, or a result
+  that is not green, voids the evidence. No branch-protection bypass, no direct
+  push to `main`, no force-push. The clauses in `docs/agents/` that cite a
+  "hosted CI record" apply only where a manual run exists. Reactivation: see
+  `docs/system/ci-self-check-v1.md`, "Hosted CI is manual".
 
 ------------------------------------------------------------------------
 

@@ -4,7 +4,11 @@ Claude Code project configuration is intentionally minimal and safety-focused.
 
 ## Source of truth
 - Always read `AGENTS.md` before work.
-- `CLAUDE.md` reminds Claude to follow `AGENTS.md`; this directory adds optional project skills/agents.
+- `CLAUDE.md` imports `AGENTS.md` via `@AGENTS.md`, so the rules are loaded, not merely requested.
+  Do not add a second import, hook or global setting for it. Cost note: this adds about 26 KB
+  (roughly 6-7k tokens) of cached context per session; it is a correctness and safety measure,
+  not a token saving. Agent types that omit CLAUDE.md (e.g. Explore, Plan) stay without it.
+- This directory adds optional project skills/agents.
 - Reviewer findings in `.agent/live_review.md` beat worker self-report. Read it before final handoff.
 
 ## Test policy

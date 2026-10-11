@@ -27,6 +27,15 @@ def test_hosted_workflow_file_exists():
     assert WORKFLOW_PATH.is_file(), WORKFLOW_PATH
 
 
+def test_hosted_workflow_is_manual_trigger_only():
+    """amend1011-manual-hosted-ci: the hosted run starts only when the operator dispatches it.
+    Reactivating push or pull_request triggers is an operator decision, so it edits this guard."""
+    text = workflow_text()
+    assert text.count("\non:\n  workflow_dispatch:\n") == 1
+    for event in ("\n  push:", "\n  pull_request:", "\n  schedule:", "\n  release:"):
+        assert event not in text, event
+
+
 def test_hosted_workflow_calls_the_ci_entrypoint():
     """One source of truth for what CI means: the job calls the same entrypoint."""
     assert "remedy ci run" in workflow_text()
