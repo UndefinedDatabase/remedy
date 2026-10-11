@@ -29114,3 +29114,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: an order over several repositor
 ALTERNATIVES CONSIDERED: (a) marking the stopped jobs in the mission record instead of unlinking them, REJECTED because the chain's latest link would still be a job that never ran; (b) checking only in `_step_plan`, REJECTED because the file would pass its limit.
 
 HOW TO REVERSE: restore the touched files from `4798211ed`, and raise the row and the pin back to 269 and 31044.
+
+## DECISION F297 D6 — How round 5 repairs R-1236, and R-1251 registered (2026-10-11)
+
+THE PROBLEM: R-1236's repair has three parts: `.remedy/config.toml` among the protected paths; the command and the interpreter read from the base, not the job's worktree; and a job whose diff changes the file the command came from judged review, never pass. A check of `packages/orchestration/dod_runners.py` ends `passed` or `failed` and nothing else, so "review" needs a form there.
+
+CHOSEN: (1) `.remedy/config.toml` joins `_COMMON_PROTECTED` in `packages/orchestration/project_constitution.py`, listed when it exists, as the others are. (2) `base_lookup_dirs` in `packages/orchestration/project_tests.py` is the repository's own checkout when the check runs in a job's worktree, else the check's own folder; the configured command, the virtual environment and the node tools are read there and never in the worktree. `package.json`'s script and the `tests` folder are still read in the worktree, so a job that adds a project's first tests is judged by them (DECISION F299 D1 (2)). (3) `changed_source_file` names `.remedy/config.toml` or `package.json` when the worktree's copy differs from the checkout's, and `_run_project_tests` then refuses the check as `test_command_changed`, red with nothing run: a red check holds the gate, so a person judges the job, which is the finding's "review, never pass" in the only two outcomes a check has. The red control of `test_the_node_target_runs_for_real_with_npm_test`, which made the job's check fail by rewriting the job's `package.json`, now fails a test file instead, and the rewritten script proves the refusal. (4) R-1251 is registered in this round's first commit: the dry run met a port shared by two runtime-flow checks, measured in its own text, which no change of this round causes.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a job can no longer make its own acceptance check pass by writing the command the check runs or by planting an interpreter or a tool in its worktree; a job that changes the file its check's command comes from is shown to a person instead of passing.
+
+ALTERNATIVES CONSIDERED: (a) reading `package.json`'s script from the checkout and running it there, REJECTED because the job's tests live in the worktree; (b) a third check status, REJECTED because the check model has exactly two by design and every reader counts on it.
+
+HOW TO REVERSE: restore the touched files from `fa4eb0c35`, and delete R-1251's paragraph from `.agent/live_review.md` by a correction record.
