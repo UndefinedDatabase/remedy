@@ -253,8 +253,11 @@ def _resolve_stop_reason_decision(
     job_id_str: str, decision_id: str, reason: str | None, *, json_output: bool,
 ) -> None:
     from packages.orchestration.stop_reasons import resolve_stop_reason
+    # The job is resolved before its stop reasons' file name is built from it, as every
+    # other branch does, so a value holding `/` names no file outside the data folder (R-1196).
+    job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     stop_id = decision_id[3:]
-    sr = resolve_stop_reason(job_id_str, stop_id, reason or "manually resolved")
+    sr = resolve_stop_reason(job_id, stop_id, reason or "manually resolved")
     if sr is None:
         fail("stop_reason_not_found", f"stop reason not found: {stop_id}",
              json_output=json_output)

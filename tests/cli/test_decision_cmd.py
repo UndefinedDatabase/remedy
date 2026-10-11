@@ -146,7 +146,9 @@ class TestDecisionExplainAndResolveAnswerJSONThroughTheDispatcher:
             related_intent_id="", related_file="", safe_summary="a blocker",
             next_actions=(),
         )
-        with patch("packages.orchestration.stop_reasons.resolve_stop_reason",
+        with patch("apps.cli.commands.decision.resolve_job_id_or_fail",
+                   return_value="job-1"), \
+             patch("packages.orchestration.stop_reasons.resolve_stop_reason",
                    return_value=resolved):
             main(["decision", "resolve", "job-1", "sr:stop-1", "--json"])
         body = json.loads(capsys.readouterr().out)
@@ -154,6 +156,18 @@ class TestDecisionExplainAndResolveAnswerJSONThroughTheDispatcher:
         assert body["decision_id"] == "sr:stop-1" and body["job_id"] == "job-1"
         assert body["outcome"] == "resolved"
         assert body["stop_id"] == "stop-1" and body["reason_code"] == "test_failed"
+
+    def test_resolve_sr_refuses_a_job_value_holding_a_slash_before_reading_any_file(self, capsys):
+        """R-1196: the job is resolved first, so `../x` names no stop-reason file at all."""
+        from apps.cli.grouped import main
+
+        with patch("packages.orchestration.stop_reasons.resolve_stop_reason") as resolve, \
+             pytest.raises(SystemExit) as exc:
+            main(["decision", "resolve", "../outside", "sr:stop-1", "--json"])
+        assert exc.value.code == 1
+        body = json.loads(capsys.readouterr().out)
+        assert body["ok"] is False and body["error"] == "invalid_job_id"
+        resolve.assert_not_called()
 
     def test_resolve_a_missing_task_decision_is_the_envelope(self, capsys):
         from apps.cli.grouped import main
