@@ -195,7 +195,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1652 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1559 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -240,7 +240,6 @@ with the code that calls it.
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
-| 186 | `packages/orchestration/pingpong_job.py` | `run_job._stop_check` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
 | 183 | `packages/orchestration/task_edit_runtime.py` | `edit_task_at_runtime` |
@@ -362,7 +361,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
-| 5719 | `packages/orchestration/pingpong_job.py` |
+| 5626 | `packages/orchestration/pingpong_job.py` |
 | 5283 | `packages/orchestration/pingpong_loop.py` |
 | 4834 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |

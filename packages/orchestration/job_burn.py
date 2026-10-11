@@ -14,14 +14,15 @@ the arithmetic that judges a reading lives in ``burn_detector``, which this
 module calls and never reimplements, and that module's own deliberate
 absences (no clock, no config, no file) hold here too.
 
-Imports from ``burn_detector`` and the standard library only;
-``get_config`` is imported INSIDE :func:`job_burn_thresholds_from_config` and
-``AUTO_APPROVAL_MODE`` is imported INSIDE :func:`job_approved_unattended`, so
+Imports from ``burn_detector`` and the standard library only at its top;
+``get_config`` is imported INSIDE :func:`job_burn_thresholds_from_config`,
+``AUTO_APPROVAL_MODE`` INSIDE :func:`job_approved_unattended`, and the run log,
+the pause control and the decision queue INSIDE :func:`record_burn_trip`, so
 this module stays importable — and testable — with no config layer and no
 ``job_plan`` import present. ``run_job`` calls this module from its own safe
 point (DECISION F116 D4 (1) to (4)): one ``JobBurnMonitor`` per run, a sample
-recorded for every counted provider call, and the newest tripped reading kept
-on the job.
+recorded for every counted provider call, and :func:`record_burn_trip`, which
+keeps the newest tripped reading on the job (R-1241).
 
 Remedy deliberately does not throttle a job's parallel width on a trip,
 because ``run_job`` runs one task and one provider call at a time, so there
@@ -29,6 +30,7 @@ is no width to narrow (DECISION F116 D7 (4)).
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -49,6 +51,10 @@ CONFIG_KEY_JOB_BURN_EXPECTED_TOKENS_PER_HOUR = "job_burn.expected_tokens_per_hou
 
 #: The alarm's one unit: tokens, never dollars (DECISION F116 D3 (1)).
 JOB_BURN_UNIT = "tokens"
+
+#: What a run-log write raises that must never stop a healthy job: the same tuple
+#: ``pingpong_job._TASK_LOG_ERRORS`` names for the job's other run-log writes.
+_EVENT_WRITE_ERRORS = (OSError, RuntimeError, ValueError, TypeError)
 
 
 #: A call's amount in whatever ``usage_actuals`` reports, or ``None`` when it
@@ -191,3 +197,70 @@ class JobBurnMonitor:
     def reading(self) -> BurnReading | None:
         """``evaluate_burn_rate`` over every sample recorded so far."""
         return evaluate_burn_rate(self._samples, self._thresholds)
+
+
+#: R-1241 (DECISION F297 D12): the trip handler of ``run_job``'s safe point (DECISION F116 D4 (3)),
+#: moved here from ``run_job._stop_check``. A reading that does not trip, or that repeats the trip
+#: already recorded, changes nothing, so the newest TRIPPED record stays the job's evidence even
+#: once a later, untripped reading would otherwise erase it. A NEW trip is kept on the job and
+#: written to its run log as one ``job_burn_tripped`` event (DECISION F116 D8 (1)); it pauses a job
+#: approved to run with nobody watching and raises one [burn_alarm] decision carrying the
+#: arithmetic, while an attended job keeps running on the recorded warning alone (DECISION F116 D5
+#: (3)). ``now`` is the caller's, as this module reads no clock.
+def record_burn_trip(job: Any, monitor: JobBurnMonitor, *, persist: Callable[[Any], None],
+                     control_root: Any, now: datetime) -> str | None:
+    """Keep a NEW trip of *monitor*'s reading on *job*; None, or the pause control's own error
+    message when an unattended trip's pause could not be requested, which the caller answers."""
+    reading = monitor.reading()
+    if reading is None or not reading.tripped:
+        return None
+    record = job_burn_record(reading)
+    if record == job.burn_reading:
+        return None
+    job.burn_reading = record
+    persist(job)
+    unattended = job_approved_unattended(job)
+    # A ledger write must never stop a healthy job: a failure is logged, the trip stays recorded
+    # on the job, and the run goes on.
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.timeline import append_run_event
+
+        append_run_event(resolve_data_root(), job.job_id, event="job_burn_tripped",
+                         metadata={**record, "unattended": unattended})
+    except _EVENT_WRITE_ERRORS:
+        import logging
+
+        logging.getLogger(__name__).error(
+            "job_burn_tripped event write FAILED for job %r; the trip stays recorded on the job "
+            "and the run continues", job.job_id, exc_info=True)
+    if not unattended:
+        return None
+    from packages.orchestration import pause_control
+    from packages.orchestration.escalation import enqueue_task_decision, open_task_decisions
+    from packages.orchestration.pingpong_job import TASK_PENDING, TASK_RUNNING
+
+    sentence = job_burn_sentence(record)
+    try:
+        pause_control.request_pause(job.job_id, reason=f"burn_alarm: {sentence}",
+                                    source=BURN_PAUSE_SOURCE, control_root_path=control_root)
+    except pause_control.PauseControlError as exc:
+        return str(exc)
+    question = f"{BURN_DECISION_MARKER} {sentence}"
+    # DECISION F116 D9 (1): the park consumes the pause request, so `remedy job unpause` has
+    # nothing to lift; the relaunch is what continues the job, and answering only records.
+    impact = (f"job {job.job_id} is paused; `remedy job run {job.job_id}` continues it, and "
+              f"answering this question only records your choice")
+    open_burn = next((r for r in open_task_decisions(job)
+                      if str(r.get("question", "")).startswith(BURN_DECISION_MARKER)), None)
+    if open_burn is not None:
+        open_burn["question"] = question
+        open_burn["impact"] = impact
+    else:
+        target = next((t for t in job.tasks if t.status in (TASK_PENDING, TASK_RUNNING)),
+                      job.tasks[0])
+        enqueue_task_decision(job, task_id=target.task_id, question=question,
+                              options=("resume", "abandon"), safe_default="", impact=impact,
+                              now=now)
+    persist(job)
+    return None

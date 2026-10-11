@@ -3109,111 +3109,18 @@ def run_job(
             control_root_path=_control,
         )
         if not result.should_stop:
-            # F116 T002, DECISION F116 D4 (3): read the burn monitor BEFORE the
-            # predictive check below, on every safe point that reaches here.
-            # This round only RECORDS a trip — it never stops or pauses the
-            # job — and a reading that does not trip changes nothing, so the
-            # newest TRIPPED record stays the job's evidence even once a later,
-            # untripped reading would otherwise erase it.
+            # F116 T002, DECISION F116 D4 (3): read the burn monitor BEFORE the predictive check
+            # below, on every safe point that reaches here; `record_burn_trip` keeps a new trip on
+            # the job and pauses a job approved to run with nobody watching (R-1241).
             if _burn_monitor is not None:
-                _burn_reading = _burn_monitor.reading()
-                if _burn_reading is not None and _burn_reading.tripped:
-                    from packages.orchestration.job_burn import (
-                        job_burn_record as _record_burn_reading,
-                    )
-                    _burn_record = _record_burn_reading(_burn_reading)
-                    if _burn_record != job.burn_reading:
-                        job.burn_reading = _burn_record
-                        _persist_job(job)
-                        from packages.orchestration.job_burn import (
-                            job_approved_unattended as _job_approved_unattended,
-                        )
-                        _burn_unattended = _job_approved_unattended(job)
-                        # F116 T003, DECISION F116 D8 (1): one run-log event per NEW
-                        # trip, so the job's timeline names it. A ledger write must
-                        # never stop a healthy job: a failure is logged, the trip
-                        # stays recorded on the job, and the run goes on.
-                        try:
-                            from packages.orchestration.data_paths import (
-                                resolve_data_root as _burn_data_root,
-                            )
-                            from packages.orchestration.timeline import append_run_event
+                from packages.orchestration.job_burn import record_burn_trip
 
-                            append_run_event(
-                                _burn_data_root(), job.job_id, event="job_burn_tripped",
-                                metadata={**_burn_record, "unattended": _burn_unattended})
-                        except _TASK_LOG_ERRORS:
-                            import logging as _logging
-                            _logging.getLogger(__name__).error(
-                                "job_burn_tripped event write FAILED for job %r; the "
-                                "trip stays recorded on the job and the run continues",
-                                job.job_id, exc_info=True)
-                        # F116 T002, DECISION F116 D5 (3): a NEW trip pauses a job
-                        # approved to run with nobody watching, raising one
-                        # [burn_alarm] decision carrying the arithmetic; an
-                        # attended job keeps running on the recorded warning alone.
-                        if _burn_unattended:
-                            from packages.orchestration import (
-                                pause_control as _burn_pause_control,
-                            )
-                            from packages.orchestration.job_burn import (
-                                BURN_DECISION_MARKER as _burn_marker,
-                            )
-                            from packages.orchestration.job_burn import (
-                                BURN_PAUSE_SOURCE as _burn_pause_source,
-                            )
-                            from packages.orchestration.job_burn import (
-                                job_burn_sentence as _burn_sentence,
-                            )
-                            _sentence = _burn_sentence(_burn_record)
-                            try:
-                                _burn_pause_control.request_pause(
-                                    job.job_id,
-                                    reason=f"burn_alarm: {_sentence}",
-                                    source=_burn_pause_source,
-                                    control_root_path=_control,
-                                )
-                            except _burn_pause_control.PauseControlError as exc:
-                                return _PauseSignal(
-                                    job_id=job.job_id,
-                                    reason=f"{_PAUSE_ERROR_REASON_PREFIX}{exc}",
-                                    is_error=True)
-                            from packages.orchestration.escalation import (
-                                enqueue_task_decision as _enqueue_burn_decision,
-                            )
-                            from packages.orchestration.escalation import (
-                                open_task_decisions as _open_burn_decisions,
-                            )
-                            _question = f"{_burn_marker} {_sentence}"
-                            # DECISION F116 D9 (1): the park consumes the pause request,
-                            # so `remedy job unpause` has nothing to lift; the relaunch
-                            # is what continues the job, and answering only records.
-                            _impact = (
-                                f"job {job.job_id} is paused; `remedy job run "
-                                f"{job.job_id}` continues it, and answering "
-                                f"this question only records your choice")
-                            _open_burn = next(
-                                (r for r in _open_burn_decisions(job)
-                                 if str(r.get("question", ""))
-                                 .startswith(_burn_marker)),
-                                None)
-                            if _open_burn is not None:
-                                _open_burn["question"] = _question
-                                _open_burn["impact"] = _impact
-                            else:
-                                _burn_target = next(
-                                    (t for t in job.tasks
-                                     if t.status in (TASK_PENDING, TASK_RUNNING)),
-                                    job.tasks[0])
-                                _enqueue_burn_decision(
-                                    job,
-                                    task_id=_burn_target.task_id,
-                                    question=_question,
-                                    options=("resume", "abandon"),
-                                    safe_default="",
-                                    impact=_impact,
-                                    now=datetime.now(timezone.utc))
-                            _persist_job(job)
+                _burn_error = record_burn_trip(job, _burn_monitor, persist=_persist_job,
+                                               control_root=_control, now=datetime.now(timezone.utc))
+                if _burn_error is not None:
+                    return _PauseSignal(job_id=job.job_id,
+                                        reason=f"{_PAUSE_ERROR_REASON_PREFIX}{_burn_error}",
+                                        is_error=True)
             # F104: neither the operator stop nor the REACTIVE budget check fired,
             # so — and only so — ask whether the NEXT task would breach the money
             # limit. The predictive check runs LAST on purpose: it never replaces
