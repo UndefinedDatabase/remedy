@@ -241,6 +241,38 @@ def test_resume_registered_leaves_an_already_ended_record_alone(setup):
     assert after == before, "a record whose end was already recorded must not be touched"
 
 
+def test_resume_registered_leaves_an_ended_record_without_an_exit_code_alone(setup):
+    """R-1176: an adopted or a lost run's end is written with `exit_code` None; a later restart
+    neither marks it lost again nor starts its job a second time."""
+    root, paths, launcher, release = setup
+    _plant_record(paths, SR.RunRecord(
+        job_id="jobN", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e", ended_at="2026-01-01T00:00:03Z"))
+    before = (paths.runs_dir / "jobN.json").read_bytes()
+
+    assert launcher.resume_registered(job_is_running=lambda jid: False) == []
+    assert launcher.resume_registered(job_is_running=lambda jid: True) == []
+
+    assert not launcher.running("jobN")
+    assert (paths.runs_dir / "jobN.json").read_bytes() == before
+
+
+def test_a_run_marked_lost_is_not_started_again_by_the_next_restart(setup):
+    """R-1176: the record the LOST branch writes reads as ended to every later restart."""
+    root, paths, launcher, release = setup
+    _plant_record(paths, SR.RunRecord(
+        job_id="jobT", pid=_dead_pid(), started_at="2026-01-01T00:00:00Z",
+        out_log="o", err_log="e"))
+    assert launcher.resume_registered(job_is_running=lambda jid: False) == [
+        {"job_id": "jobT", "action": "lost"}]
+    lost = (paths.runs_dir / "jobT.json").read_bytes()
+
+    assert launcher.resume_registered(job_is_running=lambda jid: True) == []
+
+    assert not launcher.running("jobT")
+    assert (paths.runs_dir / "jobT.json").read_bytes() == lost
+
+
 def test_resume_registered_skips_a_record_that_cannot_be_read(setup):
     root, paths, launcher, release = setup
     paths.runs_dir.mkdir(parents=True, exist_ok=True)
