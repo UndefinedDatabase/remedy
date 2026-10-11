@@ -351,17 +351,22 @@ def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
     raise OrderJobPlanError(f"task plan rejected: {error}") from error
 
 
-# Step (1) of `plan_order_job`'s boundary on docs/system/structure-ledger-v1.md (F297, R-1247):
-# the record a task plan that could not be parsed leaves, moved out unchanged.
+# Step (1) of `plan_order_job`'s boundary on docs/system/structure-ledger-v1.md (F297): the
+# record a task plan that could not be parsed leaves. The job is saved stopped, never pending,
+# because nothing will run it (R-1247).
 def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
+    from datetime import datetime, timezone
+
     from packages.orchestration.data_paths import job_evidence_export_dir
     from packages.orchestration.failure_postmortem import (
         FailureSignals,
         build_job_rollup,
         write_postmortem,
     )
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JOB_STOPPED, save_job_plan
 
+    job.state, job.stop_reason = JOB_STOPPED, "plan_parse_failed"
+    job.finished_at = datetime.now(timezone.utc).isoformat()
     save_job_plan(job)
     signals = FailureSignals(error_class="parse", error_text=error_hint or "task plan parse failure")
     pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
@@ -757,11 +762,12 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
     ``planned``. Each job the step saved before the failure is stopped, and the
     walk no longer lists it among its ``job_ids``, so a client that follows the
     first job never waits on a job that will not run. The stopped jobs stay on
-    disk and linked to the mission; the note names them.
+    disk and leave their missions' chains (R-1247); the note names them.
     """
     from datetime import datetime, timezone
 
     from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, save_job_plan
+    from packages.orchestration.repo_mission import unlink_order_jobs
 
     stopped: list[str] = []
     for job_id in ctx.job_ids:
@@ -773,6 +779,8 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
         job.finished_at = datetime.now(timezone.utc).isoformat()
         save_job_plan(job)
         stopped.append(job_id)
+    for project_id, (mission_id, _order_id) in ctx.project_missions.items():
+        unlink_order_jobs(project_id, mission_id, stopped)
     ctx.job_ids.clear()
     if not stopped:
         return ""

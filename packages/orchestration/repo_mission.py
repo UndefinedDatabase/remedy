@@ -274,6 +274,21 @@ def link_order_job(project_id: str, mission_id: str, order_id: str, job_id: str,
                                    order_id=order_id, root=root)
 
 
+def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],
+                      root: Path | None = None) -> Mission:
+    """Take jobs that will never run out of the mission's chain (R-1247), so none of them is ever
+    its latest link; a job id the chain does not hold is passed over."""
+    drop = set(job_ids)
+    with repo_mission_lock(project_id, root):
+        current = load_mission(project_id, mission_id, root)
+        kept = tuple(link for link in current.job_links if link.job_id not in drop)
+        if len(kept) == len(current.job_links):
+            return current
+        mission = replace(current, job_links=kept)
+        save_mission(mission, root)
+    return mission
+
+
 def order_batch_view(mission: Mission) -> list[dict[str, Any]]:
     """One row per batch, oldest first, with the jobs the chain attributes to it (DECISION amend1011b D3)."""
     rows = []
