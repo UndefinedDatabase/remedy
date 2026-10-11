@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.call_identity import sha_text
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.mission_record import (
     MISSION_ROLE_FOLLOW_UP,
@@ -107,6 +108,8 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         job_title=text[:80],
         mission=mission.goal,
         user_prompt=text,
+        # R-1149: the digest of the step it was planned from, as DECISION F295 D10 rules.
+        job_file_sha256=sha_text(text),
         **{"project_id": str(mission.project_id), **follow_up_target(mission, previous_job)},
         tasks=tasks,
         state=RunState.PLANNED,

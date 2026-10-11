@@ -18,6 +18,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from packages.core.models import RunState
+from packages.orchestration.call_identity import sha_text
 from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import ProjectBrainGraph
@@ -90,7 +91,7 @@ def continue_from_node(
     child_job = JobPlan(
         job_id=child_id,
         job_title=prompt[:100] if len(prompt) > 100 else prompt,
-        user_prompt=prompt,
+        user_prompt=prompt, job_file_sha256=sha_text(prompt),
         state=RunState.PLANNED if tasks else RunState.PENDING,
         tasks=tasks,
         artifacts=[],

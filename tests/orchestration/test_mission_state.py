@@ -797,6 +797,15 @@ class TestTwoJobFixtureEndToEnd:
         assert ran == ["Add the CSV path"]
         assert run.follow_up_started is True
 
+    def test_the_follow_up_job_records_the_digest_of_its_step(self, tmp_path):
+        """R-1149: as DECISION F295 D10 rules for `remedy do`, the job records the sha256 of the
+        input it was planned from, here the step's text, which a run manifest requires."""
+        import hashlib
+
+        mission, _ = self._mission_with_a_green_first_job(tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path", root=tmp_path)
+        assert job_two.job_file_sha256 == hashlib.sha256(b"Add the CSV path").hexdigest()
+
     def test_a_broken_previous_state_stops_the_follow_up_before_it_starts(
             self, tmp_path):
         mission, job_one = self._mission_with_a_green_first_job(
