@@ -1231,3 +1231,5 @@
 2026-10-11, F205 session 4 — the reviewer's block gave its gate 3 three lines while its own text for `.agent/plan.md` added a fourth that the gate's pattern matches; the worker stopped before C1, the reviewer corrected the gate, and nothing on disk is wrong.
 2026-10-11, F297 round 1 — the worker's commits carry the co-author trailer its own session named, where the block ordered another model's name; nothing on disk is wrong.
 2026-10-11, F297 round 1 — the reviewer's block ordered the handback's context sentence to speak of the reviewer's context, and the worker copied it into its own self-assessment as ordered; nothing on disk is wrong.
+2026-10-11, F297 round 2 — after rebasing its block onto the operator's answers, the reviewer left the handback's ordered question count at 2 where the file read none; the worker wrote the count it read, and nothing on disk is wrong.
+2026-10-11, F297 round 2 — the handback's item-status table names the supervisor's restart function `reconcile_open_runs`, where it is `resume_registered`; nothing on disk is wrong.
