@@ -100,12 +100,17 @@ class MissionJobLink:
     role: str
     created_at: str
     project_id: str = ""
+    #: The order batch (DECISION amend1011b D3) that asked for this job; "" for a link written
+    #: before order batches existed. ADDITIVE and OPTIONAL on ``project_id``'s terms.
+    order_id: str = ""
 
     def to_json(self) -> dict[str, Any]:
         body = {"job_id": self.job_id, "role": self.role,
                 "created_at": self.created_at}
         if self.project_id:
             body["project_id"] = self.project_id
+        if self.order_id:
+            body["order_id"] = self.order_id
         return body
 
     @classmethod
@@ -120,7 +125,8 @@ class MissionJobLink:
             raise ValueError("mission job link carries no job id")
         return cls(job_id=job_id, role=role,
                    created_at=str(body.get("created_at", "")),
-                   project_id=str(body.get("project_id", "")))
+                   project_id=str(body.get("project_id", "")),
+                   order_id=str(body.get("order_id", "")))
 
 
 # Three fields rather than a union, because they answer different questions.
@@ -155,6 +161,64 @@ class MissionOrder:
         return cls(text=str(body.get("text", "")),
                    source_path=str(body.get("source_path", "")),
                    source_sha256=str(body.get("source_sha256", "")))
+
+
+@dataclass(frozen=True)
+class MissionOrderBatch:
+    """One `remedy do` order appended to a repository's lifetime mission (DECISION amend1011b D3).
+
+    The mission is the repository's one lasting home; an order is one batch of jobs under it.
+    Everything but ``sealed`` is written once, when the order is accepted. ``sealed`` is written
+    once too, when the NEXT order is accepted: it carries the plan and contract the mission's
+    single current-order slots held for this order, so a later order never overwrites them.
+    Jobs are not listed here: a job link names its batch by ``order_id``, so the chain stays the
+    one record of which jobs exist. Outcomes and spend are read from the jobs and the ledger.
+    """
+
+    order_id: str
+    text: str = ""
+    source_path: str = ""
+    source_sha256: str = ""
+    created_at: str = ""
+    target_commit: str = ""
+    kind: str = "build"
+    budgets: dict[str, Any] | None = None
+    correlation_id: str = ""
+    plan_source: str = ""
+    reopened_from: str = ""
+    sealed: dict[str, Any] | None = None
+
+    def to_json(self) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "order_id": self.order_id, "text": self.text, "source_path": self.source_path,
+            "source_sha256": self.source_sha256, "created_at": self.created_at,
+            "target_commit": self.target_commit, "kind": self.kind,
+        }
+        for key in ("budgets", "sealed"):
+            if getattr(self, key) is not None:
+                body[key] = getattr(self, key)
+        for key in ("correlation_id", "plan_source", "reopened_from"):
+            if getattr(self, key):
+                body[key] = getattr(self, key)
+        return body
+
+    @classmethod
+    def from_json(cls, body: Any) -> MissionOrderBatch:
+        if not isinstance(body, dict) or not body.get("order_id"):
+            raise ValueError("mission order batch must be an object with an order id")
+        for key in ("budgets", "sealed"):
+            if body.get(key) is not None and not isinstance(body[key], dict):
+                raise ValueError(f"mission order batch {key} must be an object")
+        return cls(
+            order_id=str(body["order_id"]), text=str(body.get("text", "")),
+            source_path=str(body.get("source_path", "")),
+            source_sha256=str(body.get("source_sha256", "")),
+            created_at=str(body.get("created_at", "")),
+            target_commit=str(body.get("target_commit", "")),
+            kind=str(body.get("kind", "build")), budgets=body.get("budgets"),
+            correlation_id=str(body.get("correlation_id", "")),
+            plan_source=str(body.get("plan_source", "")),
+            reopened_from=str(body.get("reopened_from", "")), sealed=body.get("sealed"))
 
 
 @dataclass(frozen=True)
@@ -205,6 +269,14 @@ class Mission:
     order: MissionOrder | None = None
     contract: dict[str, Any] | None = None
     project_ids: tuple[str, ...] = ()
+    #: The verified repository this mission is the one lasting mission of (DECISION amend1011b
+    #: D1); "" on a record written before the rule. ADDITIVE and OPTIONAL like ``project_ids``.
+    repo: str = ""
+    #: Every order accepted into this mission, oldest first (DECISION amend1011b D3).
+    orders: tuple[MissionOrderBatch, ...] = ()
+    #: Set only on a record a duplicate was folded into: the id of the canonical mission it
+    #: redirects to (DECISION amend1011b D6). Such a record is an archive, never a live mission.
+    alias_of: str = ""
 
     def to_json(self) -> dict[str, Any]:
         body = {
@@ -233,6 +305,12 @@ class Mission:
         # Written only on a mission over several projects, for the same reason (DECISION F205 D2).
         if self.project_ids:
             body["project_ids"] = list(self.project_ids)
+        if self.repo:
+            body["repo"] = self.repo
+        if self.orders:
+            body["orders"] = [batch.to_json() for batch in self.orders]
+        if self.alias_of:
+            body["alias_of"] = self.alias_of
         return body
 
     @classmethod
@@ -265,6 +343,9 @@ class Mission:
                 raise ValueError("mission project_ids must be a list")
             spanned = tuple(str(project) for project in spanned)
             check_spanned_project_ids(project_id, spanned)
+        orders = body.get("orders") or []
+        if not isinstance(orders, list):
+            raise ValueError("mission orders must be a list")
         return cls(
             id=mission_id,
             project_id=project_id,
@@ -278,6 +359,9 @@ class Mission:
             order=MissionOrder.from_json(order) if order is not None else None,
             contract=contract,
             project_ids=spanned or (),
+            repo=str(body.get("repo", "")),
+            orders=tuple(MissionOrderBatch.from_json(batch) for batch in orders),
+            alias_of=str(body.get("alias_of", "")),
         )
 
     def job_ids(self) -> tuple[str, ...]:
@@ -286,6 +370,10 @@ class Mission:
     def latest_link(self) -> MissionJobLink | None:
         """The last job linked into the chain, or None for an empty mission."""
         return self.job_links[-1] if self.job_links else None
+
+    def current_order(self) -> MissionOrderBatch | None:
+        """The order batch the current-order slots (order, plan, contract) belong to."""
+        return self.orders[-1] if self.orders else None
 
     def spanned_project_ids(self) -> tuple[str, ...]:
         """Every project this mission's jobs may work in, its own project first."""

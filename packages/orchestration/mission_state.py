@@ -201,17 +201,25 @@ def load_mission(project_id: str, mission_id: str,
     except ValueError as exc:
         raise MissionError(f"corrupt mission record {mission_id}: {exc}") from exc
     try:
-        return Mission.from_json(raw)
+        mission = Mission.from_json(raw)
     except ValueError as exc:
         raise MissionError(f"corrupt mission record {mission_id}: {exc}") from exc
+    if not mission.alias_of:
+        return mission
+    target = load_mission(project_id, mission.alias_of, root)   # DECISION amend1011b D6
+    if target.alias_of:
+        raise MissionError(f"mission {mission_id} redirects twice")
+    return target
 
 
-def list_missions_safe(project_id: str, root: Path | None = None,
+def list_missions_safe(project_id: str, root: Path | None = None, *,
+                       include_aliases: bool = False,
                        ) -> tuple[list[Mission], bool, list[str]]:
     """List one project's missions with corruption VISIBLE.
 
     Returns ``(missions, degraded, skipped_files)``.  Newest first by
     ``created_at``, ties broken by id so the order is total and reproducible.
+    A folded record (``alias_of``) is listed only with *include_aliases* (DECISION amend1011b D6).
     """
     directory = mission_dir_for_project(project_id, root)
     if not directory.is_dir():
@@ -220,10 +228,12 @@ def list_missions_safe(project_id: str, root: Path | None = None,
     skipped: list[str] = []
     for path in sorted(directory.glob("*.json")):
         try:
-            missions.append(
-                Mission.from_json(json.loads(path.read_text(encoding="utf-8"))))
+            mission = Mission.from_json(json.loads(path.read_text(encoding="utf-8")))
         except (OSError, ValueError):
             skipped.append(path.name)
+            continue
+        if include_aliases or not mission.alias_of:
+            missions.append(mission)
     missions.sort(key=lambda m: (m.created_at, m.id), reverse=True)
     return (missions, len(skipped) > 0, skipped)
 
@@ -296,27 +306,16 @@ def mission_for_job(job_id: str, root: Path | None = None) -> Mission | None:
 MISSION_ENDED_STATUSES = (MISSION_STATUS_ACHIEVED, MISSION_STATUS_ABANDONED)
 
 
-# WHY: one order file started twice must not quietly start a second mission beside the first
-# (T004 of docs/roadmap/features/T12_F304.md, DECISION F304 D6).
 def running_mission_for_order_file(source_path: str, root: Path | None = None) -> Mission | None:
-    """The newest mission that has not ended and records *source_path* as its order file, or None.
+    """See `repo_mission.running_mission_for_order_file` (DECISION amend1011b D5)."""
+    from packages.orchestration.repo_mission import running_mission_for_order_file as running
 
-    Scans every project's mission area, as `mission_for_job` does, because a client may name the
-    order file from anywhere. *source_path* is compared as `read_order_file` records it, a
-    resolved absolute path; an empty one matches nothing.
-    """
-    wanted = str(source_path)
-    if not wanted:
-        return None
-    running = [mission for project_id in project_ids_with_missions(root)
-               for mission in list_missions(project_id, root)
-               if mission.order is not None and mission.order.source_path == wanted
-               and mission.status not in MISSION_ENDED_STATUSES]
-    return max(running, key=lambda mission: mission.created_at, default=None)
+    return running(source_path, root)
 
 
 def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
                         role: str = MISSION_ROLE_FOLLOW_UP, *,
+                        order_id: str = "",
                         now: datetime | None = None,
                         root: Path | None = None) -> Mission:
     """Append a job to a mission's chain, enforcing both link validators.
@@ -361,7 +360,8 @@ def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
         project = found
 
     link = MissionJobLink(job_id=str(job_id), role=role,
-                          created_at=_utc_now_iso(now), project_id=project)
+                          created_at=_utc_now_iso(now), project_id=project,
+                          order_id=order_id)
     updated = replace(mission, job_links=(*mission.job_links, link))
     save_mission(updated, root)
     return updated
@@ -532,8 +532,14 @@ def render_mission_chain(mission: Mission) -> list[str]:
     if not mission.job_links:
         lines.append("  Chain:  (no jobs linked yet)")
         return lines
+    from packages.orchestration.repo_mission import chain_start, render_order_lines
+
+    lines.extend(render_order_lines(mission))
     lines.append("  Chain:")
-    for index, link in enumerate(mission.job_links, start=1):
+    start = chain_start(mission)
+    if start:
+        lines.append(f"    ... {start} earlier job(s); all are in `remedy mission show --json`")
+    for index, link in enumerate(mission.job_links[start:], start=start + 1):
         lines.append(
             f"    {index}. {link.job_id}  {link.role:<9}  "
             f"{mission_job_state_label(link.job_id)}")
