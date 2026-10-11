@@ -17,6 +17,13 @@ first tests is judged by them:
      interpreter, when a ``tests`` folder exists;
   4. none of the above: no test command, and the caller refuses the check
      rather than judging it.
+
+R-1236: when the check runs in a job's worktree, the configured command, the
+virtual environment and the node tools are read from the repository's own
+checkout (``base_lookup_dirs``), never from the worktree, whose files the job
+itself writes; and ``changed_source_file`` names the file a found command came
+from when the job's copy of it differs from the checkout's, so the caller
+refuses to judge a command the job wrote.
 """
 from __future__ import annotations
 
@@ -47,6 +54,9 @@ VENV_DIRNAMES = (".venv", "venv")
 
 #: Where a found command came from, in DECISION F299 D1 (2)'s order.
 PROJECT_TEST_SOURCES = ("config", "package_json", "tests_folder")
+
+#: The file each source reads its command from; the tests folder's argv is Remedy's own.
+PROJECT_TEST_SOURCE_FILES = {"config": CONFIG_RELPATH, "package_json": Path("package.json")}
 
 
 class ProjectTestConfigError(ValueError):
@@ -115,6 +125,33 @@ def project_lookup_dirs(cwd: Path) -> tuple[Path, ...]:
     return (cwd, candidate)
 
 
+def base_lookup_dirs(cwd: Path) -> tuple[Path, ...]:
+    """Where a check reads a project's interpreter, tools and configured command (R-1236).
+
+    The repository's own checkout when `cwd` is a job's worktree, the last of
+    `project_lookup_dirs`, and never the worktree, whose files the job itself
+    writes; `cwd` alone when it is no job's worktree.
+    """
+    return project_lookup_dirs(cwd)[-1:]
+
+
+def changed_source_file(cwd: Path, command: ProjectTestCommand) -> str:
+    """The file *command* came from, when the job's worktree holds it different from the checkout.
+
+    Empty for the tests folder's argv, which Remedy builds itself, and when `cwd`
+    is no job's worktree. A file present on one side only counts as changed
+    (R-1236).
+    """
+    relpath = PROJECT_TEST_SOURCE_FILES.get(command.source)
+    [base] = base_lookup_dirs(cwd)
+    if relpath is None or base == cwd:
+        return ""
+    mine, theirs = cwd / relpath, base / relpath
+    if (mine.read_bytes() if mine.is_file() else None) != (theirs.read_bytes() if theirs.is_file() else None):
+        return str(relpath)
+    return ""
+
+
 def find_virtualenv(dirs: Sequence[Path]) -> Path | None:
     """The first `d / name` holding both `pyvenv.cfg` and `bin/python`.
 
@@ -146,9 +183,10 @@ def project_environment(cwd: Path) -> dict[str, str]:
     found, so a caller merging this in adds nothing. Otherwise `PATH` is the
     virtual environment's `bin`, then the node folder — each only when
     found — then the parent's own `PATH`, and `VIRTUAL_ENV` is set when a
-    virtual environment was found.
+    virtual environment was found. Both are read where `base_lookup_dirs`
+    says, never in a job's worktree (R-1236).
     """
-    dirs = project_lookup_dirs(cwd)
+    dirs = base_lookup_dirs(cwd)
     venv = find_virtualenv(dirs)
     node_bin = find_node_bin(dirs)
     if venv is None and node_bin is None:
@@ -168,8 +206,8 @@ def project_environment(cwd: Path) -> dict[str, str]:
 
 
 def project_python(cwd: Path, default: str) -> str:
-    """The found virtual environment's `bin/python`, else `default`."""
-    venv = find_virtualenv(project_lookup_dirs(cwd))
+    """The virtual environment's `bin/python` where `base_lookup_dirs` says, else `default`."""
+    venv = find_virtualenv(base_lookup_dirs(cwd))
     return str(venv / "bin" / "python") if venv is not None else default
 
 
@@ -219,9 +257,10 @@ def find_project_test_command(cwd: Path, python: str) -> ProjectTestCommand | No
     script); else, when `cwd / "tests"` is a folder, the pytest argv for the
     selector `tests` under the project's own interpreter, source
     `tests_folder`; else `None`. A :class:`ProjectTestConfigError` from the
-    first source propagates.
+    first source propagates. The configured command is read where
+    `base_lookup_dirs` says, never from a job's worktree (R-1236).
     """
-    configured = read_configured_command(cwd)
+    configured = read_configured_command(base_lookup_dirs(cwd)[0])
     if configured is not None:
         return ProjectTestCommand(argv=configured, source="config")
 

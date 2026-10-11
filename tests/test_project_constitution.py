@@ -304,6 +304,12 @@ class TestKnownPaths:
         c = load_project_constitution(tmp_path)
         assert "pyproject.toml" in c.protected_paths
 
+    def test_the_project_config_is_protected_when_it_exists(self, tmp_path):
+        """R-1236: it names the command the acceptance check runs."""
+        assert ".remedy/config.toml" not in load_project_constitution(tmp_path).protected_paths
+        _write(tmp_path, ".remedy/config.toml", "[tests]\ncommand = [\"make\", \"check\"]\n")
+        assert ".remedy/config.toml" in load_project_constitution(tmp_path).protected_paths
+
     def test_env_file_in_risky(self, tmp_path):
         (tmp_path / ".env").write_text("SECRET=abc")
         c = load_project_constitution(tmp_path)

@@ -71,6 +71,7 @@ from packages.orchestration.exec_guard import (
 from packages.orchestration.project_tests import (
     NO_TEST_COMMAND_MESSAGE,
     ProjectTestConfigError,
+    changed_source_file,
     find_project_test_command,
     project_environment,
     project_python,
@@ -110,6 +111,9 @@ REASON_CWD_MISSING = "cwd_missing"
 REASON_NO_TEST_COMMAND = "no_test_command"
 #: project_tests: the `[tests]` table of `.remedy/config.toml` cannot be used.
 REASON_TEST_COMMAND_INVALID = "test_command_invalid"
+#: project_tests: the job changed the file its test command comes from, so the
+#: command is not run as the job's own check and a person judges it (R-1236).
+REASON_TEST_COMMAND_CHANGED = "test_command_changed"
 #: runtime_flow (T003).
 REASON_RUNTIME_NOT_CONFIGURED = "runtime_not_configured"
 REASON_APP_START_FAILED = "app_start_failed"
@@ -414,6 +418,12 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
                         NO_TEST_COMMAND_MESSAGE)
 
     argv = list(command.argv)
+    changed = changed_source_file(cwd, command)
+    if changed:
+        return _refused(
+            check, REASON_TEST_COMMAND_CHANGED, argv, declared_cwd,
+            f"the job changed {changed}, the file this check's test command comes from; a "
+            f"command the job wrote is never run as its own check, so nothing was run")
     if command.source != "tests_folder" and argv[0] not in ctx.allowed:
         return _refused(
             check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,

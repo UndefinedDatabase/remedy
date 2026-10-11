@@ -40,6 +40,7 @@ from packages.orchestration.dod_runners import (
     REASON_NONE,
     REASON_NONZERO_EXIT,
     REASON_RUNTIME_NOT_CONFIGURED,
+    REASON_TEST_COMMAND_CHANGED,
     REASON_TEST_COMMAND_INVALID,
     REASON_TIMEOUT,
     REASON_TOOL_UNAVAILABLE,
@@ -372,12 +373,51 @@ class TestProjectTestsKind:
         assert ev.status == STATUS_PASSED, ev.output_tail
         assert ev.argv == ("npm", "test")
 
-        (worktree / "package.json").write_text(json.dumps(
-            {"name": "node-target", "version": "0.1.0", "private": True,
-             "scripts": {"test": "node -e \"process.exit(1)\""}}) + "\n")
+        (worktree / "test" / "sum.test.js").write_text(
+            "const test = require('node:test');\n"
+            "const assert = require('node:assert');\n\n"
+            "test('sum', () => { assert.strictEqual(1 + 1, 3); });\n")
         red = run_check(project_tests_check(), worktree, timeout_sec=60)
         assert red.status == STATUS_FAILED
         assert red.reason == REASON_NONZERO_EXIT
+
+        # R-1236: a job that rewrites the script its own check runs is refused, and nothing runs.
+        (worktree / "package.json").write_text(json.dumps(
+            {"name": "node-target", "version": "0.1.0", "private": True,
+             "scripts": {"test": "node -e \"process.exit(0)\""}}) + "\n")
+        refused = run_check(project_tests_check(), worktree, timeout_sec=60)
+        assert (refused.status, refused.reason, refused.exit_code) == (
+            STATUS_FAILED, REASON_TEST_COMMAND_CHANGED, None)
+        assert "package.json" in refused.output_tail
+
+    def test_a_worktrees_rewritten_config_is_refused_and_the_checkouts_command_is_the_one_found(
+            self, tmp_path: Path, monkeypatch):
+        """R-1236: a builder that writes `.remedy/config.toml` with a command that always passes
+        neither runs it nor turns its check green."""
+        repo = tmp_path / "config-target"
+        _init_repo(repo)
+        conf = repo / ".remedy"
+        conf.mkdir()
+        (conf / "config.toml").write_text('[tests]\ncommand = ["python3", "-m", "pytest"]\n')
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "init")
+        worktree = repo / ".remedy-wt" / "wt"
+        worktree.parent.mkdir(parents=True)
+        _git(repo, "worktree", "add", str(worktree), "-b", "wt-branch")
+        (worktree / ".remedy" / "config.toml").write_text(
+            '[tests]\ncommand = ["python3", "-c", "pass"]\n')
+
+        def _never(*args, **kwargs):
+            raise AssertionError("a command the job wrote must not be spawned")
+
+        from packages.orchestration import dod_runners
+        monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _never)
+
+        ev = run_check(project_tests_check(), worktree, allowed_executables={"python3"})
+        assert (ev.status, ev.reason, ev.exit_code) == (
+            STATUS_FAILED, REASON_TEST_COMMAND_CHANGED, None)
+        assert ev.argv == ("python3", "-m", "pytest")
+        assert ".remedy/config.toml" in ev.output_tail
 
 
 # ---------------------------------------------------------------------------
