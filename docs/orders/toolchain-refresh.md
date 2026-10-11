@@ -6,7 +6,7 @@ this order is how the pins move on purpose. Remedy's self-use track may turn thi
 job no more than once every fourteen days. The job ends with a pull request for a person to
 review. Nothing in it merges anything.
 
-Budget: max_tasks=5, max_provider_calls=40, max_cost_usd=10.00, timeout_sec=900
+Budget: max_tasks=5, max_provider_calls=40, max_cost_usd=28.00, timeout_sec=900
 
 ## Task 1 — Find the pinned tools that have a newer release
 
@@ -14,11 +14,16 @@ Run `remedy doctor toolchain`. For each tool it lists, compare the pinned versio
 newest version the package index knows. A tool whose newest version reads "unknown" could not be
 checked; say so and leave its pin alone. Also compare the two Python versions the matrix in
 `.github/workflows/ci.yml` runs with the oldest Python that `pyproject.toml` promises to support
-and with the newest stable Python that GitHub's hosted runners offer.
+and with the newest stable Python that GitHub's hosted runners offer. A model does not know from
+its training which Python is the newest stable one, so read it from the list of versions the
+runners' Python setup installs,
+`https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json`, taking
+the highest version whose entry is marked stable.
 
 Acceptance:
 - The task's output lists every tool whose pin can move, with its pinned and its newest version.
 - The task's output says whether either Python version in the CI matrix should move, and why.
+- The task's output names the newest stable Python with the address it was read from.
 
 ## Task 2 — Read the release notes of every tool that moves
 

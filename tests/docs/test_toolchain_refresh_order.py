@@ -73,6 +73,34 @@ def test_the_order_declares_the_budget_it_needs():
     )
 
 
+#: R-1156: what one provider call of this order cost in its first run under its own budget, the
+#: self-use job `f146c82a6d8e42ca` of F295 (`.agent/selfuse_f295/result_state.txt`): 10.1519466
+#: USD measured over 11 priced calls, rounded up to the cent.
+PER_CALL_USD = 0.93
+#: The most calls one task makes: a builder and a reviewer call in its first round and in each of
+#: the two repair rounds a task is allowed by default (T001 of that run used both).
+CALLS_PER_TASK = 6
+
+
+def test_the_declared_cost_covers_every_task_at_the_measured_cost_per_call():
+    """R-1156: under the old 10-dollar budget the run spent it all on three tasks and stopped
+    before the whole-suite run and the pull request the order exists for."""
+    from packages.orchestration.self_use_runner import parse_order_budget
+
+    declared = parse_order_budget(_text())
+    assert declared["max_cost_usd"] >= PER_CALL_USD * CALLS_PER_TASK * declared["max_tasks"]
+    assert declared["max_provider_calls"] >= CALLS_PER_TASK * declared["max_tasks"]
+
+
+def test_task_one_reads_the_newest_stable_python_from_a_named_address():
+    """R-1157: Task 1 answered from its training and called a released Python a beta."""
+    task_one = re.split(r"^## Task \d+ ", _text(), flags=re.M)[1]
+    body, acceptance = task_one.split("\nAcceptance:\n", 1)
+    assert ("https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json"
+            in body)
+    assert "the address it was read from" in acceptance
+
+
 def test_the_budget_line_sits_where_the_planner_cannot_see_it():
     """`parse_job_file` stops reading prose at the first `## Task` heading."""
     from packages.orchestration.pingpong_job import parse_job_file
