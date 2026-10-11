@@ -17,6 +17,11 @@ _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 _ALLOWED_TOOLS_ARGS = ["--allowedTools", "Edit,Write,MultiEdit"]
 _DANGEROUS_SKIP_ARGS = ["--dangerously-skip-permissions"]
 
+#: The model name a claude-cli call is fingerprinted under when no model is set: the CLI then
+#: runs its own default, and a run manifest refuses an empty model (R-1162). It names the
+#: fingerprint only; no `--model` switch is added to the command line.
+CLAUDE_CLI_UNSET_MODEL = "claude-cli-default"
+
 #: The built-in tools a worker's role uses (DECISION F302 D2): a reader reads and searches, and a
 #: builder that may write also edits. Claude Code describes every tool it offers in each call's
 #: context, so the others are left out unless the key `claude_cli.all_tools` is true.

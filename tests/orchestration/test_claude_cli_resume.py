@@ -21,6 +21,7 @@ import pytest
 
 from packages.orchestration import pingpong_provider
 from packages.orchestration.call_identity import prepare_call_input
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
 from packages.orchestration.pingpong_loop import PingPongResult, _call_with_retry, run_pingpong
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
@@ -199,14 +200,16 @@ class TestSupportsResumeIsTrue:
 class TestAFreshCallsFingerprintIsUnchangedByF287:
     """R-1161: a call with no `resume` fingerprints exactly as it did before DECISION
     F287 D2 added `resume` threading — the new keyword must never become a silent
-    extra material input for the ordinary, non-resuming call."""
+    extra material input for the ordinary, non-resuming call. A provider with no model
+    set fingerprints under `CLAUDE_CLI_UNSET_MODEL` since R-1162."""
 
     def test_a_fresh_build_fingerprint_equals_the_direct_formula(self) -> None:
         proc = MagicMock(returncode=0, stdout=_envelope(result="done"), stderr="")
         with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
             out = _provider().build("B")
         expected = prepare_call_input(
-            prompt="B", model="", mode="cli-legacy", options={"write_mode": "none"})
+            prompt="B", model=CLAUDE_CLI_UNSET_MODEL, mode="cli-legacy",
+            options={"write_mode": "none"})
         assert out.prepared_input.fingerprint == expected.fingerprint
 
     def test_a_fresh_structured_review_fingerprint_equals_the_direct_formula(
@@ -217,7 +220,7 @@ class TestAFreshCallsFingerprintIsUnchangedByF287:
         with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
             out = _provider().review("R")
         expected = prepare_call_input(
-            prompt="R", model="", mode="cli-native",
+            prompt="R", model=CLAUDE_CLI_UNSET_MODEL, mode="cli-native",
             schema=_to_json_schema_str(_ReviewVerdictSchema),
             options={"write_mode": "none"})
         assert out.prepared_input.fingerprint == expected.fingerprint
@@ -232,7 +235,8 @@ class TestAFreshCallsFingerprintIsUnchangedByF287:
         with patch.object(pingpong_provider, "_guarded_cli_run", return_value=proc):
             out = _provider().review("R")
         expected = prepare_call_input(
-            prompt="R" + "\n\n" + _REVIEWER_JSON_SCHEMA, model="", mode="cli-legacy",
+            prompt="R" + "\n\n" + _REVIEWER_JSON_SCHEMA, model=CLAUDE_CLI_UNSET_MODEL,
+            mode="cli-legacy",
             options={"write_mode": "none"})
         assert out.prepared_input.fingerprint == expected.fingerprint
 

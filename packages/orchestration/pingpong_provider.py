@@ -38,7 +38,7 @@ from packages.orchestration.claude_cli_command import (
 from packages.orchestration.claude_cli_command import (
     _VALID_CLI_WRITE_MODES as _VALID_CLI_WRITE_MODES,
 )
-from packages.orchestration.claude_cli_command import build_claude_cli_args
+from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.schemas import (
@@ -1561,7 +1561,7 @@ class ClaudeCliProvider:
         if resume:
             options["resume"] = resume
         _pi = prepare_call_input(
-            prompt=prompt, model=self._model, mode="cli-legacy",
+            prompt=prompt, model=self._model or CLAUDE_CLI_UNSET_MODEL, mode="cli-legacy",
             options=options)
         out = self._build_impl(prompt, timeout_sec=timeout_sec,
                                max_output_chars=max_output_chars, resume=resume or "")
@@ -1641,12 +1641,12 @@ class ClaudeCliProvider:
         # native structured mode, the out-of-band ``--json-schema`` argument.
         if structured:
             _pi = prepare_call_input(
-                prompt=prompt, model=self._model, mode="cli-native",
+                prompt=prompt, model=self._model or CLAUDE_CLI_UNSET_MODEL, mode="cli-native",
                 schema=_to_json_schema_str(_ReviewVerdictSchema),
                 options=options)
         else:
             _pi = prepare_call_input(
-                prompt=prompt + "\n\n" + _REVIEWER_JSON_SCHEMA, model=self._model,
+                prompt=prompt + "\n\n" + _REVIEWER_JSON_SCHEMA, model=self._model or CLAUDE_CLI_UNSET_MODEL,
                 mode="cli-legacy", options=options)
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
                                 max_output_chars=max_output_chars, resume=resume or "")

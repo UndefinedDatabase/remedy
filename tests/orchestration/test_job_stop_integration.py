@@ -294,6 +294,42 @@ class TestStopDuringAProviderCall:
         assert record["signal_source"] == "terminal_status"
 
 
+class TestAClaudeCliStopWithNoModelSet:
+    """R-1162: a `claude-cli` job run with no model configured stops cleanly. Its calls are
+    fingerprinted under a fixed name, so the stopped run's manifest is accepted."""
+
+    def test_a_stop_during_a_model_less_claude_cli_call_ends_stopped(
+            self, isolate_data_root, demo_repo):
+        from unittest.mock import MagicMock, patch
+
+        from packages.orchestration import pingpong_provider
+
+        job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
+        calls: list[list[str]] = []
+
+        def stand_in(cmd, timeout_sec, cwd):
+            calls.append(cmd)
+            if len(calls) == 1:
+                request_stop(job.job_id, "operator requested stop", "cli")
+            payload = {"type": "result", "subtype": "success", "is_error": False,
+                       "usage": {"input_tokens": 1, "output_tokens": 1},
+                       "session_id": f"sess-{len(calls)}", "result": "- docs/README.md"}
+            return MagicMock(returncode=0, stdout=json.dumps(payload), stderr="")
+
+        with patch.object(pingpong_provider, "_guarded_cli_run", side_effect=stand_in), \
+             patch.object(pingpong_provider.ClaudeCliProvider, "_get_claude_path",
+                          lambda self: "/fake/claude"), \
+             patch.object(pingpong_provider.ClaudeCliProvider, "_resolve_version",
+                          lambda self: "1.0.0 (test)"):
+            stopped = run_job(job.job_id, builder_name="claude-cli",
+                              reviewer_name="claude-cli", repair_rounds=0)
+
+        assert len(calls) == 1 and "--model" not in calls[0]
+        assert stopped.state == JOB_STOPPED
+        assert not getattr(stopped, "run_manifest_error", "")
+        assert stopped.tasks[0].status == TASK_PENDING
+
+
 class TestStopBetweenTasks:
     def test_an_applied_task_stays_applied_and_the_next_one_never_starts(
             self, isolate_data_root, demo_repo):
