@@ -86,10 +86,11 @@ def first_party_imports(path: Path) -> set[str]:
     return {name for name in named if name.split(".")[0] in FIRST_PARTY_ROOTS}
 
 
-def reachable_closure() -> set[str]:
-    """The transitive first-party import closure of ENTRY_POINTS, statically computed."""
+def reachable_closure(entry_points: tuple[str, ...] = ENTRY_POINTS) -> set[str]:
+    """The transitive first-party import closure of ENTRY_POINTS (or of the given entry points),
+    statically computed."""
     reached: set[str] = set()
-    pending = list(ENTRY_POINTS)
+    pending = list(entry_points)
     while pending:
         dotted = pending.pop()
         if dotted in reached:

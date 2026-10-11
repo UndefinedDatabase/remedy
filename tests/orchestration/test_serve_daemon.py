@@ -722,32 +722,44 @@ def test_a_client_token_on_the_port_reads_a_route_and_is_refused_a_write_outside
 
 
 def test_the_supervisors_listener_source_imports_no_ssl_and_binds_127_0_0_1_only():
-    """R-1214, R-1218: no TLS and no remote bind (the feature file's binding); read from the
-    source. No module of the API's path imports `ssl`, wherever in the module the import stands;
-    the listener is the one in `serve_daemon.py`."""
+    """R-1214, R-1218, R-1220: no TLS and no remote bind (the feature file's binding); read from
+    the source. No first-party module the supervisor reaches through its imports, followed as
+    `tests/orchestration/test_import_reachability.py` follows them, imports `ssl`, wherever in the
+    module the import stands, or calls anything with the string `"ssl"` as its first argument, as
+    `__import__("ssl")` and `importlib.import_module("ssl")` would; the listener is the one in
+    `serve_daemon.py`."""
     import ast
 
-    api_path = ("serve_daemon.py", "public_api.py", "public_api_writes.py", "ui_server.py",
-                "serve_runs.py", "serve_paths.py", "api_clients.py")
-    imported: list[str] = []
+    from tests.orchestration.test_import_reachability import (
+        reachable_closure,
+        resolve_module_path,
+    )
+
+    def is_ssl(name: str) -> bool:
+        return name == "ssl" or name.startswith("ssl.")
+
+    reached = reachable_closure(("packages.orchestration.serve_daemon",))
+    assert "packages.orchestration.data_paths" in reached  # the walk follows the request path
+    found: list[str] = []
     listeners: list[ast.Call] = []
-    for filename in api_path:
-        module = REPO / "packages" / "orchestration" / filename
-        assert module.is_file(), f"{filename} is not where the API's path puts it"
-        tree = ast.parse(module.read_text(encoding="utf-8"))
+    for dotted in sorted(reached):
+        tree = ast.parse(resolve_module_path(dotted).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                imported += [f"{filename}: {alias.name}" for alias in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                imported.append(f"{filename}: {node.module or ''}")
-            elif isinstance(node, ast.Call) and filename == "serve_daemon.py":
+                found += [f"{dotted}: import {a.name}" for a in node.names if is_ssl(a.name)]
+            elif isinstance(node, ast.ImportFrom) and is_ssl(node.module or ""):
+                found.append(f"{dotted}: from {node.module}")
+            elif isinstance(node, ast.Call):
+                first = node.args[0] if node.args else None
+                if isinstance(first, ast.Constant) and isinstance(first.value, str) and is_ssl(
+                        first.value):
+                    found.append(f"{dotted}: a call with {first.value!r}")
                 func = node.func
                 name = func.id if isinstance(func, ast.Name) else (
                     func.attr if isinstance(func, ast.Attribute) else "")
-                if name == "ThreadingHTTPServer":
+                if name == "ThreadingHTTPServer" and dotted.endswith(".serve_daemon"):
                     listeners.append(node)
-    assert not [m for m in imported
-                if m.split(": ", 1)[1] == "ssl" or m.split(": ", 1)[1].startswith("ssl.")]
+    assert found == []
     assert listeners, "no call of ThreadingHTTPServer found in serve_daemon.py"
     for call in listeners:
         address = call.args[0] if call.args else None
@@ -1134,6 +1146,13 @@ def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_wi
 
     status, body = _post_apply(port, token, "0123abcd", {})
     assert (status, body["error"]) == (404, "job_not_found")
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root), SR.DIRECT_ENV: "1"}
+    result = subprocess.run(  # R-1219: the argv the route runs for a value that names no job
+        [sys.executable, "-m", "apps.cli.main", "job", "apply", "--approve", "--json", "--",
+         "0123abcd"], cwd=str(REPO), env=env, capture_output=True, text=True, timeout=120)
+    command = json.loads(result.stdout.strip().splitlines()[-1])
+    assert ({k: v for k, v in body.items() if k not in aside}
+            == {k: v for k, v in command.items() if k not in aside})
 
     unknown = _saved_job(completed=True)
     path = f"/api/v1/jobs/{unknown}/apply"
