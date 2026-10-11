@@ -1233,3 +1233,4 @@
 2026-10-11, F297 round 1 — the reviewer's block ordered the handback's context sentence to speak of the reviewer's context, and the worker copied it into its own self-assessment as ordered; nothing on disk is wrong.
 2026-10-11, F297 round 2 — after rebasing its block onto the operator's answers, the reviewer left the handback's ordered question count at 2 where the file read none; the worker wrote the count it read, and nothing on disk is wrong.
 2026-10-11, F297 round 2 — the handback's item-status table names the supervisor's restart function `reconcile_open_runs`, where it is `resume_registered`; nothing on disk is wrong.
+2026-10-12, F297 round 8 — the handback's paragraph for the operator says the toolchain job had called an early-preview Python release stable, where it had called the released Python 3.14 a beta; the handoff is rewritten by round 9, and nothing else on disk is wrong.
