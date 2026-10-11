@@ -74,9 +74,9 @@ def _commit_a_passing_suite(repo: Path) -> None:
     _git(repo, "commit", "-qm", "suite")
 
 
-def test_the_plan_is_one_job_per_project_in_its_own_repository_under_one_mission(
+def test_the_plan_is_one_job_per_project_in_its_own_repository_under_its_projects_mission(
         projects, tmp_path, capsys):
-    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.mission_state import list_missions, load_mission
     from packages.orchestration.pingpong_job import load_job_plan
 
     (a, project_a), (b, project_b) = projects["a"], projects["b"]
@@ -89,9 +89,13 @@ def test_the_plan_is_one_job_per_project_in_its_own_repository_under_one_mission
     assert [(job.project_id, job.repo_path) for job in jobs] == [
         (str(project_a.id), str(a)), (str(project_b.id), str(b))]
     assert f"belongs to project {project_b.slug};" in jobs[1].mission
-    mission = load_mission(str(project_a.id), data["mission_id"])
-    assert mission.project_ids == (str(project_a.id), str(project_b.id))
-    assert [link.project_id for link in mission.job_links] == [str(project_a.id), str(project_b.id)]
+    # DECISION amend1011b D4: no umbrella mission; each repository's one mission takes its job.
+    mission_a = load_mission(str(project_a.id), data["mission_id"])
+    [mission_b] = list_missions(str(project_b.id))
+    assert mission_a.project_ids == () and mission_b.project_ids == ()
+    assert mission_a.job_ids() == (data["job_ids"][0],)
+    assert mission_b.job_ids() == (data["job_ids"][1],)
+    assert mission_a.orders[0].correlation_id == mission_b.orders[0].correlation_id != ""
     assert (_repo_state(a), _repo_state(b)) == before
 
 
@@ -188,9 +192,10 @@ def test_one_project_named_twice_fails_the_init_step(projects, tmp_path, capsys)
     _no_mission_and_no_job()
 
 
-def test_the_fixture_mission_chains_three_jobs_across_two_repositories(projects, tmp_path, capsys):
-    """DECISION F205 D5: the third job, `remedy mission continue`'s, continues in the second's."""
-    from packages.orchestration.mission_state import load_mission
+def test_mission_continue_on_a_repository_mission_continues_in_that_repository(
+        projects, tmp_path, capsys):
+    """DECISION amend1011b D4: each repository has its own mission; `mission continue` stays in it."""
+    from packages.orchestration.mission_state import list_missions, load_mission
     from packages.orchestration.pingpong_job import load_job_plan
 
     (a, project_a), (b, project_b) = projects["a"], projects["b"]
@@ -201,21 +206,24 @@ def test_the_fixture_mission_chains_three_jobs_across_two_repositories(projects,
 
     mission = load_mission(str(project_a.id), planned["mission_id"])
     jobs = [load_job_plan(job_id) for job_id in mission.job_ids()]
-    assert [job.repo_path for job in jobs] == [str(a), str(b), str(b)]
-    assert [link.project_id for link in mission.job_links] == [
-        str(project_a.id), str(project_b.id), str(project_b.id)]
-    assert continued["job_id"] == str(jobs[2].job_id)
-    assert str(jobs[1].job_id) in continued["verify_first_task"]["description"]
+    assert jobs[0].repo_path == str(a)
+    assert continued["job_id"] == str(jobs[1].job_id)
+    assert str(jobs[0].job_id) in continued["verify_first_task"]["description"]
+    [mission_b] = list_missions(str(project_b.id))
+    assert mission_b.job_ids() == (planned["job_ids"][1],)
 
 
-def test_each_project_lists_its_own_job_and_the_mission_names_both_by_reference(
+def test_each_project_lists_its_own_job_and_its_own_mission(
         projects, tmp_path, capsys, monkeypatch):
-    """F148's leak property over mission data (DECISION F205 D7): a listing in one project shows
-    that project's job alone, the mission is listed in its first project only, and what the
-    mission shows of its jobs is their ids, roles, states and projects, never their content."""
+    """F148's leak property over mission data (DECISION amend1011b D4): a listing in one project
+    shows that project's job and mission alone, and what a mission shows of its jobs is their
+    ids, roles, states and projects, never their content."""
+    from packages.orchestration.mission_state import list_missions
+
     (a, project_a), (b, project_b) = projects["a"], projects["b"]
     planned = _do_json(capsys, _order(tmp_path, project_a.slug, project_b.slug), "--plan-only")
     job_a, job_b = planned["job_ids"]
+    [mission_b] = list_missions(str(project_b.id))
 
     listed = {}
     for repo in (a, b):
@@ -225,14 +233,14 @@ def test_each_project_lists_its_own_job_and_the_mission_names_both_by_reference(
         main(["mission", "list", "--json"])
         missions = [entry["id"] for entry in json.loads(capsys.readouterr().out)["missions"]]
         listed[repo] = (jobs, missions)
-    assert listed == {a: ([job_a], [planned["mission_id"]]), b: ([job_b], [])}
+    assert listed == {a: ([job_a], [planned["mission_id"]]), b: ([job_b], [mission_b.id])}
 
     monkeypatch.chdir(a)
     main(["mission", "show", planned["mission_id"], "--json"])
     mission = json.loads(capsys.readouterr().out)["mission"]
-    assert mission["project_ids"] == [str(project_a.id), str(project_b.id)]
+    assert "project_ids" not in mission
     assert [sorted(link) for link in mission["job_links"]] == [
-        ["created_at", "job_id", "job_state", "project_id", "role"]] * 2
+        ["created_at", "job_id", "job_state", "order_id", "role"]]
 
 
 def test_project_beside_a_header_naming_several_is_refused_before_any_step(projects, tmp_path, capsys):

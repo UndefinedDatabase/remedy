@@ -334,7 +334,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--no-llm` | yes | no | no | no | Force heuristic intake (no LLM provider call) |
 | `--force-job` | yes | no | no | no | One job for what you ask, its tasks under the mission, whatever shape the planner chose |
 | `--force-mission` | yes | no | no | no | Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose |
-| `--new-mission` | yes | no | no | no | Start a new mission for an order file that a mission which has not ended already records; without it such an order file is refused before any step, naming that mission |
+| `--new-mission` | yes | no | no | no | Accept an order file again although an earlier order of it still has unfinished jobs; it adds one more order to the repository's one mission and never starts a second mission; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
@@ -346,7 +346,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `invalid_argument`, `invalid_budget`, `order_already_running`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
-Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
+Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `order_id`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.
 
 - `contract`: `amendments`, `criteria`, `schema`, `template`
@@ -701,16 +701,19 @@ Refusal tokens: `mission_error`, `mission_not_found`, `no_project`.
 Answer keys: `mission`, `unmet_blocking_criteria`, `version`.
 Keys under the answer keys: see below.
 
-- `mission`: `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `project_id`, `project_ids`, `schema_version`, `status`
+- `mission`: `alias_of`, `contract`, `created_at`, `dossier_ref`, `goal`, `id`, `job_links`, `mission_plan`, `order`, `orders`, `project_id`, `project_ids`, `repo`, `schema_version`, `status`
   - `contract`: `amendments`, `criteria`, `schema`, `template`
     - `amendments`: `acknowledged_in`, `applies_from`, `criteria`, `id`, `received_at`, `text`, `understood`
     - `criteria`: `blocking`, `check`, `evidence_ref`, `id`, `milestones`, `origin`, `status`, `text`
       - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
-  - `job_links`: `created_at`, `job_id`, `job_state`, `project_id`, `role`
+  - `job_links`: `created_at`, `job_id`, `job_state`, `order_id`, `project_id`, `role`
   - `mission_plan`: `_milestones_done`, `_version`, `_versions` (repeats the object that holds it), `assumptions`, `compiled`, `milestones`, `origin`, `risks`, `schema_v`
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
   - `order`: `source_path`, `source_sha256`, `text`
+  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `plan_source`, `reopened_from`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
+    - `budgets`: `*`
+    - `sealed`: `*`
 
 #### `remedy client interface`
 

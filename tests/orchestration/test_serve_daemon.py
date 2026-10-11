@@ -1002,7 +1002,9 @@ def test_two_order_create_posts_sent_at_once_both_run_and_every_record_reads_bac
         assert polled["answer"]["job_ids"]
         answers[order_id] = polled["answer"]
 
-    assert len({answer["mission_id"] for answer in answers.values()}) == 2
+    # DECISION amend1011b D1/D2: two simultaneous orders are two batches of the one mission.
+    assert len({answer["mission_id"] for answer in answers.values()}) == 1
+    assert len({answer["order_id"] for answer in answers.values()}) == 2
 
     status, digest = _api_request(port, "GET", "/api/v1/digest", headers=_bearer(token))
     assert status == 200, digest

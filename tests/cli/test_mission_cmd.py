@@ -147,14 +147,17 @@ class TestStart:
         assert len(mission_id) == 32
         listing = _run(["mission", "list", "--project", project_id], data_root).stdout
         assert mission_id[:12] in listing
-        assert "Keep the importer working" in listing
+        # DECISION amend1011b D1: the mission is the repository's, named after it.
+        assert "Maintain " in listing
 
     def test_start_json_carries_the_record(self, project):
         data_root, project_id = project
         body = json.loads(_run(["mission", "start", "Keep it working",
                                 "--project", project_id, "--json"], data_root).stdout)
 
-        assert body["mission"]["goal"] == "Keep it working"
+        assert body["mission"]["goal"].startswith("Maintain ")
+        assert body["mission"]["order"]["text"] == "Keep it working"
+        assert body["existing"] is False
         assert body["mission"]["status"] == "active"
         assert body["mission"]["job_links"] == []
         assert body["mission"]["dossier_ref"] == ""
@@ -175,16 +178,21 @@ class TestStart:
         assert proc.returncode == 3
         assert "remedy init" in proc.stderr
 
-    def test_the_same_goal_twice_makes_two_missions(self, project):
-        """Goals are immutable, so a repeat is a second mission, never an edit."""
+    def test_starting_again_shows_the_one_mission_and_creates_none(self, project):
+        """DECISION amend1011b D5: a repository has one mission, so a repeat reveals it."""
         data_root, project_id = project
-        first = _start(data_root, project_id, "Keep it working")
-        second = _start(data_root, project_id, "Keep it working")
 
-        assert first != second
+        def start(goal: str) -> dict:
+            return json.loads(_run(["mission", "start", goal, "--project", project_id,
+                                    "--json"], data_root).stdout)
+
+        first, second = start("Keep it working"), start("Something else entirely")
+
+        assert (first["existing"], second["existing"]) == (False, True)
+        assert first["mission"]["id"] == second["mission"]["id"]
         body = json.loads(_run(["mission", "list", "--project", project_id,
                                 "--json"], data_root).stdout)
-        assert len(body["missions"]) == 2
+        assert len(body["missions"]) == 1
 
 
 class TestList:
@@ -437,9 +445,10 @@ class TestApprovalOptIn:
         records = _missions_on_disk(data_root)
         assert len(records) == 1
         body = json.loads(records[0].read_text())
-        assert body["goal"] == "Keep it green"
+        assert body["goal"].startswith("Maintain ")
+        assert body["orders"][0]["text"] == "Keep it green"
         assert body["job_links"] == [{
-            "job_id": job_id, "role": "initial",
+            "job_id": job_id, "role": "initial", "order_id": body["orders"][0]["order_id"],
             "created_at": body["job_links"][0]["created_at"]}]
 
     def test_the_flag_works_even_when_intake_did_not_flag_the_goal(self, repo_project):
@@ -491,7 +500,10 @@ class TestApprovalOptIn:
         _run_in(repo, ["decision", "resolve", second, "plan:approval",
                        "--reason", "approve", "--as-mission"], data_root)
 
-        assert len(_missions_on_disk(data_root)) == 2
+        # DECISION amend1011b D5: both approvals are orders of the repository's one mission.
+        [record] = _missions_on_disk(data_root)
+        roles = [link["role"] for link in json.loads(record.read_text())["job_links"]]
+        assert roles == ["initial", "follow_up"]
 
 
 def _mission_records(data_root: Path) -> list[Path]:

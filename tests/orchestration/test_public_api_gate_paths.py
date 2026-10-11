@@ -415,7 +415,9 @@ def test_one_order_sent_twice_with_one_key_is_refused_naming_the_mission_that_ru
 
     again = supervisor.ended_order(supervisor.send_order(
         slug, deadline=PAST_DEADLINE, order_key="order-once", new_mission=True))
-    assert again["answer"]["mission_id"] != mission_id, again
+    # DECISION amend1011b D1: the flag adds an order to the repository's mission, never a mission.
+    assert again["answer"]["mission_id"] == mission_id, again
+    assert again["answer"]["order_id"] != ended["answer"]["order_id"], again
 
 
 def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervisor, tmp_path):

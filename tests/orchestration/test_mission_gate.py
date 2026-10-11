@@ -345,11 +345,12 @@ class TestTheRemainderAtBudgetEnd:
 
         assert code == 0
         out = capsys.readouterr().out
-        [follow_up] = [m for m in list_missions(project_id, tmp_path) if m.id != mission_id]
-        assert f"Follow-up mission {follow_up.id} started" in out
+        [follow_up] = list_missions(project_id, tmp_path)    # DECISION amend1011b D5: one mission
+        assert follow_up.id == mission_id
+        assert f"Follow-up order added to mission {follow_up.id}" in out
         assert f"remedy mission plan {follow_up.id}" in out
         contract = read_mission_contract(follow_up)
         assert [(c.id, c.text, c.status) for c in contract.criteria] == [
             ("C001", "tests/test_c.py passes", "open")]
-        assert follow_up.order.text == record["impact"]
+        assert follow_up.order.text == record["impact"] == follow_up.orders[-1].text
         assert self._open_remainders(project_id, mission_id, tmp_path) == []

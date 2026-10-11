@@ -238,6 +238,21 @@ MISSION_COMMANDS: tuple[CommandEntry, ...] = (
         exit_codes=(0, 1, 2, 3),
     ),
     CommandEntry(
+        command_id="mission.reconcile",
+        group_id="mission",
+        subcommand="reconcile",
+        description="Fold the duplicate records of one repository into its one lasting record; shows the folding only, unless --apply carries it out, backed up first and undone with --restore.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--apply", "Carry the folding out; without it the folding is only shown", required=False, is_option=True, is_flag=True),
+            ArgDef("--restore", "Put the records back from this backup directory instead", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.list", "mission.show"),
+        exit_codes=(0, 1, 2),
+    ),
+    CommandEntry(
         command_id="mission.readiness",
         group_id="mission",
         subcommand="readiness",

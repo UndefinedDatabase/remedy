@@ -127,8 +127,10 @@ def test_study_to_plan_creates_the_mission_carrying_the_order(repo, capsys):
 
     mission = load_mission(str(resolve_project(repo).id), data["mission_id"])
     assert mission.id == data["mission_id"]
-    assert mission.goal == ORDER
+    # DECISION amend1011b D1/D3: the mission is the repository's, its goal is not the order.
+    assert mission.goal == "Maintain target"
     assert mission.order.text == ORDER
+    assert [(b.order_id, b.text) for b in mission.orders] == [(data["order_id"], ORDER)]
     assert mission.mission_plan is not None
     assert data["mission_id"] in _step(data, "plan")["detail"]
 

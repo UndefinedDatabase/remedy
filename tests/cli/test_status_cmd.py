@@ -290,7 +290,8 @@ def test_an_order_files_mission_carries_its_path_and_digest_a_text_order_does_no
 
     client = _status_json(capsys)["client"]
     [project] = client["projects"]
-    file_mission = next(m for m in project["missions"] if m["job_ids"] == [file_job_id])
+    [file_mission] = project["missions"]
+    assert file_mission["job_ids"] == [file_job_id]
     assert file_mission["order_source_path"] == str(order_path.resolve())
     assert file_mission["order_source_sha256"] == hashlib.sha256(raw).hexdigest()
 
@@ -299,7 +300,10 @@ def test_an_order_files_mission_carries_its_path_and_digest_a_text_order_does_no
 
     client = _status_json(capsys)["client"]
     [project] = client["projects"]
-    text_mission = next(m for m in project["missions"] if m["job_ids"] == [text_job_id])
+    # DECISION amend1011b D1: the text order is the repository mission's next order, and the
+    # mission reports the path and digest of its CURRENT order, which has none.
+    [text_mission] = project["missions"]
+    assert text_mission["job_ids"] == [file_job_id, text_job_id]
     assert text_mission["order_source_path"] == ""
     assert text_mission["order_source_sha256"] == ""
 

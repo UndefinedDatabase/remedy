@@ -899,12 +899,8 @@ def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
     """
     from packages.orchestration.dod_compiler import acceptance_line_key
     from packages.orchestration.escalation import ESCALATION_STATUS_ANSWERED
-    from packages.orchestration.mission_state import (
-        MissionOrder,
-        create_mission,
-        mission_for_job,
-        set_mission_order,
-    )
+    from packages.orchestration.mission_state import mission_for_job
+    from packages.orchestration.repo_mission import accept_order, project_repo_root
 
     if not str(record.get("question", "") or "").startswith(CONTRACT_REMAINDER_MARKER):
         return None
@@ -940,8 +936,14 @@ def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
                        f"{', '.join(c.id for c in blockers)} as {', '.join(carried)}"),
         "acknowledged_in": None,
     }
-    follow_up = create_mission(mission.project_id, order, now=now, root=root)
-    set_mission_order(mission.project_id, follow_up.id, MissionOrder(text=order), root)
+    # DECISION amend1011b D5: the remainder is one more order of the repository's one mission,
+    # whose current-order contract is now the criteria the last order left unmet.
+    from packages.orchestration.mission_state import MissionOrder
+    from packages.orchestration.repo_mission import project_by_id
+
+    owner = project_by_id(mission.project_id)
+    follow_up, _batch = accept_order(owner, project_repo_root(owner), MissionOrder(text=order),
+                                     root=root)
     write_mission_contract(mission.project_id, follow_up.id, MissionContract(
         criteria=tuple(criteria), amendments=(amendment,)), root)
     return follow_up.id

@@ -145,7 +145,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "project.register": ("created", "project_id", "repo_path", "slug"),
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
-        "mission_plan_path", "next", "push", "shape", "shape_source", "steps", "stopped_before_apply",
+        "mission_plan_path", "next", "order_id", "push", "shape", "shape_source", "steps", "stopped_before_apply",
         "unmet_blocking_criteria", "waiting_job_ids",
     ),
     "status.run": (
@@ -650,7 +650,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "goal": {},
             "status": {},
             "job_links": {"job_id": {}, "role": {}, "created_at": {}, "project_id": {},
-                          "job_state": {}},
+                          "order_id": {}, "job_state": {}},
             "dossier_ref": {},
             "created_at": {},
             "mission_plan": {
@@ -674,6 +674,12 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "order": {"text": {}, "source_path": {}, "source_sha256": {}},
             "contract": MISSION_CONTRACT_KEY_TREE,
             "project_ids": {},
+            "repo": {},
+            "orders": {"order_id": {}, "text": {}, "source_path": {}, "source_sha256": {},
+                       "created_at": {}, "target_commit": {}, "kind": {}, "budgets": {"*": {}},
+                       "correlation_id": {}, "plan_source": {}, "reopened_from": {},
+                       "sealed": {"*": {}}},
+            "alias_of": {},
         },
     },
     "decision.resolve": {

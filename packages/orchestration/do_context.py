@@ -119,6 +119,11 @@ class DoContext:
     #: Each of those projects' repository root, by project id (DECISION F205 D4).
     project_repos: dict[str, str] = field(default_factory=dict)
     mission_id: str = ""
+    #: The order batch the walk's order is in the lead project's mission (DECISION amend1011b D3).
+    order_id: str = ""
+    #: Every project of the walk → ``(its repository's mission id, the order batch in it)``; an
+    #: order over several repositories adds a batch to each one's mission (DECISION amend1011b D4).
+    project_missions: dict[str, tuple[str, str]] = field(default_factory=dict)
     mission_plan: Any = None
     mission_plan_path: str = ""
     shape: str = ""
