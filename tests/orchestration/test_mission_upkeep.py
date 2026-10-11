@@ -234,7 +234,8 @@ class TestWhatResolvesAFinding:
         assert lines[1]["resolved"] == []
         assert [f["key"] for f in open_findings(read_upkeep_ledger(PROJECT))] == [key]
 
-    def test_open_findings_are_oldest_first_once_each_and_scoped_to_a_mission(self, data_root):
+    def test_open_findings_are_the_projects_oldest_first_once_each(self, data_root):
+        """R-1237: a finding is read once whichever mission's line names it, its mission id kept."""
         mission_id, key = self._two_jobs("failed")
         record_closed_jobs(PROJECT, mission_id)
         lines = read_upkeep_ledger(PROJECT)
@@ -244,8 +245,7 @@ class TestWhatResolvesAFinding:
 
         assert [f["key"] for f in found] == [key]
         assert found[0]["job_id"] == lines[0]["job_id"]
-        assert open_findings(lines, mission_id="m2") == []
-        assert [f["key"] for f in open_findings(lines, mission_id=mission_id)] == [key]
+        assert found[0]["mission_id"] == mission_id
 
 
 def test_mission_continue_records_the_ended_jobs_before_the_next_one(tmp_path):
@@ -437,14 +437,18 @@ class TestThePlanAndItsStep:
         assert plan["structure"] == {"unmeasured": "the project names no repository"}
         assert plan["replaced"] == [] and len(plan["findings"]) == 1
 
-    def test_only_the_missions_own_findings_ride(self, data_root):
-        other_id, _ = _chain(PROJECT, ["completed"], findings=2)
+    def test_the_projects_findings_ride_whichever_mission_left_them(self, data_root):
+        """R-1237: the ledger is kept per project, so an earlier mission's open findings ride too,
+        oldest first."""
+        other_id, other_jobs = _chain(PROJECT, ["completed"], findings=2)
         mission_id, jobs = _chain(PROJECT, ["completed"], findings=1)
         record_closed_jobs(PROJECT, other_id)
         record_closed_jobs(PROJECT, mission_id)
         plan = plan_upkeep(PROJECT, mission_id, upkeep_cadence(PROJECT, mission_id, config={}),
                            read_upkeep_ledger(PROJECT))
-        assert [f["job_id"] for f in plan["carried"]] == [str(jobs[0].job_id)]
+        assert [(f["job_id"], f["mission_id"]) for f in plan["carried"]] == [
+            (str(other_jobs[0].job_id), other_id), (str(other_jobs[0].job_id), other_id),
+            (str(jobs[0].job_id), mission_id)]
 
     def test_a_replaced_pair_a_job_left_is_carried_while_both_files_exist(self, registered, repository):
         mission_id, jobs = _chain(registered, ["completed"])
@@ -508,7 +512,7 @@ class TestTheUpkeepJob:
         save_job_plan(job)
         record_closed_jobs(registered, mission_id)
 
-        left = open_findings(read_upkeep_ledger(registered), mission_id=mission_id)
+        left = open_findings(read_upkeep_ledger(registered))
         assert [f["finding_id"] for f in left] == ["F-TASK-006", "F-TASK-007"]
 
 

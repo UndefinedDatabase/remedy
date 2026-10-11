@@ -194,8 +194,10 @@ def record_closed_jobs(project_id: str, mission_id: str, root: Path | None = Non
             for body in _closed_bodies(mission, recorded, root)]
 
 
-def open_findings(lines: list[dict[str, Any]], mission_id: str | None = None) -> list[dict[str, Any]]:
-    """The findings still open, oldest first, each once; only one mission's when it is named."""
+def open_findings(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The project's findings still open, oldest first, each once, whichever of its missions' jobs
+    left them: the ledger is kept per project. Each keeps its line's mission id as information
+    (R-1237)."""
     resolved = {key for line in lines if line.get("kind") == LINE_JOB_CLOSED
                 for key in line.get("resolved", [])}
     found: list[dict[str, Any]] = []
@@ -203,14 +205,13 @@ def open_findings(lines: list[dict[str, Any]], mission_id: str | None = None) ->
     for line in lines:
         if line.get("kind") != LINE_JOB_CLOSED:
             continue
-        if mission_id is not None and line.get("mission_id") != mission_id:
-            continue
         for finding in line.get("open_findings", []):
             key = finding.get("key")
             if key in resolved or key in keys:
                 continue
             keys.add(key)
-            found.append({**finding, "job_id": line.get("job_id", "")})
+            found.append({**finding, "job_id": line.get("job_id", ""),
+                          "mission_id": line.get("mission_id", "")})
     return found
 
 
@@ -394,7 +395,7 @@ def plan_upkeep(project_id: str, mission_id: str, cadence: UpkeepCadence,
         theirs = {link.job_id for link in mission.job_links if link.project_id == target_project}
         lines = [line for line in lines
                  if line.get("kind") != LINE_JOB_CLOSED or line.get("job_id") in theirs]
-    carried = open_findings(lines, mission_id=mission_id)[:UPKEEP_MAX_FINDINGS]
+    carried = open_findings(lines)[:UPKEEP_MAX_FINDINGS]
     return {"after_jobs": cadence.completed, "after_job_id": cadence.after_job_id, "every": cadence.every,
             "repository": repository, "findings": [f["key"] for f in carried], "carried": carried,
             "structure": _structure_item(repository), "replaced": _replaced_pairs(repository, lines, mission_id)}
@@ -504,7 +505,7 @@ def upkeep_preview(project_id: str, mission_id: str, root: Path | None = None, *
     cadence = upkeep_cadence(project_id, mission.id, root, config=config, lines=lines)
     preview: dict[str, Any] = {"every": cadence.every, "completed": cadence.completed,
                                "jobs_left": cadence.jobs_left, "due": cadence.due,
-                               "open_findings": len(open_findings(lines, mission_id=mission.id))}
+                               "open_findings": len(open_findings(lines))}
     if measure:
         plan = plan_upkeep(project_id, mission.id, cadence, lines, root)
         preview["carries"] = {"findings": plan["findings"], "structure": plan["structure"],

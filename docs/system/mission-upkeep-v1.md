@@ -31,8 +31,8 @@ in time.
 
 ## What an upkeep job carries
 The rules, in the order the job's step lists them:
-1. The oldest findings the mission's jobs left open, at most five; the others wait for the next
-   upkeep job.
+1. The oldest findings the project's jobs left open, whichever of its missions ran them, because
+   the ledger is kept per project (R-1237), at most five; the others wait for the next upkeep job.
 2. The longest Python function above 100 lines and the longest code file above 1,000 lines in the
    project's repository, measured as `remedy integrity structure` measures, each to be shortened
    without a change of behaviour. A code file is one whose name ends in `.py`, `.js`, `.jsx`, `.ts`
