@@ -29102,3 +29102,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: an upkeep job carries the open 
 ALTERNATIVES CONSIDERED: keeping `open_findings`'s parameter unused, REJECTED because a parameter nothing passes is a replaced mechanism left alive (AGENTS.md, Scope Control); the others are named in CHOSEN.
 
 HOW TO REVERSE: restore the touched files from `60e2e51e6`, which also returns the client interface to `1.9` and the two pages to their earlier text.
+
+## DECISION F297 D5 — How round 4 repairs R-1250 and R-1247, and the boundary `plan_order_job` gains first (2026-10-11)
+
+THE PROBLEM: both repairs land in `packages/orchestration/do_sequence.py`, which stands at 985 lines against the 1,000 above which a file needs a row on `docs/system/structure-ledger-v1.md`; R-1247's second half changes the parse-failure branch of `plan_order_job`, a listed function for which the page names no boundary, so rule 2 of the structure rule asks for one to be written, in a commit of its own, before the change.
+
+CHOSEN: (1) R-1250: `accept_order_in_each` in `packages/orchestration/repo_mission.py` asks every target repository's mission first through `order_refusal`, which reads the canonical mission and creates nothing, and accepts the order in each only when none refuses; the refusal's wording is one function, `_refusal`, which `accept_order` uses too. The plan step calls it in place of its own loop, which also keeps the file under its limit. Each mission's lock is still taken per project, so a mission paused between the check and its own acceptance refuses there as before; the check closes the case the finding names. (2) THE BOUNDARY: `plan_order_job`'s is written onto the page — the intake call, the first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the deterministic plan — and its step (1) is taken unchanged: that record becomes `_record_unparsed_plan`; the row falls from 269 to 252 and `MAX_FUNCTION_LINES` from 31044 to 31027. (3) R-1247: `_record_unparsed_plan` saves the job stopped with the stop reason `plan_parse_failed`, never pending; and `_stop_unrun_shape_jobs` takes the jobs it stops out of each target mission's chain through `unlink_order_jobs`, so none is ever a mission's latest link, the jobs staying on disk and in their project's list, stopped.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: an order over several repositories that one of them cannot take leaves no trace in the others; a failed shape step leaves no job in any mission's chain; and a plan that cannot be read leaves its job stopped rather than waiting.
+
+ALTERNATIVES CONSIDERED: (a) marking the stopped jobs in the mission record instead of unlinking them, REJECTED because the chain's latest link would still be a job that never ran; (b) checking only in `_step_plan`, REJECTED because the file would pass its limit.
+
+HOW TO REVERSE: restore the touched files from `4798211ed`, and raise the row and the pin back to 269 and 31044.
