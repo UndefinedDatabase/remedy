@@ -169,7 +169,10 @@ with the code that calls it.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
-  `packages/orchestration/mission_record.py`, and the file left the table.
+  `packages/orchestration/mission_record.py`, and the file left the table. Step (2), begun by
+  F297: the follow-up job's creation, `packages/orchestration/mission_followup.py`; the verify task
+  and its run follow, with `run_guarded_test_command`, which a test replaces on this module,
+  staying beside the code that calls it.
 - `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
   cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
   table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
