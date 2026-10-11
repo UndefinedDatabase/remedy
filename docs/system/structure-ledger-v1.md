@@ -116,6 +116,11 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   (1) done by F205, one job's entry is `_job_entry`; (2) the reading of each project's
   missions and ledgers becomes a function; (3) the window over the ended jobs becomes a
   function.
+- `plan_order_job` (`packages/orchestration/do_sequence.py`). Boundary: the intake call, the
+  first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the
+  deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
+  `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
+  (3) the deterministic plan becomes a function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -210,7 +215,7 @@ with the code that calls it.
 | 279 | `packages/orchestration/repository_snapshot.py` | `create_snapshot` |
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 269 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 252 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |

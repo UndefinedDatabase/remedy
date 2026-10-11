@@ -351,6 +351,28 @@ def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
     raise OrderJobPlanError(f"task plan rejected: {error}") from error
 
 
+# Step (1) of `plan_order_job`'s boundary on docs/system/structure-ledger-v1.md (F297, R-1247):
+# the record a task plan that could not be parsed leaves, moved out unchanged.
+def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.failure_postmortem import (
+        FailureSignals,
+        build_job_rollup,
+        write_postmortem,
+    )
+    from packages.orchestration.pingpong_job import save_job_plan
+
+    save_job_plan(job)
+    signals = FailureSignals(error_class="parse", error_text=error_hint or "task plan parse failure")
+    pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
+    ev_dir = job_evidence_export_dir(str(job.job_id))
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        write_postmortem(ev_dir, pm, root=ev_dir)
+    except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
+        print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+
+
 def plan_order_job(
     order: str,
     *,
@@ -553,24 +575,7 @@ def plan_order_job(
                 intake=intake_result.value.model_dump(),
                 state=RunState.PENDING,
             )
-            save_job_plan(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            from packages.orchestration.failure_postmortem import (
-                FailureSignals,
-                build_job_rollup,
-                write_postmortem,
-            )
-            signals = FailureSignals(
-                error_class="parse",
-                error_text=fp_result.error_hint or "task plan parse failure",
-            )
-            pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
-            ev_dir = job_evidence_export_dir(str(job.job_id))
-            ev_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
-                print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+            _record_unparsed_plan(job, fp_result.error_hint)
             raise OrderJobPlanError(
                 f"task plan generation failed: "
                 f"{fp_result.error_hint or 'parse failure'}"
