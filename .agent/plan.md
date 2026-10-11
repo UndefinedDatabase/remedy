@@ -7,9 +7,9 @@ and the digest and the public API name each job's repository
 (docs/roadmap/features/T13_F205.md; DECISIONs F205 D1 to D7).
 
 ## Current Step
-Session 4 on `feature/f205-multi-repo-missions`: DECISION F205 D8 carried out. The branch's two
-repaired findings are renumbered R-1244 and R-1245, `origin/main` `4a24150a0` is merged in with
-both sides' decisions and ledger lines kept, and the full suite ran once more on the merged tree.
+Side task on `feature/ci-manual-dispatch` (operator amend1011-manual-hosted-ci, 2026-10-11): the
+hosted CI workflow becomes `workflow_dispatch` only; the local gates stay mandatory. Touches
+`ci.yml`, one guard test, AGENTS.md's Open PR Gate and `docs/system/ci-self-check-v1.md`.
 
 ## Next Steps
 1. The Open PR Gate merges pull request #323 once its hosted checks are read green.

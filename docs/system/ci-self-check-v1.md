@@ -85,6 +85,37 @@ visible:
 The benchmark also stays out of CI, on cost grounds, and is an on-demand step
 rather than a stage.
 
+## Hosted CI is manual
+
+DECISION amend1011-manual-hosted-ci (operator, 2026-10-11), temporary. Remedy runs
+only on the operator's machine, and the hosted run takes 28 to 34 minutes, so
+`.github/workflows/ci.yml` triggers on `workflow_dispatch` alone. The job, the
+`3.10` and `3.12` matrix and `remedy ci run` are unchanged; nothing about what CI
+means moved. No branch protection or ruleset requires a status check on `main`
+(read 2026-10-11), so no GitHub setting changed.
+
+**Still mandatory, locally:** whatever the Commit Gate in AGENTS.md and the active
+protocol already require; this change adds and removes no local gate. They run once
+per pushed commit. A green result is reused as evidence while the tree, commands
+and interpreter match what was recorded (commit SHA, commands, interpreter,
+result); opening a pull request starts no second full local run. `remedy ci run`
+is the full-suite command for a closure or a control, not a per-commit step.
+
+**Start a control run:**
+
+    gh workflow run ci.yml --ref <branch>
+    gh run watch <run-id> --exit-status
+
+or the Actions tab, "CI", "Run workflow". Run it on the release commit before the
+release gate: `release.yml` reads that commit's `ci.yml` conclusion and refuses a
+missing one.
+
+**Reactivate:** restore `push: branches: [main]` and `pull_request: branches:
+[main]` under `on:` in `ci.yml`, change `test_hosted_workflow_is_manual_trigger_only`
+in `tests/orchestration/test_ci_workflow.py` to pin them, delete the amend1011
+clause under the Open PR Gate in AGENTS.md, and, if wanted, add the `ci` check as
+a required status check on `main` (operator action in GitHub: Settings, Rules).
+
 ## No retries
 
 Remedy deliberately does NOT retry a failing stage, and no step in the hosted
