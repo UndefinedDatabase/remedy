@@ -28978,3 +28978,19 @@ CHOSEN: The operator confirms the recommendation: R-1236 through R-1243 stay as 
 ALTERNATIVES: none; the operator's answer confirms the recommendation rather than choosing an alternative.
 
 HOW TO REVERSE: Delete this paragraph; Q10 then stands unanswered as it did before this entry.
+
+## DECISION amend1011 D1 — A task plan rejected only for inspection tasks is repaired once by folding each into the next task that depends on it, not by a second planner call (2026-10-11)
+
+CHOSEN: `fold_inspection_tasks` in `packages/orchestration/task_deliverables.py` drops each inspection task, makes its title and goal the first step of the next task that depends on it (else the next task in plan order), gives that task its dependencies and rewires whatever waited for it. `plan_order_job` runs it once; a plan still rejected afterwards fails the order with the second message, as before. The planner prompt's rules also name the rejected verbs.
+
+ALTERNATIVES: one re-plan with the validator's message fed back. Rejected: a second provider call costs tokens and time and may answer with inspection tasks again; the fold is deterministic and keeps the plan, its `plan.md` and the job's tasks the same.
+
+HOW TO REVERSE: Delete this paragraph and `fold_inspection_tasks`; the order fails on the first rejection again.
+
+## DECISION amend1011 D2 — A failed shape step stops the jobs it planned and the walk lists none of them (2026-10-11)
+
+CHOSEN: `_stop_unrun_shape_jobs` sets each saved job to `stopped` with reason `shape_failed` and empties `ctx.job_ids`, so the answer's `job_ids` is `[]` and its keys are unchanged; the step's detail names the stopped jobs.
+
+ALTERNATIVES: create no job before every plan passes. Rejected: a job's plan is made by its own planner call, so the later ones cannot pass before the earlier ones exist.
+
+HOW TO REVERSE: Delete this paragraph and the helper; the saved jobs stay `planned` and `job_ids` lists them.

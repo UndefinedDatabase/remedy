@@ -323,6 +323,34 @@ class OrderJobPlan:
         }
 
 
+def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
+    """The plan and its job tasks, every task a deliverable; raises :class:`OrderJobPlanError` otherwise.
+
+    DECISION amend1011 D1: a plan rejected for inspection tasks is repaired once, by
+    folding each into the task that needs it; a plan still rejected afterwards fails.
+    """
+    from packages.orchestration.job_plan import map_task_plan_to_tasks
+    from packages.orchestration.task_deliverables import (
+        DeliverablePlanError,
+        fold_inspection_tasks,
+        record_llm_task_deliverables,
+        validate_deliverable_plan,
+    )
+
+    for attempt in (plan, fold_inspection_tasks(plan)):
+        if attempt is None:
+            break
+        tasks = map_task_plan_to_tasks(attempt)
+        record_llm_task_deliverables(tasks)
+        try:
+            validate_deliverable_plan(tasks)
+        except DeliverablePlanError as exc:
+            error = exc
+            continue
+        return attempt, tasks
+    raise OrderJobPlanError(f"task plan rejected: {error}") from error
+
+
 def plan_order_job(
     order: str,
     *,
@@ -364,7 +392,6 @@ def plan_order_job(
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
         deterministic_job_plans,
-        record_llm_task_deliverables,
         validate_deliverable_plan,
     )
 
@@ -446,7 +473,6 @@ def plan_order_job(
             apply_plan_fences,
             compose_task_plan_prompt,
             make_task_plan_call_recorder,
-            map_task_plan_to_tasks,
             plan_job_llm,
             write_plan_md,
         )
@@ -468,15 +494,10 @@ def plan_order_job(
             ),
         )
         if fp_result.plan is not None:
+            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan)
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
             fp_dict["_normalization"] = fp_result.transformations
-            tasks = map_task_plan_to_tasks(fp_result.plan)
-            record_llm_task_deliverables(tasks)
-            try:
-                validate_deliverable_plan(tasks)
-            except DeliverablePlanError as exc:
-                raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
             config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
@@ -720,6 +741,35 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         f"{contract_note}")
 
 
+def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
+    """Stop the jobs a failed shape step already planned; the note for the step's detail.
+
+    DECISION amend1011 D2: an order whose shape step fails leaves no job
+    ``planned``. Each job the step saved before the failure is stopped, and the
+    walk no longer lists it among its ``job_ids``, so a client that follows the
+    first job never waits on a job that will not run. The stopped jobs stay on
+    disk and linked to the mission; the note names them.
+    """
+    from datetime import datetime, timezone
+
+    from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, save_job_plan
+
+    stopped: list[str] = []
+    for job_id in ctx.job_ids:
+        job = load_job_plan(job_id)
+        if job is None:
+            continue
+        job.state = JOB_STOPPED
+        job.stop_reason = "shape_failed"
+        job.finished_at = datetime.now(timezone.utc).isoformat()
+        save_job_plan(job)
+        stopped.append(job_id)
+    ctx.job_ids.clear()
+    if not stopped:
+        return ""
+    return f"; stopped the job(s) planned before it failed, none of them runs: {', '.join(stopped)}"
+
+
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
     """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5).
 
@@ -768,7 +818,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 planner_provider=ctx.planner_provider,
             )
         except OrderJobPlanError as exc:
-            return DO_STEP_FAILED, str(exc)
+            return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
         job_id = str(shaped.job.job_id)
         role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
         mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)

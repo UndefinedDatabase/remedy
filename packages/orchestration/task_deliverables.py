@@ -29,8 +29,10 @@ from __future__ import annotations
 
 import re
 
+from pydantic import ValidationError
+
 from packages.orchestration.pingpong_job import TaskEntry
-from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS
+from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS, PlannedTask, TaskPlan
 
 #: A task whose title begins with one of these words is inspection, not a
 #: deliverable, and the validator rejects it. Compared lower-cased, first word only.
@@ -162,3 +164,53 @@ def validate_deliverable_plan(tasks: list[TaskEntry]) -> None:
                 f"not a deliverable")
     if problems:
         raise DeliverablePlanError("; ".join(problems))
+
+
+def _is_inspection(task: PlannedTask) -> bool:
+    return _first_word(task.title) in INSPECTION_VERBS
+
+
+def _fold_into(target: PlannedTask, inspection: PlannedTask) -> PlannedTask:
+    """*target* with *inspection*'s work as its first step and its dependencies as its own."""
+    depends = [d for d in [*target.depends_on, *inspection.depends_on]
+               if d not in (inspection.id, target.id)]
+    hints = [*target.files_hint, *(h for h in inspection.files_hint if h not in target.files_hint)]
+    return target.model_copy(update={
+        "goal": f"{target.goal}\nFirst, as part of this task: {inspection.title}: {inspection.goal}",
+        "depends_on": list(dict.fromkeys(depends)),
+        "files_hint": hints,
+    })
+
+
+def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
+    """The plan with each inspection task folded into the next task that depends on it (amend1011 D1).
+
+    The inspection task is dropped; its title and goal become the first step of
+    the task that waits for it (or, when none does, of the next task in plan
+    order), and whatever waited for it waits for that task. Acceptance of an
+    inspection task is dropped with it: reading is context, never a deliverable.
+    Returns None when the plan holds no inspection task, when one has no task
+    after it to fold into, or when the folded plan is no valid `TaskPlan`.
+    """
+    tasks = list(plan.tasks)
+    if not any(_is_inspection(t) for t in tasks):
+        return None
+    while True:
+        index = next((i for i, t in enumerate(tasks) if _is_inspection(t)), None)
+        if index is None:
+            break
+        inspection, later = tasks[index], tasks[index + 1:]
+        target = next((t for t in later if inspection.id in t.depends_on),
+                      later[0] if later else None)
+        if target is None:
+            return None
+        folded = _fold_into(target, inspection)
+        tasks = [
+            folded if t.id == target.id else
+            t.model_copy(update={"depends_on": list(dict.fromkeys(
+                target.id if d == inspection.id else d for d in t.depends_on))})
+            for t in tasks if t.id != inspection.id]
+    try:
+        return TaskPlan.model_validate({**plan.model_dump(), "tasks": [t.model_dump() for t in tasks]})
+    except ValidationError:
+        return None
