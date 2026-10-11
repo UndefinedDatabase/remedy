@@ -768,6 +768,57 @@ class TestBuilderNoChanges:
         assert result.final_status == "staged_review_passed"
         assert result.builder_no_changes is True
 
+    def test_the_reviewer_of_a_no_change_round_is_told_only_that_no_file_changed(
+            self, monkeypatch, tmp_path, demo_repo):
+        """R-1138: the reviewer's prompt states what was measured, that the builder changed no
+        file, and never that the builder confirmed the code correct."""
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+        bin_dir = tmp_path / "noop_bin"
+        bin_dir.mkdir()
+        prompt_file = tmp_path / "reviewer_prompt.txt"
+        reviewer_envelope = json.dumps({
+            "type": "result", "subtype": "success", "is_error": False,
+            "duration_ms": 50, "num_turns": 1,
+            "result": json.dumps({"verdict": "pass", "findings": [], "confidence": "high",
+                                  "summary": "ok"}),
+            "session_id": "test-rev", "total_cost_usd": 0.001,
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        })
+        builder_envelope = json.dumps({
+            "type": "result", "subtype": "success", "is_error": False,
+            "duration_ms": 50, "num_turns": 1,
+            "result": "I looked at the code and no changes are needed.",
+            "session_id": "test-build", "total_cost_usd": 0.001,
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        })
+        claude_script = bin_dir / "claude"
+        claude_script.write_text(
+            '#!/bin/bash\n'
+            'PROMPT=""\n'
+            'while [ $# -gt 0 ]; do\n'
+            '  case "$1" in\n'
+            '    -p) PROMPT="$2"; shift 2;;\n'
+            '    *) shift;;\n'
+            '  esac\n'
+            'done\n'
+            'if [[ "$PROMPT" == *verdict* ]]; then\n'
+            f'  printf "%s" "$PROMPT" > "{prompt_file}"\n'
+            f"  echo '{reviewer_envelope}'\n"
+            'else\n'
+            f"  echo '{builder_envelope}'\n"
+            'fi\n')
+        claude_script.chmod(claude_script.stat().st_mode | stat.S_IEXEC)
+        monkeypatch.setenv("PATH", f"{bin_dir}:{tmp_path}")
+
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_name="claude-cli", reviewer_name="claude-cli", max_rounds=1)
+
+        assert result.builder_no_changes is True
+        prompt = prompt_file.read_text(encoding="utf-8")
+        assert "(no changes — the builder changed no file)" in prompt
+        assert "confirmed code already correct" not in prompt
+
 
 # ---------------------------------------------------------------------------
 # 31. Safe diff: empty when no staged files

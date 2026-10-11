@@ -813,6 +813,14 @@ def test_builder_no_changes_produces_tests_txt(tmp_path: Path) -> None:
     assert "builder_no_changes" in content
 
 
+def test_builder_no_changes_evidence_states_only_that_no_file_changed() -> None:
+    """R-1138: neither the tests text nor the review says the code was confirmed correct."""
+    bundle = build_evidence_bundle(_make_no_changes_run_data())
+    assert bundle["tests"] == "builder_no_changes: the builder changed no file, and no test ran\n"
+    [review] = bundle["review"]["reviews"]
+    assert review["summary"] == "The builder changed no file, and no reviewer ran."
+
+
 def test_builder_no_changes_does_not_skip_evidence(tmp_path: Path) -> None:
     """builder_no_changes writes both review.json and tests.txt."""
     run_data = _make_no_changes_run_data()
