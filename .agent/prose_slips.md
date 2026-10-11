@@ -1229,3 +1229,5 @@
 2026-10-10, F205 round 10 — the handback's paragraph for the operator copied the block's instruction "Name no price in money." as if it were a sentence for the operator; nothing on disk is wrong.
 2026-10-10, F205 session 2 — the handback wrote its gate 4 as "expected `feature/f205-multi-repo-missions`" instead of the reading the command printed; nothing on disk is wrong.
 2026-10-11, F205 session 4 — the reviewer's block gave its gate 3 three lines while its own text for `.agent/plan.md` added a fourth that the gate's pattern matches; the worker stopped before C1, the reviewer corrected the gate, and nothing on disk is wrong.
+2026-10-11, F297 round 1 — the worker's commits carry the co-author trailer its own session named, where the block ordered another model's name; nothing on disk is wrong.
+2026-10-11, F297 round 1 — the reviewer's block ordered the handback's context sentence to speak of the reviewer's context, and the worker copied it into its own self-assessment as ordered; nothing on disk is wrong.
