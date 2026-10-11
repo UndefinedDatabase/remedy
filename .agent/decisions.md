@@ -29198,3 +29198,11 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a job continued after a burn pa
 ALTERNATIVES CONSIDERED: (a) a field of its own on the job record, REJECTED because the record's writer and reader, `_export_job` and `_import_job`, are both listed on the structure page and would grow; `metadata` is already exported and read back whole; (b) a file of samples beside the job's record, REJECTED because R-1241 asks for the job record; (c) moving the handler and the samples in one commit, REJECTED because the structure rule wants the boundary drawn in a commit of its own, proved by unchanged tests.
 
 HOW TO REVERSE: restore the touched files from `08c7943fe`.
+
+## DECISION F297 D13 — the operator answers Q13: keep the raised toolchain job spending limit (2026-10-12)
+
+CONTEXT: `.agent/operator_questions.md` held Q13 from F297 round 8, written by DECISION F297 D9. It reported that the fortnightly toolchain-refresh job used to spend its whole allowance after three of its five steps and never reached the test suite or the pull request, and that the round measured each call's cost and raised the job's spending limit to a little under three times its old value, enough for all five steps with both retries each. The operator answered via remedy-answer, quoting the recommendation verbatim: "Your recommendation!"
+
+CHOSEN: Q13 is approved as recommended. The raised spending limit (`max_cost_usd=28.00`, held by `tests/docs/test_toolchain_refresh_order.py` per DECISION F297 D9) stands. The entry is deleted from `.agent/operator_questions.md`.
+
+HOW TO REVERSE: Delete this paragraph and restore the old, lower spending limit by reverting DECISION F297 D9's budget change; Q13 would then need a fresh operator-question entry.
