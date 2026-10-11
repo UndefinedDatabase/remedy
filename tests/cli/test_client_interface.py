@@ -1559,6 +1559,17 @@ def test_the_pages_generated_section_reads_back_as_the_interface():
     assert _read_page_section(_page_section()) == interface
 
 
+def test_the_paths_exit_code_table_points_at_the_generated_table_of_every_code():
+    """R-1242: the hand-written walk's exit-code table lists the codes its path meets, as F295's
+    gate test holds, and names the generated table where every code a command can answer is."""
+    text = (_REPO_ROOT / CLIENT_INTERFACE_PAGE_PATH).read_text(encoding="utf-8")
+    walk = text[:text.index(CLIENT_INTERFACE_PAGE_BEGIN)]
+    intro = walk[walk.index("\n### Exit codes\n"):]
+    intro = intro[:intro.index("\n| Code | Meaning |")]
+    assert '"Exit codes of every command"' in intro
+    assert "\n### Exit codes of every command\n" in _page_section()
+
+
 def test_the_writer_replaces_only_the_generated_section(tmp_path):
     page = tmp_path / CLIENT_INTERFACE_PAGE_PATH
     page.parent.mkdir(parents=True)

@@ -216,6 +216,9 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 
 ### Exit codes
 
+The exit codes this path meets. Every exit code a command can answer, with its name, is in the
+table "Exit codes of every command" of the generated section at the end of this page.
+
 | Code | Meaning |
 |---|---|
 | `0` | the command did what was asked |
