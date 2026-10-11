@@ -2,19 +2,19 @@
 
 ## Goal
 Pay down the open findings F297 owns, each by the repair its own text names, with the evidence
-that discharged it (docs/roadmap/features/T2_F297.md; DECISIONs F297 D1 to D11).
+that discharged it (docs/roadmap/features/T2_F297.md; DECISIONs F297 D1 to D12).
 
 ## Current Step
-Round 10 on `feature/f297-findings-paydown-v7`, session 2: book round 9 with the resolutions of
-R-1219 and R-1220, and land T023 and T024: R-1240 and R-1249 (DECISION F297 D11), with operator
-question Q14 on the vocabulary page.
+Round 11 on `feature/f297-findings-paydown-v7`, session 2: book round 10 with the resolutions of
+R-1240 and R-1249, and land T025: R-1241, the structural step that moves the burn alarm's trip
+handler out of `run_job` into `packages/orchestration/job_burn.py`, then the samples kept in the
+job record (DECISION F297 D12).
 
 ## Next Steps
-1. The next round's first commit books round 10's verdict and the resolutions of R-1240 and
-   R-1249.
-2. T025 R-1241, the structural step: the burn alarm's trip handler leaves `run_job` for
-   `packages/orchestration/job_burn.py`, and `run_job`'s row and pins fall by what moves.
-3. The closure sequence.
+1. The next round's first commit books round 11's verdict and the resolution of R-1241.
+2. The closure sequence, by `docs/roadmap/STATUS_closure_protocol.md`: the carried findings
+   R-1235 and R-1246 named for the next paydown, the integration gate's one full suite, the
+   evidence, the next paydown's registration and the STATUS flip.
 
 ## Risks
 - `do_sequence.py` stands at 994 lines: a slice that grows it draws its boundary first.
