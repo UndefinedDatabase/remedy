@@ -41,7 +41,10 @@ in tokens, input plus output, the same sum its token budget adds. The test provi
 is never sampled. The thresholds come from five settings, listed with their defaults in
 [the environment guide](../guides/environment.md): `job_burn.window`, `job_burn.min_samples`,
 `job_burn.multiplier`, `job_burn.min_spend_tokens` and `job_burn.expected_tokens_per_hour`. With
-no hourly expectation set, the basis is the run's own trailing baseline.
+no hourly expectation set, the basis is the run's own trailing baseline. The samples are kept in
+the job's record, under `burn_samples` in its `metadata`, so a job continued after a pause or a
+stop judges its next calls against every call it made before, rather than against a baseline
+started again at zero (R-1241, DECISION F297 D12).
 
 The job runner reads the monitor at every safe point where no stop fired, which includes the
 point before every provider call. When a reading trips and differs from the trip the job already
@@ -82,7 +85,5 @@ sentence.
   nothing.
 - Remedy deliberately does not throttle a job's parallel width on a trip, because a job runs one
   task and one provider call at a time.
-- Remedy deliberately does not keep a job's samples across a stop and relaunch: a relaunched run
-  judges only what it has measured itself, so a short run is never judged.
 - Remedy deliberately does not read class expectation bands yet, because the feature that supplies
   them, F074, is not built; until then the hourly expectation is a setting.

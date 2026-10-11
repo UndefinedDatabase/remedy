@@ -2952,7 +2952,7 @@ def run_job(
         from packages.orchestration.job_burn import (
             job_burn_thresholds_from_config as _resolve_burn_thresholds,
         )
-        _burn_monitor = _BurnMonitorCls(_resolve_burn_thresholds())
+        _burn_monitor = _BurnMonitorCls(_resolve_burn_thresholds(), job.metadata)
     except (ValueError, OSError):
         import logging as _logging
         _logging.getLogger(__name__).error(

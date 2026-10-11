@@ -21,8 +21,9 @@ the pause control and the decision queue INSIDE :func:`record_burn_trip`, so
 this module stays importable — and testable — with no config layer and no
 ``job_plan`` import present. ``run_job`` calls this module from its own safe
 point (DECISION F116 D4 (1) to (4)): one ``JobBurnMonitor`` per run, a sample
-recorded for every counted provider call, and :func:`record_burn_trip`, which
-keeps the newest tripped reading on the job (R-1241).
+recorded for every counted provider call and kept in the job's ``metadata``
+under ``BURN_SAMPLES_KEY``, and :func:`record_burn_trip`, which keeps the
+newest tripped reading on the job (R-1241).
 
 Remedy deliberately does not throttle a job's parallel width on a trip,
 because ``run_job`` runs one task and one provider call at a time, so there
@@ -174,15 +175,49 @@ def recorded_burn_sentence(record: Any) -> str | None:
         return None
 
 
+#: R-1241 (DECISION F297 D12): the key of a job's ``metadata`` that keeps its
+#: samples, so a job continued after a pause judges its next calls against
+#: every call it made before, rather than against a baseline started at zero.
+BURN_SAMPLES_KEY = "burn_samples"
+
+
+#: One kept sample read back, or ``None`` for an entry that is not one: a
+#: record loaded from disk may be torn or edited by hand, and the monitor
+#: must never raise on one.
+def _kept_sample(entry: Any) -> BurnSample | None:
+    if not isinstance(entry, dict):
+        return None
+    amount, at, label = entry.get("amount"), entry.get("at"), entry.get("label")
+    if isinstance(label, bool) or not isinstance(label, int):
+        return None
+    if amount is not None and (isinstance(amount, bool)
+                               or not isinstance(amount, (int, float))):
+        return None
+    if at is not None and not isinstance(at, str):
+        return None
+    try:
+        when = datetime.fromisoformat(at) if at is not None else None
+    except ValueError:
+        return None
+    return BurnSample(amount=None if amount is None else float(amount), at=when,
+                      label=label)
+
+
 #: The job runner's own accumulator: one sample per counted provider call,
 #: built once per run and read at ``run_job``'s safe point (DECISION F116
 #: D4 (1) to (3)).
 class JobBurnMonitor:
     """Appends ``BurnSample`` records and evaluates them with the detector."""
 
-    def __init__(self, thresholds: BurnThresholds) -> None:
+    def __init__(self, thresholds: BurnThresholds,
+                 store: dict[str, Any] | None = None) -> None:
+        """*store*, given, is the job's ``metadata``: the samples kept there
+        are read back, and every call recorded is kept there too (R-1241)."""
         self._thresholds = thresholds
-        self._samples: list[BurnSample] = []
+        self._store = store
+        kept = store.get(BURN_SAMPLES_KEY) if store is not None else None
+        read_back = (_kept_sample(entry) for entry in (kept if isinstance(kept, list) else []))
+        self._samples: list[BurnSample] = [s for s in read_back if s is not None]
 
     #: One sample per call, labelled by its 1-based position among the calls
     #: recorded so far — never by ``at`` — exactly as the detector's own
@@ -190,8 +225,15 @@ class JobBurnMonitor:
     def record_call(self, usage_actuals: Any, *, at: datetime | None) -> None:
         """Reads no clock: ``at`` is the caller's; this module measures nothing."""
         label = len(self._samples) + 1
-        self._samples.append(
-            BurnSample(amount=_call_amount(usage_actuals), at=at, label=label))
+        sample = BurnSample(amount=_call_amount(usage_actuals), at=at, label=label)
+        self._samples.append(sample)
+        if self._store is not None:
+            kept = self._store.get(BURN_SAMPLES_KEY)
+            if not isinstance(kept, list):
+                kept = self._store[BURN_SAMPLES_KEY] = []
+            kept.append({"amount": sample.amount,
+                         "at": at.isoformat() if at is not None else None,
+                         "label": label})
 
     #: The job's current verdict — ``None`` while there is too little to judge.
     def reading(self) -> BurnReading | None:
