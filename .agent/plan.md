@@ -2,16 +2,17 @@
 
 ## Goal
 Pay down the open findings F297 owns, each by the repair its own text names, with the evidence
-that discharged it (docs/roadmap/features/T2_F297.md; DECISIONs F297 D1 to D8).
+that discharged it (docs/roadmap/features/T2_F297.md; DECISIONs F297 D1 to D9).
 
 ## Current Step
-Round 7 on `feature/f297-findings-paydown-v7`: book round 6 with the resolution of R-1149, and
-land T017 and T018: R-1139 with R-1225's measurement, and R-1158 (DECISION F297 D8).
+Round 8 on `feature/f297-findings-paydown-v7`, the last of session 1: book round 7 with the
+resolutions of R-1139, R-1225 and R-1158, and land T019 and T020: R-1156 with R-1157, and
+R-1230 (DECISION F297 D9).
 
 ## Next Steps
-1. Book round 7's verdict and the resolutions of R-1139, R-1225 and R-1158 in the next round's
-   first commit.
-2. T019 to T024: R-1156 with R-1157, R-1230, R-1219, R-1220, R-1240 and R-1249.
+1. Session 2's first commit books round 8's verdict and the resolutions of R-1156, R-1157 and
+   R-1230.
+2. T021 to T024: R-1219, R-1220, R-1240 and R-1249.
 3. T025 R-1241, the structural step; then the closure sequence.
 
 ## Risks
