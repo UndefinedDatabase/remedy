@@ -105,6 +105,28 @@ class TestTheTenPercentLimit:
         assert code == 0 and "nothing to compare" in sentence
 
 
+class TestTheModulesThatCarryARise:
+    """R-1139: the record's CPU time per test module says where a rise lies."""
+
+    def test_rises_are_largest_first_and_a_new_module_rises_from_nothing(self):
+        lines = cost.module_rises({"tests/a.py": 3.0, "tests/b.py": 1.0, "tests/c.py": 2.0},
+                                  {"tests/a.py": 1.0, "tests/b.py": 2.0})
+        assert lines == ["  +2.00 s  tests/a.py (1.00 -> 3.00)",
+                         "  +2.00 s  tests/c.py (0.00 -> 2.00)"]
+
+    def test_only_the_top_modules_are_named(self):
+        now = {f"tests/m{n:02d}.py": float(n) for n in range(1, 21)}
+        assert len(cost.module_rises(now, {})) == cost.TOP_MODULES
+
+    def test_a_previous_run_without_modules_names_none(self, tmp_path):
+        record = _record(tmp_path, _row(cpu=1000.0, utc="2026-09-15T10:00:00Z"))
+        run = {"modules": {"tests/a.py": 1.0}}
+        previous = {"feature": "F102", "utc": "2026-09-15T10:00:00Z", "cpu_seconds": 1000.0}
+        assert cost.module_report(record, run, previous) == [
+            "F102's closure run recorded no CPU time per test module, so no module is named."]
+        assert cost.module_report(record, run, None) == []
+
+
 class TestTheCommandLine:
     def _run(self, *args):
         return subprocess.run([sys.executable, str(SCRIPT), *args], cwd=REPO_ROOT,
@@ -121,7 +143,25 @@ class TestTheCommandLine:
             "recorded 2026-10-02T10:00:00Z",
             "This closure's suite used 1250.00 CPU seconds, 25.0 percent more than F102's 1000.00; that "
             "is above the 10 percent limit, so this closure registers a finding owned by the rolling "
-            "findings paydown."]
+            "findings paydown.",
+            "This run recorded no CPU time per test module, so no module is named."]
+
+    def test_the_modules_that_carry_a_rise_are_named_from_the_previous_closure_runs_line(self, tmp_path):
+        """R-1139: the previous closure's own full-suite line, found by its time, is the baseline."""
+        authored = tmp_path / "authored"
+        _transcript(authored, "f102", 1000.0, "2026-09-15T10:00:00Z")
+        record = _record(
+            tmp_path,
+            _row(cpu=1000.0, utc="2026-09-15T10:00:00Z",
+                 module_cpu_seconds={"tests/a.py": 10.0, "tests/b.py": 5.0}),
+            _row(cpu=1250.0, module_cpu_seconds={"tests/a.py": 12.5, "tests/b.py": 4.0,
+                                                 "tests/c.py": 30.0}))
+        done = self._run("--feature", "F103", "--record", str(record), "--authored", str(authored))
+        assert done.returncode == 1, done.stdout + done.stderr
+        assert done.stdout.splitlines()[2:] == [
+            "The test modules whose CPU time rose most since F102's closure run:",
+            "  +30.00 s  tests/c.py (0.00 -> 30.00)",
+            "  +2.50 s  tests/a.py (10.00 -> 12.50)"]
 
     def test_a_missing_record_exits_two(self, tmp_path):
         done = self._run("--feature", "F103", "--record", str(tmp_path / "absent.jsonl"),

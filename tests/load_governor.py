@@ -5,7 +5,9 @@ into every pytest run of this repository, however it is started, so a limit plac
 be missed the way a limit in ``scripts/remedy_pytest.sh`` would be.
 
 A cap lowers the heat at any one moment; it does not lower the electricity used, because the
-same work only takes longer. The record written here is how that work is measured.
+same work only takes longer. The record written here is how that work is measured, and since
+R-1139 it carries the CPU time of each test module, so a closure whose suite costs more can name
+the modules that carry the rise from the run it already made.
 """
 
 from __future__ import annotations
@@ -90,25 +92,41 @@ def load_log_path(environ=None, home: Path | None = None) -> Path | None:
     return folder / "test_load.jsonl" if folder.is_dir() else None
 
 
-def _cpu_seconds() -> float:
+def process_cpu_seconds() -> float:
+    """This process's CPU time and that of the children it has waited for, in seconds."""
     t = os.times()
     return t.user + t.system + t.children_user + t.children_system
 
 
 def note_start() -> dict:
     """The reading taken when a run starts."""
-    return {"wall": time.monotonic(), "cpu": _cpu_seconds()}
+    return {"wall": time.monotonic(), "cpu": process_cpu_seconds()}
 
 
-def build_record(start: dict, collected: int, exit_status: int, workers: int, command: str) -> dict:
+def test_module(nodeid: str) -> str:
+    """The test module a node id belongs to: its path, before the first ``::``."""
+    return nodeid.split("::", 1)[0]
+
+
+def add_module_cpu(totals: dict, module: str, seconds: float) -> None:
+    """Add SECONDS to MODULE's total in TOTALS (R-1139)."""
+    totals[module] = totals.get(module, 0.0) + seconds
+
+
+def build_record(start: dict, collected: int, exit_status: int, workers: int, command: str,
+                 module_cpu: dict | None = None) -> dict:
+    """One run's line. ``module_cpu_seconds`` maps each test module to its CPU seconds, summed
+    over the processes that ran its tests (R-1139)."""
     return {
         "utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "command": command[:LOAD_LOG_COMMAND_CHARS],
         "collected": collected,
         "exit_status": exit_status,
         "wall_seconds": round(time.monotonic() - start["wall"], 2),
-        "cpu_seconds": round(_cpu_seconds() - start["cpu"], 2),
+        "cpu_seconds": round(process_cpu_seconds() - start["cpu"], 2),
         "workers": workers,
+        "module_cpu_seconds": {module: round(seconds, 2)
+                               for module, seconds in sorted((module_cpu or {}).items())},
     }
 
 
