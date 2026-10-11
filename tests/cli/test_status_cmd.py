@@ -430,3 +430,4 @@ def test_the_digest_names_the_jobs_left_until_the_next_upkeep_job(repo, capsys):
     [mission] = _status_json(capsys)["client"]["projects"][0]["missions"]
 
     assert (mission["upkeep_every"], mission["upkeep_jobs_left"], mission["upkeep_open_findings"]) == (5, 5, 0)
+    assert mission["upkeep_deferred_step"] == ""

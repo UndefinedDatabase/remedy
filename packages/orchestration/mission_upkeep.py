@@ -461,9 +461,11 @@ class UpkeepOutcome:
 
 
 def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None = None, *,
-                           config: Any = None, now: datetime | None = None) -> UpkeepOutcome:
+                           config: Any = None, now: datetime | None = None,
+                           step: str = "") -> UpkeepOutcome:
     """Record the ended jobs, then, when upkeep is due, make the upkeep job or record that none
-    was needed. The job is an ordinary follow-up job made by ``continue_mission``."""
+    was needed. The job is an ordinary follow-up job made by ``continue_mission``. STEP is the step
+    the caller asked for; an upkeep job made in its place records it as ``deferred_step`` (R-1238)."""
     from packages.orchestration.mission_state import continue_mission
     from packages.orchestration.pingpong_job import save_job_plan
 
@@ -480,6 +482,8 @@ def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None =
     job = continue_mission(project_id, mission_id, compile_upkeep_step(plan), root=root, now=now)
     planned = {"job_id": str(job.job_id), "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id,
                "findings": plan["findings"], "structure": plan["structure"], "replaced": plan["replaced"]}
+    if step:
+        planned["deferred_step"] = step
     job.metadata[UPKEEP_METADATA_KEY] = planned
     save_job_plan(job)
     line = append_upkeep_line(project_id, mission_id, LINE_UPKEEP_PLANNED, planned, root, now=now)
@@ -529,6 +533,25 @@ def upkeep_preview(project_id: str, mission_id: str, root: Path | None = None, *
         preview["carries"] = {"findings": plan["findings"], "structure": plan["structure"],
                               "replaced": plan["replaced"]}
     return preview
+
+
+def upkeep_deferred_step(project_id: str, mission_id: str, root: Path | None = None) -> str:
+    """The step the mission's latest upkeep job was made in place of, while that upkeep job is still
+    the mission's latest job; empty once a later job is linked, when none was deferred, or when the
+    mission or its ledger cannot be read (R-1238). Never raises."""
+    from packages.orchestration.mission_state import MissionError, load_mission
+
+    try:
+        mission = load_mission(project_id, mission_id, root)
+        lines = read_upkeep_ledger(project_id, root)
+    except (MissionError, OSError):
+        return ""
+    last = mission.latest_link()
+    planned = [line for line in lines
+               if line.get("kind") == LINE_UPKEEP_PLANNED and line.get("mission_id") == mission.id]
+    if last is None or not planned or planned[-1].get("job_id") != last.job_id:
+        return ""
+    return str(planned[-1].get("deferred_step", ""))
 
 
 def upkeep_digest_counts(project_id: str, mission_id: str, root: Path | None = None) -> dict[str, Any]:

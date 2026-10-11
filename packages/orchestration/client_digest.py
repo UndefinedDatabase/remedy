@@ -297,9 +297,10 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
 
     DECISION F301 D5 adds the mission's upkeep counts: the setting, the completed jobs left before
     the next upkeep job, and the open findings it would carry, each ``None`` when unreadable.
-    DECISION F205 D6 adds the projects the mission spans, its own first, as references.
+    DECISION F205 D6 adds the projects the mission spans, its own first, as references. R-1238 adds
+    the step its latest upkeep job was made in place of, while that job is still its latest.
     """
-    from packages.orchestration.mission_upkeep import upkeep_digest_counts
+    from packages.orchestration.mission_upkeep import upkeep_deferred_step, upkeep_digest_counts
 
     order = mission.order
     upkeep = upkeep_digest_counts(mission.project_id, mission.id)
@@ -314,6 +315,7 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
         "upkeep_every": upkeep["every"],
         "upkeep_jobs_left": upkeep["jobs_left"],
         "upkeep_open_findings": upkeep["open_findings"],
+        "upkeep_deferred_step": upkeep_deferred_step(mission.project_id, mission.id),
     }
 
 

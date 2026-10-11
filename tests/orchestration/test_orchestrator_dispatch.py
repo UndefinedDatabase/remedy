@@ -131,7 +131,9 @@ class TestTheUpkeepJobInPlaceOfADispatch:
         assert load_mission(PROJECT, mission_id, data_root).job_ids()[-1] == outcome.job_id
         assert "in place of M1's step after 5 completed jobs" in outcome.detail
         assert "gate=" not in outcome.detail and blocked_completion(MOVE, outcome) == ("M1", "")
-        assert [line["kind"] for line in read_upkeep_ledger(PROJECT, data_root)][-1] == "upkeep_planned"
+        planned = read_upkeep_ledger(PROJECT, data_root)[-1]
+        assert planned["kind"] == "upkeep_planned"
+        assert planned["deferred_step"] == "build M1"  # R-1238: the step the upkeep job deferred
 
     def test_the_next_dispatch_is_the_models_own(self, data_root, recorder):
         mission_id = _five_done(data_root)

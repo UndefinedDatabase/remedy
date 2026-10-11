@@ -37,6 +37,7 @@ from packages.orchestration.mission_upkeep import (
     record_upkeep_skip,
     replaced_pairs_from_findings,
     upkeep_cadence,
+    upkeep_deferred_step,
     upkeep_digest_counts,
     upkeep_every_setting,
     upkeep_has_work,
@@ -526,6 +527,24 @@ class TestTheUpkeepJob:
         assert load_mission(registered, mission_id).job_ids()[-1] == str(job.job_id)
         assert outcome.line["kind"] == LINE_UPKEEP_PLANNED and outcome.line["job_id"] == str(job.job_id)
         assert upkeep_cadence(registered, mission_id, config=EVERY_TWO).completed == 0
+
+    def test_the_step_an_upkeep_job_was_made_in_place_of_is_kept_until_a_later_job(self, data_root):
+        """R-1238: the planned line records the step, and it reads back while the upkeep job is the
+        mission's latest job; a later job ends it."""
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO, step="Add the CSV path")
+
+        assert outcome.line["deferred_step"] == "Add the CSV path"
+        assert outcome.job.metadata[UPKEEP_METADATA_KEY]["deferred_step"] == "Add the CSV path"
+        assert upkeep_deferred_step(PROJECT, mission_id) == "Add the CSV path"
+        link_job_to_mission(PROJECT, mission_id, str(_job("pending").job_id), "follow_up")
+        assert upkeep_deferred_step(PROJECT, mission_id) == ""
+
+    def test_an_upkeep_job_made_with_no_step_defers_none(self, data_root):
+        mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)
+        outcome = make_upkeep_job_if_due(PROJECT, mission_id, config=EVERY_TWO)
+        assert "deferred_step" not in outcome.line
+        assert upkeep_deferred_step(PROJECT, mission_id) == ""
 
     def test_findings_alone_are_work_enough_for_a_job(self, data_root):
         mission_id, _ = _chain(PROJECT, ["completed", "completed"], findings=1)

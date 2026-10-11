@@ -500,7 +500,7 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
 
 
 def _upkeep_before_continue(project_id: str, mission_id: str, skip_upkeep: str | None, *,
-                            json_output: bool) -> tuple[Any, dict[str, Any] | None]:
+                            json_output: bool, step: str = "") -> tuple[Any, dict[str, Any] | None]:
     """DECISION F301 D1 (9): the upkeep job that is due, in place of the step, or the recorded skip.
 
     Answers the upkeep job, or None when the step's own job comes next, and the ledger line written.
@@ -512,7 +512,7 @@ def _upkeep_before_continue(project_id: str, mission_id: str, skip_upkeep: str |
     try:
         if skip_upkeep is not None:
             return None, record_upkeep_skip(project_id, mission_id, skip_upkeep)
-        outcome = make_upkeep_job_if_due(project_id, mission_id)
+        outcome = make_upkeep_job_if_due(project_id, mission_id, step=step)
     except UpkeepError as exc:
         fail("upkeep_refused", str(exc), json_output=json_output, exit_code=2)
     except MissionError as exc:
@@ -528,6 +528,7 @@ def _print_upkeep_line(line: dict[str, Any] | None) -> None:
     jobs = f"{count} completed job{'' if count == 1 else 's'}"
     if line.get("kind") == "upkeep_planned":
         print(f"  Upkeep: after {jobs} of this mission, Remedy made this upkeep job in place of your step.")
+        print(f"  Your step, not taken yet: {line.get('deferred_step', '')}")
         print("  Give your step again once it has run, or give it with --skip-upkeep and a reason to skip the upkeep.")
     elif line.get("kind") == "upkeep_skipped":
         print(f"  Upkeep skipped after {jobs}; the reason is recorded: {line.get('reason', '')}")
@@ -547,7 +548,10 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
 
     project_id = _resolve_project_id(project, json_output=json_output)
     mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)
-    job, upkeep_line = _upkeep_before_continue(project_id, mission.id, skip_upkeep, json_output=json_output)
+    job, upkeep_line = _upkeep_before_continue(project_id, mission.id, skip_upkeep, json_output=json_output,
+                                               step=next_step)
+    # R-1238: an upkeep job made in place of the step says so in the answer, with the step's text.
+    deferred = upkeep_line is not None and upkeep_line.get("kind") == "upkeep_planned"
     if job is None:
         try:
             job = continue_mission(project_id, mission.id, next_step)
@@ -567,6 +571,8 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
                 if verify is not None else None),
             tasks=[t.title for t in job.tasks],
             upkeep=upkeep_line,
+            step_deferred=deferred,
+            deferred_step=next_step if deferred else "",
         )
         return
 

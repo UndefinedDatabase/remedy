@@ -35,7 +35,7 @@ def dispatch_milestone_job(project_id: str, mission_id: str, payload: dict[str, 
 
     # DECISION F301 D1 (9): when upkeep is due, its job runs in place of this dispatch. The loop
     # never skips one; the model is asked again at its next iteration.
-    upkeep = make_upkeep_job_if_due(project_id, mission_id, root, now=now)
+    upkeep = make_upkeep_job_if_due(project_id, mission_id, root, now=now, step=payload["step"])
     if upkeep.job is not None:
         return run_upkeep_job(upkeep, payload["milestone_id"], execute=execute)
     create = dispatch or continue_mission
