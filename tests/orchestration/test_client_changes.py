@@ -176,6 +176,52 @@ def test_a_job_whose_run_log_alone_changed_is_listed_by_build_client_changes(roo
     assert str(job.job_id) in {j["job_id"] for j in after["jobs"]}
 
 
+# ── a gate result alone, and a mission's record alone, list a job (R-1240) ──
+
+
+def test_a_job_whose_gate_result_alone_changed_is_listed(root):
+    """R-1240: a gate result written after the cursor, while the job's own record and run log
+    predate it, lists the job. `save_gate_result` is the gate's own writer."""
+    from packages.orchestration.dod_gate import GateResult, save_gate_result
+
+    job = JobPlan(job_title="gate-only", project_id="proj-1")
+    save_job_plan(job)
+    old_mtime = (NOW - timedelta(seconds=60)).timestamp()
+    os.utime(job_record_path(str(job.job_id)), (old_mtime, old_mtime))
+    assert str(job.job_id) not in {j["job_id"] for j in build_client_changes(NOW, now=NOW)["jobs"]}
+
+    save_gate_result(str(job.job_id), GateResult(released=True))
+
+    after = build_client_changes(NOW, now=NOW)
+    assert str(job.job_id) in {j["job_id"] for j in after["jobs"]}
+
+
+def test_a_job_whose_missions_record_alone_changed_is_listed_with_its_new_card(root, tmp_path):
+    """R-1240: the approval card reads the mission's contract, which a gate's verdict rewrites in
+    the mission's record; a contract changed after the cursor, while the job's own files predate
+    it, lists the job, and its card carries the criterion's new status."""
+    from packages.orchestration.mission_state import mission_dir_for_project, set_mission_contract
+    from packages.orchestration.pingpong_job import JOB_COMPLETED
+    from tests.orchestration.test_client_digest import _contract, _mission_job
+
+    job = JobPlan(job_title="carded", state=JOB_COMPLETED)
+    mission_id = _mission_job(tmp_path, "carded", job, _contract(
+        {"id": "C001", "text": "The tests pass", "origin": "planner"}))
+    record = mission_dir_for_project(job.project_id) / f"{mission_id}.json"
+    old_mtime = (NOW - timedelta(seconds=60)).timestamp()
+    for path in (job_record_path(str(job.job_id)), record):
+        os.utime(path, (old_mtime, old_mtime))
+    assert str(job.job_id) not in {j["job_id"] for j in build_client_changes(NOW, now=NOW)["jobs"]}
+
+    set_mission_contract(job.project_id, mission_id, _contract(
+        {"id": "C001", "text": "The tests pass", "origin": "planner", "status": "met"}))
+
+    [entry] = [j for j in build_client_changes(NOW, now=NOW)["jobs"]
+               if j["job_id"] == str(job.job_id)]
+    assert entry["approval_card"]["blocking_criteria"] == [
+        {"id": "C001", "text": "The tests pass", "status": "met"}]
+
+
 # ── the overlap boundary, by file modification time ───────────────────────
 
 
