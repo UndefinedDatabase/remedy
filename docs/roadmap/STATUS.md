@@ -243,7 +243,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 <!-- operator amendment amend1010-cadence-guards (2026-10-10): F297 moved here from behind F199 so that the findings paydown follows the cadence of five again (self_drive_protocol, rule B and the structure rule); amend1007b had placed nine features in front of it. Reversible by moving the two lines back directly above the heading "## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane, continued)". -->
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F297 — Findings paydown v7
+- [~] F297 — Findings paydown v7
 
 ## Tier 13 — Luna gate A, part three: a mission over several repositories (operator amendment amend1007b-luna-api-upkeep)
 

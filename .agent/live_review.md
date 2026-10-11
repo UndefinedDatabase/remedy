@@ -1,32 +1,33 @@
-# Live Review — F205 Multi-repo missions
+# Live Review — F297 Findings paydown v7
 
-> Round-by-round review record, re-headed at the F205 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F302, whose STATUS line
-> went `[x]` on its own branch. Of the hosted CI of its pull request 321, run 38041124327 on
-> `fb25d5184`, the Python 3.10 job passed; the first Python 3.12 job ended in failure with no test
-> output, its one failure annotation reading "The hosted runner lost communication with the
-> server" and no log kept, so no failing test node existed to register, and the job was re-run once
-> under operator amendment amend0929-context-hygiene; the second attempt passed. The Open PR Gate
-> merged pull request 321 into `main` as `c72d2a7ec`, whose second parent is `fb25d5184`. F302's
-> round 8 was reviewed after its own handback and its verdict was written into that pull request,
-> so operator amendment amend0827-process-diet rule 1 books it here, in the first commit of the next
-> round that is happening anyway; it is appended at the end of this record by this claim. Only the
-> heading, this paragraph and the Steps section below are rewritten; everything else from the
-> Findings heading to the end of the file as it stood at `c72d2a7ec` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The open
-> set at `c72d2a7ec`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`, is
-> `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235']`, all sixteen owned by F297, the rolling findings paydown.
+> Round-by-round review record, re-headed at the F297 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F205, whose STATUS
+> line went `[x]` on its own branch and whose pull request 323 the operator merged into `main` as
+> `6e8b6cfa7`, whose second parent is `6286092d8`; the two trees are identical. Hosted CI run
+> 38123643723 on `6286092d8` passed both its Python 3.10 and its Python 3.12 job at its first
+> attempt. Two operator amendments were merged after it, amend1011-order-shape as pull request 324
+> and amend1011b-one-repo-mission as pull request 325, and between them they registered R-1246 to
+> R-1250, owned by F297. F205's round 10 and its fourth session's round were each reviewed after
+> their own handback, so operator amendment amend0827-process-diet rule 1 books both verdicts here,
+> in the first commit of the next round that is happening anyway; their gate entries are appended
+> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
+> below are rewritten, and one `Owner:` line is added under R-1248 (DECISION F297 D1); everything
+> else from the Findings heading to the end of the file as it stood at `9dab4d7f0` is carried
+> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> The open set at `9dab4d7f0`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is
+> `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235', 'R-1236', 'R-1237', 'R-1238', 'R-1239', 'R-1240', 'R-1241', 'R-1242', 'R-1243', 'R-1246', 'R-1247', 'R-1248', 'R-1249', 'R-1250']`, and F297 owns every id in it.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F205 D1's. The first round claims F205, re-heads this record, books
-F302's round 8, saves the inventory of a mission's records as `.agent/f205_inventory.md`, and takes
-the structural step the mission record needs first: the record leaves
-`packages/orchestration/mission_state.py` for `packages/orchestration/mission_record.py`. Then the
-record over several repositories, the order that names several projects with one job per
-repository, each job applied, committed and pushed in its own repository, the loop that switches
-project per job, the digest and the public API that name each job's repository, and the upkeep
-across repositories with the fixture mission over two repositories; then closure.
+THE ORDER BELOW IS DECISION F297 D1's, which also writes the feature file's slice list. The first
+round claims F297, re-heads this record, books F205's round 10 and its fourth session's round, and
+lands the test and page repairs of R-1172, R-1243 and R-1242. The next rounds take the small product
+repairs of R-1143, R-1176, R-1196, R-1138 and R-1162; then the mission's R-1237, R-1239 and R-1238
+and the order's R-1247 and R-1250; then R-1236; then R-1149; then the suite's cost, R-1139 with
+R-1225 and R-1158; then R-1156 with R-1157, R-1230, R-1219, R-1220, R-1240 and R-1249; then R-1241,
+the structural step that closes the paydown; then closure. R-1235 and R-1246 are carried and
+R-1248 moved to F305 at the claim.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -214,5 +215,10 @@ Gate: F205 R9 — the F205 round 9 entry, over `801dd494b`..`2c863d3b3` (2 commi
 - R-1246 — Low, THE TESTS OF amend1011-order-shape USE WRITTEN ORDER TEXTS, NOT THE FOUR REAL ORDERS OF 2026-10-11. Raised by operator amendment amend1011-order-shape (2026-10-11). SEARCHED BEFORE MINTING (checklist item 30): no open finding names `tests/orchestration/test_order_shape_repair.py`. READ: the amendment orders the texts of orders luna-tugwqu, luna-t9qzgu, luna-tfdvf5 and luna-t5twkd from `.data/serve/order-keys/` as fixtures; the session's permission settings deny every read of `.data/`, so `ORDERS` in the test holds texts written from the amendment's description. THE REPAIR: the four files are copied into `tests/orchestration/data/` by someone who may read the data root, and `ORDERS` loads them. Owner: F297. OPEN.
 - R-1247 — Low, A FAILED SHAPE STEP LEAVES ITS STOPPED JOBS LINKED TO THE MISSION, AND A PLAN THAT CANNOT BE PARSED LEAVES A `pending` JOB BEHIND. Raised by operator amendment amend1011-order-shape (2026-10-11). SEARCHED BEFORE MINTING (checklist item 30): no open finding names `_stop_unrun_shape_jobs` or the parse-failure branch of `plan_order_job`. READ: `_stop_unrun_shape_jobs` in `packages/orchestration/do_sequence.py` stops the saved jobs but `link_job_to_mission` and `attach_job` records stay, so the mission and the project still list them; the `else` branch of `plan_order_job` saves a job in `RunState.PENDING` before it raises, and nothing stops it. THE REPAIR: the mission record marks those jobs stopped (or unlinks them), and the parse-failure branch stops its job too, with a test for each. Owner: F297. OPEN.
 - R-1248 — Medium, THE UI HAS NO MISSION CARD, SO THE ONE-CARD-PER-REPOSITORY VIEW AND THE PER-ORDER DRILL-DOWN OF amend1011b R7 ARE NOT BUILT. SEARCHED BEFORE MINTING: no open finding names it. READ: `apps/ui/src` reads missions nowhere except the decision card; `mission list` and `mission show` give one entry per repository and the recent orders and jobs, and the JSON holds all. THE REPAIR: a mission panel with lazy-loaded orders and jobs and per-order cost roll-up. Owner: F297. OPEN.
+Owner: F305 — Multi-repo missions: the cockpit's chain band (moved from F297 at its claim by DECISION F297 D1, 2026-10-11; this line supersedes any earlier Owner line in this paragraph).
 - R-1249 — Low, THE BINDING VOCABULARY PAGE STILL SAYS A MISSION IS WHAT EVERY ORDER BECOMES. SEARCHED BEFORE MINTING: no open finding names it. READ: `docs/system/vocabulary.md` row Mission and its mirror table in `tests/docs/test_vocabulary.py`; amend1011b D1 makes a mission the repository's lasting record and an order a batch. The new command descriptions avoid the word so the meaning check passes. THE REPAIR: the operator rules on the page, then the page, the mirror table and the diagram change together. Owner: F297. OPEN.
 - R-1250 — Low, A MULTI-REPOSITORY ORDER THAT FAILS TO BE ACCEPTED BY ITS LATER REPOSITORY LEAVES AN ORDER BATCH WITHOUT JOBS IN THE EARLIER ONE'S MISSION. SEARCHED BEFORE MINTING: no open finding names it. READ: the loop in `_step_plan` in `packages/orchestration/do_sequence.py`. THE REPAIR: check every target's mission can take an order before accepting any. Owner: F297. OPEN.
+
+Gate: F205 R10 — the F205 round 10 entry, the closing round, over `2c863d3b3`..`b8bbebc23` (3 commits, each single-parent; insertions by `git show --numstat`: `e1704867d` 330, `674a638a3` 24, `b8bbebc23` 228). VERDICT PASS. The reviewer of F205's first session reached the verdict after the round's last commit, so no commit of that round carries it, and the handbacks at `f012b6644` and `6286092d8` carried it to this record under operator amendment amend0827-process-diet rule 1: the round's 11 committed files equal to that reviewer's simulation in `.remedy-wt/f205-r10/`, gates 1 to 5 green, the round's selection at 560 passed and the integrity check at six checks `pass`. The round pushed nothing and opened no pull request, because `.agent/STOP` appeared during it, which guardrail G6 makes right; session 2's handback `6a4bddde6` pushed the branch and opened pull request 323. The reviewer of F297's first session re-measured the range's commits, their parents and their insertions. The open set at `b8bbebc23` is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235']`.
+
+Gate: F205 S4 — the F205 fourth-session entry, over `710614217`..`6286092d8` on the branch's first-parent line (4 commits; insertions by `git show --numstat`: `4581689cb` 307, `2a85039ac` 198 against its first parent, `e9e4474bc` 7, `6286092d8` 334; `2a85039ac` is the merge of `main` at `4a24150a0` into `4581689cb`, and every other commit is single-parent). VERDICT PASS. Between round 10 and this round the branch gained session 3's handback `f012b6644`, which asked operator question Q10 because pull request 323 conflicted with `main`, and the operator's answer `710614217`, DECISION F205 D8; neither is a round. The reviewer of F205's fourth session reached the verdict after the session's handback, so no committed file carries it, and booked it in no file before this one: C1's renumbering of the branch's two repaired findings to R-1244 and R-1245 and C2's merge equal to that reviewer's dry run, the round's selection at 732 passed, the integrity check at six checks `pass`, and C3's full suite on the merged tree at `22473 passed, 22 skipped`, exit 0, 1211.36 CPU seconds, 0.1 percent less than F302's. The worker first stopped before C1, correctly, on a gate whose count the block's own plan text contradicted, and resumed on the corrected block (`.agent/prose_slips.md`). The reviewer of F297's first session re-measured the range's commits, their parents and their insertions, read the merge commit `6e8b6cfa7` of pull request 323 at a tree identical to `6286092d8`'s, and read hosted CI run 38123643723 on `6286092d8` at both its jobs passed at its first attempt. The open set at `6286092d8` is `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235', 'R-1236', 'R-1237', 'R-1238', 'R-1239', 'R-1240', 'R-1241', 'R-1242', 'R-1243']`.

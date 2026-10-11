@@ -1,24 +1,20 @@
-# Context — F205 Multi-repo missions
+# Context — F297 Findings paydown v7
 
 ## Active Branch
-feature/f205-multi-repo-missions, from `main` at `c72d2a7ec` (the merge commit of pull request
-321, F302).
+feature/f297-findings-paydown-v7, from `main` at `9dab4d7f0` (the merge commit of pull request
+325, amend1011b-one-repo-mission).
 
 ## Scope
-F205 (Tier 13, Luna gate A part three): one order naming several registered projects, one job per
-repository, each job applied, committed and pushed in its own repository, the loop switching
-project per job, the digest and the public API naming each job's repository, the upkeep across
-repositories, and the fixture mission over two repositories, as
-`docs/roadmap/features/T13_F205.md` lists them; DECISION F205 D1 fixes the order.
+F297 (Tier 2), the seventh rolling findings paydown: the open findings it owns, one slice per
+module, each finding's text its spec, as `docs/roadmap/features/T2_F297.md` lists them; DECISION
+F297 D1 fixes the order, the two findings carried and the structural step that closes it.
 
 ## Do not touch
-No global evidence store and no second mission store: evidence, cards and ledgers stay in their
-own project. The approval gate. A merge stays the operator's. A cost in US dollars is never shown
-to the operator (DECISION amend1007b D7).
+The resolutions earlier paydowns landed; the record is append-only. The approval gate. A cost in
+US dollars is never shown to the operator (DECISION amend1007b D7).
 
 ## Active assumptions
-- A mission over several repositories lives under the project its order names first.
-- Until F206's catalog exists, the jobs follow the order the order names its projects.
+- A repair changes what its finding names and nothing beside it.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 
@@ -29,8 +25,7 @@ to the operator (DECISION amend1007b D7).
 - Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
   larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
 - Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
-- `do_sequence.py`, `apps/cli/commands/do_cmd.py`, `orchestrator_loop.py`, `job_apply.py`,
-  `pingpong_job.py` and `public_api.py` are on the structure page and may not grow.
+- The functions and files on `docs/system/structure-ledger-v1.md` may not grow.
 
 ## Steps
 The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
