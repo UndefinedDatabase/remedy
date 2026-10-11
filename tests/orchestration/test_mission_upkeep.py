@@ -20,6 +20,9 @@ from packages.orchestration.mission_upkeep import (
     LINE_UPKEEP_SKIPPED,
     UPKEEP_EVERY_DEFAULT,
     UPKEEP_EVERY_KEY,
+    UPKEEP_FILE_LINES_KEY,
+    UPKEEP_FUNCTION_LINES_KEY,
+    UPKEEP_MAX_FINDINGS_KEY,
     UPKEEP_METADATA_KEY,
     UpkeepError,
     append_upkeep_line,
@@ -365,6 +368,18 @@ class TestTheSetting:
         with pytest.raises(UpkeepError):
             upkeep_every_setting({UPKEEP_EVERY_KEY: value})
 
+    @pytest.mark.parametrize(("key", "default", "variable"), [
+        (UPKEEP_MAX_FINDINGS_KEY, 5, "REMEDY_MISSION_UPKEEP_MAX_FINDINGS"),
+        (UPKEEP_FUNCTION_LINES_KEY, 100, "REMEDY_MISSION_UPKEEP_FUNCTION_LINES"),
+        (UPKEEP_FILE_LINES_KEY, 1000, "REMEDY_MISSION_UPKEEP_FILE_LINES"),
+    ])
+    def test_the_findings_carried_and_the_limits_are_registered_settings(self, key, default, variable):
+        """R-1239: today's fixed values are the defaults of three settings."""
+        from packages.orchestration.config import get_key_spec
+
+        spec = get_key_spec(key)
+        assert (spec.default, spec.value_type, spec.env_var) == (default, int, variable)
+
     def test_the_variable_reaches_the_setting(self, monkeypatch):
         from packages.orchestration.config import reset_config
 
@@ -428,6 +443,29 @@ class TestThePlanAndItsStep:
         assert "F-TASK-006" not in step and "notes.txt" not in step
         order = [step.index(n) for n in ("finding F-TASK-001", "very_long", "the file src/big.py", "- src/importer.py")]
         assert order == sorted(order)
+
+    def test_the_settings_name_the_findings_carried_and_the_structure_limits(self, registered):
+        """R-1239: the plan reads how many findings ride and the limits it measures against."""
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=7)
+        record_closed_jobs(registered, mission_id)
+        config = {**EVERY_TWO, UPKEEP_MAX_FINDINGS_KEY: 2, UPKEEP_FUNCTION_LINES_KEY: 150,
+                  UPKEEP_FILE_LINES_KEY: 2000}
+
+        plan = plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config=config),
+                           read_upkeep_ledger(registered), config=config)
+
+        assert [key.rsplit(":", 1)[1] for key in plan["findings"]] == ["F-TASK-001", "F-TASK-002"]
+        assert plan["structure"]["limits"] == {"function_lines": 150, "file_lines": 2000}
+        assert plan["structure"]["largest_function"] is None
+        assert plan["structure"]["largest_file"] is None
+
+    @pytest.mark.parametrize("key", [UPKEEP_MAX_FINDINGS_KEY, UPKEEP_FUNCTION_LINES_KEY,
+                                     UPKEEP_FILE_LINES_KEY])
+    def test_a_setting_that_is_not_a_whole_number_of_at_least_one_is_refused(self, registered, key):
+        mission_id, _ = _chain(registered, ["completed", "completed"], findings=1)
+        with pytest.raises(UpkeepError, match=key):
+            plan_upkeep(registered, mission_id, upkeep_cadence(registered, mission_id, config=EVERY_TWO),
+                        read_upkeep_ledger(registered), config={key: 0})
 
     def test_a_project_without_a_repository_carries_findings_alone(self, data_root):
         mission_id, _ = _chain(PROJECT, ["completed"], findings=1)

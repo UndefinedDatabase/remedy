@@ -48,4 +48,34 @@ MISSION_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=5,
     ),
+    ConfigKeySpec(
+        key="mission.upkeep_max_findings",
+        env_var="REMEDY_MISSION_UPKEEP_MAX_FINDINGS",
+        description=(
+            "How many of the project's open findings one upkeep job carries at most, oldest first; "
+            "the rest wait for the next upkeep job (R-1239). A whole number of at least 1."
+        ),
+        value_type=int,
+        default=5,
+    ),
+    ConfigKeySpec(
+        key="mission.upkeep_function_lines",
+        env_var="REMEDY_MISSION_UPKEEP_FUNCTION_LINES",
+        description=(
+            "The length in lines above which an upkeep job's structure measure names a Python "
+            "function of the project's repository (R-1239). A whole number of at least 1."
+        ),
+        value_type=int,
+        default=100,
+    ),
+    ConfigKeySpec(
+        key="mission.upkeep_file_lines",
+        env_var="REMEDY_MISSION_UPKEEP_FILE_LINES",
+        description=(
+            "The length in lines above which an upkeep job's structure measure names a code file "
+            "of the project's repository (R-1239). A whole number of at least 1."
+        ),
+        value_type=int,
+        default=1000,
+    ),
 )

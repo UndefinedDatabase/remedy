@@ -222,8 +222,15 @@ def open_findings(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
 #: The setting that says after how many completed jobs upkeep is due (DECISION F301 D1 (6)).
 UPKEEP_EVERY_KEY = "mission.upkeep_every"
 UPKEEP_EVERY_DEFAULT = 5
-#: At most this many open findings ride in one upkeep job; the rest wait for the next one.
-UPKEEP_MAX_FINDINGS = 5
+#: The settings that say how many open findings one upkeep job carries, oldest first, the rest
+#: waiting for the next one, and the limits its structure measure names a function and a file
+#: above; unset, each reads Remedy's own value (R-1239).
+UPKEEP_MAX_FINDINGS_KEY = "mission.upkeep_max_findings"
+UPKEEP_MAX_FINDINGS_DEFAULT = 5
+UPKEEP_FUNCTION_LINES_KEY = "mission.upkeep_function_lines"
+UPKEEP_FUNCTION_LINES_DEFAULT = 100
+UPKEEP_FILE_LINES_KEY = "mission.upkeep_file_lines"
+UPKEEP_FILE_LINES_DEFAULT = 1000
 
 
 class UpkeepError(ValueError):
@@ -231,19 +238,24 @@ class UpkeepError(ValueError):
     nothing due."""
 
 
-def upkeep_every_setting(config: Any = None) -> int:
-    """``mission.upkeep_every``: unset reads 5; a value that is not a whole number of at
-    least 1 is refused."""
+def _whole_number_setting(config: Any, key: str, default: int) -> int:
+    """A setting that is a whole number of at least 1: unset reads DEFAULT, anything else is refused."""
     if config is None:
         from packages.orchestration.config import get_config
 
         config = get_config()
-    value = config.get(UPKEEP_EVERY_KEY)
+    value = config.get(key)
     if value is None:
-        return UPKEEP_EVERY_DEFAULT
+        return default
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise UpkeepError(f"{UPKEEP_EVERY_KEY} must be a whole number of at least 1, not {value!r}")
+        raise UpkeepError(f"{key} must be a whole number of at least 1, not {value!r}")
     return value
+
+
+def upkeep_every_setting(config: Any = None) -> int:
+    """``mission.upkeep_every``: unset reads 5; a value that is not a whole number of at
+    least 1 is refused."""
+    return _whole_number_setting(config, UPKEEP_EVERY_KEY, UPKEEP_EVERY_DEFAULT)
 
 
 @dataclass(frozen=True)
@@ -332,7 +344,7 @@ def upkeep_target(mission: Any, root: Path | None = None) -> tuple[str, str]:
     return str(mission.project_id), project_repository(mission.project_id)
 
 
-def _structure_item(repository: str) -> dict[str, Any]:
+def _structure_item(repository: str, function_limit: int, file_limit: int) -> dict[str, Any]:
     """The largest Python function and the largest code file above the limits (DECISION F301 D3 (2))."""
     from packages.orchestration.contract_hygiene import CODE_FILE_SUFFIXES
     from packages.orchestration.structure_measure import NotAGitRepository, measure_repository
@@ -340,7 +352,8 @@ def _structure_item(repository: str) -> dict[str, Any]:
     if not repository:
         return {"unmeasured": "the project names no repository"}
     try:
-        measure = measure_repository(Path(repository))
+        measure = measure_repository(Path(repository), function_limit=function_limit,
+                                     file_limit=file_limit)
     except (NotAGitRepository, OSError) as exc:
         return {"unmeasured": f"the repository could not be measured: {exc}"}
     function = measure.large_functions[0] if measure.large_functions else None
@@ -380,7 +393,8 @@ def _replaced_pairs(repository: str, lines: list[dict[str, Any]], mission_id: st
 
 
 def plan_upkeep(project_id: str, mission_id: str, cadence: UpkeepCadence,
-                lines: list[dict[str, Any]], root: Path | None = None) -> dict[str, Any]:
+                lines: list[dict[str, Any]], root: Path | None = None, *,
+                config: Any = None) -> dict[str, Any]:
     """What an upkeep job due now would carry, by DECISION F301 D1 (3) to (5) and D3 (2).
 
     It measures the repository the upkeep job works in (``upkeep_target``), and for a mission over
@@ -395,10 +409,14 @@ def plan_upkeep(project_id: str, mission_id: str, cadence: UpkeepCadence,
         theirs = {link.job_id for link in mission.job_links if link.project_id == target_project}
         lines = [line for line in lines
                  if line.get("kind") != LINE_JOB_CLOSED or line.get("job_id") in theirs]
-    carried = open_findings(lines)[:UPKEEP_MAX_FINDINGS]
+    carried = open_findings(lines)[:_whole_number_setting(
+        config, UPKEEP_MAX_FINDINGS_KEY, UPKEEP_MAX_FINDINGS_DEFAULT)]
+    structure = _structure_item(
+        repository, _whole_number_setting(config, UPKEEP_FUNCTION_LINES_KEY, UPKEEP_FUNCTION_LINES_DEFAULT),
+        _whole_number_setting(config, UPKEEP_FILE_LINES_KEY, UPKEEP_FILE_LINES_DEFAULT))
     return {"after_jobs": cadence.completed, "after_job_id": cadence.after_job_id, "every": cadence.every,
             "repository": repository, "findings": [f["key"] for f in carried], "carried": carried,
-            "structure": _structure_item(repository), "replaced": _replaced_pairs(repository, lines, mission_id)}
+            "structure": structure, "replaced": _replaced_pairs(repository, lines, mission_id)}
 
 
 def upkeep_has_work(plan: dict[str, Any]) -> bool:
@@ -454,7 +472,7 @@ def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None =
     cadence = upkeep_cadence(project_id, mission_id, root, config=config, lines=lines)
     if not cadence.due:
         return UpkeepOutcome(cadence, None, None, None)
-    plan = plan_upkeep(project_id, mission_id, cadence, lines, root)
+    plan = plan_upkeep(project_id, mission_id, cadence, lines, root, config=config)
     if not upkeep_has_work(plan):
         line = append_upkeep_line(project_id, mission_id, LINE_UPKEEP_NOT_NEEDED, {
             "after_jobs": cadence.completed, "after_job_id": cadence.after_job_id}, root, now=now)
@@ -507,7 +525,7 @@ def upkeep_preview(project_id: str, mission_id: str, root: Path | None = None, *
                                "jobs_left": cadence.jobs_left, "due": cadence.due,
                                "open_findings": len(open_findings(lines))}
     if measure:
-        plan = plan_upkeep(project_id, mission.id, cadence, lines, root)
+        plan = plan_upkeep(project_id, mission.id, cadence, lines, root, config=config)
         preview["carries"] = {"findings": plan["findings"], "structure": plan["structure"],
                               "replaced": plan["replaced"]}
     return preview

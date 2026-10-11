@@ -32,15 +32,18 @@ in time.
 ## What an upkeep job carries
 The rules, in the order the job's step lists them:
 1. The oldest findings the project's jobs left open, whichever of its missions ran them, because
-   the ledger is kept per project (R-1237), at most five; the others wait for the next upkeep job.
-2. The longest Python function above 100 lines and the longest code file above 1,000 lines in the
+   the ledger is kept per project (R-1237), at most `mission.upkeep_max_findings`, five unless
+   set; the others wait for the next upkeep job.
+2. The longest Python function above `mission.upkeep_function_lines` lines, 100 unless set, and
+   the longest code file above `mission.upkeep_file_lines` lines, 1,000 unless set, in the
    project's repository, measured as `remedy integrity structure` measures, each to be shortened
    without a change of behaviour. A code file is one whose name ends in `.py`, `.js`, `.jsx`, `.ts`
    or `.tsx`, so a lockfile or a data file is never picked.
 3. Every file that sits beside the file it replaces, found in the repository or recorded by a job,
    while both still exist, with the replaced one to be deleted.
 
-When none of these holds anything, no job is made and the ledger says so.
+When none of these holds anything, no job is made and the ledger says so. Each of the three
+settings is a whole number of at least 1, and any other value is refused (R-1239).
 
 An upkeep job is an ordinary job of the mission: it begins with the task that checks the previous
 job, runs under the ordinary budgets, and waits at the ordinary approval. It is known by the key
