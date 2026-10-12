@@ -253,7 +253,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane, continued)
 
-- [~] F058 — Model failover chain
+- [x] F058 — Model failover chain (T001–T003 complete; R-1257 to R-1265 resolved; R-1235, R-1246, R-1251 and R-1252 open — owned by F306; accepted 2026-10-13 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f058r9e1001 · package remedy-review-20261013-011933-READY_FOR_REVIEW.zip · SHA-256 39a31421f1a8d8cf0fbd28b3d2036b9010e729ef5fd65142a688425fbbbc2621 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 78a10d8eedb04e65af0ea44f6f0d20408dbee673)
 
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
 
