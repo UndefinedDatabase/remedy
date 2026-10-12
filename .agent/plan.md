@@ -7,10 +7,11 @@ failed-over call discloses the intended and the used model in its evidence and i
 (docs/roadmap/features/T3_F058.md; DECISIONs F058 D1 to D4).
 
 ## Current Step
-Round 4 on `feature/f058-model-failover-chain`, session 2: book round 3's verdict (PASS, R-1261
-registered, R-1259 and R-1260 resolved), repair R-1261, move `parked_session_refs` out of
-`packages/orchestration/pingpong_loop.py` (structural), and T003: the cooldown key and the sticky
-window on an injected clock, the session guard, and the three non-triggers proved through a run.
+Round 4 on `feature/f058-model-failover-chain` landed: round 3's verdict booked (PASS, R-1261
+registered, R-1259 and R-1260 resolved), R-1261 repaired, `parked_session_refs` moved out of
+`packages/orchestration/pingpong_loop.py`, and T003: the cooldown key and the sticky window on an
+injected clock, the session guard, and the three non-triggers proved through a run. Awaiting the
+reviewer's verdict on round 4.
 
 ## Next Steps
 1. The documentation page for model failover, registered in `docs/README.md`, with the closure's
