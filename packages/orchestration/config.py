@@ -47,6 +47,7 @@ from packages.orchestration.config_key_spec import ConfigKeySpec
 from packages.orchestration.config_keys_claude import CLAUDE_KEY_SPECS
 from packages.orchestration.config_keys_mission import MISSION_KEY_SPECS
 from packages.orchestration.config_keys_model_routing import MODEL_ROUTING_KEY_SPECS
+from packages.orchestration.config_keys_ui import UI_KEY_SPECS
 from packages.orchestration.model_aliases import resolve_model_alias
 
 if sys.version_info >= (3, 11):
@@ -188,39 +189,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=None,
     ),
-    ConfigKeySpec(
-        key="ui.host",
-        env_var="REMEDY_UI_HOST",
-        description=(
-            "UI server bind host. Loopback values keep the cockpit on 127.0.0.1; "
-            "a LAN host or wildcard binds on all IPv4 interfaces and records both "
-            "the loopback URL and LAN URLs, still protected by the per-session token."
-        ),
-        value_type=str,
-        default="127.0.0.1",
-    ),
-    ConfigKeySpec(
-        key="ui.port",
-        env_var="REMEDY_UI_PORT",
-        description="UI server port",
-        value_type=int,
-        default=8765,
-    ),
-    ConfigKeySpec(
-        key="ui.command_rate_limit_per_minute",
-        env_var="REMEDY_UI_COMMAND_RATE_LIMIT_PER_MINUTE",
-        description=(
-            "Commands the UI write door accepts for one token fingerprint and "
-            "one job per minute (DECISION F009 D9). The excess is refused with "
-            "429 rather than made to wait, because an inbound request is "
-            "holding a connection. 30 is the default because a human cockpit "
-            "stays an order of magnitude below it — an operator clicking a "
-            "control manages a few commands a minute — while a client stuck in "
-            "a retry loop is stopped inside two seconds of real traffic."
-        ),
-        value_type=int,
-        default=30,
-    ),
+    *UI_KEY_SPECS,
     ConfigKeySpec(
         key="tests.pytest_timeout_seconds",
         env_var="REMEDY_PYTEST_TIMEOUT_SECONDS",

@@ -26,7 +26,6 @@ import json
 import os
 import re
 import secrets
-import socket
 import sys
 import threading
 import time
@@ -43,6 +42,13 @@ from packages.orchestration.cockpit_project_routes import (
 )
 from packages.orchestration.cockpit_project_routes import project_route_answer
 from packages.orchestration.public_api import is_public_api_path
+from packages.orchestration.ui_server_launch import (
+    _ANY_IPV4_HOST,
+    _print_ui_urls,
+    _try_open_browser,
+    _ui_bind_and_urls,
+    _ui_session_info,
+)
 
 # ---------------------------------------------------------------------------
 # Path sanitization (no absolute path leaks in dashboard JSON)
@@ -4712,44 +4718,6 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 # Server lifecycle
 # ---------------------------------------------------------------------------
 
-_UI_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-_ANY_IPV4_HOST = ".".join(("0", "0", "0", "0"))
-_UI_WILDCARD_HOSTS = frozenset({"", _ANY_IPV4_HOST, "*"})
-
-
-def _outer_ui_ip_candidates(requested_host: str) -> list[str]:
-    """LAN-facing IPv4 hosts worth advertising for one UI server."""
-    candidates: list[str] = []
-    if requested_host and requested_host not in _UI_WILDCARD_HOSTS:
-        candidates.append(requested_host)
-    try:
-        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            candidates.append(str(info[4][0]))
-    except OSError:
-        pass
-    seen: set[str] = set()
-    result: list[str] = []
-    for host in candidates:
-        if host in seen or host in _UI_LOOPBACK_HOSTS or host.startswith("127."):
-            continue
-        seen.add(host)
-        result.append(host)
-    return result
-
-
-def _ui_bind_and_urls(host: str, actual_port: int, job_id: str, token: str) -> tuple[str, list[str], list[str]]:
-    """Return `(bind_host, urls, external_urls)` for a requested UI host."""
-    requested = (host or "127.0.0.1").strip()
-    external = requested not in _UI_LOOPBACK_HOSTS
-    bind_host = "" if external else "127.0.0.1"
-    local_url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
-    external_urls = [
-        f"http://{candidate}:{actual_port}/?job={job_id}&token={token}"
-        for candidate in _outer_ui_ip_candidates(requested)
-    ] if external else []
-    return bind_host, [local_url, *external_urls], external_urls
-
-
 def start_ui_server(
     job_id: str,
     *,
@@ -4811,35 +4779,21 @@ def start_ui_server(
     actual_port = server.server_address[1]
     bind_host, urls, external_urls = _ui_bind_and_urls(requested_host, actual_port, job_id, token)
     url = urls[0]
+    shown_host = "127.0.0.1" if bind_host == "127.0.0.1" else requested_host
+    shown_bind_host = bind_host or _ANY_IPV4_HOST
 
-    # Write info file
     if info_file:
-        info = {
-            "version": 1,
-            "url": url,
-            "host": "127.0.0.1" if bind_host == "127.0.0.1" else requested_host,
-            "bind_host": bind_host or _ANY_IPV4_HOST,
-            "port": actual_port,
-            "urls": urls,
-            "external_urls": external_urls,
-            "token": token,
-            "job_id": job_id,
-            "pid": os.getpid(),
-            "started_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        }
-        Path(info_file).write_text(json.dumps(info, indent=2))
+        Path(info_file).write_text(json.dumps(_ui_session_info(
+            url=url, host=shown_host, bind_host=shown_bind_host, port=actual_port, urls=urls,
+            external_urls=external_urls, token=token, job_id=job_id), indent=2))
 
     if json_output:
-        emit_ok(url=url, urls=urls, external_urls=external_urls,
-                host="127.0.0.1" if bind_host == "127.0.0.1" else requested_host,
-                bind_host=bind_host or _ANY_IPV4_HOST, port=actual_port, job_id=job_id,
+        emit_ok(url=url, urls=urls, external_urls=external_urls, host=shown_host,
+                bind_host=shown_bind_host, port=actual_port, job_id=job_id,
                 pid=os.getpid(), info_file=info_file)
         sys.stdout.flush()
     else:
-        print(f"\nRemedy UI: {url}")
-        for external_url in external_urls:
-            print(f"LAN URL: {external_url}")
-        print("\nPress Ctrl-C to stop.\n")
+        _print_ui_urls(url, external_urls)
 
     # Optional browser open
     if open_browser:
@@ -4854,20 +4808,3 @@ def start_ui_server(
         # DECISION F041 D4: close the worker after the socket, stopping every
         # preview it still keeps live so a server exit never orphans a runtime.
         preview_worker.close()
-
-
-def _try_open_browser(url: str) -> None:
-    """Best-effort platform opener. Failure does not raise."""
-    import platform
-    import subprocess
-
-    system = platform.system()
-    try:
-        if system == "Darwin":
-            subprocess.Popen(["open", url])
-        elif system == "Linux":
-            subprocess.Popen(["xdg-open", url])
-        elif system == "Windows":
-            os.startfile(url)  # type: ignore[attr-defined]
-    except (OSError, FileNotFoundError):
-        pass

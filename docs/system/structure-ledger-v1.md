@@ -146,7 +146,9 @@ with the code that calls it.
   part of the export: a call's own fields and the reader of a parked run's sessions,
   `packages/orchestration/pingpong_call_record.py`.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
-  its summaries, each to a module of its own; the dashboard builders stay.
+  its summaries, each to a module of its own; the dashboard builders stay. Outside those steps,
+  F058 moved the server's launch helpers to `packages/orchestration/ui_server_launch.py`
+  (finding R-1264).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to
@@ -179,6 +181,7 @@ with the code that calls it.
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
   Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
+  Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -377,7 +380,7 @@ with the code that calls it.
 | 6558 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
 | 5234 | `packages/orchestration/pingpong_loop.py` |
-| 4829 | `packages/orchestration/ui_server.py` |
+| 4810 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2491 | `apps/cli/command_catalog.py` |
@@ -389,7 +392,7 @@ with the code that calls it.
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1796 | `packages/orchestration/config.py` |
+| 1769 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |

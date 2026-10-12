@@ -133,6 +133,7 @@ packages.orchestration.config_key_spec
 packages.orchestration.config_keys_claude
 packages.orchestration.config_keys_mission
 packages.orchestration.config_keys_model_routing
+packages.orchestration.config_keys_ui
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector
@@ -344,6 +345,7 @@ packages.orchestration.trust_report
 packages.orchestration.ui_app_shell
 packages.orchestration.ui_copy
 packages.orchestration.ui_server
+packages.orchestration.ui_server_launch
 packages.orchestration.ui_view_model
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles
