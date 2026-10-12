@@ -1,0 +1,3 @@
+From describe_self_use_run_defects():
+
+1. job 6cf4d930076349bd (paused): run_manifest_error=run_manifest_write_failed: ManifestError: the job's task list ['T001', 'T001a', 'T001b'] no longer matches the episode-start snapshot's job-input definition ['T001'] (F7: tasks were added, removed or reordered after capture; this episode cannot be finalized against a definition it did not run)
