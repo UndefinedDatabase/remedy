@@ -1462,6 +1462,9 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
             f"/api/jobs/{self.job_id}/artifacts/file",
             "/api/projects/any-project/summary",
+            # Every path below a project goes to `cockpit_project_routes` (DECISION F305 D2).
+            "/api/projects/any-project/missions",
+            "/api/projects/any-project/missions/any-mission/orders",
         ]
         for route in PUBLIC_API_ROUTES:
             concrete = "/".join(
