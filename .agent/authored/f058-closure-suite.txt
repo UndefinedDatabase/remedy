@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 408.1s (the launcher's reading); pytest's own reported wall time: 407.37s (0:06:47)
+summary line: 22826 passed, 22 skipped, 1 warning in 407.37s (0:06:47)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: c93d01fdd (F058 R6 C4: the closure's self-use item run to its approval gate, never applied)
+reflog before: c93d01fdd HEAD@{2026-10-12 23:26:54 +0200}: commit: F058 R6 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: c93d01fdd HEAD@{2026-10-12 23:26:54 +0200}: commit: F058 R6 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F058 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1181.43 CPU seconds, 407.38 wall seconds, 22848 tests collected, exit status 0, recorded 2026-10-12T21:33:49Z
+This closure's suite used 1181.43 CPU seconds, 4.1 percent less than F206's 1231.76, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F206's closure run:
+  +2.09 s  tests/cli/test_mission_cmd.py (36.52 -> 38.61)
+  +1.99 s  tests/runtimes/test_runtime_cli_process_boundary.py (7.80 -> 9.79)
+  +1.64 s  tests/cli/test_json_contract.py (16.85 -> 18.49)
+  +1.09 s  tests/orchestration/test_test_runner.py (32.03 -> 33.12)
+  +0.96 s  tests/ui_server/test_story_export_file_live.py (8.69 -> 9.65)
+  +0.85 s  tests/orchestration/test_persisted_run_call_schema.py (1.77 -> 2.62)
+  +0.85 s  tests/test_command_discovery.py (5.41 -> 6.26)
+  +0.82 s  tests/orchestration/test_run_manifest_zero_call_expectations.py (2.62 -> 3.44)
+  +0.76 s  tests/orchestration/test_one_job_store.py (4.61 -> 5.37)
+  +0.75 s  tests/orchestration/test_job_apply_history.py (7.59 -> 8.34)
