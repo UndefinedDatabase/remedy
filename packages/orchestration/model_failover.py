@@ -1,4 +1,4 @@
-"""F058 — per-role model failover chains: config key, parse and hard-rule validation (T001).
+"""F058 — per-role model failover chains: config, hard-rule validation and the walk (T001, T002).
 
 Citing DECISION F058 D1: a chain lives in `remedy.toml` under `model_failover.chains`, one entry
 per role, each a list of links of exactly `provider`, `model` and `tier`, tried in order when the
@@ -8,13 +8,19 @@ adds, "core never local": a link on a local provider is allowed only for a role 
 shipped table routes to the cheap tier. A refused chain table names every violated rule and the
 link it belongs to; no role fails over on a refusal.
 
-Remedy deliberately does not walk the chain here, and does not read `remedy.toml` for the walk —
-T002 wires the walk at the provider seam, where a run actually builds its providers. This module
-stays a pure function of its arguments, exactly like `packages/orchestration/model_routing.py`
-whose docstring states the same discipline for the same reason: the hard-rule checks are tested
-without a config file existing at all. The one place this module reads configuration is
-:func:`resolve_failover_chains`, which imports `get_config` inside its own body, the idiom
-`packages/orchestration/role_config.py` already established for its own table-valued keys.
+The parse and the hard-rule validation above stay a pure function of their arguments, exactly
+like `packages/orchestration/model_routing.py` whose docstring states the same discipline for the
+same reason: the hard-rule checks are tested without a config file existing at all. The one place
+this module reads configuration for THAT part is :func:`resolve_failover_chains`, which imports
+`get_config` inside its own body, the idiom `packages/orchestration/role_config.py` already
+established for its own table-valued keys.
+
+Citing DECISION F058 D2: T002's walk, :class:`FailoverProvider`, lives here but does not decide
+to wrap any role — that choice, and the chain it reads through `resolve_failover_chains`, belong
+to `create_role_provider` in `packages/orchestration/role_provider_factory.py`, the provider seam
+where a run actually builds its providers. A failover trigger is exactly the provider-unavailable
+gap: not a timeout, a non-zero exit, a rate limit or a parse failure, each already owned by the
+transport retries, the governor or the single parse retry.
 
 Public API::
 
@@ -33,15 +39,24 @@ Public API::
         -> tuple[FailoverChainViolation, ...]
     build_failover_chains(raw, effective_tiers=None) -> dict[str, tuple[FailoverLink, ...]]
     resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]
+    FAILOVER_REASON_PROVIDER_UNAVAILABLE: the reason string a disclosure carries
+    is_failover_trigger(out) -> bool: whether an output's error is the gap this feature owns
+    FailoverLinkAttempt: one link's attempt and what it answered
+    FailoverDisclosure: what a failed-over call discloses, intended versus used
+    FailoverProvider: wraps a role's provider and walks its chain on a trigger
 """
 
 from __future__ import annotations
 
 import warnings
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from packages.orchestration.failure_postmortem import (
+    is_provider_connection_error,
+    is_provider_unavailable_error,
+)
 from packages.orchestration.model_routing import (
     HARD_RULE_NAMES,
     MODEL_TIERS,
@@ -56,6 +71,8 @@ from packages.orchestration.model_routing import (
     model_tier_rank,
     resolve_task_class_tier_with_overrides,
 )
+from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
+from packages.orchestration.rate_governor import is_rate_limit_error
 from packages.orchestration.role_config import KNOWN_ROLES
 
 # ---------------------------------------------------------------------------
@@ -311,3 +328,202 @@ def resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]:
     except FailoverChainError as exc:
         warnings.warn(f"{exc}; no role fails over", stacklevel=2)
         return {}
+
+
+# ---------------------------------------------------------------------------
+# The walk — T002, DECISION F058 D2
+# ---------------------------------------------------------------------------
+
+# WHY: the reason string a disclosure carries, so evidence and the run report agree on one spelling.
+FAILOVER_REASON_PROVIDER_UNAVAILABLE: str = "failover:provider_unavailable"
+
+
+# WHY: the one gap failover owns — not a timeout, a non-zero exit, a rate limit or a parse
+# failure, each already handled by a retry, the governor or the single parse retry.
+def is_failover_trigger(out: Any) -> bool:
+    """Return True when `out.error` is exactly the provider-unavailable gap this feature owns."""
+    error = getattr(out, "error", "") or ""
+    if not error:
+        return False
+    if getattr(out, "error_class", "") == "parse":
+        return False
+    if error.startswith("malformed_output:"):
+        return False
+    if is_timeout_error(error) or is_nonzero_exit_error(error) or is_rate_limit_error(error):
+        return False
+    return is_provider_unavailable_error(error) or is_provider_connection_error(error)
+
+
+# WHY: one line of the disclosure's audit trail — what a link was asked, and what it answered.
+@dataclass(frozen=True)
+class FailoverLinkAttempt:
+    """One link of a chain, tried once, and what it answered."""
+
+    position: int
+    provider: str
+    model: str
+    error: str
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the JSON-ready shape evidence and the run report both read."""
+        return {
+            "position": self.position,
+            "provider": self.provider,
+            "model": self.model,
+            "error": self.error,
+        }
+
+
+# WHY: what a failed-over call discloses — the model Remedy meant to use versus the one it did.
+@dataclass(frozen=True)
+class FailoverDisclosure:
+    """The intended provider and model, every attempt tried, and the link that served the call —
+    or none, when the chain ran out and the primary's own failure stands."""
+
+    role: str
+    intended_provider: str
+    intended_model: str
+    primary_error: str
+    attempts: tuple[FailoverLinkAttempt, ...]
+    used: FailoverLinkAttempt | None
+    reason: str = FAILOVER_REASON_PROVIDER_UNAVAILABLE
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the JSON-ready shape evidence and the run report both read."""
+        return {
+            "reason": self.reason,
+            "role": self.role,
+            "intended": {"provider": self.intended_provider, "model": self.intended_model},
+            "used": self.used.to_json() if self.used is not None else None,
+            "primary_error": self.primary_error,
+            "attempts": [attempt.to_json() for attempt in self.attempts],
+        }
+
+
+# WHY: the walk itself — wraps a role's provider and, on a trigger, tries each link in order
+# before letting the primary's own failure stand (DECISION F058 D2).
+class FailoverProvider:
+    """Wrap a role's primary provider; on a failover trigger, walk its chain in order."""
+
+    def __init__(
+        self,
+        primary: Any,
+        *,
+        role: str,
+        intended_provider: str,
+        intended_model: str,
+        links: tuple[FailoverLink, ...],
+        build_link: Callable[[FailoverLink], Any],
+    ) -> None:
+        self._primary = primary
+        self._role = role
+        self._intended_provider = intended_provider
+        self._intended_model = intended_model
+        self._links = links
+        self._build_link = build_link
+
+    @property
+    def primary(self) -> Any:
+        return self._primary
+
+    @property
+    def links(self) -> tuple[FailoverLink, ...]:
+        return self._links
+
+    @property
+    def build_link(self) -> Callable[[FailoverLink], Any]:
+        return self._build_link
+
+    @property
+    def name(self) -> str:
+        return self._primary.name
+
+    @property
+    def supports_resume(self) -> bool:
+        return bool(getattr(self._primary, "supports_resume", False))
+
+    def __getattr__(self, item: str) -> Any:
+        if item.startswith("_"):
+            raise AttributeError(item)
+        return getattr(self._primary, item)
+
+    def _run_with_failover(
+        self,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+        resume: str | None,
+    ) -> Any:
+        out = getattr(self._primary, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+        if not is_failover_trigger(out):
+            return out
+        primary_error = getattr(out, "error", "") or ""
+        attempts: list[FailoverLinkAttempt] = []
+        for position, link in enumerate(self._links, start=1):
+            try:
+                provider = self._build_link(link)
+            except RuntimeError as exc:
+                attempts.append(FailoverLinkAttempt(
+                    position=position,
+                    provider=link.provider,
+                    model=link.model,
+                    error=f"provider_error: {type(exc).__name__}: {exc}",
+                ))
+                continue
+            link_out = getattr(provider, method)(
+                prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
+            )
+            attempt = FailoverLinkAttempt(
+                position=position,
+                provider=link.provider,
+                model=link.model,
+                error=getattr(link_out, "error", "") or "",
+            )
+            attempts.append(attempt)
+            if not is_failover_trigger(link_out):
+                link_out.failover_disclosure = FailoverDisclosure(
+                    role=self._role,
+                    intended_provider=self._intended_provider,
+                    intended_model=self._intended_model,
+                    primary_error=primary_error,
+                    attempts=tuple(attempts),
+                    used=attempt,
+                )
+                return link_out
+        out.failover_disclosure = FailoverDisclosure(
+            role=self._role,
+            intended_provider=self._intended_provider,
+            intended_model=self._intended_model,
+            primary_error=primary_error,
+            attempts=tuple(attempts),
+            used=None,
+        )
+        return out
+
+    def build(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+        resume: str | None = None,
+    ) -> Any:
+        return self._run_with_failover(
+            "build", prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+
+    def review(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+        resume: str | None = None,
+    ) -> Any:
+        return self._run_with_failover(
+            "review", prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )

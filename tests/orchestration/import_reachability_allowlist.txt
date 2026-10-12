@@ -217,6 +217,7 @@ packages.orchestration.mission_record
 packages.orchestration.mission_state
 packages.orchestration.mission_upkeep
 packages.orchestration.model_aliases
+packages.orchestration.model_failover
 packages.orchestration.model_routing
 packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop

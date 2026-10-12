@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from packages.orchestration.model_failover import FailoverLink, FailoverProvider, resolve_failover_chains
 from packages.orchestration.pingpong_provider import ClaudeCliProvider, PingPongProvider, create_provider
 
 
@@ -25,6 +26,7 @@ def create_role_provider(
     stream_evidence: bool = False,
     stream_evidence_dir: str | None = None,
     make_provider: Callable[..., PingPongProvider] = create_provider,
+    with_failover: bool = True,
 ) -> PingPongProvider:
     """Create provider with role-appropriate cwd and write mode.
 
@@ -38,6 +40,9 @@ def create_role_provider(
     own subdirectory so builder and reviewer streams never overwrite each other.
     ``make_provider`` builds the final non-claude-cli provider by name; a caller — such as the
     failover walk — may replace it with a wrapper around the provider it would otherwise build.
+    ``with_failover`` wraps the built provider in the DECISION F058 D2 walk when `role`'s
+    configured chain is not empty; a link built mid-walk passes ``with_failover=False``, so a
+    chain never nests a failover walk inside another.
     """
     if name == "claude-cli":
         stream_dir = None
@@ -53,6 +58,36 @@ def create_role_provider(
             "stream_rel_prefix": rel_prefix,
         }
         if role == "builder" and staging_dir:
-            return ClaudeCliProvider(write_mode=write_mode, **common)
-        return ClaudeCliProvider(**common)
-    return make_provider(name, model=model)
+            provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
+        else:
+            provider = ClaudeCliProvider(**common)
+    else:
+        provider = make_provider(name, model=model)
+
+    if not with_failover:
+        return provider
+    chain = resolve_failover_chains().get(role, ())
+    if not chain:
+        return provider
+
+    def build_link(link: FailoverLink) -> PingPongProvider:
+        return create_role_provider(
+            link.provider,
+            role=role,
+            staging_dir=staging_dir,
+            write_mode=write_mode,
+            model=link.model,
+            stream_evidence=stream_evidence,
+            stream_evidence_dir=stream_evidence_dir,
+            make_provider=make_provider,
+            with_failover=False,
+        )
+
+    return FailoverProvider(
+        provider,
+        role=role,
+        intended_provider=name,
+        intended_model=model,
+        links=chain,
+        build_link=build_link,
+    )
