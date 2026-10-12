@@ -8,8 +8,11 @@ Launch:
 
     remedy ui start <job_id>
 
-The server binds `127.0.0.1` only, is token-gated, and serves the built React
-app from `apps/ui/dist` (auto-built on first serve).
+By default `remedy ui start` binds all IPv4 interfaces, is token-gated, and serves the
+built React app from `apps/ui/dist` (auto-built on first serve). The same tokenized
+session is reachable through both `http://127.0.0.1:<port>/...` and
+`http://<outer-ip>:<port>/...`; the session registry records both URL forms. Passing
+`--host 127.0.0.1` keeps the cockpit loopback-only.
 
 ## Scope
 

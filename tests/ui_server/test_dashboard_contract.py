@@ -88,6 +88,7 @@ class TestUIServer:
         assert "job_id" in arg_names
         assert "--port" in arg_names
         assert "--host" in arg_names
+        assert next(a for a in cmd.args if a.name == "--host").default == "*"
         assert "--info-file" in arg_names
 
     def test_handler_registered(self):
@@ -95,16 +96,16 @@ class TestUIServer:
         handlers = collect_all_handlers()
         assert "ui.start" in handlers
 
-    def test_refuses_non_localhost(self, tmp_path, monkeypatch):
-        """Server must refuse 0.0.0.0 or LAN addresses."""
-        from packages.orchestration.ui_server import start_ui_server
+    def test_external_host_builds_loopback_and_lan_urls(self):
+        """An external UI host keeps the loopback URL and adds LAN aliases."""
+        from packages.orchestration.ui_server import _ui_bind_and_urls
 
-        job = _make_job_s80()
-        from packages.orchestration.pingpong_job import save_job_plan
-        save_job_plan(job)
+        bind_host, urls, external_urls = _ui_bind_and_urls(
+            "192.168.1.20", 8787, "job-1", "tok")
 
-        with pytest.raises(SystemExit):
-            start_ui_server(str(job.job_id), host="0.0.0.0", port=0)
+        assert bind_host == ""
+        assert urls[0] == "http://127.0.0.1:8787/?job=job-1&token=tok"
+        assert "http://192.168.1.20:8787/?job=job-1&token=tok" in external_urls
 
     def test_safe_error_format(self):
         from packages.orchestration.ui_server import _safe_error
@@ -354,15 +355,16 @@ class TestJobSummaryCommandContract:
                     if isinstance(node.value, ast.Constant) and node.value.value is True:
                         pytest.fail(f"{f.name} has shell=True in code")
 
-    def test_no_0000_bind(self):
-        for f in ORCH.glob("*.py"):
-            src = f.read_text()
-            assert "0.0.0.0" not in src, f"{f.name} binds 0.0.0.0"
+    def test_ui_external_bind_is_named_and_token_gated(self):
+        src = (ORCH / "ui_server.py").read_text()
+        assert "server_token_matches" in src
+        assert "_ui_bind_and_urls" in src
+        assert "external_urls" in src
 
-    def test_ui_server_binds_localhost_only(self):
+    def test_ui_server_keeps_loopback_url(self):
         src = (ORCH / "ui_server.py").read_text()
         assert "127.0.0.1" in src
-        assert '("127.0.0.1", "localhost", "::1")' in src
+        assert "_UI_LOOPBACK_HOSTS" in src
 
     def test_typescript_compiles(self):
         """Verify tsc --noEmit passes (checked in CI)."""

@@ -364,11 +364,13 @@ class TestSmokeSafety:
         src = Path(_ROOT / "packages" / "orchestration" / "source_apply.py").read_text()
         assert "shell=True" not in src
 
-    def test_ui_server_rejects_non_localhost(self):
-        """UI server must refuse non-localhost bind."""
-        from packages.orchestration.ui_server import start_ui_server
-        with pytest.raises(SystemExit):
-            start_ui_server("fake-id", host="0.0.0.0")
+    def test_ui_server_external_host_preserves_loopback_url(self):
+        """External UI bind keeps a local URL and adds LAN URLs under the same token."""
+        from packages.orchestration.ui_server import _ui_bind_and_urls
+        bind_host, urls, external_urls = _ui_bind_and_urls("192.168.1.20", 8787, "job", "tok")
+        assert bind_host == ""
+        assert urls[0] == "http://127.0.0.1:8787/?job=job&token=tok"
+        assert "http://192.168.1.20:8787/?job=job&token=tok" in external_urls
 
     def test_main_py_under_120_lines(self):
         main_py = Path(_ROOT / "apps" / "cli" / "main.py")

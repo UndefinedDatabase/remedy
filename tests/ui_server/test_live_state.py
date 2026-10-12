@@ -170,15 +170,13 @@ class TestUIServerIntegration:
         assert "url" in info
         assert info["url"].startswith("http://127.0.0.1:")
 
-    def test_url_is_localhost_only(self):
+    def test_url_keeps_loopback_as_primary(self):
         port, token, t = self._start_server()
         info = json.loads((self.tmp_path / "server_info.json").read_text())
         url = info["url"]
         assert "127.0.0.1" in url
-        assert "0.0.0.0" not in url
-        # No LAN address
-        assert "192.168." not in url
-        assert "10." not in url.split("//")[1].split(":")[0]
+        assert info["urls"][0] == url
+        assert "external_urls" in info
 
     def test_app_shell_served_without_token(self):
         port, token, t = self._start_server()
@@ -691,6 +689,8 @@ class TestUIStartAnswersTheEnvelope:
         assert body["job_id"] == str(job.job_id)
         assert body["host"] == "127.0.0.1"
         assert body["url"].startswith("http://127.0.0.1:")
+        assert body["urls"][0] == body["url"]
+        assert body["external_urls"] == []
         assert "pid" in body and "port" in body and "info_file" in body
         mock_open.assert_called_once()
 
