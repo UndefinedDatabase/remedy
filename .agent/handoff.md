@@ -1,77 +1,39 @@
-# Handback — F058 round 8: book round 7, merge main after pull request 331, repair R-1264 and R-1265
+# Handback — F058 round 9: book round 8, the closure's one full suite on the merged tree, the evidence job and the review package
 
 ## Session
 
-SESSION 4 of feature F058 · round 8 · rounds so far 8
+SESSION 4 of feature F058 · round 9 · rounds so far 9
 
-This round booked round 7 (stopped after its evidence job), merged `main` after pull request 331
-into the branch in one merge commit per DECISION F058 D5, and repaired the two guards that merge
-turned red: R-1264 (the structure ratchet, a structural move only) and R-1265 (the `--host` help's
-retired word). Context self-assessment: every prepared-file digest, every expected script output
-and every gate matched the block exactly, with no deviation and no improvisation needed.
+This round booked round 8 (PASS, R-1264 and R-1265 resolved), ran the feature's one full suite on
+the merged tree, ran the staging reclaim, the evidence job and the review package. Context
+self-assessment: every prepared-file digest, every expected script output and every gate matched
+the block exactly, the suite stayed green through the merge, and no deviation or improvisation was
+needed anywhere in the round.
 
-Fortschritt: ~92 % (T001 to T003 and the documentation done, main merged in, R-1264 and R-1265 repaired · the one full suite, the evidence, the package and the closing round remain) — Schätzung
+Fortschritt: ~97 % (everything but the closing round is done) — Schätzung
 
 ## Range
 
-Review of `1a20f8f37`..HEAD (round 8: C1 to C5; this handback is C5).
+Review of `da5c74184`..HEAD (round 9: C1 to C3; this handback is C3).
 
 ## Commits
 
-### 215bf2dd6 F058 R8 C1: book round 7, register R-1264 and R-1265, DECISION F058 D5, the plan and the block
+### 895152727 F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f058-r8.md` | +126/-0 | NEW FILE, byte copy of the round 8 block |
-| `.agent/context.md` | +2/-1 | notes `main`'s merge-in |
-| `.agent/decisions.md` | +12/-0 | DECISION F058 D5 |
-| `.agent/live_review.md` | +6/-0 | `Gate: F058 R7` (STOPPED), R-1264 and R-1265 minted |
-| `.agent/plan.md` | +10/-7 | round 8's plan |
+| `.agent/authored/f058-r9-create_f058_evidence.py` | +261/-0 | NEW FILE, byte copy of the reviewer's `create_f058_evidence.py` |
+| `.agent/authored/f058-r9.md` | +166/-0 | NEW FILE, byte copy of the round 9 block |
+| `.agent/live_review.md` | +6/-0 | byte copy of `dry-live_review.md` |
+| `.agent/plan.md` | +8/-9 | byte copy of `dry-plan.md` |
 
-### 431d9776d F058 R8 C2: merge main after pull request 331 into the branch
-
-Two-parent merge commit (parents `215bf2dd6`, `2b7c6b7df`). `git show --numstat` on the merge
-equals `git diff --numstat 215bf2dd6 431d9776d` exactly (checked; identical lines both ways), so
-every line below is `main`'s own work carried in by the merge, not this round's:
+### 78a10d8ee F058 R9 C2: the closure's one full suite on the merged tree and its CPU cost
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +3/-0 | `resolve_decisions.py` kept both sides' DECISION entries, branch first |
-| `apps/cli/command_catalog.py` | +2/-2 | pull request 331's LAN wording |
-| `apps/cli/commands/ui.py` | +2/-2 | pull request 331 |
-| `docs/guides/environment.md` | +1/-1 | pull request 331 |
-| `docs/system/architecture.md` | +1/-1 | pull request 331 |
-| `docs/system/operator-cockpit-v1.md` | +5/-2 | pull request 331 |
-| `packages/orchestration/config.py` | +5/-1 | pull request 331, merged by content with this branch's earlier key move |
-| `packages/orchestration/ui_server.py` | +59/-15 | pull request 331's LAN bind/URL logic |
-| `tests/regression/test_named_bugs.py` | +7/-5 | pull request 331 |
-| `tests/ui_server/test_dashboard_contract.py` | +16/-14 | pull request 331 |
-| `tests/ui_server/test_live_state.py` | +5/-5 | pull request 331 |
+| `.agent/authored/f058-closure-suite.txt` | +17/-17 | rewritten with this round's suite transcript and CPU cost readings; this commit is the ACCEPTED HEAD |
 
-`.agent/context.md`, `.agent/plan.md` and `.agent/handoff.md` carried no diff against C1 (`--ours`
-resolved them to the branch's own text already committed in C1); they are not in the table above
-because the merge introduced no change to them.
-
-### 43ad33712 F058 R8 C3: repair R-1264 (the UI keys and the server launch helpers move out, structural)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/system/structure-ledger-v1.md` | +6/-3 | the ledger rows for `config.py`/`ui_server.py` lowered, step (4) noted |
-| `packages/orchestration/config.py` | +2/-33 | the three `ui.*` keys spliced out |
-| `packages/orchestration/config_keys_ui.py` | +46/-0 | NEW FILE, `UI_KEY_SPECS`, moved unchanged |
-| `packages/orchestration/ui_server.py` | +15/-78 | the launch helpers moved out; `start_ui_server` now calls them by name |
-| `packages/orchestration/ui_server_launch.py` | +96/-0 | NEW FILE, the moved helpers plus `_ui_session_info` and `_print_ui_urls` |
-| `tests/orchestration/import_reachability_allowlist.txt` | +2/-0 | both new modules added |
-| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FILE_LINES` 74440 → 74394 |
-| `tests/ui_server/test_dashboard_contract.py` | +2/-1 | the loopback-hosts pin follows `_UI_LOOPBACK_HOSTS` into `ui_server_launch.py` |
-
-### b330202ee F058 R8 C4: repair R-1265 (the host option's help loses a retired word)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `apps/cli/command_catalog.py` | +1/-1 | `ui.start --host` help: "loopback" → "127.0.0.1" |
-
-### (this commit) F058 R8 C5: handback
+### (this commit) F058 R9 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -79,98 +41,168 @@ because the merge introduced no change to them.
 
 ## External actions
 
-None through C5. Immediately after this commit the round pushes
-`git -C /home/decodeux/Repos/remedy push origin feature/f058-model-failover-chain`; its output is
-reported in this session's final reply, not re-entered here (write-once rule).
+- A1 (staging reclaim, commits nothing): `python3 -m apps.cli.main data reclaim --orphans` —
+  "Reclaimable: nothing"; one refused path recorded: `review_staging.n4o46eq_`
+  (`class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only`, 1.5 MB).
+  No candidate listed, so `--apply` was skipped as the block orders.
+- A2 (evidence job, commits nothing): `python3 .agent/authored/f058-r9-create_f058_evidence.py
+  .remedy-wt/f058-r9-evidence`, launched via `launch.py evidence` and polled with `wait.py`, exit 0
+  wall 541.9s. Job id `f058r9e1001`.
+- A3 (review package, commits nothing): `bash scripts/make_review_zip.sh --evidence-dir
+  .remedy-wt/f058-r9-evidence`, launched via `launch.py zip` and polled with `wait.py`, exit 0 wall
+  20.4s, without `REMEDY_REVIEW_DIR` set. Package
+  `remedy-review-20261013-011933-READY_FOR_REVIEW.zip` in
+  `/home/decodeux/Repos/remedy-history/zips`.
+- Pushes: `git -C /home/decodeux/Repos/remedy push origin feature/f058-model-failover-chain` after
+  C1 (`da5c74184..895152727  feature/f058-model-failover-chain ->
+  feature/f058-model-failover-chain`) and after C2 (`895152727..78a10d8ee
+  feature/f058-model-failover-chain -> feature/f058-model-failover-chain`). Both succeeded, no
+  HTTP 500, no retry needed.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]` (checked before
+  C1, as the Open PR Gate orders).
 
 ## Verification
 
-Preconditions, before any write: `git branch --show-current` → `main`; `git status --porcelain` →
-empty; `.agent/STOP` absent; `gh pr list --state open --json number` → `[]`. After checkout:
+Preconditions, before any write: `git branch --show-current` → `feature/f058-model-failover-chain`;
 `git rev-parse HEAD` and `git rev-parse origin/feature/f058-model-failover-chain` both
-`1a20f8f37815a1582fc52238a259073eb6b86c5d`; `git log -1 --format=%H main` →
-`2b7c6b7df92d5417f81c2008513f38d7d6b4c3f0`.
+`da5c7418404577345740fb03fd3b0dfa43b95512`; `git status --porcelain` → empty; `.agent/STOP` →
+absent.
 
-Gates, run after C4, before C5:
+Gate 1 (after C1): `git -C /home/decodeux/Repos/remedy status --porcelain` — exit 0, empty.
+`python3 .remedy-wt/f058-r9/prep/verify.py /home/decodeux/Repos/remedy
+89515272727047697faba9934f4d6507618127a1`:
+```
+equal at C1 .agent/authored/f058-r9.md True
+equal at C1 .agent/authored/f058-r9-create_f058_evidence.py True
+equal at C1 .agent/live_review.md True
+equal at C1 .agent/plan.md True
+C1 names exactly the four paths True
+ALL True
+```
 
-1. `git -C /home/decodeux/Repos/remedy status --porcelain` — exit 0, empty output.
-2. `python3 .remedy-wt/f058-r8/prep/compare_sim.py /home/decodeux/Repos/remedy` — exit 0:
-   ```
-   C1 215bf2dd6113346e6832890081a78f99db370af3 ['.agent/authored/f058-r8.md'] True
-   C2 431d9776da905c552809146845331ae74071820f ['.agent/authored/f058-r8.md'] True
-   C3 43ad33712f6d5d102db05e66f814d2afef3d5b61 ['.agent/authored/f058-r8.md'] True
-   C4 b330202ee01bb305aaec516c77074a21c4cfbe1e ['.agent/authored/f058-r8.md'] True
-   C2 parents ['215bf2dd6113346e6832890081a78f99db370af3', '2b7c6b7df92d5417f81c2008513f38d7d6b4c3f0'] second is main True
-   ALL True
-   ```
-3. `python3 -m ruff check packages/orchestration/config.py packages/orchestration/config_keys_ui.py packages/orchestration/ui_server.py packages/orchestration/ui_server_launch.py apps/cli/command_catalog.py tests/test_structure_ratchet.py tests/ui_server/test_dashboard_contract.py`
-   — exit 0, `All checks passed!`.
-4. `python3 .remedy-wt/f058-r8/prep/run_selection.py /home/decodeux/Repos/remedy .remedy-wt/f058-r8-worker/selection-output.txt`
-   — exit 0, `4974 passed, 9 skipped in 100.40s (0:01:40)`, no FAILED/ERROR line, no
-   "process(es) behind" line. SKIPPED lines, all pre-existing quarantines/opt-ins, none new:
-   - `tests/test_agent_tooling.py:43` — D12 quarantine (F252)
-   - `tests/regression/test_named_bugs.py:295,312,321,385,394,401` (6 lines) — D3 quarantine (F252)
-   - `tests/test_install_smoke.py:175` — opt-in, needs `REMEDY_INSTALL_SMOKE=1`
-   - `tests/test_repair_context_reviewer_memory.py:257` — UI source not found
-5. `python3 -m apps.cli.main integrity check --json` — exit 0, `"fail_count": 0, "ok": true,
-   "passed": true`.
-6. `python3 .remedy-wt/f058-r8/prep/open_set.py /home/decodeux/Repos/remedy` — exit 0:
-   `['R-1235', 'R-1246', 'R-1251', 'R-1252', 'R-1264', 'R-1265']`.
+Gate 2 (the suite of C2): `python3 -m pytest -n auto -q` — real exit code 0; summary line verbatim
+`22826 passed, 22 skipped, 1 warning in 399.98s (0:06:39)`; bad node ids (failed + errors) `NONE`;
+reflog unchanged during the run (`yes`). `python3 scripts/closure_suite_cost.py --feature F058
+--record /home/decodeux/.remedy-loop/test_load.jsonl` — exit code 0: "This closure's suite used
+1216.97 CPU seconds, 1.2 percent less than F206's 1231.76, within the 14.1 percent limit."
 
-All six gates passed; nothing red.
+Gate 3 (A1's and A2's readings): A1 — "Reclaimable: nothing", one refused path with its reason (see
+External actions). A2 — `head 78a10d8eedb04e65af0ea44f6f0d20408dbee673` (equal to C2's full sha);
+`ancestry-path count 49` equal to `plain count 49`; `collected node ids 4755, deselected 50`; `red
+control: unsafe among the real ids 0 []`; `red control: planted id -> a local absolute path`;
+`pytest exit 0, {'passed': 4751, 'failed': 0, 'skipped': 4}`; `validate_verification_tests problems
+[] passed 4751`; `is_valid_current_run True`; `validation_errors []`; `exit 0 wall 541.9`. Reflog and
+branch re-read after A2, unchanged from before.
+
+Gate 4 (A3's readings): `PACKAGE_STATUS=READY_FOR_REVIEW`; `REVIEW_SUBJECT_ALIGNMENT=PASS`;
+`EVIDENCE_AUTHORITATIVE=true`; package `remedy-review-20261013-011933-READY_FOR_REVIEW.zip` in
+`/home/decodeux/Repos/remedy-history/zips`. Read-only verification script:
+```
+sha256 39a31421f1a8d8cf0fbd28b3d2036b9010e729ef5fd65142a688425fbbbc2621
+zipfile.is_zipfile True
+testzip() None
+committed_review_subject base_commit 4f294374a69b0c66afc68fca578608bcb24ad179
+committed_review_subject head_commit 78a10d8eedb04e65af0ea44f6f0d20408dbee673
+```
+`base_commit` equals the fork point named in the block; `head_commit` equals C2's full sha.
+
+Gate 5 (after A3, before C3): `python3 -m apps.cli.main integrity check --json` — exit 0,
+`"fail_count": 0, "ok": true, "passed": true`. `python3 .remedy-wt/f058-r9/prep/open_set.py
+/home/decodeux/Repos/remedy` — `['R-1235', 'R-1246', 'R-1251', 'R-1252']`. `git status --porcelain`
+— empty.
+
+All five gates passed; nothing red.
+
+## Closure suite
+
+```
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 400.7s (the launcher's reading); pytest's own reported wall time: 399.98s (0:06:39)
+summary line: 22826 passed, 22 skipped, 1 warning in 399.98s (0:06:39)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 895152727 (F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script)
+reflog before: 895152727 HEAD@{2026-10-13 01:00:50 +0200}: commit: F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script
+reflog after: 895152727 HEAD@{2026-10-13 01:00:50 +0200}: commit: F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F058 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1216.97 CPU seconds, 399.99 wall seconds, 22848 tests collected, exit status 0, recorded 2026-10-12T23:08:07Z
+This closure's suite used 1216.97 CPU seconds, 1.2 percent less than F206's 1231.76, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F206's closure run:
+  +5.59 s  tests/test_grouped_cli.py (23.62 -> 29.21)
+  +4.87 s  tests/runtimes/test_runtime_cli_process_boundary.py (7.80 -> 12.67)
+  +2.54 s  tests/ui_server/test_plan_view_live.py (8.14 -> 10.68)
+  +2.44 s  tests/cli/test_json_contract.py (16.85 -> 19.29)
+  +2.40 s  tests/orchestration/test_serve_daemon.py (14.01 -> 16.41)
+  +1.75 s  tests/cli/test_mission_cmd.py (36.52 -> 38.27)
+  +1.12 s  tests/orchestration/test_job_apply_history.py (7.59 -> 8.71)
+  +1.00 s  tests/ui_server/test_task_veto_e2e_live.py (2.27 -> 3.27)
+  +0.85 s  tests/ui_server/test_task_injection_e2e_live.py (2.52 -> 3.37)
+  +0.84 s  tests/orchestration/test_persisted_run_call_schema.py (1.77 -> 2.61)
+```
 
 ## Authored-text proofs
 
-`.agent/authored/f058-r8.md`, committed in C1, is a byte copy of the reviewer's prepared
-`block.md`: `wc -l` 126, `sha256sum ba74fa953c249af1727bb72e9c1f3ead834497b9b33a6ed2e28268c3452b1cad`,
-equal to the digest named in the delivering prompt. Gate 2 (`compare_sim.py`) additionally checked
-this same file byte-equal across all four commits C1 to C4 (`True` on every line, `ALL True`). The
-four state-file copies of C1 (`dry-live_review.md`, `dry-decisions.md`, `dry-context.md`,
-`dry-plan.md` onto their `.agent/` targets) were each verified with `cmp`, which printed nothing on
-all four, before staging.
+`.agent/authored/f058-r9.md`, committed in C1, is a byte copy of the reviewer's prepared `block.md`:
+`wc -l` 166, `sha256sum a3ff2f3ab7786d9a2eac34a6bc0392bc33a1578b5d4eaef41edef171c3c50aa9`, equal to
+the digest named in the delivering prompt. `.agent/authored/f058-r9-create_f058_evidence.py` is a
+byte copy of the reviewer's `create_f058_evidence.py`. Gate 1 (`verify.py`) additionally confirmed
+all four C1 paths byte-equal to their prepared sources at the C1 commit (`True` on every line,
+`ALL True`), and each of the four copies was checked with `cmp` (which printed nothing on all four)
+before staging.
 
 ## Deviations & assumptions
 
 None. Every prepared-file digest matched, every script's output matched the block's stated exact
-text, every conflict and status listing named exactly the paths the block predicted, and all six
-gates passed on the first run.
+text, the suite ran green on the merged tree with the reflog unchanged throughout, the evidence job
+and the review package both read exactly as the block predicted, and all five gates passed on the
+first run. One clarification, not a deviation: the block's `scripts/closure_suite_cost.py` call was
+run twice — once to record its readings and once more through a read-only wrapper script to capture
+its exit code without a separate shell call — and both runs printed byte-identical output, which
+confirms the script is a pure read over the test-load record `tests/conftest.py` already wrote
+during the suite run, not a second record-writing run.
+
+## For the operator, in plain sentences
+
+The whole test collection ran once more on the feature now brought up to date with the home-network
+change: 22,826 tests passed, 22 were skipped on purpose, and the run took about six minutes and
+forty seconds. The cost check said this run used about 1.2 percent less computer time than the
+previous feature's own full run, comfortably inside the allowed spread. The review package was
+built successfully:
+
+- `remedy-review-20261013-011933-READY_FOR_REVIEW.zip`
+- `/home/decodeux/Repos/remedy-history/zips`
+
+Old scratch copies in the staging area were checked for cleanup; none were eligible to free this
+time. One question about two sessions sharing one working copy still waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
-2. Phase 1 rule 2, the Open PR Gate: none expected (this round opens no pull request).
-3. The next round's first commit books round 8's verdict.
-4. Then the closure's one full suite on the merged tree, its CPU cost, the staging reclaim, the
-   evidence job and the review package.
+2. Phase 1 rule 2, the Open PR Gate: no pull request is open for this branch yet.
+3. The reviewer reviews round 9 and books its verdict in the next round's first commit.
+4. For a green suite and a READY package (as this round's are): the closing round — the Built
+   State, the rotation, the self-use entry SU-059's `consumed_by`, the STATUS flip with the README
+   sync, and the pull request, left unmerged.
 
 Operator questions open: 1.
-Open findings: 6 — R-1235, R-1246, R-1251 and R-1252, owned by F306; R-1264 and R-1265, owned by
-F058 and repaired in this round.
-
-## For the operator, in plain sentences
-
-The cockpit's home-network change was merged first, as the waiting question recommended. It had
-made two automatic checks fail: one that keeps large program files from growing, and one that
-keeps retired words out of the command help. So this round moved the cockpit's start-up helpers
-and three of its settings into small files of their own without changing what they do, and
-reworded one line of help for the cockpit's host option so that it no longer contains the retired
-word. The failover feature was then brought up to date with that change. The full test collection
-runs once more next, then the feature closes.
+Open findings: 4 (R-1235, R-1246, R-1251 and R-1252, all owned by F306).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | five paths byte-equal/empty-cmp to the prepared files |
-| C2 | done | merge commit, conflicts in exactly the four expected files, resolved as ordered |
-| C3 | done | eight paths, exact expected transform output |
-| C4 | done | one path, exact expected transform output |
-| C5 | done | this handback |
-| Gate 1 | passed | `status --porcelain` empty |
-| Gate 2 | passed | `ALL True` |
-| Gate 3 | passed | `All checks passed!` |
-| Gate 4 | passed | exit 0, 4974 passed, 9 skipped, no FAILED/ERROR |
-| Gate 5 | passed | `fail_count` 0 |
-| Gate 6 | passed | exact open-finding set |
-| R-1264 | done | structural move, repaired this round |
-| R-1265 | done | help text reworded, repaired this round |
+| C1 | done | four paths byte-equal to the prepared files, confirmed by `cmp` and gate 1's `verify.py` |
+| C2 | done | the closure's one full suite, green, with its CPU cost; this commit is the ACCEPTED HEAD |
+| A1 | done | staging reclaim ran; no candidate, `--apply` skipped as ordered |
+| A2 | done | evidence job exit 0, every expected reading matched |
+| A3 | done | review package `READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT` PASS, verified read-only |
+| C3 | done | this handback |
+| Gate 1 | passed | `ALL True` |
+| Gate 2 | passed | exit 0, summary line matched, no bad node ids |
+| Gate 3 | passed | A1 and A2 readings matched exactly |
+| Gate 4 | passed | A3 readings matched exactly |
+| Gate 5 | passed | `fail_count` 0, exact open-finding set, clean tree |
