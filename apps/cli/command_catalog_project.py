@@ -156,4 +156,38 @@ PROJECT_COMMANDS: tuple[CommandEntry, ...] = (
         related=("do.run", "project.show"),
         exit_codes=(0, 1, 2, 4),
     ),
+
+    # ── project catalog (F206 T004, DECISION F206 D4) ───────────────────
+    CommandEntry(
+        command_id="project.catalog-check",
+        group_id="project",
+        subcommand="catalog-check",
+        description="Check the repository catalog, written by hand, and warn where a "
+                    "lockfile shows a dependency it lacks.",
+        action_class="read_only",
+        args=(
+            ArgDef("--catalog", "The catalog file to read (default: the data root's "
+                                 "org/catalog.toml)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("project.catalog-show",),
+    ),
+    CommandEntry(
+        command_id="project.catalog-show",
+        group_id="project",
+        subcommand="catalog-show",
+        # "sequence", not "order": DECISION amend0905-vocab D1 binds "Order" to the order
+        # file/"what you ask" meaning tests/docs/test_vocabulary.py checks for, and this
+        # command's sequence is the catalog's dependency order, not that.
+        description="Show the repository catalog and the sequence it gives the repositories.",
+        action_class="read_only",
+        args=(
+            ArgDef("--catalog", "The catalog file to read (default: the data root's "
+                                 "org/catalog.toml)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("project.catalog-check",),
+    ),
 )
