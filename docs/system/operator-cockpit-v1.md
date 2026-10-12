@@ -46,6 +46,36 @@ When the data root cannot be resolved, every derived value is reported as the
 explicit string `"unknown"` (and the frontend renders `—`). Zeros are never
 faked to stand in for unknown data.
 
+## A project's missions
+
+Every path below a project, `/api/projects/<slug or id>/...`, is answered by
+`packages/orchestration/cockpit_project_routes.py` (DECISION F305 D2), token-gated like every
+other read route:
+
+| Route | Answer |
+|---|---|
+| `.../summary` | the project's card (F042) |
+| `.../missions` | one card per mission of the project, newest first: goal, status, and how many orders and jobs it holds |
+| `.../missions/<mission id>/orders` | that mission's newest 25 orders, newest first, with a count of the earlier ones |
+
+Each order row names its title (the first line of the order's text), its job count, the calls and
+tokens its jobs in this project made (from the project's token ledger, never a cost in US
+dollars), and its chain: one chip per job of the order, in the order the jobs were linked. An
+order given for several repositories at once is one batch in each repository's own mission, the
+batches sharing a correlation id, so its chain also holds the jobs of the other repositories'
+batches. A chip names a job by references and titles only: the job's id, its project, the folder
+name of its repository, its title and its state. It never carries another project's evidence,
+calls, tokens or paths. A project that does not exist answers 404 `project not found`, a mission
+the project does not hold answers 404 `mission not found`, and a path that names no route answers
+the server's own 404.
+
+The right panel's **Missions** button opens the missions panel
+(`apps/ui/src/components/missions/MissionPanel.tsx`, DECISION F305 D3) over the project the cockpit
+shows. It lists the project's missions as cards; a card's orders are read only when the card is
+opened. Each order shows its title, its calls and tokens and its chain band, and a click on a chip
+opens that job in its own project's cockpit (`?project=<slug>&job=<job id>`). A chip whose job the
+job store no longer holds or cannot read is shown and cannot be clicked.
+
 ## Frontend truth contract
 
 - `apps/ui/src/api/remedyApi.ts` maps the payload to typed view models;

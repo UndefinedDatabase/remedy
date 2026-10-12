@@ -34,6 +34,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+# DECISION F305 D2: the routes below one project live in a module of their own; the summary's
+# builder is imported back here by name, so every import path keeps working.
+from packages.orchestration.cockpit_project_routes import (
+    _build_project_summary_json as _build_project_summary_json,
+)
+from packages.orchestration.cockpit_project_routes import project_route_answer
 from packages.orchestration.public_api import is_public_api_path
 
 # ---------------------------------------------------------------------------
@@ -1860,16 +1866,6 @@ def _build_projects_json() -> dict[str, Any]:
     return projects_view()
 
 
-def _build_project_summary_json(selector: str) -> tuple[int, dict[str, Any]]:
-    """Build one project's summary card, or 404 for an unknown selector
-    (F042 T001, DECISION F042 D1)."""
-    from packages.orchestration.project_cockpit import find_project, project_summary
-    project = find_project(selector)
-    if project is None:
-        return _safe_error(404, "project not found")
-    return (200, project_summary(project))
-
-
 def _build_job_project_json(job: Any) -> dict[str, Any]:
     """Build the project one job belongs to (F042 T002, DECISION F042 D2)."""
     from packages.orchestration.project_cockpit import job_project_view
@@ -3118,10 +3114,9 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._send_json(200, _build_projects_json())
             return
 
-        # /api/projects/<uuid-or-slug>/summary — DECISION F042 D1
-        if (len(parts) == 5 and parts[1] == "api" and parts[2] == "projects"
-                and parts[4] == "summary"):
-            self._send_json(*_build_project_summary_json(parts[3]))
+        # /api/projects/<uuid-or-slug>/... — every route below a project (DECISIONS F042 D1, F305 D2)
+        if len(parts) > 4 and parts[1] == "api" and parts[2] == "projects":
+            self._send_json(*project_route_answer(parts))
             return
 
         # /api/jobs/<job_id>/nodes/<node_id>/detail

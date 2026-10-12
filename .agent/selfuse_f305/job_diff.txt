@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-49cf7ccc9be64f1d  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 583968cb9..152942647 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -2071,7 +2071,7 @@ def _cmd_job_budget(
+                 if _budgets is not None:
+                     evaluation = evaluate_budget(_budgets, counters)
+                 _counter_status = "evaluated"
+-            except (BudgetCounterError, Exception) as _budget_exc:  # noqa: BLE001 — corrupted budgets must not crash
++            except BudgetCounterError as _budget_exc:
+                 _counter_status = "corrupt"
+                 _counter_diagnostic = str(_budget_exc)
+                 counters = None
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

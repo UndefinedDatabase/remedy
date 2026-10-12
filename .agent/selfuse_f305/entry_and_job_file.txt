@@ -1,0 +1,5 @@
+Entry ID: SU-057
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:2074
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except (BudgetCounterError, Exception) as _budget_exc:  # noqa: BLE001 — corrupted budgets must not crash)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f305-r3-selfuse/SU-057.md

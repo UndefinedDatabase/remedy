@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-138 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+139 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -43,7 +43,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
 | 12 | Observability & Operations | 5 | 13 |
-| 13 | Multi-Repo & Organization | 1 | 9 |
+| 13 | Multi-Repo & Organization | 2 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
 | 16 | Cockpit v2 | 0 | 10 |
@@ -843,7 +843,14 @@ projects it spans, while every job's records stay in its own project; the next j
 works where its chain ends, and so does its cleanup job; the status digest and the local web
 interface name each job's repository and each mission's projects, and a client token may start an
 order only when its policy names every project in it; the cockpit's band of repository chips is
-the follow-up feature the STATUS ledger registers directly behind this one).
+the follow-up feature the STATUS ledger registers directly behind this one),
+F305 multi-repo missions: the cockpit's chain band (the cockpit's right panel gained a Missions
+button that opens one card for each mission of the project it shows, which is one per
+repository; opening a card shows its newest orders, each with how many model calls and tokens
+its jobs used and one small button per job in every repository the order reached, and a click
+on such a button opens that job in its own project's cockpit; a test drives this in a real
+browser, and the closure's run of Remedy on itself met the same small fault as the feature
+before it).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

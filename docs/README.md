@@ -46,6 +46,7 @@
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
 | public HTTP API | [public-http-api-v1.md](system/public-http-api-v1.md) | system |
 | mission upkeep | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | system |
+| missions panel | [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | guide |
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
@@ -154,6 +155,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [explanation-layer-user-guide-v1.md](guides/explanation-layer-user-guide-v1.md) | The cockpit's explained words: the card on hover or focus, the Terms list opened with the question mark, and the welcome tour |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
+| [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | The cockpit's missions panel: a project's missions, their orders with calls and tokens, and the chips that open a job in another repository |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
