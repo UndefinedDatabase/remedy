@@ -38,8 +38,11 @@ def create_role_provider(
     ``stream_evidence`` is the opt-in F004 mode; when off the provider keeps the
     accepted F003 JSON behaviour. Each role writes its stream artifacts into its
     own subdirectory so builder and reviewer streams never overwrite each other.
-    ``make_provider`` builds the final non-claude-cli provider by name; a caller — such as the
-    failover walk — may replace it with a wrapper around the provider it would otherwise build.
+    ``make_provider`` builds the final non-claude-cli provider by name; the shim
+    ``_create_provider_with_cwd`` in ``packages/orchestration/pingpong_loop.py`` passes that
+    module's own ``create_provider`` as ``make_provider``, so a test that replaces
+    ``pingpong_loop.create_provider`` still reaches every provider; the failover walk passes
+    ``make_provider`` on to every link unchanged.
     ``with_failover`` wraps the built provider in the DECISION F058 D2 walk when `role`'s
     configured chain is not empty; a link built mid-walk passes ``with_failover=False``, so a
     chain never nests a failover walk inside another.

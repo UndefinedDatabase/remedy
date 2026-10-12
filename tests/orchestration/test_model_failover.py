@@ -571,6 +571,14 @@ class TestIsFailoverTrigger:
     def test_false_for_a_malformed_output(self):
         assert is_failover_trigger(BuilderOutput(error="malformed_output: model not found")) is False
 
+    def test_false_for_a_timeout_that_also_reads_as_unavailable(self):
+        out = BuilderOutput(error="provider_error: HTTP 504 Gateway Timeout")
+        assert is_failover_trigger(out) is False
+
+    def test_false_for_a_nonzero_exit_that_also_reads_as_unavailable(self):
+        out = BuilderOutput(error="claude CLI exited 1: connection refused")
+        assert is_failover_trigger(out) is False
+
 
 class TestFailoverProviderWalk:
     def test_a_primary_that_serves_returns_its_output_unchanged_and_never_calls_build_link(self):
@@ -727,3 +735,12 @@ class TestFailoverProviderWalk:
         assert fp.primary is primary
         assert fp.links == (link,)
         assert fp.begin_stream_call == primary.begin_stream_call
+
+    def test_supports_resume_is_false_when_the_primary_answers_false(self):
+        primary = _StubProvider("claude-cli", supports_resume=False)
+        link = FailoverLink("claude-cli", "m1", "mid")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(link,), build_link=lambda the_link: primary,
+        )
+        assert fp.supports_resume is False
