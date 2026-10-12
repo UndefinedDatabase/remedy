@@ -54,4 +54,23 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         entry_type=dict,
         default=None,
     ),
+    # F058's per-role failover chains: parsed and hard-rule-checked by
+    # packages/orchestration/model_failover.py, never here.
+    ConfigKeySpec(
+        key="model_failover.chains",
+        env_var="REMEDY_MODEL_FAILOVER_CHAINS",
+        description=(
+            "Per-role model failover chains (F058); each entry of the "
+            "[remedy.model_failover.chains] sub-table names a role and holds a list of "
+            "links, each a table of exactly provider, model and tier, tried in order "
+            "when the role's provider is unavailable; every link is checked against the "
+            "hard rules of docs/agents/model_routing_policy.md, and a local link is "
+            "allowed only for the roles routed to the cheap tier; a table that breaks a "
+            "rule is refused with the rule and the link named, and no role fails over; "
+            "configured in TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        entry_type=list,
+        default=None,
+    ),
 )
