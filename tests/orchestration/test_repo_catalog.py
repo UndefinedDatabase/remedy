@@ -3,6 +3,8 @@ order (F206 T001)."""
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from packages.orchestration.data_paths import classify_data_child
 from packages.orchestration.repo_catalog import (
     RepoCatalogCycleError,
@@ -14,6 +16,7 @@ from packages.orchestration.repo_catalog import (
     parse_repo_catalog,
     repo_catalog_order,
     repo_catalog_path,
+    repo_catalog_project_order,
 )
 
 DIAMOND = """
@@ -97,6 +100,35 @@ def test_a_pid_given_twice_raises_value_error():
     except ValueError:
         return
     raise AssertionError("a pid given twice did not raise ValueError")
+
+
+def test_the_cited_path_to_a_transitive_dependency_is_the_shortest_one():
+    """R-1253: a longer path through `a1`/`a2` must not be cited over the shorter `b1` one."""
+    text = (
+        '[[repo]]\npid = "app"\ndepends_on = ["b1", "a1"]\n'
+        '[[repo]]\npid = "a1"\ndepends_on = ["a2"]\n'
+        '[[repo]]\npid = "a2"\ndepends_on = ["lib"]\n'
+        '[[repo]]\npid = "b1"\ndepends_on = ["lib"]\n'
+        '[[repo]]\npid = "lib"\n'
+    )
+    catalog = parse_repo_catalog(text, "<shortest>")
+    order = repo_catalog_order(catalog, ["app", "lib"])
+    assert len(order.edges) == 1
+    assert order.edges[0].path == ("app", "b1", "lib")
+
+
+def test_two_equal_length_paths_cite_the_dependency_listed_first():
+    """R-1253: a tie between `x` and `y` is broken by `app`'s own `depends_on` order."""
+    text = (
+        '[[repo]]\npid = "app"\ndepends_on = ["x", "y"]\n'
+        '[[repo]]\npid = "x"\ndepends_on = ["lib"]\n'
+        '[[repo]]\npid = "y"\ndepends_on = ["lib"]\n'
+        '[[repo]]\npid = "lib"\n'
+    )
+    catalog = parse_repo_catalog(text, "<tie>")
+    order = repo_catalog_order(catalog, ["app", "lib"])
+    assert len(order.edges) == 1
+    assert order.edges[0].path == ("app", "x", "lib")
 
 
 # ---------------------------------------------------------------------------
@@ -339,3 +371,36 @@ def test_repo_catalog_path_under_the_data_root_ends_org_catalog_toml(tmp_path, m
     path = repo_catalog_path()
     assert path.as_posix().endswith("org/catalog.toml")
     assert classify_data_child("org") == "durable"
+
+
+# ---------------------------------------------------------------------------
+# repo_catalog_project_order, over plain stand-in objects (T002, DECISION F206 D2)
+# ---------------------------------------------------------------------------
+
+def test_repo_catalog_project_order_matches_by_id():
+    catalog = parse_repo_catalog('[[repo]]\npid = "1"\ndepends_on = ["2"]\n[[repo]]\npid = "2"\n',
+                                  "<by-id>")
+    app, lib = SimpleNamespace(id=1, slug="app"), SimpleNamespace(id=2, slug="lib")
+    ordered, sentences = repo_catalog_project_order(catalog, [app, lib])
+    assert ordered == [lib, app]
+    assert sentences == ("1 depends on 2",)
+
+
+def test_repo_catalog_project_order_matches_by_slug():
+    catalog = parse_repo_catalog(
+        '[[repo]]\npid = "app"\ndepends_on = ["lib"]\n[[repo]]\npid = "lib"\n', "<by-slug>")
+    app = SimpleNamespace(id="does-not-match-1", slug="app")
+    lib = SimpleNamespace(id="does-not-match-2", slug="lib")
+    ordered, sentences = repo_catalog_project_order(catalog, [app, lib])
+    assert ordered == [lib, app]
+    assert sentences == ("app depends on lib",)
+
+
+def test_repo_catalog_project_order_keeps_an_unmatched_projects_place():
+    catalog = parse_repo_catalog('[[repo]]\npid = "app"\ndepends_on = ["lib"]\n'
+                                  '[[repo]]\npid = "lib"\n', "<unmatched>")
+    ghost = SimpleNamespace(id="ghost-id", slug="ghost")
+    app, lib = SimpleNamespace(id="app-id", slug="app"), SimpleNamespace(id="lib-id", slug="lib")
+    ordered, sentences = repo_catalog_project_order(catalog, [ghost, app, lib])
+    assert ordered == [ghost, lib, app]
+    assert sentences == ("app depends on lib",)
