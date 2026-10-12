@@ -589,6 +589,15 @@ end the response with:
   leaving nothing on disk wrong that the next handback did not rewrite. R-1251, a defect of the
   product's runtime checks that a round's selection met, was registered for the next findings
   paydown. The list stays at 34 items.
+  Consolidated again at F305's closure on 2026-10-12: nothing joined and no two items were merged,
+  because F305's one line in `.agent/prose_slips.md` names no lesson the list lacks: a worker's
+  reply that miscounted two commits' insertions while the handback on disk was right is a slip in
+  following a block, which no item about a block's text can prevent. Its blocks were generated from
+  simulated trees whose commit trees the workers' commits matched byte for byte, and its one
+  authoring lesson was caught in the dry tree before any block left the reviewer: a guard that
+  reads tracked files reported a page naming a new file the dry tree had not committed yet, which
+  is item 12's reading of the environment a dry run must share with the gate it proves. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
