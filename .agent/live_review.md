@@ -1,28 +1,27 @@
-# Live Review — F206 Repo dependency catalog
+# Live Review — F058 Model failover chain
 
-> Round-by-round review record, re-headed at the F206 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F305, whose STATUS
-> line went `[x]` on its own branch at `9b1a8005c`; this session's Open PR Gate merged pull
-> request 329 into `main` as `74100f3cc`, whose tree equals the tree of `9b1a8005c`. F305's round 5
+> Round-by-round review record, re-headed at the F058 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F206, whose STATUS
+> line went `[x]` on its own branch at `f91844e69`; this session's Open PR Gate merged pull
+> request 330 into `main` as `4f294374a`, whose tree equals the tree of `f91844e69`. F206's round 6
 > was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books
 > its verdict here, in the first commit of the next round that is happening anyway; its gate entry
 > is appended at the end of this record by this claim. Only the heading, this paragraph and the
 > Steps section below are rewritten; everything else from the Findings heading to the end of the
-> file as it stood at `74100f3cc` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `74100f3cc`, computed with
+> file as it stood at `4f294374a` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `4f294374a`, computed with
 > `open_finding_ids` from `scripts/rotate_live_review.py`, is
 > `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all four.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F206 D1's, which also writes the feature file's slice list. The first
-round claims F206, re-heads this record, books F305's round 5, and lands T001: the catalog's
-format, its validation with a cycle's path shown, and the order it gives an order's repositories,
-in `packages/orchestration/repo_catalog.py`, with the data root's new `org` class. The next round
-lands T002, the planner coupling: an order over several projects plans its jobs in the catalog's
-order and cites each edge. Then T003, the lockfile plausibility check; then T004, the commands
-`remedy org catalog-check` and `remedy org catalog-show` after a structural step in the command
-catalog, with the user page. Then the closure.
+THE ORDER BELOW IS DECISION F058 D1's, which also writes the feature file's amendment. The first
+round claims F058, re-heads this record, books F206's round 6, takes step (3) of the configuration
+registry's boundary, which moves the model routing keys to a module of their own, and lands T001:
+the per-role failover chains of `remedy.toml`, their shape and their hard-rule validation, in
+`packages/orchestration/model_failover.py`. The next round lands T002, the failover walk at the
+providers' seam with its disclosure in each call's evidence and the run report's line. Then T003,
+the trigger discipline, the sticky cooldown and the interplay tests. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -171,3 +170,5 @@ Gate: F206 R4 — the F206 round 4 entry, the repairs and the closure's first ro
 Recurrence: R-1252 — the same defect at F206's closure; NO NEW ID IS MINTED (checklist item 30). Self-use item `SU-058` (generator tier 4, from the `# noqa: BLE001` of the cost ledger read in `apps/cli/commands/job.py`) ran as job `6cf4d930076349bd` with `max_tasks` 1; its one task T001 was split during the run into T001a and T001b, T001a passed review and T001b waits, and `.agent/selfuse_f206/run_defects.txt`, committed at `6f664d777`, reads `run_manifest_write_failed: ManifestError: the job's task list ['T001', 'T001a', 'T001b'] no longer matches the episode-start snapshot's job-input definition ['T001']`, the F7 check R-1252 names. A third closure in a row loses its self-use run's manifest the same way. Owner unchanged: F306.
 
 Gate: F206 R5 — the F206 round 5 entry, the closure's evidence round, over `cd9058534`..`4dc1b48c6` (2 commits, each single-parent; insertions by `git show --numstat`: `eda6c6bb3` 412, `4dc1b48c6` 216). VERDICT PASS. The reviewer's `verify.py` read the five C1 files equal to its prepared files at `eda6c6bb329a10c0893c821da9c84c32d5fdc7f9`, the closure's accepted head, `ALL True`; its own run of the evidence script in a dry tree at `cd9058534` with C1's files laid in read the two ancestry counts equal at 23, 4557 node ids with 50 deselected, no unsafe id and pytest exit 0 at 4552 passed and 5 skipped. The staging reclaim found nothing to reclaim and refused one path no job owns, so its apply was skipped. The evidence job `f206r5e1001` ran on the accepted head with the two ancestry counts equal at 23, collected 4557 node ids with 50 deselected and no unsafe id, and its pytest exited 0 at 4553 passed and 4 skipped; `validate_verification_tests` found no problem and the bundle validated as the current run. The review package `remedy-review-20261012-063624-READY_FOR_REVIEW.zip`, in `/home/decodeux/Repos/remedy-history/zips`, read `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; the reviewer re-hashed it at `27903864ff926408ffd660ab35a342e686a3352ac8fee54bce305d3c29d1c5fe`, found `testzip()` None, and read its committed review subject from base `74100f3cc3fe0270c3d9a86deb535906f4bfc46b` to head `eda6c6bb329a10c0893c821da9c84c32d5fdc7f9`. Six integrity checks `pass`, and the open set read R-1235, R-1246, R-1251 and R-1252. The worker declared that several of its shell calls began with `cd` and that it read the evidence job's exit code from the script's own printed summary rather than from a captured return code (`.agent/prose_slips.md`).
+
+Gate: F206 R6 — the F206 round 6 entry, the closing round, over `4dc1b48c6`..`f91844e69` (3 commits, each single-parent; insertions by `git show --numstat`: `067662686` 225, `5d5b56a13` 26, `f91844e69` 207). VERDICT PASS. The reviewer of F206's first session reached the verdict after the round's handback, so no committed file carries it; the handback at `f91844e69` records the readings it rests on: the reviewer's `verify.py` read the C1 files, the two files of C2's rotation and the C3 files equal to the prepared files, `ALL True`; the rotation moved 5 gate records and 4 finding pairs with 4 open findings before and after; the round's selection read 563 passed with exit 0; and six integrity checks read `pass`. The worker's first run of `verify.py` stopped on a file name the reviewer's own helper misspelled; the worker halted before C3, as it should, and resumed once the reviewer laid a byte copy under the expected name (`.agent/prose_slips.md`). The reviewer of F058's first session merged pull request 330 at the Open PR Gate as `4f294374a`, whose tree equals the tree of `f91844e69`; no hosted run exists for it, because hosted CI runs only when dispatched (operator amendment amend1011-manual-hosted-ci). The open set at `f91844e69` is `['R-1235', 'R-1246', 'R-1251', 'R-1252']`.

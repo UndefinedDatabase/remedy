@@ -253,7 +253,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Luna gate B: unattended missions (operator ruling amend1006-luna-control-plane, continued)
 
-- [ ] F058 — Model failover chain
+- [~] F058 — Model failover chain
 
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
 
