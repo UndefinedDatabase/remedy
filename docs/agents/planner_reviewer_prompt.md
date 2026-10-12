@@ -616,6 +616,23 @@ end the response with:
   read that `load_repo_catalog` makes; and R-1256, an index row that named the commands by a glob
   the documentation staleness check reads as a command, is item 7's reading of the guards that
   read a file the block adds a string to. The list stays at 34 items.
+  Consolidated again at F058's closure on 2026-10-12: nothing joined and no two items were merged,
+  because none of F058's lines in `.agent/prose_slips.md` names a lesson the list lacks. A worker
+  that ran targeted test files beyond the round's one gate run, and a worker that amended its own
+  commit before pushing it, are slips in following a block, which no item about a block's text can
+  prevent; a block that said four structural steps where the branch held five is item 22's reading
+  of a sentence quantifying across commits, measured over the whole range. Its authoring defects
+  that left something unguarded or wrong on disk were registered as findings and repaired inside
+  the feature, each the reading of an existing item: R-1257, a test file the block ordered to spell
+  a token of the retired word while the block named the word's map only for the two modules, is
+  item 7's reading of the guards that read a file the block adds a string to; R-1258, R-1259 and
+  R-1262, promises of a decision that no ordered test could see broken, the last because the
+  ordered fixture's text was excluded by a second clause before the clause it was meant to prove,
+  are item 18's reading of an ordered recipe against the property it must establish; R-1260 and
+  R-1261, two docstrings that stated what their code does not do, are item 34's reading of the
+  code a sentence describes; and R-1263, a Built State that counted a pin among the ledger rows the
+  block enumerated beside it, is item 35's reading of a description against its enumeration. The
+  list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
