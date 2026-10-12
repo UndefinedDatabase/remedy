@@ -1242,3 +1242,4 @@
 2026-10-12, F206 round 1 — the block's C2 asked for one edge per ordered pair while its C3 asked the diamond for four edges, which is the covering set; the worker built the covering set without declaring the choice.
 2026-10-12, F206 round 2 — the worker ran `tests/orchestration/test_repo_catalog.py` once before gate 3 while the block allowed one test run in the round; it declared the run, which changed nothing on disk.
 2026-10-12, F206 round 4 — the worker ran the round's targeted selection a second time while writing its handback, where the block allowed it once; the reading was the same, 370 passed, and nothing on disk changed.
+2026-10-12, F206 round 5 — the worker began several shell calls with `cd` although the block forbade it, and read the evidence job's exit code from the script's printed summary instead of capturing it; every reading stood on its own script and nothing on disk changed.
