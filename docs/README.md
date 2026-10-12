@@ -48,6 +48,7 @@
 | mission upkeep | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | system |
 | missions panel | [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | guide |
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
+| model failover | [model-failover-v1.md](system/model-failover-v1.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
 | prompt cache ordering | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | system |
@@ -109,6 +110,7 @@ Specifications and design documents for the built system.
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | A mission's upkeep: the project's ledger of what its jobs left open, the cadence of an upkeep job after every fifth completed job, the fixed rules of what it carries, and the one recorded way to skip it |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
+| [model-failover-v1.md](system/model-failover-v1.md) | Model failover: a role's backup models, the hard rules every link obeys, when a call fails over, the cooldown, the session guard, and what the run record and report show |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
