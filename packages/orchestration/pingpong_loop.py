@@ -34,7 +34,11 @@ from packages.orchestration.artifact_summary import render_tiered_diff_text, sum
 from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
-from packages.orchestration.pingpong_call_record import _add_exit_detail, _session_fields
+from packages.orchestration.pingpong_call_record import (
+    _add_exit_detail,
+    _session_fields,
+    parked_session_refs,  # noqa: F401  (re-exported for packages.orchestration.pingpong_job)
+)
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
@@ -5081,22 +5085,6 @@ def resume_declined_reasons(
                 reason = f"the {name} provider cannot resume a session"
             declined[role] = reason
     return declined
-
-
-def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:
-    """R-1055: the session each role last reported in a persisted run, by role.
-
-    Reads ``result.json`` as :func:`export_pingpong_json` writes it. A record
-    written before R-1055 carries no ``session_id`` and answers ``{}``, which
-    resumes nothing.
-    """
-    refs: dict[str, str] = {}
-    for round_data in (run_record or {}).get("rounds") or []:
-        for role in ("builder", "reviewer"):
-            session_id = str((round_data.get(role) or {}).get("session_id") or "")
-            if session_id:
-                refs[role] = session_id
-    return refs
 
 
 def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:

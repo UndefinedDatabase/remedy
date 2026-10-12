@@ -1,6 +1,6 @@
 """A call's own fields in a run's record (DECISION F058 D3).
 
-The two helpers below moved unchanged out of `packages/orchestration/pingpong_loop.py`, which
+The three helpers below moved unchanged out of `packages/orchestration/pingpong_loop.py`, which
 imports them back by name.
 """
 
@@ -44,3 +44,19 @@ def _session_fields(out: Any) -> dict[str, Any]:
     if isinstance(disclosure, FailoverDisclosure):
         fields["failover"] = disclosure.to_json()
     return fields
+
+
+def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:
+    """R-1055: the session each role last reported in a persisted run, by role.
+
+    Reads ``result.json`` as :func:`export_pingpong_json` writes it. A record
+    written before R-1055 carries no ``session_id`` and answers ``{}``, which
+    resumes nothing.
+    """
+    refs: dict[str, str] = {}
+    for round_data in (run_record or {}).get("rounds") or []:
+        for role in ("builder", "reviewer"):
+            session_id = str((round_data.get(role) or {}).get("session_id") or "")
+            if session_id:
+                refs[role] = session_id
+    return refs
