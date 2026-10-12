@@ -5,6 +5,7 @@ hard-rule validation) and T002, first part (the failover walk, DECISION F058 D2)
 from __future__ import annotations
 
 import pathlib
+import shutil
 import warnings
 from dataclasses import dataclass
 
@@ -34,6 +35,7 @@ from packages.orchestration.model_failover import (
     FailoverLinkAttempt,
     FailoverProvider,
     build_failover_chains,
+    failover_report_line,
     is_failover_trigger,
     parse_failover_chains,
     resolve_failover_chains,
@@ -744,3 +746,136 @@ class TestFailoverProviderWalk:
             links=(link,), build_link=lambda the_link: primary,
         )
         assert fp.supports_resume is False
+
+
+class TestFailoverReportLine:
+    def test_no_rounds_gives_none(self):
+        assert failover_report_line({"rounds": []}) is None
+
+    def test_rounds_without_a_failover_give_none(self):
+        run_record = {
+            "rounds": [{"builder": {"error": ""}, "reviewer": {"verdict": "pass"}}],
+        }
+        assert failover_report_line(run_record) is None
+
+    def test_one_served_builder_call(self):
+        run_record = {"rounds": [{"builder": {"failover": {"used": {"position": 1}}}}]}
+        assert failover_report_line(run_record) == (
+            "Failover: 1 call was served by a backup model because its usual provider could "
+            "not be reached. The run's record names every model tried."
+        )
+
+    def test_one_call_that_ran_out(self):
+        run_record = {"rounds": [{"builder": {"failover": {"used": None}}}]}
+        assert failover_report_line(run_record) == (
+            "Failover: 1 call found no backup model that could be reached. "
+            "The run's record names every model tried."
+        )
+
+    def test_two_served_and_one_ran_out_together(self):
+        run_record = {
+            "rounds": [
+                {
+                    "builder": {"failover": {"used": {"position": 1}}},
+                    "reviewer": {"failover": {"used": None}},
+                },
+                {
+                    "reviewer": {"failover": {"used": {"position": 1}}},
+                },
+            ],
+        }
+        assert failover_report_line(run_record) == (
+            "Failover: 2 calls were served by backup models because their usual provider "
+            "could not be reached. 1 call found no backup model that could be reached. "
+            "The run's record names every model tried."
+        )
+
+
+class TestFailoverThroughARealRun:
+    """T002, DECISION F058 D3 — the walk proven or exhausted through a real
+    `run_pingpong` call. `shutil.which` is patched to answer `None` for `"claude"`, so
+    `claude-cli` always fails with the one error its own missing-binary check raises;
+    no real CLI ever runs.
+    """
+
+    def _demo_repo(self, tmp_path):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        return repo
+
+    def _no_real_cli(self, monkeypatch):
+        monkeypatch.setattr(
+            "packages.orchestration.pingpong_provider.shutil.which",
+            lambda name: None if name == "claude" else shutil.which(name),
+        )
+
+    def test_a_primary_that_is_down_is_served_by_its_chain(self, monkeypatch, tmp_path):
+        from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        self._no_real_cli(monkeypatch)
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "fake"
+model = "stand-in"
+tier = "mid"
+''')
+        result = run_pingpong(
+            "Fix README", str(self._demo_repo(tmp_path)),
+            builder_name="claude-cli", builder_model="primary-model", reviewer_name="fake",
+        )
+
+        assert result.final_status != "provider_unavailable"
+        record = export_pingpong_json(result)
+        failover = record["rounds"][0]["builder"]["failover"]
+        assert failover["reason"] == FAILOVER_REASON_PROVIDER_UNAVAILABLE
+        assert failover["intended"] == {"provider": "claude-cli", "model": "primary-model"}
+        assert failover["used"] == {
+            "position": 1, "provider": "fake", "model": "stand-in", "error": "",
+        }
+        assert failover["primary_error"].startswith(
+            "provider_error: RuntimeError: claude CLI not found on PATH"
+        )
+
+    def test_a_chain_that_runs_out_leaves_the_primarys_own_failure(self, monkeypatch, tmp_path):
+        from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        self._no_real_cli(monkeypatch)
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "other-model"
+tier = "mid"
+''')
+        result = run_pingpong(
+            "Fix README", str(self._demo_repo(tmp_path)),
+            builder_name="claude-cli", builder_model="primary-model", reviewer_name="fake",
+        )
+
+        assert result.final_status == "provider_unavailable"
+        record = export_pingpong_json(result)
+        failover = record["rounds"][0]["builder"]["failover"]
+        assert result.error == failover["primary_error"]
+        assert failover["used"] is None
+        assert [a["provider"] for a in failover["attempts"]] == ["claude-cli"]
+        assert [a["model"] for a in failover["attempts"]] == ["other-model"]
+
+    def test_the_same_run_without_a_chain_discloses_nothing(self, monkeypatch, tmp_path):
+        from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        self._no_real_cli(monkeypatch)
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        result = run_pingpong(
+            "Fix README", str(self._demo_repo(tmp_path)),
+            builder_name="claude-cli", builder_model="primary-model", reviewer_name="fake",
+        )
+
+        record = export_pingpong_json(result)
+        for round_data in record["rounds"]:
+            for role in ("builder", "reviewer"):
+                entry = round_data.get(role)
+                if entry:
+                    assert "failover" not in entry
