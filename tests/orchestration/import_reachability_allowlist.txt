@@ -131,6 +131,7 @@ packages.orchestration.config
 packages.orchestration.config_key_spec
 packages.orchestration.config_keys_claude
 packages.orchestration.config_keys_mission
+packages.orchestration.config_keys_model_routing
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector

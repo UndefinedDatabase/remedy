@@ -174,6 +174,7 @@ with the code that calls it.
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
+  Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -382,8 +383,8 @@ with the code that calls it.
 | 2052 | `packages/runtimes/dev_server.py` |
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
-| 1838 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
+| 1796 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |

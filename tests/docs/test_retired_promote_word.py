@@ -85,6 +85,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
         "promote_ready",
     })),
     "packages/orchestration/config.py": (K1, frozenset({
+        "promotion",
+    })),
+    "packages/orchestration/config_keys_model_routing.py": (K1, frozenset({
         "promotion", "promotion-evidence", "promotion_evidence", "remedy_model_routing_promotion_evidence",
         "resolve_promotion_evidence",
     })),

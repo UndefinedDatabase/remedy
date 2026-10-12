@@ -40,12 +40,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# DECISIONs F301 D2 and F302 D2: `ConfigKeySpec`, the mission orchestrator's keys and the Claude
-# CLI's keys live in modules of their own; each is imported back here by name, so every import
-# path keeps working.
+# DECISIONs F301 D2, F302 D2 and F058 D1: `ConfigKeySpec`, the mission orchestrator's keys, the
+# Claude CLI's keys and the model routing keys live in modules of their own; each is imported back
+# here by name, so every import path keeps working.
 from packages.orchestration.config_key_spec import ConfigKeySpec
 from packages.orchestration.config_keys_claude import CLAUDE_KEY_SPECS
 from packages.orchestration.config_keys_mission import MISSION_KEY_SPECS
+from packages.orchestration.config_keys_model_routing import MODEL_ROUTING_KEY_SPECS
 from packages.orchestration.model_aliases import resolve_model_alias
 
 if sys.version_info >= (3, 11):
@@ -1140,50 +1141,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=3,
     ),
-    # F110's per-project override map, and the first TABLE-VALUED key in this
-    # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
-    # override configured" and "an override table that is explicitly empty" are
-    # different operator statements, and collapsing them would lose the one the
-    # routing layer reports on.
-    ConfigKeySpec(
-        key="model_routing.task_class_tiers",
-        env_var="REMEDY_MODEL_ROUTING_TASK_CLASS_TIERS",
-        description=(
-            "Per-project TASK CLASS to MODEL TIER map (F110). The whole "
-            "[remedy.model_routing.task_class_tiers] sub-table resolves as ONE "
-            "value and is laid over the shipped seed mapping in "
-            "packages/orchestration/model_routing.py. The hard rules of "
-            "docs/agents/model_routing_policy.md still win: a map that breaks "
-            "one is REFUSED with the rule named and the shipped table is used. "
-            "Configured in TOML only — an env var cannot carry a table."
-        ),
-        value_type=dict,
-        entry_type=str,
-        default=None,
-    ),
-    # F110's PROMOTION-EVIDENCE table, and the first table of RECORDS in this
-    # registry: every entry is itself a sub-table, so it declares entry_type
-    # dict where its sibling above declares str. THE READER NOW EXISTS: it is
-    # role_config.resolve_promotion_evidence, which landed at 8efa2330 in
-    # packages/orchestration/role_config.py beside the one that already reads
-    # the tiers table. It is registered first, on purpose, so the schema is
-    # pinned before routing behaviour moves against it.
-    ConfigKeySpec(
-        key="model_routing.promotion_evidence",
-        env_var="REMEDY_MODEL_ROUTING_PROMOTION_EVIDENCE",
-        description=(
-            "Per-project TASK CLASS to BENCHMARK RUN map (F110). Each entry of "
-            "the [remedy.model_routing.promotion_evidence] sub-table is itself a "
-            "table: the documented run that LICENSES A CHEAPER TIER for that "
-            "class, as docs/agents/model_routing_policy.md's 'Promotion rule' "
-            "describes it. Whether a run clears the promotion bars is decided in "
-            "packages/orchestration/model_routing.py, never here. Configured in "
-            "TOML only — an env var cannot carry a table."
-        ),
-        value_type=dict,
-        entry_type=dict,
-        default=None,
-    ),
+    *MODEL_ROUTING_KEY_SPECS,
     # F112's per-class input-token cap table and its global fallback scalar.
     # Reuses the shared task-class vocabulary TASK_CLASS_TIERS declares
     # (packages/orchestration/model_routing.py) — the floor and vocabulary
