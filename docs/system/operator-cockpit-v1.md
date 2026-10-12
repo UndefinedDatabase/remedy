@@ -69,6 +69,13 @@ calls, tokens or paths. A project that does not exist answers 404 `project not f
 the project does not hold answers 404 `mission not found`, and a path that names no route answers
 the server's own 404.
 
+The right panel's **Missions** button opens the missions panel
+(`apps/ui/src/components/missions/MissionPanel.tsx`, DECISION F305 D3) over the project the cockpit
+shows. It lists the project's missions as cards; a card's orders are read only when the card is
+opened. Each order shows its title, its calls and tokens and its chain band, and a click on a chip
+opens that job in its own project's cockpit (`?project=<slug>&job=<job id>`). A chip whose job the
+job store no longer holds or cannot read is shown and cannot be clicked.
+
 ## Frontend truth contract
 
 - `apps/ui/src/api/remedyApi.ts` maps the payload to typed view models;

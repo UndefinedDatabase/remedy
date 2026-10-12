@@ -1,0 +1,106 @@
+/* The missions panel (F305 T002, DECISION F305 D1): docked on the right at the graph's own
+   overlay layer, as the results panel is, holding one card per mission, a mission's orders and
+   each order's chain band of chips. Every colour, shadow and radius below is a `--remedy-*` token
+   (tests/ui_contracts/test_raw_colour_ratchet.py allows no raw literal in a new file). */
+.panel {
+  position: fixed;
+  top: 88px;
+  right: calc(var(--remedy-right-width) + 16px);
+  width: min(460px, calc(100vw - 48px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  z-index: var(--remedy-z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--remedy-glass-bg-strong);
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-lg);
+  box-shadow: var(--remedy-shadow-card);
+  color: var(--remedy-ink);
+}
+
+.header { display: flex; align-items: center; justify-content: space-between; }
+.header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--remedy-ink);
+}
+.header button { font-size: 12px; color: var(--remedy-muted); padding: 4px 8px; }
+.header button:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+.quiet { margin: 0; font-size: 12px; color: var(--remedy-muted); }
+
+/* THE CARDS: one glass tile per mission, its whole head one button that opens it. */
+.missions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--remedy-glass-border);
+  border-radius: var(--remedy-radius-md);
+  background: var(--remedy-card);
+}
+.cardToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--remedy-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.cardToggle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.goal { font-size: 13px; font-weight: 600; }
+.cardLine { font-size: 12px; color: var(--remedy-muted); }
+
+/* THE ORDERS, newest first, each with its usage line and its chain band. */
+.orders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.order {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--remedy-line-strong);
+}
+.orderTitle { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--remedy-ink); }
+.orderLine { margin: 0; font-size: 12px; color: var(--remedy-ink); }
+
+/* THE CHAIN BAND: one chip per job of the order, wrapping onto as many rows as it needs. */
+.chain { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  max-width: 200px;
+  padding: 5px 9px;
+  border: 1px solid var(--remedy-line-strong);
+  border-radius: var(--remedy-radius-sm);
+  background: var(--remedy-blue-50);
+  color: var(--remedy-blue-strong);
+  text-align: left;
+  cursor: pointer;
+}
+.chip[aria-current="true"] { border-color: var(--remedy-blue-strong); }
+.chip:disabled { cursor: not-allowed; opacity: 0.45; }
+.chip:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+.chipProject { font-size: 11px; font-weight: 700; }
+.chipTitle {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--remedy-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chipState { font-size: 11px; color: var(--remedy-muted); }

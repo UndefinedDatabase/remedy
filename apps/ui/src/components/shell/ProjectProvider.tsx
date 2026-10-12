@@ -6,8 +6,11 @@
 // the address rather than pushing it, so the home grid's single-project skip never leaves a
 // grid Back would only skip forward again to reach; `goHome` advances the gate to "" before
 // asking the address to move, so a switch already in flight is dropped the same way any other
-// address change drops one. Its context style follows `ReducedMotionProvider.tsx`: one default
-// value, no throw for a reader outside the provider, because `RemedyApp.tsx` mounts exactly one.
+// address change drops one. `openJob` (DECISION F305 D1) opens a named job of a named project, a
+// mission chip's click: it advances the gate to that project, as `goHome` advances it to "", and
+// asks the address to move with no summary to wait for, because the chip already names the job.
+// Its context style follows `ReducedMotionProvider.tsx`: one default value, no throw for a reader
+// outside the provider, because `RemedyApp.tsx` mounts exactly one.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { loadJobProject, loadProjectSummary, loadProjectsView } from "../../api/remedyApi";
 import { createSwitchGate, resolveActiveProject, switchProject } from "../../api/projectScope";
@@ -25,6 +28,7 @@ export interface ProjectContextValue {
   switchTo(slug: string): void;
   enterProject(slug: string): void;
   goHome(): void;
+  openJob(slug: string, jobId: string): void;
   readSummary(slug: string): Promise<ProjectSummary | null>;
 }
 
@@ -34,6 +38,7 @@ const ProjectContext = createContext<ProjectContextValue>({
   switchTo: () => {},
   enterProject: () => {},
   goHome: () => {},
+  openJob: () => {},
   readSummary: () => Promise.resolve(null),
 });
 
@@ -99,9 +104,14 @@ export function ProjectProvider({ token, jobId, project, onSwitched, onHome, chi
     onHome();
   }, [onHome]);
 
+  const openJob = useCallback((slug: string, jobId: string): void => {
+    gate.current.begin(slug);
+    onSwitched({ slug, jobId, summary: null }, false);
+  }, [onSwitched]);
+
   const value = useMemo<ProjectContextValue>(
-    () => ({ view, active, switchTo, enterProject, goHome, readSummary }),
-    [view, active, switchTo, enterProject, goHome, readSummary],
+    () => ({ view, active, switchTo, enterProject, goHome, openJob, readSummary }),
+    [view, active, switchTo, enterProject, goHome, openJob, readSummary],
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

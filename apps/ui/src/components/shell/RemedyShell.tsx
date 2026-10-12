@@ -30,6 +30,7 @@ import type { EvidenceTab } from "../graph/semanticZoom";
 import { brainLedgerPrefix } from "../graph/brainLedger";
 import { useBrainLedger } from "../graph/useBrainLedger";
 import { RightLivePanel } from "../panels/RightLivePanel";
+import { MissionPanel } from "../missions/MissionPanel";
 import { steeringFocusTaskId } from "../../api/steeringNote";
 import { PhaseTimeline } from "../timeline/PhaseTimeline";
 import { useTimelineScrub } from "../timeline/useTimelineScrub";
@@ -234,6 +235,10 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
   // state this shell needs to own beyond whether it is open.
   const [resultsOpen, setResultsOpen] = useState(false);
 
+  // THE MISSIONS PANEL (F305 T002, DECISION F305 D1): open or closed; the panel reads the
+  // project's missions and a mission's orders through its own doors.
+  const [missionsOpen, setMissionsOpen] = useState(false);
+
   // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed.
   const [termsOpen, setTermsOpen] = useState(false);
   // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
@@ -416,7 +421,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenMissions={() => setMissionsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -496,6 +501,10 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
       {/* THE RESULTS PANEL (F041 T003, DECISION F041 D5), a sibling directly after the story for
           the reason both are siblings outside <main>. */}
       {resultsOpen && (<ArtifactsPanel jobId={dashboard.jobId} serverToken={serverToken} onClose={() => setResultsOpen(false)} />)}
+      {/* THE MISSIONS PANEL (F305 T002, DECISION F305 D1), a sibling directly after the results
+          panel for the reason every overlay above is a sibling outside <main>. It names the
+          project the context resolved, and a chip opens its job through the context's own door. */}
+      {missionsOpen && (<MissionPanel project={projectContext.active?.slug ?? ""} jobId={dashboard.jobId} serverToken={serverToken} onOpenJob={projectContext.openJob} onClose={() => setMissionsOpen(false)} />)}
       {/* THE '?' PANEL (DECISION F043 D3), a sibling directly after the results panel for the
           reason every overlay above is a sibling outside <main>. */}
       {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} onStartTour={() => { setTermsOpen(false); setTourRelaunch((count) => count + 1); }} />)}
