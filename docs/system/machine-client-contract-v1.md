@@ -56,9 +56,12 @@ holds whitespace is planned as text, never read as a file.
 A header may name `project` once for each project of an order that spans several repositories,
 each project at most once (DECISION F205 D4). The mission lives in the first project and spans
 them all, and `remedy do` plans one job in each project's registered repository, in the order
-the header names them; under a commit flag each job is applied and committed in its own
-repository, and `--push` pushes each repository once, after asking every repository's upstream
-first. Such an order is refused before any step with `invalid_argument` and exit code 2 beside
+the header names them. When the repository catalog (`<data root>/org/catalog.toml`, F206) holds
+them, each repository's job comes after the job of every repository it depends on, and the
+walk's init step names each such edge, while the mission stays in the project the header names
+first. Under a commit flag each job is applied and committed in its own repository, and
+`--push` pushes each repository once, after asking every repository's upstream first. Such an
+order is refused before any step with `invalid_argument` and exit code 2 beside
 `--project`, with `repo_not_in_project` and exit code 2 beside `--repo`, and with
 `project_has_no_repo` and exit code 3 when one of its projects has no registered repository;
 `--force-job` and `--force-mission` fail its shape step. In `--json`, each commit under `landed`

@@ -22,7 +22,7 @@ from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from packages.orchestration.data_paths import data_class_dir
 
@@ -335,3 +335,41 @@ def describe_repo_catalog_edge(edge: RepoCatalogEdge) -> str:
         return f"{edge.path[0]} depends on {edge.path[-1]}"
     middle = ", ".join(edge.path[1:-1])
     return f"{edge.path[0]} depends on {edge.path[-1]} through {middle}"
+
+
+# WHY: the planner (T002) orders PROJECT objects, not bare pids, and a project the catalog
+# cannot pin to exactly one entry must still keep its place rather than collide with another.
+def repo_catalog_project_order(
+        catalog: RepoCatalog, projects: Sequence[Any]) -> tuple[list[Any], tuple[str, ...]]:
+    """`projects` in the catalog's order, with one sentence per edge that orders two of them.
+
+    A project (anything with `.id` and `.slug`) matches the first entry, in file order, whose
+    `pid` equals `str(project.id)` or `project.slug`. Two projects matching one entry, or a
+    project matching none, each get a key of their own that no `pid` can equal, so they have
+    no edge and keep their place.
+    """
+    matched: list[str | None] = []
+    for project in projects:
+        found = None
+        for entry in catalog.entries:
+            if entry.pid in (str(project.id), project.slug):
+                found = entry.pid
+                break
+        matched.append(found)
+
+    counts: dict[str, int] = {}
+    for pid in matched:
+        if pid is not None:
+            counts[pid] = counts.get(pid, 0) + 1
+
+    keys: list[str] = []
+    by_key: dict[str, Any] = {}
+    for idx, (project, pid) in enumerate(zip(projects, matched)):
+        key = pid if pid is not None and counts[pid] == 1 else f"\x00unmatched-{idx}"
+        keys.append(key)
+        by_key[key] = project
+
+    order = repo_catalog_order(catalog, keys)
+    ordered = [by_key[key] for key in order.pids]
+    sentences = tuple(describe_repo_catalog_edge(edge) for edge in order.edges)
+    return ordered, sentences

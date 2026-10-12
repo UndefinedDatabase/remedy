@@ -260,6 +260,7 @@ packages.orchestration.real_test_execution
 packages.orchestration.repair_attest
 packages.orchestration.repair_context
 packages.orchestration.repo_applicator
+packages.orchestration.repo_catalog
 packages.orchestration.repo_ignore
 packages.orchestration.repo_mission
 packages.orchestration.repo_mission_reconcile
