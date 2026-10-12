@@ -194,10 +194,11 @@ with the code that calls it.
   `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
   Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
   left the table.
-- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `job`
-  handlers, then the `run` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
+- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `run`
+  handlers, then the `job` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
   stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
-  `apps/cli/commands/do_order_input.py`.
+  `apps/cli/commands/do_order_input.py`. Step (2), done by F058: the `run` handlers,
+  `apps/cli/commands/run_report_cmd.py`.
 - `packages/orchestration/public_api.py`: the write routes' argument builders and refusals,
   then the route table, then the page's rendering, each to a module of its own; the answer
   functions stay. Step (1), done by F205: the write routes' argument builders and refusals,
@@ -396,7 +397,7 @@ with the code that calls it.
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1173 | `apps/cli/commands/do_cmd.py` |
+| 1026 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
