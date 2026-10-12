@@ -39,6 +39,9 @@ Public API::
         -> tuple[FailoverChainViolation, ...]
     build_failover_chains(raw, effective_tiers=None) -> dict[str, tuple[FailoverLink, ...]]
     resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]
+    FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
+    FAILOVER_COOLDOWN_DEFAULT_S: int = 300
+    resolve_failover_cooldown_s() -> int
     FAILOVER_REASON_PROVIDER_UNAVAILABLE: the reason string a disclosure carries
     is_failover_trigger(out) -> bool: whether an output's error is the gap this feature owns
     FailoverLinkAttempt: one link's attempt and what it answered
@@ -49,6 +52,7 @@ Public API::
 
 from __future__ import annotations
 
+import time
 import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -332,6 +336,42 @@ def resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]:
 
 
 # ---------------------------------------------------------------------------
+# The cooldown — the sticky window, DECISION F058 D4
+# ---------------------------------------------------------------------------
+
+#: WHY: spelled once here and shared by the registry entry
+#: (packages/orchestration/config_keys_model_routing.py) and the resolver below.
+FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
+
+#: WHY: how long the walk holds a role's primary down after a backup has served it, when the
+#: operator sets no cooldown of their own.
+FAILOVER_COOLDOWN_DEFAULT_S: int = 300
+
+
+def resolve_failover_cooldown_s() -> int:
+    """Return the configured cooldown in whole seconds, or :data:`FAILOVER_COOLDOWN_DEFAULT_S`.
+
+    Unset answers the default with no warning. A value that is an `int` (never a `bool`) of at
+    least 0 is returned as given. Anything else gives exactly one `UserWarning` naming the fault
+    and the default, and the default is returned: one mistake in `remedy.toml` never blocks a
+    provider call.
+    """
+    from packages.orchestration.config import get_config
+
+    value = get_config().get(FAILOVER_COOLDOWN_CONFIG_KEY)
+    if value is None:
+        return FAILOVER_COOLDOWN_DEFAULT_S
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    warnings.warn(
+        f"{FAILOVER_COOLDOWN_CONFIG_KEY}: expected a whole number of seconds of at least 0, "
+        f"got {value!r}; using {FAILOVER_COOLDOWN_DEFAULT_S}",
+        stacklevel=2,
+    )
+    return FAILOVER_COOLDOWN_DEFAULT_S
+
+
+# ---------------------------------------------------------------------------
 # The walk — T002, DECISION F058 D2
 # ---------------------------------------------------------------------------
 
@@ -388,6 +428,7 @@ class FailoverDisclosure:
     attempts: tuple[FailoverLinkAttempt, ...]
     used: FailoverLinkAttempt | None
     reason: str = FAILOVER_REASON_PROVIDER_UNAVAILABLE
+    primary_skipped: bool = False
 
     def to_json(self) -> dict[str, Any]:
         """Return the JSON-ready shape evidence and the run report both read."""
@@ -397,6 +438,7 @@ class FailoverDisclosure:
             "intended": {"provider": self.intended_provider, "model": self.intended_model},
             "used": self.used.to_json() if self.used is not None else None,
             "primary_error": self.primary_error,
+            "primary_skipped": self.primary_skipped,
             "attempts": [attempt.to_json() for attempt in self.attempts],
         }
 
@@ -415,6 +457,8 @@ class FailoverProvider:
         intended_model: str,
         links: tuple[FailoverLink, ...],
         build_link: Callable[[FailoverLink], Any],
+        cooldown_s: float = 0.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._primary = primary
         self._role = role
@@ -422,6 +466,13 @@ class FailoverProvider:
         self._intended_model = intended_model
         self._links = links
         self._build_link = build_link
+        self._cooldown_s = cooldown_s
+        self._clock = clock
+        # WHY: no hold exists yet, and never will unless a call below sets it (DECISION F058 D4).
+        self._held_until: float = float("-inf")
+        # WHY: the session guard — True for the rest of this wrapper's life once a link has
+        # served a call, so a backup's session is never handed to the primary (DECISION F058 D4).
+        self._resume_disabled = False
 
     @property
     def primary(self) -> Any:
@@ -441,51 +492,72 @@ class FailoverProvider:
 
     @property
     def supports_resume(self) -> bool:
+        if self._resume_disabled:
+            return False
         return bool(getattr(self._primary, "supports_resume", False))
+
+    @property
+    def held_until(self) -> float:
+        """The clock reading until which the primary is held down; `-inf` when never held."""
+        return self._held_until
 
     def __getattr__(self, item: str) -> Any:
         if item.startswith("_"):
             raise AttributeError(item)
         return getattr(self._primary, item)
 
-    def _run_with_failover(
+    def _call_link(
         self,
+        link: FailoverLink,
+        position: int,
         method: str,
         prompt: str,
         *,
         timeout_sec: int,
         max_output_chars: int,
-        resume: str | None,
-    ) -> Any:
-        out = getattr(self._primary, method)(
-            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
-        )
-        if not is_failover_trigger(out):
-            return out
-        primary_error = getattr(out, "error", "") or ""
-        attempts: list[FailoverLinkAttempt] = []
-        for position, link in enumerate(self._links, start=1):
-            try:
-                provider = self._build_link(link)
-            except RuntimeError as exc:
-                attempts.append(FailoverLinkAttempt(
-                    position=position,
-                    provider=link.provider,
-                    model=link.model,
-                    error=f"provider_error: {type(exc).__name__}: {exc}",
-                ))
-                continue
-            link_out = getattr(provider, method)(
-                prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
-            )
-            attempt = FailoverLinkAttempt(
+    ) -> tuple[Any | None, FailoverLinkAttempt]:
+        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed."""
+        try:
+            provider = self._build_link(link)
+        except RuntimeError as exc:
+            return None, FailoverLinkAttempt(
                 position=position,
                 provider=link.provider,
                 model=link.model,
-                error=getattr(link_out, "error", "") or "",
+                error=f"provider_error: {type(exc).__name__}: {exc}",
+            )
+        link_out = getattr(provider, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
+        )
+        attempt = FailoverLinkAttempt(
+            position=position,
+            provider=link.provider,
+            model=link.model,
+            error=getattr(link_out, "error", "") or "",
+        )
+        return link_out, attempt
+
+    def _walk_links(
+        self,
+        out: Any,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+    ) -> Any:
+        """Walk every link after a primary trigger; a serving link opens the cooldown."""
+        primary_error = getattr(out, "error", "") or ""
+        attempts: list[FailoverLinkAttempt] = []
+        for position, link in enumerate(self._links, start=1):
+            link_out, attempt = self._call_link(
+                link, position, method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             attempts.append(attempt)
-            if not is_failover_trigger(link_out):
+            if link_out is not None and not is_failover_trigger(link_out):
+                self._resume_disabled = True
+                self._held_until = self._clock() + self._cooldown_s
                 link_out.failover_disclosure = FailoverDisclosure(
                     role=self._role,
                     intended_provider=self._intended_provider,
@@ -504,6 +576,78 @@ class FailoverProvider:
             used=None,
         )
         return out
+
+    def _run_while_held(
+        self,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+        resume: str | None,
+    ) -> Any:
+        """While the primary is held down: every link first, the primary only when all trigger."""
+        attempts: list[FailoverLinkAttempt] = []
+        for position, link in enumerate(self._links, start=1):
+            link_out, attempt = self._call_link(
+                link, position, method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            attempts.append(attempt)
+            if link_out is not None and not is_failover_trigger(link_out):
+                link_out.failover_disclosure = FailoverDisclosure(
+                    role=self._role,
+                    intended_provider=self._intended_provider,
+                    intended_model=self._intended_model,
+                    primary_error="",
+                    attempts=tuple(attempts),
+                    used=attempt,
+                    primary_skipped=True,
+                )
+                return link_out
+        out = getattr(self._primary, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+        if not is_failover_trigger(out):
+            self._held_until = float("-inf")
+            return out
+        out.failover_disclosure = FailoverDisclosure(
+            role=self._role,
+            intended_provider=self._intended_provider,
+            intended_model=self._intended_model,
+            primary_error=getattr(out, "error", "") or "",
+            attempts=tuple(attempts),
+            used=None,
+        )
+        return out
+
+    def _run_with_failover(
+        self,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+        resume: str | None,
+    ) -> Any:
+        if self._clock() < self._held_until:
+            return self._run_while_held(
+                method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume,
+            )
+        out = getattr(self._primary, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+        if not is_failover_trigger(out):
+            return out
+        if resume:
+            # The run's own resume fallback calls again at full content with no session
+            # (DECISION F058 D4 (3)); walking the chain here would hand a backup a session
+            # it never opened.
+            return out
+        return self._walk_links(
+            out, method, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars
+        )
 
     def build(
         self,

@@ -11,7 +11,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from packages.orchestration.model_failover import FailoverLink, FailoverProvider, resolve_failover_chains
+from packages.orchestration.model_failover import (
+    FailoverLink,
+    FailoverProvider,
+    resolve_failover_chains,
+    resolve_failover_cooldown_s,
+)
 from packages.orchestration.pingpong_provider import ClaudeCliProvider, PingPongProvider, create_provider
 
 
@@ -93,4 +98,5 @@ def create_role_provider(
         intended_model=model,
         links=chain,
         build_link=build_link,
+        cooldown_s=resolve_failover_cooldown_s(),
     )

@@ -6,6 +6,7 @@ imports them back by name.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from packages.orchestration.model_failover import FailoverDisclosure
@@ -51,12 +52,19 @@ def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:
 
     Reads ``result.json`` as :func:`export_pingpong_json` writes it. A record
     written before R-1055 carries no ``session_id`` and answers ``{}``, which
-    resumes nothing.
+    resumes nothing. A round entry whose ``failover`` names a serving link
+    (DECISION F058 D4) clears that role instead of setting its session: a
+    session a backup model opened is never offered to the primary on relaunch.
     """
     refs: dict[str, str] = {}
     for round_data in (run_record or {}).get("rounds") or []:
         for role in ("builder", "reviewer"):
-            session_id = str((round_data.get(role) or {}).get("session_id") or "")
+            entry = round_data.get(role) or {}
+            failover = entry.get("failover")
+            if isinstance(failover, Mapping) and failover.get("used"):
+                refs.pop(role, None)
+                continue
+            session_id = str(entry.get("session_id") or "")
             if session_id:
                 refs[role] = session_id
     return refs

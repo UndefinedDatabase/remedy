@@ -73,4 +73,18 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         entry_type=list,
         default=None,
     ),
+    # WHY: the sticky window's length, so one failover does not retry the dead primary on every
+    # call that follows (F058).
+    ConfigKeySpec(
+        key="model_failover.cooldown_s",
+        env_var="REMEDY_MODEL_FAILOVER_COOLDOWN_S",
+        description=(
+            "After a backup model serves a call because the role's usual provider could not be "
+            "reached, how many seconds the run sends that role's next calls to its backups first "
+            "before trying the usual provider again (F058); a whole number of at least 0, where 0 "
+            "never holds."
+        ),
+        value_type=int,
+        default=300,
+    ),
 )
