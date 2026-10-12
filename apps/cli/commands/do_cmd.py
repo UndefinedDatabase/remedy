@@ -27,7 +27,7 @@ from apps.cli.commands.run_invocation import (
 
 # DECISION F058 D3: the `run` handlers live in a module of their own; imported back here by
 # name so `COMMAND_HANDLERS` and every test that imports them from `do_cmd` keep working.
-from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
+from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show, _print_text_report  # noqa: F401
 from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
