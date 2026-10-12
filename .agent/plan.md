@@ -7,11 +7,12 @@ failed-over call discloses the intended and the used model in its evidence and i
 (docs/roadmap/features/T3_F058.md; DECISIONs F058 D1 and D2).
 
 ## Current Step
-Round 2 on `feature/f058-model-failover-chain`, session 2: book round 1's verdict (FAIL, R-1257
-and R-1258 owned by F058), repair both, move the construction of a role's provider out of
-`packages/orchestration/pingpong_loop.py` into `packages/orchestration/role_provider_factory.py`
-(structural), and land the first part of T002: the failover walk in
-`packages/orchestration/model_failover.py`, wired where a run builds its providers, with tests.
+Round 2 on `feature/f058-model-failover-chain`, session 2: C1-C6 committed — booked
+round 1's verdict (FAIL, R-1257 and R-1258), repaired both, moved the construction of a role's
+provider out of `packages/orchestration/pingpong_loop.py` into
+`packages/orchestration/role_provider_factory.py` (structural), and landed the first part of T002:
+the failover walk in `packages/orchestration/model_failover.py`, wired where a run builds its
+providers, with 62 passing tests. All six gates passed after C5.
 
 ## Next Steps
 1. The rest of T002: each failed-over call's disclosure in the run's provider evidence, the run
