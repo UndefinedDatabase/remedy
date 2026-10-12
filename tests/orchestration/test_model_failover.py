@@ -1,5 +1,6 @@
 """Tests for packages.orchestration.model_failover — F058 T001 (the chains' key, parse and
-hard-rule validation) and T002, first part (the failover walk, DECISION F058 D2).
+hard-rule validation), T002 (the failover walk and its disclosure, DECISIONs F058 D2 and D3)
+and T003 (the cooldown, the session guard and the three non-triggers, DECISION F058 D4).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from packages.orchestration.config import (
     get_key_spec,
     validate_config,
 )
+from packages.orchestration.failure_postmortem import is_provider_connection_error
 from packages.orchestration.model_failover import (
     FAILOVER_CHAINS_CONFIG_KEY,
     FAILOVER_COOLDOWN_CONFIG_KEY,
@@ -53,12 +55,10 @@ from packages.orchestration.model_routing import (
     TASK_CLASS_TIERS,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
+from packages.orchestration.rate_governor import is_rate_limit_error
 from packages.orchestration.role_config import KNOWN_ROLES
-from tests.orchestration.test_provider_retry import (
-    RATE_LIMITED_RETRYABLE_ERROR,
-    SeamFakeClock,
-    _seam_governor,
-)
+from tests.orchestration.test_provider_retry import SeamFakeClock, _seam_governor
 
 
 def _configure_chains_toml(monkeypatch, tmp_path, toml_body: str) -> None:
@@ -985,6 +985,13 @@ class TestFailoverReportLine:
         )
 
 
+# WHY (R-1262): a rate limit that also reads as a refused connection, and as neither a timeout
+# nor a non-zero exit, so only the trigger's rate-limit exclusion keeps it off the chain.
+_RATE_LIMITED_AND_UNREACHABLE = (
+    "provider_error: HTTP 503 Service Unavailable: rate limit exceeded for this key"
+)
+
+
 class _ScriptedProvider:
     """A stub whose `build` and `review` answer what a test's function says for the call's
     1-based count; records nothing else. Used as a run's primary in the non-trigger tests."""
@@ -1159,9 +1166,13 @@ tier = "mid"
     ):
         # SeamFakeClock and _seam_governor are IMPORTED from the retry seam's tests
         # (tests/orchestration/test_provider_retry.py), not copied.
+        assert is_rate_limit_error(_RATE_LIMITED_AND_UNREACHABLE)
+        assert is_provider_connection_error(_RATE_LIMITED_AND_UNREACHABLE)
+        assert not is_timeout_error(_RATE_LIMITED_AND_UNREACHABLE)
+        assert not is_nonzero_exit_error(_RATE_LIMITED_AND_UNREACHABLE)
         stub = _ScriptedProvider(
             "stub", build=lambda n: (
-                BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="stub") if n == 1
+                BuilderOutput(error=_RATE_LIMITED_AND_UNREACHABLE, provider="stub") if n == 1
                 else BuilderOutput(summary="ok", provider="stub")
             ),
         )
