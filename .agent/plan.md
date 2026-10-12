@@ -7,21 +7,16 @@ reached; a click on a chip opens that project's cockpit on that job
 (docs/roadmap/features/T13_F305.md; DECISIONS F305 D1 to D3; R-1248).
 
 ## Current Step
-Round 3 on `feature/f305-multi-repo-chain-band`, session 1, T003 and the closure's first round:
-book round 2; the browser proof `tests/ui_server/test_mission_chain_live.py` and the user guide
-`docs/guides/missions-panel-user-guide-v1.md` with its two index rows; the checklist's
-consolidation pass; the closure's self-use item run to its approval gate; `apps/ui` built and the
-feature's one full suite with its cost reading.
+Round 4 on `feature/f305-multi-repo-chain-band`, session 1, the closure's evidence round: book
+round 3, the recurrence of R-1252 the self-use run named and the resolution of R-1248; save the
+block and the evidence script; the staging reclaim, the evidence job on the accepted head and the
+review package.
 
 ## Next Steps
-1. The evidence round: book round 3, the resolution of R-1248 and every self-use run defect, the
-   staging reclaim, the evidence job and the review package.
-2. The closing round: the Built State, the ledger's rotation, the STATUS line with the README sync
-   and the self-use queue's `consumed_by`, and the pull request.
+1. The closing round: the Built State, the ledger's rotation, the STATUS line with the README sync
+   and the self-use entry `SU-057`'s `consumed_by`, and the pull request, left unmerged.
 
 ## Risks
-- `_RemedyHandler.do_GET`, `packages/orchestration/ui_server.py` and
-  `apps/ui/src/api/remedyApi.ts` are rows of the structure ledger and may not grow.
+- A failing review package is a closure blocker: fix it, or the feature goes `[!]`.
 - A cost in US dollars is never shown to the operator (DECISION amend1007b D7).
-- A red closure suite is repaired under amend0917-throughput rule 2, at most three rounds.
 - Hosted CI runs only when dispatched by hand (amend1011-manual-hosted-ci).
