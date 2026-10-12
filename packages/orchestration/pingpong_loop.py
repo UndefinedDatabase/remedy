@@ -34,6 +34,7 @@ from packages.orchestration.artifact_summary import render_tiered_diff_text, sum
 from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
+from packages.orchestration.pingpong_call_record import _add_exit_detail, _session_fields
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
@@ -5065,18 +5066,6 @@ def _build_worktree_json(result: PingPongResult) -> dict[str, Any]:
     }
 
 
-def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
-    """Name a failed provider child's exit code and stderr tail in the run record (R-1016).
-
-    Only a call whose child exited nonzero carries them, so an ordinary round's
-    JSON keeps exactly the keys it always had.
-    """
-    code = getattr(out, "exit_code", None)
-    if code is not None:
-        block["exit_code"] = code
-        block["stderr_tail"] = getattr(out, "stderr_tail", "")
-
-
 # F287 T003 (DECISION F287 D7): names, for the run record, why a role's
 # offered parked session was not resumed by a provider that cannot resume one.
 def resume_declined_reasons(
@@ -5092,21 +5081,6 @@ def resume_declined_reasons(
                 reason = f"the {name} provider cannot resume a session"
             declined[role] = reason
     return declined
-
-
-def _session_fields(out: Any) -> dict[str, Any]:
-    """R-1055: the provider session a call reported, and whether it resumed one.
-
-    Persisted so the relaunch of an interrupted task can find its parked session
-    (:func:`parked_session_refs`), and so the record shows whether it did.
-    """
-    actuals = getattr(out, "usage_actuals", None) or {}
-    return {
-        "session_id": str(actuals.get("session_id") or ""),
-        "resume_used": bool(getattr(out, "resume_used", False)),
-        "resume_session_ref": str(getattr(out, "resume_session_ref", "") or ""),
-        "resume_fallback": bool(getattr(out, "resume_fallback", False)),
-    }
 
 
 def parked_session_refs(run_record: dict[str, Any] | None) -> dict[str, str]:

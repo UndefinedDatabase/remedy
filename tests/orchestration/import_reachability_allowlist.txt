@@ -230,6 +230,7 @@ packages.orchestration.patch_intent
 packages.orchestration.path_utils
 packages.orchestration.pause_control
 packages.orchestration.permissions
+packages.orchestration.pingpong_call_record
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop

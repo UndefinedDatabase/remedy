@@ -142,7 +142,8 @@ with the code that calls it.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
   pack and the prompt builders, the staging, diff and target guard, and the export and token
   accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
-  provider, `packages/orchestration/role_provider_factory.py`.
+  provider, `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first
+  part of the export: a call's own fields, `packages/orchestration/pingpong_call_record.py`.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
   its summaries, each to a module of its own; the dashboard builders stay.
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
@@ -373,7 +374,7 @@ with the code that calls it.
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
-| 5272 | `packages/orchestration/pingpong_loop.py` |
+| 5246 | `packages/orchestration/pingpong_loop.py` |
 | 4829 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
