@@ -1,33 +1,29 @@
-# Live Review — F297 Findings paydown v7
+# Live Review — F305 Multi-repo missions: the cockpit's chain band
 
-> Round-by-round review record, re-headed at the F297 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F205, whose STATUS
-> line went `[x]` on its own branch and whose pull request 323 the operator merged into `main` as
-> `6e8b6cfa7`, whose second parent is `6286092d8`; the two trees are identical. Hosted CI run
-> 38123643723 on `6286092d8` passed both its Python 3.10 and its Python 3.12 job at its first
-> attempt. Two operator amendments were merged after it, amend1011-order-shape as pull request 324
-> and amend1011b-one-repo-mission as pull request 325, and between them they registered R-1246 to
-> R-1250, owned by F297. F205's round 10 and its fourth session's round were each reviewed after
-> their own handback, so operator amendment amend0827-process-diet rule 1 books both verdicts here,
-> in the first commit of the next round that is happening anyway; their gate entries are appended
-> at the end of this record by this claim. Only the heading, this paragraph and the Steps section
-> below are rewritten, and one `Owner:` line is added under R-1248 (DECISION F297 D1); everything
-> else from the Findings heading to the end of the file as it stood at `9dab4d7f0` is carried
-> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> The open set at `9dab4d7f0`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is
-> `['R-1138', 'R-1139', 'R-1143', 'R-1149', 'R-1156', 'R-1157', 'R-1158', 'R-1162', 'R-1172', 'R-1176', 'R-1196', 'R-1219', 'R-1220', 'R-1225', 'R-1230', 'R-1235', 'R-1236', 'R-1237', 'R-1238', 'R-1239', 'R-1240', 'R-1241', 'R-1242', 'R-1243', 'R-1246', 'R-1247', 'R-1248', 'R-1249', 'R-1250']`, and F297 owns every id in it.
+> Round-by-round review record, re-headed at the F305 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F297, whose STATUS
+> line went `[x]` on its own branch at `18bc0f7ba`; the operator then recorded the answer to one
+> operator question on that branch as `844268b94`, which touches only `.agent/decisions.md` and
+> `.agent/operator_questions.md`, and this session's Open PR Gate merged pull request 328 into
+> `main` as `f6004fdf1`, whose second parent is `844268b94`. F297's round 14 was reviewed after its
+> own handback, so operator amendment amend0827-process-diet rule 1 books its verdict here, in the
+> first commit of the next round that is happening anyway; its gate entry is appended at the end of
+> this record by this claim. Only the heading, this paragraph and the Steps section below are
+> rewritten; everything else from the Findings heading to the end of the file as it stood at
+> `f6004fdf1` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head. The open set at `f6004fdf1`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1248', 'R-1251', 'R-1252']`; F305
+> owns R-1248, and F306 owns the four others.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F297 D1's, which also writes the feature file's slice list. The first
-round claims F297, re-heads this record, books F205's round 10 and its fourth session's round, and
-lands the test and page repairs of R-1172, R-1243 and R-1242. The next rounds take the small product
-repairs of R-1143, R-1176, R-1196, R-1138 and R-1162; then the mission's R-1237, R-1239 and R-1238
-and the order's R-1247 and R-1250; then R-1236; then R-1149; then the suite's cost, R-1139 with
-R-1225 and R-1158; then R-1156 with R-1157, R-1230, R-1219, R-1220, R-1240 and R-1249; then R-1241,
-the structural step that closes the paydown; then closure. R-1235 and R-1246 are carried and
-R-1248 moved to F305 at the claim.
+THE ORDER BELOW IS DECISION F305 D1's, which also writes the feature file's slice list. The first
+round claims F305, re-heads this record, books F297's round 14, takes the structural step that
+hands every route below a project to a module of its own, and lands T001: the server's view of a
+project's missions, each mission's orders and each order's chain, with its two routes. The next
+round lands T002, the cockpit's mission card with its chain band of chips and the per-order calls
+and tokens, which resolves R-1248; the round after it lands T003, the headless-browser proof over a
+fixture order of three jobs in two repositories. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -190,3 +186,5 @@ Gate: F297 R12 — the F297 round 12 entry, the closure's first round, over `c6e
 Owner: F306 — Findings paydown v8 (re-assigned at F297's closure, 2026-10-12; this line supersedes any earlier Owner line in this paragraph).
 
 Gate: F297 R13 — the F297 round 13 entry, the closure's evidence round, over `6ff218bd2`..`bcdea535a` (2 commits, each single-parent; insertions by `git show --numstat`: `d10d817b7` 385, `bcdea535a` 186). VERDICT PASS. Verified by dry run, bytes identical (amend0930-test-load rule 3): at `d10d817b7`, the closure's accepted head, the block copy, the evidence script and the plan equal their prepared files and the ledger equals its base followed by the prepared append (`verify.py`, `ALL True`). The staging reclaim found nothing to reclaim and refused one path that no job owns, so its apply was skipped. The evidence job `f297r13e1001` ran on `d10d817b7` with the two ancestry counts equal at 60, collected 4185 node ids with 30 deselected and no unsafe id, and its pytest exited 0 at 4181 passed and 4 skipped, the counts the reviewer's dry run read; `validate_verification_tests` found no problem and the bundle validated as the current run. The review package `remedy-review-20261012-012716-READY_FOR_REVIEW.zip`, in `/home/decodeux/Repos/remedy-history/zips`, read `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; the reviewer re-hashed it at `8f11b8ab92ce64b7aa2a15d699852ba9818b45059e2dd716b5d6ea0de59142e2`, found `testzip()` None, and read its committed review subject from base `9dab4d7f01f9574f23cf637861f74222107fcb21` to head `d10d817b77aaf5af8b4f71a217cfb927cecb2201`. Six integrity checks `pass`, and the open set read five. The worker declared that it launched the two long runs through a Python call rather than a shell's background operator, which the sandbox refused, and polled them with scripts.
+
+Gate: F297 R14 — the F297 round 14 entry, the closing round, over `bcdea535a`..`18bc0f7ba` (4 commits, each single-parent; insertions by `git show --numstat`: `d470b95aa` 231, `5a2f5e271` 128, `0417f697c` 53, `18bc0f7ba` 217). VERDICT PASS. Verified by dry run, bytes identical (amend0930-test-load rule 3): every file the four commits wrote equals the reviewer's prepared copy, and the ledger rotation's output equals the simulated one line for line apart from the path it names. The rotation moved 10 gate records and 26 finding pairs into the archive with the open set five before and after; F306, Findings paydown v8, was registered after F203 under its own Tier 2 heading with the feature total pin, the README counters and the STATUS line in one commit; F297's STATUS line went `[x]` once with no `[~]` line left. The round's one selection read 563 passed, the integrity check six of six `pass`, and the open set R-1235, R-1246, R-1248, R-1251 and R-1252. The worker opened pull request 328 and declared that it ran the rotation wrapper and the first passes of gates 3 to 5 without `-I`, and re-ran gates 4 and 5 under `-I` with identical output.

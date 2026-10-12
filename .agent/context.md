@@ -1,20 +1,23 @@
-# Context — F297 Findings paydown v7
+# Context — F305 Multi-repo missions: the cockpit's chain band
 
 ## Active Branch
-feature/f297-findings-paydown-v7, from `main` at `9dab4d7f0` (the merge commit of pull request
-325, amend1011b-one-repo-mission).
+feature/f305-multi-repo-chain-band, from `main` at `f6004fdf1` (the merge commit of pull request
+328, F297).
 
 ## Scope
-F297 (Tier 2), the seventh rolling findings paydown: the open findings it owns, one slice per
-module, each finding's text its spec, as `docs/roadmap/features/T2_F297.md` lists them; DECISION
-F297 D1 fixes the order, the two findings carried and the structural step that closes it.
+F305 (Tier 13), split off F205: the cockpit's mission card and its chain band of repository chips,
+as `docs/roadmap/features/T13_F305.md` and its amendment by DECISION F305 D1 state, and R-1248,
+the card one per repository's mission with its orders loaded on demand and a per-order roll-up.
 
 ## Do not touch
-The resolutions earlier paydowns landed; the record is append-only. The approval gate. A cost in
-US dollars is never shown to the operator (DECISION amend1007b D7).
+The mission record's shape and its writers; the client digest and the public API. A cost in US
+dollars is never shown to the operator (DECISION amend1007b D7). No global evidence store: a chip
+names another project's job by references and titles only, and its click opens that project's own
+cockpit.
 
 ## Active assumptions
-- A repair changes what its finding names and nothing beside it.
+- An order over several repositories is one batch in each repository's mission, the batches
+  sharing a correlation id (DECISION amend1011b D4); its chain is read across those batches.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 
