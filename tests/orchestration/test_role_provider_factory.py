@@ -5,10 +5,11 @@ walk wired at the seam where a run builds a role's provider (DECISION F058 D2).
 from __future__ import annotations
 
 import pathlib
+import time
 import warnings
 
 from packages.orchestration.model_failover import FailoverLink, FailoverProvider
-from packages.orchestration.pingpong_provider import ClaudeCliProvider, FakeProvider
+from packages.orchestration.pingpong_provider import BuilderOutput, ClaudeCliProvider, FakeProvider
 from packages.orchestration.role_provider_factory import create_role_provider
 
 
@@ -82,6 +83,50 @@ tier = "mid"
         assert not isinstance(link_provider, FailoverProvider)
         assert link_provider.write_mode == "allowed-tools"
         assert link_provider.model == "mid-model"
+
+
+class _FixedAnswerProvider:
+    """A stand-in provider: `build` answers the one error it was made with."""
+
+    supports_resume = False
+    name = "stub"
+
+    def __init__(self, error: str) -> None:
+        self._error = error
+
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        return BuilderOutput(error=self._error)
+
+
+class TestCooldownIsConfigured:
+    def test_the_wrapper_holds_the_primary_for_the_configured_45_seconds(
+        self, monkeypatch, tmp_path
+    ):
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[remedy.model_failover]
+cooldown_s = 45
+
+[[remedy.model_failover.chains.builder]]
+provider = "backup"
+model = "mid-model"
+tier = "mid"
+''')
+
+        def make_provider(name, *, model=""):
+            return _FixedAnswerProvider("provider_error: ConnectionError: connection refused"
+                                    if name == "primary" else "")
+
+        builder = create_role_provider(
+            "primary", role="builder", staging_dir=None, make_provider=make_provider,
+        )
+        assert isinstance(builder, FailoverProvider)
+        # Read through the wrapper's read-only `held_until` property, bracketed by the clock
+        # the wrapper uses by default (time.monotonic).
+        before = time.monotonic()
+        out = builder.build("do it")
+        after = time.monotonic()
+        assert out.error == ""
+        assert before + 45 <= builder.held_until <= after + 45
 
 
 class TestRefusedChain:

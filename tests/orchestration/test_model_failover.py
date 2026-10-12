@@ -21,6 +21,8 @@ from packages.orchestration.config import (
 )
 from packages.orchestration.model_failover import (
     FAILOVER_CHAINS_CONFIG_KEY,
+    FAILOVER_COOLDOWN_CONFIG_KEY,
+    FAILOVER_COOLDOWN_DEFAULT_S,
     FAILOVER_LINK_KEYS,
     FAILOVER_LOCAL_ROLES,
     FAILOVER_REASON_PROVIDER_UNAVAILABLE,
@@ -39,6 +41,7 @@ from packages.orchestration.model_failover import (
     is_failover_trigger,
     parse_failover_chains,
     resolve_failover_chains,
+    resolve_failover_cooldown_s,
     validate_failover_chains,
 )
 from packages.orchestration.model_routing import (
@@ -51,6 +54,11 @@ from packages.orchestration.model_routing import (
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
 from packages.orchestration.role_config import KNOWN_ROLES
+from tests.orchestration.test_provider_retry import (
+    RATE_LIMITED_RETRYABLE_ERROR,
+    SeamFakeClock,
+    _seam_governor,
+)
 
 
 def _configure_chains_toml(monkeypatch, tmp_path, toml_body: str) -> None:
@@ -449,7 +457,51 @@ tier = "top"
         )
 
 
+class TestResolveFailoverCooldown:
+    """T003, DECISION F058 D4: the cooldown key reads as a whole number of seconds or warns once."""
+
+    def test_unset_gives_300_and_no_warning(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert resolve_failover_cooldown_s() == 300
+        assert FAILOVER_COOLDOWN_DEFAULT_S == 300
+        assert caught == []
+
+    def test_a_whole_number_is_returned_as_given(self, monkeypatch, tmp_path):
+        _configure_chains_toml(monkeypatch, tmp_path, "[remedy.model_failover]\ncooldown_s = 45\n")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert resolve_failover_cooldown_s() == 45
+        assert caught == []
+
+    @pytest.mark.parametrize("raw, shown", [("-1", "-1"), ('"soon"', "'soon'")])
+    def test_a_value_that_is_not_a_whole_number_of_at_least_0_gives_300_and_one_warning(
+        self, monkeypatch, tmp_path, raw, shown
+    ):
+        _configure_chains_toml(
+            monkeypatch, tmp_path, f"[remedy.model_failover]\ncooldown_s = {raw}\n"
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert resolve_failover_cooldown_s() == 300
+        assert [str(w.message) for w in caught] == [
+            "model_failover.cooldown_s: expected a whole number of seconds of at least 0, "
+            f"got {shown}; using 300"
+        ]
+        assert [w.category for w in caught] == [UserWarning]
+
+
 class TestRegistry:
+    def test_model_failover_cooldown_is_an_int_key_with_default_300_after_the_chains(self):
+        spec = get_key_spec(FAILOVER_COOLDOWN_CONFIG_KEY)
+        assert FAILOVER_COOLDOWN_CONFIG_KEY == "model_failover.cooldown_s"
+        assert spec is not None
+        assert spec.value_type is int
+        assert spec.default == 300
+        keys = [s.key for s in all_key_specs()]
+        assert keys.index("model_failover.cooldown_s") == keys.index("model_failover.chains") + 1
+
     def test_model_failover_chains_is_a_dict_key_with_entry_type_list(self):
         spec = get_key_spec(FAILOVER_CHAINS_CONFIG_KEY)
         assert spec is not None
@@ -607,9 +659,9 @@ class TestFailoverProviderWalk:
             primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
             links=(link,), build_link=lambda the_link: link_provider,
         )
-        out = fp.build("do it", timeout_sec=30, max_output_chars=999, resume="sess-1")
+        out = fp.build("do it", timeout_sec=30, max_output_chars=999, resume=None)
 
-        assert primary.build_calls == [_RecordedCall("do it", 30, 999, "sess-1")]
+        assert primary.build_calls == [_RecordedCall("do it", 30, 999, None)]
         assert link_provider.build_calls == [_RecordedCall("do it", 30, 999, None)]
         assert out is link_provider.last_build_output
 
@@ -629,6 +681,7 @@ class TestFailoverProviderWalk:
             "intended": {"provider": "claude-cli", "model": "sonnet"},
             "used": {"position": 1, "provider": "claude-cli", "model": "opus", "error": ""},
             "primary_error": "provider_error: ConnectionError: connection refused",
+            "primary_skipped": False,
             "attempts": [{"position": 1, "provider": "claude-cli", "model": "opus", "error": ""}],
         }
 
@@ -748,6 +801,147 @@ class TestFailoverProviderWalk:
         assert fp.supports_resume is False
 
 
+_DOWN = "provider_error: ConnectionError: connection refused"
+
+
+class _ListClock:
+    """An injected clock: a test sets `now` and never sleeps."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def _held_wrapper(primary, link_provider, clock, cooldown_s):
+    return FailoverProvider(
+        primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+        links=(FailoverLink("claude-cli", "opus", "top"),),
+        build_link=lambda the_link: link_provider,
+        cooldown_s=cooldown_s, clock=clock,
+    )
+
+
+class TestStickyWindow:
+    """T003, DECISION F058 D4 (1) and (2): after a backup serves, the primary is held down."""
+
+    def test_the_primary_is_skipped_until_the_cooldown_has_passed(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+
+        clock.now = 0
+        first = fp.build("p1")
+        assert len(primary.build_calls) == 1
+        assert first.failover_disclosure.primary_skipped is False
+        assert first.failover_disclosure.primary_error == _DOWN
+        assert fp.held_until == 60
+
+        clock.now = 59
+        second = fp.build("p2")
+        assert len(primary.build_calls) == 1
+        assert second is link_provider.last_build_output
+        assert second.failover_disclosure.primary_skipped is True
+        assert second.failover_disclosure.primary_error == ""
+        assert second.failover_disclosure.used == FailoverLinkAttempt(1, "claude-cli", "opus", "")
+
+        clock.now = 60
+        fp.build("p3")
+        assert [c.prompt for c in primary.build_calls] == ["p1", "p3"]
+
+    def test_a_cooldown_of_zero_never_holds(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 0)
+
+        fp.build("p1")
+        fp.build("p2")
+        assert [c.prompt for c in primary.build_calls] == ["p1", "p2"]
+
+    def test_held_with_every_link_down_and_the_primary_back_returns_the_primary_undisclosed(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+
+        link_provider._build_error = _DOWN
+        primary._build_error = ""
+        clock.now = 10
+        back = fp.build("p2")
+        assert back is primary.last_build_output
+        assert not hasattr(back, "failover_disclosure")
+        assert [c.prompt for c in primary.build_calls] == ["p1", "p2"]
+        assert [c.prompt for c in link_provider.build_calls] == ["p1", "p2"]
+        assert fp.held_until == float("-inf")
+
+        clock.now = 11
+        fp.build("p3")
+        assert [c.prompt for c in primary.build_calls] == ["p1", "p2", "p3"]
+        assert [c.prompt for c in link_provider.build_calls] == ["p1", "p2"]
+
+    def test_held_with_every_link_and_the_primary_down_returns_the_primary_disclosing_none(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+
+        link_provider._build_error = "provider_error: HTTP 503 Service Unavailable"
+        clock.now = 10
+        out = fp.build("p2")
+        assert out is primary.last_build_output
+        assert out.failover_disclosure.used is None
+        assert out.failover_disclosure.primary_skipped is False
+        assert out.failover_disclosure.primary_error == _DOWN
+        assert [a.error for a in out.failover_disclosure.attempts] == [
+            "provider_error: HTTP 503 Service Unavailable"
+        ]
+
+
+class TestSessionGuard:
+    """T003, DECISION F058 D4 (3): a backup never receives a session and never leaves one behind."""
+
+    def test_a_down_primary_on_a_resumed_call_is_returned_with_no_link_built(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+
+        def build_link(link):
+            raise AssertionError("no link may be built for a resumed call")
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        out = fp.build("do it", resume="sess-1")
+        assert out is primary.last_build_output
+        assert not hasattr(out, "failover_disclosure")
+        assert primary.build_calls == [_RecordedCall("do it", 120, 50000, "sess-1")]
+
+    def test_supports_resume_is_the_primarys_until_a_link_has_served(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", supports_resume=True, build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        assert fp.supports_resume is True
+        fp.build("p1")
+        assert fp.supports_resume is False
+
+    def test_a_link_never_receives_a_session(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1", resume=None)
+
+        clock.now = 5
+        fp.build("p2", resume="sess-1")
+        assert [c.resume for c in link_provider.build_calls] == [None, None]
+        assert [c.prompt for c in link_provider.build_calls] == ["p1", "p2"]
+
+
 class TestFailoverReportLine:
     def test_no_rounds_gives_none(self):
         assert failover_report_line({"rounds": []}) is None
@@ -789,6 +983,28 @@ class TestFailoverReportLine:
             "could not be reached. 1 call found no backup model that could be reached. "
             "The run's record names every model tried."
         )
+
+
+class _ScriptedProvider:
+    """A stub whose `build` and `review` answer what a test's function says for the call's
+    1-based count; records nothing else. Used as a run's primary in the non-trigger tests."""
+
+    supports_resume = False
+
+    def __init__(self, name, *, build=None, review=None) -> None:
+        self.name = name
+        self._build = build or (lambda n: BuilderOutput(summary="ok", provider=name))
+        self._review = review or (lambda n: ReviewerOutput(verdict="pass", provider=name))
+        self.build_count = 0
+        self.review_count = 0
+
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        self.build_count += 1
+        return self._build(self.build_count)
+
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        self.review_count += 1
+        return self._review(self.review_count)
 
 
 class TestFailoverThroughARealRun:
@@ -879,3 +1095,92 @@ tier = "mid"
                 entry = round_data.get(role)
                 if entry:
                     assert "failover" not in entry
+
+    # -- T003, DECISION F058 D4 (4): the three non-triggers, proved through a run -------------
+    # A role's chain of one link `fake` / `stand-in` exists in each; the answer that must NOT
+    # fail over is a slow answer, a rate limit and an unreadable review. `create_provider` on
+    # `pingpong_loop` is replaced, so the primary is the scripted stub below and every
+    # (name, model) a run asks for is recorded; backoff sleeps are patched out; no real CLI runs.
+
+    def _scripted_run(self, monkeypatch, tmp_path, *, role, builder=None, reviewer=None, **kwargs):
+        import packages.orchestration.pingpong_loop as loop
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        _configure_chains_toml(monkeypatch, tmp_path, f'''
+[[remedy.model_failover.chains.{role}]]
+provider = "fake"
+model = "stand-in"
+tier = "mid"
+''')
+        assert tuple(resolve_failover_chains()) == (role,)
+        real_create_provider = loop.create_provider
+        asked: list[tuple[str, str]] = []
+
+        def recording_create_provider(name, *, model=""):
+            asked.append((name, model))
+            if name == "stub":
+                return builder if role == "builder" else reviewer
+            return real_create_provider(name, model=model)
+
+        monkeypatch.setattr(loop, "create_provider", recording_create_provider)
+        result = loop.run_pingpong(
+            "Fix README", str(self._demo_repo(tmp_path)),
+            builder_name="stub" if role == "builder" else "fake",
+            builder_model="primary-model" if role == "builder" else "",
+            reviewer_name="stub" if role == "reviewer" else "fake",
+            reviewer_model="primary-model" if role == "reviewer" else "",
+            **kwargs,
+        )
+        record = loop.export_pingpong_json(result)
+        assert ("stub", "primary-model") in asked
+        assert ("fake", "stand-in") not in asked
+        for round_data in record["rounds"]:
+            for entry_role in ("builder", "reviewer"):
+                entry = round_data.get(entry_role)
+                if entry:
+                    assert "failover" not in entry
+        return result
+
+    def test_a_slow_builder_answer_never_switches_to_a_backup(self, monkeypatch, tmp_path):
+        from packages.orchestration.provider_timeouts import MAX_RETRIES
+
+        stub = _ScriptedProvider(
+            "stub", build=lambda n: BuilderOutput(
+                error="claude CLI timed out after 600s", provider="stub"),
+        )
+        result = self._scripted_run(monkeypatch, tmp_path, role="builder", builder=stub)
+
+        assert result.final_status == "provider_timeout"
+        assert result.retries_used == MAX_RETRIES
+
+    def test_a_rate_limited_builder_answer_waits_and_never_switches_to_a_backup(
+        self, monkeypatch, tmp_path
+    ):
+        # SeamFakeClock and _seam_governor are IMPORTED from the retry seam's tests
+        # (tests/orchestration/test_provider_retry.py), not copied.
+        stub = _ScriptedProvider(
+            "stub", build=lambda n: (
+                BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="stub") if n == 1
+                else BuilderOutput(summary="ok", provider="stub")
+            ),
+        )
+        result = self._scripted_run(
+            monkeypatch, tmp_path, role="builder", builder=stub,
+            rate_governor=_seam_governor(SeamFakeClock()),
+        )
+
+        assert len(result.rate_limit_waits) == 1
+        assert result.final_status != "provider_unavailable"
+
+    def test_an_unreadable_review_takes_its_one_parse_retry_and_never_switches_to_a_backup(
+        self, monkeypatch, tmp_path
+    ):
+        stub = _ScriptedProvider(
+            "stub", review=lambda n: ReviewerOutput(
+                error="malformed_output: reviewer output is not valid JSON",
+                raw_text="not json", error_class="parse", provider="stub"),
+        )
+        result = self._scripted_run(monkeypatch, tmp_path, role="reviewer", reviewer=stub)
+
+        assert result.reviewer_parse_retry_count == 1
