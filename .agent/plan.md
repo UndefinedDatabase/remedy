@@ -7,18 +7,18 @@ failed-over call discloses the intended and the used model in its evidence and i
 (docs/roadmap/features/T3_F058.md; DECISIONs F058 D1 to D4).
 
 ## Current Step
-Round 5 on `feature/f058-model-failover-chain`, session 3: book round 4's verdict (PASS, R-1262
-registered, R-1261 resolved), repair R-1262, write the documentation page
-`docs/system/model-failover-v1.md` with its two rows in `docs/README.md`, and the feature file's
-Built State.
+Round 6 on `feature/f058-model-failover-chain`, session 3, the closure's first round: book round
+5's verdict (PASS, R-1263 registered, R-1262 resolved), repair R-1263, the checklist's
+consolidation pass for F058, the closure's self-use item run to its approval gate and never
+applied, and the feature's one full suite with its CPU cost
+(`.agent/authored/f058-closure-suite.txt`).
 
 ## Next Steps
-1. The closure's integration gate: the feature's one full suite, its transcript
-   `.agent/authored/f058-closure-suite.txt` and the suite-cost lines.
-2. The closure's self-use item, evidence job, review zip and closing round, per
-   `docs/roadmap/STATUS_closure_protocol.md`.
+1. The evidence bundle and the review package, per `docs/roadmap/STATUS_closure_protocol.md`
+   steps 1 and 2 (or a repair round naming every bad node id, if the suite is red).
+2. The closing round: the Built State's closure paragraph, the ledger rotation, the STATUS line,
+   the self-use queue's `consumed_by` and the pull request.
 
 ## Risks
-- `run_pingpong`, `export_pingpong_json` and `_call_with_retry` are rows of
-  `docs/system/structure-ledger-v1.md` that may not grow.
+- The self-use run makes real provider calls within the `self_use` role's budget.
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306.
