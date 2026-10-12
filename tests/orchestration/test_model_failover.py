@@ -1,11 +1,12 @@
-"""Tests for packages.orchestration.model_failover — F058 T001: the chains' key, parse and
-hard-rule validation.
+"""Tests for packages.orchestration.model_failover — F058 T001 (the chains' key, parse and
+hard-rule validation) and T002, first part (the failover walk, DECISION F058 D2).
 """
 
 from __future__ import annotations
 
 import pathlib
 import warnings
+from dataclasses import dataclass
 
 import pytest
 
@@ -21,14 +22,19 @@ from packages.orchestration.model_failover import (
     FAILOVER_CHAINS_CONFIG_KEY,
     FAILOVER_LINK_KEYS,
     FAILOVER_LOCAL_ROLES,
+    FAILOVER_REASON_PROVIDER_UNAVAILABLE,
     FAILOVER_RULE_NAMES,
     LOCAL_PROVIDERS,
     RULE_CORE_ROLE_ON_LOCAL_PROVIDER,
     FailoverChainError,
     FailoverChainRefused,
     FailoverChainViolation,
+    FailoverDisclosure,
     FailoverLink,
+    FailoverLinkAttempt,
+    FailoverProvider,
     build_failover_chains,
+    is_failover_trigger,
     parse_failover_chains,
     resolve_failover_chains,
     validate_failover_chains,
@@ -41,6 +47,7 @@ from packages.orchestration.model_routing import (
     RULE_SAFETY_CLASS_BELOW_MID_TIER,
     TASK_CLASS_TIERS,
 )
+from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
 from packages.orchestration.role_config import KNOWN_ROLES
 
 
@@ -469,3 +476,254 @@ class TestRegistry:
             f"{FAILOVER_CHAINS_CONFIG_KEY}: expected list entries, got 'builder' = 'not-a-list'"
             in found
         )
+
+
+# ---------------------------------------------------------------------------
+# T002, first part — the failover walk (DECISION F058 D2)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _RecordedCall:
+    """What a stub provider's `build` or `review` was asked, for an exact-value assertion."""
+
+    prompt: str
+    timeout_sec: int
+    max_output_chars: int
+    resume: str | None
+
+
+class _StubProvider:
+    """A small stand-in provider: records every call's keyword arguments and returns a real
+    `BuilderOutput` or `ReviewerOutput` carrying the error this test configured. Never a network
+    or a real CLI.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        supports_resume: bool = True,
+        build_error: str = "",
+        review_error: str = "",
+        review_error_class: str = "",
+    ) -> None:
+        self._name = name
+        self._supports_resume = supports_resume
+        self._build_error = build_error
+        self._review_error = review_error
+        self._review_error_class = review_error_class
+        self.build_calls: list[_RecordedCall] = []
+        self.review_calls: list[_RecordedCall] = []
+        self.last_build_output: BuilderOutput | None = None
+        self.last_review_output: ReviewerOutput | None = None
+        # An attribute besides name/supports_resume/build/review, for the test that a
+        # FailoverProvider hands an arbitrary attribute through to its primary.
+        self.begin_stream_call = "primary-stream-hook"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def supports_resume(self) -> bool:
+        return self._supports_resume
+
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        self.build_calls.append(_RecordedCall(prompt, timeout_sec, max_output_chars, resume))
+        out = BuilderOutput(error=self._build_error)
+        self.last_build_output = out
+        return out
+
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        self.review_calls.append(_RecordedCall(prompt, timeout_sec, max_output_chars, resume))
+        out = ReviewerOutput(error=self._review_error, error_class=self._review_error_class)
+        self.last_review_output = out
+        return out
+
+
+class TestIsFailoverTrigger:
+    @pytest.mark.parametrize("error", [
+        "provider_error: RuntimeError: claude CLI not found on PATH. Install Claude Code CLI to "
+        "use --builder-provider claude-cli or --reviewer-provider claude-cli.",
+        "provider_error: ConnectionError: connection refused",
+        "provider_error: HTTP 503 Service Unavailable",
+    ])
+    def test_true_for_a_provider_unavailable_or_connection_error(self, error):
+        assert is_failover_trigger(BuilderOutput(error=error)) is True
+
+    def test_false_for_no_error(self):
+        assert is_failover_trigger(BuilderOutput(error="")) is False
+
+    def test_false_for_a_timeout(self):
+        assert is_failover_trigger(BuilderOutput(error="claude CLI timed out after 600s")) is False
+
+    def test_false_for_a_nonzero_exit(self):
+        assert is_failover_trigger(BuilderOutput(error="claude CLI exited 1")) is False
+
+    def test_false_for_a_rate_limit_even_when_it_also_reads_not_found(self):
+        out = BuilderOutput(error="provider_error: HTTP 429 not found rate limit")
+        assert is_failover_trigger(out) is False
+
+    def test_false_for_a_parse_failure(self):
+        out = ReviewerOutput(error="reviewer output not found", error_class="parse")
+        assert is_failover_trigger(out) is False
+
+    def test_false_for_a_malformed_output(self):
+        assert is_failover_trigger(BuilderOutput(error="malformed_output: model not found")) is False
+
+
+class TestFailoverProviderWalk:
+    def test_a_primary_that_serves_returns_its_output_unchanged_and_never_calls_build_link(self):
+        primary = _StubProvider("claude-cli")
+
+        def build_link(link):
+            raise AssertionError("build_link must not be called when the primary serves")
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        out = fp.build("do it")
+        assert out is primary.last_build_output
+        assert not hasattr(out, "failover_disclosure")
+
+    def test_primary_unavailable_first_link_serves_discloses_one_attempt(self):
+        primary = _StubProvider(
+            "claude-cli", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link_provider = _StubProvider("claude-cli-2")
+        link = FailoverLink("claude-cli", "opus", "top")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(link,), build_link=lambda the_link: link_provider,
+        )
+        out = fp.build("do it", timeout_sec=30, max_output_chars=999, resume="sess-1")
+
+        assert primary.build_calls == [_RecordedCall("do it", 30, 999, "sess-1")]
+        assert link_provider.build_calls == [_RecordedCall("do it", 30, 999, None)]
+        assert out is link_provider.last_build_output
+
+        expected_attempt = FailoverLinkAttempt(position=1, provider="claude-cli", model="opus", error="")
+        expected = FailoverDisclosure(
+            role="builder",
+            intended_provider="claude-cli",
+            intended_model="sonnet",
+            primary_error="provider_error: ConnectionError: connection refused",
+            attempts=(expected_attempt,),
+            used=expected_attempt,
+        )
+        assert out.failover_disclosure == expected
+        assert out.failover_disclosure.to_json() == {
+            "reason": FAILOVER_REASON_PROVIDER_UNAVAILABLE,
+            "role": "builder",
+            "intended": {"provider": "claude-cli", "model": "sonnet"},
+            "used": {"position": 1, "provider": "claude-cli", "model": "opus", "error": ""},
+            "primary_error": "provider_error: ConnectionError: connection refused",
+            "attempts": [{"position": 1, "provider": "claude-cli", "model": "opus", "error": ""}],
+        }
+
+    def test_first_link_unavailable_second_link_serves(self):
+        primary = _StubProvider(
+            "claude-cli", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link1 = _StubProvider(
+            "l1", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link2 = _StubProvider("l2")
+        chain = (
+            FailoverLink("claude-cli", "m1", "mid"),
+            FailoverLink("claude-cli", "m2", "mid"),
+        )
+
+        def build_link(link):
+            return link1 if link.model == "m1" else link2
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=chain, build_link=build_link,
+        )
+        out = fp.build("do it")
+        assert out is link2.last_build_output
+        assert len(out.failover_disclosure.attempts) == 2
+        assert out.failover_disclosure.used.position == 2
+
+    def test_a_build_link_raising_runtimeerror_is_recorded_and_the_next_link_serves(self):
+        primary = _StubProvider(
+            "claude-cli", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link2 = _StubProvider("l2")
+        chain = (
+            FailoverLink("nope", "m1", "mid"),
+            FailoverLink("claude-cli", "m2", "mid"),
+        )
+
+        def build_link(link):
+            if link.provider == "nope":
+                raise RuntimeError("Unknown provider: 'nope'")
+            return link2
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=chain, build_link=build_link,
+        )
+        out = fp.build("do it")
+        assert out.failover_disclosure.attempts[0].error == (
+            "provider_error: RuntimeError: Unknown provider: 'nope'"
+        )
+        assert out is link2.last_build_output
+        assert out.failover_disclosure.used.position == 2
+
+    def test_every_link_unavailable_returns_the_primarys_own_output(self):
+        primary = _StubProvider(
+            "claude-cli", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link1 = _StubProvider(
+            "l1", build_error="provider_error: ConnectionError: connection refused",
+        )
+        link2 = _StubProvider(
+            "l2", build_error="provider_error: ConnectionError: connection refused",
+        )
+        chain = (
+            FailoverLink("claude-cli", "m1", "mid"),
+            FailoverLink("claude-cli", "m2", "mid"),
+        )
+
+        def build_link(link):
+            return link1 if link.model == "m1" else link2
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=chain, build_link=build_link,
+        )
+        out = fp.build("do it")
+        assert out is primary.last_build_output
+        assert out.failover_disclosure.used is None
+        assert [attempt.model for attempt in out.failover_disclosure.attempts] == ["m1", "m2"]
+
+    def test_review_walks_the_same_way_and_a_timed_out_link_is_returned_as_is(self):
+        primary = _StubProvider(
+            "claude-cli", review_error="provider_error: ConnectionError: connection refused",
+        )
+        link1 = _StubProvider("l1", review_error="claude CLI timed out after 600s")
+        link = FailoverLink("claude-cli", "m1", "mid")
+        fp = FailoverProvider(
+            primary, role="reviewer", intended_provider="claude-cli", intended_model="sonnet",
+            links=(link,), build_link=lambda the_link: link1,
+        )
+        out = fp.review("look at it")
+        assert out is link1.last_review_output
+        assert out.error == "claude CLI timed out after 600s"
+        assert out.failover_disclosure.used.position == 1
+
+    def test_name_supports_resume_primary_links_and_other_attrs_reach_the_primary(self):
+        primary = _StubProvider("claude-cli", supports_resume=True)
+        link = FailoverLink("claude-cli", "m1", "mid")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(link,), build_link=lambda the_link: primary,
+        )
+        assert fp.name == "claude-cli"
+        assert fp.supports_resume is True
+        assert fp.primary is primary
+        assert fp.links == (link,)
+        assert fp.begin_stream_call == primary.begin_stream_call
