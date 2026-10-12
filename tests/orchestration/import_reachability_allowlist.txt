@@ -120,6 +120,7 @@ packages.orchestration.claude_cli_command
 packages.orchestration.client_changes
 packages.orchestration.client_digest
 packages.orchestration.cockpit
+packages.orchestration.cockpit_project_routes
 packages.orchestration.command_audit
 packages.orchestration.command_discovery
 packages.orchestration.command_nonce

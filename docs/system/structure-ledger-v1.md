@@ -69,6 +69,13 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   and fail tail. Steps: (1) the shared tail becomes one method, taken by one clause at a time;
   (2) the chain becomes a table from command to its handler; the clauses with a shape of their own
   keep their status codes and audit words.
+- `_RemedyHandler.do_GET` (`packages/orchestration/ui_server.py`). Boundary: its route families —
+  the job's endpoint table, the job's routes matched by the parts of their path (the node details,
+  the task runs, the artifact file and the event stream), and the routes below a project. Steps:
+  (1) done by F305, every route below a project is one call into
+  `packages/orchestration/cockpit_project_routes.py`, where a project's routes grow; (2) the three
+  node-detail routes become one route over the detail's kind; (3) the three task-run routes become
+  one route over their builders.
 - `_cmd_decision_resolve` (`apps/cli/commands/decision.py`). Boundary: the one branch per kind of
   decision id. Steps: (1) each branch becomes a function of its own that returns the exit code;
   (2) the command keeps only the dispatch, in the present order of its tests.
@@ -223,7 +230,7 @@ with the code that calls it.
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
 | 235 | `packages/orchestration/run_manifest.py` | `validate_run_manifest` |
-| 231 | `packages/orchestration/ui_server.py` | `_RemedyHandler.do_GET` |
+| 230 | `packages/orchestration/ui_server.py` | `_RemedyHandler.do_GET` |
 | 221 | `scripts/build_review_manifest.py` | `_gate_semantic_problems` |
 | 220 | `packages/orchestration/job_apply.py` | `apply_job` |
 | 220 | `scripts/build_review_manifest.py` | `validate_manual_completion` |
@@ -363,7 +370,7 @@ with the code that calls it.
 | 6558 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
 | 5283 | `packages/orchestration/pingpong_loop.py` |
-| 4834 | `packages/orchestration/ui_server.py` |
+| 4829 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2631 | `apps/cli/command_catalog.py` |
