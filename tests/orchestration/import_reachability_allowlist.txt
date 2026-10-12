@@ -203,6 +203,7 @@ packages.orchestration.manual_attestation
 packages.orchestration.markdown_output_safety
 packages.orchestration.memory_learn
 packages.orchestration.missing_tests_gate
+packages.orchestration.mission_cockpit
 packages.orchestration.mission_compiler
 packages.orchestration.mission_contract
 packages.orchestration.mission_dossier
