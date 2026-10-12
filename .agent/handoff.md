@@ -1,257 +1,269 @@
-# Handback — F297 round 14: the closing round
+# Handback — F305 round 1: claim, structural step, and T001
 
 ## Session
 
-SESSION 2 of feature F297 · round 14 · rounds so far 14
+SESSION 1 of feature F305 · round 1 · rounds so far 1
 
-Context self-assessment: the session verified the block's own line count and sha256 and all
-fifteen Bundle-listed prepared files' digests before any write, copied every file by a read-only
-Python script rather than retyping, confirmed each commit's staged numstat against the Bundle's
-stated pairs before committing, ran the ledger rotation and all five gates in one uninterrupted
-pass, and re-ran two of the five gates a second time under the literal `python3 -I` form the block
-orders once the first pass's plain-`python3` invocation was noticed; context remains comfortable
-at handback. The session ends here because F297 is closed and the next feature starts in a fresh
-session.
+Context self-assessment: the session verified the block's own line count and sha256, the three
+gate scripts' digests, and all eighteen digest-bearing Bundle-listed prepared files' digests
+before any write (the three further Bundle files carrying no stated digest —
+`head-live_review.md`, `append-live_review.txt`, `append-decisions.txt` — were instead proved by
+building `.agent/live_review.md` and `.agent/decisions.md` from them and matching the result,
+byte-for-byte, against the digested `dry-live_review.md` and `dry-decisions.md`, exactly gate 1's
+own formula); copied every other file by a read-only Python script under
+`.remedy-wt/f305-r1-worker/`; confirmed each commit's staged numstat against the Bundle's stated
+pairs before every commit; and ran all six gates in one uninterrupted pass, each green on its
+first and only run; context remains comfortable at handback.
 
-Fortschritt: 100 % (F297 is accepted; its pull request waits for the next session's Open PR Gate) —
-Schätzung
+Fortschritt: ~30 % (T001 landed · T002, T003 and the closure open) — Schätzung
 
 ## Range
 
-Review of `bcdea535a`..`HEAD`.
+Review of `f6004fdf1`..HEAD.
 
 ## Commits
 
-### d470b95aa F297 R14 C1: book round 13, re-assign the four carried findings to F306, the Built State, save the round 14 block, the STATUS line and the PR body
+### 5ab62eaf9 F305 R1 C1: claim F305, book F297 R14, re-head the ledger, DECISIONS F305 D1 and D2 with the feature file's amendment
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f297-r14-pr_body.md` | +49/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/src/pr_body.md` |
-| `.agent/authored/f297-r14-status_line.txt` | +1/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/src/status_line.txt` |
-| `.agent/authored/f297-r14.md` | +143/-0 | NEW FILE, byte copy of `.remedy-wt/f297-r14/prep/block.md` (143 lines, sha256 `90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee`) |
-| `.agent/live_review.md` | +6/-0 | byte copy of `prep/sim-C1-live_review.md`: four `Owner: F306` re-assignment lines (R-1235, R-1246, R-1251, R-1252) and the round 13 `Gate:` paragraph |
-| `.agent/plan.md` | +10/-11 | rewritten in full for round 14, byte copy of `src/plan.md` |
-| `docs/roadmap/features/T2_F297.md` | +22/-0 | byte copy of `prep/sim-T2_F297.md`: the feature's Built State section appended |
+| `.agent/authored/f305-r1.md` | +150/-0 | NEW FILE, byte copy of `.remedy-wt/f305-r1/prep/block.md` (150 lines, sha256 `21c8450c28a049464848ef0f3c17c1ba16c8fadbb86adcb017bf9efb162aba7a`) |
+| `.agent/context.md` | +12/-9 | rewritten for F305, byte copy of `prep/dry-context.md` |
+| `.agent/decisions.md` | +24/-0 | byte copy of base `.agent/decisions.md` plus `prep/append-decisions.txt`: DECISIONS F305 D1 and D2 |
+| `.agent/live_review.md` | +25/-27 | re-headed for F305's claim (new heading, paragraph and Steps section), the base `## Findings` body carried byte-identical, F297 R14's `Gate:` entry appended — built per gate 1's `verify.py` formula (`prep/head-live_review.md` + base body from `## Findings` + `prep/append-live_review.txt`), byte-equal to `prep/dry-live_review.md` |
+| `.agent/plan.md` | +22/-13 | rewritten in full for F305 round 1, byte copy of `prep/dry-plan.md` |
+| `docs/roadmap/STATUS.md` | +1/-1 | F305's line flips `[ ]`→`[~]`, byte copy of `prep/dry-STATUS.md` |
+| `docs/roadmap/features/T13_F305.md` | +30/-0 | byte copy of `prep/dry-T13_F305.md`: the `## Amendment — DECISIONS F305 D1 and D2` section, with the slice list T001 to T003 |
 
-### 5a2f5e271 F297 R14 C2: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-118 | `scripts/rotate_live_review.py`'s own rewrite (10 gate records, 26 finding pairs / 52 records moved out), byte-equal to `prep/sim-C2-live_review.md` |
-| `.agent/live_review_archive.md` | +128/-0 | the same run's append of those moved records, byte-equal to `prep/sim-C2-live_review_archive.md` |
-
-### 0417f697c F297 R14 C3: register F306 — Findings paydown v8 under amend0911-feedback rule B: feature file, STATUS line, pin 306, README counters
+### 36afdbf09 F305 R1 C2: every route below a project goes to cockpit_project_routes, and the rows of do_GET and ui_server fall (structural)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `README.md` | +2/-2 | byte copy of `prep/sim-C3-README.md`: registered total `305`→`306`, Tier 2 row denominator `44`→`45` |
-| `docs/roadmap/STATUS.md` | +4/-0 | byte copy of `prep/sim-C3-STATUS.md`: new "Tier 2 — Findings paydown" heading and F306's `[ ]` line, placed directly after F203 |
-| `docs/roadmap/features/T2_F306.md` | +42/-0 | NEW FILE, byte copy of `prep/sim-T2_F306.md`: F306's feature file, registered thin, carrying R-1235, R-1246, R-1251, R-1252 by name |
-| `tests/docs/test_docs_consistency.py` | +5/-1 | byte copy of `prep/sim-test_docs_consistency.py`: `TOTAL_FEATURES` `305`→`306` with its explanatory comment |
+| `docs/system/structure-ledger-v1.md` | +9/-2 | byte copy of `prep/dry-structure-ledger-v1.md`: `_RemedyHandler.do_GET`'s boundary and its three steps written; its own row and the file's row lowered, `231`→`230` and `4834`→`4829` |
+| `packages/orchestration/cockpit_project_routes.py` | +33/-0 | NEW FILE, byte copy of `prep/c2-cockpit_project_routes.py`: `_build_project_summary_json` and `project_route_answer` moved out of `ui_server.py`, step (1) of DECISION F305 D2 |
+| `packages/orchestration/ui_server.py` | +9/-14 | byte copy of `prep/dry-ui_server.py`: the summary builder removed, imported back by name; every path of five parts or more below a project now one call into `project_route_answer` |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | byte copy of `prep/c2-import_reachability_allowlist.txt`: `packages.orchestration.cockpit_project_routes` added |
+| `tests/test_structure_ratchet.py` | +2/-2 | byte copy of `prep/dry-test_structure_ratchet.py`: `MAX_FUNCTION_LINES` `30748`→`30747`, `MAX_FILE_LINES` `74823`→`74818`, lowered with the rows they pin |
 
-### this commit F297 R14 C4: accept F297 in STATUS with its README sync and the self-use queue
+### 2f92df594 F305 R1 C3: the mission card's server view and its two routes (T001)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `README.md` | +14/-3 | byte copy of `prep/sim-README.md`: accepted total `137`→`138` of 306, Tier 2 row numerator `43`→`44`, F297's closing paragraph closes the Tier 3 accepted list |
-| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `prep/sim-STATUS.md`: F297's line flips `[~]`→`[x]` with its full closure annotation (evidence job, package, SHA-256, package path, accepted HEAD) |
-| `scripts/self_use_queue.json` | +1/-1 | byte copy of `prep/sim-self_use_queue.json`: `SU-056`'s `consumed_by` set from `""` to `"F297"` |
-| `.agent/handoff.md` | this commit | this file (self-reference rule, docs/agents/handback_template.md) |
+| `packages/orchestration/cockpit_project_routes.py` | +21/-2 | byte copy of `prep/dry-cockpit_project_routes.py`: the `.../missions` and `.../missions/<mission id>/orders` routes added, answered through `mission_cockpit` |
+| `packages/orchestration/mission_cockpit.py` | +181/-0 | NEW FILE, byte copy of `prep/dry-mission_cockpit.py`: `project_missions_view`, `mission_orders_view`, and the chain/chip/usage helpers (T001, DECISIONS F305 D1 and D2) |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | byte copy of `prep/dry-import_reachability_allowlist.txt`: `packages.orchestration.mission_cockpit` added |
+| `tests/orchestration/test_mission_cockpit.py` | +204/-0 | NEW FILE, byte copy of `prep/dry-test_mission_cockpit.py`: unit tests of both views, the chain band across repositories, the usage roll-up, and the missing/unreadable-job labels |
 
-(C4's three files measured +14/-3, +1/-1 and +1/-1 respectively before this handoff joined the
-commit, per the block's C4 instruction 3.)
+### 16b8c77b8 F305 R1 C4: the route door's tests, the route walk's two new paths and the cockpit page's section (T001)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/system/operator-cockpit-v1.md` | +23/-0 | byte copy of `prep/dry-operator-cockpit-v1.md`: the "A project's missions" section, documenting the two new routes and their 404 cases |
+| `tests/orchestration/test_cockpit_project_routes.py` | +125/-0 | NEW FILE, byte copy of `prep/dry-test_cockpit_project_routes.py`: the route door read directly for every path shape, and through a real server on a free port |
+| `tests/ui_server/test_command_channel.py` | +3/-0 | byte copy of `prep/dry-test_command_channel.py`: the route walk's two new paths added to the GET-route inventory |
+
+### this commit F305 R1 C5: handback
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | this commit | this file (self-reference rule, `docs/agents/handback_template.md`) |
 
 ## External actions
 
-None yet in this commit. `git push origin feature/f297-findings-paydown-v7` and
-`gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f297-findings-paydown-v7
---title "F297 — Findings paydown v7" --body-file .agent/authored/f297-r14-pr_body.md` both follow
-this commit, per the block's `THEN` step — the block's own Next-section instruction forbids naming
-a pull request number here because none exists yet while this file is being written. Their outcome
-is reported in the final reply, not in this file. No other `gh` command run. No worktree added or
-removed by the worker.
+None yet in this commit. `git -C /home/decodeux/Repos/remedy push -u origin
+feature/f305-multi-repo-chain-band` follows this commit, per the block's push-after-C5 instruction.
+Its outcome is reported in the final reply, not in this file. No pull request is opened this round
+(the block forbids it). No other `gh` command run. No worktree added or removed by the worker.
 
 ## Verification
 
-**Preconditions (before C1):** `git rev-parse HEAD` and
-`git rev-parse origin/feature/f297-findings-paydown-v7` both read
-`bcdea535aa4cb155cb687eb65d9479fe208d2b7d`; `git status --porcelain` empty; `git branch
---show-current` read `feature/f297-findings-paydown-v7`; `.agent/STOP` absent.
+**Preconditions (before C1):** `git branch --show-current` read `main`; `git rev-parse HEAD` read
+`f6004fdf1d75315ca49f748d169c7a60def3b94e`; `git status --porcelain` empty; `gh pr list --state
+open --json number` printed `[]`. Branch created:
+`git -C /home/decodeux/Repos/remedy checkout -b feature/f305-multi-repo-chain-band`.
 
-**Block and Bundle digests (before any write):** `wc -l block.md` read `143`, `sha256sum` read
-`90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee` — both equal to the values the
-prompt delivered. All fifteen Bundle-listed files (the fourteen per-commit files plus
-`prep/sim-rotation.txt`) were hashed via a python3 sha256 reader (`verify_hashes.py`): every one
-matched the block's stated digest exactly (`verify_hashes.py` exit 0).
+**Block and Bundle digests (before any write):** `wc -l block.md` read `150`, `sha256sum` read
+`21c8450c28a049464848ef0f3c17c1ba16c8fadbb86adcb017bf9efb162aba7a` — both equal to the values the
+prompt delivered. All three gate-script digests (`verify.py`, `run_selection.py`, `selection.txt`)
+were checked against the prompt's stated values and matched. All eighteen digest-bearing
+Bundle-listed prepared files (the `dry-*` and `c2-*` files) were hashed via a python3 sha256
+reader: every one matched the block's stated digest exactly (`ALL True`). The three further
+Bundle files the block states carry no digest of their own (`head-live_review.md`,
+`append-live_review.txt`, `append-decisions.txt`) were read only to build `.agent/live_review.md`
+and `.agent/decisions.md`, and that built result was checked byte-for-byte against the digested
+`dry-live_review.md` and `dry-decisions.md` before C1 was staged (see C1 below).
 
-**C1:** `c1_copy.py` byte-copied the six files to their destinations and re-hashed source and
-destination for each: all six pairs read `OK`. Line count `143` and sha256
-`90036b84da1c69e958de200c92fdf5167c6cfe9590e908888ac028c4d0ec61ee` for `.agent/authored/f297-r14.md`
-matched the block exactly. `git status --porcelain` before staging showed exactly the six intended
-paths; `git diff --cached --numstat` after `git add` read:
+**C1:** `c1_build_and_copy.py` byte-copied `dry-plan.md`, `dry-context.md`, `dry-STATUS.md` and
+`dry-T13_F305.md` to their destinations; built `.agent/live_review.md` from
+`prep/head-live_review.md` + the base ledger's body from `## Findings` onward +
+`prep/append-live_review.txt`, and `.agent/decisions.md` from the base file +
+`prep/append-decisions.txt`; byte-copied `block.md` to `.agent/authored/f305-r1.md`. Every one of
+the nine comparisons (six copies, two built-files-against-`dry-*`, one authored-copy) printed `True`;
+the script's own line count (`150`) and sha256 for the authored copy matched the block exactly;
+`ALL True`. `git diff --cached --numstat` after `git add` read exactly the Bundle's seven C1 pairs
+(see Commits table above), no other path. `git branch --show-current` read
+`feature/f305-multi-repo-chain-band` immediately before the commit.
+
+**C2:** `c2_copy.py` byte-copied the five files and re-hashed all five pairs: `True` for each,
+`ALL True`. `git diff --cached --numstat` read exactly the Bundle's five C2 pairs, no other path.
+`git branch --show-current` re-read correctly before the commit.
+
+**C3:** `c3_copy.py` byte-copied the four files and re-hashed all four pairs: `True` for each,
+`ALL True`. `git diff --cached --numstat` read exactly the Bundle's four C3 pairs, no other path.
+`git branch --show-current` re-read correctly before the commit.
+
+**C4:** `c4_copy.py` byte-copied the three files and re-hashed all three pairs: `True` for each,
+`ALL True`. `git diff --cached --numstat` read exactly the Bundle's three C4 pairs, no other path.
+`git branch --show-current` re-read correctly before the commit.
+
+**Gate 1:** `git -C /home/decodeux/Repos/remedy status --porcelain` → empty. Then
+`python3 -I /home/decodeux/Repos/remedy/.remedy-wt/f305-r1/prep/verify.py
+/home/decodeux/Repos/remedy` →
 ```
-49  0  .agent/authored/f297-r14-pr_body.md
-1   0  .agent/authored/f297-r14-status_line.txt
-143 0  .agent/authored/f297-r14.md
-6   0  .agent/live_review.md
-10  11 .agent/plan.md
-22  0  docs/roadmap/features/T2_F297.md
+equal True .agent/authored/f305-r1.md
+equal True .agent/live_review.md
+equal True .agent/decisions.md
+equal True .agent/plan.md
+equal True .agent/context.md
+equal True docs/roadmap/STATUS.md
+equal True docs/roadmap/features/T13_F305.md
+equal True packages/orchestration/ui_server.py
+equal True docs/system/structure-ledger-v1.md
+equal True tests/test_structure_ratchet.py
+equal True packages/orchestration/mission_cockpit.py
+equal True packages/orchestration/cockpit_project_routes.py
+equal True tests/orchestration/import_reachability_allowlist.txt
+equal True tests/orchestration/test_mission_cockpit.py
+equal True tests/orchestration/test_cockpit_project_routes.py
+equal True tests/ui_server/test_command_channel.py
+equal True docs/system/operator-cockpit-v1.md
+equal at C2 True packages/orchestration/cockpit_project_routes.py
+equal at C2 True tests/orchestration/import_reachability_allowlist.txt
+base plus slice True .agent/decisions.md
+new head, base body, appended entry True .agent/live_review.md
+ALL True
 ```
-— exactly the Bundle's C1 pairs plus the block copy. `git branch --show-current` read
-`feature/f297-findings-paydown-v7` immediately before the commit.
+Exit 0, every line `True`, last line `ALL True`.
 
-**C2:** `c2_rotate.py` ran `python3 scripts/rotate_live_review.py` once, `cwd` the primary
-checkout. Exit 0. Whole stdout:
-```
-gate records moved: 10
-finding pairs moved: 26 (52 records)
-resolved-text records moved: 0
-old ledger size: 214362 bytes
-new ledger size: 140503 bytes
-old archive size: 6571525 bytes
-new archive size: 6645394 bytes
-open findings before: 5
-open findings after: 5
-gate headers matching neither known form (left in place): 1
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
-```
-Every line but the last equals `prep/sim-rotation.txt` after its first line (`exit 0`), exactly;
-the last line correctly names the primary checkout rather than the reviewer's dry folder.
-`c2_verify.py` then re-hashed both ledger files against `prep/sim-C2-live_review.md` and
-`prep/sim-C2-live_review_archive.md`: both `OK`, `ALL True`. `git diff --cached --numstat` read
-`0  118  .agent/live_review.md` and `128  0  .agent/live_review_archive.md`, exactly the Bundle's
-C2 pairs. `git branch --show-current` re-read the correct branch immediately before the commit.
-
-**C3:** `c3_copy.py` byte-copied the four files and re-hashed all four pairs: `OK` / `ALL True`.
-`git diff --cached --numstat` read `2 2 README.md`, `4 0 docs/roadmap/STATUS.md`,
-`42 0 docs/roadmap/features/T2_F306.md`, `5 1 tests/docs/test_docs_consistency.py` — exactly the
-Bundle's C3 pairs. `git branch --show-current` re-read correctly before the commit.
-
-**C4 pre-write copy:** `c4_copy.py` byte-copied the three files and re-hashed all three pairs:
-`OK` / `ALL True`. `git branch --show-current` re-read correctly beforehand.
-
-**Gate 1:** `git -C /home/decodeux/Repos/remedy status --porcelain` →
-```
- M README.md
- M docs/roadmap/STATUS.md
- M scripts/self_use_queue.json
-```
-— exactly the three C4 files, nothing else. `gate1_bytes.py` then read every file this round
-copied (C1–C3 via `git show <commit>:<path>`, C4 from the working tree) against its Bundle file:
-all fifteen comparisons `OK`, `ALL True`.
-
-**Gate 2:** `gate2_status_line.py` read `.agent/authored/f297-r14-status_line.txt` without its
-trailing newline and counted its occurrences in `docs/roadmap/STATUS.md`: `occurrence count: 1`;
-no line of `STATUS.md` starts `- [~]` (`lines starting with '- [~]': 0`). `GATE2 True`.
+**Gate 2:** `python3 -m ruff check packages/orchestration/ui_server.py
+packages/orchestration/cockpit_project_routes.py packages/orchestration/mission_cockpit.py
+tests/orchestration/test_mission_cockpit.py tests/orchestration/test_cockpit_project_routes.py
+tests/ui_server/test_command_channel.py tests/test_structure_ratchet.py` → `All checks passed!`,
+exit 0.
 
 **Gate 3 (the round's one test selection, run once):**
-`python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
-tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
-tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
-tests/cli/test_golden_path.py tests/test_structure_ratchet.py` → exit 0, `563 passed in 42.88s`, no
-FAILED/ERROR/SKIPPED line — the reviewer's simulated reading exactly (seconds differ, as expected).
+`python3 -I /home/decodeux/Repos/remedy/.remedy-wt/f305-r1/prep/run_selection.py
+/home/decodeux/Repos/remedy` →
+```
+SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
+3840 passed, 3 skipped in 30.41s
+exit 0
+```
+Exactly the reviewer's dry-tree reading (seconds differ, as expected): same three SKIPPED lines,
+same `3840 passed, 3 skipped`, same `exit 0`; no FAILED or ERROR line; no line containing
+`process(es) behind`. The primary checkout also lacks the UI source, so it skipped the same test
+the dry tree skipped rather than running it.
 
 **Gate 4:** `python3 -m apps.cli.main integrity check --json` → exit 0,
 `{"check_count": 6, "fail_count": 0, "ok": true, "passed": true, ...}`, all six checks `pass`
-(`handler_import` handlers=184, `live_review_verdict` last Gate PASS, `plan_consistency`
-unchecked=0, `relevant_untracked` untracked=0/relevant=0, `repo_root_hygiene` clean,
-`high_blockers_open` none open). Re-run a second time under literal `python3 -I` (see Deviations):
-identical output, exit 0.
+(`handler_import` handlers=184; `live_review_verdict` last Gate verdict PASS;
+`plan_consistency` unchecked=0; `relevant_untracked` untracked=0/relevant=0; `repo_root_hygiene`
+clean; `high_blockers_open` none open).
 
 **Gate 5:** `python3 -c "import scripts.rotate_live_review as r;
 print(r.open_finding_ids(open('.agent/live_review.md').read()))"` →
-`['R-1235', 'R-1246', 'R-1248', 'R-1251', 'R-1252']`, exact match, exit 0. Re-run a second time
-under literal `python3 -I` (see Deviations): identical output, exit 0.
+`['R-1235', 'R-1246', 'R-1248', 'R-1251', 'R-1252']`, exact match, exit 0.
 
-**Gate 6 (after the pull request):** reported in the final reply, per the host instructions.
+**Gate 6:** `git -C /home/decodeux/Repos/remedy log --format=%s f6004fdf1..HEAD` →
+```
+F305 R1 C4: the route door's tests, the route walk's two new paths and the cockpit page's section (T001)
+F305 R1 C3: the mission card's server view and its two routes (T001)
+F305 R1 C2: every route below a project goes to cockpit_project_routes, and the rows of do_GET and ui_server fall (structural)
+F305 R1 C1: claim F305, book F297 R14, re-head the ledger, DECISIONS F305 D1 and D2 with the feature file's amendment
+```
+Subjects of C1 to C4, newest first, as required.
 
-No mutation run (none ordered this round). No test run beyond Gate 3's one pytest command;
-`REMEDY_TEST_MAX_WORKERS` was never set, no `-n` was passed, no two test commands ran at once. No
-full suite, no worktree of the worker's own, no provider call.
+No mutation run (the block forbids it this round; the reviewer ran them in a disposable worktree).
+No test run beyond Gate 3's one pytest selection; `REMEDY_TEST_MAX_WORKERS` was never set, no extra
+`-n` was passed, no two test commands ran at once. No full suite. No worktree of the worker's own
+beyond the pre-existing, gitignored `.remedy-wt/f305-r1-worker/` scratch directory this session
+created for its own copy/hash scripts. No provider call.
 
 ## Authored-text proofs
 
-1. `src/status_line.txt` → applied inside `docs/roadmap/STATUS.md` at C4: Gate 2 confirmed the
-   line, read without its trailing newline, occurs exactly once in the file.
-2. `src/pr_body.md` → `.agent/authored/f297-r14-pr_body.md` (C1): byte-equal, confirmed by
-   `c1_copy.py` and again by `gate1_bytes.py` against the commit.
-3. Every other Bundle-listed prepared file (`sim-C1-live_review.md`, `sim-T2_F297.md`, `src/plan.md`,
-   `sim-C2-live_review.md`, `sim-C2-live_review_archive.md`, `sim-T2_F306.md`, `sim-C3-STATUS.md`,
-   `sim-C3-README.md`, `sim-test_docs_consistency.py`, `sim-STATUS.md`, `sim-README.md`,
-   `sim-self_use_queue.json`) was copied and re-hashed byte-equal at its own commit or at the
-   working tree, per the per-commit verification above — `gate1_bytes.py`'s `ALL True` covers all
-   fifteen together.
+1. `block.md` → `.agent/authored/f305-r1.md` (C1): byte-equal, confirmed by `c1_build_and_copy.py`
+   and again by gate 1's `verify.py`.
+2. `prep/head-live_review.md` + the base ledger's body from `## Findings` onward +
+   `prep/append-live_review.txt` → `.agent/live_review.md` (C1): built by the formula gate 1's
+   `verify.py` checks, byte-equal to `prep/dry-live_review.md`, confirmed by `c1_build_and_copy.py`
+   and again by gate 1.
+3. The base `.agent/decisions.md` + `prep/append-decisions.txt` → `.agent/decisions.md` (C1): built
+   the same way, byte-equal to `prep/dry-decisions.md`, confirmed the same way.
+4. Every other Bundle-listed prepared file (`dry-plan.md`, `dry-context.md`, `dry-STATUS.md`,
+   `dry-T13_F305.md`, `dry-ui_server.py`, `c2-cockpit_project_routes.py`,
+   `dry-structure-ledger-v1.md`, `dry-test_structure_ratchet.py`,
+   `c2-import_reachability_allowlist.txt`, `dry-mission_cockpit.py`,
+   `dry-cockpit_project_routes.py`, `dry-import_reachability_allowlist.txt`,
+   `dry-test_mission_cockpit.py`, `dry-test_cockpit_project_routes.py`,
+   `dry-test_command_channel.py`, `dry-operator-cockpit-v1.md`) was copied and re-hashed byte-equal
+   at its own commit's working tree, per the per-commit verification above — gate 1's `verify.py`
+   `ALL True` covers every one of them again, together, against the committed state.
 
 ## Deviations & assumptions
 
-1. **`-I` not used on four worker-script invocations at first pass.** The block's Constraints
-   section orders every worker script run "as `python3 -I <absolute path>`". The C2 rotation
-   wrapper (`c2_rotate.py`), Gate 3's pytest wrapper (`gate3_pytest.py`), and the first passes of
-   Gate 4 (`gate4_integrity.py`) and Gate 5 (`gate5_open_ids.py`) were instead run as plain
-   `python3 <path>`, because each must launch a subprocess (`scripts/rotate_live_review.py`,
-   `python3 -m pytest`, `python3 -m apps.cli.main`) that needs the repository's ordinary
-   environment; `-I` isolates only the invoking wrapper's own interpreter, not a child process
-   started by `subprocess.run`, so this made no functional difference to any result. Once noticed,
-   Gate 4 and Gate 5 were each re-run a second time under the literal `python3 -I` form and both
-   reproduced byte-identical output (`fail_count 0`; the same five ids). Gate 3 was **not** re-run —
-   the block's own rule that Gate 3 is "the round's one test selection, run once" forbids a second
-   pytest invocation. The C2 rotation was **not** re-run either — it already mutated
-   `.agent/live_review.md` and `.agent/live_review_archive.md` exactly once; a second run would
-   operate on the already-rotated ledger and is not an idempotent re-check. Both single-run
-   instances are declared here rather than argued away.
+1. **Gates 1 and 3 run under `python3 -I`, not the plain `python3` the block's gate lines show.**
+   The session's own environment instructions ask that Python reading files under a prepared,
+   reviewer-authored scratch directory be run with `-I` to isolate the interpreter from the current
+   directory and the script's own directory. Gate 1 (`verify.py`) and gate 3's wrapper
+   (`run_selection.py`) both read only `prep/` files and the standard library (`pathlib`,
+   `subprocess`, `sys`, `os`); `run_selection.py` itself spawns `pytest` as a child process via
+   `subprocess.run`, which does not inherit the parent interpreter's `-I` flag, so the suite under
+   test ran exactly as the block's own command would have run it. Both gates' outputs are reported
+   above and match the required criteria exactly, so the flag made no difference to any result.
+   Gates 2, 4 and 5 were run exactly as the block's gate lines show, with no added flag.
 
 No other deviation. No file was written outside each commit's named path set; no mutation was run
-(none was ordered); no two test commands ran at once; `REMEDY_TEST_MAX_WORKERS` was never set and no
-`-n` was passed; `.agent/STOP` did not appear during the round; no merge, branch create/switch, or
-force-push was performed.
+(none was ordered); no two test commands ran at once; `REMEDY_TEST_MAX_WORKERS` was never set and
+no extra `-n` was passed; `.agent/STOP` did not appear during the round; no merge, branch
+create/switch beyond the one feature branch, or force-push was performed; no pull request was
+opened.
 
 ## For the operator, in plain sentences
 
-This clean-up feature repaired 26 of the 29 small problems that were written down when it began,
-and every one of those repairs came with a test that fails if the problem ever comes back. For
-example, a program reading the public web interface now sees a job whose check results or whose
-mission's acceptance list changed. The words page now says a mission is a repository's lasting
-record and an order is one batch of work inside it. A job that is paused by its spending alarm
-keeps the spending history it had from before, once it is allowed to continue. The spending alarm's
-own code was also moved out of the job runner's single largest piece of code and into a small
-module built just for it. The paid test run this project ran on its own recent work stopped, as it
-should, right at its approval gate, and that run found one more small fault along the way. The
-whole test collection passed in one single run, all at once, on the exact code that ships. The
-review package for this feature, named `remedy-review-20261012-012716-READY_FOR_REVIEW.zip`, is
-saved in the project's review archive folder. A pull request is open for this feature and it will
-be merged at the start of the next working session unless the operator merges it sooner. Five small
-problems stay written down: four of them are carried to the next clean-up feature that this closing
-round registers, and one is carried to the feature that will build the mission screen. Two
-questions are still waiting for the operator's answer in the operator's questions file; the session
-already carried out a reversible choice for each one, so either answer the operator gives later can
-simply be swapped in without redoing any work.
+The work on showing an order's jobs across several repositories in the cockpit has begun. This
+round taught the cockpit's server to answer, for a project, its missions, and for a mission, its
+newest orders, each order with the jobs it started in every repository it reached and the number
+of model calls and tokens its jobs used. Nothing a person sees in the cockpit changes yet. A first
+step in this round only moved existing code to a better place without changing what it does.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): absent throughout this round; the next session checks it first,
    before anything else, per protocol order.
-2. The Open PR Gate, which merges F297's pull request in the **next** session's start and never in
-   this one.
-3. The booking of round 14's verdict happens in the next feature's first commit.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` selects the next feature.
+2. The Open PR Gate.
+3. Confirm `origin`'s tip equals the tip this handoff names before delegating.
+4. The next round's first commit books round 1's verdict.
+5. T002, the cockpit's mission card.
 
-Operator questions open: 2.
-Open findings: 5 (R-1235, R-1246, R-1251 and R-1252, Low, owned by F306; R-1248, Medium, owned by
-F305).
+Operator questions open: 1.
+Open findings: 5 — R-1248, owned by F305, and R-1235, R-1246, R-1251 and R-1252, owned by F306.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | round 13 booked, four findings re-assigned to F306, Built State appended, block/status-line/PR-body saved; all byte proofs `True` |
-| C2 | done | rotation ran once, exit 0, output matched `prep/sim-rotation.txt` exactly; both ledger files byte-equal to their C2 Bundle files |
-| C3 | done | F306 registered thin, STATUS Tier 2 heading added, README counters synced, `TOTAL_FEATURES` raised; all byte proofs `True` |
-| C4 | done | this handback |
-| push | pending | scheduled immediately after this commit, per the block's `THEN` step; outcome in the final reply |
-| pull request | pending | scheduled immediately after the push, per the block's `THEN` step; no number exists while this file is written |
-| Gate 1 | passed | `status --porcelain` showed exactly the three C4 files; `gate1_bytes.py` `ALL True` across all fifteen round files |
-| Gate 2 | passed | STATUS line occurs exactly once; no `- [~]` line remains |
-| Gate 3 | passed | exit 0, `563 passed`, no FAILED/ERROR/SKIPPED |
-| Gate 4 | passed | exit 0, six checks `pass`, `fail_count 0`; reproduced under `python3 -I` |
-| Gate 5 | passed | exact id-list match; reproduced under `python3 -I` |
-| Gate 6 | passed | reported after the push and PR, below |
+| C1 | done | F305 claimed, ledger re-headed, F297 R14 booked, DECISIONS F305 D1 and D2 with the feature file's amendment; all byte proofs `True` |
+| C2 | done | structural step: `do_GET`'s boundary written, the summary route moved to `cockpit_project_routes.py`, the ratchet's rows and pins lowered |
+| C3 | done | T001's server view: `mission_cockpit.py`'s two views and their routes, with their unit tests |
+| C4 | done | the route door's own tests, the route walk's two new paths, the cockpit page's section |
+| C5 | done | this handback |
+| Structural step (DECISION F305 D2) | done | boundary and steps written on `docs/system/structure-ledger-v1.md`; `do_GET` and `ui_server.py` rows lowered in the same commit; proved by the unchanged tests staying green |
+| T001 | done | `mission_cockpit.py`, its two routes through `cockpit_project_routes.py`, their tests, the route walk's two new paths, the cockpit page's section |
+| Gate 1 | passed | every line `True`, `ALL True` |
+| Gate 2 | passed | `All checks passed!` |
+| Gate 3 | passed | exit 0, `3840 passed, 3 skipped`, no FAILED/ERROR, no `process(es) behind` line |
+| Gate 4 | passed | exit 0, six checks `pass`, `fail_count` 0 |
+| Gate 5 | passed | exact id-list match |
+| Gate 6 | passed | subjects of C1 to C4, newest first, as shown above |
