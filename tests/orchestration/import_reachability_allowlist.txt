@@ -275,6 +275,7 @@ packages.orchestration.review_subject
 packages.orchestration.reviewer
 packages.orchestration.roadmap_index
 packages.orchestration.role_config
+packages.orchestration.role_provider_factory
 packages.orchestration.run_contract
 packages.orchestration.run_log
 packages.orchestration.run_manifest

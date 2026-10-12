@@ -139,8 +139,10 @@ with the code that calls it.
   decoders last.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays.
-- `packages/orchestration/pingpong_loop.py`: the context pack and the prompt builders, the staging,
-  diff and target guard, and the export and token accounting, each to a module of its own.
+- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
+  pack and the prompt builders, the staging, diff and target guard, and the export and token
+  accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
+  provider, `packages/orchestration/role_provider_factory.py`.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
   its summaries, each to a module of its own; the dashboard builders stay.
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
@@ -371,7 +373,7 @@ with the code that calls it.
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
-| 5283 | `packages/orchestration/pingpong_loop.py` |
+| 5272 | `packages/orchestration/pingpong_loop.py` |
 | 4829 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
