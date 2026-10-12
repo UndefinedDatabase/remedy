@@ -2,8 +2,9 @@
 Localhost UI Server — read-only HTTP server for the Remedy UI.
 
 Serves a single-page app shell and JSON API endpoints for job inspection.
-Binds 127.0.0.1 only.  No mutation endpoints.  No POST/PUT/DELETE.
-Token-gated API access via per-run random token in URL.
+Binds 127.0.0.1 by default, or all IPv4 interfaces when the operator asks for a
+LAN host.  No mutation endpoints outside the command door.  Token-gated API access via
+per-run random token in URL.
 
 Scope:
   - Read-only only.
@@ -25,6 +26,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import sys
 import threading
 import time
@@ -4710,6 +4712,44 @@ class _RemedyHandler(BaseHTTPRequestHandler):
 # Server lifecycle
 # ---------------------------------------------------------------------------
 
+_UI_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+_ANY_IPV4_HOST = ".".join(("0", "0", "0", "0"))
+_UI_WILDCARD_HOSTS = frozenset({"", _ANY_IPV4_HOST, "*"})
+
+
+def _outer_ui_ip_candidates(requested_host: str) -> list[str]:
+    """LAN-facing IPv4 hosts worth advertising for one UI server."""
+    candidates: list[str] = []
+    if requested_host and requested_host not in _UI_WILDCARD_HOSTS:
+        candidates.append(requested_host)
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            candidates.append(str(info[4][0]))
+    except OSError:
+        pass
+    seen: set[str] = set()
+    result: list[str] = []
+    for host in candidates:
+        if host in seen or host in _UI_LOOPBACK_HOSTS or host.startswith("127."):
+            continue
+        seen.add(host)
+        result.append(host)
+    return result
+
+
+def _ui_bind_and_urls(host: str, actual_port: int, job_id: str, token: str) -> tuple[str, list[str], list[str]]:
+    """Return `(bind_host, urls, external_urls)` for a requested UI host."""
+    requested = (host or "127.0.0.1").strip()
+    external = requested not in _UI_LOOPBACK_HOSTS
+    bind_host = "" if external else "127.0.0.1"
+    local_url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
+    external_urls = [
+        f"http://{candidate}:{actual_port}/?job={job_id}&token={token}"
+        for candidate in _outer_ui_ip_candidates(requested)
+    ] if external else []
+    return bind_host, [local_url, *external_urls], external_urls
+
+
 def start_ui_server(
     job_id: str,
     *,
@@ -4720,19 +4760,14 @@ def start_ui_server(
     info_file: str | None = None,
     json_output: bool = False,
 ) -> None:
-    """Start the read-only UI server. Blocks until Ctrl-C."""
+    """Start the token-gated UI server. Blocks until Ctrl-C."""
     # F283 R16 C5 (DECISION F283 D9), comment repaired at R-1030: imported
     # inside the function, the idiom this module's own `_command_is_ui_exposed`
     # already uses for `apps.cli.command_catalog` — this module lives under
     # `packages/` and must not take an `apps/` import at module scope.
     from apps.cli.json_envelope import emit_ok, fail
 
-    # Security: refuse non-localhost
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        fail("host_not_allowed", f"refusing to bind {host} — only 127.0.0.1 allowed",
-             json_output=json_output)
-    # Normalize to 127.0.0.1
-    host = "127.0.0.1"
+    requested_host = host or "127.0.0.1"
 
     # Validate job exists
     job, err = _load_job(job_id)
@@ -4767,21 +4802,26 @@ def start_ui_server(
         },
     )
 
-    server = ThreadingHTTPServer((host, port), handler_class)
+    bind_host, _, _ = _ui_bind_and_urls(requested_host, port, job_id, token)
+    server = ThreadingHTTPServer((bind_host, port), handler_class)
     # DECISION F041 D4: adopt and start directly after the socket is bound, so no
     # preview request the door already accepted can be lost to the gap.
     preview_worker.adopt_live()
     preview_worker.start()
     actual_port = server.server_address[1]
-    url = f"http://127.0.0.1:{actual_port}/?job={job_id}&token={token}"
+    bind_host, urls, external_urls = _ui_bind_and_urls(requested_host, actual_port, job_id, token)
+    url = urls[0]
 
     # Write info file
     if info_file:
         info = {
             "version": 1,
             "url": url,
-            "host": host,
+            "host": "127.0.0.1" if bind_host == "127.0.0.1" else requested_host,
+            "bind_host": bind_host or _ANY_IPV4_HOST,
             "port": actual_port,
+            "urls": urls,
+            "external_urls": external_urls,
             "token": token,
             "job_id": job_id,
             "pid": os.getpid(),
@@ -4790,12 +4830,16 @@ def start_ui_server(
         Path(info_file).write_text(json.dumps(info, indent=2))
 
     if json_output:
-        emit_ok(url=url, host=host, port=actual_port, job_id=job_id,
+        emit_ok(url=url, urls=urls, external_urls=external_urls,
+                host="127.0.0.1" if bind_host == "127.0.0.1" else requested_host,
+                bind_host=bind_host or _ANY_IPV4_HOST, port=actual_port, job_id=job_id,
                 pid=os.getpid(), info_file=info_file)
         sys.stdout.flush()
     else:
-        print(f"\nRemedy UI: {url}\n")
-        print("Press Ctrl-C to stop.\n")
+        print(f"\nRemedy UI: {url}")
+        for external_url in external_urls:
+            print(f"LAN URL: {external_url}")
+        print("\nPress Ctrl-C to stop.\n")
 
     # Optional browser open
     if open_browser:

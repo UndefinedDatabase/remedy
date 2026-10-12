@@ -29290,3 +29290,6 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: the operator can check the cata
 ALTERNATIVES CONSIDERED: (a) the group `org` after a structural step, REJECTED because the step lowers the file's row in its own commit and the next commit could not add the group's three lines; (b) the row raised for the group, REJECTED because rule 5 of the structure rule admits a new row only, by a DECISION that says why the file cannot be cut, and this one can; (c) a three-word command, REJECTED by DECISION F206 D1.
 
 HOW TO REVERSE: delete this paragraph; the commands and their handler module go, and the `project` group may stay in its module, which changes no behaviour.
+
+## 2026-10-13: UI external host links stay HTTP on one cockpit server
+The requested outer-IP reachability is implemented by making `remedy ui start` ask for the LAN-capable bind by default, while keeping `--host 127.0.0.1` as the loopback-only mode. The server records the primary loopback URL and LAN HTTP URLs in the session info. HTTPS is not added here: that would require certificate generation/trust and a separate TLS decision surface, not just host binding. The existing per-session token and command CSRF checks remain the network boundary.
