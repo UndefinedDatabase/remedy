@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from packages.orchestration.model_failover import FailoverDisclosure
+
 
 def _add_exit_detail(block: dict[str, Any], out: Any) -> None:
     """Name a failed provider child's exit code and stderr tail in the run record (R-1016).
@@ -26,11 +28,18 @@ def _session_fields(out: Any) -> dict[str, Any]:
 
     Persisted so the relaunch of an interrupted task can find its parked session
     (:func:`parked_session_refs`), and so the record shows whether it did.
+    A call a failover walk served also carries the last key ``failover`` (DECISION
+    F058 D3): the session reported is the serving link's own, not the primary's, so
+    the record discloses which model it belongs to.
     """
     actuals = getattr(out, "usage_actuals", None) or {}
-    return {
+    fields = {
         "session_id": str(actuals.get("session_id") or ""),
         "resume_used": bool(getattr(out, "resume_used", False)),
         "resume_session_ref": str(getattr(out, "resume_session_ref", "") or ""),
         "resume_fallback": bool(getattr(out, "resume_fallback", False)),
     }
+    disclosure = getattr(out, "failover_disclosure", None)
+    if isinstance(disclosure, FailoverDisclosure):
+        fields["failover"] = disclosure.to_json()
+    return fields

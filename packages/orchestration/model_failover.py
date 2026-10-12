@@ -44,6 +44,7 @@ Public API::
     FailoverLinkAttempt: one link's attempt and what it answered
     FailoverDisclosure: what a failed-over call discloses, intended versus used
     FailoverProvider: wraps a role's provider and walks its chain on a trigger
+    failover_report_line(run_record) -> str | None: the run's one-line failover summary
 """
 
 from __future__ import annotations
@@ -527,3 +528,48 @@ class FailoverProvider:
         return self._run_with_failover(
             "review", prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
         )
+
+
+# WHY: the one line `remedy run show` prints for a run in which a call failed over, so silence
+# is never possible when a backup model served or a chain ran out (DECISION F058 D3).
+def failover_report_line(run_record: Mapping[str, Any]) -> str | None:
+    """Count a run record's served and ran-out failover calls and answer one report line.
+
+    `None` when no round's builder or reviewer entry carries a `failover` mapping. Otherwise
+    one plain sentence per nonzero count, served before ran-out, followed always by the last
+    sentence naming the record as the full detail.
+    """
+    served = 0
+    ran_out = 0
+    for round_data in run_record.get("rounds") or []:
+        for role in ("builder", "reviewer"):
+            entry = round_data.get(role)
+            if not isinstance(entry, Mapping):
+                continue
+            failover = entry.get("failover")
+            if not isinstance(failover, Mapping):
+                continue
+            if failover.get("used"):
+                served += 1
+            else:
+                ran_out += 1
+
+    if served == 0 and ran_out == 0:
+        return None
+
+    sentences: list[str] = []
+    if served == 1:
+        sentences.append(
+            "1 call was served by a backup model because its usual provider could not be reached."
+        )
+    elif served > 1:
+        sentences.append(
+            f"{served} calls were served by backup models because their usual provider could "
+            f"not be reached."
+        )
+    if ran_out == 1:
+        sentences.append("1 call found no backup model that could be reached.")
+    elif ran_out > 1:
+        sentences.append(f"{ran_out} calls found no backup model that could be reached.")
+    sentences.append("The run's record names every model tried.")
+    return "Failover: " + " ".join(sentences)
