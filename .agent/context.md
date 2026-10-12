@@ -2,7 +2,8 @@
 
 ## Active Branch
 feature/f058-model-failover-chain, from `main` at `4f294374a` (the merge commit of pull request
-330, F206).
+330, F206); `main` at `2b7c6b7df` (the merge commit of pull request 331) is merged into it by
+round 8.
 
 ## Scope
 F058 (Tier 3): per-role model failover chains, as `docs/roadmap/features/T3_F058.md` and its
