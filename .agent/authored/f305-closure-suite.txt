@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 437.5s (the launcher's reading); pytest's own reported wall time: 436.71s (0:07:16)
+summary line: 22641 passed, 22 skipped, 1 warning in 436.71s (0:07:16)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 2506d3f3a (F305 R3 C4: the closure's self-use item run to its approval gate, never applied)
+reflog before: 2506d3f3a HEAD@{2026-10-12 02:58:15 +0200}: commit: F305 R3 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 2506d3f3a HEAD@{2026-10-12 02:58:15 +0200}: commit: F305 R3 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F305 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1205.80 CPU seconds, 436.73 wall seconds, 22663 tests collected, exit status 0, recorded 2026-10-12T01:05:44Z
+This closure's suite used 1205.80 CPU seconds, 9.8 percent more than F297's 1097.85, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F297's closure run:
+  +20.14 s  tests/runtimes/test_supervisor_portability.py (32.27 -> 52.41)
+  +7.56 s  tests/ui_server/test_mission_chain_live.py (0.00 -> 7.56)
+  +4.61 s  tests/cli/test_do_sequence_cli.py (23.78 -> 28.39)
+  +4.42 s  tests/ui_server/test_multi_project_live.py (14.84 -> 19.26)
+  +3.14 s  tests/ui_server/test_public_api.py (8.66 -> 11.80)
+  +3.01 s  tests/orchestration/test_self_use_runner.py (4.62 -> 7.63)
+  +2.81 s  tests/runtimes/test_runtime_lifecycle_safety.py (1.87 -> 4.68)
+  +2.71 s  tests/runtimes/test_runtime_cli_process_boundary.py (7.77 -> 10.48)
+  +2.59 s  tests/runtimes/test_runtime_state_machine.py (3.13 -> 5.72)
+  +2.48 s  tests/orchestration/test_job_task_runner.py (13.27 -> 15.75)
