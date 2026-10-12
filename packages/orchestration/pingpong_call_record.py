@@ -28,9 +28,10 @@ def _session_fields(out: Any) -> dict[str, Any]:
 
     Persisted so the relaunch of an interrupted task can find its parked session
     (:func:`parked_session_refs`), and so the record shows whether it did.
-    A call a failover walk served also carries the last key ``failover`` (DECISION
-    F058 D3): the session reported is the serving link's own, not the primary's, so
-    the record discloses which model it belongs to.
+    Every call the failover walk reached carries the last key ``failover`` (DECISION
+    F058 D3), whether a backup served it or its chain ran out: a session a backup
+    reports is that backup's own, not the primary's, so the record discloses which
+    model it belongs to.
     """
     actuals = getattr(out, "usage_actuals", None) or {}
     fields = {
