@@ -164,7 +164,7 @@ def _cmd_ui_start(
     job_id_str: str,
     *,
     port: int = 8787,
-    host: str = "127.0.0.1",
+    host: str = "*",
     open_browser: bool = False,
     info_file: str | None = None,
     json_output: bool = False,
@@ -322,7 +322,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "ui.start": lambda args: _cmd_ui_start(
         args.job_id,
         port=int(getattr(args, "port", None) or 8787),
-        host=getattr(args, "host", None) or "127.0.0.1",
+        host=getattr(args, "host", None) or "*",
         open_browser=not getattr(args, "no_open", False),
         info_file=getattr(args, "info_file", None) or None,
         json_output=getattr(args, "json", False),

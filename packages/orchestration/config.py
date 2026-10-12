@@ -190,7 +190,11 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     ConfigKeySpec(
         key="ui.host",
         env_var="REMEDY_UI_HOST",
-        description="UI server bind host",
+        description=(
+            "UI server bind host. Loopback values keep the cockpit on 127.0.0.1; "
+            "a LAN host or wildcard binds on all IPv4 interfaces and records both "
+            "the loopback URL and LAN URLs, still protected by the per-session token."
+        ),
         value_type=str,
         default="127.0.0.1",
     ),
