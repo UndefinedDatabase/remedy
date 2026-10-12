@@ -180,6 +180,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     "tests/orchestration/test_mission_dossier.py": (K5_MILESTONE, frozenset({
         "test_a_compression_cannot_promote_a_milestone_to_done",
     })),
+    "tests/orchestration/test_model_failover.py": (K1, frozenset({
+        "promotion_evidence",
+    })),
     "tests/orchestration/test_model_routing.py": (K1, frozenset({
         "_parse_promotion_bars", "_promoted_table", "_promotion_evidence", "_promotion_rule_bullets",
         "check_promotion_backed_by_evidence", "first_promotion", "golden_promoted_call",

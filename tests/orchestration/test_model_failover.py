@@ -402,6 +402,43 @@ tier = "cheap"
             f"{', '.join(sorted(KNOWN_ROLES))}; no role fails over"
         )
 
+    def test_a_project_tiers_override_routing_standard_review_to_top_admits_a_top_link(
+        self, monkeypatch, tmp_path
+    ):
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "opus"
+tier = "top"
+
+[remedy.model_routing.task_class_tiers]
+standard_review = "top"
+''')
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = resolve_failover_chains()
+        assert result == {"builder": (FailoverLink("claude-cli", "opus", "top"),)}
+        assert caught == []
+
+    def test_the_same_chain_without_the_override_is_refused_as_reviewer_weaker_than_worker(
+        self, monkeypatch, tmp_path
+    ):
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "opus"
+tier = "top"
+''')
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = resolve_failover_chains()
+        assert result == {}
+        assert len(caught) == 1
+        assert str(caught[0].message) == (
+            "model_failover.chains: refused — builder link 1 (claude-cli opus, tier top): "
+            "reviewer_weaker_than_worker; no role fails over"
+        )
+
 
 class TestRegistry:
     def test_model_failover_chains_is_a_dict_key_with_entry_type_list(self):
