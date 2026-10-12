@@ -8,14 +8,15 @@ cites the edge, warns when a lockfile shows an edge the catalog lacks, and offer
 (docs/roadmap/features/T13_F206.md; DECISIONS F206 D1 to D4).
 
 ## Current Step
-Round 3 on `feature/f206-repo-dependency-catalog`, session 1: book round 2 and the resolution of
-R-1253, DECISIONS F206 D3 and D4; the structural step that moves the `project` group to
-`apps/cli/command_catalog_project.py`; T003, the lockfile plausibility check; and T004, the two
-commands with their handler, tests and the user page.
+Round 4 on `feature/f206-repo-dependency-catalog`, session 1, the closure's first round: book
+round 3 with R-1254, R-1255 and R-1256, repair all three, the checklist's consolidation pass,
+the closure's self-use item run to its approval gate, and the feature's one full suite with its
+CPU cost.
 
 ## Next Steps
-1. The closure sequence per docs/roadmap/STATUS_closure_protocol.md: the closure's one full
-   suite and the self-use item, then the evidence and the review package, then the STATUS line.
+1. The evidence bundle and the review package, after the reviewer books round 4.
+2. The closing round: the Built State, the rotation, the STATUS line with the README sync, and
+   the pull request.
 
 ## Risks
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306.
