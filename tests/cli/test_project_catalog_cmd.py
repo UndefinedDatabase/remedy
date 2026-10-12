@@ -208,3 +208,74 @@ def test_catalog_show_on_an_unknown_key_exits_1_with_no_cycle(tmp_path, monkeypa
     body = json.loads(capsys.readouterr().out)
     assert body["error"] == "repo_catalog_invalid"
     assert body["cycle"] is None
+
+
+# ---------------------------------------------------------------------------
+# F206 round 4 repair — R-1254 (3): the order printed is repo_catalog_order's,
+# never the catalog file's own order.
+# ---------------------------------------------------------------------------
+
+def test_catalog_show_text_order_follows_dependencies_not_file_order(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    catalog = tmp_path / "custom-catalog.toml"
+    catalog.write_text(
+        '[[repo]]\npid = "app"\ndepends_on = ["lib"]\n'
+        '[[repo]]\npid = "lib"\npublishes = ["pkg"]\n', encoding="utf-8")
+    out = main_and_capture(
+        monkeypatch, capsys, ["project", "catalog-show", "--catalog", str(catalog)])
+    assert "Order: lib -> app" in out.splitlines()
+
+
+# ---------------------------------------------------------------------------
+# F206 round 4 repair — R-1255: a catalog path that is a directory answers
+# repo_catalog_invalid, not the dispatch boundary's generic error.
+# ---------------------------------------------------------------------------
+
+def test_catalog_check_on_a_directory_path_exits_1_with_repo_catalog_invalid(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    directory = tmp_path / "a-directory"
+    directory.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["project", "catalog-check", "--catalog", str(directory), "--json"])
+    assert exc.value.code == 1
+    body = json.loads(capsys.readouterr().out)
+    assert body["error"] == "repo_catalog_invalid"
+    assert body["catalog"] == str(directory)
+
+
+def test_catalog_check_on_a_directory_path_text_exits_1_with_repo_catalog_invalid(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    directory = tmp_path / "a-directory"
+    directory.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["project", "catalog-check", "--catalog", str(directory)])
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "the repository catalog cannot be read" in err
+
+
+def test_catalog_show_on_a_directory_path_exits_1_with_repo_catalog_invalid(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    directory = tmp_path / "a-directory"
+    directory.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["project", "catalog-show", "--catalog", str(directory), "--json"])
+    assert exc.value.code == 1
+    body = json.loads(capsys.readouterr().out)
+    assert body["error"] == "repo_catalog_invalid"
+    assert body["catalog"] == str(directory)
+
+
+def test_catalog_show_on_a_directory_path_text_exits_1_with_repo_catalog_invalid(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    directory = tmp_path / "a-directory"
+    directory.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["project", "catalog-show", "--catalog", str(directory)])
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "the repository catalog cannot be read" in err

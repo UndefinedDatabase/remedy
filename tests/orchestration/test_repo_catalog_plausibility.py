@@ -269,3 +269,32 @@ def test_the_warnings_order_is_catalog_order_then_evidence_order(tmp_path):
 def test_check_returns_the_warning_and_skip_named_tuple_shapes():
     assert RepoCatalogWarning._fields == ("consumer", "library", "package", "proof", "sentence")
     assert RepoCatalogSkip._fields == ("pid", "reason")
+
+
+# ---------------------------------------------------------------------------
+# F206 round 4 repair — R-1254: three promises of DECISIONS F206 D3 and D4
+# with no test that fails without them.
+# ---------------------------------------------------------------------------
+
+def test_an_entrys_root_starting_with_tilde_is_expanded_against_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    roots = _mkdirs(tmp_path, "app", "lib")
+    (roots["app"] / "package-lock.json").write_text(_package_lock_v2("pkg"), encoding="utf-8")
+    catalog = parse_repo_catalog(
+        '[[repo]]\npid = "app"\nroot = "~/app"\n'
+        '[[repo]]\npid = "lib"\npublishes = ["pkg"]\n', "<tilde>")
+    result = check_repo_catalog_plausibility(catalog, {"lib": roots["lib"]})
+    assert result.skipped == ()
+    assert len(result.warnings) == 1
+    assert result.warnings[0].consumer == "app"
+    assert result.warnings[0].library == "lib"
+
+
+def test_a_lockfiles_two_packages_warn_in_sorted_order(tmp_path):
+    roots = _mkdirs(tmp_path, "app", "lib")
+    (roots["app"] / "uv.lock").write_text(_toml_packages("pkg-b", "pkg-a"), encoding="utf-8")
+    catalog = parse_repo_catalog(
+        '[[repo]]\npid = "app"\n'
+        '[[repo]]\npid = "lib"\npublishes = ["pkg-a", "pkg-b"]\n', "<two-names>")
+    result = check_repo_catalog_plausibility(catalog, roots)
+    assert [w.package for w in result.warnings] == ["pkg-a", "pkg-b"]

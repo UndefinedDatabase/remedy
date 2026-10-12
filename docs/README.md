@@ -159,7 +159,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | The cockpit's missions panel: a project's missions, their orders with calls and tokens, and the chips that open a job in another repository |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
-| [repo-catalog-user-guide-v1.md](guides/repo-catalog-user-guide-v1.md) | The hand-written repository dependency catalog: its format, the order it gives several projects, the two `remedy project catalog-*` commands, a cycle's refusal, and the lockfile plausibility warnings |
+| [repo-catalog-user-guide-v1.md](guides/repo-catalog-user-guide-v1.md) | The hand-written repository dependency catalog: its format, the order it gives several projects, the two commands `remedy project catalog-check` and `remedy project catalog-show`, a cycle's refusal, and the lockfile plausibility warnings |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
 | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat` or the cockpit input, and reading what it understood |

@@ -33,6 +33,9 @@ def _load_or_fail(path, *, json_output: bool):
         cycle = list(exc.cycle) if isinstance(exc, RepoCatalogCycleError) else None
         fail("repo_catalog_invalid", str(exc), json_output=json_output,
              exit_code=1, catalog=str(path), cycle=cycle)
+    except OSError as exc:
+        fail("repo_catalog_invalid", f"{path}: the repository catalog cannot be read: {exc}",
+             json_output=json_output, exit_code=1, catalog=str(path), cycle=None)
 
 
 def _cmd_catalog_check(*, catalog_arg: str | None = None, json_output: bool = False) -> None:
