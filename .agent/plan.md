@@ -4,28 +4,24 @@
 Each role may carry a failover chain in `remedy.toml`; when its provider is unavailable after the
 transport retries, the call walks the chain, every link held to the hard rules, and every
 failed-over call discloses the intended and the used model in its evidence and in the run report
-(docs/roadmap/features/T3_F058.md; DECISION F058 D1).
+(docs/roadmap/features/T3_F058.md; DECISIONs F058 D1 and D2).
 
 ## Current Step
-Round 1 on `feature/f058-model-failover-chain`, session 1: C1-C4 committed and pushed — claim
-F058, book F206's round 6, the structural step that moves the model routing keys out of
-`packages/orchestration/config.py`, and T001 (the chains' key, parse and hard-rule validation in
-`packages/orchestration/model_failover.py`, with its tests). BLOCKED before this round's gates 1-6
-could run: `.agent/STOP` (author `remedy-weekly-cap`) appeared mid-round. Per
-docs/agents/self_drive_protocol.md G6/amend0930b-slow-cap rule 6, the commit in hand (C4) was
-finished and this handback written; gates 1-6 did NOT run this round.
+Round 2 on `feature/f058-model-failover-chain`, session 2: book round 1's verdict (FAIL, R-1257
+and R-1258 owned by F058), repair both, move the construction of a role's provider out of
+`packages/orchestration/pingpong_loop.py` into `packages/orchestration/role_provider_factory.py`
+(structural), and land the first part of T002: the failover walk in
+`packages/orchestration/model_failover.py`, wired where a run builds its providers, with tests.
 
 ## Next Steps
-1. The next session (after the weekly reset, 2026-10-14 01:00) checks `.agent/STOP` first (Phase 1
-   rule 1), then runs this round's gates 1-6 against `39cfdb002` before anything else; a red gate
-   is fixed with a new commit on this branch, per the block's own constraint.
-2. T002: the failover walk where a run builds its providers, its disclosure in each call's
-   evidence and the run report's line, with the down-primary and exhausted-chain fixtures.
-3. T003: the trigger discipline, the sticky cooldown on an injected clock, and the session guard.
-4. The closure sequence.
+1. The rest of T002: each failed-over call's disclosure in the run's provider evidence, the run
+   report's line, and the fixtures for a primary that is down and a chain that is exhausted.
+2. T003: the trigger discipline as negative tests through a run, the sticky cooldown on an
+   injected clock, and the session guard.
+3. The closure sequence.
 
 ## Risks
-- `packages/orchestration/pingpong_loop.py` and its `run_pingpong` are rows of
-  `docs/system/structure-ledger-v1.md` that may not grow; T002 needs a door out of them first.
+- `packages/orchestration/pingpong_loop.py`, `run_pingpong` and `_build_provider_evidence` are
+  rows of `docs/system/structure-ledger-v1.md` that may not grow; the disclosure needs a door out
+  of them first.
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306.
-- Gates 1-6 of this round are UNVERIFIED as of this handback (see Current Step).

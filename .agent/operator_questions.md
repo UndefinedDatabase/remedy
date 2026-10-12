@@ -7,3 +7,4 @@
 > Soft cap five; entries leave only by the operator's answer, recorded as a dated
 > DECISION by the operator's next amendment, which deletes the entry.
 
+EMPTY — nothing is waiting on the operator.
