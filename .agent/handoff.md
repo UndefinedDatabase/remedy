@@ -1,179 +1,157 @@
-# Handback — F305 round 5: the closing round — book round 4, the Built State, the rotation, the STATUS flip with the README sync, and the pull request
+# Handback — F206 round 1: claim F206, book F305 R5, and T001 — the catalog's format, validation and order
 
 ## Session
 
-SESSION 1 of feature F305 · round 5 · rounds so far 5
+SESSION 1 of feature F206 · round 1 · rounds so far 1
 
-Context self-assessment: the session verified the block's own line count and sha256 and all
-fifteen Bundle-listed prepared files' digests before any write, byte-copied and re-hashed every C1
-and C3 target against its prepared source, confirmed the exact path set and numstat before each
-commit, ran the rotation and every gate exactly once with real output captured, and closed every
-gate green on the first pass; context remains comfortable at handback.
+Context self-assessment: the session verified the block's own line count and sha256 and all nine
+Bundle-listed prepared files' digests before any write, byte-copied and re-hashed every C1 target
+against its prepared source, wrote C2 and C3 from the block's specification against the
+neighbouring modules' own patterns, ran every gate from the primary checkout with real output
+captured, fixed one red gate with a declared extra commit and re-ran it once, green; context
+remains comfortable at handback.
 
-Fortschritt: 100 % (F305 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~20 % (T001 landed · T002 to T004 and the closure open) — Schätzung
 
 ## Range
 
-Review of `915925988`..HEAD.
+Review of `74100f3cc`..HEAD.
 
 ## Commits
 
-### e2c182719 F305 R5 C1: book round 4, the Built State, save the round 5 block, the STATUS line and the PR body
+### 185e5fc4c F206 R1 C1: claim F206, book F305 R5, re-head the ledger, DECISION F206 D1 with the feature file's amendment
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f305-r5.md` | +120/-0 | NEW FILE, byte copy of `block.md` (120 lines, sha256 `f5790a6bd3ed6d8cf1cea1a61df45a677ae966d03d8af4fc028cab43c803e4cb`, matching both values the session was given) |
-| `.agent/authored/f305-r5-status_line.txt` | +1/-0 | NEW FILE, byte copy of `prep/src-status_line.txt` |
-| `.agent/authored/f305-r5-pr_body.md` | +53/-0 | NEW FILE, byte copy of `prep/src-pr_body.md` |
-| `.agent/live_review.md` | +2/-0 | base plus `prep/append-live_review.txt`: the `Gate: F305 R4` entry appended |
-| `.agent/plan.md` | +9/-9 | rewritten in full for F305 round 5, byte copy of `prep/src-plan.md` |
-| `docs/roadmap/features/T13_F305.md` | +29/-0 | Built State section appended, byte copy of `prep/sim-T13_F305.md` |
+| `.agent/authored/f206-r1.md` | +165/-0 | NEW FILE, byte copy of `block.md` (165 lines, sha256 `cafa89fe528bb36ccb6d3f8d1edd458561732e7b7880dace58ca1d71e0a08463`, matching both values the session was given) |
+| `.agent/context.md` | +12/-12 | rewritten in full for F206 round 1, byte copy of `dry-context.md` |
+| `.agent/decisions.md` | +12/-0 | DECISION F206 D1 appended, byte copy of `dry-decisions.md` |
+| `.agent/live_review.md` | +24/-23 | re-headed at the F206 claim, booking F305's round 5 gate entry, byte copy of `dry-live_review.md` |
+| `.agent/plan.md` | +18/-13 | rewritten in full for F206 round 1, byte copy of `dry-plan.md` |
+| `docs/roadmap/STATUS.md` | +1/-1 | F206's line flipped `[ ]` → `[~]`, byte copy of `dry-STATUS.md` |
+| `docs/roadmap/features/T13_F206.md` | +24/-0 | the amendment section (DECISION F206 D1) appended, byte copy of `dry-T13_F206.md` |
 
-### adbe1407b F305 R5 C2: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-32 | `scripts/rotate_live_review.py` run once from the primary checkout; moved 14 gate records and 1 finding pair (2 records) into the archive |
-| `.agent/live_review_archive.md` | +33/-0 | same rotation run; receives the moved records |
-
-### this commit F305 R5 C3: accept F305 in STATUS with its README sync and the self-use queue
+### 64e5abe9c F206 R1 C2: the repository catalog's format, validation and order (T001)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | F305's line flipped `[~]` → `[x]` with its closure annotation, byte copy of `prep/sim-STATUS.md` |
-| `README.md` | +10/-3 | accepted count 138→139, Tier 13 accepted row 1→2, F305 added to the Tier 13 accepted list, byte copy of `prep/sim-README.md` |
-| `scripts/self_use_queue.json` | +1/-1 | self-use entry `SU-057`'s `consumed_by` set to `F305`, byte copy of `prep/sim-self_use_queue.json` |
+| `packages/orchestration/data_paths.py` | +2/-0 | the `org` `DataRootClass` appended to `DURABLE_CLASSES`, after `api`; nothing else in the file changed |
+| `packages/orchestration/repo_catalog.py` | +337/-0 | NEW FILE: the catalog's TOML format, its validation refusals, `find_repo_catalog_cycle`, `repo_catalog_order` and `describe_repo_catalog_edge`, written from the block's specification against `packages/runtimes/runtime_config.py`'s `tomllib`/`tomli` fallback and `data_paths.py`'s style |
+
+### 53d263801 F206 R1 C3: the repository catalog's tests (T001)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_repo_catalog.py` | +341/-0 | NEW FILE: the diamond order and its four edges, an unrelated pair, a transitive edge through an ungiven pid, an ungiven pid's place kept, a doubled given pid, the two-, three- and self-dependency cycles, every `parse_repo_catalog` refusal, the full round trip, `load_repo_catalog`, and `repo_catalog_path` under `REMEDY_DATA_DIR` with `classify_data_child("org")` |
+
+### 740c9a6c4 F206 R1 C3 fix: list repo_catalog.py in ALLOWED_UNWIRED until T002 wires it
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/test_no_orphan_modules.py` | +2/-0 | gate 3's first run reds `test_no_module_is_an_orphan`: `repo_catalog.py` (C2) has no production importer yet, since T002's planner coupling lands next round; one `ALLOWED_UNWIRED` entry added, alphabetically between `hunk_apply.py` and `self_use_findings.py` |
+
+### this commit F206 R1 C4: handback
+
+| Path | +/- | Reason |
+|---|---|---|
 | `.agent/handoff.md` | this commit | this file (self-reference rule, `docs/agents/handback_template.md`) |
 
 ## External actions
 
-`git -C /home/decodeux/Repos/remedy push origin feature/f305-multi-repo-chain-band` after this
-commit, then
-`gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f305-multi-repo-chain-band --title "F305 — Multi-repo missions: the cockpit's chain band" --body-file .agent/authored/f305-r5-pr_body.md`
-— both outcomes reported in the final reply only, not here, because the handoff is written before
-either command runs and cannot name a pull request number that does not yet exist. No pull request
-merged this round (the block forbids it). No `git worktree add`/`remove` performed; the worker's
-own scratch directory `.remedy-wt/f305-r5-worker/` (gitignored) held the digest, copy, rotation and
-gate scripts.
+`git -C /home/decodeux/Repos/remedy push -u origin feature/f206-repo-dependency-catalog` after
+this commit — outcome reported in the final reply only, not here, because the handoff is written
+before the command runs. No pull request opened this round (the block forbids it). No `git
+worktree add`/`remove` performed; the worker's own scratch directory `.remedy-wt/f206-r1-worker/`
+(gitignored) held the copy and smoke-check scripts.
 
 ## Verification
 
-**Preconditions (before C1):** `git rev-parse HEAD` read `9159259880fb091082924c8b0953d9cf03afc683`,
-equal to `origin/feature/f305-multi-repo-chain-band`; `git status --porcelain` empty; `.agent/STOP`
-absent; `git branch --show-current` read `feature/f305-multi-repo-chain-band`.
+**Preconditions (before C1):** `git branch --show-current` read `main`; `git rev-parse HEAD` read
+`74100f3cc3fe0270c3d9a86deb535906f4bfc46b`; `git status --porcelain` empty; `gh pr list --state
+open --json number` read `[]`. Branch created:
+`git checkout -b feature/f206-repo-dependency-catalog`.
 
-**Block digest (before any write):** `wc -l block.md` read `120`, its sha256 read
-`f5790a6bd3ed6d8cf1cea1a61df45a677ae966d03d8af4fc028cab43c803e4cb` — both equal to the values the
-prompt delivered.
+**Block digest (before any write):** `wc -l block.md` read `165`, its sha256 read
+`cafa89fe528bb36ccb6d3f8d1edd458561732e7b7880dace58ca1d71e0a08463` — both equal to the values the
+prompt delivered, checked twice (once before reading the block, once after).
 
-**Bundle digests (before any write):** all fifteen digest-bearing prepared files
-(`src-status_line.txt`, `src-pr_body.md`, `sim-C1-live_review.md`, `src-plan.md`,
-`sim-T13_F305.md`, `sim-C2-live_review.md`, `sim-C2-live_review_archive.md`, `sim-rotation.txt`,
-`sim-STATUS.md`, `sim-README.md`, `sim-self_use_queue.json`, `append-live_review.txt`, `verify.py`,
-`run_selection.py`, `selection.txt`) were hashed and matched the block's stated digests exactly
-before use (a Python sha256 reader, all fifteen `OK`).
+**Bundle digests (before any write):** all nine digest-bearing prepared files (`dry-live_review.md`,
+`dry-decisions.md`, `dry-plan.md`, `dry-context.md`, `dry-STATUS.md`, `dry-T13_F206.md`,
+`run_selection.py`, `selection.txt`, plus `block.md` itself) were hashed with `sha256sum` and
+matched the block's and the prompt's stated digests exactly before use.
 
-**C1:** byte-copied `block.md`, `src-status_line.txt` and `src-pr_body.md` to their new-file
-destinations; byte-copied `src-plan.md` over `.agent/plan.md` in full; appended
-`append-live_review.txt`'s bytes to `.agent/live_review.md`; byte-copied `sim-T13_F305.md` over
-`docs/roadmap/features/T13_F305.md` in full. Every resulting file's sha256 matched the Bundle's
-stated digest exactly. `git status --porcelain` then `git diff --numstat` (working tree, before
-staging) read exactly the six C1 pairs and no other path:
+**C1:** a Python copy script (`.remedy-wt/f206-r1-worker/c1_copy.py`) byte-copied each `dry-*`
+file over its path and `block.md` to `.agent/authored/f206-r1.md`, re-hashing source and
+destination after each copy — all seven pairs printed `match=True`, the block copy's `wc_l=165`.
+`git status --porcelain` / `git diff --numstat` (working tree, before staging) read exactly the
+six C1 modified paths plus the one new file. `git add` of the seven paths, then `git diff --cached
+--numstat`:
 ```
-2	0	.agent/live_review.md
-9	9	.agent/plan.md
-29	0	docs/roadmap/features/T13_F305.md
-```
-plus the three new files, each untracked. `git add` of the six paths, then
-`git diff --cached --numstat` read:
-```
-53	0	.agent/authored/f305-r5-pr_body.md
-1	0	.agent/authored/f305-r5-status_line.txt
-120	0	.agent/authored/f305-r5.md
-2	0	.agent/live_review.md
-9	9	.agent/plan.md
-29	0	docs/roadmap/features/T13_F305.md
-```
-`git branch --show-current` read `feature/f305-multi-repo-chain-band` immediately before the
-commit. Commit `e2c182719`, `git show --numstat` matched the table above exactly.
-
-**C2:** before the run, `.agent/live_review.md` read 149287 bytes and
-`.agent/live_review_archive.md` read 6645394 bytes, matching the sim's stated "old" sizes exactly.
-`python3 scripts/rotate_live_review.py` ran once from the primary checkout (`cwd=/home/decodeux/Repos/remedy`),
-its exit code and whole stdout captured in the same launching script:
-```
-exit 0
-gate records moved: 14
-finding pairs moved: 1 (2 records)
-resolved-text records moved: 0
-old ledger size: 149287 bytes
-new ledger size: 124594 bytes
-old archive size: 6645394 bytes
-new archive size: 6670088 bytes
-open findings before: 4
-open findings after: 4
-gate headers matching neither known form (left in place): 1
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
-```
-Equal to `sim-rotation.txt` from its second line onward, apart from the last line naming the
-primary checkout's own paths instead of the simulation's. `.agent/live_review.md` and
-`.agent/live_review_archive.md` were then read byte-for-byte against their C2 Bundle files
-(`sim-C2-live_review.md`, `sim-C2-live_review_archive.md`): both equal, and both sha256 matched the
-Bundle's stated digests exactly. `git status --porcelain` showed exactly these two paths modified,
-no other path. `git diff --numstat` read:
-```
-0	32	.agent/live_review.md
-33	0	.agent/live_review_archive.md
-```
-Commit `adbe1407b`, `git show --numstat` matched exactly.
-
-**C3 file copy:** byte-copied `sim-STATUS.md` over `docs/roadmap/STATUS.md`, `sim-README.md` over
-`README.md` and `sim-self_use_queue.json` over `scripts/self_use_queue.json`. Every resulting
-file's sha256 matched the Bundle's stated digest exactly. `git status --porcelain` showed exactly
-these three paths modified, no other path. `git diff --numstat` read:
-```
-10	3	README.md
+165	0	.agent/authored/f206-r1.md
+12	12	.agent/context.md
+12	0	.agent/decisions.md
+24	23	.agent/live_review.md
+18	13	.agent/plan.md
 1	1	docs/roadmap/STATUS.md
-1	1	scripts/self_use_queue.json
+24	0	docs/roadmap/features/T13_F206.md
 ```
+Matching the Bundle's stated numstat for every path exactly. `git branch --show-current` read
+`feature/f206-repo-dependency-catalog` immediately before the commit. Commit `185e5fc4c`, `git
+show --numstat` matched the table above exactly.
 
-**Gate 1 (status + verify.py):** `git -C /home/decodeux/Repos/remedy status --porcelain` →
+**C2:** `packages/orchestration/data_paths.py` gained exactly the `org` `DataRootClass` line pair
+after `api`, verified by `git diff --cached` showing no other line touched.
+`packages/orchestration/repo_catalog.py` was written from the block's specification and smoke-
+tested directly (not via pytest) against the diamond fixture, the two-, three- and self-cycles,
+the transitive-edge and unknown-pid cases, and every refusal, before being committed; `python3 -m
+ruff check` on both files read `All checks passed!`. `git diff --cached --numstat` read:
 ```
- M README.md
- M docs/roadmap/STATUS.md
- M scripts/self_use_queue.json
+2	0	packages/orchestration/data_paths.py
+337	0	packages/orchestration/repo_catalog.py
 ```
-exactly the three C3 files, no other path. Then
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f305-r5/prep/verify.py /home/decodeux/Repos/remedy` →
-```
-equal at C1 .agent/authored/f305-r5.md True
-equal at C1 .agent/authored/f305-r5-status_line.txt True
-equal at C1 .agent/authored/f305-r5-pr_body.md True
-equal at C1 .agent/live_review.md True
-equal at C1 .agent/plan.md True
-equal at C1 docs/roadmap/features/T13_F305.md True
-C1 ledger is base plus slice True
-equal at C2 .agent/live_review.md True
-equal at C2 .agent/live_review_archive.md True
-equal in the working tree docs/roadmap/STATUS.md True
-equal in the working tree README.md True
-equal in the working tree scripts/self_use_queue.json True
-ALL True
-```
-Every line `True`, last line `ALL True`.
+Commit `64e5abe9c`, `git show --numstat` matched exactly.
 
-**Gate 2 (status line occurrence):** a Python reading of
-`.agent/authored/f305-r5-status_line.txt` without its trailing newline against
-`docs/roadmap/STATUS.md`: `occurrences: 1`; `tilde lines count: 0` (no line of that file starts
-`- [~]`).
-
-**Gate 3 (selection):**
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f305-r5/prep/run_selection.py /home/decodeux/Repos/remedy` →
+**C3:** `tests/orchestration/test_repo_catalog.py` written, `python3 -m py_compile` and `python3 -m
+ruff check` both clean before commit. `git diff --cached --numstat` read:
 ```
-563 passed in 28.60s
+341	0	tests/orchestration/test_repo_catalog.py
+```
+Commit `53d263801`, `git show --numstat` matched exactly.
+
+**Gate 1 (status):** `git -C /home/decodeux/Repos/remedy status --porcelain` → empty, exit 0.
+
+**Gate 2 (ruff):**
+`python3 -m ruff check packages/orchestration/repo_catalog.py packages/orchestration/data_paths.py tests/orchestration/test_repo_catalog.py`
+→ `All checks passed!`, exit 0.
+
+**Gate 3 (selection), first run — RED:**
+`python3 /home/decodeux/Repos/remedy/.remedy-wt/f206-r1/prep/run_selection.py /home/decodeux/Repos/remedy`
+→
+```
+FAILED tests/test_no_orphan_modules.py::test_no_module_is_an_orphan - Asserti...
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
+SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+1 failed, 3593 passed, 3 skipped in 23.39s
+exit 1
+```
+Cause: `packages/orchestration/repo_catalog.py` (C2) has no production importer, since T002's
+planner coupling is the next round's work, not this one's. Fixed by commit `740c9a6c4` (above),
+adding one `ALLOWED_UNWIRED` entry; per the block's constraints, this is declared here as a
+deviation and the gate was run once more.
+
+**Gate 3, second run — GREEN:** same command →
+```
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
+SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+3594 passed, 3 skipped in 22.94s
 exit 0
 ```
-Exit 0, no FAILED or ERROR line, `563 passed` matching the simulation's reading exactly.
+Exit 0, no FAILED or ERROR line, no line containing `process(es) behind`. The three SKIPPED lines
+are the same in both runs — none of them a UI-toolchain skip the reviewer's dry-tree reading named;
+they are pre-existing skips of this checkout (agent-tooling quarantine, opt-in install smoke, and a
+UI-source-not-found guard), unrelated to this round's change.
 
 **Gate 4 (integrity):** `python3 -m apps.cli.main integrity check --json` →
 ```json
@@ -185,77 +163,82 @@ Exit 0, all six checks `pass`, `fail_count` 0.
 `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
 → `['R-1235', 'R-1246', 'R-1251', 'R-1252']`, matching exactly.
 
-No mutation run, no test beyond gate 3's one selection run (this round forbids more). No
-`REMEDY_TEST_MAX_WORKERS` set, no extra `-n` passed. No `npm`/`npx` run. No pull request opened,
-edited or merged before this commit. No provider call made this round.
+**Gate 6 (commit log):** `git -C /home/decodeux/Repos/remedy log --format=%s 74100f3cc..HEAD` →
+```
+F206 R1 C3 fix: list repo_catalog.py in ALLOWED_UNWIRED until T002 wires it
+F206 R1 C3: the repository catalog's tests (T001)
+F206 R1 C2: the repository catalog's format, validation and order (T001)
+F206 R1 C1: claim F206, book F305 R5, re-head the ledger, DECISION F206 D1 with the feature file's amendment
+```
+The subjects of C1 to C3 (plus the declared fix commit), newest first.
+
+No mutation run (the block forbids it this round). No `REMEDY_TEST_MAX_WORKERS` set, no extra `-n`
+passed, no two test commands run at once. No `npm`/`npx` run. No pull request opened, edited or
+merged. No provider call made this round.
 
 ## Authored-text proofs
 
-1. `block.md` → `.agent/authored/f305-r5.md` (C1): byte-equal, confirmed by the copy script's own
-   printed sha256 and again by gate 1's `verify.py`.
-2. `prep/src-status_line.txt` → `.agent/authored/f305-r5-status_line.txt` (C1): byte-equal,
-   confirmed the same way.
-3. `prep/src-pr_body.md` → `.agent/authored/f305-r5-pr_body.md` (C1): byte-equal, confirmed the
-   same way; this is the exact file the pull request's `--body-file` will cite.
-4. The base `.agent/live_review.md` + `prep/append-live_review.txt` → `.agent/live_review.md` (C1):
-   built by direct append, confirmed byte-equal to `prep/sim-C1-live_review.md` before staging and
-   again by gate 1's `verify.py`.
-5. `prep/src-plan.md` → `.agent/plan.md` (C1): byte-equal, confirmed the same way.
-6. `prep/sim-T13_F305.md` → `docs/roadmap/features/T13_F305.md` (C1): byte-equal, confirmed the
-   same way; the first 65 lines unchanged, 29 lines of Built State appended.
-7. The rotation's own output (C2): byte-equal to `prep/sim-C2-live_review.md` and
-   `prep/sim-C2-live_review_archive.md`, confirmed by direct comparison and gate 1's `verify.py`.
-8. `prep/sim-STATUS.md` → `docs/roadmap/STATUS.md` (C3): byte-equal, confirmed by the copy
-   script's own printed sha256.
-9. `prep/sim-README.md` → `README.md` (C3): byte-equal, confirmed the same way.
-10. `prep/sim-self_use_queue.json` → `scripts/self_use_queue.json` (C3): byte-equal, confirmed the
-    same way.
+1. `block.md` → `.agent/authored/f206-r1.md` (C1): byte-equal, confirmed by the copy script's own
+   printed sha256 and again by its re-read `wc -l`.
+2. `dry-live_review.md` → `.agent/live_review.md` (C1): byte-equal, confirmed the same way.
+3. `dry-decisions.md` → `.agent/decisions.md` (C1): byte-equal, confirmed the same way.
+4. `dry-plan.md` → `.agent/plan.md` (C1): byte-equal, confirmed the same way.
+5. `dry-context.md` → `.agent/context.md` (C1): byte-equal, confirmed the same way.
+6. `dry-STATUS.md` → `docs/roadmap/STATUS.md` (C1): byte-equal, confirmed the same way.
+7. `dry-T13_F206.md` → `docs/roadmap/features/T13_F206.md` (C1): byte-equal, confirmed the same
+   way.
+
+`packages/orchestration/repo_catalog.py`, its `data_paths.py` edit and
+`tests/orchestration/test_repo_catalog.py` (C2, C3) are this session's own authored production
+code and tests, written from the block's specification rather than copied from a prepared file; no
+authored-text proof applies to them.
 
 ## Deviations & assumptions
 
-None. Every commit matched the block's ordered sequence (C1, C2, C3) with no extra commit, no
-dropped commit and no reordering. No file was written outside each commit's named path set. The
-rotation ran exactly once, from the primary checkout, with its exit code and whole output captured
-in the launching script rather than a shell redirection (the sandbox refused a shell `&&`/redirect
-chain for this step). `.agent/STOP` did not appear during the round; no merge, branch
-create/switch beyond the one feature branch, or force-push was performed; no pull request was
-opened or merged before this commit; no mutation was run; exactly one test command ran this round
-(gate 3's selection); `REMEDY_TEST_MAX_WORKERS` was never set and no extra `-n` was passed;
-`npm`/`npx` were never run.
+One declared deviation, matching the block's own constraints for a red gate 3: an extra commit,
+`740c9a6c4` ("F206 R1 C3 fix"), was made between C3 and gate 4, adding one `ALLOWED_UNWIRED` entry
+to `tests/test_no_orphan_modules.py` for `packages/orchestration/repo_catalog.py`, which gate 3's
+first run reds because the module has no production importer until T002 lands. Gate 3 was then run
+a second time, green. This is the one extra commit the block's constraints anticipate and permit;
+no other commit was added, dropped or reordered.
+
+One correction to the Bundle's own text: the Bundle (block.md line 19) names
+`packages/orchestration/runtime_config.py` for the `tomllib`/`tomli` fallback pattern; no such file
+exists. The pattern lives at `packages/runtimes/runtime_config.py` (also used verbatim, independent
+confirmation, by `packages/orchestration/project_tests.py`), and `repo_catalog.py`'s fallback was
+written from that file instead. This changed no commit's path set or numstat.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`): absent throughout this round; the next session checks it first.
-2. The Open PR Gate, which merges F305's pull request in the next session.
-3. The next feature's first commit books round 5's verdict.
-4. Rule A5, the next unchecked line in `docs/roadmap/STATUS.md`.
+2. The Open PR Gate: no pull request is open this round (none was opened, per the block).
+3. The next round's first commit books round 1's verdict.
+4. T002, the planner coupling.
 
 Operator questions open: 1.
-Open findings: 4 (R-1235, R-1246, R-1251 and R-1252, Low, owned by F306).
+Open findings: 4 — R-1235, R-1246, R-1251 and R-1252, owned by F306.
 
 ## For the operator, in plain sentences
 
-This feature is finished. It gives a person a Missions button in the cockpit's right panel that
-opens one card for each repository's mission; opening a card shows its newest orders, each with
-how many model calls and tokens its jobs used and one small chip per job in every repository the
-order reached, and clicking a chip opens that job in its own project's view. A test proves this
-works in a real browser. The whole test collection passed once on the exact code that ships. A
-review package was built and saved. A pull request is open and will be merged automatically at the
-start of the next working session unless the operator merges it sooner. Four small problems stay
-written down for the next clean-up feature to pick up. One question still waits for the operator's
-answer, and the session's reversible choice for it already stands in the meantime.
+Work has begun on a catalog, written by hand, that says which of the operator's repositories
+depends on which. This round taught Remedy to read it, refuse a broken one, and show the loop of a
+circular dependency, and to work out the order in which an order's repositories must be worked on.
+Nothing a person sees changes yet.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | round 4 booked (VERDICT PASS), the Built State appended, the round 5 block and the STATUS line and PR body saved, `.agent/plan.md` rewritten for round 5; all byte proofs `True` |
-| C2 | done | the ledger rotated once; both resulting files byte-equal to the Bundle's C2 files |
-| C3 | done | STATUS flipped `[x]`, README synced, self-use `SU-057` consumed_by set to `F305`, handback written in the same commit |
+| C1 | done | F206 claimed, F305 round 5 booked, the ledger re-headed, DECISION F206 D1 and the feature file's amendment landed; all seven numstat pairs matched |
+| C2 | done | `repo_catalog.py` written and the `org` data-root class added; ruff clean |
+| C3 | done | the test file written; ruff and `py_compile` clean |
+| C3 fix | deviated | one `ALLOWED_UNWIRED` entry added after gate 3's first run reded `test_no_module_is_an_orphan`; declared above |
+| C4 | done | this handback |
 | Push | done | reported in the final reply |
-| Pull request | done | reported in the final reply |
-| Gate 1 | passed | every line `True`, `ALL True` |
-| Gate 2 | passed | occurrence count 1, no `- [~]` line |
-| Gate 3 | passed | exit 0, `563 passed`, no FAILED/ERROR line |
+| Gate 1 | passed | `status --porcelain` empty |
+| Gate 2 | passed | `All checks passed!` |
+| Gate 3 | passed | second run: `3594 passed, 3 skipped`, exit 0 (first run red, fixed, re-run once) |
 | Gate 4 | passed | `fail_count` 0, six checks `pass` |
 | Gate 5 | passed | open findings list matched exactly |
+| Gate 6 | passed | subjects matched the commit sequence, newest first |
+| T001 | done | the catalog's format, validation and order, with the data root's `org` class and their tests |
