@@ -6,6 +6,7 @@
 apps.cli.client_interface
 apps.cli.command_catalog
 apps.cli.command_catalog_mission
+apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
 apps.cli.command_catalog_types
 apps.cli.commands
@@ -46,6 +47,7 @@ apps.cli.commands.mission_cmd
 apps.cli.commands.patch
 apps.cli.commands.project
 apps.cli.commands.real_test_execution_cmd
+apps.cli.commands.repo_catalog_cmd
 apps.cli.commands.roadmap_cmd
 apps.cli.commands.run_invocation
 apps.cli.commands.runtime_cmd
@@ -260,6 +262,8 @@ packages.orchestration.real_test_execution
 packages.orchestration.repair_attest
 packages.orchestration.repair_context
 packages.orchestration.repo_applicator
+packages.orchestration.repo_catalog
+packages.orchestration.repo_catalog_plausibility
 packages.orchestration.repo_ignore
 packages.orchestration.repo_mission
 packages.orchestration.repo_mission_reconcile

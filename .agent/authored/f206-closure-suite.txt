@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 386.4s (the launcher's reading); pytest's own reported wall time: 385.64s (0:06:25)
+summary line: 22726 passed, 22 skipped, 1 warning in 385.64s (0:06:25)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 6f664d777 (F206 R4 C4: the closure's self-use item run to its approval gate, never applied)
+reflog before: 6f664d777 HEAD@{2026-10-12 05:49:53 +0200}: commit: F206 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 6f664d777 HEAD@{2026-10-12 05:49:53 +0200}: commit: F206 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F206 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1231.76 CPU seconds, 385.65 wall seconds, 22748 tests collected, exit status 0, recorded 2026-10-12T03:56:33Z
+This closure's suite used 1231.76 CPU seconds, 2.2 percent more than F305's 1205.80, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F305's closure run:
+  +4.18 s  tests/orchestration/test_review_zip_hygiene.py (32.20 -> 36.38)
+  +3.63 s  tests/orchestration/test_public_api_gate_paths.py (13.60 -> 17.23)
+  +3.38 s  tests/orchestration/test_run_manifest_integrity.py (4.34 -> 7.72)
+  +3.19 s  tests/orchestration/test_job_worktree_integrity.py (7.46 -> 10.65)
+  +3.05 s  tests/orchestration/test_job_worktree_integration.py (6.62 -> 9.67)
+  +2.99 s  tests/orchestration/test_self_use_generator.py (3.73 -> 6.72)
+  +2.70 s  tests/cli/test_serve_client_parity.py (6.13 -> 8.83)
+  +2.43 s  tests/orchestration/test_review_single_publication.py (2.98 -> 5.41)
+  +2.36 s  tests/orchestration/test_job_apply_commit.py (15.80 -> 18.16)
+  +2.25 s  tests/cli/test_status_cmd.py (5.41 -> 7.66)

@@ -1,23 +1,23 @@
-# Context — F305 Multi-repo missions: the cockpit's chain band
+# Context — F206 Repo dependency catalog
 
 ## Active Branch
-feature/f305-multi-repo-chain-band, from `main` at `f6004fdf1` (the merge commit of pull request
-328, F297).
+feature/f206-repo-dependency-catalog, from `main` at `74100f3cc` (the merge commit of pull request
+329, F305).
 
 ## Scope
-F305 (Tier 13), split off F205: the cockpit's mission card and its chain band of repository chips,
-as `docs/roadmap/features/T13_F305.md` and its amendment by DECISION F305 D1 state, and R-1248,
-the card one per repository's mission with its orders loaded on demand and a per-order roll-up.
+F206 (Tier 13): the repository dependency catalog, as `docs/roadmap/features/T13_F206.md` and its
+amendment by DECISION F206 D1 state: the file, its validation, the order it gives an order over
+several projects with the edge cited, the lockfile plausibility check, and the two commands.
 
 ## Do not touch
-The mission record's shape and its writers; the client digest and the public API. A cost in US
-dollars is never shown to the operator (DECISION amend1007b D7). No global evidence store: a chip
-names another project's job by references and titles only, and its click opens that project's own
-cockpit.
+The job record's and the mission record's shapes, the client digest and the public API. The
+catalog is maintained by hand: no crawler derives it, and the plausibility check only warns. A
+cost in US dollars is never shown to the operator (DECISION amend1007b D7).
 
 ## Active assumptions
-- An order over several repositories is one batch in each repository's mission, the batches
-  sharing a correlation id (DECISION amend1011b D4); its chain is read across those batches.
+- A catalog `pid` names a registered project by its slug or its id, as an order file's `project`
+  line does.
+- Without a catalog an order's jobs keep the order its `project` lines give (DECISION F205 D1).
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 

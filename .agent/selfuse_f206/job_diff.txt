@@ -1,0 +1,35 @@
+$ git diff HEAD...remedy/job-6cf4d930076349bd  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 583968cb9..7f1ae952a 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -3,6 +3,7 @@
+ from __future__ import annotations
+ 
+ import re
++import sqlite3
+ import sys
+ import time
+ from collections.abc import Callable
+@@ -2149,7 +2150,7 @@ def _cmd_job_budget(
+                         unpriced_call_count=_unpriced,
+                     )
+                     evaluation = evaluate_budget(_budgets, counters)
+-        except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display
++        except (OSError, sqlite3.DatabaseError) as _cost_exc:
+             # Recorded BEFORE the log call, so a logging subsystem that is itself
+             # broken cannot cost the operator the diagnosis. The displayed cost is
+             # unchanged — still not-measured, never 0.0 (P6).
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

@@ -144,6 +144,8 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("api", "packages.orchestration.public_api",
                   "never; the public HTTP API's call ledger, one line per request, "
                   "and the client tokens the operator writes"),
+    DataRootClass("org", "packages.orchestration.repo_catalog",
+                  "never; the repository catalog the operator writes by hand (F206)"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {

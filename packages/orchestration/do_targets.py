@@ -86,7 +86,12 @@ def _init_several_projects(ctx: DoContext, selectors: tuple[str, ...]) -> tuple[
     """Select every project the order names, the first as the walk's own; fail on one that does not fit.
 
     Nothing is registered here: each project is selected as `--project` selects one, and
-    each one's registered repository must be a git repository.
+    each one's registered repository must be a git repository. When the repository catalog
+    (F206) exists, `ctx.projects` takes its order instead of the order file's own and
+    `ctx.catalog_edges` carries one sentence per edge that moved it; `ctx.project` and
+    `ctx.repo_root` stay the project the order names first and its root regardless, and an
+    unreadable or invalid catalog fails this step instead of planning anything
+    (DECISION F206 D2).
     """
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
@@ -115,14 +120,36 @@ def _init_several_projects(ctx: DoContext, selectors: tuple[str, ...]) -> tuple[
                 f"is not a git repository; nothing was planned")
         projects.append(project)
         roots.append(str(root))
-    ctx.projects, ctx.project, ctx.repo_root = projects, projects[0], roots[0]
+
+    from packages.orchestration.repo_catalog import (
+        RepoCatalogError,
+        load_repo_catalog,
+        repo_catalog_project_order,
+    )
+    try:
+        catalog = load_repo_catalog()
+    except (RepoCatalogError, OSError) as exc:
+        return DO_STEP_FAILED, f"the repository catalog cannot be used: {exc}; nothing was planned"
+
+    first_project, first_root = projects[0], roots[0]
+    catalog_edges: tuple[str, ...] = ()
+    if catalog is not None:
+        root_by_id = {str(project.id): root for project, root in zip(projects, roots)}
+        projects, catalog_edges = repo_catalog_project_order(catalog, projects)
+        roots = [root_by_id[str(project.id)] for project in projects]
+
+    ctx.projects, ctx.project, ctx.repo_root = projects, first_project, first_root
     ctx.project_repos = {str(project.id): root for project, root in zip(projects, roots)}
+    ctx.catalog_edges = catalog_edges
     for root in roots:
         for entry in ignore_entries(Path(root)):
             ensure_ignore_entry(Path(root), entry)
     named = ", ".join(f"{project.slug} ({project.id}) in {root}"
                       for project, root in zip(projects, roots))
-    return DO_STEP_DONE, f"projects {named}, selected by the order, one job each"
+    detail = f"projects {named}, selected by the order, one job each"
+    if catalog_edges:
+        detail += f"; ordered by the repository catalog: {'; '.join(catalog_edges)}"
+    return DO_STEP_DONE, detail
 
 
 def mission_plan_outlines(plan: Any) -> list[Any]:
@@ -158,10 +185,14 @@ def resolve_do_shape(plan: Any, *, force_job: bool = False, force_mission: bool 
     return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
 
 
-def do_project_order(order: str, slug: str, slugs: list[str]) -> str:
-    """The order one job of an order over several projects is planned from (DECISION F205 D4)."""
-    return (f"{order}\n\nThis job does the part of this order that belongs to project {slug}; "
+def do_project_order(order: str, slug: str, slugs: list[str], edges: tuple[str, ...] = ()) -> str:
+    """The order one job of an order over several projects is planned from (DECISION F205 D4);
+    the repository catalog's edges, when any order them, are cited too (DECISION F206 D2)."""
+    text = (f"{order}\n\nThis job does the part of this order that belongs to project {slug}; "
             f"the order names these projects, one job each, in this order: {', '.join(slugs)}.")
+    if edges:
+        text += f" The repository catalog orders them: {'; '.join(edges)}."
+    return text
 
 
 def _shape_job_orders(
@@ -174,7 +205,9 @@ def _shape_job_orders(
     from the order itself serves the plan's milestone when the plan has
     exactly one, and no milestone when it has several. ``target`` is the
     walk's own project and repository, or, one job per repository, each
-    project the order names in its own (DECISION F205 D4).
+    project the order names in its own (DECISION F205 D4). One job per
+    repository passes `ctx.catalog_edges` to `do_project_order`, so each
+    job's order text cites them too (DECISION F206 D2).
     """
     from packages.orchestration.task_deliverables import (
         deliverable_check_task,
@@ -189,7 +222,7 @@ def _shape_job_orders(
     own = DoJobTarget(ctx.project, ctx.repo_root)
     if shape == DO_SHAPE_REPOSITORIES:
         slugs = [project.slug for project in ctx.projects]
-        return [(do_project_order(order, project.slug, slugs), None, sole,
+        return [(do_project_order(order, project.slug, slugs, ctx.catalog_edges), None, sole,
                  DoJobTarget(project, ctx.project_repos[str(project.id)]))
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:

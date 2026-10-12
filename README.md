@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-139 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+140 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -43,7 +43,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
 | 12 | Observability & Operations | 5 | 13 |
-| 13 | Multi-Repo & Organization | 2 | 9 |
+| 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
 | 16 | Cockpit v2 | 0 | 10 |
@@ -850,7 +850,13 @@ repository; opening a card shows its newest orders, each with how many model cal
 its jobs used and one small button per job in every repository the order reached, and a click
 on such a button opens that job in its own project's cockpit; a test drives this in a real
 browser, and the closure's run of Remedy on itself met the same small fault as the feature
-before it).
+before it),
+F206 repo dependency catalog (a catalog the operator writes by hand says which registered
+repository depends on which; an order that names several repositories now plans the job of a
+repository the others depend on first and says which dependency put it there, a circular
+dependency is refused with its loop shown, two new commands check the catalog and show the order
+it gives, and the check warns when a repository's lockfile shows it uses a package another
+repository publishes while the catalog says nothing about that dependency).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

@@ -1,0 +1,5 @@
+Entry ID: SU-058
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:2152
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as _cost_exc:  # noqa: BLE001 — a broken cost ledger read must not crash budget display)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f206-r4-selfuse/SU-058.md

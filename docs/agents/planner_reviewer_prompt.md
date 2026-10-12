@@ -598,6 +598,24 @@ end the response with:
   reads tracked files reported a page naming a new file the dry tree had not committed yet, which
   is item 12's reading of the environment a dry run must share with the gate it proves. The list
   stays at 34 items.
+  Consolidated again at F206's closure on 2026-10-12: nothing joined and no two items were merged,
+  because none of F206's lines in `.agent/prose_slips.md` names a lesson the list lacks. A Bundle
+  that pointed at a file under the wrong package is item 34's reading of a file the block orders a
+  change against, which is read at emission for what it holds and therefore where it is; a new
+  module ordered without `tests/test_no_orphan_modules.py`, which reds on a module nothing in
+  production imports, is item 34's reading of the tests that already guard a path; a block whose
+  specification asked for one edge per ordered pair while its test asked a diamond for four is item
+  35's reading of a description against the enumeration beside it; and a worker that ran one test
+  file before the round's one gate run is a slip in following a block, which no item about a
+  block's text can prevent. Its authoring defects that left something unguarded or wrong on disk
+  were registered as findings and repaired inside the feature, each the reading of an existing
+  item: R-1253 and R-1254, promises of a block or a decision that no ordered test could see broken,
+  are item 18's reading of an ordered recipe, here a list of tests, against the property it must
+  establish; R-1255, a command that answered a file it could not read with the generic error
+  where its decision promised its own, is item 34's reading of the code the order reaches, here the
+  read that `load_repo_catalog` makes; and R-1256, an index row that named the commands by a glob
+  the documentation staleness check reads as a command, is item 7's reading of the guards that
+  read a file the block adds a string to. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

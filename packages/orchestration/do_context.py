@@ -114,8 +114,13 @@ class DoContext:
     halt_reason: str = ""
     repo_root: str = ""
     project: RemyProject | None = None
-    #: Every project of an order over several, the first being `project`; empty otherwise.
+    #: Every project of an order over several, in the order their jobs run; `project` is the
+    #: one the order names first, which the repository catalog's reordering never moves
+    #: (DECISION F206 D2). Empty otherwise.
     projects: list[RemyProject] = field(default_factory=list)
+    #: One sentence per repository-catalog edge that ordered `projects`, in that order; empty
+    #: without a catalog or without an edge among them (DECISION F206 D2).
+    catalog_edges: tuple[str, ...] = ()
     #: Each of those projects' repository root, by project id (DECISION F205 D4).
     project_repos: dict[str, str] = field(default_factory=dict)
     mission_id: str = ""
@@ -144,7 +149,8 @@ class DoContext:
 
     @property
     def project_ids(self) -> list[str]:
-        """The ids of every project an order over several names, in its order; empty otherwise."""
+        """Every project's id, in the order its job runs; `project`'s id is the one the order
+        names first, not necessarily this list's own first (DECISION F206 D2). Empty otherwise."""
         return [str(project.id) for project in self.projects]
 
     @property
