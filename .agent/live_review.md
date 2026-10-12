@@ -1,29 +1,28 @@
-# Live Review — F305 Multi-repo missions: the cockpit's chain band
+# Live Review — F206 Repo dependency catalog
 
-> Round-by-round review record, re-headed at the F305 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F297, whose STATUS
-> line went `[x]` on its own branch at `18bc0f7ba`; the operator then recorded the answer to one
-> operator question on that branch as `844268b94`, which touches only `.agent/decisions.md` and
-> `.agent/operator_questions.md`, and this session's Open PR Gate merged pull request 328 into
-> `main` as `f6004fdf1`, whose second parent is `844268b94`. F297's round 14 was reviewed after its
-> own handback, so operator amendment amend0827-process-diet rule 1 books its verdict here, in the
-> first commit of the next round that is happening anyway; its gate entry is appended at the end of
-> this record by this claim. Only the heading, this paragraph and the Steps section below are
-> rewritten; everything else from the Findings heading to the end of the file as it stood at
-> `f6004fdf1` is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
-> series across the re-head. The open set at `f6004fdf1`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1248', 'R-1251', 'R-1252']`; F305
-> owns R-1248, and F306 owns the four others.
+> Round-by-round review record, re-headed at the F206 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F305, whose STATUS
+> line went `[x]` on its own branch at `9b1a8005c`; this session's Open PR Gate merged pull
+> request 329 into `main` as `74100f3cc`, whose tree equals the tree of `9b1a8005c`. F305's round 5
+> was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books
+> its verdict here, in the first commit of the next round that is happening anyway; its gate entry
+> is appended at the end of this record by this claim. Only the heading, this paragraph and the
+> Steps section below are rewritten; everything else from the Findings heading to the end of the
+> file as it stood at `74100f3cc` is carried forward BYTE-IDENTICAL, and finding ids continue the
+> monotonic R-XXXX series across the re-head. The open set at `74100f3cc`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, is
+> `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all four.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F305 D1's, which also writes the feature file's slice list. The first
-round claims F305, re-heads this record, books F297's round 14, takes the structural step that
-hands every route below a project to a module of its own, and lands T001: the server's view of a
-project's missions, each mission's orders and each order's chain, with its two routes. The next
-round lands T002, the cockpit's mission card with its chain band of chips and the per-order calls
-and tokens, which resolves R-1248; the round after it lands T003, the headless-browser proof over a
-fixture order of three jobs in two repositories. Then the closure.
+THE ORDER BELOW IS DECISION F206 D1's, which also writes the feature file's slice list. The first
+round claims F206, re-heads this record, books F305's round 5, and lands T001: the catalog's
+format, its validation with a cycle's path shown, and the order it gives an order's repositories,
+in `packages/orchestration/repo_catalog.py`, with the data root's new `org` class. The next round
+lands T002, the planner coupling: an order over several projects plans its jobs in the catalog's
+order and cites each edge. Then T003, the lockfile plausibility check; then T004, the commands
+`remedy org catalog-check` and `remedy org catalog-show` after a structural step in the command
+catalog, with the user page. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -168,3 +167,5 @@ Gate: F305 R3 — the F305 round 3 entry, T003 and the closure's first round, ov
 Recurrence: R-1252 — the same defect at F305's closure; NO NEW ID IS MINTED (checklist item 30). Self-use item `SU-057` (generator tier 4, from the `# noqa: BLE001` at `apps/cli/commands/job.py:2074`) ran as job `49cf7ccc9be64f1d` with `max_tasks` 1; its one task T001 was split during the run into T001a and T001b, T001a passed review and T001b waits, and `.agent/selfuse_f305/run_defects.txt`, committed at `2506d3f3a`, reads `run_manifest_write_failed: ManifestError: the job's task list ['T001', 'T001a', 'T001b'] no longer matches the episode-start snapshot's job-input definition ['T001']`, the F7 check R-1252 names. A second closure in a row loses its self-use run's manifest the same way, so the repair R-1252 asks for stays the next findings paydown's. Owner unchanged: F306.
 
 Gate: F305 R4 — the F305 round 4 entry, the closure's evidence round, over `abe4e45f3`..`915925988` (2 commits, each single-parent; insertions by `git show --numstat`: `5132e4873` 408, `915925988` 221). VERDICT PASS. Verified by dry run, bytes identical (amend0930-test-load rule 3): the tree of `5132e4873`, the closure's accepted head, equals the tree of the reviewer's replay of C1 from the prepared files, and the reviewer's own run of the evidence script there, without the UI toolchain, read the two ancestry counts equal at 17, 4465 node ids with 50 deselected, no unsafe id and pytest exit 0 at 4456 passed and 9 skipped. The staging reclaim found nothing to reclaim and refused one path that no job owns, so its apply was skipped. The evidence job `f305r4e1001` ran on `5132e4873` with the two ancestry counts equal at 17, collected 4465 node ids with 50 deselected and no unsafe id, and its pytest exited 0 at 4461 passed and 4 skipped, the UI-toolchain tests the dry tree skipped now passing; `validate_verification_tests` found no problem and the bundle validated as the current run. The review package `remedy-review-20261012-035421-READY_FOR_REVIEW.zip`, in `/home/decodeux/Repos/remedy-history/zips`, read `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; the reviewer re-hashed it at `485bba5edc512dce18320e9c52b8a01afc827c0b439d595b4f5adb6a60804e13`, found `testzip()` None, and read its committed review subject from base `f6004fdf1d75315ca49f748d169c7a60def3b94e` to head `5132e487355b06bca05fc27a1aabafec1b0835d9`. Six integrity checks `pass`, and the open set read R-1235, R-1246, R-1251 and R-1252. The worker declared one slip it corrected before the recorded run: a first reclaim preview started under `python3 -I`, which cannot find the package, exited 1 and touched nothing.
+
+Gate: F305 R5 — the F305 round 5 entry, the closing round, over `915925988`..`9b1a8005c` (3 commits, each single-parent; insertions by `git show --numstat`: `e2c182719` 214, `adbe1407b` 33, `9b1a8005c` 200). VERDICT PASS. The reviewer of F305's first session reached the verdict after the round's handback, so no committed file carries it: the three commits equal that reviewer's simulation, the worker's `verify.py` read `ALL True`, the rotation moved 14 gate records and one finding pair with the open set at four before and after, the selection read 563 passed with exit 0, and the integrity check read six checks `pass`. The worker declared one deviation that changes nothing: the rotation's output was captured by a Python launcher instead of a shell redirection. The reviewer of F206's first session re-measured the three commits' parents and insertions, read the merge commit `74100f3cc` of pull request 329 at a tree identical to `9b1a8005c`'s, and read the integrity check at six checks `pass` and the open set at `74100f3cc` as `['R-1235', 'R-1246', 'R-1251', 'R-1252']`.
