@@ -77,6 +77,7 @@ from packages.core.models import JobBudgets, RunState
 from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
 from packages.orchestration.contract_templates import list_contract_templates
 from packages.orchestration.mission_state import MISSION_STATUSES
+from packages.orchestration.self_health import HealthCheckResult, health_report_document
 from tests.cli.test_exit_codes import _module_info
 from tests.cli.test_machine_client_contract import (
     _GIT_IDENTITY,
@@ -92,7 +93,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.10"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.11"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -1323,6 +1324,12 @@ def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
             isinstance(built[key], list) and all(isinstance(word, str) for word in built[key])), key
 
 
+def test_the_health_answer_trees_name_exactly_what_their_code_builds():
+    checks = ANSWER_KEY_TREES["doctor.health"]["checks"]
+    assert set(checks) == set(HealthCheckResult("c", "PASS", "d", "h").as_json())
+    assert set(health_report_document(())) == set(OPERATION_ANSWER_KEYS["doctor.health"])
+
+
 def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
@@ -1375,6 +1382,11 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # client.run (DECISION F253 D20); its real run is tests/cli/test_client_run_cmd.py's.
     refused_run = answer("client.run", ["client", "run", "0123456789abcdef"], 3)
     assert refused_run["error"] == "run_not_found"
+    # Remedy's own health passes or fails on this machine's state, so the run accepts either exit
+    # code; its answer's keys are the same in both (DECISION F199 D3).
+    health_code, health_body = _remedy(["doctor", "health", "--json"], repo, env)
+    assert health_code in (0, 1), health_body
+    answers.setdefault("doctor.health", []).append(health_body)
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,

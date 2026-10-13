@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-141 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+142 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 5 | 13 |
+| 12 | Observability & Operations | 6 | 13 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -842,6 +842,16 @@ a token, a client's token carries the operator's policy for it, which names its 
 largest limits and whether it may apply, and every call is written down; the interface's page is
 `docs/system/public-http-api-v1.md`, and moving the shipped cockpit onto it is a later feature's
 work).
+
+F199 self-health and crash reports (`remedy doctor health` checks Remedy's own health — its
+settings, its cost ledgers, its workspace snapshots, its worktrees, the model services this machine
+can use, its leftover staging copies, its free disk and recent crash reports — and prints each check
+as PASS, WARN or FAIL with a hint that names a command or an edit; it never repairs anything itself,
+and it exits 1 when a check fails, so a CI step can stop on it; when a command or a thread of the
+background service crashes, Remedy writes a report on this machine under its data root, with the
+error and its version and with secrets removed, and never sends it anywhere; the background service
+answers the same checks on its local web interface, with status 503 when a check fails; the page
+`docs/system/self-health-v1.md` describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line

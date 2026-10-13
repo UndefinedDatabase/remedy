@@ -580,20 +580,33 @@ def _dispatch(
     `SystemExit` and `KeyboardInterrupt` pass through untouched: the first is
     how every handler in this CLI ends deliberately, and swallowing the second
     would make Ctrl-C look like a crash.
+
+    DECISION F199 D1: the catch-all also writes a redacted crash report under
+    the data root, which stays on this machine and is never sent.
     """
     try:
         handler(args)
     except (SystemExit, KeyboardInterrupt):
         raise
     except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all
+        from packages.orchestration.crash_report import write_crash_report
+        from packages.orchestration.self_health import home_relative_text
+
+        report = write_crash_report(exc, command=command_id)
         message = f"{type(exc).__name__}: {exc}"
         if _wants_json(raw):
             emit_error(
                 "unhandled_command_error", message, command=command_id,
+                crash_report=str(report) if report is not None else None,
             )
         else:
             where = f"remedy {args._group} {args._subcmd}"
             print(render_error(where, message), file=sys.stderr)
+            if report is not None:
+                print(
+                    f"A crash report was written to {home_relative_text(str(report))}; "
+                    "it stays on this machine and is never sent.",
+                    file=sys.stderr)
         sys.exit(1)
 
 

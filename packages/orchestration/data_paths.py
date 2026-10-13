@@ -146,6 +146,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
                   "and the client tokens the operator writes"),
     DataRootClass("org", "packages.orchestration.repo_catalog",
                   "never; the repository catalog the operator writes by hand (F206)"),
+    DataRootClass("crash", "packages.orchestration.crash_report",
+                  "never here; local crash reports `remedy doctor health` counts, "
+                  "which nothing ever sends (F199)"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {

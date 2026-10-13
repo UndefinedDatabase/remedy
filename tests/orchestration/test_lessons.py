@@ -487,6 +487,14 @@ def test_a_changed_line_of_the_catalogs_project_module_names_its_command():
     assert [c["command_id"] for c in lessons.lesson_commands(diff)] == ["project.register"]
 
 
+def test_a_changed_line_of_the_catalogs_doctor_module_names_its_command():
+    """DECISION F199 D1: the doctor group's entries live in a module of their own, and a
+    changed line there names its command as a changed line of the catalog does."""
+    diff = ("--- a/apps/cli/command_catalog_doctor.py\n+++ b/apps/cli/command_catalog_doctor.py\n"
+            '@@ -1 +1 @@\n-        command_id="doctor.core",\n+        command_id="doctor.core",\n')
+    assert [c["command_id"] for c in lessons.lesson_commands(diff)] == ["doctor.core"]
+
+
 def test_a_diff_that_touches_no_command_names_none():
     assert lessons.lesson_commands(DIFF) == []
     assert lessons.lesson_commands("") == []

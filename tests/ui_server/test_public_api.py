@@ -25,10 +25,19 @@ from uuid import uuid4
 
 import pytest
 
-from packages.orchestration import public_api
+from apps.cli.json_envelope import build_ok
+from packages.orchestration import public_api, self_health
 from packages.orchestration import serve_runs as SR
+from packages.orchestration.data_paths import projects_dir
+from packages.orchestration.self_health import (
+    HEALTH_PASS,
+    HealthCheckResult,
+    health_report_document,
+    run_health_checks,
+)
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
 from packages.orchestration.serve_paths import serve_paths
+from packages.orchestration.token_ledger import LEDGER_FILENAME
 from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +51,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
+    ("GET", "/api/v1/health"): "test_the_health_route_answers_the_doctor_health_command",
     ("POST", "/api/v1/jobs/{job}/decisions/{decision}"):
         "test_the_decision_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/decline"):
@@ -358,7 +368,8 @@ def test_every_route_is_well_formed():
             assert is_named or segment_re.match(segment), segment
         for token, status in route.refusals:
             assert token in OPERATION_REFUSAL_TOKENS[route.twin], (route.twin, token)
-            assert status in (400, 404, 409), (route.twin, token, status)
+            # 503 is the health route's one status: a failing check answers it (DECISION F199 D3).
+            assert status in (400, 404, 409, 503), (route.twin, token, status)
         option_flags = {arg.name for arg in entry.args if arg.is_option}
         value_options = {arg.name for arg in entry.args if arg.is_option and not arg.is_flag}
         for key in route.query:
@@ -625,6 +636,52 @@ def test_changes_route_answers_the_client_changes_command(tcp_server, tmp_path):
     assert body["error"] == "api_query_invalid"
 
 
+def _fixed_health_check(check: str):
+    def _check(*_args, **_kwargs) -> HealthCheckResult:
+        return HealthCheckResult(check, HEALTH_PASS, "fine", "")
+
+    return _check
+
+
+def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_server, monkeypatch):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
+    assert (route.method, route.twin, route.refusals) == (
+        "GET", "doctor.health", (("health_failed", 503),))
+    assert public_api.PUBLIC_API_VERSION == "1.12"
+
+    for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
+                        ("check_disk_floor", "disk"), ("check_providers", "providers")):
+        monkeypatch.setattr(self_health, name, _fixed_health_check(check))
+
+    def ask(path: str = "/api/v1/health", headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    expected = build_ok(**health_report_document(run_health_checks()))
+    for status, body, _headers in ask(headers=_bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["ok"] is True
+        assert body["verdict"] == "PASS"
+        assert [c["check"] for c in body["checks"]] == [
+            c["check"] for c in expected["checks"]]
+        assert len(body["checks"]) == 8
+        assert body == expected
+
+    ledger = projects_dir() / "alpha" / LEDGER_FILENAME
+    ledger.parent.mkdir(parents=True)
+    ledger.write_bytes(b"this is not a database " * 20)
+    for status, body, _headers in ask(headers=_bearer(SERVER_TOKEN)):
+        assert status == 503, body
+        assert body["ok"] is False
+        assert body["error"] == "health_failed"
+        assert body["message"] == "1 of 8 health checks failed"
+        ledgers = next(c for c in body["checks"] if c["check"] == "ledgers")
+        assert ledgers["level"] == "FAIL"
+
+    for status, body, _headers in ask():
+        assert status == 401, body
+
+
 # -- I: query refusals ----------------------------------------------------------
 
 
@@ -807,7 +864,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.11"
+    assert public_api.PUBLIC_API_VERSION == "1.12"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1103,7 +1160,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.11"
+    assert public_api.PUBLIC_API_VERSION == "1.12"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -2182,7 +2239,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.11"
+    assert public_api.PUBLIC_API_VERSION == "1.12"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):

@@ -30,10 +30,15 @@ def _cmd_serve_start(*, json_output: bool = False) -> None:
                 print(f"Also answering the public HTTP API on 127.0.0.1:{state.api_port}.")
         sys.stdout.flush()
 
+    from packages.orchestration.crash_report import install_thread_crash_hook
+
+    restore = install_thread_crash_hook("serve.start")
     try:
         run_supervisor(on_ready=ready)
     except ServeError as exc:
         fail(exc.token, str(exc), json_output=json_output)
+    finally:
+        restore()
     if not json_output:
         print("Remedy serve supervisor stopped.")
 

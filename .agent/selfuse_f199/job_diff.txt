@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-fe295249543a4a58  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 583968cb9..e8c82ccdc 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -2201,7 +2201,7 @@ def _cmd_job_budget(
+                         config=resolve_predictive_budget_config(
+                             project_root=(getattr(_plan, "repo_path", "") or None)),
+                     )
+-        except Exception as _pred_exc:  # noqa: BLE001 — a broken cost estimate must not break the rest of the view
++        except (ImportError, OSError, ValueError) as _pred_exc:
+             _prediction = None
+             _prediction_note = (
+                 f"unavailable ({type(_pred_exc).__name__}: {_pred_exc})"[:160])
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

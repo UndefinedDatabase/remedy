@@ -50,13 +50,15 @@ from typing import Any
 #: mission spans and the project of each of its job links, and (DECISION F205 D4) to `1.8` for the
 #: repository of each commit `remedy do` lands and of each push it makes, and (DECISION F205 D6)
 #: to `1.9` for the repository of each job and the projects of each mission in the digest, and
-#: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of.
-CLIENT_INTERFACE_VERSION = "1.10"
+#: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of, and F199
+#: (DECISION F199 D3) to `1.11` for `doctor.health`.
+CLIENT_INTERFACE_VERSION = "1.11"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
 #: budget refusal of `job resume`, declining a result, abandoning a mission, this document's own
-#: command, and what changed since a cursor (F253 S3a, DECISION F253 D4 (3)).
+#: command, what changed since a cursor (F253 S3a, DECISION F253 D4 (3)), and Remedy's own
+#: health (DECISION F199 D3).
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "project.register",
     "do.run",
@@ -77,6 +79,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.changes",
     "client.order",
     "client.run",
+    "doctor.health",
 )
 
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
@@ -137,6 +140,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
+    "doctor.health": ("health_failed",),
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
@@ -221,6 +225,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
         "state",
     ),
+    "doctor.health": ("checks", "verdict"),
 }
 
 #: The tokens by kind a project ledger holds, a tree the digest carries for each job and each
@@ -726,6 +731,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
     # the run is not `running`; no tree is declared under it.
     "client.run": {},
+    "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},
 }
 
 

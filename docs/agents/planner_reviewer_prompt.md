@@ -633,6 +633,23 @@ end the response with:
   code a sentence describes; and R-1263, a Built State that counted a pin among the ledger rows the
   block enumerated beside it, is item 35's reading of a description against its enumeration. The
   list stays at 34 items.
+  Consolidated again at F199's closure on 2026-10-13: nothing joined and no two items were merged,
+  because none of F199's lines in `.agent/prose_slips.md` names a lesson the list lacks. A worker
+  that ran one test file by itself to read a red gate is a slip in following a block, which no item
+  about a block's text can prevent; a block that made a route's twin a client operation without
+  naming the route-shape test's list of allowed statuses is item 34's reading of the tests that
+  already guard a path; and a reviewer's mutation pattern written on one line where the code wraps
+  it over three was reported as skipped by its own script and run again, leaving nothing on disk
+  wrong. Its authoring defects that left something unguarded or wrong on disk were registered as
+  findings and repaired inside the feature, each the reading of an existing item: R-1266 and R-1269,
+  stated behaviours that no ordered test could see broken, are item 18's reading of an ordered
+  recipe against the property it must establish; R-1267, a check that ended the command on the one
+  damaged file it exists to find, is item 34's reading of the code the order reaches, here the
+  integrity read it calls; R-1268, a page row that stated what its check does not do, is item 34's
+  reading of the code a sentence describes; and R-1270 and R-1271, a route ordered without its
+  twin's registration and without the structural step its file's size required, are item 34's
+  reading of the guards that bind the file the order changes, here the public API's route-shape
+  tests and the structure ratchet. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

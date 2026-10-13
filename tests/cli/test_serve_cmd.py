@@ -11,11 +11,13 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
 import pytest
 
+from packages.orchestration.crash_report import crash_reports_dir
 from packages.orchestration.serve_daemon import socket_answers
 from packages.orchestration.serve_paths import serve_paths
 
@@ -90,3 +92,32 @@ def test_start_status_stop_runs_one_supervisor_and_cleans_up_after_it(root):
     assert not paths.socket.exists()
     assert not paths.pid_file.exists()
     assert not paths.token_file.exists()
+
+
+def test_serve_start_installs_the_thread_crash_hook_and_restores_the_previous_one(
+    root, monkeypatch,
+):
+    import packages.orchestration.serve_daemon as serve_daemon
+    from apps.cli.commands.serve_cmd import _cmd_serve_start
+
+    seen: list[threading.ExceptHookArgs] = []
+    monkeypatch.setattr(threading, "excepthook", seen.append)
+    recorder = threading.excepthook
+
+    def boom() -> None:
+        raise RuntimeError("boom")
+
+    def supervisor_with_a_crashing_thread(*, on_ready) -> None:
+        worker = threading.Thread(target=boom, name="remedy-serve-test")
+        worker.start()
+        worker.join()
+
+    monkeypatch.setattr(serve_daemon, "run_supervisor", supervisor_with_a_crashing_thread)
+    _cmd_serve_start(json_output=True)
+    assert len(seen) == 1
+    assert threading.excepthook == recorder
+    reports = list(crash_reports_dir().glob("*.md"))
+    assert len(reports) == 1
+    text = reports[0].read_text(encoding="utf-8")
+    assert "- command: serve.start (thread remedy-serve-test)" in text
+    assert "RuntimeError: boom" in text
