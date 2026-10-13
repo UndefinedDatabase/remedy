@@ -262,7 +262,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F306 — Findings paydown v8
+- [~] F306 — Findings paydown v8
 
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
 

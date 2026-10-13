@@ -1,19 +1,22 @@
-# Plan — F203 Structured logging & correlation
+# Plan — F306 Findings paydown v8
 
 ## Goal
-Remedy writes what it does to one operations log: a JSON line per record carrying the job, task
-and run ids, owner-only under `<data root>/logs/`, rotated by size; a person or a program can read
-one job's or run's lines in order on the command line and on the public API; and no `print`
-remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D7).
+Pay down the four findings open at the claim — R-1235, R-1246, R-1251 and R-1252 — each by the
+repair its own text names, after the structural steps the structure ledger owes for the files they
+touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md; DECISION F306 D1).
 
 ## Current Step
-Round 10 on `feature/f203-structured-logging`, session 2, the closing round: book round 9's PASS,
-the Built State, the ledger rotation, the STATUS flip with the README sync and the self-use entry
-`SU-061`'s `consumed_by`, the handback, the push and the pull request, left unmerged.
+Round 1 on `feature/f306-findings-paydown-v8`, session 1: claim F306, book F203's round 10, write
+the slice list, and land T002, the move of `dev_server.py`'s ports and readiness probe to
+`packages/runtimes/dev_server_ports.py`, re-exported by name, with the ratchet rows lowered.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F203's pull request; the next
-   feature's first commit books round 10's verdict; Rule A5 names the next feature.
+1. T003 — R-1251: a port of its own per runtime-flow test, and the runner's refusal of a health
+   answer from a process it did not start.
+2. T004 and T005 — the workspace-identity step of `run_manifest.py`, then R-1252.
+3. T006 to T008 — R-1235's three steps.
+4. The closure, carrying R-1246 by name to the next paydown.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306; F203 owns no open finding.
+- A structural step that moves a name a test replaces on the old module must leave that name and
+  its caller together (docs/system/structure-ledger-v1.md, "Files").

@@ -1,29 +1,27 @@
-# Live Review — F203 Structured logging & correlation
+# Live Review — F306 Findings paydown v8
 
-> Round-by-round review record, re-headed at the F203 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F199, whose STATUS
-> line went `[x]` on its own branch at `3767c6735`; this session's Open PR Gate merged pull
-> request 333 into `main` as `e37f15be4`. F199's round 9 was reviewed after its own handback, so
+> Round-by-round review record, re-headed at the F306 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F203, whose STATUS
+> line went `[x]` on its own branch at `167871013`; this session's Open PR Gate merged pull
+> request 334 into `main` as `f51232ee2`. F203's round 10 was reviewed after its own handback, so
 > operator amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of
 > the next round that is happening anyway; its gate entry is appended at the end of this record by
 > this claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything else from the Findings heading to the end of the file as it stood at `e37f15be4` is
+> everything else from the Findings heading to the end of the file as it stood at `f51232ee2` is
 > carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `e37f15be4`, computed with `open_finding_ids` from
+> re-head. The open set at `f51232ee2`, computed with `open_finding_ids` from
 > `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all
 > four.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F203 D1's, which also writes the feature file's amendment. The first
-round claims F203, re-heads this record, books F199's round 9, and lands the first part of T001:
-`packages/orchestration/structured_log.py`, one logging setup on the standard library with a JSON
-line per record, the job, task and run ids bound through context variables, an owner-only log
-file under `<data root>/logs/` that rotates by size, and the configuration keys it reads. The
-second round wires the setup into the command line and the serve supervisor and binds the ids on
-the job's run path. The third round turns on the lint that refuses `print` under `packages/` and
-rules each of its current sites. Then T002, the read by job or run id on the command line, on the
-public API and in the cockpit, with the correlation test. Then the closure.
+THE ORDER BELOW IS DECISION F306 D1's, which also writes the feature file's slice list. The first
+round claims F306, re-heads this record, books F203's round 10, and takes T002, the structural step
+the ledger names for `packages/runtimes/dev_server.py`: its ports and readiness probe move to a
+module of their own. The second round repairs R-1251 there and in the runtime-flow runner. The
+third round takes the step the ledger names for `packages/orchestration/run_manifest.py` and
+repairs R-1252. Then R-1235 in the three steps its own text names. R-1246 is carried by name to the
+next paydown at the closure. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -184,3 +182,5 @@ Gate: F203 R7 — the F203 round 7 entry, the closure's first repair round, over
 Gate: F203 R8 — the F203 round 8 entry, the closure's evidence round, over `3f06c01e9`..`78ca92e0b` (3 commits, each single-parent; insertions by `git show --shortstat`: `844d5d354` 60, `145a9195a` 429, `78ca92e0b` 79). VERDICT PASS. `844d5d354` commits round 7's handback byte for byte, sha256 `1f3a8ea4019adf083546a21deb513c6f276fbd80e788f481dd23797096f94ef7`. The reviewer's `verify.py` read C0's parent equal to `3f06c01e9`, C0 naming only `.agent/handoff.md`, C1's five paths equal to the prepared files, C1 naming exactly them, both appends equal to C0 plus the prepared slice and the open set `['R-1235', 'R-1246', 'R-1251', 'R-1252']`, `ALL True`. The reviewer's read-only precheck at `3f06c01e9` had read the evidence script's 101 test files sorted, unique and present, the two ancestry counts equal at 36 and `4611/4641 tests collected (30 deselected)` with no unsafe id. The worker's readings: the staging reclaim listed nothing to reclaim and refused one path, `review_staging.n4o46eq_`, as not keyed to a job, so `--apply` was skipped; the evidence job `f203r8e1001` on the accepted head `145a9195a771183d1c70a14e6a5a7dd4c14fa2ab` read both ancestry counts at 38, 4611 node ids with 30 deselected, no unsafe id, pytest exit 0 at 4607 passed and 4 skipped, `validate_verification_tests problems []`, `is_valid_current_run True` and `validation_errors []`; the package build read `READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. The reviewer read the evidence log and the package `remedy-review-20261013-193251-READY_FOR_REVIEW.zip` itself in `/home/decodeux/Repos/remedy-history/zips`: SHA-256 `8ba31f893c4f95b1100b2150f5f71f6052b539b126ee675874e83594f9f69c10`, `testzip()` None, and a manifest whose `committed_review_subject` names base `e37f15be4438c83ced8e4eeff342a3da1867c201` and head `145a9195a771183d1c70a14e6a5a7dd4c14fa2ab`; the integrity check read `fail_count` 0. The worker declared one deviation: the evidence script's exit code was read from its log's decisive lines, not from a wait on the process, because the block ordered a detached launch without a wrapper that records the code; a prose slip records the block's part.
 
 Gate: F203 R9 — the F203 round 9 entry, the closure's one full suite on the tree that ships, over `78ca92e0b`..`4755df689` (3 commits, each single-parent; insertions by `git show --shortstat`: `93ff850ec` 144, `69ee43d0b` 19, `4755df689` 109). VERDICT PASS. The operator's commit `3f06c01e9` had moved the branch after the recorded run, so operator amendment amend0921-operator-feedback rule 1 ordered the suite once more on the new tree. The reviewer's `verify.py` read C1's parent equal to the base, C1's four paths equal to the prepared files, C1 naming exactly them, both appends equal to the base plus the prepared slice and the open set `['R-1235', 'R-1246', 'R-1251', 'R-1252']`, `ALL True`. C2 names `.agent/authored/f203-closure-suite.txt` alone. The reviewer read the suite's own log and exit file in `.remedy-wt/f203-r9-worker/`: exit `0` after 364.8 seconds and `22952 passed, 22 skipped, 1 warning in 363.98s (0:06:03)` on `93ff850ec`, one more pass than the first run, which is the node round 7 repaired, with the reflog unchanged and no leftover process, as the transcript states; the cost script read 1257.35 CPU seconds, 5.2 percent more than F199's 1195.71, within the 14.1 percent limit, exit 0. The integrity check read `fail_count` 0. The worker declared no deviation.
+
+Gate: F203 R10 — the F203 round 10 entry, the closing round, over `4755df689`..`167871013` (3 commits, each single-parent; insertions by `git log --shortstat`: `a1d19885e` 226, `9c8aa4c6a` 30, `167871013` 96). VERDICT PASS, verified by dry run, bytes identical. The reviewer of F306's first session re-ran the round 10 reviewer's `verify.py` at `167871013`: C1's six paths equal to the prepared files, C1 naming exactly them, C2's two ledger files equal to the simulated rotation, C2 naming exactly them, the C1 ledger equal to the base plus the slice, and `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` equal to the simulated files, `ALL True`; C3 names exactly those three paths and `.agent/handoff.md`. The round's selection had read `563 passed` with exit 0 in the simulation tree on the same bytes, and the worker's one run read `563 passed in 31.95s`, so no selection was re-run. The integrity check read six checks `pass` and `fail_count` 0, and the open set read `['R-1235', 'R-1246', 'R-1251', 'R-1252']`. Pull request 334 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and the Open PR Gate merged it into `main` as `f51232ee2`. The worker declared no deviation.
