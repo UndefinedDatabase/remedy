@@ -24,11 +24,11 @@ LOGGING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default="INFO",
     ),
     ConfigKeySpec(
-        key="logging.json",
-        env_var="REMEDY_LOG_JSON",
+        key="logging.json_lines",
+        env_var="REMEDY_LOG_JSON_LINES",
         description=(
             "Write the operations log as one JSON object per line; false writes one plain "
-            "text line per record (DECISION F203 D1)."
+            "text line per record (DECISIONs F203 D1 and D6)."
         ),
         value_type=bool,
         default=True,

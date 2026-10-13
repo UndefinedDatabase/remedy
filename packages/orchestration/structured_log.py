@@ -184,7 +184,7 @@ def configure_structured_logging(
         unknown_name = str(resolved.get("logging.level"))
         name = DEFAULT_LOG_LEVEL
     level = logging.getLevelName(name)
-    as_json = bool(resolved.get("logging.json"))
+    as_json = bool(resolved.get("logging.json_lines"))
     max_bytes = _int_or_default(resolved.get("logging.max_bytes"), DEFAULT_LOG_MAX_BYTES)
     backup_count = _int_or_default(resolved.get("logging.backup_count"), DEFAULT_LOG_BACKUP_COUNT)
 
