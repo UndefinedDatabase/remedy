@@ -8,7 +8,8 @@ byte/hash helpers (``job_input_definition_bytes``, ``job_input_definition_sha256
 ``job_input_sha256``), and the EXACT JobInputDefinitionV1 field-set constants
 (``JOB_INPUT_TOP_FIELDS``, ``JOB_INPUT_TASK_FIELDS``, ``JOB_INPUT_EXECUTION_STR_FIELDS``,
 ``JOB_INPUT_EXECUTION_INT_FIELDS``, ``JOB_INPUT_EXECUTION_BOOL_FIELDS``, ``_JOB_INPUT_SOURCE_OF``,
-``_source_field``, ``JOB_INPUT_EXECUTION_FIELDS``). ``run_manifest.py`` re-exports every one of
+``_source_field``, ``JOB_INPUT_EXECUTION_FIELDS``, ``JOB_INPUT_EXECUTION_OPTIONAL_FIELDS``).
+``run_manifest.py`` re-exports every one of
 these by name, so every ``run_manifest.<name>`` caller keeps working unchanged. This is the first
 step toward the repair R-1235's own finding text names; ``validate_job_input_definition`` and
 ``decode_job_input_definition_v1`` stay on ``run_manifest``, because the validator calls
@@ -102,6 +103,10 @@ def build_job_input_definition(job: Any) -> dict[str, Any]:
         "stream_evidence": bool(_g("stream_evidence", False)),
         "stream_evidence_source": _g("stream_evidence_source"),
         "max_tasks": _g("max_tasks", 0), "max_tasks_source": _g("max_tasks_source"),
+        "claude_cli_customizations": bool(_g("claude_cli_customizations", False)),
+        "claude_cli_customizations_source": _g("claude_cli_customizations_source"),
+        "claude_cli_all_tools": bool(_g("claude_cli_all_tools", False)),
+        "claude_cli_all_tools_source": _g("claude_cli_all_tools_source"),
     }
     return {
         "job_input_v": 1,
@@ -149,7 +154,8 @@ JOB_INPUT_EXECUTION_STR_FIELDS = (
 )
 JOB_INPUT_EXECUTION_INT_FIELDS = ("max_rounds", "repair_rounds_allowed", "timeout_sec",
                                   "max_output_chars", "max_tasks")
-JOB_INPUT_EXECUTION_BOOL_FIELDS = ("stream_evidence",)
+JOB_INPUT_EXECUTION_BOOL_FIELDS = ("stream_evidence", "claude_cli_customizations",
+                                   "claude_cli_all_tools")
 #: ``repair_rounds_allowed`` pairs with ``repair_rounds_source`` — not ``*_allowed_source``.
 _JOB_INPUT_SOURCE_OF = {"repair_rounds_allowed": "repair_rounds_source"}
 
@@ -165,3 +171,9 @@ JOB_INPUT_EXECUTION_FIELDS = frozenset(
     + [_source_field(f) for f in JOB_INPUT_EXECUTION_INT_FIELDS]
     + [_source_field(f) for f in JOB_INPUT_EXECUTION_BOOL_FIELDS]
     + ["test_command", "test_command_source", "context_strategy"])
+#: A definition written before F306 (R-1235) lacks these four keys; validation types them when
+#: present and never requires them, so an old record still validates.
+JOB_INPUT_EXECUTION_OPTIONAL_FIELDS = frozenset({
+    "claude_cli_customizations", "claude_cli_customizations_source",
+    "claude_cli_all_tools", "claude_cli_all_tools_source",
+})

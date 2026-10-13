@@ -56,6 +56,7 @@ from packages.orchestration.job_input_definition import (
     JOB_INPUT_EXECUTION_BOOL_FIELDS,
     JOB_INPUT_EXECUTION_FIELDS,
     JOB_INPUT_EXECUTION_INT_FIELDS,
+    JOB_INPUT_EXECUTION_OPTIONAL_FIELDS,
     JOB_INPUT_EXECUTION_STR_FIELDS,
     JOB_INPUT_TASK_FIELDS,
     JOB_INPUT_TOP_FIELDS,
@@ -1097,7 +1098,7 @@ def validate_job_input_definition(d: Any) -> list[str]:
     if ex is None:
         return problems
     _t(_S.no_unknown_keys, ex, JOB_INPUT_EXECUTION_FIELDS, "job_input.execution")
-    missing = sorted(JOB_INPUT_EXECUTION_FIELDS - set(ex))
+    missing = sorted(JOB_INPUT_EXECUTION_FIELDS - JOB_INPUT_EXECUTION_OPTIONAL_FIELDS - set(ex))
     if missing:
         problems.append(f"job_input.execution is missing material field(s) {missing}")
     for f in JOB_INPUT_EXECUTION_STR_FIELDS:
@@ -1128,8 +1129,7 @@ def validate_job_input_definition(d: Any) -> list[str]:
     sha = _t(_S.req_str, tc, "sha256", "job_input.execution.test_command", max_len=64)
     if sha is not None and not _is_hex64(sha):
         problems.append("job_input.execution.test_command.sha256 is not 64 lowercase hex")
-    red = _t(_S.req_str, tc, "redacted", "job_input.execution.test_command",
-             max_len=_S.MAX_VALUE_LEN, allow_empty=True)
+    red = _t(_S.req_str, tc, "redacted", "job_input.execution.test_command", max_len=_S.MAX_VALUE_LEN, allow_empty=True)
     # F6: the test command's stored representation is its SAFE redacted identity + hash only.
     if red is not None and (_contains_secret(red) or _contains_local_path(red)
                             or _S.has_control_chars(red)):

@@ -54,6 +54,12 @@ class ExecutionConfig:
     stream_evidence_source: str = "default"
     max_tasks: int = 0
     max_tasks_source: str = "default"
+    # R-1235: the two claude-cli launch keys, with their source, so the record names what this
+    # run's calls actually read.
+    claude_cli_customizations: bool = False
+    claude_cli_customizations_source: str = "default"
+    claude_cli_all_tools: bool = False
+    claude_cli_all_tools_source: str = "default"
 
 
 def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None:
@@ -98,6 +104,10 @@ def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None
         "stream_evidence_source": c.stream_evidence_source,
         "max_tasks": c.max_tasks,
         "max_tasks_source": c.max_tasks_source,
+        "claude_cli_customizations": c.claude_cli_customizations,
+        "claude_cli_customizations_source": c.claude_cli_customizations_source,
+        "claude_cli_all_tools": c.claude_cli_all_tools,
+        "claude_cli_all_tools_source": c.claude_cli_all_tools_source,
     }
 
 
@@ -142,6 +152,10 @@ def _import_execution_config(d: dict[str, Any] | None) -> ExecutionConfig | None
         stream_evidence_source=d.get("stream_evidence_source", "default"),
         max_tasks=int(d.get("max_tasks", 0) or 0),
         max_tasks_source=d.get("max_tasks_source", "default"),
+        claude_cli_customizations=bool(d.get("claude_cli_customizations", False)),
+        claude_cli_customizations_source=d.get("claude_cli_customizations_source", "default"),
+        claude_cli_all_tools=bool(d.get("claude_cli_all_tools", False)),
+        claude_cli_all_tools_source=d.get("claude_cli_all_tools_source", "default"),
     )
 
 
@@ -210,9 +224,35 @@ def _resolve_invocation_controls(
     }
 
 
-# F306 T007 structure step (2): `run_job` no longer resolves its own configuration inline — this
-# is the single function that does, so the recorded answer and the running job can never drift
-# apart.
+def _resolve_claude_cli_launch_config(config: Any = None) -> dict[str, Any]:
+    """Read the two claude-cli launch keys fresh, each with its source, for the four
+    ``ExecutionConfig`` fields R-1235 asks a job's record to carry.
+
+    ``config`` defaults to the process's cached ``get_config()`` — imported inside the body, the
+    way ``claude_cli_command`` itself does. Each key's value is read through
+    ``claude_cli_command._claude_cli_flag``, the same reading ``claude_cli_launch_switches`` uses
+    for the call this run is about to make, so the recorded value can never drift from what ran.
+    """
+    if config is None:
+        from packages.orchestration.config import get_config
+
+        config = get_config()
+    from packages.orchestration import claude_cli_command
+
+    result: dict[str, Any] = {}
+    for field, key in (
+        ("claude_cli_customizations", "claude_cli.customizations"),
+        ("claude_cli_all_tools", "claude_cli.all_tools"),
+    ):
+        result[field] = claude_cli_command._claude_cli_flag(config, key)
+        source = config.get_source(key)
+        result[f"{field}_source"] = source.value if source is not None else "default"
+    return result
+
+
+# F306, the structure ledger's step (2) for `run_job`: `run_job` no longer resolves its own
+# configuration inline — this is the single function that does, so the recorded answer and the
+# running job can never drift apart.
 def resolve_job_execution_config(
     persisted: ExecutionConfig | None, *,
     builder_name: str | None = None, reviewer_name: str | None = None,
@@ -225,11 +265,13 @@ def resolve_job_execution_config(
     test_command: str | None = None, timeout_sec: int | None = None,
     timeout_profile: str | None = None, max_output_chars: int | None = None,
     claude_cli_write_mode: str | None = None, stream_evidence: bool | None = None,
-    max_tasks: int | None = None,
+    max_tasks: int | None = None, config: Any = None,
 ) -> ExecutionConfig:
     """Answer ``explicit > persisted > product default`` per execution-config field.
 
-    ``run_job`` records exactly the answer this returns.
+    ``run_job`` records exactly the answer this returns. The two claude-cli launch keys,
+    ``claude_cli_customizations`` and ``claude_cli_all_tools``, are the one exception to that
+    precedence chain: they are read fresh from ``config`` (R-1235), never from ``persisted``.
     """
     ec = persisted
 
@@ -300,4 +342,5 @@ def resolve_job_execution_config(
             ec, timeout_sec=timeout_sec, timeout_profile=timeout_profile,
             max_output_chars=max_output_chars, stream_evidence=stream_evidence,
             max_tasks=max_tasks),
+        **_resolve_claude_cli_launch_config(config),
     )

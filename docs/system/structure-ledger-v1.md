@@ -374,10 +374,10 @@ with the code that calls it.
 | 112 | `packages/runtimes/dev_server.py` | `DevServer.start` |
 | 112 | `scripts/build_review_manifest.py` | `_verify_task_provenance_integrity` |
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
-| 111 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 111 | `packages/orchestration/ui_view_model.py` | `build_next_action` |
 | 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
+| 110 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_ledger_chain` |
 | 109 | `apps/cli/commands/init_cmd.py` | `_handle_init` |
 | 108 | `packages/orchestration/serve_daemon.py` | `run_supervisor` |
