@@ -7,17 +7,15 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Session 2, round 6 on `feature/f306-findings-paydown-v8`: book round 5, then the structure ledger's
-step (2) for `run_job`: its configuration resolution becomes `resolve_job_execution_config` in
-`packages/orchestration/execution_config.py`, re-exported by name (before T008 may edit it).
+Session 2, round 7 on `feature/f306-findings-paydown-v8`: book round 6, then T008, R-1235's third
+step: the values of `claude_cli.customizations` and `claude_cli.all_tools`, with their sources,
+join the execution configuration a job records each time it runs; the job-input validation reads
+them as optional; the client interface rises to `1.13` and its page is regenerated.
 
 ## Next Steps
-1. T008 — the values of `claude_cli.customizations` and `claude_cli.all_tools` join the recorded
-   execution configuration through a resolver of their own that `resolve_job_execution_config`
-   composes, read as optional by the job-input validation; the client interface's version rises
-   and its generated pages are regenerated.
-2. The closure, carrying R-1246 and R-1252 by name to the next paydown.
+1. The closure: the integration gate's one full suite, the evidence, the ledger rotation, the next
+   paydown's registration, R-1246 and R-1252 carried to it by name, and the STATUS flip.
 
 ## Risks
-- `run_job` reads fourteen of the resolved values after the resolution; each is rebound from the
-  returned record, so the run still executes exactly what was recorded.
+- `run_manifest.py` may not grow: the validator's change must leave the file's line count level.
+- A definition written before this round lacks the four keys and must still validate.
