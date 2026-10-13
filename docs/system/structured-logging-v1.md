@@ -1,8 +1,8 @@
 # Structured logging v1: Remedy's operations log
 
-> Status (F203, 2026-10-13): being built. The setup, its keys, the file, the wiring into every
-> command, the mirror of the job timeline, the `print` lint and `remedy doctor logs` exist; the
-> read on the public API and in the cockpit follow. DECISIONs F203 D1 to D4 in
+> Status (F203, 2026-10-13): built. The setup, its keys, the file, the wiring into every command,
+> the mirror of the job timeline, the `print` lint, `remedy doctor logs` and its route on the
+> public API exist; the cockpit's logs view is F303's. DECISIONs F203 D1 to D5 in
 > `.agent/decisions.md` hold the rules this page states; the feature is
 > `docs/roadmap/features/T12_F203.md`.
 
@@ -59,6 +59,10 @@ keeps only the lines of one run of a task. `--json` answers the same lines as JS
 the names of the files read and the number of lines skipped. A line that is not JSON, such as a
 line written while `logging.json` was false, is skipped and counted. A job with no line gets an
 answer that says so, and the command still exits 0; it reads the log and changes nothing.
+
+A program reads the same answer over the public API with `GET /api/v1/jobs/{job}/logs`, and
+`?run=<run id>` keeps one run; the client operation is `doctor.logs`. The cockpit shows no log
+lines yet: its logs view belongs to F303, the feature that puts the cockpit on the public API.
 
 ## Settings
 
