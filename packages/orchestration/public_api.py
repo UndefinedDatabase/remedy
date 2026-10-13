@@ -89,7 +89,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.12"
+PUBLIC_API_VERSION = "1.13"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -279,6 +279,23 @@ def _doctor_health_answer() -> dict[str, Any]:
     return build_ok(**health_report_document(results))
 
 
+def _doctor_logs_answer(*, job: str, run: str | None = None) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/logs` sends: what `doctor.logs --json` prints (DECISION
+    F203 D5). Reads the operations log's lines of the job, oldest first, kept to one run when
+    `run` is given; a job with no line answers an empty `entries`."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.structured_log import read_log_entries
+
+    result = read_log_entries(job_id=job, run_id=run)
+    return build_ok(
+        job_id=job,
+        run_id=run,
+        entries=list(result.entries),
+        unreadable=result.unreadable,
+        files=list(result.files),
+    )
+
+
 def _order_answer(*, order: str) -> dict[str, Any]:
     """The answer `GET /api/v1/orders/{order}` sends: what `remedy client order <order> --json`
     prints (DECISION F253 D14 (4)). Shares `order_record_payload` with the command itself and
@@ -328,6 +345,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "change.proof": _change_proof_answer,
     "client.changes": _client_changes_answer,
     "doctor.health": _doctor_health_answer,
+    "doctor.logs": _doctor_logs_answer,
     "client.order": _order_answer,
     "client.run": _run_answer,
 }

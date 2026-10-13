@@ -217,6 +217,17 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/jobs/{job}/logs",
+        twin="doctor.logs",
+        query_values=("run",),
+        description=(
+            "The operations log's lines of one job, oldest first, as `remedy doctor logs <job> "
+            "--json` prints them; `run` keeps the lines of one run of a task. A job id prefix is "
+            "accepted, and a job with no line answers an empty list."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/jobs/{job}/run",
         twin="client.run",
         refusals=(("run_not_found", 404),),
