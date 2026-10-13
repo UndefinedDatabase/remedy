@@ -8,15 +8,14 @@ on; a crash leaves a local, redacted report under the data root; and the serve s
 its own health on its public API (docs/roadmap/features/T12_F199.md; DECISIONs F199 D1 and D2).
 
 ## Current Step
-Round 3 on `feature/f199-self-health`, session 1: book round 2 and R-1266's resolution; DECISION
-F199 D2; the checks `snapshots`, `worktrees` and `providers` with their tests; the command's
-description and its page brought to seven checks. T001 is then complete.
+Round 4 on `feature/f199-self-health`, session 1: book round 3 and register R-1267 and R-1268,
+repair both; T002: `packages/orchestration/crash_report.py`, the data-root class `crash`, the
+report written at the CLI's catch-all and by a serve supervisor's thread, the check
+`crash_reports`, their tests, and the page.
 
 ## Next Steps
-1. T002: the local crash report at the CLI's catch-all and the supervisor's threads, and the
-   check `crash_reports`.
-2. T003: `GET /api/v1/health` on the supervisor's public API.
-3. The closure.
+1. T003: `GET /api/v1/health` on the supervisor's public API.
+2. The closure.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306; R-1267 and R-1268 are F199's own.
