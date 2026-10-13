@@ -26,6 +26,7 @@ apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
 apps.cli.commands.do_order_input
+apps.cli.commands.doctor_health_cmd
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
@@ -295,6 +296,7 @@ packages.orchestration.scope_fences
 packages.orchestration.scratch_file_guard
 packages.orchestration.self_dogfood
 packages.orchestration.self_dogfood_execution
+packages.orchestration.self_health
 packages.orchestration.self_use_job
 packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner

@@ -87,8 +87,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "F080's feature-to-mission adapter; its consumer is the self-build loop F248 registers"),
     ("packages/orchestration/hunk_apply.py",
      "F033's hunk apply seam, unwired by design (F033 D4); forbidden by name in the command-channel guard"),
-    ("packages/orchestration/self_health.py",
-     "F199's health checks; round 2 wires them into `remedy doctor health` (DECISION F199 D1)"),
     ("packages/orchestration/self_use_findings.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T003)"),
     ("packages/orchestration/self_use_generator.py",
