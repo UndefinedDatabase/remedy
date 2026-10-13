@@ -1,41 +1,31 @@
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 360.4s (the launcher's reading); pytest's own reported wall time: 359.62s (0:05:59)
-summary line: 3 failed, 22973 passed, 22 skipped, 1 warning, 9 errors in 359.62s (0:05:59)
+real exit code: 0
+wall time: 398.3s (the launcher's reading); pytest's own reported wall time: 397.60s (0:06:37)
+summary line: 22976 passed, 22 skipped, 1 warning in 397.60s (0:06:37)
 bad node ids (failed + errors):
-  - tests/orchestration/test_ci_stage_coverage.py::test_every_collected_test_is_selected_by_a_stage
-  - tests/orchestration/test_ci_stage_selection.py::test_no_test_in_this_repository_escapes_the_marker_selected_stages
-  - tests/cli/test_pytest_runner.py::test_runner_timeout_returns_124
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/packages/orchestration/test_execution_service.py
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/packages/orchestration/test_failure_artifact.py
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/packages/orchestration/test_runner.py
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
-  - remedy-review-20260708-211448-READY_FOR_REVIEW/tests - _pytest.pathlib....
+  NONE
 bad set before this run:
   - tests/orchestration/test_model_routing.py::TestTheCallSiteInventoryIsChecked::test_the_swept_multiset_equals_the_declared_inventory
-the bad set shrank with no node newly bad: no
+the bad set shrank with no node newly bad: yes
 leftover processes: NONE
 tree it ran on: 0c68adcde (F306 R9 C2: the call-site inventory names the module the role-configuration call moved to (R-1275))
-reflog before: 0c68adcde HEAD@{2026-10-13 23:13:59 +0200}: commit: F306 R9 C2: the call-site inventory names the module the role-configuration call moved to (R-1275)
-reflog after: 0c68adcde HEAD@{2026-10-13 23:13:59 +0200}: commit: F306 R9 C2: the call-site inventory names the module the role-configuration call moved to (R-1275)
+tree note: C1 changed only .agent/ files
+reflog before: 11e14289e HEAD@{2026-10-14 00:12:53 +0200}: commit: F306 R10 C1: book round 9 and R-1275, record the move of the two review folders, the plan, save the block
+reflog after: 11e14289e HEAD@{2026-10-14 00:12:53 +0200}: commit: F306 R10 C1: book round 9 and R-1275, record the move of the two review folders, the plan, save the block
 reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F306 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
-Test load: 1232.19 CPU seconds, 359.63 wall seconds, 22998 tests collected, exit status 1, recorded 2026-10-13T21:20:09Z
-This closure's suite used 1232.19 CPU seconds, 2.0 percent less than F203's 1257.35, within the 14.1 percent limit.
+Test load: 1321.14 CPU seconds, 397.62 wall seconds, 22998 tests collected, exit status 0, recorded 2026-10-13T22:19:48Z
+This closure's suite used 1321.14 CPU seconds, 5.1 percent more than F203's 1257.35, within the 14.1 percent limit.
 The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
 The test modules whose CPU time rose most since F203's closure run:
-  +2.41 s  tests/ui_server/test_plan_view_live.py (7.36 -> 9.77)
-  +2.20 s  tests/orchestration/test_subtree_rerun_prepare.py (11.33 -> 13.53)
-  +2.04 s  tests/orchestration/test_token_ledger.py (7.19 -> 9.23)
-  +1.68 s  tests/cli/test_project_current.py (6.51 -> 8.19)
-  +1.66 s  tests/orchestration/test_serve_daemon.py (15.16 -> 16.82)
-  +1.59 s  tests/orchestration/test_review_package_full_integration.py (3.74 -> 5.33)
-  +1.53 s  tests/orchestration/test_job_worktree_integration.py (7.16 -> 8.69)
-  +1.16 s  tests/orchestration/test_worktrees.py (1.45 -> 2.61)
-  +0.80 s  tests/orchestration/test_review_commit_chain.py (1.39 -> 2.19)
-  +0.80 s  tests/orchestration/test_worktree_resume_cli.py (1.11 -> 1.91)
+  +17.55 s  tests/test_grouped_cli.py (25.72 -> 43.27)
+  +4.40 s  tests/orchestration/test_self_use_runner.py (4.02 -> 8.42)
+  +3.91 s  tests/orchestration/test_serve_daemon.py (15.16 -> 19.07)
+  +2.92 s  tests/orchestration/test_token_ledger.py (7.19 -> 10.11)
+  +2.70 s  tests/orchestration/test_subtree_rerun_prepare.py (11.33 -> 14.03)
+  +2.43 s  tests/orchestration/test_review_package_full_integration.py (3.74 -> 6.17)
+  +2.41 s  tests/orchestration/test_job_worktree_integration.py (7.16 -> 9.57)
+  +1.93 s  tests/cli/test_serve_client_parity.py (8.06 -> 9.99)
+  +1.77 s  tests/orchestration/test_stream_export_e2e.py (3.26 -> 5.03)
+  +1.66 s  tests/ui_server/test_pause_e2e_live.py (4.33 -> 5.99)
