@@ -1,27 +1,30 @@
-# Live Review — F058 Model failover chain
+# Live Review — F199 Self-health & crash reports
 
-> Round-by-round review record, re-headed at the F058 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F206, whose STATUS
-> line went `[x]` on its own branch at `f91844e69`; this session's Open PR Gate merged pull
-> request 330 into `main` as `4f294374a`, whose tree equals the tree of `f91844e69`. F206's round 6
-> was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1 books
-> its verdict here, in the first commit of the next round that is happening anyway; its gate entry
-> is appended at the end of this record by this claim. Only the heading, this paragraph and the
-> Steps section below are rewritten; everything else from the Findings heading to the end of the
-> file as it stood at `4f294374a` is carried forward BYTE-IDENTICAL, and finding ids continue the
-> monotonic R-XXXX series across the re-head. The open set at `4f294374a`, computed with
-> `open_finding_ids` from `scripts/rotate_live_review.py`, is
-> `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all four.
+> Round-by-round review record, re-headed at the F199 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F058, whose STATUS
+> line went `[x]` on its own branch at `233455328`; the operator then recorded the answer to
+> question Q17 on that branch at `b359efbe7`, a commit that touches `.agent/decisions.md` and
+> `.agent/operator_questions.md` alone, and this session's Open PR Gate merged pull request 332
+> into `main` as `8ee65f61a`. F058's round 10 was reviewed after its own handback, so operator
+> amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of the next
+> round that is happening anyway; its gate entry is appended at the end of this record by this
+> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
+> else from the Findings heading to the end of the file as it stood at `8ee65f61a` is carried
+> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> The open set at `8ee65f61a`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all
+> four.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F058 D1's, which also writes the feature file's amendment. The first
-round claims F058, re-heads this record, books F206's round 6, takes step (3) of the configuration
-registry's boundary, which moves the model routing keys to a module of their own, and lands T001:
-the per-role failover chains of `remedy.toml`, their shape and their hard-rule validation, in
-`packages/orchestration/model_failover.py`. The next round lands T002, the failover walk at the
-providers' seam with its disclosure in each call's evidence and the run report's line. Then T003,
-the trigger discipline, the sticky cooldown and the interplay tests. Then the closure.
+THE ORDER BELOW IS DECISION F199 D1's, which also writes the feature file's amendment. The first
+round claims F199, re-heads this record, books F058's round 10, and lands the first half of T001:
+`packages/orchestration/self_health.py`, the health checks of the configuration, the token ledgers,
+the staging copies and the free disk, each a PASS, WARN or FAIL with a hint. The second round
+takes step (4) of the command catalog's boundary, which moves the `doctor` group to a module of
+its own, adds the snapshot manifest, worktree and provider checks, and the command `remedy doctor
+health`. Then T002, the local crash report, and T003, the supervisor's own health on its public
+API. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -180,3 +183,5 @@ Gate: F058 R7 — the F058 round 7 entry, the closure's evidence round, over `d3
 Gate: F058 R8 — the F058 round 8 entry, the merge of `main` after pull request 331 and the repairs of R-1264 and R-1265, over `1a20f8f37`..`da5c74184` (5 commits; insertions by `git show --numstat`: `215bf2dd6` 156, `431d9776d` the merge commit with parents `215bf2dd6` and `2b7c6b7df`, whose first-parent diff is `main`'s work and this round's resolution of `.agent/decisions.md`, `43ad33712` 170, `b330202ee` 1, `da5c74184` 133). VERDICT PASS, verified by dry run, bytes identical: the reviewer simulated the round's four commits in a disposable worktree at `1a20f8f37`, and `git diff --name-only` between each simulated commit and `215bf2dd6`, `431d9776d`, `43ad33712` and `b330202ee` names only `.agent/authored/f058-r8.md`, the block copy the simulation did not make, whose blob equals the prepared block's. In the simulated tree the round's selection read `4967 passed, 16 skipped` with exit 0, the extra skips those of the UI toolchain a fresh worktree lacks, ruff clean over the seven named files, and the open set `['R-1235', 'R-1246', 'R-1251', 'R-1252', 'R-1264', 'R-1265']`; the red control is the same tree before the repairs, where `tests/test_structure_ratchet.py` read the three readings R-1264 names and `tests/docs/test_vocabulary.py` the one R-1265 names. The worker's one run in the primary checkout, saved whole, read `4974 passed, 9 skipped` with exit 0 and no failed or error line; the worker declared no deviation.
 
 Gate: F058 R9 — the F058 round 9 entry, the closure's one full suite on the merged tree, the evidence job and the review package, over `da5c74184`..`c1b774775` (3 commits, each single-parent; insertions by `git show --numstat`: `895152727` 441, `78a10d8ee` 17, `c1b774775` 160). VERDICT PASS. The reviewer's `verify.py` read C1's four paths equal to its prepared files and C1 naming exactly them, `ALL True`. INTEGRATION GATE, this run, on the merged tree that ships: `.agent/authored/f058-closure-suite.txt` records `python3 -m pytest -n auto -q` in the primary checkout at `895152727`, exit 0, `22826 passed, 22 skipped, 1 warning in 399.98s (0:06:39)`, no bad node id, no leftover process, the reflog unchanged during the run, and the suite's own log ends on the same summary line; `scripts/closure_suite_cost.py` exited 0, 1216.97 CPU seconds, 1.2 percent less than F206's 1231.76, within the 14.1 percent limit. This transcript replaces round 6's at the same path, as operator amendment amend0921-operator-feedback rule 1 orders after the merge of `main`. The staging reclaim found nothing to reclaim and refused one path no job owns, so its apply was skipped. The evidence job `f058r9e1001` ran on `78a10d8eedb04e65af0ea44f6f0d20408dbee673`, the accepted head, with the two ancestry counts from the fork point `4f294374a` equal at 49, 4755 node ids collected with 50 deselected and no unsafe id, the planted id answering `a local absolute path`, pytest exit 0 at 4751 passed and 4 skipped, `validate_verification_tests` problems `[]`, `is_valid_current_run True` and `validation_errors []`. The review package `remedy-review-20261013-011933-READY_FOR_REVIEW.zip`, in `/home/decodeux/Repos/remedy-history/zips`, read `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`; the reviewer re-hashed it at `39a31421f1a8d8cf0fbd28b3d2036b9010e729ef5fd65142a688425fbbbc2621`, found `is_zipfile` True and `testzip()` None, and read its committed review subject from base `4f294374a69b0c66afc68fca578608bcb24ad179` to head `78a10d8eedb04e65af0ea44f6f0d20408dbee673`. The worker declared no deviation.
+
+Gate: F058 R10 — the F058 round 10 entry, the closure's bookings, the ledger rotation, the STATUS flip with the README sync and the pull request, over `c1b774775`..`233455328` (3 commits, each single-parent; insertions by `git show --numstat`: `29151ed97` 213, `ee2147626` 48, `233455328` 141). VERDICT PASS, verified by dry run, bytes identical, reviewed by F199's first session: the round 10 reviewer's `verify.py`, re-run by this reviewer against the primary checkout at `8ee65f61a`, read every one of C1's six paths and C2's two paths equal at their commits to the prepared files, each commit naming exactly its paths, and C3's three paths equal in the tree, `ALL True`; `git diff --name-only 233455328 8ee65f61a` names only `.agent/decisions.md` and `.agent/operator_questions.md`, the operator's recording of the answer to Q17 at `b359efbe7`, which changes no file the round's selection or the closure's one suite reads as production code, so the closure's suite transcript stands for the merged tree as it did for F297's merge after its own operator answer at `844268b94`. The open set read `['R-1235', 'R-1246', 'R-1251', 'R-1252']` and `remedy integrity check` read six checks `pass` with `fail_count 0`. Pull request 332 was merged by this session's Open PR Gate as `8ee65f61a`. The worker declared no deviation.

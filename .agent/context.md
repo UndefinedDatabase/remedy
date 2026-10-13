@@ -1,23 +1,22 @@
-# Context — F058 Model failover chain
+# Context — F199 Self-health & crash reports
 
 ## Active Branch
-feature/f058-model-failover-chain, from `main` at `4f294374a` (the merge commit of pull request
-330, F206); `main` at `2b7c6b7df` (the merge commit of pull request 331) is merged into it by
-round 8.
+feature/f199-self-health, from `main` at `8ee65f61a` (the merge commit of pull request 332, F058).
 
 ## Scope
-F058 (Tier 3): per-role model failover chains, as `docs/roadmap/features/T3_F058.md` and its
-amendment by DECISION F058 D1 state: the chains' key and their hard-rule validation, the failover
-walk with its disclosure, the trigger discipline, the sticky cooldown and the session guard.
+F199 (Tier 12): Remedy's own health checks and local crash reports, as
+`docs/roadmap/features/T12_F199.md` and its amendment by DECISION F199 D1 state: the checks of
+`packages/orchestration/self_health.py`, the command `remedy doctor health`, the crash report
+under the data root, and the supervisor's health on its public API.
 
 ## Do not touch
-The transport retry policy (`packages/orchestration/provider_timeouts.py`), the rate governor's
-pacing and routing's class table. Escalation on classified failures is F296's, never this
-feature's. A cost in US dollars is never shown to the operator (DECISION amend1007b D7).
+`doctor core` and `doctor_core_report`, which the structure ledger lists. No check repairs, moves
+or deletes anything; no check calls a provider. A crash report is never sent anywhere. The worker
+isolation (F152), the secret corpus (F171), the schema registry (F245) and `remedy feedback`
+(F220) are other features'.
 
 ## Active assumptions
-- Failover is opt-in: a role without a chain behaves exactly as today.
-- A link declares its tier; Remedy maps no model name to a tier.
+- A detail never prints the home folder's path.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 

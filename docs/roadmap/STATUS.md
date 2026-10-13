@@ -257,7 +257,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
 
-- [ ] F199 — Self-health & crash reports
+- [~] F199 — Self-health & crash reports
 - [ ] F203 — Structured logging & correlation
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
