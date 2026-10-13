@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import sqlite3
 
 import pytest
 
@@ -105,6 +106,14 @@ def test_config_unreadable_fails(monkeypatch):
         "config", HEALTH_FAIL, "the configuration could not be read: bad budget", CONFIG_HINT)
 
 
+def test_config_wrong_value_with_an_unknown_key_fails_not_warns(tmp_path):
+    body = '[remedy.data]\nreclaim_warn_gb = "many"\n[remedy]\nfoo = 1\n'
+    result = check_config_coherence(_config_from(tmp_path, body))
+    assert result.level == HEALTH_FAIL
+    assert "data.reclaim_warn_gb" in result.detail
+    assert result.hint == CONFIG_HINT
+
+
 # --- ledgers ----------------------------------------------------------------
 
 
@@ -147,6 +156,27 @@ def test_ledgers_overwritten_pages_fail():
     assert result.hint == LEDGER_HINT
 
 
+def test_ledgers_a_database_that_opens_but_is_damaged_fails():
+    path = _ledger_path("alpha")
+    path.parent.mkdir(parents=True)
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE t(a, b)")
+    connection.execute("CREATE INDEX t_a ON t(a)")
+    connection.executemany("INSERT INTO t VALUES (?, ?)", [(i, 100 - i) for i in range(50)])
+    connection.commit()
+    connection.execute("PRAGMA writable_schema=ON")
+    connection.execute("UPDATE sqlite_master SET sql='CREATE INDEX t_a ON t(b)' WHERE name='t_a'")
+    connection.commit()
+    connection.close()
+    result = check_ledger_integrity()
+    assert result == HealthCheckResult(
+        "ledgers", HEALTH_FAIL,
+        "1 of 1 token ledgers failed SQLite's integrity check: projects/alpha/ledger.sqlite "
+        "(row 1 missing from index t_a; row 2 missing from index t_a; "
+        "row 3 missing from index t_a)",
+        LEDGER_HINT)
+
+
 def test_ledgers_one_good_one_bad_counts_both():
     _make_ledger("alpha")
     bad = _ledger_path("beta")
@@ -168,6 +198,15 @@ def test_staging_copies_at_or_above_the_level_warn(monkeypatch):
     assert result == HealthCheckResult(
         "staging_copies", HEALTH_WARN,
         "6.0 GB of staging copies can be freed, at or above the warning level of 5 GB",
+        RECLAIM_HINT)
+
+
+def test_staging_copies_exactly_at_the_level_warn(monkeypatch):
+    monkeypatch.setattr(self_health, "reclaim_preview_bytes", lambda root: 5 * GIB)
+    result = check_staging_copies(warn_gb=5)
+    assert result == HealthCheckResult(
+        "staging_copies", HEALTH_WARN,
+        "5.0 GB of staging copies can be freed, at or above the warning level of 5 GB",
         RECLAIM_HINT)
 
 
