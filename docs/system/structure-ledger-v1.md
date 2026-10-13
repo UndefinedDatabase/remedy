@@ -152,7 +152,9 @@ with the code that calls it.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
   its summaries, each to a module of its own; the dashboard builders stay. Outside those steps,
   F058 moved the server's launch helpers to `packages/orchestration/ui_server_launch.py`
-  (finding R-1264).
+  (finding R-1264). Its six `print` calls of the frontend's automatic build are excused from
+  ruff's T20 by a per-file ignore in `pyproject.toml`; the step that moves that build out of
+  the file removes the ignore (F203, DECISION F203 D3).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to

@@ -13,6 +13,7 @@ Public API::
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -154,11 +155,10 @@ def _link_child_to_project(parent_project_id: str, child_id: str) -> None:
         attach_job(project, child_id)
         save_project(project)
     except (ValueError, FileNotFoundError, OSError, ProjectNotFoundError) as exc:
-        import sys
-        print(
-            f"WARNING: could not link child job to project "
-            f"{parent_project_id[:8]}: {exc}",
-            file=sys.stderr,
+        logging.getLogger(__name__).warning(
+            "WARNING: could not link child job to project %s: %s",
+            parent_project_id[:8],
+            exc,
         )
 
 
