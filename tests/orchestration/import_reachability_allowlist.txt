@@ -27,6 +27,7 @@ apps.cli.commands.dev
 apps.cli.commands.do_cmd
 apps.cli.commands.do_order_input
 apps.cli.commands.doctor_health_cmd
+apps.cli.commands.doctor_logs_cmd
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file

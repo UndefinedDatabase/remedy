@@ -1,9 +1,10 @@
 # Structured logging v1: Remedy's operations log
 
 > Status (F203, 2026-10-13): being built. The setup, its keys, the file, the wiring into every
-> command and the mirror of the job timeline exist; the read by job or run id and the `print`
-> lint follow. DECISIONs F203 D1 and D2 in `.agent/decisions.md` hold the rules this page states;
-> the feature is `docs/roadmap/features/T12_F203.md`.
+> command, the mirror of the job timeline, the `print` lint and `remedy doctor logs` exist; the
+> read on the public API and in the cockpit follow. DECISIONs F203 D1 to D4 in
+> `.agent/decisions.md` hold the rules this page states; the feature is
+> `docs/roadmap/features/T12_F203.md`.
 
 ## What it does
 
@@ -47,6 +48,17 @@ command that ends on an unexpected error writes that error with its traceback to
 the terminal shows the same one-line message and the crash report's location as before. A line
 that cannot be written, for example because the data root cannot be written to, is dropped
 silently and never breaks a command.
+
+## Reading one job's lines
+
+`remedy doctor logs <job>` prints the lines of one job, oldest first, across the current file and
+every rotated one: the time, the level, the logger, `task=` and `run=` with `-` for an unknown
+id, then the message, and an exception, when a line carries one, below it indented by four
+spaces. The job id may be given by its first characters, as everywhere else. `--run <run id>`
+keeps only the lines of one run of a task. `--json` answers the same lines as JSON objects, with
+the names of the files read and the number of lines skipped. A line that is not JSON, such as a
+line written while `logging.json` was false, is skipped and counted. A job with no line gets an
+answer that says so, and the command still exits 0; it reads the log and changes nothing.
 
 ## Settings
 

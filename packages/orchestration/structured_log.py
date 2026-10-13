@@ -19,9 +19,10 @@ import os
 import sys
 from collections.abc import Iterator
 from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
 from packages.orchestration.config import RemedyConfig, get_config
 from packages.orchestration.data_paths import data_class_dir
@@ -223,3 +224,63 @@ def reset_structured_logging() -> None:
     if _SAVED_ROOT_LEVEL:
         root_logger.setLevel(_SAVED_ROOT_LEVEL[0])
         _SAVED_ROOT_LEVEL.clear()
+
+
+# The log files of the folder, oldest first: `remedy.log.<n>` by descending n, then `remedy.log`.
+def log_files_oldest_first(root: Path | None = None) -> list[Path]:
+    folder = logs_dir(root)
+    if not folder.is_dir():
+        return []
+    prefix = LOG_FILE_NAME + "."
+    rotated: list[tuple[int, Path]] = []
+    for path in folder.iterdir():
+        suffix = path.name[len(prefix):]
+        if path.name.startswith(prefix) and suffix.isascii() and suffix.isdigit():
+            rotated.append((int(suffix), path))
+    files = [path for _, path in sorted(rotated, key=lambda pair: pair[0], reverse=True)]
+    current = folder / LOG_FILE_NAME
+    if current.is_file():
+        files.append(current)
+    return files
+
+
+# What a read of the log answers: the matching lines, the lines that were not JSON, the files read.
+@dataclass(frozen=True)
+class LogReadResult:
+    entries: tuple[dict[str, Any], ...]
+    unreadable: int
+    files: tuple[str, ...]
+
+
+# Reads the lines of one job (by id prefix), optionally of one run, in file order, oldest file first.
+def read_log_entries(
+    *, job_id: str, run_id: str | None = None, root: Path | None = None,
+) -> LogReadResult:
+    entries: list[dict[str, Any]] = []
+    unreadable = 0
+    names: list[str] = []
+    for path in log_files_oldest_first(root):
+        try:
+            with path.open(encoding="utf-8", errors="replace") as handle:
+                lines = handle.readlines()
+        except OSError:
+            continue
+        names.append(path.name)
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                unreadable += 1
+                continue
+            if not isinstance(entry, dict):
+                unreadable += 1
+                continue
+            found = entry.get("job_id")
+            if not job_id or not isinstance(found, str) or not found.startswith(job_id):
+                continue
+            if run_id is not None and entry.get("run_id") != run_id:
+                continue
+            entries.append(entry)
+    return LogReadResult(entries=tuple(entries), unreadable=unreadable, files=tuple(names))
