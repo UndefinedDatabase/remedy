@@ -7,16 +7,14 @@ one job's or run's lines in order on the command line and on the public API; and
 remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D5).
 
 ## Current Step
-Round 5 on `feature/f203-structured-logging`, session 1: book round 4's PASS and R-1273's
-resolution, the route `GET /api/v1/jobs/{job}/logs` with the client operation `doctor.logs`, the
-correlation test over a fake-provider run, the cockpit's logs view moved to F303, and operator
-question Q18. T002 closes with it.
+Round 6 on `feature/f203-structured-logging`, session 1, the closure's first round: book round
+5's PASS, the consolidation pass, the closure's self-use item `SU-061` run to its approval gate
+and never applied, and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure: the integration gate with the one full suite and the self-use item, the
-   evidence package, then the Built State, the ledger rotation, the STATUS flip and the pull
-   request.
+1. The closure's evidence round: the staging reclaim, the evidence job and the review package.
+2. The closing round: the Built State, the ledger rotation, the STATUS flip and the pull request.
 
 ## Risks
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306.
-- Logging state is process-global; `tests/conftest.py` resets it after every test.
+- A red full suite opens repair rounds under amend0917-throughput rule 2.
