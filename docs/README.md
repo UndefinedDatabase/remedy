@@ -132,7 +132,7 @@ Specifications and design documents for the built system.
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
-| [self-health-v1.md](system/self-health-v1.md) | Self-health: `remedy doctor health`, its seven checks (settings, cost ledgers, snapshots, worktrees, model providers, staging copies, free disk), the PASS, WARN and FAIL levels and exit codes, and the checks not built yet |
+| [self-health-v1.md](system/self-health-v1.md) | Self-health: `remedy doctor health`, its eight checks (settings, cost ledgers, snapshots, worktrees, model providers, staging copies, free disk, recent crash reports), the PASS, WARN and FAIL levels and exit codes, the local crash report, and what is not built yet |
 | [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
 | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | Semantic dedupe inside a resumed session: the sent-hash index, the marker hook, the kill switch, and the measured savings |
 | [serve-daemon-v1.md](system/serve-daemon-v1.md) | `remedy serve` supervisor: the `serve` data-root class, the socket answered by the cockpit's write door, client mode's four forwarded commands, run registry and restart settling, and the systemd/container artifacts |

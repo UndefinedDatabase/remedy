@@ -1,7 +1,7 @@
 # Self-health v1: Remedy checks its own health
 
-> Status (F199, 2026-10-13): built in part. The command and its seven checks exist; the check
-> `crash_reports` and the crash report are later slices of F199. DECISIONs F199 D1 and D2 in
+> Status (F199, 2026-10-13): built in part. The command, its eight checks and the crash report
+> exist; only the supervisor's health route is still to come. DECISIONs F199 D1 and D2 in
 > `.agent/decisions.md` hold the rules this page states; the feature is
 > `docs/roadmap/features/T12_F199.md`.
 
@@ -28,6 +28,7 @@ The checks run in this order.
 | `providers` | Whether the `claude` command, the `ANTHROPIC_API_KEY` variable and the `ollama` command are present; no provider is called and the key is never printed | None of the three is present | Never | Install the Claude Code command line or Ollama, or set `ANTHROPIC_API_KEY`; `remedy worker doctor` checks a worker's own tooling |
 | `staging_copies` | The size of leftover staging copies that `remedy data reclaim --orphans` would free, against `data.reclaim_warn_gb` | The size is at or above the warning level, or cannot be measured | Never | Preview with `remedy data reclaim --orphans`, then free with `--apply` |
 | `disk` | The free disk, as the budget guard reads it, against `budget.min_free_disk_bytes` | The free disk cannot be read | The free disk is below the configured floor | Free disk space under the data root, or lower the floor; `remedy data reclaim --orphans` previews what Remedy's own staging copies would free |
+| `crash_reports` | The crash reports under `<data root>/crash/` modified in the last 7 days | One or more such reports exist (the detail counts them and names the newest) | Never | Read the newest report; it holds the traceback with secrets removed and stays on this machine; a report older than 7 days no longer warns |
 
 With no floor configured, the `disk` check passes and says so. With no ledger yet, the `ledgers`
 check passes and says so; so do `snapshots` with no snapshot and `worktrees` with no registered
@@ -50,17 +51,30 @@ Remedy health: WARN
   [WARN] staging_copies: 6.0 GB of staging copies can be freed, at or above the warning level of 5 GB
          fix: preview them with `remedy data reclaim --orphans`, then free them with `remedy data reclaim --orphans --apply`
   [PASS] disk: 52428800000 bytes free; no floor is configured (budget.min_free_disk_bytes)
+  [PASS] crash_reports: no crash report in the last 7 days
 ```
 
 With `--json`, the answer is one object. It carries `schema_version`, `ok`, `verdict` and `checks`;
 each entry of `checks` has exactly the keys `check`, `level`, `detail` and `hint`. When a check is
-FAIL, the object has `ok` false, `error` `health_failed` and a `message` such as `1 of 7 health
+FAIL, the object has `ok` false, `error` `health_failed` and a `message` such as `1 of 8 health
 checks failed`, still carries `verdict` and `checks`, and the command exits 1.
+
+## The crash report
+
+When a Remedy command ends on an error nobody expected, Remedy writes one Markdown report. This
+happens at the catch-all of every command and when a thread of the serve supervisor ends on an
+uncaught exception. It never happens for a deliberate exit or for Ctrl-C.
+
+The report is a file under `<data root>/crash/`, in a folder only the operator can read, one file
+per crash, named by the time and the process. It holds the header lines (time, version, command,
+the error, a digest of the configuration) and the traceback. The whole text is redacted the way
+evidence is: keys, tokens and passwords are replaced by `[REDACTED]`, and the home folder is shown
+as `~`. The command prints one line that says where the report is. Writing a report never fails the
+command and never hides the error: if the file cannot be written, the command reports the error
+as before. Remedy never sends a report anywhere; it stays on this machine.
 
 ## Not yet
 
-These are later slices of F199 and do not exist today:
+This is a later slice of F199 and does not exist today:
 
-- the check `crash_reports`;
-- the crash report, written when a Remedy command ends on an exception nothing caught;
 - the supervisor's health route, which would answer the same checks over its socket.
