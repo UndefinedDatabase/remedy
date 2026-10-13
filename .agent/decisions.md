@@ -29361,3 +29361,11 @@ HOW TO REVERSE: delete this paragraph; the structural step may stay, because it 
 
 ## 2026-10-13: UI external host links stay HTTP on one cockpit server
 The requested outer-IP reachability is implemented by making `remedy ui start` ask for the LAN-capable bind by default, while keeping `--host 127.0.0.1` as the loopback-only mode. The server records the primary loopback URL and LAN HTTP URLs in the session info. HTTPS is not added here: that would require certificate generation/trust and a separate TLS decision surface, not just host binding. The existing per-session token and command CSRF checks remain the network boundary.
+
+## DECISION F058 D6 — the operator confirms Q17 via remedy-answer: merge pull requests like the cockpit's when they arrive, the side work was the operator's own (2026-10-13)
+
+CONTEXT: Operator question Q17 in `.agent/operator_questions.md`, written at F058 round 7, reported that a second session working on cockpit LAN access switched the one shared working copy to its own branch mid-loop, made two commits and opened its own pull request, and asked whether such side work should run in a separate copy of the repository from now on, and whether the next loop session may merge that pull request first, as its usual rule for a single open pull request already says. The recommendation was to let the next loop session merge the cockpit pull request first, then bring the failover feature up to date and finish it, and for future side work while the loop runs, to use a separate copy of the repository, or pause the loop first. DECISION F058 D5 already executed the merge. The operator answered via remedy-answer, quoted in full: "Das war ich, bitte sowas mergen." ("That was me, please merge things like that.")
+
+CHOSEN: the operator's answer confirms the recommendation's merge step: a pull request of that kind is to be merged under the loop's normal Open PR Gate rule, as D5 already did. The question of whether side work should move to a separate copy of the repository going forward is not settled by this answer and stays open for a future question if it recurs.
+
+ALTERNATIVES CONSIDERED: none; the operator's answer confirms the merge recommendation rather than choosing an alternative.
