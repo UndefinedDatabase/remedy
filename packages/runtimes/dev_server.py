@@ -49,9 +49,6 @@ from packages.runtimes.dev_server_ports import (
 from packages.runtimes.dev_server_ports import (
     port_is_free as port_is_free,
 )
-from packages.runtimes.dev_server_ports import (
-    port_listener_in_session as port_listener_in_session,
-)
 
 #: How much of a log file is ever read back into memory or evidence.
 LOG_TAIL_BYTES = 64 * 1024

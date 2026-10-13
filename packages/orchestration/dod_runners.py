@@ -83,9 +83,9 @@ from packages.runtimes.dev_server import (
     READY_STATUS_MIN,
     choose_port,
     http_probe,
-    port_listener_in_session,
     stop_process_tree,
 )
+from packages.runtimes.dev_server_ports import port_listener_in_session
 from packages.runtimes.runtime_config import resolve_spec
 
 #: Default per-check wall clock. A check that cannot finish in five minutes is
@@ -628,6 +628,30 @@ class _AppRun:
     console: str = ""
 
 
+# R-1251: two checks can be given one port, so a health answer proves readiness only when a
+# process of the app's own session holds the port.
+def _confirm_app_owns_port(port: int, proc: Any, health_path: str,
+                           log: list[str]) -> tuple[str, str]:
+    """After readiness, make sure OUR process answered — not a squatter.
+
+    ``proc.pid`` is passed as the session id: the app was started with
+    ``start_new_session=True``, so its process group id IS its pid, and reading it
+    this way can never raise on an app that has just exited. Returns ``("", "")``
+    when the run may proceed (owned, or unreadable and so unproven either way);
+    else ``(REASON_APP_START_FAILED, detail)``.
+    """
+    owner = port_listener_in_session(port, proc.pid)
+    if owner is False:
+        detail = (f"port {port} answered {health_path}, but not from the "
+                  f"application this check started")
+        log.append(detail)
+        return REASON_APP_START_FAILED, detail
+    if owner is None:
+        log.append(f"the owner of port {port} could not be read; the check "
+                   f"goes on without that proof")
+    return "", ""
+
+
 def _run_app_once(spec: Any, deadline: float, log: list[str],
                   body: Callable[[str], str] | None) -> _AppRun:
     """Start the app, wait for readiness, run ``body``, and ALWAYS stop it.
@@ -702,19 +726,10 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
                     log.append(detail)
                 else:
                     log.append(f"ready on {spec.health_path}")
-                    owner = port_listener_in_session(port, os.getpgid(proc.pid))
-                    if owner is False:
-                        reason = REASON_APP_START_FAILED
-                        detail = (f"port {port} answered {spec.health_path}, but "
-                                  f"not from the application this check started")
-                        log.append(detail)
-                    else:
-                        if owner is None:
-                            log.append(
-                                f"the owner of port {port} could not be read; "
-                                f"the check goes on without that proof")
-                        if body is not None:
-                            reason = body(base_url)
+                    reason, detail = _confirm_app_owns_port(
+                        port, proc, spec.health_path, log)
+                    if not reason and body is not None:
+                        reason = body(base_url)
         finally:
             # ALWAYS stopped: success, red outcome, or an exception on the way
             # out. A stop failure only overrides a reason when the run itself

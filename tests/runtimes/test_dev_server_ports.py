@@ -97,3 +97,20 @@ class TestPortListenerInSession:
         monkeypatch.setattr(psutil, "process_iter", _boom)
         session_id = os.getpgid(os.getpid())
         assert port_listener_in_session(worker_port(8), session_id) is None
+
+    def test_a_denied_connections_read_in_the_session_answers_none(self, monkeypatch):
+        """A member of the session IS there, but its sockets cannot be read: this
+        must never be mistaken for proof that the port is foreign (R-1251)."""
+        def _denied(self, *_a, **_kw):
+            raise psutil.AccessDenied(pid=self.pid)
+
+        monkeypatch.setattr(psutil.Process, "connections", _denied)
+        if hasattr(psutil.Process, "net_connections"):
+            monkeypatch.setattr(psutil.Process, "net_connections", _denied)
+
+        child = _spawn(_IDLE)
+        try:
+            session_id = os.getpgid(child.pid)
+            assert port_listener_in_session(worker_port(9), session_id) is None
+        finally:
+            _stop(child)

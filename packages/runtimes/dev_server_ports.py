@@ -7,7 +7,6 @@ so every existing `dev_server.<name>` keeps working.
 """
 from __future__ import annotations
 
-import contextlib
 import os
 import socket
 import urllib.error
@@ -76,11 +75,16 @@ class RuntimeProbeResult:
 def port_listener_in_session(port: int, session_id: int) -> bool | None:
     """Does a process in process group ``session_id`` hold a LISTEN socket on ``port``?
 
-    True when a live process whose process group is ``session_id`` holds a LISTEN
-    socket on ``port``; False when the socket table was read and no such process
-    holds it; None when it could not be read at all (psutil error, permission). A
-    process that vanishes or denies access mid-scan is skipped; only a failure of
-    the whole read answers None.
+    True as soon as a live member of ``session_id`` holds a LISTEN socket on
+    ``port``. A process whose own group id cannot be read is skipped outright — it
+    vanished, or it is not ours to read. Among the processes confirmed to be IN the
+    session, one that vanished before its connections could be read
+    (``psutil.NoSuchProcess``) is also skipped; any OTHER failure to read them
+    (access denied, a zombie) leaves this port's true owner unproven, so a denied
+    read never reads as proof the port is foreign. False only when every session
+    member was read cleanly and none listens on ``port``; None when some member
+    was unreadable that way, or when the process table itself could not be read
+    at all.
     """
     import psutil
 
@@ -89,15 +93,28 @@ def port_listener_in_session(port: int, session_id: int) -> bool | None:
     except (psutil.Error, OSError):
         return None
 
+    unreadable = False
     for proc in procs:
-        with contextlib.suppress(psutil.Error, OSError, ProcessLookupError):
+        try:
             if os.getpgid(proc.pid) != session_id:
                 continue
+        except (OSError, ProcessLookupError):
+            continue  # vanished, or not ours to read
+
+        try:
             reader = getattr(proc, "net_connections", None) or proc.connections
-            for conn in reader(kind="inet"):
-                if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.port == port:
-                    return True
-    return False
+            conns = reader(kind="inet")
+        except psutil.NoSuchProcess:
+            continue
+        except (psutil.Error, OSError):
+            unreadable = True
+            continue
+
+        for conn in conns:
+            if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.port == port:
+                return True
+
+    return None if unreadable else False
 
 
 def http_probe(url: str, timeout: float = 3.0) -> tuple[int, str]:
