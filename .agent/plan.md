@@ -7,14 +7,15 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Session 2, round 9 on `feature/f306-findings-paydown-v8`, the closure's repair round: book round 8
-and register R-1275, repair it (the call-site inventory names the module the call moved to), and
-run the one full suite again on the repaired tree, which must read no bad node.
+Session 3, round 10 on `feature/f306-findings-paydown-v8`: book round 9 (its gate entry is in
+`.agent/handoff.md`) and R-1275's resolution, then the closure's one full suite again on the same
+tree, once the repository root holds neither stray review directory (operator question Q18).
 
 ## Next Steps
-1. Round 10: book round 9 and R-1275's resolution; the evidence bundle and the review package.
-2. Round 11: the Built State, R-1235's resolution, R-1246 and R-1252 re-assigned to the next
-   paydown, the rotation, the next paydown's registration, the STATUS line and the pull request.
+1. The evidence bundle and the review package.
+2. The closing round: the Built State, R-1235's resolution, R-1246 and R-1252 re-assigned to the
+   next paydown, the rotation, the next paydown's registration, the STATUS line, the self-use
+   entry's `consumed_by`, and the pull request.
 
 ## Risks
-- The repaired tree's suite must shrink the bad set from one node to none, with no node newly bad.
+- A suite run while foreign files sit in the root reads their tests too; check the root first.
