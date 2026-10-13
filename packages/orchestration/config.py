@@ -45,6 +45,7 @@ from typing import Any
 # here by name, so every import path keeps working.
 from packages.orchestration.config_key_spec import ConfigKeySpec
 from packages.orchestration.config_keys_claude import CLAUDE_KEY_SPECS
+from packages.orchestration.config_keys_logging import LOGGING_KEY_SPECS
 from packages.orchestration.config_keys_mission import MISSION_KEY_SPECS
 from packages.orchestration.config_keys_model_routing import MODEL_ROUTING_KEY_SPECS
 from packages.orchestration.config_keys_ui import UI_KEY_SPECS
@@ -204,13 +205,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=None,
     ),
-    ConfigKeySpec(
-        key="logging.level",
-        env_var="REMEDY_LOG_LEVEL",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
-        value_type=str,
-        default="WARNING",
-    ),
+    *LOGGING_KEY_SPECS,
     ConfigKeySpec(
         key="claude_enabled",
         env_var="REMEDY_CLAUDE_ENABLED",

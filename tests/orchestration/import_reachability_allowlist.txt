@@ -133,6 +133,7 @@ packages.orchestration.commit_execution_gate
 packages.orchestration.config
 packages.orchestration.config_key_spec
 packages.orchestration.config_keys_claude
+packages.orchestration.config_keys_logging
 packages.orchestration.config_keys_mission
 packages.orchestration.config_keys_model_routing
 packages.orchestration.config_keys_ui
