@@ -88,7 +88,8 @@ def test_json_with_every_check_passing_is_one_ok_object(fixed_checks, capsys):
     assert document["verdict"] == "PASS"
     assert len(document["checks"]) == 4
     for check in document["checks"]:
-        assert list(check) == ["check", "level", "detail", "hint"]
+        # The envelope writes every level's keys sorted, so the order is not the check's own.
+        assert sorted(check) == ["check", "detail", "hint", "level"]
 
 
 def test_json_with_a_failing_ledger_exits_one_with_the_failure_envelope(fixed_checks, capsys):
