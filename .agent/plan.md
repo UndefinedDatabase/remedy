@@ -7,15 +7,11 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Session 3, round 10 on `feature/f306-findings-paydown-v8`: round 9 and R-1275's resolution are
-booked, the two stray review folders are out of the repository root (DECISION F306 D3), and the
-closure's one full suite runs again on the tree it ran on in round 9.
+Session 3, round 11 on `feature/f306-findings-paydown-v8`: round 10 is booked; the staging
+reclaim, the evidence job and the review package run on this round's first commit, the closure's
+accepted head.
 
 ## Next Steps
-1. The evidence bundle and the review package.
-2. The closing round: the Built State, R-1235's resolution, R-1246 and R-1252 re-assigned to the
+1. The closing round: the Built State, R-1235's resolution, R-1246 and R-1252 re-assigned to the
    next paydown, the rotation, the next paydown's registration, the STATUS line, the self-use
    entry's `consumed_by`, and the pull request.
-
-## Risks
-- A suite run while foreign files sit in the root reads their tests too; check the root first.
