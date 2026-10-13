@@ -1,194 +1,115 @@
-# Handback — F058 round 10: book round 9, the Built State, the ledger rotation, the STATUS flip with the README sync, and the pull request
+# Handback — F199 round 1: claim F199, book F058 round 10, and T001's first half (the four health checks)
 
 ## Session
 
-SESSION 4 of feature F058 · round 10 · rounds so far 10
+SESSION 1 of feature F199 · round 1 · rounds so far 1
 
-This round booked round 9 (PASS), appended the Built State's closure paragraph, saved the round 10
-block and the STATUS line and PR body, rotated the finding ledger into its archive, and flipped
-F058's STATUS line to accepted with the README sync and SU-059's `consumed_by`. Context
-self-assessment: every prepared-file digest, the rotation's own output and every gate's output
-matched the block and its bundle exactly, with no deviation or improvisation needed anywhere in the
-round.
+Context self-assessment: every prepared-file digest matched the block and the work fit comfortably in
+one pass; the one place I read code before writing (the config loader's `[remedy.*]` table shape and
+its validation messages) was needed to write real test files, and nothing else was improvised.
 
-Fortschritt: 100 % (F058 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~20 % (T001's first half landed · its second half, T002, T003 and the closure open) — Schätzung
 
 ## Range
 
-Review of `c1b774775`..HEAD (round 10: C1 to C3; this handback is C3).
+Review of `8ee65f61a`..HEAD (round 1: C1 to C4; this handback is C4).
 
 ## Commits
 
-### 29151ed97 F058 R10 C1: book round 9, the Built State, save the round 10 block, the STATUS line and the PR body
+### b0f1db0b7 F199 R1 C1: claim F199, book F058 R10, re-head the ledger, DECISION F199 D1 with the feature file's amendment
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f058-r10-pr_body.md` | +63/-0 | NEW FILE, byte copy of the reviewer's `src-pr_body.md` |
-| `.agent/authored/f058-r10-status_line.txt` | +1/-0 | NEW FILE, byte copy of the reviewer's `src-status_line.txt` |
-| `.agent/authored/f058-r10.md` | +125/-0 | NEW FILE, byte copy of `block.md` |
-| `.agent/live_review.md` | +2/-0 | byte copy of `sim-C1-live_review.md` |
-| `.agent/plan.md` | +5/-10 | byte copy of `src-plan.md` |
-| `docs/roadmap/features/T3_F058.md` | +17/-0 | byte copy of `sim-T3_F058.md` |
+| `.agent/authored/f199-r1.md` | +211/-0 | NEW FILE, byte copy of `block.md` (211 lines, sha256 `fbf73cad578a00b3e170129fbf81abecabd8da4fbffa44d29577b3ab1e3e6e21`) |
+| `.agent/context.md` | +11/-12 | byte copy of `dry-context.md` |
+| `.agent/decisions.md` | +12/-0 | byte copy of `dry-decisions.md`; DECISION F199 D1 |
+| `.agent/live_review.md` | +26/-21 | byte copy of `dry-live_review.md`; re-head and F058 round 10 |
+| `.agent/plan.md` | +15/-10 | byte copy of `dry-plan.md` |
+| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `dry-STATUS.md`; F199 `[ ]` to `[~]` |
+| `docs/roadmap/features/T12_F199.md` | +27/-0 | byte copy of `dry-T12_F199.md`; the amendment section |
 
-### ee2147626 F058 R10 C2: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-48 | `scripts/rotate_live_review.py`'s own rewrite, byte-equal to `sim-C2-live_review.md` |
-| `.agent/live_review_archive.md` | +48/-0 | `scripts/rotate_live_review.py`'s own rewrite, byte-equal to `sim-C2-live_review_archive.md` |
-
-### (this commit) F058 R10 C3: accept F058 in STATUS with its README sync and the self-use queue
+### ffc5ce1ad F199 R1 C2: the health checks of the configuration, the token ledgers, the staging copies and the free disk (T001)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `sim-STATUS.md`; flips F058's line to `[x]` |
-| `README.md` | +11/-2 | byte copy of `sim-README.md`; accepted count, Tier 3 row and accepted list synced |
-| `scripts/self_use_queue.json` | +1/-1 | byte copy of `sim-self_use_queue.json`; `SU-059`'s `consumed_by` set to `F058` |
+| `packages/orchestration/self_health.py` | +225/-0 | NEW FILE, the four checks, the result type, the verdict and exit code |
+| `tests/test_no_orphan_modules.py` | +2/-0 | `ALLOWED_UNWIRED` entry for `self_health.py` |
+
+### 70f7b173b F199 R1 C3: the health checks' tests (T001)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_self_health.py` | +278/-0 | NEW FILE, 25 tests over the four checks, the home folder text, the verdict and `as_json` |
+
+### (this commit) F199 R1 C4: handback
+
+| Path | +/- | Reason |
+|---|---|---|
 | `.agent/handoff.md` | this commit | this handback |
 
 ## External actions
 
-- `gh pr list --repo UndefinedDatabase/remedy --state open --json number,headRefName,baseRefName,isDraft`
-  → `[]` (checked before any write, as the Open PR Gate orders).
-- The push and the pull-request creation the block orders for step 4 run after this commit; this
-  handback cannot name a pull request number that does not exist while it is written, so both
-  outputs are reported in the session's final reply only, not here.
+- `gh pr list --state open --json number` → `[]` (before any write).
+- `git checkout -b feature/f199-self-health` from `main` at `8ee65f61a`.
+- The push (`git push -u origin feature/f199-self-health`) runs after this commit; its result is in the session's final reply. No pull request opened.
 
 ## Verification
 
-Preconditions, before any write: `git branch --show-current` → `feature/f058-model-failover-chain`;
-`git rev-parse HEAD` and `git rev-parse origin/feature/f058-model-failover-chain` both
-`c1b774775fb80b4e5ed67556883c575f172341d6`; `git status --porcelain` → empty; `.agent/STOP` →
-absent.
+Preconditions: branch `main`, HEAD `8ee65f61a5b1686cc4595a876e2a2fc95d46c631`, `git status --porcelain` empty, open PR list `[]`. Digests of `block.md`, `run_selection.py`, `selection.txt` and the six `dry-*` files all matched.
 
-C1: `git diff --cached --name-only` named exactly the six paths the Bundle lists.
+C1: `git diff --cached --numstat` named exactly the seven paths with the numstats the block gives.
 
-C2, `python3 scripts/rotate_live_review.py` (run once from the primary checkout, exit code and
-output captured in the same script) — real exit code 0, whole output:
+Gate 1: `git -C /home/decodeux/Repos/remedy status --porcelain` — empty.
+
+Gate 2: `python3 -m ruff check packages/orchestration/self_health.py tests/orchestration/test_self_health.py tests/test_no_orphan_modules.py` — `All checks passed!`
+
+Gate 3: `python3 .../prep/run_selection.py /home/decodeux/Repos/remedy .../f199-r1-worker/selection-output.txt` — exit 0, `3973 passed, 3 skipped in 37.57s`; no FAILED, ERROR, `absent in tree:` or `process(es) behind` line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine F252), `tests/test_install_smoke.py:175` (opt-in install smoke), `tests/test_repair_context_reviewer_memory.py:257` (UI source not found).
+
+Gate 4: `python3 -m apps.cli.main integrity check --json` — `fail_count` 0.
+
+Gate 5: `open_finding_ids` → `['R-1235', 'R-1246', 'R-1251', 'R-1252']`.
+
+Gate 6: `git log --format=%s 8ee65f61a..HEAD` (before C4):
 ```
-gate records moved: 6
-finding pairs moved: 9 (18 records)
-resolved-text records moved: 0
-old ledger size: 159033 bytes
-new ledger size: 135611 bytes
-old archive size: 6684153 bytes
-new archive size: 6707575 bytes
-open findings before: 4
-open findings after: 4
-gate headers matching neither known form (left in place): 1
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+F199 R1 C3: the health checks' tests (T001)
+F199 R1 C2: the health checks of the configuration, the token ledgers, the staging copies and the free disk (T001)
+F199 R1 C1: claim F199, book F058 R10, re-head the ledger, DECISION F199 D1 with the feature file's amendment
 ```
-Equal to `sim-rotation.txt` after that file's first line, except the last line, which names the
-primary checkout's paths instead of the simulation worktree's. `.agent/live_review.md` and
-`.agent/live_review_archive.md` each byte-equal (sha256) to their C2 Bundle files after the run.
-
-Gate 1 (C3 step 2): `git -C /home/decodeux/Repos/remedy status --porcelain` — exactly the three C3
-files modified. `python3 .../prep/verify.py /home/decodeux/Repos/remedy 29151ed9781cda1c7b7ce68a85dde3537cd19cf2 ee21476260deffc4078dcb44d2bb45a7f1a78b6c`:
-```
-equal at C1 .agent/authored/f058-r10.md True
-equal at C1 .agent/authored/f058-r10-status_line.txt True
-equal at C1 .agent/authored/f058-r10-pr_body.md True
-equal at C1 .agent/live_review.md True
-equal at C1 .agent/plan.md True
-equal at C1 docs/roadmap/features/T3_F058.md True
-C1 names exactly its paths True
-equal at C2 .agent/live_review.md True
-equal at C2 .agent/live_review_archive.md True
-C2 names exactly its paths True
-equal in the working tree docs/roadmap/STATUS.md True
-equal in the working tree README.md True
-equal in the working tree scripts/self_use_queue.json True
-ALL True
-```
-
-Gate 2: a Python reading of `.agent/authored/f058-r10-status_line.txt` without its trailing
-newline — `occurrences: 1` in `docs/roadmap/STATUS.md`; `lines starting '- [~]': 0 []`.
-
-Gate 3: `python3 .../prep/run_selection.py /home/decodeux/Repos/remedy .../selection-output.txt` —
-real exit code 0, no FAILED or ERROR line. Summary line: `3662 passed, 3 skipped in 25.89s`. Three
-SKIPPED lines (`test_agent_tooling.py`, `test_install_smoke.py`,
-`test_repair_context_reviewer_memory.py`), none FAILED or ERROR. The simulation read `3660 passed,
-5 skipped`; the two extra passes here are the UI-toolchain skips the block anticipated turning into
-passes on this host.
-
-Gate 4: `python3 .../prep/run_integrity.py /home/decodeux/Repos/remedy` — real exit code 0:
-```
-handler_import pass
-live_review_verdict pass
-plan_consistency pass
-relevant_untracked pass
-repo_root_hygiene pass
-high_blockers_open pass
-fail_count 0
-exit 0
-```
-
-Gate 5: `python3 .../prep/open_set.py /home/decodeux/Repos/remedy` —
-`['R-1235', 'R-1246', 'R-1251', 'R-1252']`.
-
-All five gates passed; nothing red.
 
 ## Authored-text proofs
 
-C1's six paths were each compared disk-to-disk (sha256) against the reviewer's prepared files
-immediately after copying and again by gate 1's `verify.py`: `.agent/authored/f058-r10-pr_body.md`
-against `src-pr_body.md`, `.agent/authored/f058-r10-status_line.txt` against
-`src-status_line.txt`, `.agent/authored/f058-r10.md` against `block.md` (125 lines, sha256
-`f4fa36ee8e54aa60cf54b4ff4af461959b0de6d6ebef6339ad0bcd398b746cb0`, equal to the digest named in
-the delivering prompt), `.agent/live_review.md` against `sim-C1-live_review.md`, `.agent/plan.md`
-against `src-plan.md`, and `docs/roadmap/features/T3_F058.md` against `sim-T3_F058.md` — all six
-equal.
-
-C2's two rewritten paths were compared disk-to-disk (sha256) against `sim-C2-live_review.md` and
-`sim-C2-live_review_archive.md` after the rotation ran — both equal.
-
-C3's three paths were compared disk-to-disk (sha256) against `sim-STATUS.md`, `sim-README.md` and
-`sim-self_use_queue.json` immediately after copying and again by gate 1's `verify.py` — all three
-equal.
+C1's six `dry-*` files were copied over their paths and each digest checked against the block's Bundle list before copying; the block copy `.agent/authored/f199-r1.md` has 211 lines and sha256 `fbf73cad578a00b3e170129fbf81abecabd8da4fbffa44d29577b3ab1e3e6e21`, equal to the digest and line count in the delivering prompt.
 
 ## Deviations & assumptions
 
-None. Every prepared-file digest matched, the rotation's output matched the simulation exactly
-except the last line's paths (expected, since it names the primary checkout), every gate passed on
-the first run, and gate 3's two extra passes over the simulation's count are the exact variance the
-block itself anticipates from this host's UI toolchain, not a deviation.
+None. Gate 3 was green on its first run, so no fix commit was needed. Assumption: `PRAGMA integrity_check` on a non-database file raises `sqlite3.DatabaseError` (confirmed by the garbage-file test passing).
 
 ## For the operator, in plain sentences
 
-The model failover chain feature is finished. Each role can name backup models: when the usual
-model service cannot be reached after its retries, a backup answers, and the run's record and its
-report say which model was meant and which one answered. Every backup is held to the same strength
-rules as the usual model, and a model on this machine may stand in only for light work. A timeout, a
-rate limit or an unreadable answer never switches models. After a backup has answered, the backups
-are used first for a few minutes. The cockpit's home-network change was merged first, and the
-feature was brought up to date with it, which needed two small repairs of checks that change had
-turned red. The whole test collection passed once on the code that ships. A review package was
-built and saved. A pull request is open and will be merged at the start of the next working session
-unless the operator merges it sooner. Four small problems stay written down for the next clean-up
-feature. One question about two sessions sharing one working copy still waits for the operator's
-answer, while the session's reversible choice for it already stands.
+Work has begun on letting Remedy check its own health. This round taught it four checks: whether its settings are readable and have the right types, whether its cost records are intact, whether its leftover working copies have grown large, and whether enough disk is free. Each one answers pass, warn or fail, with a hint that names what to do. Nothing a person sees changes yet, because the command that prints them comes next round.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
-2. The Open PR Gate, which merges F058's pull request in the next session.
-3. The next feature's first commit books round 10's verdict.
-4. Rule A5, the next unchecked line in `docs/roadmap/STATUS.md`.
+2. Phase 1 rule 2: the Open PR Gate.
+3. The next round's first commit books round 1's verdict.
+4. T001's second half: the catalog's structural step, the checks snapshots, worktrees and providers, and the command remedy doctor health.
 
-Operator questions open: 1.
-Open findings: 4 (R-1235, R-1246, R-1251 and R-1252, Low, owned by F306).
+Operator questions open: 0.
+Open findings: 4 — R-1235, R-1246, R-1251 and R-1252, owned by F306.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | six paths byte-equal to the prepared files, confirmed by sha256 and gate 1's `verify.py` |
-| C2 | done | rotation exit 0, output equal to the simulation after its first line except the last line's paths, both rewritten files byte-equal to the Bundle |
-| C3 | done | this handback; three files byte-equal to the Bundle, all five gates passed |
-| push | pending | runs after this commit, per the block's step 4; reported in the session's final reply |
-| pull request | pending | runs after the push, per the block's step 4; reported in the session's final reply |
-| Gate 1 | passed | `ALL True` |
-| Gate 2 | passed | one occurrence, no `- [~]` line |
-| Gate 3 | passed | exit 0, no FAILED or ERROR line, `3662 passed, 3 skipped` |
-| Gate 4 | passed | six checks `pass`, `fail_count 0`, exit 0 |
+| C1 | done | seven paths, numstat as ordered, block copy 211 lines and digest equal |
+| C2 | done | `self_health.py` and the `ALLOWED_UNWIRED` entry |
+| C3 | done | the tests file |
+| C4 | done | this handback |
+| Gate 1 | passed | status empty |
+| Gate 2 | passed | `All checks passed!` |
+| Gate 3 | passed | exit 0, `3973 passed, 3 skipped` |
+| Gate 4 | passed | `fail_count` 0 |
 | Gate 5 | passed | exact open-finding set |
+| Gate 6 | passed | three subjects, newest first |
+| T001 first half | done | four checks and their tests landed |
