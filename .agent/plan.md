@@ -9,14 +9,17 @@ supervisor answers its own health on its public API (docs/roadmap/features/T12_F
 F199 D1 to D3).
 
 ## Current Step
-Round 6 on `feature/f199-self-health`, session 1, the repair of round 5: book round 5's FAIL and
-register R-1270 and R-1271, DECISION F199 D3; step (2) of the public API's boundary, the route
-table, to `packages/orchestration/public_api_routes.py`; `doctor.health` registered as a client
-operation; the handback for rounds 5 and 6; the push.
+Round 7 on `feature/f199-self-health`, session 2, the closure's integration-gate round: book round
+6's PASS and the resolutions of R-1269, R-1270 and R-1271; the checklist's consolidation pass; the
+closure's self-use item run to its approval gate, never applied; the one full suite and its CPU
+cost; the handback.
 
 ## Next Steps
-1. The closure: the one full suite on the shipped tree, the staging reclaim, the evidence job and
-   the review package; then the bookings, the ledger rotation, the STATUS flip and the pull request.
+1. A green suite: the staging reclaim, the evidence job and the review package on the accepted
+   head. A red suite: a repair round naming every bad node id.
+2. The closing round: the Built State, the ledger rotation, the self-use entry's `consumed_by`, the
+   STATUS flip with the README sync, and the pull request, left unmerged.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306; R-1269, R-1270 and R-1271 are F199's own.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306; F199 owns no open finding.
+- The self-use run calls a paid provider within the `self_use` role's budget.
