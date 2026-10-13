@@ -2,7 +2,7 @@
 
 > Status (F203, 2026-10-13): built. The setup, its keys, the file, the wiring into every command,
 > the mirror of the job timeline, the `print` lint, `remedy doctor logs` and its route on the
-> public API exist; the cockpit's logs view is F303's. DECISIONs F203 D1 to D5 in
+> public API exist; the cockpit's logs view is F303's. DECISIONs F203 D1 to D6 in
 > `.agent/decisions.md` hold the rules this page states; the feature is
 > `docs/roadmap/features/T12_F203.md`.
 
@@ -23,10 +23,10 @@ rotated files are kept. Remedy keeps nothing outside its data root.
 
 ## One line
 
-With `logging.json` true, the default, every record is one JSON object on one line, with these
+With `logging.json_lines` true, the default, every record is one JSON object on one line, with these
 keys in this order: `ts` (UTC with milliseconds, for example `2026-10-13T08:05:09.042Z`),
 `level`, `logger`, `message`, `job_id`, `task_id`, `run_id`, and `exception` when the record
-carries one. An id the record does not know is `null`. With `logging.json` false, the line is
+carries one. An id the record does not know is `null`. With `logging.json_lines` false, the line is
 plain text: the time, the level, the logger, `job=`, `task=` and `run=` with `-` for an unknown
 id, then the message. Every line passes through the same redaction as evidence before it is
 written, so a secret that reaches a message or a traceback is written as `[REDACTED]`.
@@ -57,7 +57,7 @@ id, then the message, and an exception, when a line carries one, below it indent
 spaces. The job id may be given by its first characters, as everywhere else. `--run <run id>`
 keeps only the lines of one run of a task. `--json` answers the same lines as JSON objects, with
 the names of the files read and the number of lines skipped. A line that is not JSON, such as a
-line written while `logging.json` was false, is skipped and counted. A job with no line gets an
+line written while `logging.json_lines` was false, is skipped and counted. A job with no line gets an
 answer that says so, and the command still exits 0; it reads the log and changes nothing.
 
 A program reads the same answer over the public API with `GET /api/v1/jobs/{job}/logs`, and
@@ -69,7 +69,7 @@ lines yet: its logs view belongs to F303, the feature that puts the cockpit on t
 | Key | Variable | Default | Meaning |
 |---|---|---|---|
 | `logging.level` | `REMEDY_LOG_LEVEL` | `INFO` | The lowest level written to the file; an unknown name falls back to `INFO` and writes one warning naming it |
-| `logging.json` | `REMEDY_LOG_JSON` | true | JSON lines, or plain text lines when false |
+| `logging.json_lines` | `REMEDY_LOG_JSON_LINES` | true | JSON lines, or plain text lines when false |
 | `logging.max_bytes` | `REMEDY_LOG_MAX_BYTES` | 10000000 | The size at which the file is rotated |
 | `logging.backup_count` | `REMEDY_LOG_BACKUP_COUNT` | 5 | How many rotated files are kept |
 
