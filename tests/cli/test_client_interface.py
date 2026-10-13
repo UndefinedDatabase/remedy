@@ -831,7 +831,8 @@ def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     for key in ("worktree", "result_diff", "postmortem", "context_strategy"):
         assert set(trees[key]) == _dict_value_keys(pingpong, "export_job_report", key), key
     assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
-    assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(pingpong, "_export_execution_config")
+    assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(
+        "packages/orchestration/execution_config.py", "_export_execution_config")
     assert not any(EXECUTION_CONFIG_KEY_TREE.values()), "an execution config key with keys below it"
     assert trees["target_guard"] is TARGET_GUARD_KEY_TREE
     assert set(TARGET_GUARD_KEY_TREE) == _returned_dict_keys(pingpong, "_export_target_guard")
