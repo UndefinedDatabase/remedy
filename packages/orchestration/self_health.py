@@ -356,6 +356,33 @@ def check_disk_floor(probe: Callable[[], int] | None = None) -> HealthCheckResul
     return _result("disk", HEALTH_PASS, f"{free} bytes free; the floor is {floor} bytes")
 
 
+# The one next step for a recent crash report.
+CRASH_HINT: str = (
+    "read the newest report; it holds the traceback with secrets removed and "
+    "stays on this machine; a report older than 7 days no longer warns"
+)
+
+
+# Check `crash_reports`: a local crash report from the last 7 days warns; none is sent anywhere.
+def check_crash_reports(root: Path | None = None) -> HealthCheckResult:
+    from packages.orchestration.crash_report import (
+        CRASH_RECENT_DAYS,
+        crash_reports_dir,
+        recent_crash_reports,
+    )
+
+    reports = recent_crash_reports(root)
+    if not reports:
+        return _result(
+            "crash_reports", HEALTH_PASS,
+            f"no crash report in the last {CRASH_RECENT_DAYS} days")
+    rel = reports[0].relative_to(crash_reports_dir(root).parent).as_posix()
+    return _result(
+        "crash_reports", HEALTH_WARN,
+        f"{len(reports)} crash reports in the last {CRASH_RECENT_DAYS} days; "
+        f"the newest is {rel}", CRASH_HINT)
+
+
 # The fixed order `remedy doctor health` prints the checks in.
 def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]:
     return (
@@ -366,6 +393,7 @@ def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]
         check_providers(),
         check_staging_copies(root),
         check_disk_floor(),
+        check_crash_reports(root),
     )
 
 
