@@ -149,6 +149,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("crash", "packages.orchestration.crash_report",
                   "never here; local crash reports `remedy doctor health` counts, "
                   "which nothing ever sends (F199)"),
+    DataRootClass("logs", "packages.orchestration.structured_log",
+                  "rotated by size by the setup itself; Remedy's operations log, "
+                  "which is never evidence (F203)"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {
