@@ -8,8 +8,11 @@ only reads. Round 2 wires these checks into the command.
 
 from __future__ import annotations
 
+import os
+import shutil
 import sqlite3
-from collections.abc import Callable
+import subprocess
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,7 +21,13 @@ from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
 from packages.orchestration.config import RemedyConfig, get_config, validate_config
 from packages.orchestration.data_paths import projects_dir, resolve_data_root
 from packages.orchestration.data_reclaim import reclaim_preview_bytes
+from packages.orchestration.project_registry import _list_projects_readonly
+from packages.orchestration.repository_snapshot import (
+    _SNAPSHOT_DIR_NAME,
+    _check_snapshot_integrity,
+)
 from packages.orchestration.token_ledger import LEDGER_FILENAME
+from packages.orchestration.worktrees import WorktreeError, list_worktrees
 
 # The three levels a check can answer, in rising severity.
 HEALTH_PASS = "PASS"
@@ -145,6 +154,148 @@ def check_ledger_integrity(root: Path | None = None) -> HealthCheckResult:
         f"{len(ledgers)} of {len(ledgers)} token ledgers passed SQLite's integrity check")
 
 
+# How many of the newest workspace snapshots the check reads.
+SNAPSHOT_SAMPLE: int = 20
+
+# The one next step for a damaged snapshot.
+SNAPSHOT_HINT: str = (
+    "run `remedy snapshot inspect <job id> <snapshot id>` for each named snapshot, "
+    "whose two ids are the folder names in its path; a damaged snapshot cannot "
+    "restore the files it recorded, so no revert should rely on it"
+)
+
+
+def _snapshot_problems(snapshot_dir: Path) -> str:
+    """The hash problems of one snapshot folder, joined by ", "; "" when none."""
+    integrity = _check_snapshot_integrity(snapshot_dir)
+    problems: list[str] = []
+    if not integrity["manifest_ok"]:
+        problems.append("its manifest does not match its recorded hash")
+    if integrity["blobs_missing"] > 0:
+        problems.append(f"{integrity['blobs_missing']} recovery files missing")
+    if integrity["hash_mismatches"] > 0:
+        problems.append(f"{integrity['hash_mismatches']} recovery files changed")
+    return ", ".join(problems)
+
+
+def _manifest_sort_key(path: Path) -> tuple[float, str]:
+    return (path.stat().st_mtime, str(path))
+
+
+# Check `snapshots`: the newest workspace snapshots still match their recorded hashes.
+def check_snapshot_manifests(
+    root: Path | None = None, sample: int = SNAPSHOT_SAMPLE,
+) -> HealthCheckResult:
+    data_root = root if root is not None else resolve_data_root()
+    manifests = sorted(
+        data_root.glob(f"workspaces/*/{_SNAPSHOT_DIR_NAME}/*/manifest.json"),
+        key=_manifest_sort_key, reverse=True)[:sample]
+    if not manifests:
+        return _result("snapshots", HEALTH_PASS, "no workspace snapshot exists yet")
+    bad: list[str] = []
+    for manifest in manifests:
+        problems = _snapshot_problems(manifest.parent)
+        if problems:
+            rel = manifest.parent.relative_to(data_root).as_posix()
+            bad.append(f"{rel} ({problems})")
+    if bad:
+        return _result(
+            "snapshots", HEALTH_FAIL,
+            f"{len(bad)} of {len(manifests)} newest workspace snapshots failed "
+            "their hash check: " + "; ".join(bad), SNAPSHOT_HINT)
+    return _result(
+        "snapshots", HEALTH_PASS,
+        f"{len(manifests)} of {len(manifests)} newest workspace snapshots "
+        "passed their hash check")
+
+
+# The one next step for worktrees whose folders are gone.
+WORKTREE_HINT: str = (
+    "run `git worktree prune` in each named repository; it forgets the "
+    "worktrees whose folders are gone and changes no other file"
+)
+
+
+def _registered_repositories() -> list[str]:
+    """Every registered project's repository folders that exist, without duplicates."""
+    repos: list[str] = []
+    for project in _list_projects_readonly():
+        candidates = (
+            [project.canonical_repo_path] if project.canonical_repo_path
+            else list(project.repo_paths))
+        for candidate in candidates:
+            if candidate and candidate not in repos and Path(candidate).is_dir():
+                repos.append(candidate)
+    return repos
+
+
+# Check `worktrees`: no registered repository lists a worktree whose folder is gone.
+def check_worktrees() -> HealthCheckResult:
+    repos = _registered_repositories()
+    if not repos:
+        return _result(
+            "worktrees", HEALTH_PASS,
+            "no registered project has a repository on this machine")
+    named: list[str] = []
+    unreadable: list[str] = []
+    for repo in repos:
+        try:
+            records = list_worktrees(repo)
+        except (WorktreeError, OSError, subprocess.SubprocessError):
+            unreadable.append(repo)
+            continue
+        named.extend(
+            f"{repo}: {record['worktree']}" for record in records if "prunable" in record)
+    suffix = ""
+    if unreadable:
+        suffix = (f"; git could not read {len(unreadable)} repositories: "
+                  + ", ".join(unreadable))
+    if named:
+        return _result(
+            "worktrees", HEALTH_WARN,
+            f"{len(named)} worktrees git calls prunable, their folders gone: "
+            + "; ".join(named) + suffix, WORKTREE_HINT)
+    return _result(
+        "worktrees", HEALTH_PASS,
+        f"{len(repos) - len(unreadable)} repositories checked; no worktree is prunable"
+        + suffix)
+
+
+# The one next step for a machine with no model service.
+PROVIDER_HINT: str = (
+    "install the Claude Code command line (claude) or Ollama, or set "
+    "ANTHROPIC_API_KEY; `remedy worker doctor` checks a worker's own tooling"
+)
+
+
+# Check `providers`: a model service is configured here; none is called, and a gap only warns.
+def check_providers(
+    which: Callable[[str], str | None] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> HealthCheckResult:
+    find = which if which is not None else shutil.which
+    env = environ if environ is not None else os.environ
+    candidates = (
+        ("claude-cli", find("claude") is not None,
+         "claude-cli needs the claude command on the path"),
+        ("claude", bool(env.get("ANTHROPIC_API_KEY", "").strip()),
+         "claude needs ANTHROPIC_API_KEY set"),
+        ("ollama", find("ollama") is not None,
+         "ollama needs the ollama command on the path"),
+    )
+    reachable = [name for name, ok, _gap in candidates if ok]
+    missing = [name for name, ok, _gap in candidates if not ok]
+    if not reachable:
+        return _result(
+            "providers", HEALTH_WARN,
+            "no provider can be reached: " + "; ".join(gap for _n, _o, gap in candidates),
+            PROVIDER_HINT)
+    detail = "reachable: " + ", ".join(reachable)
+    if missing:
+        detail += "; not reachable: " + ", ".join(missing)
+    return _result("providers", HEALTH_PASS, detail + "; no provider was called")
+
+
 # The one next step for large leftover staging copies.
 RECLAIM_HINT: str = (
     "preview them with `remedy data reclaim --orphans`, then free them with "
@@ -206,6 +357,9 @@ def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]
     return (
         check_config_coherence(),
         check_ledger_integrity(root),
+        check_snapshot_manifests(root),
+        check_worktrees(),
+        check_providers(),
         check_staging_copies(root),
         check_disk_floor(),
     )

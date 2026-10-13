@@ -44,8 +44,9 @@ DOCTOR_COMMANDS: tuple[CommandEntry, ...] = (
         command_id="doctor.health",
         group_id="doctor",
         subcommand="health",
-        description=("Read-only health of Remedy itself: its settings, cost ledgers, staging copies "
-                     "and free disk, each PASS, WARN or FAIL with a hint; exits 1 on a FAIL."),
+        description=("Read-only health of Remedy itself: its settings, cost ledgers, snapshots, "
+                     "worktrees, model providers, staging "
+                     "copies and free disk, each PASS, WARN or FAIL with a hint; exits 1 on a FAIL."),
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
