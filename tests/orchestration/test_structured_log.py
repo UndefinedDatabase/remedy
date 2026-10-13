@@ -41,7 +41,7 @@ SECRET_PARTS = (
 @pytest.fixture(autouse=True)
 def _clean_logging(monkeypatch):
     for name in (
-        "REMEDY_LOG_LEVEL", "REMEDY_LOG_JSON", "REMEDY_LOG_MAX_BYTES", "REMEDY_LOG_BACKUP_COUNT",
+        "REMEDY_LOG_LEVEL", "REMEDY_LOG_JSON_LINES", "REMEDY_LOG_MAX_BYTES", "REMEDY_LOG_BACKUP_COUNT",
     ):
         monkeypatch.delenv(name, raising=False)
     reset_structured_logging()
@@ -138,7 +138,7 @@ def test_an_exception_adds_a_last_key_and_a_plain_line_has_none(tmp_path):
 
 @pytest.mark.parametrize("as_json", [True, False])
 def test_planted_secrets_never_reach_the_file_and_every_line_parses(tmp_path, as_json):
-    _, path = _setup(tmp_path, f"json = {'true' if as_json else 'false'}\n")
+    _, path = _setup(tmp_path, f"json_lines = {'true' if as_json else 'false'}\n")
     CHILD.info("failed with %s and %s", *SECRET_PARTS)
     try:
         raise RuntimeError("inside " + " ".join(SECRET_PARTS))
@@ -156,7 +156,7 @@ def test_planted_secrets_never_reach_the_file_and_every_line_parses(tmp_path, as
 
 
 def test_json_false_writes_a_text_line(tmp_path):
-    _, path = _setup(tmp_path, "json = false\n")
+    _, path = _setup(tmp_path, "json_lines = false\n")
     with bind_log_context(job_id="j1"):
         CHILD.info("plain words")
     line = _lines(path)[0]
@@ -269,7 +269,7 @@ def test_the_defaults_of_the_four_keys_read_from_an_empty_configuration(tmp_path
         project_path=tmp_path / "absent.toml", user_path=pathlib.Path("/nonexistent/user.toml"),
     )
     assert config.get("logging.level") == "INFO" == DEFAULT_LOG_LEVEL
-    assert config.get("logging.json") is True
+    assert config.get("logging.json_lines") is True
     assert config.get("logging.max_bytes") == 10000000 == DEFAULT_LOG_MAX_BYTES
     assert config.get("logging.backup_count") == 5 == DEFAULT_LOG_BACKUP_COUNT
 
