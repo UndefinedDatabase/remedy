@@ -140,7 +140,10 @@ with the code that calls it.
 
 - `packages/orchestration/run_manifest.py`: the workspace identity and its probes, then the
   storage — the write, the recovery and the anchored read — each to a module of its own; the
-  decoders last.
+  decoders last. Step (1), done by F306: the probes and the workspace identity record,
+  `packages/orchestration/workspace_identity.py`; the git reads, including the verified read of
+  untracked files, stay on this module, because tests replace them there and
+  `_read_untracked_verified` raises this module's own `ManifestError`.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
@@ -387,7 +390,7 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6558 | `packages/orchestration/run_manifest.py` |
+| 6398 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
 | 5234 | `packages/orchestration/pingpong_loop.py` |
 | 4810 | `packages/orchestration/ui_server.py` |

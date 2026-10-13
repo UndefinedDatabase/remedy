@@ -361,6 +361,7 @@ packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.workspace
+packages.orchestration.workspace_identity
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees
 packages.providers.claude_planner.provider
