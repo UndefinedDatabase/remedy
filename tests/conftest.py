@@ -35,6 +35,17 @@ def _review_packages_stay_out_of_the_operator_archive():
         os.environ.pop("REMEDY_REVIEW_DIR", None)
 
 
+@pytest.fixture(autouse=True)
+def _structured_logging_is_reset():
+    """A command's dispatch installs the operations log's handlers on the root logger,
+    which outlives the test; a handler left behind would write into a later test's
+    captured error stream or a removed data root (DECISION F203 D2)."""
+    yield
+    from packages.orchestration.structured_log import reset_structured_logging
+
+    reset_structured_logging()
+
+
 @pytest.fixture(scope="session")
 def _data_root_allocator(tmp_path_factory):
     """Hand out every test's data root from one parent per test process (DECISION F294 D2).

@@ -4,6 +4,9 @@ DECISION F203 D1: Remedy writes its own log under `<data root>/logs/`. The log i
 data and never evidence. Every line is redacted like evidence before it is written, and the
 terminal keeps showing warnings and errors exactly as before: the error stream handler this
 setup installs prints the bare message at WARNING and above.
+
+The folder and the file are made by the first line written, so a command that logs nothing
+writes nothing, and a line that cannot be written is dropped silently (DECISION F203 D2).
 """
 
 from __future__ import annotations
@@ -137,8 +140,23 @@ class TextLogFormatter(logging.Formatter):
 class OwnerOnlyRotatingFileHandler(logging.handlers.RotatingFileHandler):
     # The file and every rotated successor are owner-only, like a crash report.
     def _open(self) -> IO[str]:
+        Path(self.baseFilename).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         descriptor = os.open(self.baseFilename, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
         return os.fdopen(descriptor, "a", encoding=self.encoding, errors=self.errors)
+
+    # A line that cannot be written never reaches the terminal and never breaks a command.
+    def handleError(self, record: logging.LogRecord) -> None:
+        return None
+
+
+# The record attribute that keeps a record off the terminal; the file still gets it.
+FILE_ONLY_ATTR = "remedy_file_only"
+
+
+# Lets a record through to the terminal unless it carries the file-only attribute.
+class TerminalFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not getattr(record, FILE_ONLY_ATTR, False)
 
 
 # The one folder the operations log lives in; the class name is a literal so the class registry test finds it.
@@ -153,10 +171,10 @@ def _int_or_default(value: object, default: int) -> int:
         return default
 
 
-# Installs the error-stream handler and the rotating file handler on the root logger; answers the file's path, or None.
+# Installs the error-stream handler and the rotating file handler on the root logger; answers the file's path.
 def configure_structured_logging(
     root: Path | None = None, config: RemedyConfig | None = None,
-) -> Path | None:
+) -> Path:
     reset_structured_logging()
     resolved = config if config is not None else get_config()
     name = str(resolved.get("logging.level") or DEFAULT_LOG_LEVEL).upper()
@@ -175,26 +193,19 @@ def configure_structured_logging(
     stream = logging.StreamHandler(sys.stderr)
     stream.setLevel(logging.WARNING)
     stream.setFormatter(logging.Formatter("%(message)s"))
+    stream.addFilter(TerminalFilter())
     setattr(stream, _MARKER, True)
     root_logger.addHandler(stream)
 
-    path: Path | None = None
-    try:
-        folder = logs_dir(root)
-        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-        handler = OwnerOnlyRotatingFileHandler(
-            folder / LOG_FILE_NAME, maxBytes=max_bytes, backupCount=backup_count,
-            encoding="utf-8",
-        )
-    except OSError:
-        pass
-    else:
-        handler.setLevel(level)
-        handler.setFormatter(JsonLogFormatter() if as_json else TextLogFormatter())
-        handler.addFilter(LogContextFilter())
-        setattr(handler, _MARKER, True)
-        root_logger.addHandler(handler)
-        path = folder / LOG_FILE_NAME
+    path = logs_dir(root) / LOG_FILE_NAME
+    handler = OwnerOnlyRotatingFileHandler(
+        path, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8", delay=True,
+    )
+    handler.setLevel(level)
+    handler.setFormatter(JsonLogFormatter() if as_json else TextLogFormatter())
+    handler.addFilter(LogContextFilter())
+    setattr(handler, _MARKER, True)
+    root_logger.addHandler(handler)
 
     root_logger.setLevel(min(level, logging.WARNING))
     if unknown_name is not None:

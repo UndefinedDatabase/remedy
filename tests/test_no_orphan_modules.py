@@ -93,8 +93,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T001)"),
     ("packages/orchestration/self_use_runner.py",
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
-    ("packages/orchestration/structured_log.py",
-     "F203's log setup; round 2 wires it into the command line and the serve supervisor (DECISION F203 D1)"),
     ("scripts/closure_suite_cost.py",
      "run by hand in every closure's integration-gate round, docs/agents/integration_gate.md step 1 (F293 T003)"),
     ("scripts/remedy_agent_tooling_doctor.py",
