@@ -128,6 +128,10 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
   `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
   (3) the deterministic plan becomes a function.
+- `continue_from_node` (`packages/orchestration/continue_from_node.py`). Boundary: the checks of
+  the parent and the node, the child job's record, the link to the project, and the two timeline
+  events. Steps: (1) done by F203, the link to the project is `_link_child_to_project`; (2) the
+  two timeline events become one function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -342,7 +346,6 @@ with the code that calls it.
 | 119 | `packages/orchestration/memory_learn.py` | `learn_from_job` |
 | 119 | `packages/orchestration/run_contract.py` | `evaluate_run_action` |
 | 119 | `packages/orchestration/run_manifest.py` | `_read_worktree_identity` |
-| 118 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 118 | `packages/orchestration/pingpong_loop.py` | `_record_call_failure` |
 | 118 | `packages/orchestration/task_injection.py` | `draft_task_injection` |
 | 116 | `packages/orchestration/model_routing.py` | `validate_task_class_tier_overrides` |
@@ -371,6 +374,7 @@ with the code that calls it.
 | 103 | `apps/cli/commands/teacher_cmd.py` | `_cmd_teacher_ask` |
 | 103 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._review_impl` |
 | 102 | `packages/common/secure_fs.py` | `read_verified_file_at` |
+| 102 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 102 | `packages/orchestration/pingpong_job.py` | `_finalize_job_workspace` |
 | 101 | `packages/orchestration/mission_compiler.py` | `compile_mission_plan` |
 | 101 | `packages/orchestration/run_manifest.py` | `validate_task_lifecycle_chain` |
