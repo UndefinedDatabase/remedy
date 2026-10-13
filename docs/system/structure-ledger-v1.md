@@ -46,10 +46,12 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   guards, the configuration it resolves for the job, the budget accumulators and their nested
   helpers, the episode start, and the main loop over the tasks with the job's terminal steps after
   it; and the stop, pause and budget check that each of its safe points once wrote out. Steps: (1)
-  done by F300 T004, every safe point calls `_settle_safe_point`; (2) the configuration
-  resolution becomes a function of its own; (3) the terminal steps after the task loop become a
-  function of their own; (4) the handling of one task's result becomes a function of its own;
-  (5) the budget helpers become one object in a module of their own, holding the accumulators.
+  done by F300 T004, every safe point calls `_settle_safe_point`; (2) done by F306, the
+  configuration resolution is `resolve_job_execution_config` in
+  `packages/orchestration/execution_config.py`, which `pingpong_job.py` re-exports; (3) the
+  terminal steps after the task loop become a function of their own; (4) the handling of one
+  task's result becomes a function of its own; (5) the budget helpers become one object in a
+  module of their own, holding the accumulators.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
@@ -232,7 +234,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1559 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1486 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -398,7 +400,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6275 | `packages/orchestration/run_manifest.py` |
-| 5498 | `packages/orchestration/pingpong_job.py` |
+| 5399 | `packages/orchestration/pingpong_job.py` |
 | 5234 | `packages/orchestration/pingpong_loop.py` |
 | 4810 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
