@@ -7,15 +7,13 @@ one job's or run's lines in order on the command line and on the public API; and
 remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D7).
 
 ## Current Step
-Round 9 on `feature/f203-structured-logging`, session 2: book round 8's PASS, then the one full
-suite once more on the tree that ships, because the operator's commit `3f06c01e9` moved the branch
-after the recorded run (operator amendment amend0921-operator-feedback rule 1); its transcript
-replaces `.agent/authored/f203-closure-suite.txt`.
+Round 10 on `feature/f203-structured-logging`, session 2, the closing round: book round 9's PASS,
+the Built State, the ledger rotation, the STATUS flip with the README sync and the self-use entry
+`SU-061`'s `consumed_by`, the handback, the push and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the ledger rotation, the self-use entry SU-061's
-   consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F203's pull request; the next
+   feature's first commit books round 10's verdict; Rule A5 names the next feature.
 
 ## Risks
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306; F203 owns no open finding.
-- A red suite stops the closure for a repair round under amendment amend0917-throughput rule 2.
