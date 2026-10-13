@@ -368,7 +368,8 @@ def test_every_route_is_well_formed():
             assert is_named or segment_re.match(segment), segment
         for token, status in route.refusals:
             assert token in OPERATION_REFUSAL_TOKENS[route.twin], (route.twin, token)
-            assert status in (400, 404, 409), (route.twin, token, status)
+            # 503 is the health route's one status: a failing check answers it (DECISION F199 D3).
+            assert status in (400, 404, 409, 503), (route.twin, token, status)
         option_flags = {arg.name for arg in entry.args if arg.is_option}
         value_options = {arg.name for arg in entry.args if arg.is_option and not arg.is_flag}
         for key in route.query:
