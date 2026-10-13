@@ -208,6 +208,7 @@ with the code that calls it.
   then the route table, then the page's rendering, each to a module of its own; the answer
   functions stay. Step (1), done by F205: the write routes' argument builders and refusals,
   `packages/orchestration/public_api_writes.py`, and the file left the table.
+  Step (2), done by F199: the route table, `packages/orchestration/public_api_routes.py`.
 
 ## Functions above 100 lines
 
