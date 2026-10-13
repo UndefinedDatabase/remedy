@@ -73,6 +73,7 @@
 | steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
 | story | [story-user-guide-v1.md](guides/story-user-guide-v1.md) | guide |
 | structure ledger | [structure-ledger-v1.md](system/structure-ledger-v1.md) | system |
+| structured logging / operations log | [structured-logging-v1.md](system/structured-logging-v1.md) | system |
 | teacher lessons | [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | guide |
 | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
 | test execution / snapshot | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | guide |
@@ -139,6 +140,7 @@ Specifications and design documents for the built system.
 | [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
 | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
 | [structure-ledger-v1.md](system/structure-ledger-v1.md) | Remedy's ledger of its large functions and files: each one's measured size, the boundary and steps of the largest, and the ratchet test that lets a size fall and never rise |
+| [structured-logging-v1.md](system/structured-logging-v1.md) | Structured logging: Remedy's operations log under the data root, one JSON line per record with the job, task and run ids, the timeline mirror, rotation, redaction, and the terminal left as it was |
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
 | [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
