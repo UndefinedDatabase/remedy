@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-6cffd97264df439f  (exit 0)
+diff --git a/apps/cli/commands/project.py b/apps/cli/commands/project.py
+index cc9c084af..663746a4e 100644
+--- a/apps/cli/commands/project.py
++++ b/apps/cli/commands/project.py
+@@ -250,7 +250,7 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
+         if target_repo:
+             try:
+                 consts[jid] = load_project_constitution(Path(target_repo))
+-            except Exception:  # noqa: BLE001 — constitution is optional; treat load failure as absent
++            except (OSError, ValueError):
+                 consts[jid] = None
+ 
+     agg = build_project_brain_aggregate(
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
