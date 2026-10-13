@@ -2,20 +2,21 @@
 
 ## Goal
 Remedy writes what it does to one operations log: a JSON line per record carrying the job, task
-and run ids, owner-only under `<data root>/logs/`, rotated by size; a person can read one job's or
-run's lines in order on the command line, on the public API and in the cockpit; and no `print`
-remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D4).
+and run ids, owner-only under `<data root>/logs/`, rotated by size; a person or a program can read
+one job's or run's lines in order on the command line and on the public API; and no `print`
+remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D5).
 
 ## Current Step
-Round 4 on `feature/f203-structured-logging`, session 1: book round 3's PASS and R-1273, repair
-R-1273 in `tests/regression/test_resource_safety.py`, and the first part of T002: the read of one
-job's lines and `remedy doctor logs`.
+Round 5 on `feature/f203-structured-logging`, session 1: book round 4's PASS and R-1273's
+resolution, the route `GET /api/v1/jobs/{job}/logs` with the client operation `doctor.logs`, the
+correlation test over a fake-provider run, the cockpit's logs view moved to F303, and operator
+question Q18. T002 closes with it.
 
 ## Next Steps
-1. Round 5: the same read on the public API, with its client operation.
-2. Round 6: the cockpit's logs view over that route, and the correlation test.
-3. The closure.
+1. The closure: the integration gate with the one full suite and the self-use item, the
+   evidence package, then the Built State, the ledger rotation, the STATUS flip and the pull
+   request.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306; R-1273 by F203.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306.
 - Logging state is process-global; `tests/conftest.py` resets it after every test.
