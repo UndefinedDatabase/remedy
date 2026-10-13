@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 354.7s (the launcher's reading); pytest's own "in Ns" and H:MM:SS: in 353.84s (0:05:53)
+summary line: 1 failed, 22951 passed, 22 skipped, 1 warning in 353.84s (0:05:53)
+bad node ids (failed + errors):
+  - tests/orchestration/test_doc_staleness.py::TestAgainstTheRealTree::test_no_registered_config_key_ends_in_a_file_extension
+leftover processes: NONE
+tree it ran on: 1b4f80c4e (F203 R6 C3: the closure's self-use item run to its approval gate, never applied)
+reflog before: 1b4f80c4e HEAD@{2026-10-13 16:41:32 +0200}: commit: F203 R6 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: 1b4f80c4e HEAD@{2026-10-13 16:41:32 +0200}: commit: F203 R6 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F203 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1244.25 CPU seconds, 353.85 wall seconds, 22974 tests collected, exit status 1, recorded 2026-10-13T14:47:33Z
+This closure's suite used 1244.25 CPU seconds, 4.1 percent more than F199's 1195.71, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F199's closure run:
+  +4.40 s  tests/orchestration/test_review_zip_hygiene.py (32.48 -> 36.88)
+  +3.48 s  tests/orchestration/test_job_worktree_integration.py (6.00 -> 9.48)
+  +3.37 s  tests/cli/test_do_sequence_cli.py (24.80 -> 28.17)
+  +3.07 s  tests/cli/test_serve_client_parity.py (5.89 -> 8.96)
+  +2.39 s  tests/ui_server/test_story_export_file_live.py (8.82 -> 11.21)
+  +2.33 s  tests/orchestration/test_job_task_runner.py (14.20 -> 16.53)
+  +2.02 s  tests/orchestration/test_review_single_publication.py (3.11 -> 5.13)
+  +1.95 s  tests/orchestration/test_public_api_gate_paths.py (14.18 -> 16.13)
+  +1.74 s  tests/cli/test_machine_client_paths.py (4.47 -> 6.21)
+  +1.62 s  tests/orchestration/test_repo_mission.py (3.00 -> 4.62)
