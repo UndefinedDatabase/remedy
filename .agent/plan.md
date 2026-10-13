@@ -7,9 +7,10 @@ one job's or run's lines in order on the command line and on the public API; and
 remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D7).
 
 ## Current Step
-Round 8 on `feature/f203-structured-logging`, session 2, the closure's evidence round: commit
-round 7's handback, book round 7's PASS and R-1274's resolution, then the staging reclaim, the
-evidence job on the accepted head and the review package.
+Round 9 on `feature/f203-structured-logging`, session 2: book round 8's PASS, then the one full
+suite once more on the tree that ships, because the operator's commit `3f06c01e9` moved the branch
+after the recorded run (operator amendment amend0921-operator-feedback rule 1); its transcript
+replaces `.agent/authored/f203-closure-suite.txt`.
 
 ## Next Steps
 1. The closing round: the Built State, the ledger rotation, the self-use entry SU-061's
@@ -17,3 +18,4 @@ evidence job on the accepted head and the review package.
 
 ## Risks
 - R-1235, R-1246, R-1251 and R-1252 are owned by F306; F203 owns no open finding.
+- A red suite stops the closure for a repair round under amendment amend0917-throughput rule 2.
