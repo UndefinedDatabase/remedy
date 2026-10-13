@@ -12,6 +12,7 @@ import stat
 import pytest
 
 from packages.orchestration.config import load_config
+from packages.orchestration.run_log import RunLogWriter
 from packages.orchestration.structured_log import (
     DEFAULT_LOG_BACKUP_COUNT,
     DEFAULT_LOG_LEVEL,
@@ -23,7 +24,9 @@ from packages.orchestration.structured_log import (
     bind_log_context,
     configure_structured_logging,
     current_log_context,
+    log_files_oldest_first,
     logs_dir,
+    read_log_entries,
     reset_structured_logging,
 )
 
@@ -269,3 +272,76 @@ def test_the_defaults_of_the_four_keys_read_from_an_empty_configuration(tmp_path
     assert config.get("logging.json") is True
     assert config.get("logging.max_bytes") == 10000000 == DEFAULT_LOG_MAX_BYTES
     assert config.get("logging.backup_count") == 5 == DEFAULT_LOG_BACKUP_COUNT
+
+
+def _write_log(root: pathlib.Path, name: str, *lines: str) -> None:
+    folder = logs_dir(root)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+
+
+def _entry(job_id: object, message: str, run_id: object = None) -> str:
+    return json.dumps({"job_id": job_id, "run_id": run_id, "message": message})
+
+
+def test_the_read_answers_the_three_files_oldest_first(tmp_path):
+    _write_log(tmp_path, "remedy.log.2", _entry("abc123", "oldest"))
+    _write_log(tmp_path, "remedy.log.1", _entry("abc123", "middle"))
+    _write_log(tmp_path, LOG_FILE_NAME, _entry("abc123", "newest"))
+    result = read_log_entries(job_id="abc123", root=tmp_path)
+    assert [entry["message"] for entry in result.entries] == ["oldest", "middle", "newest"]
+    assert result.files == ("remedy.log.2", "remedy.log.1", "remedy.log")
+    assert result.unreadable == 0
+
+
+def test_a_non_numeric_suffix_is_never_read_and_ten_comes_before_two(tmp_path):
+    _write_log(tmp_path, "remedy.log.x", _entry("abc123", "never"))
+    _write_log(tmp_path, "remedy.log.2", _entry("abc123", "two"))
+    _write_log(tmp_path, "remedy.log.10", _entry("abc123", "ten"))
+    assert [path.name for path in log_files_oldest_first(tmp_path)] == [
+        "remedy.log.10", "remedy.log.2",
+    ]
+    result = read_log_entries(job_id="abc123", root=tmp_path)
+    assert [entry["message"] for entry in result.entries] == ["ten", "two"]
+
+
+def test_the_job_id_matches_by_prefix_only_and_an_empty_one_matches_nothing(tmp_path):
+    _write_log(tmp_path, LOG_FILE_NAME, _entry("abc123", "mine"), _entry("xabc", "other"))
+    by_prefix = read_log_entries(job_id="abc", root=tmp_path)
+    assert [entry["message"] for entry in by_prefix.entries] == ["mine"]
+    assert read_log_entries(job_id="", root=tmp_path).entries == ()
+
+
+def test_a_run_id_keeps_only_the_lines_of_its_run(tmp_path):
+    _write_log(
+        tmp_path, LOG_FILE_NAME,
+        _entry("abc123", "first", "r1"), _entry("abc123", "second", "r2"), _entry("abc123", "bare"),
+    )
+    result = read_log_entries(job_id="abc123", run_id="r2", root=tmp_path)
+    assert [entry["message"] for entry in result.entries] == ["second"]
+
+
+def test_a_text_line_and_a_json_list_are_counted_and_a_blank_line_is_ignored(tmp_path):
+    _write_log(
+        tmp_path, LOG_FILE_NAME,
+        "2026-10-13T08:05:09.042Z INFO x job=abc123 hello", "", "[1, 2]", _entry("abc123", "ok"),
+    )
+    result = read_log_entries(job_id="abc123", root=tmp_path)
+    assert result.unreadable == 2
+    assert [entry["message"] for entry in result.entries] == ["ok"]
+
+
+def test_no_folder_answers_nothing(tmp_path):
+    assert log_files_oldest_first(tmp_path) == []
+    result = read_log_entries(job_id="abc", root=tmp_path)
+    assert (result.entries, result.files, result.unreadable) == ((), (), 0)
+
+
+def test_an_event_written_through_the_setup_is_read_back_with_its_run(tmp_path):
+    root, _ = _setup(tmp_path)
+    RunLogWriter("job-e2e", data_root=tmp_path).log("task_run_started", attempt_id="att-9")
+    _flush()
+    result = read_log_entries(job_id="job-e", root=root)
+    (entry,) = result.entries
+    assert entry["job_id"] == "job-e2e"
+    assert entry["run_id"] == "att-9"
