@@ -29467,3 +29467,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a program can read one job's lo
 ALTERNATIVES CONSIDERED: (a) a logs view in the cockpit through a new cockpit-server route, REJECTED because it first owes a structural step of the largest file the cockpit server has and adds the very kind of private route F303 exists to delete; (b) the cockpit calling `/api/v1` directly in this feature, REJECTED because the cockpit holds no client token and giving it one is F303's design; (c) a refusal for an unknown job on the route, REJECTED for DECISION F203 D4's reason.
 
 HOW TO REVERSE: delete this paragraph, the route, `_doctor_logs_answer` and its entry in `_TWIN_ANSWERS`, the operation's four entries in `apps/cli/client_interface.py`, put both versions back and regenerate both pages; delete the line in F303's file and give F203 a round for the cockpit view.
+
+## DECISION F203 D6 — The key that chooses JSON or text lines is `logging.json_lines`, read from `REMEDY_LOG_JSON_LINES`, because a key whose last part is a file extension is never checked against the documents that name it (2026-10-13)
+
+THE PROBLEM: DECISION F203 D1 added the key `logging.json`, from the feature file's "`json` bool". F203's one full suite at `1b4f80c4e` read one bad node, `tests/orchestration/test_doc_staleness.py::TestAgainstTheRealTree::test_no_registered_config_key_ends_in_a_file_extension`: `packages/orchestration/doc_staleness.py` reads a dotted word whose last part is a file extension as a file name, so its check C07, which holds a document's config keys against the registry, could never see `logging.json` go stale. Finding R-1274 records it.
+
+CHOSEN: the key is `logging.json_lines` and its variable `REMEDY_LOG_JSON_LINES`; its meaning, type and default are unchanged. The registry, the setup's read, the generated environment guide, the page `docs/system/structured-logging-v1.md` and the tests spell the new name, and no reader of the old one remains. No migration is offered: the key shipped on no released version, and an unknown key in a `remedy.toml` is already reported as a warning by the check `config` of `remedy doctor health` (DECISION F199 D1).
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: the setting that chooses JSON or plain text lines has a new name; nothing else changes.
+
+ALTERNATIVES CONSIDERED: (a) `logging.format` with the values `json` and `text`, REJECTED because it turns a yes-or-no setting into a word a person can misspell, for no gain; (b) excusing the key in the staleness check, REJECTED because the check exists so that a document naming a key cannot drift from the registry, and an excused key is exactly the drift it would miss; (c) keeping `REMEDY_LOG_JSON` beside the new key, REJECTED because one setting has one spelling.
+
+HOW TO REVERSE: delete this paragraph and spell the key and its variable as before in the same places; the staleness test then reads red again.
