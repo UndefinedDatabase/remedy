@@ -6,6 +6,7 @@ and the operations log keeps.
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -91,7 +92,7 @@ def test_the_warning_is_in_the_operations_log_and_bare_on_the_error_stream(
 
     lines = [line for line in path.read_text(encoding="utf-8").splitlines() if LINK_FAILURE in line]
     assert len(lines) == 1
-    assert " WARNING " in lines[0]
+    assert json.loads(lines[0])["level"] == "WARNING"
     assert path.name == LOG_FILE_NAME
     err_lines = [line for line in capsys.readouterr().err.splitlines() if line.strip()]
     assert len(err_lines) == 1
