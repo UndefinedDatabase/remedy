@@ -202,6 +202,7 @@ packages.orchestration.job_apply
 packages.orchestration.job_burn
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
+packages.orchestration.job_input_definition
 packages.orchestration.job_plan
 packages.orchestration.job_runner
 packages.orchestration.lessons

@@ -143,7 +143,13 @@ with the code that calls it.
   decoders last. Step (1), done by F306: the probes and the workspace identity record,
   `packages/orchestration/workspace_identity.py`; the git reads, including the verified read of
   untracked files, stay on this module, because tests replace them there and
-  `_read_untracked_verified` raises this module's own `ManifestError`.
+  `_read_untracked_verified` raises this module's own `ManifestError`. Step (2), done by F306: the
+  job-input definition's builder and its field-set constants,
+  `packages/orchestration/job_input_definition.py`; its validation (`validate_job_input_definition`)
+  and its decoder (`decode_job_input_definition_v1`) stay on this module, because the validator
+  calls shared helpers — `_is_hex64`, `_safe_component`, `VALID_ISOLATION_MODES`,
+  `_contains_secret` and `_contains_local_path` — that every other validator on this module uses
+  too, and two of which tests replace directly here.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
@@ -390,7 +396,7 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6398 | `packages/orchestration/run_manifest.py` |
+| 6275 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
 | 5234 | `packages/orchestration/pingpong_loop.py` |
 | 4810 | `packages/orchestration/ui_server.py` |
