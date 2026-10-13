@@ -8,17 +8,16 @@ on; a crash leaves a local, redacted report under the data root; and the serve s
 its own health on its public API (docs/roadmap/features/T12_F199.md; DECISION F199 D1).
 
 ## Current Step
-Round 1 on `feature/f199-self-health`, session 1: claim F199, book F058's round 10, and land the
-first half of T001, `packages/orchestration/self_health.py` with the checks `config`, `ledgers`,
-`staging_copies` and `disk`, and their tests.
+Round 2 on `feature/f199-self-health`, session 1: book round 1 and register R-1266; the structural
+step moving the catalog's `doctor` group to `apps/cli/command_catalog_doctor.py`; the repair of
+R-1266; the command `remedy doctor health` over the four checks round 1 landed; its page.
 
 ## Next Steps
-1. Round 2: the structural step moving the catalog's `doctor` group to its own module, the checks
-   `snapshots`, `worktrees` and `providers`, and the command `remedy doctor health`.
+1. Round 3: the checks `snapshots`, `worktrees` and `providers`.
 2. T002: the local crash report at the CLI's catch-all and the supervisor's threads, and the
    check `crash_reports`.
 3. T003: `GET /api/v1/health` on the supervisor's public API.
 4. The closure.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306; R-1266 is F199's own.
