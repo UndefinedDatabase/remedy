@@ -1,9 +1,8 @@
 # Self-health v1: Remedy checks its own health
 
-> Status (F199, 2026-10-13): built in part. The command, its eight checks and the crash report
-> exist; only the supervisor's health route is still to come. DECISIONs F199 D1 and D2 in
-> `.agent/decisions.md` hold the rules this page states; the feature is
-> `docs/roadmap/features/T12_F199.md`.
+> Status (F199, 2026-10-13): built. The command, its eight checks, the crash report and the
+> supervisor's health route exist. DECISIONs F199 D1 and D2 in `.agent/decisions.md` hold the rules
+> this page states; the feature is `docs/roadmap/features/T12_F199.md`.
 
 ## What it does
 
@@ -73,8 +72,10 @@ as `~`. The command prints one line that says where the report is. Writing a rep
 command and never hides the error: if the file cannot be written, the command reports the error
 as before. Remedy never sends a report anywhere; it stays on this machine.
 
-## Not yet
+## The supervisor's health
 
-This is a later slice of F199 and does not exist today:
-
-- the supervisor's health route, which would answer the same checks over its socket.
+The public API's `GET /api/v1/health` answers the same body as `remedy doctor health --json`. The
+serve supervisor answers it on its socket and on its HTTP port, and the cockpit answers it too. Like
+every route of the public API it needs the bearer token. The answer is 200 when no check is FAIL
+and 503 when one is, with the same body in both cases, so a monitor can read the status alone.
+`docs/system/public-http-api-v1.md` lists the route with the others.
