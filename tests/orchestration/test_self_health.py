@@ -368,6 +368,16 @@ def test_snapshots_an_edited_manifest_fails():
         SNAPSHOT_HINT)
 
 
+def test_snapshots_a_manifest_that_is_a_json_list_fails_naming_the_folder():
+    snap_dir = _write_snapshot("job1", "snap1")
+    (snap_dir / "manifest.json").write_text("[1, 2]")
+    assert check_snapshot_manifests() == HealthCheckResult(
+        "snapshots", HEALTH_FAIL,
+        "1 of 1 newest workspace snapshots failed their hash check: "
+        "workspaces/job1/repository_snapshots/snap1 (its manifest cannot be read)",
+        SNAPSHOT_HINT)
+
+
 def test_snapshots_only_the_newest_sample_is_read():
     old = _write_snapshot("job1", "old")
     _write_snapshot("job1", "mid")

@@ -24,7 +24,7 @@ The checks run in this order.
 | `config` | The settings Remedy resolves from `remedy.toml` and the environment | The loader reported a warning, for example an unknown key | A value does not have its declared type, or the settings cannot be read | Run `remedy config validate` to list every problem, then correct the named key |
 | `ledgers` | Each project's token ledger under the data root | Never | SQLite's own integrity check finds a damaged ledger (the detail names it) | Move the named ledger aside, for example to `ledger.sqlite.bad`; Remedy starts an empty one and the moved file keeps the old cost history |
 | `snapshots` | The 20 newest workspace snapshots under the data root: each manifest against its recorded hash and each recovery file against its recorded hash | Never | A snapshot's manifest does not match its hash, or a recovery file is missing or changed (the detail names the snapshot folder) | Run `remedy snapshot inspect <job id> <snapshot id>` for each named snapshot; a damaged snapshot cannot restore the files it recorded, so no revert should rely on it |
-| `worktrees` | `git worktree list` of each registered project's repository on this machine | A worktree is prunable because its folder is gone, or git cannot read a repository (the detail names them) | Never | Run `git worktree prune` in each named repository; it forgets the worktrees whose folders are gone and changes no other file |
+| `worktrees` | `git worktree list` of each registered project's repository on this machine | A worktree is prunable because its folder is gone | Never | Run `git worktree prune` in each named repository; it forgets the worktrees whose folders are gone and changes no other file |
 | `providers` | Whether the `claude` command, the `ANTHROPIC_API_KEY` variable and the `ollama` command are present; no provider is called and the key is never printed | None of the three is present | Never | Install the Claude Code command line or Ollama, or set `ANTHROPIC_API_KEY`; `remedy worker doctor` checks a worker's own tooling |
 | `staging_copies` | The size of leftover staging copies that `remedy data reclaim --orphans` would free, against `data.reclaim_warn_gb` | The size is at or above the warning level, or cannot be measured | Never | Preview with `remedy data reclaim --orphans`, then free with `--apply` |
 | `disk` | The free disk, as the budget guard reads it, against `budget.min_free_disk_bytes` | The free disk cannot be read | The free disk is below the configured floor | Free disk space under the data root, or lower the floor; `remedy data reclaim --orphans` previews what Remedy's own staging copies would free |
@@ -33,6 +33,7 @@ With no floor configured, the `disk` check passes and says so. With no ledger ye
 check passes and says so; so do `snapshots` with no snapshot and `worktrees` with no registered
 repository. A machine with no model service gets a WARN from `providers` and still exits 0, because
 a machine that only builds and tests is healthy without one (DECISION F199 D2).
+A repository git cannot read is named in the `worktrees` detail and does not change the level.
 
 ## Output
 

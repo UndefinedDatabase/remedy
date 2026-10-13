@@ -167,7 +167,11 @@ SNAPSHOT_HINT: str = (
 
 def _snapshot_problems(snapshot_dir: Path) -> str:
     """The hash problems of one snapshot folder, joined by ", "; "" when none."""
-    integrity = _check_snapshot_integrity(snapshot_dir)
+    try:
+        integrity = _check_snapshot_integrity(snapshot_dir)
+    except (AttributeError, TypeError):
+        # A manifest that is valid JSON but not an object (a list, a number).
+        return "its manifest cannot be read"
     problems: list[str] = []
     if not integrity["manifest_ok"]:
         problems.append("its manifest does not match its recorded hash")
