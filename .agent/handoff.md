@@ -1,69 +1,99 @@
-# Handback — F199 round 4: book round 3, repair R-1267 and R-1268, and T002 the local crash report and the check crash_reports
+# Handback — F199 rounds 5 and 6: T003 the supervisor's health route, and the repair of round 5 (R-1270, R-1271)
 
 ## Session
 
-SESSION 1 of feature F199 · round 4 · rounds so far 4
+SESSION 1 of feature F199 · round 6 · rounds so far 6
 
-Context self-assessment: the block and the modules it named were enough to write the report, the check and the tests without a second look; I could not run any test but gate 3, so the new tests were written against the code's text and gate 3 was the first time they ran.
+Context self-assessment: the block named every file and line I needed, so the move, the registration and the tests were written without searching the repository; gate 3 was the first run of the new tests, and it found one test the block had not named (the route-shape test's status list).
 
-Fortschritt: ~65 % (T001 and T002 complete · T003 and the closure open) — Schätzung
+Fortschritt: ~85 % (T001, T002 and T003 complete · the closure open) — Schätzung
 
 ## Range
 
-Review of `19bc8f46d`..HEAD (round 4: C1 to C6, then C7; this handback is C7).
+Review of `fd1951c3f`..HEAD. Round 5's six commits (`e72f07da8`..`aa93879e1`) were local and unpushed at the start of this round, because round 5 stopped at a red gate 3; round 6 is C1 to C4, the repair commit C4b and C5, this handback.
 
 ## Commits
 
-### a41203b51 F199 R4 C1: book round 3, register R-1267 and R-1268, save the round 4 block
+### e72f07da8 F199 R5 C1: book round 4 and the resolutions of R-1267 and R-1268, register R-1269, save the round 5 block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f199-r4.md` | +218/-0 | NEW FILE, byte copy of `block.md` (218 lines, sha256 `d9377333ce0c16f1c11d5fbdbf19061f11a981f2e233e23792991a02811f61c8`) |
+| `.agent/authored/f199-r5.md` | +167/-0 | NEW FILE, the round 5 block |
+| `.agent/live_review.md` | +8/-0 | round 4 booked, R-1267 and R-1268 resolved, R-1269 registered |
+| `.agent/plan.md` | +11/-11 | rewritten |
+
+### b5f5ecdab F199 R5 C2: a test that serve start installs and restores the thread crash hook (R-1269)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/cli/test_serve_cmd.py` | +31/-0 | the hook is installed around the supervisor and restored |
+
+### b7ec34495 F199 R5 C3: the health answer's document and message live beside the checks (T003)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/cli/commands/doctor_health_cmd.py` | +4/-5 | uses the document and message from `self_health` |
+| `packages/orchestration/self_health.py` | +16/-0 | `health_report_document`, `health_failure_message` |
+
+### e43760b3e F199 R5 C4: the supervisor answers its own health on the public API's health route (T003)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/system/public-http-api-v1.md` | +2/-1 | the health route's row |
+| `packages/orchestration/public_api.py` | +33/-1 | the health route and its answer (503 on a FAIL) |
+
+### 3bb1c3aa2 F199 R5 C5: the health route's tests (T003)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/ui_server/test_public_api.py` | +60/-4 | the health route's tests |
+
+### aa93879e1 F199 R5 C6: the self-health page describes the supervisor's health route
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/README.md` | +1/-1 | index row |
+| `docs/system/self-health-v1.md` | +9/-8 | the route described |
+
+### 587b63d52 F199 R6 C1: book round 5's FAIL, register R-1270 and R-1271, DECISION F199 D3, save the round 6 block
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f199-r6.md` | +164/-0 | NEW FILE, byte copy of `block.md` (164 lines, sha256 `88a05ce98752ea550f41035a5413193551dc2ce30db0519726ae82673c7b26c1`) |
+| `.agent/decisions.md` | +12/-0 | byte copy of `dry-decisions.md` |
 | `.agent/live_review.md` | +6/-0 | byte copy of `dry-live_review.md` |
-| `.agent/plan.md` | +7/-8 | byte copy of `dry-plan.md` |
+| `.agent/plan.md` | +6/-5 | byte copy of `dry-plan.md` |
 
-### 665417afe F199 R4 C2: an unreadable snapshot manifest fails its check, and the page states the worktree levels (R-1267, R-1268)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/self_health.py` | +5/-1 | `_snapshot_problems` answers "its manifest cannot be read" on AttributeError or TypeError |
-| `tests/orchestration/test_self_health.py` | +10/-0 | a manifest that is the JSON list `[1, 2]` fails the check, folder named |
-| `docs/system/self-health-v1.md` | +2/-1 | `worktrees` WARN-when reads only the gone folder; one sentence says an unreadable repository is named and changes no level |
-
-### eb74a80e2 F199 R4 C3: the local crash report and its data-root class (T002)
+### ad615f077 F199 R6 C2: the public API's route table moves to public_api_routes.py (structure rule 2, R-1271)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/crash_report.py` | +147/-0 | NEW FILE: constants, `crash_reports_dir`, `remedy_version`, `config_digest`, `render_crash_report`, `write_crash_report`, `install_thread_crash_hook`, `recent_crash_reports` |
-| `packages/orchestration/data_paths.py` | +3/-0 | `DURABLE_CLASSES` gains `crash`, last |
+| `packages/orchestration/public_api_routes.py` | +255/-0 | NEW FILE: `PublicApiRoute` and `PUBLIC_API_ROUTES`, moved byte-unchanged |
+| `packages/orchestration/public_api.py` | +3/-244 | both removed, imported back by name; the unused `dataclass` import left; 767 lines |
+| `docs/system/structure-ledger-v1.md` | +1/-0 | step (2), done by F199 |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | `packages.orchestration.public_api_routes` |
 
-### ce8b5701d F199 R4 C4: a crash writes its report at the catch-all and in the supervisor, and the check crash_reports (T002)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `apps/cli/grouped.py` | +13/-0 | `_dispatch` writes the report, `--json` carries `crash_report`, text prints one more stderr line, docstring names D1 |
-| `apps/cli/commands/serve_cmd.py` | +5/-0 | thread hook installed around `run_supervisor`, restored in a `finally` |
-| `packages/orchestration/self_health.py` | +28/-0 | `CRASH_HINT`, `check_crash_reports`, added last to `run_health_checks` |
-| `apps/cli/command_catalog_doctor.py` | +2/-2 | description names the recent crash reports |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | `packages.orchestration.crash_report` in its sorted place (lazy import joins the closure) |
-
-### b90388e68 F199 R4 C5: the crash report's tests with planted secrets (T002)
+### 533efe5a3 F199 R6 C3: doctor health is a client operation (R-1270)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_crash_report.py` | +162/-0 | NEW FILE: planted-secret fixture, header lines, unwritable folder, digest unavailable, thread hook (report, previous hook, restore, SystemExit), recent reports |
-| `tests/orchestration/test_self_health.py` | +27/-2 | `check_crash_reports` PASS and WARN; the set test answers eight |
-| `tests/cli/test_doctor_health_cmd.py` | +3/-3 | counts become eight (9 lines, `1 of 8`) |
-| `tests/cli/test_json_envelope.py` | +33/-0 | text and `--json` cases write one report and name it; SystemExit and KeyboardInterrupt leave the folder empty |
+| `apps/cli/client_interface.py` | +9/-3 | `doctor.health` in the operation ids, tokens, answer keys and key trees; version `1.11` |
+| `apps/cli/commands/doctor_health_cmd.py` | +8/-2 | the `--json` branch passes `verdict` and `checks` as explicit keywords |
+| `docs/system/machine-client-contract-v1.md` | +17/-1 | generated section rewritten |
 
-### 06e59122f F199 R4 C6: the self-health page describes the crash report
+### cd0903283 F199 R6 C4: the client interface's tests read doctor health (R-1270)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/self-health-v1.md` | +20/-6 | banner, `crash_reports` row, example line, `1 of 8`, section "The crash report", "Not yet" keeps the health route |
-| `docs/README.md` | +1/-1 | the system-table row names eight checks and the crash report |
+| `tests/cli/test_client_interface.py` | +13/-1 | version `1.11`; the health answer-tree test; a real `doctor health --json` run in the combined test |
 
-### (this commit) F199 R4 C7: handback
+### 8f95130cc F199 R6 C4b: the route-shape test allows the health route's 503 status (R-1270)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/ui_server/test_public_api.py` | +2/-1 | the allowed refusal statuses gain 503, with a comment |
+
+### (this commit) F199 R6 C5: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -71,77 +101,79 @@ Review of `19bc8f46d`..HEAD (round 4: C1 to C6, then C7; this handback is C7).
 
 ## External actions
 
-- `git push origin feature/f199-self-health` runs after this commit; its result is in the session's final reply. No pull request opened, no worktree added.
+- `git worktree add --detach .remedy-wt/f199-r6-worker/c1tree 587b63d52` for C2's proof, removed with `git worktree remove --force` afterwards; `git worktree list` showed no `f199-r6-worker` entry.
+- `git push origin feature/f199-self-health` runs after this commit; its result is in the session's final reply. No pull request opened.
 
 ## Verification
 
-Preconditions: branch `feature/f199-self-health`, HEAD `19bc8f46d`, `git status --porcelain` empty. Digests of `block.md` (218 lines), `run_selection.py`, `selection.txt` and the two `dry-*` files matched.
+Preconditions: branch `feature/f199-self-health`, HEAD `aa93879e1`, origin `fd1951c3f`, `git status --porcelain` empty. Digests of `block.md` (164 lines), `run_selection.py`, `selection.txt` and the three `dry-*` files matched.
 
-Gate 1: `git -C /home/decodeux/Repos/remedy status --porcelain` — empty.
+C2 proof (one `python3 -B` process per tree, working directory and import path set to that tree; sha256 of `repr(PUBLIC_API_ROUTES)` and of `render_public_api_markdown()`):
+- C1 tree: `7f53adeaf553f4e7ccc0b885082561b923d13fc31af93d1233a403f952f16bf4` and `0701d3957672495cf2fd45e2074c7b5de3ebb568caf528c031236f46e70487fe`
+- primary checkout with C2's changes: the same two digests; both pairs are equal.
 
-Gate 2: the ordered `python3 -m ruff check` over the ten paths — `All checks passed!`
+Gate 1: `git status --porcelain` — empty.
 
-Gate 3 (HEAD `06e59122f`, run once): exit 0, `4293 passed, 3 skipped in 46.07s`; no FAILED, ERROR, `absent in tree:` or `process(es) behind` line (the saved output was searched). SKIPPED: `tests/test_agent_tooling.py:43` (D12 quarantine F252), `tests/test_install_smoke.py:175` (opt-in install smoke), `tests/test_repair_context_reviewer_memory.py:257` (UI source not found).
+Gate 2: the ordered `python3 -m ruff check` over the five paths — `All checks passed!`
 
-Gate 4: `python3 -m apps.cli.main integrity check --json` — `fail_count` 0, `ok` true.
+Gate 3, run 1 (HEAD `cd0903283`): exit 1, `1 failed, 4521 passed, 3 skipped in 85.20s`; FAILED `tests/ui_server/test_public_api.py::test_every_route_is_well_formed`: `AssertionError: ('doctor.health', 'health_failed', 503)`, `assert 503 in (400, 404, 409)`. Classification: a real defect in a test list, not in code; round 5 added the 503 route but the test stopped earlier on `route.twin in CLIENT_OPERATION_IDS`, so the status list was not reached until `doctor.health` became an operation. Repaired in C4b.
 
-Gate 5: `open_finding_ids` -> `['R-1235', 'R-1246', 'R-1251', 'R-1252', 'R-1267', 'R-1268']`.
+Gate 3, run 2 (HEAD `8f95130cc`): exit 0, `4522 passed, 3 skipped in 86.30s`; no FAILED, ERROR, `absent in tree:` or `process(es) behind` line (the saved output was searched, 0 matches). SKIPPED: `tests/test_agent_tooling.py:43` (D12 quarantine F252), `tests/test_install_smoke.py:175` (opt-in install smoke), `tests/test_repair_context_reviewer_memory.py:257` (UI source not found).
 
-Gate 6: `python3 -m apps.cli.main doctor health`:
-```
-Remedy health: PASS
-  [PASS] config: every configured value has its declared type
-  [PASS] ledgers: 2 of 2 token ledgers passed SQLite's integrity check
-  [PASS] snapshots: 20 of 20 newest workspace snapshots passed their hash check
-  [PASS] worktrees: 12 repositories checked; no worktree is prunable
-  [PASS] providers: reachable: claude-cli, ollama; not reachable: claude; no provider was called
-  [PASS] staging_copies: 0.0 GB of staging copies can be freed, below the warning level of 5 GB
-  [PASS] disk: 1186442829824 bytes free; no floor is configured (budget.min_free_disk_bytes)
-  [PASS] crash_reports: no crash report in the last 7 days
-```
+Gate 4: `python3 -m apps.cli.main integrity check --json` — `fail_count` 0.
+
+Gate 5: `open_finding_ids` -> `['R-1235', 'R-1246', 'R-1251', 'R-1252', 'R-1269', 'R-1270', 'R-1271']`.
+
+Gate 6: `wc -l packages/orchestration/public_api.py` — 767.
 
 ## Authored-text proofs
 
-C1's two `dry-*` files were copied over their paths; `git diff --cached --numstat` named exactly three paths with `218 0`, `6 0`, `7 8`. The block copy `.agent/authored/f199-r4.md` has 218 lines and sha256 `d9377333ce0c16f1c11d5fbdbf19061f11a981f2e233e23792991a02811f61c8`, equal to the delivering prompt.
+C1's three `dry-*` files were copied over their paths; `git diff --cached --numstat` named exactly four paths (`164 0`, `12 0`, `6 0`, `6 5`). The block copy `.agent/authored/f199-r6.md` has 164 lines and sha256 `88a05ce98752ea550f41035a5413193551dc2ce30db0519726ae82673c7b26c1`, equal to the delivering prompt.
 
 ## Deviations & assumptions
 
-1. The block's commit order and paths were followed; the reachability allowlist line in C4 was the block's conditional path and I judged it needed (a function-body import joins the closure). Gate 3 passed with it.
-2. `write_crash_report` computes the version and the digest inside its guarded block, so any OSError, ValueError or TypeError from them also gives `None`; the block names those classes only for the file work.
-3. `render_crash_report` treats a naive `when` as UTC.
-4. No red-proof and no test run other than gate 3 were done; the new tests ran for the first time in gate 3 and were green.
+1. An extra commit, C4b, between C4 and C5: gate 3's first run failed on `test_every_route_is_well_formed` (see Verification) and the block ordered a new commit for the fix and one more run. The test now allows 503 beside 400, 404 and 409, with a comment naming DECISION F199 D3; no assertion was removed.
+2. After moving the route table, `ruff --fix` re-ordered `public_api.py`'s imports so the new import stands before the `public_api_writes` imports; the block's wording put it beside them.
+3. C2's new module docstring names step (2) of the structure ledger as well as DECISION F199 D3.
+4. No red-proof and no test run other than gate 3 were done.
 
 ## For the operator, in plain sentences
 
-When a Remedy command or the background service stops on an error nobody expected, Remedy now writes a short report on this machine. It holds the error and where it happened, with passwords and keys removed, and Remedy says where the file is. It never sends the report anywhere. The health command warns for a week after such a report.
+A program that watches Remedy's background service can ask it for its health and gets the same eight checks the health command prints, with a failing check answered by a status a monitor understands. The first attempt broke two of Remedy's own checks, because the new answer was not yet listed among the things a program may ask and because one file had grown past its size limit; both were repaired in this round, the file by moving its list of answers into a file of its own. A third check, one that lists the allowed statuses of every answer, also had to learn the new status; that was repaired too.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
 2. Phase 1 rule 2: the Open PR Gate.
-3. The next round's first commit books round 4's verdict.
-4. T003, the supervisor's health route.
+3. The next round's first commit books round 6's verdict.
+4. The closure: the one full suite, the staging reclaim, the evidence job and the review package.
 
 Operator questions open: 0.
-Open findings: 6 — R-1235, R-1246, R-1251 and R-1252 owned by F306, R-1267 and R-1268 owned by F199 (their repairs landed this round, awaiting review).
+Open findings: 7 — R-1235, R-1246, R-1251 and R-1252 owned by F306; R-1269, R-1270 and R-1271 owned by F199, their repairs landed, awaiting review.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | three paths, numstat as ordered; block copy 218 lines and digest equal |
-| C2 | done | manifest repair, its test, the page's worktree levels |
-| C3 | done | crash_report module and the `crash` class |
-| C4 | done | catch-all, supervisor hook, check, description, allowlist line |
-| C5 | done | tests with planted secrets; counts at eight |
-| C6 | done | page and index row |
-| C7 | done | this handback |
+| R5 C1 | done | `e72f07da8` |
+| R5 C2 | done | `b5f5ecdab` |
+| R5 C3 | done | `b7ec34495` |
+| R5 C4 | done | `e43760b3e` |
+| R5 C5 | done | `3bb1c3aa2` |
+| R5 C6 | done | `aa93879e1` |
+| R6 C1 | done | four paths, numstat as ordered; block copy 164 lines and digest equal |
+| R6 C2 | done | route table moved; registry and page digests equal before and after |
+| R6 C3 | done | `doctor.health` registered, version 1.11, page regenerated |
+| R6 C4 | done | version, answer-tree test, real run |
+| R6 C4b | deviated | extra repair commit after gate 3's first run |
+| R6 C5 | done | this handback |
 | Gate 1 | passed | status empty |
 | Gate 2 | passed | `All checks passed!` |
-| Gate 3 | passed | exit 0, `4293 passed, 3 skipped`, first run |
+| Gate 3 | passed | run 1 red (one test), run 2 exit 0, `4522 passed, 3 skipped` |
 | Gate 4 | passed | `fail_count` 0 |
 | Gate 5 | passed | exact open-finding set |
-| Gate 6 | passed | exit 0, all eight checks PASS |
-| R-1267 | done | repair landed in C2, awaiting review |
-| R-1268 | done | repair landed in C2, awaiting review |
-| T002 | done | the report, the check, tests and page |
+| Gate 6 | passed | 767 lines |
+| R-1269 | done | test landed in R5 C2, awaiting review |
+| R-1270 | done | repair landed in R6 C3, C4 and C4b, awaiting review |
+| R-1271 | done | repair landed in R6 C2, awaiting review |
+| T003 | done | the route, its tests and the page |
