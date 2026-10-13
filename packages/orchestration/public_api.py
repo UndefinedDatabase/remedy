@@ -87,7 +87,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.11"
+PUBLIC_API_VERSION = "1.12"
 
 
 @dataclass(frozen=True)
@@ -175,6 +175,17 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "decisions answered, the missions and the applies, with the cursor for the next "
             "read, as `remedy client changes --since <cursor> --json` prints it; without "
             "`since` only a cursor is given."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/health",
+        twin="doctor.health",
+        refusals=(("health_failed", 503),),
+        description=(
+            "Remedy's own health, as `remedy doctor health --json` prints it: each check PASS, "
+            "WARN or FAIL with its detail and hint; when a check is FAIL the route answers 503 "
+            "with the same body, so a monitor can read the status alone."
         ),
     ),
     PublicApiRoute(
@@ -489,6 +500,26 @@ def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
     return build_ok(**build_client_changes(parsed_since))
 
 
+def _doctor_health_answer() -> dict[str, Any]:
+    """The answer `GET /api/v1/health` sends: what `doctor.health --json` prints (DECISION
+    F199 D1). Runs the eight checks once; a FAIL among them is the `health_failed` refusal with
+    the same document, which the route answers with HTTP 503."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.self_health import (
+        health_exit_code,
+        health_failure_message,
+        health_report_document,
+        run_health_checks,
+    )
+
+    results = run_health_checks()
+    if health_exit_code(results) == 1:
+        return build_error(
+            "health_failed", health_failure_message(results), **health_report_document(results),
+        )
+    return build_ok(**health_report_document(results))
+
+
 def _order_answer(*, order: str) -> dict[str, Any]:
     """The answer `GET /api/v1/orders/{order}` sends: what `remedy client order <order> --json`
     prints (DECISION F253 D14 (4)). Shares `order_record_payload` with the command itself and
@@ -537,6 +568,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "status.run": _status_digest_answer,
     "change.proof": _change_proof_answer,
     "client.changes": _client_changes_answer,
+    "doctor.health": _doctor_health_answer,
     "client.order": _order_answer,
     "client.run": _run_answer,
 }
