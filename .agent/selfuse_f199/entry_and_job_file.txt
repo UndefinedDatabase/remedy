@@ -1,0 +1,5 @@
+Entry ID: SU-060
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:2204
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception as _pred_exc:  # noqa: BLE001 — a broken cost estimate must not break the rest of the view)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f199-r7-selfuse/SU-060.md
