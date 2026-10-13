@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 348.3s (the launcher's reading); pytest's own reported wall time: 347.58s (0:05:47)
+summary line: 1 failed, 22975 passed, 22 skipped, 1 warning in 347.58s (0:05:47)
+bad node ids (failed + errors):
+  - tests/orchestration/test_model_routing.py::TestTheCallSiteInventoryIsChecked::test_the_swept_multiset_equals_the_declared_inventory
+leftover processes: NONE
+tree it ran on: cb5f84574 (F306 R8 C3: the closure's self-use item run to its approval gate, never applied)
+reflog before: cb5f84574 HEAD@{2026-10-13 22:59:33 +0200}: commit: F306 R8 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: cb5f84574 HEAD@{2026-10-13 22:59:33 +0200}: commit: F306 R8 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F306 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1115.89 CPU seconds, 347.59 wall seconds, 22998 tests collected, exit status 1, recorded 2026-10-13T21:05:36Z
+This closure's suite used 1115.89 CPU seconds, 11.3 percent less than F203's 1257.35, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F203's closure run:
+  +2.86 s  tests/orchestration/test_self_use_runner.py (4.02 -> 6.88)
+  +0.40 s  tests/orchestration/test_review_authoritative_e2e.py (0.76 -> 1.16)
+  +0.30 s  tests/orchestration/test_dod_runners.py (3.59 -> 3.89)
+  +0.29 s  tests/orchestration/test_review_subject_artifact_integrity.py (1.84 -> 2.13)
+  +0.25 s  tests/orchestration/test_autonomy.py (1.22 -> 1.47)
+  +0.24 s  tests/cli/test_do_repo_catalog_order.py (0.82 -> 1.06)
+  +0.24 s  tests/orchestration/test_mission_cockpit.py (0.63 -> 0.87)
+  +0.21 s  tests/cli/test_chat_cmd.py (0.32 -> 0.53)
+  +0.20 s  tests/cli/test_job_report.py (1.24 -> 1.44)
+  +0.20 s  tests/orchestration/test_model_aliases.py (1.73 -> 1.93)
