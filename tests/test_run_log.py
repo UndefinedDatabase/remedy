@@ -17,13 +17,25 @@ Tests cover:
 
 from __future__ import annotations
 
+import json
+import logging
 from uuid import uuid4
 
+import pytest
+
+from packages.orchestration.config import load_config
 from packages.orchestration.run_log import (
     RunEvent,
     RunLogWriter,
+    mirror_run_event,
     new_run_id,
     read_run_events,
+)
+from packages.orchestration.structured_log import (
+    LOG_FILE_NAME,
+    configure_structured_logging,
+    current_log_context,
+    reset_structured_logging,
 )
 
 # ---------------------------------------------------------------------------
@@ -365,3 +377,64 @@ class TestReadRunEvents:
         events = read_run_events(writer.path)
         assert events[0]["metadata"]["task_type"] == "write_readme"
         assert events[0]["metadata"]["count"] == 7
+
+
+# ---------------------------------------------------------------------------
+# mirror_run_event (DECISION F203 D2)
+# ---------------------------------------------------------------------------
+
+
+class TestMirrorRunEvent:
+    @pytest.fixture
+    def log_path(self, tmp_path):
+        config = load_config(
+            project_path=tmp_path / "absent.toml", user_path=tmp_path / "absent-user.toml",
+        )
+        path = configure_structured_logging(tmp_path, config)
+        yield path
+        reset_structured_logging()
+
+    @staticmethod
+    def _entries(path):
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+    def test_a_logged_event_writes_one_line_with_its_ids(self, tmp_path, log_path):
+        RunLogWriter("job-a", data_root=tmp_path).log(
+            "task_run_started", task_id="T001", attempt_id="att-1",
+        )
+        (entry,) = self._entries(log_path)
+        assert log_path == tmp_path / "logs" / LOG_FILE_NAME
+        assert entry["logger"] == "packages.orchestration.run_log"
+        assert entry["level"] == "INFO"
+        assert entry["message"] == "task_run_started"
+        assert (entry["job_id"], entry["task_id"], entry["run_id"]) == ("job-a", "T001", "att-1")
+
+    def test_outcome_and_message_join_the_text(self, tmp_path, log_path):
+        RunLogWriter("job-a", data_root=tmp_path).log(
+            "builder_completed", outcome="passed", message="ok",
+        )
+        (entry,) = self._entries(log_path)
+        assert entry["message"] == "builder_completed outcome=passed: ok"
+
+    def test_an_event_without_attempt_or_task_leaves_both_ids_null(self, tmp_path, log_path):
+        RunLogWriter("job-a", data_root=tmp_path).log("job_created")
+        (entry,) = self._entries(log_path)
+        assert entry["job_id"] == "job-a"
+        assert entry["task_id"] is None
+        assert entry["run_id"] is None
+
+    def test_the_bound_context_is_empty_again_after_the_call(self, log_path):
+        mirror_run_event(RunEvent(
+            event="e", job_id="j", run_id="r", timestamp="t", task_id="T9",
+            metadata={"attempt_id": "a"},
+        ))
+        assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+
+    def test_the_timeline_line_is_what_it_was(self, tmp_path, log_path):
+        writer = RunLogWriter("job-a", data_root=tmp_path)
+        writer.log("task_run_started", task_id="T001", attempt_id="att-1")
+        (line,) = writer.path.read_text(encoding="utf-8").splitlines()
+        parsed = json.loads(line)
+        assert RunEvent(**{k: v for k, v in parsed.items()}).to_json_line() == line

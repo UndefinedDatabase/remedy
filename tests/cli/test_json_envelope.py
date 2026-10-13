@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import logging
 import pathlib
 
 import pytest
@@ -154,6 +155,54 @@ class TestNoTracebackReachesTheOperator:
         assert payload["error"] == "unhandled_command_error"
         assert "KeyError" in payload["message"]
         assert payload["command"]
+
+    @staticmethod
+    def _log_entries():
+        from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
+
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+        path = logs_dir() / LOG_FILE_NAME
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+    def test_the_unexpected_error_goes_to_the_operations_log_only(
+        self, monkeypatch, capsys
+    ) -> None:
+        self._run(monkeypatch, ["job", "list"], KeyError("x"))
+        err = capsys.readouterr().err
+        assert "Traceback" not in err and "ended on an unexpected error" not in err
+        (entry,) = self._log_entries()
+        assert entry["level"] == "ERROR"
+        assert entry["logger"] == "apps.cli.grouped"
+        assert "job.list" in entry["message"]
+        assert "KeyError" in entry["exception"]
+
+    def test_a_handler_that_does_nothing_leaves_no_logs_folder(self, monkeypatch) -> None:
+        from apps.cli import grouped
+        from packages.orchestration.structured_log import logs_dir
+
+        real = grouped._get_dispatch_table
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {k: (lambda _a: None) for k in real()})
+        grouped.main(["job", "list"])
+        assert not logs_dir().exists()
+
+    def test_a_warning_is_on_the_error_stream_bare_and_in_the_file(
+        self, monkeypatch, capsys
+    ) -> None:
+        from apps.cli import grouped
+
+        def warning_handler(_args):
+            logging.getLogger("packages.orchestration.fixture").warning("careful now")
+
+        real = grouped._get_dispatch_table
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {k: warning_handler for k in real()})
+        grouped.main(["job", "list"])
+        assert capsys.readouterr().err.strip() == "careful now"
+        (entry,) = self._log_entries()
+        assert entry["level"] == "WARNING"
+        assert entry["message"] == "careful now"
 
     def test_a_declared_project_error_is_caught_the_same_way(
         self, monkeypatch, capsys

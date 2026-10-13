@@ -16,6 +16,7 @@ from packages.orchestration.structured_log import (
     DEFAULT_LOG_BACKUP_COUNT,
     DEFAULT_LOG_LEVEL,
     DEFAULT_LOG_MAX_BYTES,
+    FILE_ONLY_ATTR,
     LOG_CONTEXT_KEYS,
     LOG_FIELD_NAMES,
     LOG_FILE_NAME,
@@ -132,8 +133,9 @@ def test_an_exception_adds_a_last_key_and_a_plain_line_has_none(tmp_path):
     assert "exception" not in fine
 
 
-def test_planted_secrets_never_reach_the_file_and_every_line_parses(tmp_path):
-    _, path = _setup(tmp_path)
+@pytest.mark.parametrize("as_json", [True, False])
+def test_planted_secrets_never_reach_the_file_and_every_line_parses(tmp_path, as_json):
+    _, path = _setup(tmp_path, f"json = {'true' if as_json else 'false'}\n")
     CHILD.info("failed with %s and %s", *SECRET_PARTS)
     try:
         raise RuntimeError("inside " + " ".join(SECRET_PARTS))
@@ -145,8 +147,9 @@ def test_planted_secrets_never_reach_the_file_and_every_line_parses(tmp_path):
         assert secret.encode() not in raw
     assert b"AbCdEfGhIjKl" not in raw
     assert b"[REDACTED]" in raw
-    for line in raw.decode("utf-8").splitlines():
-        json.loads(line)
+    if as_json:
+        for line in raw.decode("utf-8").splitlines():
+            json.loads(line)
 
 
 def test_json_false_writes_a_text_line(tmp_path):
@@ -182,10 +185,11 @@ def test_an_unknown_level_writes_info_and_one_warning_naming_it(tmp_path):
 
 def test_folder_and_file_modes_and_rotation_keep_owner_only_files(tmp_path):
     root, path = _setup(tmp_path, "max_bytes = 2000\nbackup_count = 2\n")
-    assert stat.S_IMODE(os.stat(root / "logs").st_mode) == 0o700
+    assert not (root / "logs").exists()
     for index in range(60):
         CHILD.info("record number %d with some padding to fill the file quickly", index)
     _flush()
+    assert stat.S_IMODE(os.stat(root / "logs").st_mode) == 0o700
     folder = root / "logs"
     names = sorted(p.name for p in folder.iterdir())
     assert names == [LOG_FILE_NAME, LOG_FILE_NAME + ".1", LOG_FILE_NAME + ".2"]
@@ -232,15 +236,29 @@ def test_reset_removes_its_handlers_keeps_foreign_ones_and_restores_the_level(tm
         root_logger.removeHandler(foreign)
 
 
-def test_a_root_that_is_a_regular_file_answers_none_and_keeps_the_error_stream(tmp_path, capsys):
+def test_a_root_that_cannot_be_written_drops_lines_silently_and_keeps_the_error_stream(
+    tmp_path, capsys,
+):
     blocker = tmp_path / "blocker"
     blocker.write_text("not a folder")
     path = configure_structured_logging(blocker, _config(tmp_path))
-    assert path is None
-    marked = [h for h in logging.getLogger().handlers if getattr(h, "_remedy_structured_log", False)]
-    assert len(marked) == 1
+    assert path == blocker / "logs" / LOG_FILE_NAME
+    CHILD.info("dropped")
     CHILD.warning("still shown")
-    assert "still shown" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert err.strip() == "still shown"
+    assert "Logging error" not in err
+
+
+def test_a_file_only_record_is_in_the_file_and_not_on_the_error_stream(tmp_path, capsys):
+    _, path = _setup(tmp_path)
+    CHILD.error("file only line", extra={FILE_ONLY_ATTR: True})
+    CHILD.error("both places line")
+    err = capsys.readouterr().err
+    assert "file only line" not in err
+    assert "both places line" in err
+    messages = [json.loads(line)["message"] for line in _lines(path)]
+    assert messages == ["file only line", "both places line"]
 
 
 def test_the_defaults_of_the_four_keys_read_from_an_empty_configuration(tmp_path):
