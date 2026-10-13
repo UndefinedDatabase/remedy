@@ -1,41 +1,55 @@
-# Handback — F306 round 6: book round 5, then `run_job`'s configuration resolution becomes a function of its own
+# Handback — F306 round 7: book round 6, then T008: a job records the claude-cli configuration its calls ran under
 
 ## Session
 
-SESSION 2 of feature F306 · round 6 · rounds so far 6
+SESSION 2 of feature F306 · round 7 · rounds so far 7
 
-Context self-assessment: this round cut the resolution block out of a 1559-line function with a
-fixed reference to check equivalence against, so the move went through on the first attempt with
-no stop condition triggered and the only departure from the block's literal wording was a lint-
-driven import-statement split, explained below.
+Context self-assessment: T008's two mandated edits (the optional-field subtraction and the
+one-line rejoin in `validate_job_input_definition`) had side effects the block's named paths did
+not cover — a stale structure-ledger row and two existing suites that still treated the four new
+keys as required — so this round needed three extra files and, because one of the two broke only
+after C2 was already committed, a fourth commit; all four are logged below and no gate was left red.
 
-Fortschritt: ~75 % (T001 to T004, T006, T007 and run_job's step (2) landed · T005 carried · T008
-open) — Schätzung
+Fortschritt: ~85 % (T001 to T004 and T006 to T008 landed · T005 carried · closure open) — Schätzung
 
 ## Range
 
-Review of `baf42eea2`..`b9ca27564`
+Review of `01050dd11`..`516fcef52`
 
 ## Commits
 
-### 47d0f091c F306 R6 C1: book round 5 and the plan, save the block
+### e8d1d7720 F306 R7 C1: book round 6 and the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f306-r6.md` | +136/-0 | NEW FILE, byte copy of `block.md` (136 lines, sha256 `eeb5b5d1f36e2f0e77d62f591a49206dba4c7fc18838733878997904d53efe41`) |
-| `.agent/live_review.md` | +2/-0 | round 5's PASS verdict appended, byte-identical to `append-live_review.txt` |
-| `.agent/plan.md` | +8/-7 | replaced by `dry-plan.md` |
+| `.agent/authored/f306-r7.md` | +158/-0 | NEW FILE, byte copy of `block.md` (158 lines, sha256 `1f044be68168f52336948a18ac1946edfc100485575a2ece2c73083273cdd71e`) |
+| `.agent/live_review.md` | +2/-0 | round 6's PASS verdict appended, byte-identical to `append-live_review.txt` |
+| `.agent/plan.md` | +8/-10 | replaced by `dry-plan.md` |
 
-### b9ca27564 F306 R6 C2: run_job's configuration resolution becomes a function of its own (structure step, T008 prerequisite)
+### 774f2d861 F306 R7 C2: a job records the claude-cli configuration its calls ran under (R-1235, T008)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/execution_config.py` | +164/-4 | `default_role_provider_name`, `_resolve_cfg` moved in verbatim with their WHY comment; new `_resolve_invocation_controls` (the F3 comment, nested `_resolve_inv`, its five calls) and new public `resolve_job_execution_config`, which `run_job` used to compute inline; module docstring widened to name all six exports |
-| `packages/orchestration/pingpong_job.py` | +42/-141 | the two moved functions deleted; `run_job`'s inline resolution block (`ec = job.execution_config` through the `ExecutionConfig(...)` construction) replaced by one call to `resolve_job_execution_config` plus a rebind of the 14 locals `run_job` reads later, read from the returned record; three names imported back, two of them (`_resolve_cfg`, `default_role_provider_name`) via `name as name` because, unlike round 5's three names, neither has a live caller left inside this module |
-| `docs/system/structure-ledger-v1.md` | +8/-6 | `run_job` row 1559→1486, its bullet's step (2) sentence; `pingpong_job.py` file row 5498→5399 |
-| `tests/test_structure_ratchet.py` | +2/-2 | `MAX_FUNCTION_LINES` 30731→30658 (same 73); `MAX_FILE_LINES` 73890→73791 (same 99) |
+| `packages/orchestration/execution_config.py` | +48/-5 | `ExecutionConfig` gains the four fields after `max_tasks_source`; `_export_execution_config`/`_import_execution_config` carry them; new `_resolve_claude_cli_launch_config` reads both keys fresh through `claude_cli_command._claude_cli_flag` and `config.get_source`; `resolve_job_execution_config` gains `config: Any = None`, spreads the new resolver's four keys into the construction, and its WHY comment is corrected from "F306 T007 structure step (2)" to "F306, the structure ledger's step (2) for `run_job`" |
+| `packages/orchestration/job_input_definition.py` | +14/-2 | `build_job_input_definition`'s `execution` dict gains the four keys; `JOB_INPUT_EXECUTION_BOOL_FIELDS` gains the two bool names; new `JOB_INPUT_EXECUTION_OPTIONAL_FIELDS` frozenset of the four; module docstring's constant list widened |
+| `packages/orchestration/run_manifest.py` | +3/-3 | imports `JOB_INPUT_EXECUTION_OPTIONAL_FIELDS`; `validate_job_input_definition`'s `missing` line subtracts it; one wrapped call (`red = _t(...)`) rejoined onto one 120-char line so the file's own line count (6275) and its "Files above 1,000 lines" row stay level |
+| `apps/cli/client_interface.py` | +5/-3 | `EXECUTION_CONFIG_KEY_TREE` gains the four keys; `CLIENT_INTERFACE_VERSION` → `"1.13"`, comment extended |
+| `docs/system/machine-client-contract-v1.md` | +5/-5 | regenerated by `write_client_interface_page()`; only the version line and the four `execution_config` key lists changed |
+| `docs/system/claude-cli-worker-launch-v1.md` | +8/-3 | status banner updated; new 4-line section "What a job records" after "Turning a source back on" |
+| `tests/orchestration/test_execution_config.py` | +99/-0 | NEW FILE: the resolver's env/default/ignores-persisted behaviour, export/import round-trip and back-compat default, and `validate_job_input_definition` accepting/refusing the four keys |
+| `tests/cli/test_client_interface.py` | +1/-1 | version pin → `"1.13"` |
+| `tests/cli/test_job_run_invocation_truth.py` | +18/-0 | one new test: a real `job run` with `REMEDY_CLAUDE_CLI_ALL_TOOLS=true` records `claude_cli_all_tools` true/`env` and `claude_cli_customizations` false/`default` |
+| `tests/orchestration/test_job_input_definition_completeness.py` | +11/-1 | **not in the block's named paths.** Its "every execution field is required" parametrization still covered the four newly-optional keys and would have failed the moment they stopped being required; narrowed to `JOB_INPUT_EXECUTION_FIELDS - JOB_INPUT_EXECUTION_OPTIONAL_FIELDS`, plus a new case proving the four are accepted when absent. Found and fixed before this commit, so folded into it rather than left for a gate to catch |
+| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FUNCTION_LINES` 30658→30657, the direct consequence of `validate_job_input_definition` falling from 111 to 110 lines (the mandated rejoin) |
+| `docs/system/structure-ledger-v1.md` | +1/-1 | **not in the block's named paths.** `validate_job_input_definition`'s row moved from 111 to 110 and repositioned alphabetically among the other 110-line rows, for the same reason as the ratchet pin above |
 
-### (this commit) F306 R6 C3: handback
+### 516fcef52 F306 R7 C2 fixup: test_episode_snapshot_full_validity.py agrees the four claude-cli keys are optional
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_episode_snapshot_full_validity.py` | +11/-1 | **not in the block's named paths; found by gate 3 AFTER C2 was committed.** Its typed-predicate/raw-decoder equivalence suite built its `_BROKEN` table by popping every name in `JOB_INPUT_EXECUTION_FIELDS` and asserting rejection — still including the four now-optional keys. Narrowed the loop to exclude `JOB_INPUT_EXECUTION_OPTIONAL_FIELDS` and added the mirror case (missing an optional key is accepted by the typed predicate, the raw decoder and `is_ok()` alike). A new commit, not an amend of C2, per this session's standing git-safety instruction to always create new commits rather than amend |
+
+### (this commit) F306 R7 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -54,142 +68,183 @@ Review of `baf42eea2`..`b9ca27564`
 
 Preconditions confirmed before C1: `git branch --show-current` read
 `feature/f306-findings-paydown-v8`; `git rev-parse HEAD` read
-`baf42eea221a600ca38b73759ee4569fb0d92e60`; `git status --porcelain` was clean.
+`01050dd115044b7358005dbfabb756c5ed87becf`; `git status --porcelain` was clean.
 
 Every prepared-file digest matched before use (all seven files in the prep directory): `block.md`
-(`eeb5b5d1f36e2f0e77d62f591a49206dba4c7fc18838733878997904d53efe41`, 136 lines),
-`append-live_review.txt` (`9841d51aaf12af6c7709babfc093cc5eb503cadfcc45410b50cc0aa7db92fd8b`),
-`dry-plan.md` (`8565c019fb8350a0dcb4db0fd625c4241fb537a92aad301b3a21392eb2bd6524`), `verify.py`
-(`1f7dfcdc73baa82ca1f3a1233d9317547b1429c1043e635e62fd4622834c1d45`), `run_selection.py`
+(`1f044be68168f52336948a18ac1946edfc100485575a2ece2c73083273cdd71e`, 158 lines),
+`append-live_review.txt` (`7bb4414f3964ffecd41ea21f6dc7eb6bca9dfbf641af387836917d3afe1deb51`),
+`dry-plan.md` (`cf0cbda74aedda20d3653675e9fa2b62afeb50708e8097e284ad4c375804e26d`), `verify.py`
+(`38c35f18524e89f6b328a66539d627506660d0b48e47d2ef481815cbd67dda4f`), `run_selection.py`
 (`cddebcc9b29665c95a90fb1b93184e421e0348d110823ea328a6ff2b003d712e`), `selection.txt`
-(`c5d9aea7c44efaec34c9703656d3707cfb4eabf2b032fd73d9319fdc60203022`), `check_extract.py`
-(`158225a8a8880ef621509b139a154ddeb2fc520c6caf4008ecdc2fdf1f48cf4b`).
+(`683af5ebe345e3558130ea612b53e8dfac5d8c7c98d860077d64e9fd4271171c`), `check_t008.py`
+(`c0bab63a3b146b11bb77317fefc6d50ca8309415cbd51ff48136d76ee29fbc39`).
 
-C1: before commit, `git diff --cached --numstat` read exactly `136 0
-.agent/authored/f306-r6.md`, `2 0 .agent/live_review.md`, `8 7 .agent/plan.md` — matching the
-block's specification exactly (`2 0` for the ledger, `8 7` for the plan, the block file at its
-`wc -l` of 136). `cmp` of the authored copy against `block.md` printed nothing.
+C1: before commit, `git diff --cached --numstat` read exactly `158 0 .agent/authored/f306-r7.md`,
+`2 0 .agent/live_review.md`, `8 10 .agent/plan.md` — matching the block's specification exactly
+(`2 0` for the ledger, `8 10` for the plan, the block file at its `wc -l` of 158). `cmp` of the
+authored copy against `block.md` printed nothing.
 
-C2: before commit, `git diff --cached --stat` read `4 files changed, 216 insertions(+), 153
-deletions(-)`, under the 500-insertion cap. Self-review ran over `git diff --cached` before the
-commit: the `pingpong_job.py` diff showed only the planned block removal/replacement and the
-import-statement change; the new module's diff showed only the moved bodies plus the two new
-functions, byte-for-byte on the moved parts. Searched `run_job`'s own source (lines 2457–3942 by
-`ast`) for every local the moved block used to bind (`ec`, `builder_src`, `bm_src`, `be_src`,
-`rm_src`, `re_src`, `rp_src`, `rpm_src`, `rpe_src`, `test_cmd_src`, `write_mode_src`,
-`max_rounds_src`, `_ts`, `_tp`, `_moc`, `_se`, `_mt`, their `_src` pairs, `_resolve_inv`,
-`builder_effort`, `reviewer_effort`, `repair_provider_name`, `repair_model`, `repair_effort`):
-none is read after the replaced block except as the call's own keyword arguments — confirming the
-block's claim that only the named 14 locals are read later. `python3 -m ruff check` on the four
-changed Python/text files found two `F401` (unused-import) errors on first run —
-`_resolve_cfg` and `default_role_provider_name` plain-imported but never called inside
-`pingpong_job.py` any more — fixed by switching those two imports to the `name as name`
-self-re-export idiom this codebase already uses for re-export-only names (e.g.
-`run_manifest.py`'s imports from `job_input_definition.py` and `workspace_identity.py`); ruff's own
-`--fix` then split them into their own import statements, matching that precedent exactly. Second
-run: `All checks passed!`. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f306-r6/prep/check_extract.py`
-run directly beforehand, after the fix: `ALL True`, including the 2006-combination equivalence
-check against the reference function built from the pre-round block. `tests/test_structure_ratchet.py`
-run directly beforehand: 5 passed. No leftover process after any run.
+C2: before commit, `git diff --cached --stat` read `12 files changed, 214 insertions(+), 25
+deletions(-)`, under the 500-insertion cap. Self-review ran over the full `git diff --cached`
+before the commit: every hunk traced back to one of the block's eight numbered items, no debug
+leftovers, no unrelated changes. `python3 /home/decodeux/Repos/remedy/.remedy-wt/f306-r7/prep/check_t008.py`
+run directly before the commit: `ALL True`, including `run_manifest.py did not grow (6275 ->
+6275)`. `python3 -m ruff check` on the twelve changed/added files: `All checks passed!`.
+`tests/test_structure_ratchet.py` run directly beforehand: 5 passed (initially 1 failed —
+`validate_job_input_definition` fell from 111 to 110 lines — fixed by lowering its row and the
+`MAX_FUNCTION_LINES` pin, both folded into this commit before it was made). The affected Bundle
+test files (`test_claude_cli_command.py`, `test_client_interface.py`,
+`test_job_input_definition_completeness.py`, `test_job_input_definition_schema.py`,
+`test_material_input_fields.py`) ran green together: 236 passed (the completeness file's own
+parametrization needed the same "exclude the four optional keys" narrowing, found and folded in
+before the commit — see its commit-table row above). No leftover process after any run.
 
-**Gate run (against C2, the only one — no amendment needed):**
+C2 fixup: gate 3's FIRST run (recorded below) surfaced a fifth affected file,
+`tests/orchestration/test_episode_snapshot_full_validity.py`, which C2 had already landed by the
+time the gate ran. Narrowed its `_BROKEN`-table loop the same way and added the mirror case; ran
+`python3 -B -m pytest -q -p no:cacheprovider tests/orchestration/test_episode_snapshot_full_validity.py`
+directly: 64 passed. `python3 -m ruff check tests/orchestration/test_episode_snapshot_full_validity.py`:
+`All checks passed!`. Committed separately, not amended into C2, per this session's standing
+git-safety instruction.
+
+**Gate run (against the tree after the fixup commit; gate 3 ran twice because its first run was
+red — see above; every other gate ran once):**
 - Gate 1: `git status --porcelain` empty; `verify.py` →
   ```
-  found True F306 R6 C1: 47d0f091ce02b46fd50521103483a34f122446b7
+  found True F306 R7 C1: e8d1d77204780a441816cf0efcca025aa53d88c4
   C1 parent is the base True
-  equal at F306 R6 C1: True .agent/live_review.md
-  equal at F306 R6 C1: True .agent/plan.md
-  equal at F306 R6 C1: True .agent/authored/f306-r6.md
-  F306 R6 C1: names exactly its paths True []
+  equal at F306 R7 C1: True .agent/live_review.md
+  equal at F306 R7 C1: True .agent/plan.md
+  equal at F306 R7 C1: True .agent/authored/f306-r7.md
+  F306 R7 C1: names exactly its paths True []
   ALL True
   ```
-- Gate 2: `python3 -m ruff check packages/orchestration/pingpong_job.py packages/orchestration/execution_config.py tests/test_structure_ratchet.py` → `All checks passed!`.
-- Gate 3: `run_selection.py` → exit 0:
+- Gate 2: `python3 -m ruff check packages/orchestration/execution_config.py packages/orchestration/job_input_definition.py packages/orchestration/run_manifest.py apps/cli/client_interface.py tests/orchestration/test_execution_config.py tests/cli/test_client_interface.py tests/cli/test_job_run_invocation_truth.py tests/orchestration/test_job_input_definition_completeness.py tests/test_structure_ratchet.py` → `All checks passed!`.
+- Gate 3, first run (red, before the fixup commit): `run_selection.py` → exit 1:
   ```
-  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
+  FAILED tests/orchestration/test_episode_snapshot_full_validity.py::TestTheTypedPredicateAndTheRawDecoderAgree::test_a_broken_definition_is_rejected_by_both[missing execution.claude_cli_all_tools]
+  FAILED tests/orchestration/test_episode_snapshot_full_validity.py::TestTheTypedPredicateAndTheRawDecoderAgree::test_a_broken_definition_is_rejected_by_both[missing execution.claude_cli_all_tools_source]
+  FAILED tests/orchestration/test_episode_snapshot_full_validity.py::TestTheTypedPredicateAndTheRawDecoderAgree::test_a_broken_definition_is_rejected_by_both[missing execution.claude_cli_customizations]
+  FAILED tests/orchestration/test_episode_snapshot_full_validity.py::TestTheTypedPredicateAndTheRawDecoderAgree::test_a_broken_definition_is_rejected_by_both[missing execution.claude_cli_customizations_source]
+  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
   SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
   SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-  107 paths
-  5132 passed, 3 skipped in 109.36s (0:01:49)
+  111 paths
+  4 failed, 5202 passed, 3 skipped in 57.03s
+  exit 1
+  ```
+  Diagnosed as the same category of staleness as the structure ratchet — a suite that still
+  assumed all four claude-cli keys are required — fixed by the C2 fixup commit above, then:
+- Gate 3, second run (green, after the fixup commit): exit 0:
+  ```
+  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): ...
+  SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+  SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+  111 paths
+  5206 passed, 3 skipped in 58.20s
   exit 0
   ```
-  No FAILED/ERROR line, no "process(es) behind" line.
+  No FAILED/ERROR line, no "process(es) behind" line on the second run.
+- Gate 1 re-confirmed after the fixup commit: `git status --porcelain` empty; `verify.py` → `ALL True` (same output as above — the fixup commit does not touch any of C1's paths).
 - Gate 4: `python3 -m apps.cli.main integrity check --json` → exit 0:
   ```
   {"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
   ```
 - Gate 5: `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"` → `['R-1235', 'R-1246', 'R-1252']`.
-- Gate 6: `check_extract.py` →
+- Gate 6: `check_t008.py` →
   ```
-  default_role_provider_name defined in execution_config True
-  default_role_provider_name re-exported as the same object True
-  _resolve_cfg defined in execution_config True
-  _resolve_cfg re-exported as the same object True
-  resolve_job_execution_config defined in execution_config True
-  resolve_job_execution_config re-exported as the same object True
-  execution_config imports no pingpong_job True
-  run_job no longer spells _resolve_cfg( True
-  run_job no longer spells ExecutionConfig( True
-  run_job no longer spells _resolve_inv True
-  run_job no longer spells default_role_provider_name( True
-  run_job calls resolve_job_execution_config True
-  resolve_job_execution_config equals the old block on 2006 combinations True
+  ExecutionConfig has the four fields with their defaults True
+  the export names the four keys True
+  an export written before reads back with the defaults True
+  export and import keep a true value and its source True
+  resolution: all_tools true from env, customizations false by default True
+  resolution ignores a persisted value: each run records what it reads True
+  no config given: the process configuration is read True
+  the definition carries the four keys True
+  a definition with the keys validates True
+  a definition written before the keys validates True
+  a non-boolean value is refused True
+  an unknown source is refused True
+  a required field is still required True
+  CLIENT_INTERFACE_VERSION is 1.13 True
+  EXECUTION_CONFIG_KEY_TREE names the four keys True
+  run_manifest.py did not grow (6275 -> 6275) True
   ALL True
   ```
 
 ## Authored-text proofs
 
-- `.agent/authored/f306-r6.md` against `block.md`: byte-equal, 136 lines, sha256
-  `eeb5b5d1f36e2f0e77d62f591a49206dba4c7fc18838733878997904d53efe41` (`cmp` printed nothing; Gate
-  1's "equal at F306 R6 C1 True .agent/authored/f306-r6.md").
+- `.agent/authored/f306-r7.md` against `block.md`: byte-equal, 158 lines, sha256
+  `1f044be68168f52336948a18ac1946edfc100485575a2ece2c73083273cdd71e` (`cmp` printed nothing; Gate
+  1's "equal at F306 R7 C1 True .agent/authored/f306-r7.md").
 - `.agent/live_review.md` against the base plus `append-live_review.txt`: byte-equal (Gate 1).
 - `.agent/plan.md` against `dry-plan.md`: byte-equal (Gate 1).
 
-No other reviewer-authored text applied this round: C2 is this session's own code (a structural
-move the block ordered), proved by the gates above, by the unchanged test suite, and by
-`check_extract.py`'s 2006-combination equivalence check against the reference function built from
-the exact pre-round block, rather than by digest comparison to a prepared file.
+No other reviewer-authored text applied this round: C2 and the C2 fixup are this session's own
+code and tests, written from the block's prose instructions and proved by the gates above and by
+`check_t008.py`'s behavioural equivalence check, rather than by digest comparison to a prepared file.
 
 ## Deviations & assumptions
 
-One deviation from the block's literal wording, in C2 only: the block asked that
-`default_role_provider_name` and `_resolve_cfg` be imported back "in the existing
-`from packages.orchestration.execution_config import (...)` statement." Added there as plain
-names, `python3 -m ruff check` failed both with `F401` (imported but unused), because — unlike
-round 5's three names, which all still had a live caller inside `pingpong_job.py` — neither
-function is called anywhere in `pingpong_job.py` any more; `run_job` now calls
-`resolve_job_execution_config` instead. Fixed by the `name as name` self-re-export idiom this
-codebase already uses for exactly this situation (`run_manifest.py`'s imports of
-`_h`, `_redacted_command_identity`, `_source_field`, `job_input_sha256` from
-`job_input_definition.py`, and `_run_probe` from `workspace_identity.py`); ruff's own `--fix` then
-split the two aliased imports into their own statements, which is the same shape that precedent
-takes. The net effect — both names re-exported as the same objects, `pingpong_job.<name>` still
-resolving — is unchanged; only the statement's grouping differs from the block's literal text, to
-keep Gate 2 green. No extra commit beyond C1, C2, C3; no dropped one; no reordering. Every commit
-carries `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` — the model this session actually
-runs on.
+Three files outside the block's named "Paths:" list were touched, and one extra commit was made,
+all for the same underlying reason: the block's two mandated T008 edits (the
+`JOB_INPUT_EXECUTION_OPTIONAL_FIELDS` subtraction, and making the four claude-cli keys genuinely
+optional) have mechanical, correctness-preserving consequences in places the block's Bundle did
+not list, and leaving any of them unaddressed would have left a mandatory gate red.
+
+1. `docs/system/structure-ledger-v1.md` and `tests/test_structure_ratchet.py` (folded into C2,
+   found before committing): the block's own mandated rejoin of one wrapped call inside
+   `validate_job_input_definition` — done to keep `run_manifest.py`'s file-level line count level,
+   exactly as ordered — shrinks that FUNCTION from 111 to 110 lines as an unavoidable arithmetic
+   side effect (joining two lines into one always removes exactly one line). The structure ratchet
+   test (`tests/test_structure_ratchet.py`, always pulled into gate 3 via its `tests/test_*.py`
+   glob) requires every oversized function's row to equal its measured size exactly, so it went
+   red the moment the rejoin landed. Fixed by lowering the row (111→110, repositioned
+   alphabetically) and the `MAX_FUNCTION_LINES` pin (30658→30657) — a strict decrease, which the
+   ratchet's own rule always permits, and the same kind of edit round 6 made to the same two files
+   for its own structural step. Found during self-review, before C2 was committed.
+2. `tests/orchestration/test_job_input_definition_completeness.py` (folded into C2, found before
+   committing): its `test_every_material_execution_field_is_required` parametrized over the FULL
+   `JOB_INPUT_EXECUTION_FIELDS`, asserting that popping ANY of them causes rejection — including
+   the four keys T008 just made optional. Narrowed the parametrization to exclude
+   `JOB_INPUT_EXECUTION_OPTIONAL_FIELDS` and added a new parametrized case asserting the opposite
+   for exactly those four (absence still validates). Found while verifying the Bundle's own test
+   files before committing C2.
+3. `tests/orchestration/test_episode_snapshot_full_validity.py` (its own commit, `516fcef52`,
+   AFTER C2 — found by gate 3's first run, which was red). This file was not named in the block's
+   Bundle and sits outside `packages/orchestration`'s immediate neighborhood, so it was not among
+   the files checked before C2's commit. Its `_BROKEN` fixture table built the same
+   "pop-one-execution-field-and-expect-rejection" case over the full field set, for both the
+   typed predicate and the raw decoder. Same fix as item 2 (narrow the loop, add the mirror case).
+   Per this session's standing git-safety instruction — "always create new commits rather than
+   amending, unless the user explicitly requests a git amend" — this landed as a new commit
+   rather than an amendment of the already-made C2, which is this round's one departure from the
+   block's literal three-commit sequence (C1, C2, C3 became C1, C2, C2-fixup, C3). Gate 3 was
+   consequently run twice (red, then green); every other gate ran once, as ordered.
+
+No commit was dropped or reordered; every commit carries `Co-Authored-By: Claude Sonnet 5
+<noreply@anthropic.com>` — the model this session actually runs on.
 
 ## For the operator, in plain sentences
 
 This round first recorded the previous round's acceptance and moved the working plan forward. It
-then took the next step a finding's own text asks for on the job runner's own file: the long block
-that worked out which setting value to use — an explicit one passed in, a previously saved one, or
-a plain default — moved out of the huge function that runs a job and became a function of its own,
-callable and checkable on its own terms. The function that runs a job now calls that new function
-once and then reads back the fourteen answers it needs, so it behaves exactly as before. A machine
-check compared the new function's answer against the old block's answer over thousands of
-combinations of settings and found no difference. One small departure from the letter of this
-round's instructions was needed to keep an automatic code-quality check satisfied, with no change
-in what runs; it is written down above. One more step of this same repair remains open for a later
-session, plus two older problems still carried forward by name. Nothing waits on the operator right
-now.
+then took R-1235's third and final step: two settings that control how a worker's command line
+starts — whether it loads the operator's own customizations, and whether it gets every built-in
+tool — are now read fresh every time a job runs and written into that job's own record, alongside
+where each value came from. An old record made before this change still reads back correctly. The
+machine client interface's version number went up to reflect the two new fields, and its generated
+reference page was rebuilt from the code. Two of this round's edits had small, mechanical
+knock-on effects on a size bookkeeping page and on two unrelated test files that had baked in the
+old "these fields are always required" assumption; all three were corrected in place, and one of
+them needed its own small extra commit because it was only found after the previous commit had
+already been made. Nothing was left broken, and nothing waits on the operator right now.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
 2. The Open PR Gate.
-3. Book round 6's verdict in the next round's first commit.
-4. T008: R-1235's third step.
+3. Book round 7's verdict in the next round's first commit.
+4. The closure sequence.
 
 Operator questions open: 0.
 Open findings: 3 (R-1235, R-1246 and R-1252), all owned by F306.
@@ -198,13 +253,14 @@ Open findings: 3 (R-1235, R-1246 and R-1252), all owned by F306.
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `47d0f091c` |
-| C2 | done | `b9ca27564` |
+| C1 | done | `e8d1d7720` |
+| C2 | done | `774f2d861` |
+| C2 fixup | deviated | `516fcef52` — not in the block's commit list; see Deviations above |
 | C3 | done | this commit |
-| Gate 1 | passed | `ALL True` |
-| Gate 2 | passed | `All checks passed!` (after one ruff-driven import-statement fix) |
-| Gate 3 | passed | exit 0, `5132 passed, 3 skipped`, 107 paths, no FAILED/ERROR/"process(es) behind" |
+| Gate 1 | passed | `ALL True` (confirmed twice: before and after the fixup commit) |
+| Gate 2 | passed | `All checks passed!` |
+| Gate 3 | passed | exit 0 on its second run; first run exit 1 (4 failures), fixed by the fixup commit — see Deviations above |
 | Gate 4 | passed | six checks pass, `fail_count` 0 |
 | Gate 5 | passed | `['R-1235', 'R-1246', 'R-1252']` |
-| Gate 6 | passed | `ALL True`, including the 2006-combination equivalence check |
+| Gate 6 | passed | `ALL True` |
 | Push | pending at write time | runs after this commit; result in the session's final reply |
