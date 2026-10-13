@@ -661,6 +661,16 @@ end the response with:
   establish. R-1273, a repository-wide lint test racing a test that writes files into the tree,
   was found by a gate rather than written by a block, and its repair is in the test that wrote
   the files. The list stays at 34 items.
+  Consolidated again at F306's closure on 2026-10-13: nothing joined and no two items were merged,
+  because none of F306's four lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  block that named a fixed model in the commit trailer and one that did not say that no file may
+  be edited before the branch exists are wordings whose right reading the worker took, leaving
+  nothing on disk wrong; a block that ordered a reader re-exported from a file on the structure
+  ledger and a branch written inline in a function close to its limit, and a block that named
+  neither the ledger row of the validator it changed nor the two tests that list every field that
+  validator requires, are item 34's reading of the guards that bind the file the order changes,
+  here the structure ratchet and the tests that enumerate a field set. Each was repaired inside its
+  round, and nothing pushed was wrong. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
