@@ -11,5 +11,16 @@ reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F199 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
 Test load: 1195.71 CPU seconds, 366.03 wall seconds, 22921 tests collected, exit status 0, recorded 2026-10-13T12:40:12Z
-No earlier closure transcript carries a Test load line, so there is nothing to compare this closure with.
+This closure's suite used 1195.71 CPU seconds, 1.7 percent less than F058's 1216.97, within the 14.1 percent limit.
 The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F058's closure run:
+  +4.75 s  tests/orchestration/test_job_apply_commit.py (16.89 -> 21.64)
+  +4.47 s  tests/runtimes/test_supervisor_portability.py (48.37 -> 52.84)
+  +2.63 s  tests/orchestration/test_subtree_rerun_prepare.py (9.30 -> 11.93)
+  +2.30 s  tests/cli/test_do_order_file.py (8.47 -> 10.77)
+  +1.86 s  tests/cli/test_job_run_invocation_truth.py (3.12 -> 4.98)
+  +1.57 s  tests/cli/test_project_current.py (6.25 -> 7.82)
+  +1.53 s  tests/orchestration/test_job_digest.py (4.04 -> 5.57)
+  +1.21 s  tests/cli/test_plan_cli.py (4.17 -> 5.38)
+  +1.07 s  tests/cli/test_job_rerun_subtree.py (5.97 -> 7.04)
+  +1.01 s  tests/cli/test_do_flags.py (4.61 -> 5.62)
