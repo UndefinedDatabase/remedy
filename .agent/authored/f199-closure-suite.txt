@@ -1,0 +1,15 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 366.8s (the launcher's reading); pytest's own "in Ns" and H:MM:SS: in 365.99s (0:06:05)
+summary line: 22899 passed, 22 skipped, 1 warning in 365.99s (0:06:05)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 16373f14d (F199 R7 C3: the closure's self-use item run to its approval gate, never applied)
+reflog before: 16373f14d HEAD@{2026-10-13 14:33:43 +0200}: commit: F199 R7 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: 16373f14d HEAD@{2026-10-13 14:33:43 +0200}: commit: F199 R7 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F199 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1195.71 CPU seconds, 366.03 wall seconds, 22921 tests collected, exit status 0, recorded 2026-10-13T12:40:12Z
+No earlier closure transcript carries a Test load line, so there is nothing to compare this closure with.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
