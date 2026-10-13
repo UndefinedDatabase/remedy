@@ -176,7 +176,8 @@ with the code that calls it.
 - `scripts/remedy_smoke.sh`: the long block of surface checks and the patch lifecycle, each to a
   file sourced in place, after the tests that read the script's text are pointed at both.
 - `packages/runtimes/dev_server.py`: the spec, paths and lock, the ports and the probe, and the
-  shutdown of a process tree, each to a module of its own.
+  shutdown of a process tree, each to a module of its own. Step (1), done by F306: the ports and
+  the readiness probe, `packages/runtimes/dev_server_ports.py`.
 - `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
   contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
   to a module of its own. Step (1), done by F302: the claude CLI's command line,
@@ -397,7 +398,7 @@ with the code that calls it.
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
-| 2052 | `packages/runtimes/dev_server.py` |
+| 1989 | `packages/runtimes/dev_server.py` |
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
