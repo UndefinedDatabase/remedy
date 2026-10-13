@@ -37,6 +37,7 @@ from packages.orchestration.self_health import (
 )
 from packages.orchestration.serve_daemon import UnixHTTPConnection, socket_handler_class
 from packages.orchestration.serve_paths import serve_paths
+from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
 from packages.orchestration.token_ledger import LEDGER_FILENAME
 from packages.orchestration.ui_server import _RemedyHandler, token_fingerprint
 
@@ -62,6 +63,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
+    ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
     ("GET", "/api/v1/jobs/{job}/run"):
         "test_the_run_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/jobs/{job}/run"):
@@ -647,7 +649,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.12"
+    assert public_api.PUBLIC_API_VERSION == "1.13"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers")):
@@ -679,6 +681,53 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
         assert ledgers["level"] == "FAIL"
 
     for status, body, _headers in ask():
+        assert status == 401, body
+
+
+def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/logs")
+    assert (route.method, route.twin, route.refusals, route.query_values) == (
+        "GET", "doctor.logs", (), ("run",))
+
+    def line(job_id: str, run_id: str, message: str) -> str:
+        return json.dumps({
+            "ts": "2026-10-13T08:05:09.042Z", "level": "INFO", "logger": "pkg.mod",
+            "message": message, "job_id": job_id, "task_id": "T001", "run_id": run_id,
+        })
+
+    folder = logs_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = [line("abc123", "r1", "first"), line("abc123", "r2", "second"),
+             line("zzz999", "r9", "elsewhere")]
+    (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    written = [json.loads(text) for text in lines]
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    expected = build_ok(job_id="abc", run_id=None, entries=written[:2], unreadable=0,
+                        files=[LOG_FILE_NAME])
+    for status, body, _headers in ask("/api/v1/jobs/abc/logs", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["ok"] is True
+        assert [entry["message"] for entry in body["entries"]] == ["first", "second"]
+        assert body == expected
+
+    for status, body, _headers in ask("/api/v1/jobs/abc/logs?run=r2", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [entry["message"] for entry in body["entries"]] == ["second"]
+        assert body["run_id"] == "r2"
+
+    for status, body, _headers in ask("/api/v1/jobs/abc/logs?nope=1", _bearer(SERVER_TOKEN)):
+        assert status == 400, body
+        assert body["error"] == "api_query_invalid"
+
+    for status, body, _headers in ask("/api/v1/jobs/none/logs", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert body["entries"] == []
+
+    for status, body, _headers in ask("/api/v1/jobs/abc/logs"):
         assert status == 401, body
 
 
@@ -864,7 +913,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.12"
+    assert public_api.PUBLIC_API_VERSION == "1.13"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1160,7 +1209,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.12"
+    assert public_api.PUBLIC_API_VERSION == "1.13"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -2239,7 +2288,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.12"
+    assert public_api.PUBLIC_API_VERSION == "1.13"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):

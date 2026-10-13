@@ -321,17 +321,22 @@ def main(argv: list[str] | None = None) -> int:
     """``contract_hygiene <rule>``: print one line per finding; exit 0, 1 or 2."""
     args = list(sys.argv[1:] if argv is None else argv)
     if len(args) != 1 or args[0] not in HYGIENE_RULES:
-        print(f"usage: python3 -m packages.orchestration.contract_hygiene "
-              f"{{{','.join(HYGIENE_RULES)}}}", file=sys.stderr)
+        print(  # noqa: T201 — this module's own command line answers on its streams
+            f"usage: python3 -m packages.orchestration.contract_hygiene "
+            f"{{{','.join(HYGIENE_RULES)}}}",
+            file=sys.stderr,
+        )
         return EXIT_CANNOT_MEASURE
     try:
         changes = measure_work_tree(Path.cwd())
     except HygieneMeasureError as exc:
-        print(f"contract hygiene {args[0]}: cannot measure: {exc}", file=sys.stderr)
+        print(  # noqa: T201 — this module's own command line answers on its streams
+            f"contract hygiene {args[0]}: cannot measure: {exc}", file=sys.stderr
+        )
         return EXIT_CANNOT_MEASURE
     findings = run_hygiene_rule(args[0], changes)
     for finding in findings:
-        print(finding.render())
+        print(finding.render())  # noqa: T201 — this module's own command line answers on its streams
     return EXIT_FINDINGS if findings else EXIT_CLEAN
 
 

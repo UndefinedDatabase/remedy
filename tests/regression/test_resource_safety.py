@@ -174,6 +174,8 @@ class TestRunnerProcessGroupCleanup:
         """Run a slow test with short timeout, verify no orphans survive."""
         # Create a temporary test that sleeps long enough to be killed
         marker = f"REMEDY_TIMEOUT_TEST_{os.getpid()}"
+        # These files exist under tests/ while the test runs and a repository-wide
+        # lint may read them then, so each is written in the shape ruff reads clean (R-1273).
         slow_test = tempfile.NamedTemporaryFile(
             mode="w",
             suffix=".py",
@@ -183,8 +185,12 @@ class TestRunnerProcessGroupCleanup:
         )
         try:
             slow_test.write(
-                f"import time, os\n"
+                f"import os\n"
+                f"import time\n"
+                f"\n"
                 f"os.environ['{marker}'] = '1'\n"
+                f"\n"
+                f"\n"
                 f"def test_slow():\n"
                 f"    time.sleep(300)\n"
             )
@@ -242,6 +248,8 @@ class TestWrapperPathForcedTimeout:
         )
         f.write(
             "import time\n"
+            "\n"
+            "\n"
             "def test_slow_wrapper_target():\n"
             "    time.sleep(300)\n"
         )
@@ -395,6 +403,8 @@ class TestRuntimeLikeTimeoutChain:
         )
         slow_file.write(
             "import time\n"
+            "\n"
+            "\n"
             "def test_slow_runtime_chain():\n"
             "    time.sleep(300)\n"
         )

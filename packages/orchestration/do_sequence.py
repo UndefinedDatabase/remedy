@@ -56,6 +56,7 @@ walk and asks every job of the walk to stop through `safe_points.request_stop`.
 from __future__ import annotations
 
 import hashlib
+import logging
 import shlex
 import subprocess
 import sys
@@ -216,8 +217,8 @@ def do_step_by_step_halt(ctx: DoContext, done: str, coming: str) -> bool:
     """
     if not ctx.step_by_step:
         return True
-    print(f"[step-by-step] done: {done}", file=sys.stderr)
-    print(f"[step-by-step] next: {coming}. Enter continues, "
+    print(f"[step-by-step] done: {done}", file=sys.stderr)  # noqa: T201 — the step-by-step prompt the person answers
+    print(f"[step-by-step] next: {coming}. Enter continues, "  # noqa: T201 — the step-by-step prompt the person answers
           f"{DO_HALT_STOP_ANSWER} stops.", file=sys.stderr)
     try:
         answer = ctx.read_line() if ctx.read_line is not None else None
@@ -375,7 +376,7 @@ def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
     try:
         write_postmortem(ev_dir, pm, root=ev_dir)
     except Exception as exc:  # noqa: BLE001 — postmortem write failure is only warned about, not fatal
-        print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+        logging.getLogger(__name__).warning("Warning: postmortem write failed: %s", exc)
 
 
 def plan_order_job(

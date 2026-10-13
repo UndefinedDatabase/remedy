@@ -51,14 +51,15 @@ from typing import Any
 #: repository of each commit `remedy do` lands and of each push it makes, and (DECISION F205 D6)
 #: to `1.9` for the repository of each job and the projects of each mission in the digest, and
 #: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of, and F199
-#: (DECISION F199 D3) to `1.11` for `doctor.health`.
-CLIENT_INTERFACE_VERSION = "1.11"
+#: (DECISION F199 D3) to `1.11` for `doctor.health`, and
+#: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`.
+CLIENT_INTERFACE_VERSION = "1.12"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
 #: budget refusal of `job resume`, declining a result, abandoning a mission, this document's own
 #: command, what changed since a cursor (F253 S3a, DECISION F253 D4 (3)), and Remedy's own
-#: health (DECISION F199 D3).
+#: health (DECISION F199 D3), and one job's operations-log lines (DECISION F203 D5).
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "project.register",
     "do.run",
@@ -80,6 +81,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.order",
     "client.run",
     "doctor.health",
+    "doctor.logs",
 )
 
 #: The `error` tokens each operation's refusal envelope can carry, sorted, per catalog command id
@@ -141,6 +143,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
     "doctor.health": ("health_failed",),
+    "doctor.logs": (),
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
@@ -226,6 +229,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "state",
     ),
     "doctor.health": ("checks", "verdict"),
+    "doctor.logs": ("entries", "files", "job_id", "run_id", "unreadable"),
 }
 
 #: The tokens by kind a project ledger holds, a tree the digest carries for each job and each
@@ -732,6 +736,12 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # the run is not `running`; no tree is declared under it.
     "client.run": {},
     "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},
+    "doctor.logs": {
+        "entries": {
+            "exception": {}, "job_id": {}, "level": {}, "logger": {}, "message": {},
+            "run_id": {}, "task_id": {}, "ts": {},
+        },
+    },
 }
 
 

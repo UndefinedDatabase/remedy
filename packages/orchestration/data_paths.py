@@ -149,6 +149,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("crash", "packages.orchestration.crash_report",
                   "never here; local crash reports `remedy doctor health` counts, "
                   "which nothing ever sends (F199)"),
+    DataRootClass("logs", "packages.orchestration.structured_log",
+                  "rotated by size by the setup itself; Remedy's operations log, "
+                  "which is never evidence (F203)"),
 )
 
 _DATA_CLASS_KINDS: dict[str, DataClassKind] = {
@@ -402,10 +405,13 @@ def _task_job_id_matches(prefix: str) -> list[str]:
 
 
 def _exit_ambiguous(raw: str, matches: list[str]) -> NoReturn:
-    print(f"Error: ambiguous job id prefix '{raw}' matches "
-          f"{len(matches)} jobs:", file=sys.stderr)
+    print(  # noqa: T201 — a command's refusal the person reads; tests pin its text
+        f"Error: ambiguous job id prefix '{raw}' matches "
+        f"{len(matches)} jobs:",
+        file=sys.stderr,
+    )
     for m in sorted(matches):
-        print(f"  {m[:8]}", file=sys.stderr)
+        print(f"  {m[:8]}", file=sys.stderr)  # noqa: T201 — a command's refusal the person reads; tests pin its text
     sys.exit(2)
 
 
@@ -515,6 +521,8 @@ def resolve_job_id(raw: str) -> str:
     except JobIdAmbiguous as exc:
         _exit_ambiguous(raw, exc.matches)
     except JobIdError:
-        print(f"Error: No job matches {raw!r}. Try: remedy job list.", file=sys.stderr)
+        print(  # noqa: T201 — a command's refusal the person reads; tests pin its text
+            f"Error: No job matches {raw!r}. Try: remedy job list.", file=sys.stderr
+        )
         sys.exit(1)
 

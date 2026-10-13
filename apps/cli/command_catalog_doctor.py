@@ -52,4 +52,20 @@ DOCTOR_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("doctor.core",),
     ),
+    CommandEntry(
+        command_id="doctor.logs",
+        group_id="doctor",
+        subcommand="logs",
+        description=("Read-only: the operations log's lines of one job, oldest first, each with "
+                     "its task and run; --run keeps one run of a task (the log is never evidence)."),
+        action_class="read_only",
+        args=(
+            ArgDef("job_id", "The job id, or its first characters; a job's lines carry its task and run"),
+            ArgDef("--run", "Only the lines of this run id, one execution of a task",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("doctor.health",),
+    ),
 )

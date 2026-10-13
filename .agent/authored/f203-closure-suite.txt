@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 364.8s (the launcher's reading); pytest's own "in Ns" and H:MM:SS: in 363.98s (0:06:03)
+summary line: 22952 passed, 22 skipped, 1 warning in 363.98s (0:06:03)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 93ff850ec (F203 R9 C1: book round 8, the plan, save the block)
+reflog before: 93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+reflog after: 93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F203 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1257.35 CPU seconds, 363.99 wall seconds, 22974 tests collected, exit status 0, recorded 2026-10-13T17:48:53Z
+This closure's suite used 1257.35 CPU seconds, 5.2 percent more than F199's 1195.71, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F199's closure run:
+  +4.84 s  tests/ui_server/test_multi_project_live.py (15.86 -> 20.70)
+  +3.81 s  tests/orchestration/test_review_zip_hygiene.py (32.48 -> 36.29)
+  +2.88 s  tests/cli/test_do_sequence_cli.py (24.80 -> 27.68)
+  +2.76 s  tests/orchestration/test_test_runner.py (31.86 -> 34.62)
+  +2.58 s  tests/test_grouped_cli.py (23.14 -> 25.72)
+  +2.48 s  tests/cli/test_mission_cmd.py (38.12 -> 40.60)
+  +2.17 s  tests/cli/test_serve_client_parity.py (5.89 -> 8.06)
+  +2.14 s  tests/ui_server/test_public_api.py (9.48 -> 11.62)
+  +1.89 s  tests/orchestration/test_public_api_gate_paths.py (14.18 -> 16.07)
+  +1.77 s  tests/cli/test_golden_path.py (17.92 -> 19.69)

@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-142 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+143 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -42,7 +42,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 6 | 13 |
+| 12 | Observability & Operations | 7 | 13 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -852,6 +852,14 @@ background service crashes, Remedy writes a report on this machine under its dat
 error and its version and with secrets removed, and never sends it anywhere; the background service
 answers the same checks on its local web interface, with status 503 when a check fails; the page
 `docs/system/self-health-v1.md` describes it).
+
+F203 structured logging (Remedy now writes what it does to one operations log on this machine,
+under its data root: one line per record that names the job, the task and the run it belongs to,
+with secrets removed before anything is written; only its owner can read the file, and it is
+rotated by size; `remedy doctor logs <job>` prints one job's lines in order, or one run's, and the
+background service answers the same lines to a program on its local web interface; the terminal
+shows warnings and errors exactly as before; the page `docs/system/structured-logging-v1.md`
+describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line

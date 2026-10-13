@@ -93,7 +93,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.11"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.12"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -1387,6 +1387,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     health_code, health_body = _remedy(["doctor", "health", "--json"], repo, env)
     assert health_code in (0, 1), health_body
     answers.setdefault("doctor.health", []).append(health_body)
+    # The operations log holds the run's own lines for this job (DECISION F203 D5).
+    logged = answer("doctor.logs", ["doctor", "logs", job_id], 0)
+    assert any(entry["job_id"] == job_id for entry in logged["entries"]), logged
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,

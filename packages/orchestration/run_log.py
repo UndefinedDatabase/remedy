@@ -19,12 +19,16 @@ Storage location follows the same REMEDY_DATA_DIR resolution order as
 pingpong_job.py and workspace.py:
   1. REMEDY_DATA_DIR environment variable, if set.
   2. Repository-local default: <repo_root>/.data/runs/
+
+Every appended event is also mirrored as one INFO record into the operations
+log by `mirror_run_event`, with the job, task and attempt ids (DECISION F203 D2).
 """
 
 from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +38,10 @@ from uuid import uuid4
 from packages.orchestration.config import env_value
 from packages.orchestration.data_paths import run_log_dir
 from packages.orchestration.event_names import assert_declared_event
+from packages.orchestration.structured_log import bind_log_context
+
+# The logger that carries the timeline's twin records into the operations log.
+_TIMELINE_LOG = logging.getLogger("packages.orchestration.run_log")
 
 #: Development-only opt-in: reject an event name F277's declaration does not
 #: carry.  OFF by default because a ledger write must never break a running job
@@ -93,6 +101,18 @@ class RunEvent:
         return json.dumps(filtered, separators=(",", ":"))
 
 
+# The operations-log twin of a timeline event: one INFO record with its ids (DECISION F203 D2).
+def mirror_run_event(event: RunEvent) -> None:
+    text = event.event
+    if event.outcome:
+        text += f" outcome={event.outcome}"
+    if event.message:
+        text += f": {event.message}"
+    attempt = event.metadata.get("attempt_id")
+    with bind_log_context(job_id=event.job_id, task_id=event.task_id, run_id=attempt or None):
+        _TIMELINE_LOG.info("%s", text)
+
+
 # ---------------------------------------------------------------------------
 # Writer
 # ---------------------------------------------------------------------------
@@ -137,6 +157,7 @@ class RunLogWriter:
         """Append one RunEvent to the JSONL file."""
         with self._path.open("a", encoding="utf-8") as f:
             f.write(event.to_json_line() + "\n")
+        mirror_run_event(event)
 
     def log(
         self,

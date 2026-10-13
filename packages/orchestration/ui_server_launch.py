@@ -73,10 +73,10 @@ def _ui_session_info(
 
 def _print_ui_urls(url: str, external_urls: list[str]) -> None:
     """Print a started server's loopback URL, each LAN URL, and how to stop it."""
-    print(f"\nRemedy UI: {url}")
+    print(f"\nRemedy UI: {url}")  # noqa: T201 — the cockpit command's answer: where to open it
     for external_url in external_urls:
-        print(f"LAN URL: {external_url}")
-    print("\nPress Ctrl-C to stop.\n")
+        print(f"LAN URL: {external_url}")  # noqa: T201 — the cockpit command's answer: where to open it
+    print("\nPress Ctrl-C to stop.\n")  # noqa: T201 — the cockpit command's answer: where to open it
 
 
 def _try_open_browser(url: str) -> None:

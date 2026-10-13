@@ -119,3 +119,30 @@ def test_a_limit_that_does_not_validate_refuses_the_order(budgets, fences, named
 
     with pytest.raises(OrderJobPlanError, match=named):
         order_job_limits(budgets, fences)
+
+
+def test_a_postmortem_that_cannot_be_written_is_one_warning_record_and_raises_nothing(
+    tmp_path, monkeypatch, caplog,
+):
+    import logging
+
+    import packages.orchestration.failure_postmortem as failure_postmortem
+    from packages.orchestration.do_sequence import _record_unparsed_plan
+    from packages.orchestration.pingpong_job import JobPlan
+
+    def refuse(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    # `_record_unparsed_plan` imports the writer inside its body, so the name to replace is
+    # the one on its home module.
+    monkeypatch.setattr(failure_postmortem, "write_postmortem", refuse)
+    job = JobPlan(job_title="unparsed")
+
+    with caplog.at_level(logging.WARNING):
+        _record_unparsed_plan(job, "bad plan")
+
+    records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert len(records) == 1
+    assert records[0].name == "packages.orchestration.do_sequence"
+    assert records[0].getMessage() == "Warning: postmortem write failed: disk full"

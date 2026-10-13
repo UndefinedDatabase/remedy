@@ -13,6 +13,7 @@ Public API::
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -103,23 +104,7 @@ def continue_from_node(
 
     # Link child to project if inherited
     if parent_project_id:
-        try:
-            from packages.orchestration.project_registry import (
-                ProjectNotFoundError,
-                attach_job,
-                load_project,
-                save_project,
-            )
-            project = load_project(UUID(parent_project_id))
-            attach_job(project, str(child_id))
-            save_project(project)
-        except (ValueError, FileNotFoundError, OSError, ProjectNotFoundError) as exc:
-            import sys
-            print(
-                f"WARNING: could not link child job to project "
-                f"{parent_project_id[:8]}: {exc}",
-                file=sys.stderr,
-            )
+        _link_child_to_project(parent_project_id, str(child_id))
 
     # Emit run-log event on parent job
     parent_log = RunLogWriter(job_id=parent_job.job_id)
@@ -155,6 +140,26 @@ def continue_from_node(
         inherited_project=bool(parent_project_id),
         inherited_repo=bool(parent_repo),
     )
+
+
+# Attach the new child job to the parent's project; a failure is reported and never raised.
+def _link_child_to_project(parent_project_id: str, child_id: str) -> None:
+    try:
+        from packages.orchestration.project_registry import (
+            ProjectNotFoundError,
+            attach_job,
+            load_project,
+            save_project,
+        )
+        project = load_project(UUID(parent_project_id))
+        attach_job(project, child_id)
+        save_project(project)
+    except (ValueError, FileNotFoundError, OSError, ProjectNotFoundError) as exc:
+        logging.getLogger(__name__).warning(
+            "WARNING: could not link child job to project %s: %s",
+            parent_project_id[:8],
+            exc,
+        )
 
 
 def export_continue_result_json(result: ContinueResult) -> dict[str, Any]:

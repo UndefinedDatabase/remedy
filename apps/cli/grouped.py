@@ -19,6 +19,7 @@ Typing a group name alone shows group help::
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from collections.abc import Callable
 
@@ -583,7 +584,16 @@ def _dispatch(
 
     DECISION F199 D1: the catch-all also writes a redacted crash report under
     the data root, which stays on this machine and is never sent.
+
+    DECISION F203 D2: every command writes to the operations log, and the
+    catch-all writes the unexpected error with its traceback to that log only.
     """
+    from packages.orchestration.structured_log import (
+        FILE_ONLY_ATTR,
+        configure_structured_logging,
+    )
+
+    configure_structured_logging()
     try:
         handler(args)
     except (SystemExit, KeyboardInterrupt):
@@ -592,6 +602,10 @@ def _dispatch(
         from packages.orchestration.crash_report import write_crash_report
         from packages.orchestration.self_health import home_relative_text
 
+        logging.getLogger(__name__).error(
+            "command %s ended on an unexpected error", command_id,
+            exc_info=exc, extra={FILE_ONLY_ATTR: True},
+        )
         report = write_crash_report(exc, command=command_id)
         message = f"{type(exc).__name__}: {exc}"
         if _wants_json(raw):

@@ -269,7 +269,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.11`.
+Interface version: `1.12`.
 
 ### Envelope
 
@@ -818,6 +818,24 @@ Answer keys: `checks`, `verdict`.
 Keys under the answer keys: see below.
 
 - `checks`: `check`, `detail`, `hint`, `level`
+
+#### `remedy doctor logs`
+
+Command id: `doctor.logs`.
+Description: Read-only: the operations log's lines of one job, oldest first, each with its task and run; --run keeps one run of a task (the log is never evidence).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | The job id, or its first characters; a job's lines carry its task and run |
+| `--run` | yes | no | yes | no | Only the lines of this run id, one execution of a task |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: none.
+Answer keys: `entries`, `files`, `job_id`, `run_id`, `unreadable`.
+Keys under the answer keys: see below.
+
+- `entries`: `exception`, `job_id`, `level`, `logger`, `message`, `run_id`, `task_id`, `ts`
 
 ### Digest
 

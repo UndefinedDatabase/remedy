@@ -27,6 +27,7 @@ apps.cli.commands.dev
 apps.cli.commands.do_cmd
 apps.cli.commands.do_order_input
 apps.cli.commands.doctor_health_cmd
+apps.cli.commands.doctor_logs_cmd
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
@@ -133,6 +134,7 @@ packages.orchestration.commit_execution_gate
 packages.orchestration.config
 packages.orchestration.config_key_spec
 packages.orchestration.config_keys_claude
+packages.orchestration.config_keys_logging
 packages.orchestration.config_keys_mission
 packages.orchestration.config_keys_model_routing
 packages.orchestration.config_keys_ui
@@ -316,6 +318,7 @@ packages.orchestration.story_export
 packages.orchestration.stream_evidence
 packages.orchestration.structure_measure
 packages.orchestration.structured_base
+packages.orchestration.structured_log
 packages.orchestration.structured_outputs
 packages.orchestration.structured_patch
 packages.orchestration.structured_planner

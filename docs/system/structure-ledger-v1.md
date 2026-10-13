@@ -128,6 +128,10 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
   `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
   (3) the deterministic plan becomes a function.
+- `continue_from_node` (`packages/orchestration/continue_from_node.py`). Boundary: the checks of
+  the parent and the node, the child job's record, the link to the project, and the two timeline
+  events. Steps: (1) done by F203, the link to the project is `_link_child_to_project`; (2) the
+  two timeline events become one function.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -148,7 +152,9 @@ with the code that calls it.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
   its summaries, each to a module of its own; the dashboard builders stay. Outside those steps,
   F058 moved the server's launch helpers to `packages/orchestration/ui_server_launch.py`
-  (finding R-1264).
+  (finding R-1264). Its six `print` calls of the frontend's automatic build are excused from
+  ruff's T20 by a per-file ignore in `pyproject.toml`; the step that moves that build out of
+  the file removes the ignore (F203, DECISION F203 D3).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to
@@ -183,6 +189,7 @@ with the code that calls it.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
   Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
   Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
+  Step (5), done by F203: the logging keys, `packages/orchestration/config_keys_logging.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -341,7 +348,6 @@ with the code that calls it.
 | 119 | `packages/orchestration/memory_learn.py` | `learn_from_job` |
 | 119 | `packages/orchestration/run_contract.py` | `evaluate_run_action` |
 | 119 | `packages/orchestration/run_manifest.py` | `_read_worktree_identity` |
-| 118 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 118 | `packages/orchestration/pingpong_loop.py` | `_record_call_failure` |
 | 118 | `packages/orchestration/task_injection.py` | `draft_task_injection` |
 | 116 | `packages/orchestration/model_routing.py` | `validate_task_class_tier_overrides` |
@@ -370,6 +376,7 @@ with the code that calls it.
 | 103 | `apps/cli/commands/teacher_cmd.py` | `_cmd_teacher_ask` |
 | 103 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._review_impl` |
 | 102 | `packages/common/secure_fs.py` | `read_verified_file_at` |
+| 102 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 102 | `packages/orchestration/pingpong_job.py` | `_finalize_job_workspace` |
 | 101 | `packages/orchestration/mission_compiler.py` | `compile_mission_plan` |
 | 101 | `packages/orchestration/run_manifest.py` | `validate_task_lifecycle_chain` |
@@ -394,7 +401,7 @@ with the code that calls it.
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1769 | `packages/orchestration/config.py` |
+| 1764 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
