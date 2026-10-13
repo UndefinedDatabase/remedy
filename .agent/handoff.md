@@ -1,63 +1,53 @@
-# Handback — F203 round 3: round 2 booked, the structural step of continue_from_node, ruff's T20 over packages, the tests of the two warnings
+# Handback — F203 round 4: round 3 booked and R-1273 registered, R-1273 repaired, the read of one job's lines and `remedy doctor logs`
 
 ## Session
 
-SESSION 1 of feature F203 · round 3 · rounds so far 3
+SESSION 1 of feature F203 · round 4 · rounds so far 4
 
-Context self-assessment: the block named every path and gave exact texts, my context stayed small; the command checker refused compound shell lines, so I used plain commands and small scripts under the worker scratch folder.
+Context self-assessment: the block named every path and gave exact texts, my context stayed small; the command checker refused compound shell lines with variables, so I used plain commands and small scripts under the worker scratch folder.
 
-Fortschritt: ~45 % (T001 landed · T002 and the closure open) — Schätzung
+Fortschritt: ~60 % (T001 and the command-line read landed · the API read, the cockpit view, the correlation test and the closure open) — Schätzung
 
 ## Range
 
-Review of `1c44a8469`..(this commit)
+Review of `39726a79b`..(this commit)
 
 ## Commits
 
-### 11549a8e6 F203 R3 C1: book round 2 and R-1272's resolution, DECISION F203 D3, the plan
+### 18b4efac5 F203 R4 C1: book round 3 and R-1273, DECISION F203 D4, the plan
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f203-r3.md` | +190/-0 | NEW FILE, byte copy of `block.md` (190 lines, sha256 `2e1c476e90c151e6afde9c9f53b224719b692ce789f70f1739dcacabc2d50820`) |
-| `.agent/decisions.md` | +12/-0 | DECISION F203 D3 by the append convention |
-| `.agent/live_review.md` | +4/-0 | round 2 booked, R-1272 resolved, by the append convention |
-| `.agent/plan.md` | +8/-9 | replaced by `src-plan.md` |
+| `.agent/authored/f203-r4.md` | +182/-0 | NEW FILE, byte copy of `block.md` (182 lines, sha256 `3fd90b617af4ee21257c5041b7c9ad60897fd552668fff168397cd6b5894a7bb`) |
+| `.agent/decisions.md` | +12/-0 | DECISION F203 D4 by the append convention |
+| `.agent/live_review.md` | +4/-0 | round 3 booked, R-1273 registered, by the append convention |
+| `.agent/plan.md` | +7/-8 | replaced by `src-plan.md` |
 
-### 4445a0b3e F203 R3 C2: the project link of continue_from_node becomes a function (structural)
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/continue_from_node.py` | +22/-17 | block moved into `_link_child_to_project`, no behaviour change |
-| `docs/system/structure-ledger-v1.md` | +5/-1 | Functions entry; table row 118 became 102 and moved after `read_verified_file_at` |
-| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FUNCTION_LINES` 30747 to 30731 (drop of 16) |
-
-### 6d0a0868f F203 R3 C3: ruff's T20 over packages, two diagnostics to warning records, the reasoned marks (T001)
+### f6264bd54 F203 R4 C2: the generated test files read clean under ruff (R-1273)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `pyproject.toml` | +9/-2 | `T20` selected; per-file ignores for tests, apps, scripts and `ui_server.py` |
-| `packages/orchestration/continue_from_node.py` | +5/-5 | link failure is a warning record |
-| `packages/orchestration/do_sequence.py` | +4/-3 | postmortem failure is a warning record; two marks |
-| `packages/orchestration/data_paths.py` | +9/-4 | three marks, two calls wrapped |
-| `packages/orchestration/ui_server_launch.py` | +3/-3 | three marks |
-| `packages/orchestration/contract_hygiene.py` | +9/-4 | three marks, two calls wrapped |
-| `docs/system/structure-ledger-v1.md` | +3/-1 | the `ui_server.py` sentence |
-| `tests/test_t201_ratchet.py` | +63/-0 | NEW FILE, the ratchet |
+| `tests/regression/test_resource_safety.py` | +11/-1 | the three generated texts that import anything get the layout ruff reads clean; one comment |
 
-### fea54c879 F203 R3 C4: the tests of the two warning records (T001)
+### f049ceaee F203 R4 C3: read one job's operations-log lines with remedy doctor logs (T002)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_continue_from_node.py` | +98/-0 | NEW FILE, two tests |
-| `tests/orchestration/test_do_sequence.py` | +27/-0 | the postmortem warning test |
+| `packages/orchestration/structured_log.py` | +62/-1 | `log_files_oldest_first`, `LogReadResult`, `read_log_entries`; `dataclass` and `Any` imports |
+| `apps/cli/command_catalog_doctor.py` | +16/-0 | the `doctor.logs` entry |
+| `apps/cli/commands/doctor_logs_cmd.py` | +45/-0 | NEW FILE, the handler |
+| `apps/cli/commands/__init__.py` | +2/-1 | import and tuple entry |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | the handler module |
+| `docs/system/structured-logging-v1.md` | +15/-3 | replaced by `src-structured-logging-v1.md` (`cmp` silent) |
 
-### bc7a2317a F203 R3 C4b: the log-line test reads the level from the JSON line (T001)
+### 1c848a86a F203 R4 C4: the read's and the command's tests (T002)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_continue_from_node.py` | +2/-1 | the default log line is JSON; the level is read from it (fix after gate 3's first run) |
+| `tests/orchestration/test_structured_log.py` | +76/-0 | seven tests of the read, one end to end through `RunLogWriter` |
+| `tests/cli/test_doctor_logs_cmd.py` | +78/-0 | NEW FILE, four tests of the command |
 
-### (this commit) F203 R3 C5: handback
+### (this commit) F203 R4 C5: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -69,68 +59,65 @@ Review of `1c44a8469`..(this commit)
 
 ## Verification
 
-Preconditions: branch `feature/f203-structured-logging`, HEAD `1c44a84692ec15dd0ac27e9c57e3908710117eca`, status empty. `block.md` 190 lines, sha256 matching; every prepared file's digest matched. C1 `git diff --cached --numstat`: `190 0`, `12 0`, `4 0`, `8 9`, no other path.
+Preconditions: branch `feature/f203-structured-logging`, HEAD `39726a79b1b0d4dcf22bab01dd473d9db521acf1`, status empty. `block.md` 182 lines, sha256 matching; every prepared file's digest matched. C1 `git diff --cached --numstat`: `182 0`, `12 0`, `4 0`, `7 8`, no other path.
 
-Measure (`python3 -m apps.cli.main integrity structure`): `continue_from_node` 102 lines (was 118), drop 16, `MAX_FUNCTION_LINES` 30731.
+C2 ruff stdin readings (`python3 -m ruff check --stdin-filename tests/regression/test_x.py -`), the `test_slow_` text (marker `M`), the `test_wrapper_slow_` text and the `test_runtime_chain_` text: each exit 0, `All checks passed!`.
 
 Gate 1: status empty; append-convention script `True`, `True`.
 
-Gate 2: `python3 -m ruff check .` — `All checks passed!`; `python3 -m ruff check packages --select T20` — `All checks passed!`, no T201 line.
+Gate 2: `python3 -m ruff check .` — exit 0, `All checks passed!`.
 
-Gate 3, first run: exit 1, `2 failed, 3817 passed, 3 skipped in 36.87s`. FAILED `test_continue_from_node.py::test_the_warning_is_in_the_operations_log_and_bare_on_the_error_stream` (my test's defect: the default log line is JSON; fixed in C4b) and `test_ci_budgets.py::test_this_repository_has_no_ruff_findings` (see deviations).
-Gate 3, second run (after C4b): exit 1, `1 failed, 3818 passed, 3 skipped in 37.44s`; FAILED `tests/orchestration/test_ci_budgets.py::test_this_repository_has_no_ruff_findings`. SKIPPED lines:
+Gate 3: `python3 .../prep/run_selection.py /home/decodeux/Repos/remedy .../f203-r4-worker/selection-output.txt` — exit 0, `6361 passed, 3 skipped in 100.21s (0:01:40)`; no FAILED, ERROR, `absent in tree:` or `process(es) behind` line. SKIPPED lines:
 ```
 SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 ...
 SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
 SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
 ```
 
-Gate 4: `python3 -m apps.cli.main integrity check --json` — `fail_count` 0.
+Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 0, `fail_count` 0.
 
-Gate 5: `open_finding_ids(...)` — `['R-1235', 'R-1246', 'R-1251', 'R-1252']`.
+Gate 5: `open_finding_ids(...)` — `['R-1235', 'R-1246', 'R-1251', 'R-1252', 'R-1273']`.
 
-Gate 6: `git log --format=%s 1c44a8469..HEAD` (before C5) — the subjects of C4b, C4, C3, C2, C1 in that order.
+Gate 6: `git log --format=%s 39726a79b..HEAD` (before C5) — the subjects of C4, C3, C2, C1 in that order.
 
 ## Authored-text proofs
 
-`.agent/authored/f203-r3.md` against `block.md`: byte-equal, 190 lines, sha256 `2e1c476e90c151e6afde9c9f53b224719b692ce789f70f1739dcacabc2d50820`. The two fragments and the plan were applied byte for byte (gate 1).
+`.agent/authored/f203-r4.md` against `block.md`: byte-equal, 182 lines, sha256 `3fd90b617af4ee21257c5041b7c9ad60897fd552668fff168397cd6b5894a7bb`. The two fragments and the plan were applied byte for byte (gate 1); the page equals `src-structured-logging-v1.md`.
 
 ## Deviations & assumptions
 
-1. A fifth commit C4b (a fix commit) and a second gate 3 run, as the block allows for a red gate 3.
-2. Gate 3 is STILL RED, in one node that is not this round's defect: `test_this_repository_has_no_ruff_findings` runs `ruff check .` over the live tree while `tests/regression/test_resource_safety.py` (line 180, prefix `test_slow_`) writes a temporary `tests/regression/test_slow_*.py` file into the same tree; both runs read that file as `E401` and `I001` (`test_slow_mg7301_m.py`, then `test_slow_cb3qsv3p.py`). The file is gone when the run ends, `git status` is empty, and a plain `ruff check .` (gate 2) is green. It is a race between two nodes of the selection under xdist, not caused by T20. The fix (isolating that temp file or excluding it from the ruff test) is outside this block's paths, so I stopped and did not touch it. Reviewer decision needed: register it as a finding, or re-run the node alone.
-3. The block says to monkeypatch `write_postmortem` "in `packages.orchestration.do_sequence`"; `_record_unparsed_plan` imports it inside its body, so that module has no such name. The test patches `packages.orchestration.failure_postmortem.write_postmortem`, which the body's import reads at call time.
-4. `tests/test_t201_ratchet.py` and `tests/test_structure_ratchet.py` are not in gate 3's selection and no other test run was allowed, so neither ran. The structure measure and the mark count (11) were checked by the measure command and by ruff.
-5. Four `print` calls whose mark would pass 120 characters (two in `data_paths.py`, two in `contract_hygiene.py`) were wrapped as the block says; the marks sit on the `print(` line.
+1. None in the commit sequence: C1 to C5, one gate 3 run, no fix commit.
+2. The handler prints the no-lines sentence and then, when lines were skipped, the skipped-lines sentence too, as the block's order reads; the JSON form's `run_id` is `null` when `--run` was not given.
+3. `read_log_entries` reads each file with `readlines()` after opening, so a read error mid-file also skips the file and does not name it.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
 2. Phase 1 rule 2: the Open PR Gate.
-3. The next round's first commit books round 3's verdict.
-4. T002: the read of one job's or run's lines on the command line and the public API.
+3. The next round's first commit books round 4's verdict.
+4. T002: the read on the public API with its client operation.
 
 Operator questions open: 0.
-Open findings: 4 — R-1235, R-1246, R-1251 and R-1252, owned by F306.
+Open findings: 5 — R-1235, R-1246, R-1251 and R-1252, owned by F306, and R-1273, owned by F203, repaired in this round's C2 and resolved by the reviewer's verdict.
 
 ## For the operator, in plain sentences
 
-Remedy's core code may no longer print to the screen by accident. Two warnings it used to print are now also written to its private log, and the screen shows them as before. The places that must speak to the person, such as an answer, a question or an address to open, are marked one by one with the reason, and a check stops their number from growing.
+A person can now ask Remedy to show the log lines of one job, oldest first, with the task and the run of each line, and narrow them to one run. The answer only reads and changes nothing. Two of Remedy's own checks that used to trip over each other when they ran at the same time no longer do.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `11549a8e6` |
-| C2 | done | `4445a0b3e`, function now 102 lines |
-| C3 | done | `6d0a0868f` |
-| C4 | done | `fea54c879` and fix `bc7a2317a` |
+| C1 | done | `18b4efac5` |
+| C2 | done | `f6264bd54` |
+| C3 | done | `f049ceaee` |
+| C4 | done | `1c848a86a` |
 | C5 | done | this commit |
 | Gate 1 | passed | status empty, `True`, `True` |
-| Gate 2 | passed | ruff clean, no T201 |
-| Gate 3 | deviated | exit 1, one node red: the ruff-clean test raced a temp file of the resource-safety test |
+| Gate 2 | passed | ruff clean |
+| Gate 3 | passed | exit 0, 6361 passed, 3 skipped |
 | Gate 4 | passed | `fail_count` 0 |
 | Gate 5 | passed | open ids exact |
-| Gate 6 | passed | five subjects |
-| Structural step | done | C2 |
-| T001's lint | done | C3 and C4 |
+| Gate 6 | passed | four subjects |
+| R-1273 | done | C2 |
+| T002 first part | done | C3 and C4 |
