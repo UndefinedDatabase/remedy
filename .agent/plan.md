@@ -7,16 +7,15 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Round 4 on `feature/f306-findings-paydown-v8`, session 1: book round 3, DECISION F306 D2 (R-1252
-carried), then T006, R-1235's first step: the job-input definition, its field sets, its validation
-and its decoder move from `run_manifest.py` to `packages/orchestration/job_input_definition.py`,
-re-exported by name.
+Round 5 on `feature/f306-findings-paydown-v8`, session 1: book round 4, then T007, R-1235's second
+step: `ExecutionConfig` and its two serializers move from `pingpong_job.py` to
+`packages/orchestration/execution_config.py`, re-exported by name, and the client interface test's
+source pointer follows them.
 
 ## Next Steps
-1. T007 — R-1235's second step: `ExecutionConfig` and its two serializers out of `pingpong_job.py`.
-2. T008 — R-1235's third step: the claude-cli configuration joins the recorded execution
+1. T008 — R-1235's third step: the claude-cli configuration joins the recorded execution
    configuration, read as optional by the validation, and the client interface's version rises.
-3. The closure, carrying R-1246 and R-1252 by name to the next paydown.
+2. The closure, carrying R-1246 and R-1252 by name to the next paydown.
 
 ## Risks
-- A name a test replaces on `run_manifest` must stay there with every function that calls it.
+- A name a test replaces on `pingpong_job` must stay there with every function that calls it.
