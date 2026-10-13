@@ -23,8 +23,14 @@ def _cmd_doctor_health(ns: Any) -> None:
     if getattr(ns, "json", False):
         document = health_report_document(results)
         if health_exit_code(results) == 1:
-            fail("health_failed", health_failure_message(results), json_output=True, **document)
-        emit_ok(**document)
+            fail(
+                "health_failed",
+                health_failure_message(results),
+                json_output=True,
+                verdict=document["verdict"],
+                checks=document["checks"],
+            )
+        emit_ok(verdict=document["verdict"], checks=document["checks"])
         return
     print(f"Remedy health: {verdict}")
     for r in results:

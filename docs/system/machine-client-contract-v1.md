@@ -269,7 +269,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.10`.
+Interface version: `1.11`.
 
 ### Envelope
 
@@ -802,6 +802,22 @@ Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `run_not_found`.
 Answer keys: `answer`, `ended_at`, `err_log`, `exit_code`, `job_id`, `out_log`, `pid`, `started_at`, `state`.
 Keys under the answer keys: none.
+
+#### `remedy doctor health`
+
+Command id: `doctor.health`.
+Description: Read-only health of Remedy itself: its settings, cost ledgers, snapshots, worktrees, model providers, staging copies, free disk and recent crash reports, each PASS, WARN or FAIL with a hint; exits 1 on a FAIL.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `health_failed`.
+Answer keys: `checks`, `verdict`.
+Keys under the answer keys: see below.
+
+- `checks`: `check`, `detail`, `hint`, `level`
 
 ### Digest
 
