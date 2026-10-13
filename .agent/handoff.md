@@ -1,36 +1,35 @@
-# Handback — F203 round 8: round 7 booked, the staging reclaim, the evidence job and the review package built on the accepted head
+# Handback — F203 round 9: round 8 booked, the closure's one full suite re-run on the tree that ships
 
 ## Session
 
-SESSION 2 of feature F203 · round 8 · rounds so far 8
+SESSION 2 of feature F203 · round 9 · rounds so far 9
 
-Context self-assessment: the block was a straight sequence of byte-exact copies and prepared actions with no product code to write, so the only real risk was mechanical (hash/numstat mismatches or losing the evidence job's exit code to orphaning), and I checked every digest and numstat before and after each write.
+Context self-assessment: the block was a straight prepared-bytes commit followed by one build/one suite/one cost run with no product code to touch, so the only real risk was mechanical (a hash or numstat mismatch, or the branch moving under the detached suite); I checked every digest and both numstats before writing and read the reflog twice around the run, and both read the same line.
 
-Fortschritt: ~95 % (everything but the closing round is done) — Schätzung
+Fortschritt: ~97 % (only the closing round remains) — Schätzung
 
 ## Range
 
-Review of `3f06c01e9`..(this commit)
+Review of `78ca92e0b`..(this commit)
 
 ## Commits
 
-### 844d5d354 F203 R7 C5: handback
+### 93ff850ec F203 R9 C1: book round 8, the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | +60/-123 | round 7's handback, committed unchanged from the tree (sha256 `1f3a8ea4019adf083546a21deb513c6f276fbd80e788f481dd23797096f94ef7`, 129 lines) |
-
-### 145a9195a F203 R8 C1: book round 7 and R-1274's resolution, the plan, save the block and the evidence script — ACCEPTED HEAD
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f203-r8.md` | +157/-0 | NEW FILE, byte copy of `block.md` (157 lines, sha256 `cff1c2583aa81074654df05c6f96f9b1c222baa1963f9b1fa5a54731c1c75338`) |
-| `.agent/authored/f203-r8-create_f203_evidence.py` | +260/-0 | NEW FILE, byte copy of `create_f203_evidence.py` (sha256 `af42e1c0fc37c6121c378ff6afd7d92063e02315d9cb58011ca0851bdabdd18b`) |
-| `.agent/live_review.md` | +4/-0 | append of `frag-live_review.md` |
-| `.agent/plan.md` | +7/-8 | replaced by `src-plan.md` |
+| `.agent/authored/f203-r9.md` | +136/-0 | NEW FILE, byte copy of `block.md` (136 lines, sha256 `bae01577c3539419fe87138e79f210a2183c0340a2cdc2ed5ebe63546db70f41`) |
+| `.agent/live_review.md` | +2/-0 | append of `frag-live_review.md`, booking round 8's PASS verdict |
+| `.agent/plan.md` | +5/-3 | replaced by `src-plan.md` |
 | `.agent/prose_slips.md` | +1/-0 | append of `frag-prose_slips.md` |
 
-### (this commit) F203 R8 C2: handback with the evidence and package readings
+### 69ee43d0b F203 R9 C2: the closure's one full suite on the tree that ships
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f203-closure-suite.txt` | +19/-20 | whole content replaced with the suite re-run on `93ff850ec`: green, `22952 passed, 22 skipped, 1 warning`, no bad node ids |
+
+### (this commit) F203 R9 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -38,28 +37,22 @@ Review of `3f06c01e9`..(this commit)
 
 ## External actions
 
-- `git -C /home/decodeux/Repos/remedy push -u origin feature/f203-structured-logging` after C1 — `3f06c01e9..145a9195a feature/f203-structured-logging -> feature/f203-structured-logging`, tracking set up. Succeeded on the first attempt, no retry needed.
-- `git -C /home/decodeux/Repos/remedy push origin feature/f203-structured-logging` after C2 — result in the session's final reply.
-- No `gh` command. No pull request created, edited or merged. No worktree added or removed.
+- `git -C /home/decodeux/Repos/remedy push -u origin feature/f203-structured-logging` after C1 — `78ca92e0b..93ff850ec feature/f203-structured-logging -> feature/f203-structured-logging`, tracking already set. Succeeded on the first attempt, no retry needed.
+- `git -C /home/decodeux/Repos/remedy push origin feature/f203-structured-logging` after C3 — result in the session's final reply.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — `[]`, no open PR, so the Open PR Gate requires nothing before this round.
+- No `gh pr create`, `merge` or `edit`. No worktree added or removed.
 
 ## Verification
 
-Preconditions (before any write): `git rev-parse HEAD` read `3f06c01e9e5b1efdd936469d7c167d76eca0672e`, equal to `origin/feature/f203-structured-logging`; `git status --porcelain` read exactly ` M .agent/handoff.md`; `.agent/STOP` absent; `git branch --show-current` read `feature/f203-structured-logging` immediately before C0 and again before C1. All five prepared files' sha256 matched the block's digests (`block.md`, `verify.py`, `frag-live_review.md`, `frag-prose_slips.md`, `src-plan.md`, `create_f203_evidence.py`). `.agent/handoff.md` pre-C0 sha256 matched `1f3a8ea4019adf083546a21deb513c6f276fbd80e788f481dd23797096f94ef7`, 129 lines.
+Preconditions (before any write): `git rev-parse HEAD` read `78ca92e0b479419337180eebad2b5efae3751eba`, equal to `origin/feature/f203-structured-logging`; `git status --porcelain` empty; `.agent/STOP` absent; `git branch --show-current` read `feature/f203-structured-logging` immediately before C1 and again before C2. All eight prepared files' sha256 matched the block's digests (`block.md`, `verify.py`, `frag-live_review.md`, `frag-prose_slips.md`, `src-plan.md`, `build_ui.py`, `launch.py`, `wait.py`).
 
-C0: `git diff --cached --numstat` (checked via `git show --numstat` on the landed commit) named only `.agent/handoff.md`, `60 123`.
+C1: `git diff --cached --numstat` before commit named exactly the four Bundle paths with numstats `136 0`, `2 0`, `5 3`, `1 0` — all matching the block's specification exactly.
 
-C1: `git diff --cached --numstat` before commit named exactly the five Bundle paths with numstats `260 0`, `157 0`, `4 0`, `7 8`, `1 0` — all matching the block's specification exactly.
-
-Gate 1 (`python3 /home/decodeux/Repos/remedy/.remedy-wt/f203-r8/prep/verify.py /home/decodeux/Repos/remedy 145a9195a771183d1c70a14e6a5a7dd4c14fa2ab`) — exit 0:
+Gate 1 (`git status --porcelain` empty, then `python3 /home/decodeux/Repos/remedy/.remedy-wt/f203-r9/prep/verify.py /home/decodeux/Repos/remedy 93ff850ec47f664e25677c65760eb827f9c3b1a3`) — exit 0:
 ```
-C0 parent is 3f06c01e9 True
-C0 subject True
-C0 paths True
-C0 handoff digest True
-C1 single parent True
+C1 parent is the base True
 C1 paths True
 block copy True
-evidence script copy True
 plan True
 append .agent/live_review.md True
 append .agent/prose_slips.md True
@@ -67,69 +60,120 @@ open ids ['R-1235', 'R-1246', 'R-1251', 'R-1252'] True
 ALL True
 ```
 
-A1 (`python3 -m apps.cli.main data reclaim --orphans`) — exit 0. Reclaimable: nothing; would free 0 B in 0 paths; `--apply` correctly SKIPPED. One refused path, with its reason: `review_staging.n4o46eq_` — `class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only` (1.5 MB). All other listed paths are durable or unclassified classes reclaim does not address.
-
-A2 (`python3 .agent/authored/f203-r8-create_f203_evidence.py .remedy-wt/f203-r8-evidence`, launched detached, polled) — ran to completion in ~412 seconds. Reflog and branch unchanged before and after (`145a9195a`/`844d5d354`/`3f06c01e9`, branch `feature/f203-structured-logging` throughout). Decisive log lines:
+C2 step 1 (`python3 .../prep/build_ui.py /home/decodeux/Repos/remedy`) — exit 0:
 ```
-head 145a9195a771183d1c70a14e6a5a7dd4c14fa2ab
-ancestry-path count 38
-plain count 38
-collected node ids 4611, deselected 30
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 4607, 'failed': 0, 'skipped': 4}, output_hash 99b48819cded4624437adfea4d74b3695c240a9e44a76e0d0b2ba1348d2aa390
-validate_verification_tests problems [] passed 4607
-is_valid_current_run True
-validation_errors []
+vite build exit 0 :: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+porcelain empty True
 ```
-job_id `f203r8e1001`, verdict `PASS_WITH_RISKS`, `total_passed` 4607. `git status --porcelain` empty after the job (it wrote only under `.remedy-wt/f203-r8-evidence`).
 
-A3 (`bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f203-r8-evidence`, `REMEDY_REVIEW_DIR` unset) — exit 0. `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`. Package `remedy-review-20261013-193251-READY_FOR_REVIEW.zip`, sha256 `8ba31f893c4f95b1100b2150f5f71f6052b539b126ee675874e83594f9f69c10`, directory `/home/decodeux/Repos/remedy-history/zips`. Independently verified: `zipfile.is_zipfile` True, `testzip()` None, `.review_zip_manifest.json` inside the package reads `committed_review_subject.head_commit` `145a9195a771183d1c70a14e6a5a7dd4c14fa2ab` (equal to C1) and `committed_review_subject.base_commit` `e37f15be4438c83ced8e4eeff342a3da1867c201`.
+C2 step 2 (reflog before, `git -C /home/decodeux/Repos/remedy reflog -n 1 --date=iso`):
+```
+93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+```
 
-Gate 5 (after A3, before C2): `python3 -m apps.cli.main integrity check --json` — exit 0, `"check_count": 6`, all six `"status": "pass"`, `"fail_count": 0`. `open_finding_ids` over `.agent/live_review.md` — exit 0, `['R-1235', 'R-1246', 'R-1251', 'R-1252']`. `git status --porcelain` empty.
+C2 step 3 (`python3 .../prep/launch.py ...` then `python3 .../prep/wait.py ... 50`) — launch printed `started suite, wrapper pid 100011`; wait printed the tail ending:
+```
+22952 passed, 22 skipped, 1 warning in 363.98s (0:06:03)
+exit 0 wall 364.8
+```
+No `FAILED`/`ERROR` node lines and no "process(es) behind" line in the full log.
 
-Gate 6: reported in the session's final reply (local tip vs `origin/feature/f203-structured-logging` after C2's push).
+C2 step 4 (reflog after, same command) — read the identical line:
+```
+93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+```
+Reflog unchanged during the run.
+
+C2 step 5 (`python3 scripts/closure_suite_cost.py --feature F203 --record /home/decodeux/.remedy-loop/test_load.jsonl`, `cwd=/home/decodeux/Repos/remedy`) — exit 0:
+```
+Test load: 1257.35 CPU seconds, 363.99 wall seconds, 22974 tests collected, exit status 0, recorded 2026-10-13T17:48:53Z
+This closure's suite used 1257.35 CPU seconds, 5.2 percent more than F199's 1195.71, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F199's closure run:
+  +4.84 s  tests/ui_server/test_multi_project_live.py (15.86 -> 20.70)
+  +3.81 s  tests/orchestration/test_review_zip_hygiene.py (32.48 -> 36.29)
+  +2.88 s  tests/cli/test_do_sequence_cli.py (24.80 -> 27.68)
+  +2.76 s  tests/orchestration/test_test_runner.py (31.86 -> 34.62)
+  +2.58 s  tests/test_grouped_cli.py (23.14 -> 25.72)
+  +2.48 s  tests/cli/test_mission_cmd.py (38.12 -> 40.60)
+  +2.17 s  tests/cli/test_serve_client_parity.py (5.89 -> 8.06)
+  +2.14 s  tests/ui_server/test_public_api.py (9.48 -> 11.62)
+  +1.89 s  tests/orchestration/test_public_api_gate_paths.py (14.18 -> 16.07)
+  +1.77 s  tests/cli/test_golden_path.py (17.92 -> 19.69)
+```
+
+Gate 3 (after C2, `cwd=/home/decodeux/Repos/remedy`): `python3 -m apps.cli.main integrity check --json` — exit 0, `"check_count": 6`, all six `"status": "pass"`, `"fail_count": 0`. `git status --porcelain` empty.
+
+Gate 4: reported in the session's final reply (local tip vs `origin/feature/f203-structured-logging` after C3's push).
 
 ## Authored-text proofs
 
-- `.agent/authored/f203-r8.md` against `block.md`: byte-equal, 157 lines, sha256 `cff1c2583aa81074654df05c6f96f9b1c222baa1963f9b1fa5a54731c1c75338` (confirmed independently and by Gate 1's "block copy True").
-- `.agent/authored/f203-r8-create_f203_evidence.py` against `create_f203_evidence.py`: byte-equal, sha256 `af42e1c0fc37c6121c378ff6afd7d92063e02315d9cb58011ca0851bdabdd18b` (Gate 1's "evidence script copy True").
+- `.agent/authored/f203-r9.md` against `block.md`: byte-equal, 136 lines, sha256 `bae01577c3539419fe87138e79f210a2183c0340a2cdc2ed5ebe63546db70f41` (confirmed independently and by Gate 1's "block copy True").
 - `.agent/plan.md` against `src-plan.md`: byte-equal (Gate 1's "plan True").
 - `.agent/live_review.md` and `.agent/prose_slips.md` appends against their fragments: byte-equal per the append convention (Gate 1's "append ... True" for both).
+- `.agent/authored/f203-closure-suite.txt`: not a copy of a reviewer-authored text — it is the worker's own transcript of C2's observed readings, in the shape the block specifies. No digest applies.
+
+## Closure suite
+
+Quoted whole and verbatim from `.agent/authored/f203-closure-suite.txt` as committed in `69ee43d0b`:
+
+```
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 364.8s (the launcher's reading); pytest's own "in Ns" and H:MM:SS: in 363.98s (0:06:03)
+summary line: 22952 passed, 22 skipped, 1 warning in 363.98s (0:06:03)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 93ff850ec (F203 R9 C1: book round 8, the plan, save the block)
+reflog before: 93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+reflog after: 93ff850ec HEAD@{2026-10-13 19:42:15 +0200}: commit: F203 R9 C1: book round 8, the plan, save the block
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F203 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1257.35 CPU seconds, 363.99 wall seconds, 22974 tests collected, exit status 0, recorded 2026-10-13T17:48:53Z
+This closure's suite used 1257.35 CPU seconds, 5.2 percent more than F199's 1195.71, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F199's closure run:
+  +4.84 s  tests/ui_server/test_multi_project_live.py (15.86 -> 20.70)
+  +3.81 s  tests/orchestration/test_review_zip_hygiene.py (32.48 -> 36.29)
+  +2.88 s  tests/cli/test_do_sequence_cli.py (24.80 -> 27.68)
+  +2.76 s  tests/orchestration/test_test_runner.py (31.86 -> 34.62)
+  +2.58 s  tests/test_grouped_cli.py (23.14 -> 25.72)
+  +2.48 s  tests/cli/test_mission_cmd.py (38.12 -> 40.60)
+  +2.17 s  tests/cli/test_serve_client_parity.py (5.89 -> 8.06)
+  +2.14 s  tests/ui_server/test_public_api.py (9.48 -> 11.62)
+  +1.89 s  tests/orchestration/test_public_api_gate_paths.py (14.18 -> 16.07)
+  +1.77 s  tests/cli/test_golden_path.py (17.92 -> 19.69)
+```
 
 ## Deviations & assumptions
 
-1. A2's evidence script was launched via `subprocess.Popen(..., start_new_session=True)` from a short-lived Python launcher that returned immediately; by the time I first polled, the job's parent was already PID 1 (reparented), so no process in this session held a `wait()`-able handle to its real OS exit status. I polled liveness with `os.kill(pid, 0)` until it ended, then read its full captured stdout. The log's own decisive lines (`validate_verification_tests problems []`, `is_valid_current_run True`, `pytest exit 0`) fully determine the script's `return 0` per its own source (`return 0 if not problems and validation["is_valid_current_run"] and run.returncode == 0 else 1`), so I report `exit 0` as a deterministic reconstruction from those fields rather than a directly `wait()`-captured code. No retry or second run was done; the job ran exactly once.
-2. A1 found exactly one refused path (`review_staging.n4o46eq_`, 1.5 MB, `class_not_job_keyed`) and nothing reclaimable; `--apply` was correctly skipped per the block's own branching rule. No deviation from the block's instructions, noted here only because it changes what "cleaned up" means for the operator note below.
-3. No other departure from C0 to C2; no commit beyond the two the block ordered (plus this handback); every gate ran once.
+None. C1's four paths and both numstats matched the Bundle exactly; gate 1 read `ALL True`; the vite build read exit 0 with an empty porcelain tree; the reflog read the identical line before and after the detached suite, so the branch did not move during the run; the suite read green with no bad node id and no leftover-process line; the cost script read exit 0 and its reading sat within the stated limit; gate 3 read all six integrity checks `pass` with `fail_count` 0. No extra commit, no dropped one, no reordering; each ordered command ran exactly once.
+
+Note on self-review: this handback's own commit (C3) has not yet been self-reviewed at the time this file is written, by construction — that review happens after this text is written, immediately before the commit, and is reported in the session's final reply rather than claimed here.
+
+## For the operator, in plain sentences
+
+The whole test collection ran once more on the exact code that will ship, because an earlier recorded answer had moved the branch after the first run. That run finished clean in a little over six minutes, with nothing failing and nothing left running behind it. Nothing new waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
 2. Phase 1 rule 2: the Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reviews round 8 and books its verdict in the next round's first commit.
+3. The reviewer reviews round 9 and books its verdict in the next round's first commit.
 4. The closing round: the Built State, the rotation, the self-use entry SU-061's `consumed_by`, the STATUS flip with the README sync, and the pull request, left unmerged.
 
 Operator questions open: 0.
 Open findings: 4 (R-1235, R-1246, R-1251 and R-1252, all owned by F306).
 
-## For the operator, in plain sentences
-
-The review package for this feature was built and is ready for review (see the Verification section above for its name, hash and folder). Old scratch copies were checked for cleanup, but nothing could be freed this round: the one leftover staging copy found has no job that still claims it, and the cleanup tool only removes copies that are tied to a job, so it was left in place rather than guessed at. The one problem the whole test collection found earlier in this feature, a setting name that looked like a file name to one of Remedy's own checks, was repaired in the prior round and is checked again by this round's own test run, which came back clean. Nothing new waits for the operator.
-
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | `844d5d354` |
-| C1 | done | `145a9195a` (ACCEPTED HEAD) |
-| A1 | done | nothing reclaimable; one refused path recorded |
-| A2 | done | evidence job PASS_WITH_RISKS, all expected readings matched |
-| A3 | done | `READY_FOR_REVIEW`, package verified |
-| C2 | done | this commit |
+| C1 | done | `93ff850ec` |
+| C2 | done | `69ee43d0b`, suite green, cost within limit |
+| C3 | done | this commit |
 | Gate 1 | passed | `ALL True` |
-| Gate 2 (A1) | passed | empty reclaim, refused path recorded |
-| Gate 3 (A2) | passed | all expected readings matched exactly |
-| Gate 4 (A3) | passed | `READY_FOR_REVIEW`, manifest base/head match |
-| Gate 5 | passed | six checks pass, `fail_count` 0, four ids exact, status empty |
-| Gate 6 | reported in final reply | local tip vs origin after C2's push |
+| Gate 2 (C2 readings) | passed | vite exit 0, reflog unchanged, suite exit 0, cost exit 0, no bad node id |
+| Gate 3 | passed | six checks pass, `fail_count` 0, porcelain empty |
+| Gate 4 | reported in final reply | local tip vs origin after C3's push |
