@@ -7,6 +7,8 @@ so every existing `dev_server.<name>` keeps working.
 """
 from __future__ import annotations
 
+import contextlib
+import os
 import socket
 import urllib.error
 import urllib.request
@@ -67,6 +69,35 @@ class RuntimeProbeResult:
             "pid": self.pid,
             "survivors": list(self.survivors),
         }
+
+
+# WHY: a health answer can come from another check's app squatting the same port;
+# only a process THIS run's own session started answering LISTEN proves it is ours.
+def port_listener_in_session(port: int, session_id: int) -> bool | None:
+    """Does a process in process group ``session_id`` hold a LISTEN socket on ``port``?
+
+    True when a live process whose process group is ``session_id`` holds a LISTEN
+    socket on ``port``; False when the socket table was read and no such process
+    holds it; None when it could not be read at all (psutil error, permission). A
+    process that vanishes or denies access mid-scan is skipped; only a failure of
+    the whole read answers None.
+    """
+    import psutil
+
+    try:
+        procs = list(psutil.process_iter(["pid"]))
+    except (psutil.Error, OSError):
+        return None
+
+    for proc in procs:
+        with contextlib.suppress(psutil.Error, OSError, ProcessLookupError):
+            if os.getpgid(proc.pid) != session_id:
+                continue
+            reader = getattr(proc, "net_connections", None) or proc.connections
+            for conn in reader(kind="inet"):
+                if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.port == port:
+                    return True
+    return False
 
 
 def http_probe(url: str, timeout: float = 3.0) -> tuple[int, str]:

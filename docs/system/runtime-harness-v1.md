@@ -26,6 +26,12 @@ FastAPI/Uvicorn. Two candidates is ambiguity, and ambiguity blocks with
 "configuration required". Explicit config always wins. Malformed values are
 configuration errors, never tracebacks.
 
+A definition-of-done check that starts the application confirms, once the health
+path answers, that the port is held by a process it started itself; when another
+process answered, the check fails as an application that did not start, and when
+the operating system's socket table cannot be read, the check says so in its log
+and goes on.
+
 ## Commands
 
 | Command | What it does |

@@ -83,6 +83,7 @@ from packages.runtimes.dev_server import (
     READY_STATUS_MIN,
     choose_port,
     http_probe,
+    port_listener_in_session,
     stop_process_tree,
 )
 from packages.runtimes.runtime_config import resolve_spec
@@ -701,8 +702,19 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
                     log.append(detail)
                 else:
                     log.append(f"ready on {spec.health_path}")
-                    if body is not None:
-                        reason = body(base_url)
+                    owner = port_listener_in_session(port, os.getpgid(proc.pid))
+                    if owner is False:
+                        reason = REASON_APP_START_FAILED
+                        detail = (f"port {port} answered {spec.health_path}, but "
+                                  f"not from the application this check started")
+                        log.append(detail)
+                    else:
+                        if owner is None:
+                            log.append(
+                                f"the owner of port {port} could not be read; "
+                                f"the check goes on without that proof")
+                        if body is not None:
+                            reason = body(base_url)
         finally:
             # ALWAYS stopped: success, red outcome, or an exception on the way
             # out. A stop failure only overrides a reason when the run itself
