@@ -29507,3 +29507,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing; a job whose run splits
 ALTERNATIVES CONSIDERED: (a) relaxing only the F7 check, REJECTED because the two validators after it then refuse the manifest anyway, so the record would still be lost, only later; (b) building the split map in this paydown, REJECTED because it changes the persisted manifest schema and its external contract, which is a feature's work, not a findings round's; (c) the optional reading in T006 as R-1235's text orders, REJECTED because a structural step changes no behaviour, and a validator change without the key it reads has no test that could prove it.
 
 HOW TO REVERSE: delete this paragraph, restore T005 and the R-1252 Acceptance line of `docs/roadmap/features/T2_F306.md`, and give R-1252 its rounds.
+
+## DECISION F306 D3 — the two review folders that appeared in the repository root during round 9's suite are moved, unchanged, to `.remedy-wt/remedy-review-moved/`, because the session's permissions refused a write to the folder operator question Q18 named (2026-10-14)
+
+THE PROBLEM: at 23:13 on 2026-10-13, while round 9 ran the closure's one full suite, two directories appeared in the repository root, `remedy-review-20260708-211448-READY_FOR_REVIEW` (about 18 MB) and `remedy-review-20260708-211448-READY_FOR_REVIEW 2` (about 16 KB), written by no step of the loop. Both are ignored by git through the `.gitignore` pattern `remedy-review-*`, but pytest collected the tests inside the first one, which voided that suite's reading, and `repo_root_hygiene` of `packages/orchestration/integrity_gate.py` fails while they sit in the root. Operator question Q18 asked the operator whether they may be moved, and recommended `/home/decodeux/remedy-review-moved/`; no answer arrived before F306's third session.
+
+CHOSEN: under operator amendment amend0917-throughput rule 5 the session executes Q18's recommendation, with one change of place: the worker's permission settings refused the write to `/home/decodeux/remedy-review-moved/`, so before this commit both directories were moved with `mv`, unchanged, to `.remedy-wt/remedy-review-moved/` inside the checkout. That folder is ignored by git, pytest does not collect below a directory whose name begins with a dot, and the root check reads the root only. Nothing inside them was read, edited or deleted. Q18 stays in `.agent/operator_questions.md` until the operator answers it.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in Remedy; the repository root no longer holds the two folders, so the suite no longer collects their tests and the root check passes again.
+
+ALTERNATIVES CONSIDERED: (a) deleting them, REJECTED because they are not the loop's and a move is reversible; (b) leaving them and excluding them from collection, REJECTED because it would change the test configuration to route around foreign files and the root check would still fail.
+
+HOW TO REVERSE: move both directories from `.remedy-wt/remedy-review-moved/` back into the repository root, and delete this paragraph.

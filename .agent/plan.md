@@ -7,9 +7,9 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Session 3, round 10 on `feature/f306-findings-paydown-v8`: book round 9 (its gate entry is in
-`.agent/handoff.md`) and R-1275's resolution, then the closure's one full suite again on the same
-tree, once the repository root holds neither stray review directory (operator question Q18).
+Session 3, round 10 on `feature/f306-findings-paydown-v8`: round 9 and R-1275's resolution are
+booked, the two stray review folders are out of the repository root (DECISION F306 D3), and the
+closure's one full suite runs again on the tree it ran on in round 9.
 
 ## Next Steps
 1. The evidence bundle and the review package.
