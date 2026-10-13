@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-143 of 307 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+144 of 307 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 44 | 46 |
+| 2 | Minimal Self-Build Runtime | 45 | 46 |
 | 3 | Full Token Economy & Autonomy | 10 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
@@ -310,7 +310,18 @@ file, and a closure names the files whose time rose; and the code of the spendin
 alarm left the job runner's largest function for a module of its own. Remedy then
 narrowed one more error handler in its own `remedy job budget` command in a
 self-repair run that stopped, as it should, at its approval gate, and that run
-found one more small fault for the next paydown)..
+found one more small fault for the next paydown),
+F306 findings paydown v8 (two review findings were repaired, each with a test that
+fails without its repair: two checks that start an application at the same time no
+longer share one network port, and a check now refuses an answer that came from a
+program it did not start; and every job now writes down whether the Claude command
+line ran with the operator's own settings and with all of its built-in tools, and
+where each of those two choices came from, while a job record written before this
+change still reads as valid. Four large pieces of code were split into smaller
+modules on the way, and the job runner's largest function lost the part that works
+out a job's settings. Remedy then narrowed one more error handler in its own
+`remedy status` command in a self-repair run that stopped, as it should, at its
+approval gate).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
