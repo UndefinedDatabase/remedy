@@ -116,6 +116,31 @@ class TestNoTracebackReachesTheOperator:
         assert "KeyError" in captured.err
         assert "target_repo" in captured.err
 
+    def test_the_text_case_writes_one_crash_report_and_names_it(
+        self, monkeypatch, capsys
+    ) -> None:
+        from packages.orchestration.crash_report import crash_reports_dir
+        from packages.orchestration.self_health import home_relative_text
+
+        self._run(monkeypatch, ["job", "list"], KeyError("target_repo"))
+        err = capsys.readouterr().err
+        reports = list(crash_reports_dir().glob("*.md"))
+        assert len(reports) == 1
+        assert home_relative_text(str(reports[0])) in err
+        assert "never sent" in err
+        assert "Traceback" not in err
+
+    def test_under_json_the_envelope_carries_the_crash_report_path(
+        self, monkeypatch, capsys
+    ) -> None:
+        from packages.orchestration.crash_report import crash_reports_dir
+
+        self._run(monkeypatch, ["job", "list", "--json"], KeyError("target_repo"))
+        payload = json.loads(capsys.readouterr().out)
+        reports = list(crash_reports_dir().glob("*.md"))
+        assert len(reports) == 1
+        assert payload["crash_report"] == str(reports[0])
+
     def test_under_json_it_becomes_a_parseable_envelope(
         self, monkeypatch, capsys
     ) -> None:
@@ -151,6 +176,10 @@ class TestNoTracebackReachesTheOperator:
         assert code == 3
         assert captured.out == "" and captured.err == ""
 
+        from packages.orchestration.crash_report import crash_reports_dir
+
+        assert not crash_reports_dir().exists() or not list(crash_reports_dir().iterdir())
+
     def test_a_keyboard_interrupt_is_not_reported_as_a_crash(self, monkeypatch) -> None:
         from apps.cli import grouped
 
@@ -163,6 +192,10 @@ class TestNoTracebackReachesTheOperator:
         )
         with pytest.raises(KeyboardInterrupt):
             grouped.main(["job", "list"])
+
+        from packages.orchestration.crash_report import crash_reports_dir
+
+        assert not crash_reports_dir().exists() or not list(crash_reports_dir().iterdir())
 
     def test_the_boundary_does_not_change_a_successful_handler(
         self, monkeypatch, capsys

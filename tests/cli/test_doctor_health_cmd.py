@@ -55,7 +55,7 @@ def test_every_check_passing_prints_pass_lines_and_exits_zero(fixed_checks, caps
     lines = capsys.readouterr().out.splitlines()
     assert lines[0] == "Remedy health: PASS"
     assert [line for line in lines[1:] if line.startswith("  [PASS] ")] == lines[1:]
-    assert len(lines) == 8
+    assert len(lines) == 9
     assert not any("fix:" in line for line in lines)
 
 
@@ -87,7 +87,7 @@ def test_json_with_every_check_passing_is_one_ok_object(fixed_checks, capsys):
     document = json.loads(capsys.readouterr().out)
     assert document["ok"] is True
     assert document["verdict"] == "PASS"
-    assert len(document["checks"]) == 7
+    assert len(document["checks"]) == 8
     for check in document["checks"]:
         # The envelope writes every level's keys sorted, so the order is not the check's own.
         assert sorted(check) == ["check", "detail", "hint", "level"]
@@ -101,7 +101,7 @@ def test_json_with_a_failing_ledger_exits_one_with_the_failure_envelope(fixed_ch
     document = json.loads(capsys.readouterr().out)
     assert document["ok"] is False
     assert document["error"] == "health_failed"
-    assert document["message"] == "1 of 7 health checks failed"
+    assert document["message"] == "1 of 8 health checks failed"
     ledgers = next(c for c in document["checks"] if c["check"] == "ledgers")
     assert ledgers["level"] == "FAIL"
 

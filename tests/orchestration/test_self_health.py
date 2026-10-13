@@ -19,6 +19,7 @@ from packages.orchestration.data_paths import projects_dir, resolve_data_root
 from packages.orchestration.project_registry import RemyProject, save_project
 from packages.orchestration.self_health import (
     CONFIG_HINT,
+    CRASH_HINT,
     DISK_HINT,
     HEALTH_FAIL,
     HEALTH_PASS,
@@ -30,6 +31,7 @@ from packages.orchestration.self_health import (
     WORKTREE_HINT,
     HealthCheckResult,
     check_config_coherence,
+    check_crash_reports,
     check_disk_floor,
     check_ledger_integrity,
     check_providers,
@@ -490,10 +492,33 @@ def test_providers_a_key_of_spaces_counts_as_unset():
 # --- the set ----------------------------------------------------------------
 
 
-def test_run_health_checks_answers_seven_checks_in_order():
+def test_run_health_checks_answers_eight_checks_in_order():
     results = run_health_checks()
     assert [r.check for r in results] == [
-        "config", "ledgers", "snapshots", "worktrees", "providers", "staging_copies", "disk"]
+        "config", "ledgers", "snapshots", "worktrees", "providers", "staging_copies", "disk",
+        "crash_reports"]
+
+
+# --- crash reports ----------------------------------------------------------
+
+
+def test_crash_reports_none_pass():
+    assert check_crash_reports() == HealthCheckResult(
+        "crash_reports", HEALTH_PASS, "no crash report in the last 7 days")
+
+
+def test_crash_reports_a_recent_one_warns_naming_it():
+    from packages.orchestration.crash_report import write_crash_report
+
+    try:
+        raise ValueError("planted")
+    except ValueError as caught:
+        path = write_crash_report(caught, command="job.list")
+    assert path is not None
+    assert check_crash_reports() == HealthCheckResult(
+        "crash_reports", HEALTH_WARN,
+        f"1 crash reports in the last 7 days; the newest is crash/{path.name}",
+        CRASH_HINT)
 
 
 def _result(level: str) -> HealthCheckResult:
