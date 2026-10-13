@@ -650,6 +650,17 @@ end the response with:
   twin's registration and without the structural step its file's size required, are item 34's
   reading of the guards that bind the file the order changes, here the public API's route-shape
   tests and the structure ratchet. The list stays at 34 items.
+  Consolidated again at F203's closure on 2026-10-13: nothing joined and no two items were merged,
+  because none of F203's lines in `.agent/prose_slips.md` names a lesson the list lacks. A block
+  that told the worker to extend a comment "the way it names earlier rises" when that comment
+  names none is item 34's reading of the code a sentence describes, and the worker left the
+  comment as it was, leaving nothing on disk wrong. Its authoring defect that left something
+  unguarded was registered as a finding and repaired inside the feature, the reading of an
+  existing item: R-1272, a secrets test ordered for the JSON line alone while the decision
+  redacted every line, is item 18's reading of an ordered recipe against the property it must
+  establish. R-1273, a repository-wide lint test racing a test that writes files into the tree,
+  was found by a gate rather than written by a block, and its repair is in the test that wrote
+  the files. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
