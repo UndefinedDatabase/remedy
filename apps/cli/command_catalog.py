@@ -25,9 +25,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-# DECISIONs F301 D2, F302 D1 and F206 D4: the types, the shorthands, the mission, stats and
-# project groups live in modules of their own; every name is imported back here by name, so
-# every import path keeps working.
+# DECISIONs F301 D2, F302 D1, F206 D4 and F199 D1: the types, the shorthands, the mission, stats,
+# project and doctor groups live in modules of their own; every name is imported back here by
+# name, so every import path keeps working.
+from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
 from apps.cli.command_catalog_mission import MISSION_COMMANDS
 from apps.cli.command_catalog_project import PROJECT_COMMANDS
 from apps.cli.command_catalog_stats import STATS_COMMANDS
@@ -1164,33 +1165,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     *MISSION_COMMANDS,
 
-    # ── doctor (product spine health check) ──────────────────────────────
-    CommandEntry(
-        command_id="doctor.core",
-        group_id="doctor",
-        subcommand="core",
-        description="Read-only core product spine health check — modules, scripts, config (no execution; no network; no secrets).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("mission.report",),
-    ),
-    CommandEntry(
-        command_id="doctor.toolchain",
-        group_id="doctor",
-        subcommand="toolchain",
-        description=("Each pinned tool's installed, pinned and newest version; the newest needs the "
-                     "network and reads unknown without it (read-only)."),
-        action_class="read_only",
-        args=(
-            # is_flag: `--offline` takes no value, and only `--json` is special-cased by name.
-            ArgDef("--offline", "Do not ask the package index; newest reads unknown",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("doctor.core",),
-    ),
+    *DOCTOR_COMMANDS,
 
     # ── memory ───────────────────────────────────────────────────────────
     CommandEntry(
