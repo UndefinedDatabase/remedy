@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-7c57dd07a5a24aa3  (exit 0)
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 583968cb9..90cc8650c 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -2162,7 +2162,7 @@ def _cmd_job_budget(
+                     "(the evidence files remain the source of truth)",
+                     _job_display_id, exc_info=True,
+                 )
+-            except Exception:  # noqa: BLE001 — a broken log handler must not crash the inspector
++            except (OSError, ValueError):  # a broken log handler must not crash the inspector
+                 # An inspection command never dies because a log handler died.
+                 pass
+ 
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

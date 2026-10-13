@@ -1,0 +1,5 @@
+Entry ID: SU-059
+Entry Title: Narrow the excused handler at apps/cli/commands/job.py:2165
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/job.py:1:except Exception:  # noqa: BLE001 — a broken log handler must not crash the inspector)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f058-r6-selfuse/SU-059.md

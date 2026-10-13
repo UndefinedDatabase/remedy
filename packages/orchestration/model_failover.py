@@ -1,0 +1,719 @@
+"""F058 — per-role model failover chains: config, hard-rule validation and the walk (T001, T002).
+
+Citing DECISION F058 D1: a chain lives in `remedy.toml` under `model_failover.chains`, one entry
+per role, each a list of links of exactly `provider`, `model` and `tier`, tried in order when the
+role's provider is unavailable after the transport retries. Every link is checked against the
+three hard rules of `packages/orchestration/model_routing.py` and against a fourth this feature
+adds, "core never local": a link on a local provider is allowed only for a role whose class the
+shipped table routes to the cheap tier. A refused chain table names every violated rule and the
+link it belongs to; no role fails over on a refusal.
+
+The parse and the hard-rule validation above stay a pure function of their arguments, exactly
+like `packages/orchestration/model_routing.py` whose docstring states the same discipline for the
+same reason: the hard-rule checks are tested without a config file existing at all. The one place
+this module reads configuration for THAT part is :func:`resolve_failover_chains`, which imports
+`get_config` inside its own body, the idiom `packages/orchestration/role_config.py` already
+established for its own table-valued keys.
+
+Citing DECISION F058 D2: T002's walk, :class:`FailoverProvider`, lives here but does not decide
+to wrap any role — that choice, and the chain it reads through `resolve_failover_chains`, belong
+to `create_role_provider` in `packages/orchestration/role_provider_factory.py`, the provider seam
+where a run actually builds its providers. A failover trigger is exactly the provider-unavailable
+gap: not a timeout, a non-zero exit, a rate limit or a parse failure, each already owned by the
+transport retries, the governor or the single parse retry.
+
+Public API::
+
+    FAILOVER_CHAINS_CONFIG_KEY: the config key carrying the chain table
+    FAILOVER_LINK_KEYS: the three keys a link table may carry
+    LOCAL_PROVIDERS: providers this feature treats as local
+    FAILOVER_LOCAL_ROLES: roles the core-never-local rule exempts
+    RULE_CORE_ROLE_ON_LOCAL_PROVIDER: this feature's own hard-rule name
+    FAILOVER_RULE_NAMES: the four hard-rule names, in report order
+    FailoverLink: one link of a chain
+    FailoverChainViolation: one rule a link violates
+    FailoverChainError: a chain table that cannot be used at all
+    FailoverChainRefused: a chain table a hard rule refuses
+    parse_failover_chains(raw) -> dict[str, tuple[FailoverLink, ...]]
+    validate_failover_chains(chains, effective_tiers=None, safety_relevant_classes=...)
+        -> tuple[FailoverChainViolation, ...]
+    build_failover_chains(raw, effective_tiers=None) -> dict[str, tuple[FailoverLink, ...]]
+    resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]
+    FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
+    FAILOVER_COOLDOWN_DEFAULT_S: int = 300
+    resolve_failover_cooldown_s() -> int
+    FAILOVER_REASON_PROVIDER_UNAVAILABLE: the reason string a disclosure carries
+    is_failover_trigger(out) -> bool: whether an output's error is the gap this feature owns
+    FailoverLinkAttempt: one link's attempt and what it answered
+    FailoverDisclosure: what a failed-over call discloses, intended versus used
+    FailoverProvider: wraps a role's provider and walks its chain on a trigger
+    failover_report_line(run_record) -> str | None: the run's one-line failover summary
+"""
+
+from __future__ import annotations
+
+import time
+import warnings
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from packages.orchestration.failure_postmortem import (
+    is_provider_connection_error,
+    is_provider_unavailable_error,
+)
+from packages.orchestration.model_routing import (
+    HARD_RULE_NAMES,
+    MODEL_TIERS,
+    REVIEWER_WORKER_CLASS_PAIRS,
+    ROLE_TASK_CLASSES,
+    SAFETY_RELEVANT_CLASSES,
+    TASK_CLASS_INHERITING_ROLES,
+    TASK_CLASS_TIERS,
+    check_orchestration_class_routed_to_top_tier,
+    check_reviewer_not_weaker_than_worker,
+    check_safety_relevant_class_not_below_mid_tier,
+    model_tier_rank,
+    resolve_task_class_tier_with_overrides,
+)
+from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
+from packages.orchestration.rate_governor import is_rate_limit_error
+from packages.orchestration.role_config import KNOWN_ROLES
+
+# ---------------------------------------------------------------------------
+# The chain vocabulary
+# ---------------------------------------------------------------------------
+
+#: The config key carrying the chain table — DECISION F058 D1. Spelled once here and shared by
+#: the registry entry (packages/orchestration/config_keys_model_routing.py) and the resolver below.
+FAILOVER_CHAINS_CONFIG_KEY: str = "model_failover.chains"
+
+#: The three keys a link table may carry; a link naming any other key is refused.
+FAILOVER_LINK_KEYS: tuple[str, ...] = ("provider", "model", "tier")
+
+#: Providers this feature treats as LOCAL, for the core-never-local rule below.
+LOCAL_PROVIDERS: frozenset[str] = frozenset({"ollama"})
+
+#: The roles the core-never-local rule EXEMPTS: every role of ROLE_TASK_CLASSES whose class the
+#: shipped table routes to the cheap tier — today teacher, summary and study. DERIVED, so a class
+#: re-tiered to cheap exempts its role without a second edit here.
+FAILOVER_LOCAL_ROLES: frozenset[str] = frozenset(
+    role for role, task_class in ROLE_TASK_CLASSES.items()
+    if TASK_CLASS_TIERS.get(task_class) == "cheap"
+)
+
+# ---------------------------------------------------------------------------
+# The fourth hard rule — this feature's own
+# ---------------------------------------------------------------------------
+
+#: Violated when a link on a LOCAL provider belongs to a role FAILOVER_LOCAL_ROLES does not exempt.
+#: "Core never local": a core role's call never degrades onto a local model it did not choose.
+RULE_CORE_ROLE_ON_LOCAL_PROVIDER: str = "core_role_on_local_provider"
+
+#: The policy's three hard rules, then this feature's own, in report order.
+FAILOVER_RULE_NAMES: tuple[str, ...] = (*HARD_RULE_NAMES, RULE_CORE_ROLE_ON_LOCAL_PROVIDER)
+
+# ---------------------------------------------------------------------------
+# The chain shape
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FailoverLink:
+    """One link of a role's failover chain: a provider, a model and the tier it declares."""
+
+    provider: str
+    model: str
+    tier: str
+
+
+@dataclass(frozen=True)
+class FailoverChainViolation:
+    """One hard rule that one link of a configured chain violates."""
+
+    role: str
+    position: int
+    link: FailoverLink
+    rule: str
+
+    def describe(self) -> str:
+        """Return the one-line description a refusal message and a test both read."""
+        return (
+            f"{self.role} link {self.position} ({self.link.provider} {self.link.model}, "
+            f"tier {self.link.tier}): {self.rule}"
+        )
+
+
+class FailoverChainError(ValueError):
+    """A `model_failover.chains` table that cannot be used at all. Every message starts the same way."""
+
+
+class FailoverChainRefused(FailoverChainError):
+    """A chain table that parses, but ONE OR MORE links violate a hard rule."""
+
+    def __init__(self, violations: tuple[FailoverChainViolation, ...]) -> None:
+        self.violations = violations
+        super().__init__(
+            "model_failover.chains: refused — " + "; ".join(v.describe() for v in violations)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Parsing — shape only, no policy
+# ---------------------------------------------------------------------------
+
+
+def parse_failover_chains(raw: Mapping[str, Any]) -> dict[str, tuple[FailoverLink, ...]]:
+    """Return the chains `raw` describes, in the table's own order, or RAISE on a shape fault.
+
+    `raw` is the `[remedy.model_failover.chains]` sub-table: role name to a list of link tables.
+    Every refusal is a :class:`FailoverChainError` whose message starts `"model_failover.chains: "`
+    and names the role and, for a link, its 1-based position. An empty list is an empty chain.
+    """
+    chains: dict[str, tuple[FailoverLink, ...]] = {}
+    for role, entry in raw.items():
+        if role not in KNOWN_ROLES:
+            raise FailoverChainError(
+                f"model_failover.chains: {role!r} is not a known role; known roles: "
+                f"{', '.join(sorted(KNOWN_ROLES))}"
+            )
+        if not isinstance(entry, list):
+            raise FailoverChainError(
+                f"model_failover.chains: {role!r} must be a list of links, got "
+                f"{type(entry).__name__}"
+            )
+        links: list[FailoverLink] = []
+        seen_pairs: dict[tuple[str, str], int] = {}
+        for position, link in enumerate(entry, start=1):
+            if not isinstance(link, Mapping):
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} must be a table, got "
+                    f"{type(link).__name__}"
+                )
+            for key in link:
+                if key not in FAILOVER_LINK_KEYS:
+                    raise FailoverChainError(
+                        f"model_failover.chains: {role!r} link {position} has unknown key "
+                        f"{key!r}; a link holds exactly {', '.join(FAILOVER_LINK_KEYS)}"
+                    )
+            provider = link.get("provider")
+            if not isinstance(provider, str) or not provider:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} must set provider to a "
+                    f"non-empty string"
+                )
+            model = link.get("model")
+            if not isinstance(model, str) or not model:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} must set model to a "
+                    f"non-empty string"
+                )
+            tier = link.get("tier")
+            if tier not in MODEL_TIERS:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} must set tier to one of "
+                    f"{MODEL_TIERS!r}, got {tier!r}"
+                )
+            pair = (provider, model)
+            earlier = seen_pairs.get(pair)
+            if earlier is not None:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} repeats link {earlier} "
+                    f"({provider} {model})"
+                )
+            seen_pairs[pair] = position
+            links.append(FailoverLink(provider=provider, model=model, tier=tier))
+        chains[role] = tuple(links)
+    return chains
+
+
+# ---------------------------------------------------------------------------
+# Hard-rule validation — policy, over an already-parsed chain map
+# ---------------------------------------------------------------------------
+
+
+def validate_failover_chains(
+    chains: dict[str, tuple[FailoverLink, ...]],
+    effective_tiers: Mapping[str, str] | None = None,
+    safety_relevant_classes: frozenset[str] = SAFETY_RELEVANT_CLASSES,
+) -> tuple[FailoverChainViolation, ...]:
+    """Return EVERY hard-rule violation in `chains`, role in table order, then position, then rule.
+
+    `effective_tiers` defaults to :data:`TASK_CLASS_TIERS`. A role's class is
+    `ROLE_TASK_CLASSES.get(role)`; a role of `TASK_CLASS_INHERITING_ROLES` has none of its own and
+    counts on the WORKER side of every pair of `REVIEWER_WORKER_CLASS_PAIRS` instead.
+    """
+    tiers = TASK_CLASS_TIERS if effective_tiers is None else effective_tiers
+    role_order = list(chains)
+    found: list[FailoverChainViolation] = []
+
+    for role in role_order:
+        role_class = ROLE_TASK_CLASSES.get(role)
+        for position, link in enumerate(chains[role], start=1):
+            if role_class is not None:
+                rule = check_orchestration_class_routed_to_top_tier(role_class, link.tier)
+                if rule is not None:
+                    found.append(FailoverChainViolation(role, position, link, rule))
+                rule = check_safety_relevant_class_not_below_mid_tier(
+                    role_class, link.tier, safety_relevant_classes
+                )
+                if rule is not None:
+                    found.append(FailoverChainViolation(role, position, link, rule))
+            if link.provider in LOCAL_PROVIDERS and role not in FAILOVER_LOCAL_ROLES:
+                found.append(
+                    FailoverChainViolation(role, position, link, RULE_CORE_ROLE_ON_LOCAL_PROVIDER)
+                )
+
+    for worker_class, reviewer_class in REVIEWER_WORKER_CLASS_PAIRS:
+        worker_roles = [
+            role for role in role_order
+            if ROLE_TASK_CLASSES.get(role) == worker_class or role in TASK_CLASS_INHERITING_ROLES
+        ]
+        reviewer_roles = [role for role in role_order if ROLE_TASK_CLASSES.get(role) == reviewer_class]
+
+        worker_strongest, _ = resolve_task_class_tier_with_overrides(worker_class, tiers)
+        for role in worker_roles:
+            for link in chains[role]:
+                if model_tier_rank(link.tier) > model_tier_rank(worker_strongest):
+                    worker_strongest = link.tier
+        reviewer_tier, _ = resolve_task_class_tier_with_overrides(reviewer_class, tiers)
+
+        for role in reviewer_roles:
+            for position, link in enumerate(chains[role], start=1):
+                rule = check_reviewer_not_weaker_than_worker(worker_strongest, link.tier)
+                if rule is not None:
+                    found.append(FailoverChainViolation(role, position, link, rule))
+        for role in worker_roles:
+            for position, link in enumerate(chains[role], start=1):
+                rule = check_reviewer_not_weaker_than_worker(link.tier, reviewer_tier)
+                if rule is not None:
+                    found.append(FailoverChainViolation(role, position, link, rule))
+
+    def sort_key(v: FailoverChainViolation) -> tuple[int, int, int]:
+        return (role_order.index(v.role), v.position, FAILOVER_RULE_NAMES.index(v.rule))
+
+    return tuple(sorted(found, key=sort_key))
+
+
+def build_failover_chains(
+    raw: Mapping[str, Any],
+    effective_tiers: Mapping[str, str] | None = None,
+) -> dict[str, tuple[FailoverLink, ...]]:
+    """Parse `raw` and validate it against the hard rules; raise :class:`FailoverChainRefused`
+    with EVERY violation at once, else return the parsed chains."""
+    chains = parse_failover_chains(raw)
+    violations = validate_failover_chains(chains, effective_tiers)
+    if violations:
+        raise FailoverChainRefused(violations)
+    return chains
+
+
+# ---------------------------------------------------------------------------
+# Reading the configured chains
+# ---------------------------------------------------------------------------
+
+
+def resolve_failover_chains() -> dict[str, tuple[FailoverLink, ...]]:
+    """Return the chains this project's configuration declares, or `{}` when it declares none.
+
+    Unset, or a value that is not a mapping, or an explicitly empty table all answer `{}` — the
+    same three-way guard `packages/orchestration/role_config.py` applies to its own table-valued
+    keys. A :class:`FailoverChainError` — a shape fault or a hard-rule refusal — gives exactly one
+    `UserWarning` naming the fault and answers `{}`: no role fails over on a chain Remedy could not
+    read or could not accept.
+    """
+    from packages.orchestration.config import get_config
+    from packages.orchestration.role_config import resolve_effective_task_class_tiers
+
+    value = get_config().get(FAILOVER_CHAINS_CONFIG_KEY)
+    if not isinstance(value, Mapping) or not value:
+        return {}
+    try:
+        return build_failover_chains(dict(value), resolve_effective_task_class_tiers())
+    except FailoverChainError as exc:
+        warnings.warn(f"{exc}; no role fails over", stacklevel=2)
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# The cooldown — the sticky window, DECISION F058 D4
+# ---------------------------------------------------------------------------
+
+#: WHY: spelled once here and shared by the registry entry
+#: (packages/orchestration/config_keys_model_routing.py) and the resolver below.
+FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
+
+#: WHY: how long the walk holds a role's primary down after a backup has served it, when the
+#: operator sets no cooldown of their own.
+FAILOVER_COOLDOWN_DEFAULT_S: int = 300
+
+
+def resolve_failover_cooldown_s() -> int:
+    """Return the configured cooldown in whole seconds, or :data:`FAILOVER_COOLDOWN_DEFAULT_S`.
+
+    Unset answers the default with no warning. A value that is an `int` (never a `bool`) of at
+    least 0 is returned as given. Anything else gives exactly one `UserWarning` naming the fault
+    and the default, and the default is returned: one mistake in `remedy.toml` never blocks a
+    provider call.
+    """
+    from packages.orchestration.config import get_config
+
+    value = get_config().get(FAILOVER_COOLDOWN_CONFIG_KEY)
+    if value is None:
+        return FAILOVER_COOLDOWN_DEFAULT_S
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    warnings.warn(
+        f"{FAILOVER_COOLDOWN_CONFIG_KEY}: expected a whole number of seconds of at least 0, "
+        f"got {value!r}; using {FAILOVER_COOLDOWN_DEFAULT_S}",
+        stacklevel=2,
+    )
+    return FAILOVER_COOLDOWN_DEFAULT_S
+
+
+# ---------------------------------------------------------------------------
+# The walk — T002, DECISION F058 D2
+# ---------------------------------------------------------------------------
+
+# WHY: the reason string a disclosure carries, so evidence and the run report agree on one spelling.
+FAILOVER_REASON_PROVIDER_UNAVAILABLE: str = "failover:provider_unavailable"
+
+
+# WHY: the one gap failover owns — not a timeout, a non-zero exit, a rate limit or a parse
+# failure, each already handled by a retry, the governor or the single parse retry.
+def is_failover_trigger(out: Any) -> bool:
+    """Return True when `out.error` is exactly the provider-unavailable gap this feature owns."""
+    error = getattr(out, "error", "") or ""
+    if not error:
+        return False
+    if getattr(out, "error_class", "") == "parse":
+        return False
+    if error.startswith("malformed_output:"):
+        return False
+    if is_timeout_error(error) or is_nonzero_exit_error(error) or is_rate_limit_error(error):
+        return False
+    return is_provider_unavailable_error(error) or is_provider_connection_error(error)
+
+
+# WHY: one line of the disclosure's audit trail — what a link was asked, and what it answered.
+@dataclass(frozen=True)
+class FailoverLinkAttempt:
+    """One link of a chain, tried once, and what it answered."""
+
+    position: int
+    provider: str
+    model: str
+    error: str
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the JSON-ready shape evidence and the run report both read."""
+        return {
+            "position": self.position,
+            "provider": self.provider,
+            "model": self.model,
+            "error": self.error,
+        }
+
+
+# WHY: what a failed-over call discloses — the model Remedy meant to use versus the one it did.
+@dataclass(frozen=True)
+class FailoverDisclosure:
+    """The intended provider and model, every attempt tried, and the link that served the call —
+    or none, when the chain ran out and the primary's own failure stands."""
+
+    role: str
+    intended_provider: str
+    intended_model: str
+    primary_error: str
+    attempts: tuple[FailoverLinkAttempt, ...]
+    used: FailoverLinkAttempt | None
+    reason: str = FAILOVER_REASON_PROVIDER_UNAVAILABLE
+    primary_skipped: bool = False
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the JSON-ready shape evidence and the run report both read."""
+        return {
+            "reason": self.reason,
+            "role": self.role,
+            "intended": {"provider": self.intended_provider, "model": self.intended_model},
+            "used": self.used.to_json() if self.used is not None else None,
+            "primary_error": self.primary_error,
+            "primary_skipped": self.primary_skipped,
+            "attempts": [attempt.to_json() for attempt in self.attempts],
+        }
+
+
+# WHY: the walk itself — wraps a role's provider and, on a trigger, tries each link in order
+# before letting the primary's own failure stand (DECISION F058 D2).
+class FailoverProvider:
+    """Wrap a role's primary provider; on a failover trigger, walk its chain in order."""
+
+    def __init__(
+        self,
+        primary: Any,
+        *,
+        role: str,
+        intended_provider: str,
+        intended_model: str,
+        links: tuple[FailoverLink, ...],
+        build_link: Callable[[FailoverLink], Any],
+        cooldown_s: float = 0.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._primary = primary
+        self._role = role
+        self._intended_provider = intended_provider
+        self._intended_model = intended_model
+        self._links = links
+        self._build_link = build_link
+        self._cooldown_s = cooldown_s
+        self._clock = clock
+        # WHY: no hold exists yet, and never will unless a call below sets it (DECISION F058 D4).
+        self._held_until: float = float("-inf")
+        # WHY: the session guard — True for the rest of this wrapper's life once a link has
+        # served a call, so a backup's session is never handed to the primary (DECISION F058 D4).
+        self._resume_disabled = False
+
+    @property
+    def primary(self) -> Any:
+        return self._primary
+
+    @property
+    def links(self) -> tuple[FailoverLink, ...]:
+        return self._links
+
+    @property
+    def build_link(self) -> Callable[[FailoverLink], Any]:
+        return self._build_link
+
+    @property
+    def name(self) -> str:
+        return self._primary.name
+
+    @property
+    def supports_resume(self) -> bool:
+        if self._resume_disabled:
+            return False
+        return bool(getattr(self._primary, "supports_resume", False))
+
+    @property
+    def held_until(self) -> float:
+        """The clock reading until which the primary is held down; `-inf` when never held."""
+        return self._held_until
+
+    def __getattr__(self, item: str) -> Any:
+        if item.startswith("_"):
+            raise AttributeError(item)
+        return getattr(self._primary, item)
+
+    def _call_link(
+        self,
+        link: FailoverLink,
+        position: int,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+    ) -> tuple[Any | None, FailoverLinkAttempt]:
+        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed."""
+        try:
+            provider = self._build_link(link)
+        except RuntimeError as exc:
+            return None, FailoverLinkAttempt(
+                position=position,
+                provider=link.provider,
+                model=link.model,
+                error=f"provider_error: {type(exc).__name__}: {exc}",
+            )
+        link_out = getattr(provider, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
+        )
+        attempt = FailoverLinkAttempt(
+            position=position,
+            provider=link.provider,
+            model=link.model,
+            error=getattr(link_out, "error", "") or "",
+        )
+        return link_out, attempt
+
+    def _walk_links(
+        self,
+        out: Any,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+    ) -> Any:
+        """Walk every link after a primary trigger; a serving link opens the cooldown."""
+        primary_error = getattr(out, "error", "") or ""
+        attempts: list[FailoverLinkAttempt] = []
+        for position, link in enumerate(self._links, start=1):
+            link_out, attempt = self._call_link(
+                link, position, method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            attempts.append(attempt)
+            if link_out is not None and not is_failover_trigger(link_out):
+                self._resume_disabled = True
+                self._held_until = self._clock() + self._cooldown_s
+                link_out.failover_disclosure = FailoverDisclosure(
+                    role=self._role,
+                    intended_provider=self._intended_provider,
+                    intended_model=self._intended_model,
+                    primary_error=primary_error,
+                    attempts=tuple(attempts),
+                    used=attempt,
+                )
+                return link_out
+        out.failover_disclosure = FailoverDisclosure(
+            role=self._role,
+            intended_provider=self._intended_provider,
+            intended_model=self._intended_model,
+            primary_error=primary_error,
+            attempts=tuple(attempts),
+            used=None,
+        )
+        return out
+
+    def _run_while_held(
+        self,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+        resume: str | None,
+    ) -> Any:
+        """While the primary is held down: every link first, the primary only when all trigger."""
+        attempts: list[FailoverLinkAttempt] = []
+        for position, link in enumerate(self._links, start=1):
+            link_out, attempt = self._call_link(
+                link, position, method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+            )
+            attempts.append(attempt)
+            if link_out is not None and not is_failover_trigger(link_out):
+                link_out.failover_disclosure = FailoverDisclosure(
+                    role=self._role,
+                    intended_provider=self._intended_provider,
+                    intended_model=self._intended_model,
+                    primary_error="",
+                    attempts=tuple(attempts),
+                    used=attempt,
+                    primary_skipped=True,
+                )
+                return link_out
+        out = getattr(self._primary, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+        if not is_failover_trigger(out):
+            self._held_until = float("-inf")
+            return out
+        out.failover_disclosure = FailoverDisclosure(
+            role=self._role,
+            intended_provider=self._intended_provider,
+            intended_model=self._intended_model,
+            primary_error=getattr(out, "error", "") or "",
+            attempts=tuple(attempts),
+            used=None,
+        )
+        return out
+
+    def _run_with_failover(
+        self,
+        method: str,
+        prompt: str,
+        *,
+        timeout_sec: int,
+        max_output_chars: int,
+        resume: str | None,
+    ) -> Any:
+        if self._clock() < self._held_until:
+            return self._run_while_held(
+                method, prompt,
+                timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume,
+            )
+        out = getattr(self._primary, method)(
+            prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+        if not is_failover_trigger(out):
+            return out
+        if resume:
+            # The run's own resume fallback calls again at full content with no session
+            # (DECISION F058 D4 (3)); walking the chain here would hand a backup a session
+            # it never opened.
+            return out
+        return self._walk_links(
+            out, method, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars
+        )
+
+    def build(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+        resume: str | None = None,
+    ) -> Any:
+        return self._run_with_failover(
+            "build", prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+
+    def review(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+        resume: str | None = None,
+    ) -> Any:
+        return self._run_with_failover(
+            "review", prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
+        )
+
+
+# WHY: the one line `remedy run show` prints for a run in which a call failed over, so silence
+# is never possible when a backup model served or a chain ran out (DECISION F058 D3).
+def failover_report_line(run_record: Mapping[str, Any]) -> str | None:
+    """Count a run record's served and ran-out failover calls and answer one report line.
+
+    `None` when no round's builder or reviewer entry carries a `failover` mapping. Otherwise
+    one plain sentence per nonzero count, served before ran-out, followed always by the last
+    sentence naming the record as the full detail.
+    """
+    served = 0
+    ran_out = 0
+    for round_data in run_record.get("rounds") or []:
+        for role in ("builder", "reviewer"):
+            entry = round_data.get(role)
+            if not isinstance(entry, Mapping):
+                continue
+            failover = entry.get("failover")
+            if not isinstance(failover, Mapping):
+                continue
+            if failover.get("used"):
+                served += 1
+            else:
+                ran_out += 1
+
+    if served == 0 and ran_out == 0:
+        return None
+
+    sentences: list[str] = []
+    if served == 1:
+        sentences.append(
+            "1 call was served by a backup model because its usual provider could not be reached."
+        )
+    elif served > 1:
+        sentences.append(
+            f"{served} calls were served by backup models because their usual provider could "
+            f"not be reached."
+        )
+    if ran_out == 1:
+        sentences.append("1 call found no backup model that could be reached.")
+    elif ran_out > 1:
+        sentences.append(f"{ran_out} calls found no backup model that could be reached.")
+    sentences.append("The run's record names every model tried.")
+    return "Failover: " + " ".join(sentences)

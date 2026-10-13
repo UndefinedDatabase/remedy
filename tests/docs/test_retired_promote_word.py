@@ -85,6 +85,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
         "promote_ready",
     })),
     "packages/orchestration/config.py": (K1, frozenset({
+        "promotion",
+    })),
+    "packages/orchestration/config_keys_model_routing.py": (K1, frozenset({
         "promotion", "promotion-evidence", "promotion_evidence", "remedy_model_routing_promotion_evidence",
         "resolve_promotion_evidence",
     })),
@@ -176,6 +179,9 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     })),
     "tests/orchestration/test_mission_dossier.py": (K5_MILESTONE, frozenset({
         "test_a_compression_cannot_promote_a_milestone_to_done",
+    })),
+    "tests/orchestration/test_model_failover.py": (K1, frozenset({
+        "promotion_evidence",
     })),
     "tests/orchestration/test_model_routing.py": (K1, frozenset({
         "_parse_promotion_bars", "_promoted_table", "_promotion_evidence", "_promotion_rule_bullets",

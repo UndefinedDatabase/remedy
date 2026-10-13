@@ -1,0 +1,26 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 400.7s (the launcher's reading); pytest's own reported wall time: 399.98s (0:06:39)
+summary line: 22826 passed, 22 skipped, 1 warning in 399.98s (0:06:39)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 895152727 (F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script)
+reflog before: 895152727 HEAD@{2026-10-13 01:00:50 +0200}: commit: F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script
+reflog after: 895152727 HEAD@{2026-10-13 01:00:50 +0200}: commit: F058 R9 C1: book round 8 with the resolutions of R-1264 and R-1265, the plan, save the block and the evidence script
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F058 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1216.97 CPU seconds, 399.99 wall seconds, 22848 tests collected, exit status 0, recorded 2026-10-12T23:08:07Z
+This closure's suite used 1216.97 CPU seconds, 1.2 percent less than F206's 1231.76, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F206's closure run:
+  +5.59 s  tests/test_grouped_cli.py (23.62 -> 29.21)
+  +4.87 s  tests/runtimes/test_runtime_cli_process_boundary.py (7.80 -> 12.67)
+  +2.54 s  tests/ui_server/test_plan_view_live.py (8.14 -> 10.68)
+  +2.44 s  tests/cli/test_json_contract.py (16.85 -> 19.29)
+  +2.40 s  tests/orchestration/test_serve_daemon.py (14.01 -> 16.41)
+  +1.75 s  tests/cli/test_mission_cmd.py (36.52 -> 38.27)
+  +1.12 s  tests/orchestration/test_job_apply_history.py (7.59 -> 8.71)
+  +1.00 s  tests/ui_server/test_task_veto_e2e_live.py (2.27 -> 3.27)
+  +0.85 s  tests/ui_server/test_task_injection_e2e_live.py (2.52 -> 3.37)
+  +0.84 s  tests/orchestration/test_persisted_run_call_schema.py (1.77 -> 2.61)

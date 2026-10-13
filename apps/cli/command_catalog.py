@@ -1588,7 +1588,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
-            ArgDef("--host", "Bind host; default exposes loopback and LAN URLs", required=False, is_option=True, default="*"),
+            ArgDef("--host", "Bind host; default serves 127.0.0.1 and the LAN URLs", required=False, is_option=True, default="*"),
             ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
             _JSON_OPT,

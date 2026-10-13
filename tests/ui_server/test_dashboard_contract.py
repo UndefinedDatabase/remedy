@@ -364,7 +364,8 @@ class TestJobSummaryCommandContract:
     def test_ui_server_keeps_loopback_url(self):
         src = (ORCH / "ui_server.py").read_text()
         assert "127.0.0.1" in src
-        assert "_UI_LOOPBACK_HOSTS" in src
+        # R-1264: the loopback hosts moved with the launch helpers.
+        assert "_UI_LOOPBACK_HOSTS" in (ORCH / "ui_server_launch.py").read_text()
 
     def test_typescript_compiles(self):
         """Verify tsc --noEmit passes (checked in CI)."""

@@ -50,6 +50,7 @@ apps.cli.commands.real_test_execution_cmd
 apps.cli.commands.repo_catalog_cmd
 apps.cli.commands.roadmap_cmd
 apps.cli.commands.run_invocation
+apps.cli.commands.run_report_cmd
 apps.cli.commands.runtime_cmd
 apps.cli.commands.self_cmd
 apps.cli.commands.serve_cmd
@@ -131,6 +132,8 @@ packages.orchestration.config
 packages.orchestration.config_key_spec
 packages.orchestration.config_keys_claude
 packages.orchestration.config_keys_mission
+packages.orchestration.config_keys_model_routing
+packages.orchestration.config_keys_ui
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector
@@ -216,6 +219,7 @@ packages.orchestration.mission_record
 packages.orchestration.mission_state
 packages.orchestration.mission_upkeep
 packages.orchestration.model_aliases
+packages.orchestration.model_failover
 packages.orchestration.model_routing
 packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop
@@ -228,6 +232,7 @@ packages.orchestration.patch_intent
 packages.orchestration.path_utils
 packages.orchestration.pause_control
 packages.orchestration.permissions
+packages.orchestration.pingpong_call_record
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop
@@ -274,6 +279,7 @@ packages.orchestration.review_subject
 packages.orchestration.reviewer
 packages.orchestration.roadmap_index
 packages.orchestration.role_config
+packages.orchestration.role_provider_factory
 packages.orchestration.run_contract
 packages.orchestration.run_log
 packages.orchestration.run_manifest
@@ -339,6 +345,7 @@ packages.orchestration.trust_report
 packages.orchestration.ui_app_shell
 packages.orchestration.ui_copy
 packages.orchestration.ui_server
+packages.orchestration.ui_server_launch
 packages.orchestration.ui_view_model
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles

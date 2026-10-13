@@ -26,14 +26,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-140 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+141 of 306 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 44 | 45 |
-| 3 | Full Token Economy & Autonomy | 9 | 29 |
+| 3 | Full Token Economy & Autonomy | 10 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -402,6 +402,15 @@ settings `claude_cli.customizations` and `claude_cli.all_tools` turn each part b
 `remedy stats calls` shows the tokens of each kind one call reads and writes, by role and provider,
 and what one change that reached its repository cost; the page
 `docs/system/claude-cli-worker-launch-v1.md` describes it).
+
+F058 model failover chain (each role may name backup models in its settings, each with its
+provider and the strength it is meant to have; when the usual model service cannot be reached even
+after the usual retries, the call is answered by the first backup that responds, and the run's
+record and `remedy run show` say which model was meant and which one answered; every backup must be
+as strong as the role requires, and a model on this machine may stand in only for the roles that
+are allowed a cheap model; a timeout, a rate limit or an unreadable answer never switches models;
+after a backup has answered, that role's next calls go to the backups for a few minutes before the
+usual model is tried again; the page `docs/system/model-failover-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —

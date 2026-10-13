@@ -139,10 +139,16 @@ with the code that calls it.
   decoders last.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays.
-- `packages/orchestration/pingpong_loop.py`: the context pack and the prompt builders, the staging,
-  diff and target guard, and the export and token accounting, each to a module of its own.
+- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
+  pack and the prompt builders, the staging, diff and target guard, and the export and token
+  accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
+  provider, `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first
+  part of the export: a call's own fields and the reader of a parked run's sessions,
+  `packages/orchestration/pingpong_call_record.py`.
 - `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
-  its summaries, each to a module of its own; the dashboard builders stay.
+  its summaries, each to a module of its own; the dashboard builders stay. Outside those steps,
+  F058 moved the server's launch helpers to `packages/orchestration/ui_server_launch.py`
+  (finding R-1264).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to
@@ -174,6 +180,8 @@ with the code that calls it.
   keep their order; the loader, the resolver and the writer stay. Step (1), done by F301:
   `ConfigKeySpec` and the mission orchestrator's keys, `packages/orchestration/config_keys_mission.py`.
   Step (2), done by F302: the Claude CLI planner's keys, `packages/orchestration/config_keys_claude.py`.
+  Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
+  Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -190,10 +198,11 @@ with the code that calls it.
   `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
   Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
   left the table.
-- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `job`
-  handlers, then the `run` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
+- `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `run`
+  handlers, then the `job` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
   stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
-  `apps/cli/commands/do_order_input.py`.
+  `apps/cli/commands/do_order_input.py`. Step (2), done by F058: the `run` handlers,
+  `apps/cli/commands/run_report_cmd.py`.
 - `packages/orchestration/public_api.py`: the write routes' argument builders and refusals,
   then the route table, then the page's rendering, each to a module of its own; the answer
   functions stay. Step (1), done by F205: the write routes' argument builders and refusals,
@@ -370,8 +379,8 @@ with the code that calls it.
 |---|---|
 | 6558 | `packages/orchestration/run_manifest.py` |
 | 5626 | `packages/orchestration/pingpong_job.py` |
-| 5283 | `packages/orchestration/pingpong_loop.py` |
-| 4829 | `packages/orchestration/ui_server.py` |
+| 5234 | `packages/orchestration/pingpong_loop.py` |
+| 4810 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2491 | `apps/cli/command_catalog.py` |
@@ -382,8 +391,8 @@ with the code that calls it.
 | 2052 | `packages/runtimes/dev_server.py` |
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
-| 1838 | `packages/orchestration/config.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
+| 1769 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
@@ -392,7 +401,7 @@ with the code that calls it.
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1173 | `apps/cli/commands/do_cmd.py` |
+| 1026 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
