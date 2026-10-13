@@ -1,22 +1,22 @@
-# Context — F199 Self-health & crash reports
+# Context — F203 Structured logging & correlation
 
 ## Active Branch
-feature/f199-self-health, from `main` at `8ee65f61a` (the merge commit of pull request 332, F058).
+feature/f203-structured-logging, from `main` at `e37f15be4` (the merge commit of pull request 333,
+F199).
 
 ## Scope
-F199 (Tier 12): Remedy's own health checks and local crash reports, as
-`docs/roadmap/features/T12_F199.md` and its amendment by DECISION F199 D1 state: the checks of
-`packages/orchestration/self_health.py`, the command `remedy doctor health`, the crash report
-under the data root, and the supervisor's health on its public API.
+F203 (Tier 12): one structured operations log with job, task and run correlation, as
+`docs/roadmap/features/T12_F203.md` and its amendment by DECISION F203 D1 state: the setup in
+`packages/orchestration/structured_log.py`, the file under `<data root>/logs/`, the wiring and the
+id bindings, the `print` lint over `packages/`, and the read by job or run id.
 
 ## Do not touch
-`doctor core` and `doctor_core_report`, which the structure ledger lists. No check repairs, moves
-or deletes anything; no check calls a provider. A crash report is never sent anywhere. The worker
-isolation (F152), the secret corpus (F171), the schema registry (F245) and `remedy feedback`
-(F220) are other features'.
+The job's timeline under `<data root>/job_logs/` and every evidence file: logs are operations
+data, never evidence. The error stream keeps showing warnings exactly as it does today. OpenTelemetry
+export (F197) and metrics (F198) are other features'.
 
 ## Active assumptions
-- A detail never prints the home folder's path.
+- Every log line passes through the evidence redaction before it is written.
 - Every production change lands with a test that is red without it, proved by the reviewer's
   mutation; a structural step is proved by the unchanged tests.
 

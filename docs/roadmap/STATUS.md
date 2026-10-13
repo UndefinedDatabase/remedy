@@ -258,7 +258,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 12 — Luna gate B: operations of a service (operator ruling amend1006-luna-control-plane)
 
 - [x] F199 — Self-health & crash reports (T001–T003 complete; R-1266 to R-1271 resolved; R-1235, R-1246, R-1251 and R-1252 open — owned by F306; accepted 2026-10-13 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f199r8e1001 · package remedy-review-20261013-150526-READY_FOR_REVIEW.zip · SHA-256 d068dfe9167cfbfe646115d3127b6dcbeb5273687fb62bc166d47706ffedbc82 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7c76f21da85ff6e5e73beb549ace319d08025c34)
-- [ ] F203 — Structured logging & correlation
+- [~] F203 — Structured logging & correlation
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

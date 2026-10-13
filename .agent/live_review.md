@@ -1,30 +1,29 @@
-# Live Review — F199 Self-health & crash reports
+# Live Review — F203 Structured logging & correlation
 
-> Round-by-round review record, re-headed at the F199 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F058, whose STATUS
-> line went `[x]` on its own branch at `233455328`; the operator then recorded the answer to
-> question Q17 on that branch at `b359efbe7`, a commit that touches `.agent/decisions.md` and
-> `.agent/operator_questions.md` alone, and this session's Open PR Gate merged pull request 332
-> into `main` as `8ee65f61a`. F058's round 10 was reviewed after its own handback, so operator
-> amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of the next
-> round that is happening anyway; its gate entry is appended at the end of this record by this
-> claim. Only the heading, this paragraph and the Steps section below are rewritten; everything
-> else from the Findings heading to the end of the file as it stood at `8ee65f61a` is carried
-> forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> The open set at `8ee65f61a`, computed with `open_finding_ids` from
+> Round-by-round review record, re-headed at the F203 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F199, whose STATUS
+> line went `[x]` on its own branch at `3767c6735`; this session's Open PR Gate merged pull
+> request 333 into `main` as `e37f15be4`. F199's round 9 was reviewed after its own handback, so
+> operator amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of
+> the next round that is happening anyway; its gate entry is appended at the end of this record by
+> this claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything else from the Findings heading to the end of the file as it stood at `e37f15be4` is
+> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+> re-head. The open set at `e37f15be4`, computed with `open_finding_ids` from
 > `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all
 > four.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F199 D1's, which also writes the feature file's amendment. The first
-round claims F199, re-heads this record, books F058's round 10, and lands the first half of T001:
-`packages/orchestration/self_health.py`, the health checks of the configuration, the token ledgers,
-the staging copies and the free disk, each a PASS, WARN or FAIL with a hint. The second round
-takes step (4) of the command catalog's boundary, which moves the `doctor` group to a module of
-its own, adds the snapshot manifest, worktree and provider checks, and the command `remedy doctor
-health`. Then T002, the local crash report, and T003, the supervisor's own health on its public
-API. Then the closure.
+THE ORDER BELOW IS DECISION F203 D1's, which also writes the feature file's amendment. The first
+round claims F203, re-heads this record, books F199's round 9, and lands the first part of T001:
+`packages/orchestration/structured_log.py`, one logging setup on the standard library with a JSON
+line per record, the job, task and run ids bound through context variables, an owner-only log
+file under `<data root>/logs/` that rotates by size, and the configuration keys it reads. The
+second round wires the setup into the command line and the serve supervisor and binds the ids on
+the job's run path. The third round turns on the lint that refuses `print` under `packages/` and
+rules each of its current sites. Then T002, the read by job or run id on the command line, on the
+public API and in the cockpit, with the correlation test. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -183,3 +182,5 @@ Gate: F199 R7 — the F199 round 7 entry, the closure's integration-gate round, 
 Recurrence: R-1252 — the same defect at F199's closure; NO NEW ID IS MINTED (checklist item 30). Self-use item `SU-060` (generator tier 4, the `# noqa: BLE001` at `apps/cli/commands/job.py:2204`) ran as job `fe295249543a4a58`; its one task T001 was split during the run into T001a and T001b, T001a passed review and T001b waits, and `.agent/selfuse_f199/run_defects.txt`, committed at `16373f14d`, reads `run_manifest_write_failed: ManifestError: the job's task list ['T001', 'T001a', 'T001b'] no longer matches the episode-start snapshot's job-input definition ['T001']`, the F7 check R-1252 names. A fifth closure in a row loses its self-use run's manifest the same way. Owner unchanged: F306.
 
 Gate: F199 R8 — the F199 round 8 entry, the closure's evidence round, over `5d8d385af`..`f4b3807fd` (2 commits, each single-parent; insertions by `git show --shortstat`: `7c76f21da` 404, `f4b3807fd` 106). VERDICT PASS. The reviewer's `verify.py` read C1's parent equal to the base, C1's five paths equal to the prepared files, C1 naming exactly them and both appends equal to the base plus the prepared slice, `ALL True`. The reviewer's read-only precheck at `5d8d385af` had read the evidence script's 91 test files sorted and present, the two ancestry counts equal and `4341/4371 tests collected (30 deselected)` with no unsafe id. The worker's readings: the staging reclaim listed nothing to reclaim and refused one path, `review_staging.n4o46eq_`, as not keyed to a job, so `--apply` was skipped; the evidence job `f199r8e1001` on the accepted head `7c76f21da85ff6e5e73beb549ace319d08025c34` read both ancestry counts at 43, 4341 node ids with 30 deselected, no unsafe id, pytest exit 0 at 4337 passed and 4 skipped, `validate_verification_tests problems []`, `is_valid_current_run True` and `validation_errors []`; the package build read `READY_FOR_REVIEW`. The reviewer read the package `remedy-review-20261013-150526-READY_FOR_REVIEW.zip` itself in `/home/decodeux/Repos/remedy-history/zips`: SHA-256 `d068dfe9167cfbfe646115d3127b6dcbeb5273687fb62bc166d47706ffedbc82`, a valid zip whose `testzip()` is None, and a manifest whose `committed_review_subject` names base `8ee65f61a5b1686cc4595a876e2a2fc95d46c631`, head `7c76f21da85ff6e5e73beb549ace319d08025c34` and 43 commits. The worker declared no deviation.
+
+Gate: F199 R9 — the F199 round 9 entry, the closing round, over `f4b3807fd`..`3767c6735` (3 commits, each single-parent; insertions by `git show --shortstat`: `282a9b01a` 227, `05578a98d` 44, `3767c6735` 163). VERDICT PASS, reviewed by F203's first session before its Open PR Gate. The reviewer read the diff of `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json` and `.agent/plan.md` over the range: F199's line flipped to `[x]` with its closure annotation, the accepted count 141 to 142 and the Tier 12 row 5 to 6 with F199's paragraph, and `SU-060`'s `consumed_by` set to `F199`, each as the handback states. In the primary checkout at `3767c6735` the reviewer ran `python3 -m pytest -q tests/docs -p no:cacheprovider`, `332 passed`, and `python3 -m apps.cli.main integrity check --json`, six checks `pass` with `fail_count` 0. The open set at `e37f15be4` read `['R-1235', 'R-1246', 'R-1251', 'R-1252']`. Pull request 333 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal case, read `MERGEABLE` and `CLEAN`, and was merged by this session's Open PR Gate as `e37f15be4`. The worker declared no deviation.

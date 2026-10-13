@@ -1,21 +1,24 @@
-# Plan — F199 Self-health & crash reports
+# Plan — F203 Structured logging & correlation
 
 ## Goal
-Remedy checks its own health — the configuration, the token ledgers, the snapshot manifests, the
-worktrees, the providers' prerequisites, the staging copies, the free disk and recent crash
-reports — with `remedy doctor health`, a PASS, WARN or FAIL table with hints and an exit code a CI
-step can gate on; a crash leaves a local, redacted report under the data root; and the serve
-supervisor answers its own health on its public API (docs/roadmap/features/T12_F199.md; DECISIONs
-F199 D1 to D3).
+Remedy writes what it does to one operations log: a JSON line per record carrying the job, task
+and run ids, owner-only under `<data root>/logs/`, rotated by size; a person can read one job's or
+run's lines in order on the command line, on the public API and in the cockpit; and no `print`
+remains in `packages/` (docs/roadmap/features/T12_F203.md; DECISION F203 D1).
 
 ## Current Step
-Round 9 on `feature/f199-self-health`, session 2, the closing round: book round 8's PASS, the
-Built State, the ledger rotation, the STATUS flip with the README sync and the self-use entry
-`SU-060`'s `consumed_by`, the handback, the push and the pull request, left unmerged.
+Round 1 on `feature/f203-structured-logging`, session 1: claim F203, book F199's round 9, and land
+the first part of T001, `packages/orchestration/structured_log.py` with its configuration keys,
+the data-root class `logs` and its tests.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F199's pull request; the next
-   feature's first commit books round 9's verdict; Rule A5 names the next feature.
+1. Round 2: the setup wired into the command line and the serve supervisor, the ids bound on the
+   job's run path and the provider call, and the page `docs/system/structured-logging-v1.md`.
+2. Round 3: ruff's `T20` over `packages/` and a ruling for each of the 19 `print` sites.
+3. T002: the read by job or run id on the command line, the public API and the cockpit, and the
+   correlation test.
+4. The closure.
 
 ## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306; F199 owns no open finding.
+- R-1235, R-1246, R-1251 and R-1252 are owned by F306.
+- Logging state is process-global; every test that configures it resets it.
