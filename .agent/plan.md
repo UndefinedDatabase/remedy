@@ -7,15 +7,16 @@ touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md
 D1 and D2).
 
 ## Current Step
-Round 5 on `feature/f306-findings-paydown-v8`, session 1: book round 4, then T007, R-1235's second
-step: `ExecutionConfig` and its two serializers move from `pingpong_job.py` to
-`packages/orchestration/execution_config.py`, re-exported by name, and the client interface test's
-source pointer follows them.
+Session 2, round 6 on `feature/f306-findings-paydown-v8`: book round 5 from `.agent/handoff.md`,
+then the step the structure ledger names second for `run_job`: its configuration resolution
+becomes a function of its own (before T008 may edit `run_job`).
 
 ## Next Steps
-1. T008 — R-1235's third step: the claude-cli configuration joins the recorded execution
-   configuration, read as optional by the validation, and the client interface's version rises.
+1. T008 — the values of `claude_cli.customizations` and `claude_cli.all_tools` join the recorded
+   execution configuration, read as optional by the job-input validation; the client interface's
+   version rises and its generated pages are regenerated.
 2. The closure, carrying R-1246 and R-1252 by name to the next paydown.
 
 ## Risks
-- A name a test replaces on `pingpong_job` must stay there with every function that calls it.
+- The configuration resolution inside `run_job` sets locals the rest of the function reads; the
+  extraction must return every one of them unchanged.

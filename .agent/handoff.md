@@ -1,139 +1,121 @@
-# Handback — F306 round 5: book round 4, then T007 (ExecutionConfig and its two serializers out of `pingpong_job.py`)
+# Handback — F306 session 1 end: round 5 reviewed PASS, the session hands over before T008
 
 ## Session
 
 SESSION 1 of feature F306 · round 5 · rounds so far 5
 
-Context self-assessment: this round was a clean mechanical move — all three named candidates
-(`ExecutionConfig`, `_export_execution_config`, `_import_execution_config`) had no external
-dependency on `pingpong_job` and no test replacing any of them there, so the move went through on
-the first attempt with no stop condition triggered and no amendment needed.
+Context self-assessment: the reviewer's context carried five rounds of large structural diffs and
+two authoring slips of its own (rounds 1 and 2), and the next round is a cut inside the
+1559-line `run_job`, so the session ends here at five delegated rounds, above the floor of four,
+for that round to be authored from a fresh context.
 
 Fortschritt: ~65 % (T001 to T004, T006 and T007 landed · T005 carried · T008 open) — Schätzung
 
-## Range
+## Branch and range
 
-Review of `5491194ae`..`d0d1d655e`
+Branch `feature/f306-findings-paydown-v8`, from `main` at `f51232ee2`. No pull request is open
+for it. Round 5 under review: `5491194ae`..`ae0c68e14`. This commit only rewrites this file and
+`.agent/plan.md`, so that the reviewer's verdict on round 5 is persisted (amend0827-process-diet
+rule 1); it is not a round.
 
-## Commits
+## Commits of round 5
 
 ### 54afe3ee4 F306 R5 C1: book round 4 and the plan, save the block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f306-r5.md` | +114/-0 | NEW FILE, byte copy of `block.md` (114 lines, sha256 `6275d58eee96767adc2ed30d808a7c12198cb32e3edea4682df05dc968ff2155`) |
-| `.agent/live_review.md` | +2/-0 | round 4's PASS verdict appended, byte-identical to `append-live_review.txt` |
-| `.agent/plan.md` | +7/-8 | replaced by `dry-plan.md` |
+| `.agent/authored/f306-r5.md` | +114/-0 | the round's block, byte copy |
+| `.agent/live_review.md` | +2/-0 | round 4's gate entry |
+| `.agent/plan.md` | +7/-8 | the plan for round 5 |
 
 ### d0d1d655e F306 R5 C2: ExecutionConfig and its two serializers move to a module of their own (R-1235, T007)
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/execution_config.py` | +143/-0 | NEW FILE: `ExecutionConfig`, `_export_execution_config`, `_import_execution_config`, every body byte-for-byte, plus a one-paragraph module docstring and the two imports (`dataclass`, `Any`) they need |
-| `packages/orchestration/pingpong_job.py` | +5/-133 | the moved class and two functions removed; one import block brings the three names back by name (all three still have a live caller inside this module, so no `name as name` alias is needed) |
-| `tests/cli/test_client_interface.py` | +2/-1 | the one assertion in `test_the_job_run_answer_trees_name_exactly_what_their_code_builds` that reads `_export_execution_config`'s returned keys now reads `packages/orchestration/execution_config.py` instead of `pingpong_job.py`; nothing else in the file changed |
-| `docs/system/structure-ledger-v1.md` | +3/-2 | `pingpong_job.py` row 5626→5498; the ledger bullet gains its Step (1) sentence, naming the new module |
-| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FILE_LINES` 74018→73890 (same 128-line fall) |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | `packages.orchestration.execution_config` added in its sorted place (the guard asked for it: the new module is reachable through `pingpong_job.py`) |
+| `packages/orchestration/execution_config.py` | +143/-0 | NEW: `ExecutionConfig`, `_export_execution_config`, `_import_execution_config`, bodies unchanged |
+| `packages/orchestration/pingpong_job.py` | +5/-133 | the three names imported back by name |
+| `tests/cli/test_client_interface.py` | +2/-1 | the one source pointer R-1235 names now reads the new module |
+| `docs/system/structure-ledger-v1.md` | +3/-2 | `pingpong_job.py` row 5626 to 5498, its bullet's Step (1) |
+| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FILE_LINES` 74018 to 73890 |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | the new module |
 
-### (this commit) F306 R5 C3: handback
+### ae0c68e14 F306 R5 C3: handback
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | full rewrite per `docs/agents/handback_template.md` |
+| `.agent/handoff.md` | +63/-92 | the worker's handback of round 5 |
 
-## External actions
+### (this commit) F306 S1: session-end handoff carrying round 5's verdict
 
-- Push after C3: `git -C /home/decodeux/Repos/remedy push origin feature/f306-findings-paydown-v8` — result in the session's final reply (with retry-on-500 up to three times per the block).
-- No PR opened — the block does not ask for one.
-- No worktree added or removed. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` read `[]` — no open PR, no Open PR Gate action needed. No `gh pr merge` or `gh pr edit`.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | this commit | this file |
+| `.agent/plan.md` | this commit | Current Step names T008's two rounds |
 
-## Verification
+## Reviewer verdict on round 5 — persisted here, booked in the next round's first commit
 
-Preconditions confirmed before C1: `git branch --show-current` read `feature/f306-findings-paydown-v8`; `git rev-parse HEAD` read `5491194aee1ab3fe3872343ffb39a385d98b08a4`; `git status --porcelain` was clean.
+VERDICT PASS. The next round's first commit appends this paragraph to `.agent/live_review.md`
+byte for byte, preceded by one empty line (the text between the two marker lines below, without
+the markers):
 
-Every prepared-file digest matched before use: `block.md` (`6275d58eee96767adc2ed30d808a7c12198cb32e3edea4682df05dc968ff2155`, 114 lines), `append-live_review.txt` (`080e0488334ed915f982b763a0cca882670e7ca90457899b2d4bb905ee02ac0f`), `dry-plan.md` (`ce20d07c39ca382a332fdc959844edc63fdad41615bf95a6fd8bd939c16b574a`), `verify.py` (`355678d7e6625e717df8c9cf6b3669905034c38ffd4545b15f2b90e78bb24767`), `run_selection.py` (`cddebcc9b29665c95a90fb1b93184e421e0348d110823ea328a6ff2b003d712e`), `selection.txt` (`4c3264118df6aad565fe58cefdca8b32195be604324cba976ece142ada363ece`), `check_reexport.py` (`128071ec6b8f8a8520e39fcaefe3fa09697ced195cba3fe1c39df0bbd9ad8cc9`).
+----- BEGIN GATE ENTRY -----
+Gate: F306 R5 — the F306 round 5 entry, T007, over `5491194ae`..`ae0c68e14` (3 commits, each single-parent: C1 `54afe3ee4`, C2 `d0d1d655e` at 155 insertions by `git show --stat`, C3 `ae0c68e14`). VERDICT PASS. The reviewer's `verify.py` read C1's parent equal to the base, C1's three paths equal to the base plus the prepared slice and the prepared files, and C1 naming exactly them, `ALL True`. C2 moves `ExecutionConfig`, `_export_execution_config` and `_import_execution_config` from `packages/orchestration/pingpong_job.py` into `packages/orchestration/execution_config.py`, bodies unchanged and imported back by name, and points the one assertion of `test_the_job_run_answer_trees_name_exactly_what_their_code_builds` in `tests/cli/test_client_interface.py` that reads the serializer's returned keys at the new file, the pointer R-1235 names; nothing else in that file changed. The reviewer's `check_reexport.py` read the three names re-exported as the same objects and no import of `pingpong_job` from the new module, `ALL True`; `pingpong_job.py`'s row falls from 5626 to 5498 lines and `MAX_FILE_LINES` from 74018 to 73890, by the same 128. A structural step is proved by the unchanged tests, so no mutation was run. With no dry run of its own, the reviewer re-ran the round's selection in the primary checkout at `ae0c68e14`: 88 paths, `4349 passed, 3 skipped` with exit 0, the three skips the agent-tooling quarantine, the opt-in install smoke and the UI source, equal to the worker's one run. The integrity check read `fail_count` 0 and the tree was clean and level with `origin`. The worker declared no deviation.
+----- END GATE ENTRY -----
 
-C1: before commit, `git diff --cached --numstat` read exactly `114 0 .agent/authored/f306-r5.md`, `2 0 .agent/live_review.md`, `7 8 .agent/plan.md` — matching the block's specification exactly. `cmp` of the authored copy against `block.md` printed nothing.
+## Verification (round 5, the reviewer's own readings)
 
-C2: before commit, `git diff --cached --stat` read `6 files changed, 155 insertions(+), 137 deletions(-)`, under the 500-insertion cap. Self-review ran over `git diff --cached` before the commit: the `pingpong_job.py` diff showed only the planned class/function removal plus the one import block added; the new module's diff showed only the moved bodies, a docstring and the two stdlib imports (`dataclass`, `Any`) they need; no unrelated line moved. Searched `tests/` in every spelling (`ExecutionConfig`, `_export_execution_config`, `_import_execution_config`) beforehand: every reference imports from or reads `pingpong_job`, none replaces any of the three there. `python3 -m ruff check` on the four named files passed on the first try, no `--fix` round needed. `tests/test_structure_ratchet.py` and `tests/orchestration/test_import_reachability.py` run directly beforehand: the reachability test red once (the new module unlisted), green after the allowlist line was added; 8 passed after. `tests/cli/test_client_interface.py` run directly beforehand: 77 passed. No leftover process after any run.
-
-**Gate run (against C2, the only one — no amendment needed):**
-- Gate 1: `git status --porcelain` empty; `verify.py` →
-  ```
-  found True F306 R5 C1: 54afe3ee4877755c4d9a7850e943feffb1eef668
-  C1 parent is the base True
-  equal at F306 R5 C1: True .agent/live_review.md
-  equal at F306 R5 C1: True .agent/plan.md
-  equal at F306 R5 C1: True .agent/authored/f306-r5.md
-  F306 R5 C1: names exactly its paths True []
-  ALL True
-  ```
-- Gate 2: `python3 -m ruff check packages/orchestration/pingpong_job.py packages/orchestration/execution_config.py tests/cli/test_client_interface.py tests/test_structure_ratchet.py` → `All checks passed!`.
-- Gate 3: `run_selection.py` → exit 0:
-  ```
-  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
-  SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
-  SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-  88 paths
-  4349 passed, 3 skipped in 70.95s (0:01:10)
-  exit 0
-  ```
-  No FAILED/ERROR line, no "process(es) behind" line.
-- Gate 4: `python3 -m apps.cli.main integrity check --json` → exit 0:
-  ```
-  {"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
-  ```
-- Gate 5: `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"` → `['R-1235', 'R-1246', 'R-1252']`.
-- Gate 6: `check_reexport.py` →
-  ```
-  defined in execution_config: 3 ['ExecutionConfig', '_export_execution_config', '_import_execution_config']
-  re-exported as the same object: True []
-  execution_config imports pingpong_job: False
-  holds the three names: True
-  ALL True
-  ```
-
-## Authored-text proofs
-
-- `.agent/authored/f306-r5.md` against `block.md`: byte-equal, 114 lines, sha256 `6275d58eee96767adc2ed30d808a7c12198cb32e3edea4682df05dc968ff2155` (`cmp` printed nothing; Gate 1's "equal at F306 R5 C1 True .agent/authored/f306-r5.md").
-- `.agent/live_review.md` against the base plus `append-live_review.txt`: byte-equal (Gate 1).
-- `.agent/plan.md` against `dry-plan.md`: byte-equal (Gate 1).
-
-No other reviewer-authored text applied this round: C2 is this session's own code (a structural move the block ordered), proved by the gates above and by the unchanged test suite rather than by digest comparison to a prepared file.
+- `verify.py` of `.remedy-wt/f306-r5/prep/`: `ALL True`.
+- `check_reexport.py`: three names defined, re-exported as the same objects, no import of
+  `pingpong_job`, `ALL True`.
+- Selection (`.remedy-wt/f306-r5/prep/run_selection.py`, output in
+  `.remedy-wt/f306-r5/reviewer-selection-output.txt`): 88 paths, `4349 passed, 3 skipped in
+  70.11s`, exit 0.
+- `git status --porcelain --branch`: clean, level with `origin`.
 
 ## Deviations & assumptions
 
-None. All three named candidates moved cleanly: none is called from elsewhere in `pingpong_job.py`
-only by name without being itself a mover (in fact all three keep a live caller inside
-`pingpong_job.py`, so the back-import uses the same plain grouped form the last two rounds used for
-their own still-called names, not the `name as name` re-export-only alias), the new module imports
-nothing from `pingpong_job`, and no test replaces any of the three on `pingpong_job` directly — every
-test reference reads `ExecutionConfig`/`_export_execution_config`/`_import_execution_config` from
-`pingpong_job` by plain import, which the re-export keeps working. No extra commit beyond C1, C2,
-C3; no dropped one; no reordering. Every commit carries `Co-Authored-By: Claude Sonnet 5
-<noreply@anthropic.com>` — the model this session actually runs on.
+None in round 5. The session's two authoring slips are in `.agent/prose_slips.md` (round 1) and
+in round 2's gate entry and prose slip.
+
+## What T008 needs — the next session's plan
+
+R-1235's third step, as DECISION F306 D2 narrows it, is two rounds:
+1. The structural step `docs/system/structure-ledger-v1.md` names second for `run_job` in
+   `packages/orchestration/pingpong_job.py`: "the configuration resolution becomes a function of
+   its own" — the block that ends in `job.execution_config = ExecutionConfig(...)`. Structure
+   rule 2 owes it before any edit of `run_job`, and it is the ledger's top row, so it is also the
+   paydown's structural step under rule 1.
+2. The keys: `ExecutionConfig` gains the values of `claude_cli.customizations` and
+   `claude_cli.all_tools` (`packages/orchestration/claude_cli_command.py`,
+   `claude_cli_launch_switches`) with their sources, resolved in the new function each time a job
+   runs; both serializers and `EXECUTION_CONFIG_KEY_TREE` follow; the job-input field sets in
+   `packages/orchestration/job_input_definition.py` gain them, and `validate_job_input_definition`
+   in `run_manifest.py` reads them as optional so a manifest written before still validates;
+   `CLIENT_INTERFACE_VERSION` in `apps/cli/client_interface.py` rises from `1.12` and the
+   generated pages are regenerated; a mutation red-proof holds each.
+Then the closure, carrying R-1246 and R-1252 by name to the next paydown.
 
 ## For the operator, in plain sentences
 
-This round first recorded the previous round's acceptance and moved the working plan forward. It
-then took the second step a finding's own text asks for on the job runner's own file: the durable
-execution settings a job carries, along with the two small functions that turn them into plain data
-and back, moved into a module of their own, with every existing caller still finding them under
-their old name. One pointer inside a naming test that used to look at the old file now looks at the
-new one, since that is the exact finding this step closes. Every check this round ran — the
-structure-size rule, the import-reachability guard, the full test selection, the health check and
-the re-export guard — passed, with one guard needing one small addition (a new module's name added
-to an allowlist) before it went green. One more step of this same repair remains open for a later
-session, plus two older problems still carried forward by name. Nothing waits on the operator right
-now.
+This was the first working session on the eighth clean-up of known small problems. One problem is
+fixed: two automatic checks that start a test application at the same moment could be handed the
+same network port, and one check could then pass by talking to the other check's application;
+now a check confirms that the application answering is its own. Four large program files were made
+smaller by moving well-defined pieces into files of their own, without changing what the program
+does. One problem, a lost run record when a task is split into parts during a run, turned out to
+be too large for this clean-up and is handed to the next one, with the two possible repairs
+written down. Another problem cannot be fixed by these sessions because they are not allowed to
+read the stored order texts it needs. The last problem, recording which settings the Claude
+command line ran with, is two thirds done; the next session finishes it and then closes this
+clean-up. Nothing waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP` first.
-2. The Open PR Gate.
-3. Book round 5's verdict in the next round's first commit.
-4. T008: R-1235's third step.
+2. Phase 1 rule 2: the Open PR Gate (no pull request is open for this branch at this handoff).
+3. Confirm `origin`'s tip equals this commit before delegating.
+4. The next round's first commit books the gate entry above into `.agent/live_review.md`.
+5. T008, in the two rounds named above; then the closure.
 
 Operator questions open: 0.
 Open findings: 3 (R-1235, R-1246 and R-1252), all owned by F306.
@@ -142,13 +124,12 @@ Open findings: 3 (R-1235, R-1246 and R-1252), all owned by F306.
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `54afe3ee4` |
-| C2 | done | `d0d1d655e` |
-| C3 | done | this commit |
-| Gate 1 | passed | `ALL True` |
-| Gate 2 | passed | `All checks passed!` |
-| Gate 3 | passed | exit 0, `4349 passed, 3 skipped`, 88 paths, no FAILED/ERROR/"process(es) behind" |
-| Gate 4 | passed | six checks pass, `fail_count` 0 |
-| Gate 5 | passed | `['R-1235', 'R-1246', 'R-1252']` |
-| Gate 6 | passed | `ALL True` |
-| Push | pending at write time | runs after this commit; result in the session's final reply |
+| T001 | done | round 1 |
+| T002 | done | round 1 |
+| T003 (R-1251) | done | round 2, resolved and booked in round 3 |
+| T004 | done | round 3 |
+| T005 (R-1252) | skipped | carried to the next paydown, DECISION F306 D2 |
+| T006 | done | round 4 |
+| T007 | done | round 5, verdict PASS above |
+| T008 | skipped | not started; the next session, two rounds |
+| R-1246 | skipped | carried to the next paydown: this session may not read the order texts |
