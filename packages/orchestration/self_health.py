@@ -15,6 +15,7 @@ import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from packages.orchestration.budget_guard import free_disk_bytes
 from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
@@ -409,3 +410,18 @@ def health_verdict(results: tuple[HealthCheckResult, ...] | list[HealthCheckResu
 # Only a FAIL makes the command exit non-zero; a WARN is told, not enforced.
 def health_exit_code(results: tuple[HealthCheckResult, ...] | list[HealthCheckResult]) -> int:
     return 1 if any(result.level == HEALTH_FAIL for result in results) else 0
+
+
+# The document `remedy doctor health --json` and the public API's health route both answer.
+def health_report_document(
+    results: tuple[HealthCheckResult, ...] | list[HealthCheckResult],
+) -> dict[str, Any]:
+    return {"verdict": health_verdict(results), "checks": [r.as_json() for r in results]}
+
+
+# The one failure message both answers carry, so the command and the route cannot drift apart.
+def health_failure_message(
+    results: tuple[HealthCheckResult, ...] | list[HealthCheckResult],
+) -> str:
+    failed = sum(1 for result in results if result.level == HEALTH_FAIL)
+    return f"{failed} of {len(results)} health checks failed"
