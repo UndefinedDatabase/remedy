@@ -190,13 +190,7 @@ def configure_structured_logging(
 
     root_logger = logging.getLogger()
     _SAVED_ROOT_LEVEL.append(root_logger.level)
-
-    stream = logging.StreamHandler(sys.stderr)
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(logging.Formatter("%(message)s"))
-    stream.addFilter(TerminalFilter())
-    setattr(stream, _MARKER, True)
-    root_logger.addHandler(stream)
+    _install_stream_handler(root_logger)
 
     path = logs_dir(root) / LOG_FILE_NAME
     handler = OwnerOnlyRotatingFileHandler(
@@ -212,6 +206,25 @@ def configure_structured_logging(
     if unknown_name is not None:
         logging.getLogger(__name__).warning("unknown logging.level %r; INFO is used", unknown_name)
     return path
+
+
+# The terminal's handler: the bare message at WARNING and above, file-only records left out.
+def _install_stream_handler(root_logger: logging.Logger) -> None:
+    stream = logging.StreamHandler(sys.stderr)
+    stream.setLevel(logging.WARNING)
+    stream.setFormatter(logging.Formatter("%(message)s"))
+    stream.addFilter(TerminalFilter())
+    setattr(stream, _MARKER, True)
+    root_logger.addHandler(stream)
+
+
+# The terminal handler alone, with no configuration read: what a command gets when the
+# configuration itself cannot be read (operator amendment amend1014-luna-mission-fixes B.1).
+def configure_stream_logging_only() -> None:
+    reset_structured_logging()
+    root_logger = logging.getLogger()
+    _SAVED_ROOT_LEVEL.append(root_logger.level)
+    _install_stream_handler(root_logger)
 
 
 # Removes and closes every handler this module installed and restores the root level it found.

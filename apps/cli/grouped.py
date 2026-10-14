@@ -590,11 +590,18 @@ def _dispatch(
     """
     from packages.orchestration.structured_log import (
         FILE_ONLY_ATTR,
+        configure_stream_logging_only,
         configure_structured_logging,
     )
 
-    configure_structured_logging()
     try:
+        # Inside the boundary (operator amendment amend1014-luna-mission-fixes B.1): the setup
+        # reads the configuration, and a file that cannot be read is answered like any error.
+        try:
+            configure_structured_logging()
+        except Exception:
+            configure_stream_logging_only()
+            raise
         handler(args)
     except (SystemExit, KeyboardInterrupt):
         raise

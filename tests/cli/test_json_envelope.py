@@ -379,3 +379,24 @@ class TestRawJSONDocumentSitesRatchet:
 
     def test_the_pinned_total_is_the_measured_total(self) -> None:
         assert sum(self.RAW_SITES_BY_MODULE.values()) == 1
+
+
+def test_a_malformed_remedy_toml_answers_one_json_error_and_no_traceback(tmp_path, monkeypatch, capsys):
+    """Operator amendment amend1014-luna-mission-fixes B.1: the logging setup reads the
+    configuration, so it runs inside the F277 boundary and a broken file is answered there."""
+    import json as _json
+
+    from apps.cli.grouped import main as grouped_main
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "remedy.toml").write_text("[remedy\nthis is = not toml\n")
+
+    with pytest.raises(SystemExit) as ended:
+        grouped_main(["doctor", "health", "--json"])
+
+    assert ended.value.code not in (0, None)
+    captured = capsys.readouterr()
+    [line] = [line for line in captured.out.splitlines() if line.strip()]
+    answer = _json.loads(line)
+    assert answer["ok"] is False and answer["error"]
+    assert "Traceback" not in captured.err
