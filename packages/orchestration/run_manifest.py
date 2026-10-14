@@ -66,18 +66,6 @@ from packages.orchestration.job_input_definition import (
     job_input_definition_bytes,
     job_input_definition_sha256,
 )
-from packages.orchestration.job_input_definition import (
-    _h as _h,
-)
-from packages.orchestration.job_input_definition import (
-    _redacted_command_identity as _redacted_command_identity,
-)
-from packages.orchestration.job_input_definition import (
-    _source_field as _source_field,
-)
-from packages.orchestration.job_input_definition import (
-    job_input_sha256 as job_input_sha256,
-)
 from packages.orchestration.workspace_identity import (
     _READING_HELPER_ARGS,
     GIT_INCOMPLETE,
@@ -94,9 +82,6 @@ from packages.orchestration.workspace_identity import (
     _UntrackedSpecial,
     _UntrackedSymlink,
     probe_provider_version,
-)
-from packages.orchestration.workspace_identity import (
-    _run_probe as _run_probe,
 )
 
 MANIFEST_VERSION = 1

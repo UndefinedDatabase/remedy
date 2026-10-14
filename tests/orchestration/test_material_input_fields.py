@@ -14,11 +14,9 @@ import dataclasses
 
 import pytest
 
+from packages.orchestration.job_input_definition import job_input_sha256
 from packages.orchestration.pingpong_job import ExecutionConfig, TaskEntry
-from packages.orchestration.run_manifest import (
-    build_job_input_definition,
-    job_input_sha256,
-)
+from packages.orchestration.run_manifest import build_job_input_definition
 
 
 class _Job:

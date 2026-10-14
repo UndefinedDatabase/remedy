@@ -93,7 +93,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.13"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.14"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -1165,8 +1165,8 @@ def _bound_sources(path: str, function: str, name: str) -> set[str]:
 
 
 def test_the_mission_answer_trees_name_exactly_what_their_code_builds():
-    from packages.orchestration.mission_compiler import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
     from packages.orchestration.mission_plan_schema import MissionPlan
+    from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
     from packages.orchestration.orchestrator_loop import MILESTONES_DONE_KEY
 
     mission_record = "packages/orchestration/mission_record.py"

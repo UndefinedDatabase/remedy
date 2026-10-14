@@ -42,7 +42,7 @@ from packages.orchestration.job_plan import (
     resolve_task_plan_approval,
     write_plan_md,
 )
-from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 from packages.orchestration.schemas.models import PlannedTask, TaskPlan
 from packages.orchestration.task_deliverables import (

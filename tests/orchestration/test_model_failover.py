@@ -629,8 +629,18 @@ class TestIsFailoverTrigger:
         out = BuilderOutput(error="provider_error: HTTP 504 Gateway Timeout")
         assert is_failover_trigger(out) is False
 
-    def test_false_for_a_nonzero_exit_that_also_reads_as_unavailable(self):
+    def test_true_for_a_nonzero_exit_whose_stderr_reads_as_an_outage(self):
+        """Operator amendment amend1014-luna-mission-fixes B.5 reverses the earlier rule: the
+        stderr a non-zero exit carries is read, and an outage there is the gap."""
         out = BuilderOutput(error="claude CLI exited 1: connection refused")
+        assert is_failover_trigger(out) is True
+
+    def test_false_for_a_nonzero_exit_whose_stderr_reads_as_no_outage(self):
+        out = BuilderOutput(error="claude CLI exited 1: SyntaxError: unexpected token")
+        assert is_failover_trigger(out) is False
+
+    def test_false_for_a_rate_limit_that_is_not_an_overload(self):
+        out = BuilderOutput(error="claude CLI exited 1: HTTP 429 rate limit exceeded")
         assert is_failover_trigger(out) is False
 
 
@@ -1195,3 +1205,43 @@ tier = "mid"
         result = self._scripted_run(monkeypatch, tmp_path, role="reviewer", reviewer=stub)
 
         assert result.reviewer_parse_retry_count == 1
+
+
+class TestFailoverOnTheGapsThatHappenInPractice:
+    """Operator amendment amend1014-luna-mission-fixes B.5: a claude-cli that exits non-zero
+    because the service is overloaded or cannot be reached is the gap a chain exists for."""
+
+    @pytest.mark.parametrize("stderr", [
+        'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}',
+        "All connection attempts failed",
+    ])
+    def test_a_real_run_fails_over_when_claude_exits_on_an_outage(self, monkeypatch, tmp_path, stderr):
+        import os
+
+        from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
+
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        fake = bin_dir / "claude"
+        fake.write_text(f"#!/bin/sh\ncat > /dev/null\necho '{stderr}' >&2\nexit 1\n")
+        fake.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "fake"
+model = "stand-in"
+tier = "mid"
+''')
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+
+        result = run_pingpong("Fix README", str(repo), builder_name="claude-cli",
+                              builder_model="primary-model", reviewer_name="fake")
+
+        assert result.final_status != "provider_unavailable"
+        failover = export_pingpong_json(result)["rounds"][0]["builder"]["failover"]
+        assert failover["intended"] == {"provider": "claude-cli", "model": "primary-model"}
+        assert failover["used"]["provider"] == "fake"

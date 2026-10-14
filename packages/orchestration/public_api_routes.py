@@ -205,14 +205,17 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "do` flag when `true`; `builder_provider`, `reviewer_provider` and `deadline` each "
             "pass their option with their value. An order whose header names no project, or "
             "one that names a project `select_project` cannot resolve to exactly one, is "
-            "refused before anything starts with 409 `api_order_project_unknown`; every other "
+            "refused before anything starts with 409 `api_order_project_unknown`, and one whose "
+            "header sets none of `max-cost-usd`, `max-total-tokens`, `max-provider-calls` and "
+            "`max-wall-clock-minutes` with 400 `order_file_no_cost_cap`; every other "
             "refusal is `remedy do`'s own, read back only once the order is polled. "
             "`order_key` names the order with a key the client chooses, one to 64 letters, "
             "digits, `.`, `_` or `-`, beginning with a letter or a digit, any other value "
-            "answering 400 `api_body_invalid`; an order with a key whose order file a mission "
-            "that has not ended records is refused before anything starts with 409 "
-            "`order_already_running`, the mission's id under `mission_id`, unless `new_mission` "
-            "is `true`, and the record's `order_file` then names the key's file."
+            "answering 400 `api_body_invalid`; an order with a key whose order file an earlier "
+            "order of a mission that has not ended still has unfinished jobs for is refused "
+            "before anything starts with 409 `order_already_running`, the mission's id under "
+            "`mission_id`, unless `new_mission` is `true`, which adds it as one more order to the "
+            "repository's one mission, and the record's `order_file` then names the key's file."
         ),
     ),
     PublicApiRoute(
@@ -220,10 +223,12 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         path="/api/v1/jobs/{job}/logs",
         twin="doctor.logs",
         query_values=("run",),
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
         description=(
             "The operations log's lines of one job, oldest first, as `remedy doctor logs <job> "
             "--json` prints them; `run` keeps the lines of one run of a task. A job id prefix is "
-            "accepted, and a job with no line answers an empty list."
+            "accepted when it names one job, a job with no line answers an empty list, and a "
+            "client token reads only a job of one of its projects."
         ),
     ),
     PublicApiRoute(

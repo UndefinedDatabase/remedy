@@ -110,6 +110,7 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
     """Fold duplicate repository missions (DECISION amend1011b D6): a dry run unless *apply*."""
     from packages.orchestration.mission_state import MissionError
     from packages.orchestration.repo_mission_reconcile import (
+        ReconcileBackupInvalidError,
         reconcile_repo_missions,
         restore_reconcile,
     )
@@ -120,6 +121,8 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
             report: dict[str, Any] = {"restored_from": restore, "mission_area": str(area)}
         else:
             report = reconcile_repo_missions(apply=apply)
+    except ReconcileBackupInvalidError as exc:
+        fail("reconcile_backup_invalid", str(exc), json_output=json_output, exit_code=2)
     except (MissionError, OSError) as exc:
         fail("mission_error", str(exc), json_output=json_output)
     if json_output:
@@ -130,6 +133,10 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
         return
     if not report["projects"]:
         print("Every repository has at most one mission; nothing to fold.")
+    for row in report.get("flatten", []):
+        verb = "flattened" if apply else "would flatten"
+        print(f"project {row['project_id']}: {verb} the plan versions of {row['mission']} "
+              f"({row['bytes_before']} -> {row['bytes_after']} bytes)")
     for entry in report["projects"]:
         for reason in entry["refused"]:
             print(f"project {entry['project_id']}: NOT folded — {reason}")
@@ -139,7 +146,8 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
                       f"({len(folded['job_ids'])} job(s))")
         if entry.get("backup"):
             print(f"  backup: {entry['backup']}  (undo: remedy mission reconcile --restore <dir>)")
-    if not apply and any(entry["groups"] for entry in report["projects"]):
+    if not apply and (any(entry["groups"] for entry in report["projects"])
+                      or report.get("flatten")):
         print("This was a dry run. Carry it out with: remedy mission reconcile --apply")
 
 
@@ -303,10 +311,8 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
     that dependency and build the very import cycle ``watchdog`` keeps its own
     imports inside function bodies to avoid.
     """
-    from packages.orchestration.mission_state import (
-        MISSION_STATUS_PAUSED,
-        render_mission_chain,
-    )
+    from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
+    from packages.orchestration.mission_state import render_mission_chain
     from packages.orchestration.orchestrator_loop import read_ledger, render_ledger
 
     project_id = _resolve_project_id(project, json_output=json_output)
@@ -422,11 +428,11 @@ def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
 
 def _status_for_verb(verb: str) -> str:
     """The status a transition verb names.  The verb IS the rule."""
+    from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
         MISSION_STATUS_ACHIEVED,
         MISSION_STATUS_ACTIVE,
-        MISSION_STATUS_PAUSED,
     )
 
     return {
@@ -540,11 +546,8 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
                           project: str | None = None,
                           json_output: bool = False,
                           skip_upkeep: str | None = None) -> None:
-    from packages.orchestration.mission_state import (
-        MissionError,
-        continue_mission,
-        is_verify_task,
-    )
+    from packages.orchestration.mission_followup import continue_mission
+    from packages.orchestration.mission_state import MissionError, is_verify_task
 
     project_id = _resolve_project_id(project, json_output=json_output)
     mission = _load_mission_or_exit(project_id, mission_id, json_output=json_output)

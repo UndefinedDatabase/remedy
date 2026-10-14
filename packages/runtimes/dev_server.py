@@ -43,12 +43,6 @@ from packages.runtimes.dev_server_ports import (
     choose_port,
     http_probe,
 )
-from packages.runtimes.dev_server_ports import (
-    pick_free_port as pick_free_port,
-)
-from packages.runtimes.dev_server_ports import (
-    port_is_free as port_is_free,
-)
 
 #: How much of a log file is ever read back into memory or evidence.
 LOG_TAIL_BYTES = 64 * 1024

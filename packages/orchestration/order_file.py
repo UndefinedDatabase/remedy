@@ -29,6 +29,16 @@ from pathlib import Path
 ORDER_FILE_CAP_KEYS = ("max-cost-usd", "max-total-tokens", "max-provider-calls",
                        "max-wall-clock-minutes")
 
+def order_no_cap_message(source: str) -> str:
+    """The one sentence an order without a cap is refused with, by `remedy do` and by the public
+    API's order route alike (operator amendment amend1014-luna-mission-fixes B.4)."""
+    return (f"{source}: an unattended order without a cap is refused; set "
+            "`max-cost-usd:`, `max-total-tokens:`, `max-provider-calls:` or "
+            "`max-wall-clock-minutes:` in the header, or pass --max-cost-usd, "
+            "--max-total-tokens, --max-provider-calls or --max-wall-clock-minutes. "
+            "Nothing was run.")
+
+
 #: The header's recognised keys, each meaning what the flag of the same name
 #: means; `constraint` is the one key a header may repeat.
 ORDER_FILE_HEADER_KEYS = ("project", "contract", *ORDER_FILE_CAP_KEYS, "constraint")

@@ -45,10 +45,13 @@ violation, and then no role fails over.
 
 ## When it fails over
 
-Only when the provider is unavailable or cannot be connected to (`is_failover_trigger`). A timeout,
-a non-zero exit, a rate limit and an unreadable answer never fail over. The transport retries own
-the timeout and the non-zero exit, the rate governor waits out a rate limit, and the single parse
-retry owns an unreadable answer; a backup would only hide those. A link that cannot be built counts
+Only when the provider is unavailable or cannot be connected to (`is_failover_trigger`). That
+includes an overloaded service (HTTP 529, `overloaded_error`), a connection that could not be made
+and a name that could not be resolved, and it includes a claude-cli that exits non-zero when the
+last lines it wrote to its error stream say one of those things, once the transport retries are
+spent. A timeout, any other non-zero exit, a rate limit and an unreadable answer never fail over.
+The transport retries own the timeout and the non-zero exit, the rate governor waits out a rate
+limit, and the single parse retry owns an unreadable answer; a backup would only hide those. A link that cannot be built counts
 as a failed attempt, and the walk goes on to the next one.
 
 ## The cooldown

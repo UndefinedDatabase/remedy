@@ -23,6 +23,7 @@ from packages.core.models import RunState
 from packages.orchestration.dag_schedule import blocked_downstream, ready_set
 from packages.orchestration.decision_queue import list_decisions
 from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
+from packages.orchestration.mission_followup import build_follow_up_task, continue_mission
 from packages.orchestration.mission_state import (
     MAX_MISSION_GOAL_CHARS,
     MISSING_JOB_LABEL,
@@ -46,9 +47,7 @@ from packages.orchestration.mission_state import (
     MissionOrder,
     MissionVerifyFirstError,
     assert_verify_first,
-    build_follow_up_task,
     build_verify_first_task,
-    continue_mission,
     create_mission,
     execute_mission_followup,
     inject_verify_first,

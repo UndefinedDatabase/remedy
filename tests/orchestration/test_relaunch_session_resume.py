@@ -21,6 +21,7 @@ import pytest
 
 from packages.orchestration import pause_control as pc
 from packages.orchestration import pingpong_provider
+from packages.orchestration.pingpong_call_record import parked_session_refs
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_PAUSED,
@@ -31,7 +32,6 @@ from packages.orchestration.pingpong_job import (
 from packages.orchestration.pingpong_loop import (
     export_pingpong_json,
     load_run,
-    parked_session_refs,
     resume_declined_reasons,
     run_pingpong,
 )

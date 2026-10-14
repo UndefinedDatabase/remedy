@@ -15,7 +15,7 @@ import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.job_plan import map_task_plan_to_tasks
-from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables

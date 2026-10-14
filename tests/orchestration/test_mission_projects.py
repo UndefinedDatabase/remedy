@@ -11,13 +11,13 @@ import json
 
 import pytest
 
+from packages.orchestration.mission_followup import continue_mission
 from packages.orchestration.mission_record import Mission, MissionJobLink
 from packages.orchestration.mission_state import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
     MissionError,
     MissionProjectError,
-    continue_mission,
     create_mission,
     link_job_to_mission,
     load_mission,

@@ -37,7 +37,6 @@ from packages.orchestration.hunk_repair_findings import render_rejection_finding
 from packages.orchestration.pingpong_call_record import (
     _add_exit_detail,
     _session_fields,
-    parked_session_refs,  # noqa: F401  (re-exported for packages.orchestration.pingpong_job)
 )
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,

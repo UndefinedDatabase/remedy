@@ -116,7 +116,7 @@ class TestTaskPersistence:
 class TestTaskReport:
     def test_text_report_shows_task_hash(self, tmp_path, monkeypatch, capsys):
         result, _, _ = _make_task_run(tmp_path, monkeypatch)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Task input:" in out
@@ -126,7 +126,7 @@ class TestTaskReport:
     def test_text_report_no_full_prompt(self, tmp_path, monkeypatch, capsys):
         task_text = "# Secret Task\nDo SECRET_VALUE_12345 operation.\n"
         result, _, _ = _make_task_run(tmp_path, monkeypatch, task_text=task_text)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         # Full task body should not be in text report
@@ -330,7 +330,7 @@ class TestRunReportRendering:
     def test_worker_self_report_separated(self):
         """Step 4718: Worker self-report must be visually separated from Remedy proof."""
         # This tests the text report rendering logic conceptually
-        from apps.cli.commands.do_cmd import _print_text_report
+        from apps.cli.commands.run_report_cmd import _print_text_report
 
         data = {
             "goal": "Test goal",

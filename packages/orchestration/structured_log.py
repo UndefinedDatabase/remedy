@@ -12,6 +12,7 @@ writes nothing, and a line that cannot be written is dropped silently (DECISION 
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import json
 import logging
 import logging.handlers
@@ -138,12 +139,56 @@ class TextLogFormatter(logging.Formatter):
         return redact_text(line)
 
 
+# Several processes share the file (the supervisor runs every job as a process of its own), so a
+# rotation holds an exclusive lock and re-checks under it, and every write first follows a file
+# another process rotated away (operator amendment amend1014-luna-mission-fixes B.2).
 class OwnerOnlyRotatingFileHandler(logging.handlers.RotatingFileHandler):
     # The file and every rotated successor are owner-only, like a crash report.
     def _open(self) -> IO[str]:
         Path(self.baseFilename).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         descriptor = os.open(self.baseFilename, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
         return os.fdopen(descriptor, "a", encoding=self.encoding, errors=self.errors)
+
+    # Closes the open stream when the name now points at another file or at none; True if so.
+    def _follow_rotation(self) -> bool:
+        if self.stream is None:
+            return False
+        try:
+            on_disk = os.stat(self.baseFilename)
+        except FileNotFoundError:
+            on_disk = None
+        held = os.fstat(self.stream.fileno())
+        if on_disk is not None and (on_disk.st_dev, on_disk.st_ino) == (held.st_dev, held.st_ino):
+            return False
+        self.stream.close()
+        self.stream = None  # type: ignore[assignment]
+        return True
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self._follow_rotation()
+        except OSError:
+            self.handleError(record)
+            return
+        super().emit(record)
+
+    # Rolls under an exclusive lock on `<log>.lock`; a file another process already rolled is
+    # followed and rolled again only when it is itself still over the size.
+    def doRollover(self) -> None:
+        Path(self.baseFilename).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        lock = os.open(self.baseFilename + ".lock", os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if self._follow_rotation():
+                try:
+                    size = os.stat(self.baseFilename).st_size
+                except FileNotFoundError:
+                    size = 0
+                if size < self.maxBytes:
+                    return
+            super().doRollover()
+        finally:
+            os.close(lock)
 
     # A line that cannot be written never reaches the terminal and never breaks a command.
     def handleError(self, record: logging.LogRecord) -> None:
@@ -190,13 +235,7 @@ def configure_structured_logging(
 
     root_logger = logging.getLogger()
     _SAVED_ROOT_LEVEL.append(root_logger.level)
-
-    stream = logging.StreamHandler(sys.stderr)
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(logging.Formatter("%(message)s"))
-    stream.addFilter(TerminalFilter())
-    setattr(stream, _MARKER, True)
-    root_logger.addHandler(stream)
+    _install_stream_handler(root_logger)
 
     path = logs_dir(root) / LOG_FILE_NAME
     handler = OwnerOnlyRotatingFileHandler(
@@ -212,6 +251,25 @@ def configure_structured_logging(
     if unknown_name is not None:
         logging.getLogger(__name__).warning("unknown logging.level %r; INFO is used", unknown_name)
     return path
+
+
+# The terminal's handler: the bare message at WARNING and above, file-only records left out.
+def _install_stream_handler(root_logger: logging.Logger) -> None:
+    stream = logging.StreamHandler(sys.stderr)
+    stream.setLevel(logging.WARNING)
+    stream.setFormatter(logging.Formatter("%(message)s"))
+    stream.addFilter(TerminalFilter())
+    setattr(stream, _MARKER, True)
+    root_logger.addHandler(stream)
+
+
+# The terminal handler alone, with no configuration read: what a command gets when the
+# configuration itself cannot be read (operator amendment amend1014-luna-mission-fixes B.1).
+def configure_stream_logging_only() -> None:
+    reset_structured_logging()
+    root_logger = logging.getLogger()
+    _SAVED_ROOT_LEVEL.append(root_logger.level)
+    _install_stream_handler(root_logger)
 
 
 # Removes and closes every handler this module installed and restores the root level it found.
@@ -252,7 +310,7 @@ class LogReadResult:
     files: tuple[str, ...]
 
 
-# Reads the lines of one job (by id prefix), optionally of one run, in file order, oldest file first.
+# Reads the lines of one job (by id prefix), optionally of one run, ordered by their time.
 def read_log_entries(
     *, job_id: str, run_id: str | None = None, root: Path | None = None,
 ) -> LogReadResult:
@@ -283,4 +341,6 @@ def read_log_entries(
             if run_id is not None and entry.get("run_id") != run_id:
                 continue
             entries.append(entry)
+    # Several processes write the file, so file order is not time order; a stable sort makes it.
+    entries.sort(key=lambda entry: str(entry.get("ts") or ""))
     return LogReadResult(entries=tuple(entries), unreadable=unreadable, files=tuple(names))

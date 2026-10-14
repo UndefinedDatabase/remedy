@@ -76,8 +76,11 @@ from packages.orchestration.model_routing import (
     model_tier_rank,
     resolve_task_class_tier_with_overrides,
 )
-from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
-from packages.orchestration.rate_governor import is_rate_limit_error
+from packages.orchestration.provider_timeouts import is_timeout_error
+from packages.orchestration.rate_governor import (
+    RATE_LIMIT_REASON_OVERLOADED,
+    classify_rate_limit_reason,
+)
 from packages.orchestration.role_config import KNOWN_ROLES
 
 # ---------------------------------------------------------------------------
@@ -390,8 +393,14 @@ def is_failover_trigger(out: Any) -> bool:
         return False
     if error.startswith("malformed_output:"):
         return False
-    if is_timeout_error(error) or is_nonzero_exit_error(error) or is_rate_limit_error(error):
+    # A rate limit waits and retries (DECISION F058); an overloaded service is the outage this
+    # feature owns, not a quota (operator amendment amend1014-luna-mission-fixes B.5).
+    reason = classify_rate_limit_reason(error)
+    if is_timeout_error(error) or (reason is not None and reason != RATE_LIMIT_REASON_OVERLOADED):
         return False
+    # A claude-cli that exits non-zero carries its last stderr lines in the error since
+    # amend0921: an outage read there is the gap; any other non-zero exit is not (operator
+    # amendment amend1014-luna-mission-fixes B.5).
     return is_provider_unavailable_error(error) or is_provider_connection_error(error)
 
 

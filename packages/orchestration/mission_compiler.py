@@ -52,6 +52,7 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlan,
     MissionPlanDraft,
 )
+from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -651,14 +652,6 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
 # T003 — planning a persisted mission: versioning and the in-progress refusal
 # ---------------------------------------------------------------------------
 
-#: Keys the PERSISTED plan body carries beyond the model's own fields. The
-#: task plan's own ``_versions``/``_version`` keys established this
-#: spelling, and reusing it means one versioning convention in the codebase
-#: rather than two.
-PLAN_VERSIONS_KEY = "_versions"
-PLAN_VERSION_KEY = "_version"
-
-
 class MissionPlanInProgressError(Exception):
     """A recompile was refused because work on the current plan has begun."""
 
@@ -798,7 +791,9 @@ def plan_mission(
     previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
     versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))
     if previous:
-        versions.append(previous)
+        # Operator amendment amend1014-luna-mission-fixes A.1: the previous body goes in
+        # WITHOUT its own chain, so each plan adds one flat version and nothing nests.
+        versions.append({k: v for k, v in previous.items() if k != PLAN_VERSIONS_KEY})
     version = len(versions) + 1
 
     body = plan.model_dump()

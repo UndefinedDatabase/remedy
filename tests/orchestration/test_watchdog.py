@@ -52,11 +52,11 @@ from packages.orchestration.mission_plan_schema import (
     Milestone,
     MissionPlan,
 )
+from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
 from packages.orchestration.mission_state import (
     MISSION_ROLE_INITIAL,
     MISSION_STATUS_ACHIEVED,
     MISSION_STATUS_ACTIVE,
-    MISSION_STATUS_PAUSED,
     create_mission,
     link_job_to_mission,
     load_mission,

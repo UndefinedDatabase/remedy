@@ -2,8 +2,8 @@
 
 Holds the port helpers `port_is_free`, `pick_free_port` and `choose_port`, the
 readiness-probe result shape `RuntimeProbeResult`, and the one HTTP GET `http_probe`
-polls a project's dev server with. `dev_server.py` re-exports every name here by name,
-so every existing `dev_server.<name>` keeps working.
+polls a project's dev server with. Every consumer imports these names from here
+(operator amendment amend1014-luna-mission-fixes D.2).
 """
 from __future__ import annotations
 

@@ -603,7 +603,7 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Builder:" in out
@@ -619,7 +619,7 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Token accounting:" in out
@@ -637,7 +637,7 @@ class TestTextReportTokenProof:
         for i in range(20):
             (demo / f"mod_{i}.py").write_text(f"# Module {i}\n" + "x = 1\n" * 50)
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Full repo estimate:" in out
@@ -652,7 +652,7 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "You are a Builder" not in out
@@ -675,7 +675,7 @@ class TestConciseTextReport:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix README", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Remedy Run" in out
@@ -796,7 +796,7 @@ class TestRunList:
         """F283 R18 C4 (DECISION F283 D10 (4)) — `run list --json` answers
         `emit_ok(runs=<the list>)`; the `runs` key carries `list_runs()` verbatim."""
         self._one_run(tmp_path, monkeypatch, "Fix")
-        from apps.cli.commands.do_cmd import _cmd_run_list
+        from apps.cli.commands.run_report_cmd import _cmd_run_list
         from packages.orchestration.pingpong_loop import list_runs
 
         _cmd_run_list(json_output=True)
@@ -809,14 +809,14 @@ class TestRunList:
         """The five flags the catalog attaches are real, not decoration."""
         self._one_run(tmp_path, monkeypatch, "One")
         self._one_run(tmp_path, monkeypatch, "Two")
-        from apps.cli.commands.do_cmd import _cmd_run_list
+        from apps.cli.commands.run_report_cmd import _cmd_run_list
 
         _cmd_run_list(json_output=True, limit="1")
         assert len(json.loads(capsys.readouterr().out)["runs"]) == 1
 
     def test_unknown_sort_field_exits_without_a_traceback(self, tmp_path, monkeypatch, capsys):
         self._one_run(tmp_path, monkeypatch, "Fix")
-        from apps.cli.commands.do_cmd import _cmd_run_list
+        from apps.cli.commands.run_report_cmd import _cmd_run_list
 
         with pytest.raises(SystemExit) as exc:
             _cmd_run_list(json_output=True, sort="nope")
@@ -835,7 +835,7 @@ class TestRunList:
         """F283 R18 C4 (DECISION F283 D10 (4)) — an empty store no longer prints
         the text-branch prose under `--json`; it answers `emit_ok(runs=[])`."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
-        from apps.cli.commands.do_cmd import _cmd_run_list
+        from apps.cli.commands.run_report_cmd import _cmd_run_list
 
         _cmd_run_list(json_output=True)
         payload = json.loads(capsys.readouterr().out)
@@ -848,7 +848,7 @@ class TestRunList:
     ):
         """The prose line stays in the text branch (DECISION F283 D10 (4))."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
-        from apps.cli.commands.do_cmd import _cmd_run_list
+        from apps.cli.commands.run_report_cmd import _cmd_run_list
 
         _cmd_run_list(json_output=False)
         assert capsys.readouterr().out == "No ping-pong runs found.\n"
@@ -857,7 +857,7 @@ class TestRunList:
 class TestRunShow:
     def test_missing_run_exits_one(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
 
         with pytest.raises(SystemExit) as exc:
             _cmd_run_show("no-such-run", json_output=True)
@@ -872,7 +872,7 @@ class TestRunShow:
 
     def test_missing_run_text_mode_keeps_the_error_prefix(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
-        from apps.cli.commands.do_cmd import _cmd_run_show
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
 
         with pytest.raises(SystemExit) as exc:
             _cmd_run_show("no-such-run", json_output=False)

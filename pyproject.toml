@@ -78,7 +78,7 @@ extend-exclude = [
 # and their reasons (F278 T003, DECISION F278 D7).
 # T20 (`print`) is selected for `packages/` only: a call that must print carries
 # `# noqa: T201 — <reason>`, and tests/test_t201_ratchet.py holds their count (F203, DECISION F203 D3).
-select = ["E", "F", "W", "I", "UP", "BLE001", "T20"]
+select = ["E", "F", "W", "I", "UP", "BLE001", "T20", "PLC0414"]
 ignore = [
     "E501",   # line-too-long — 330 hits across long descriptions and compact data; deferred
     "E702",   # multiple-statements-on-semicolon — 136 hits in compact test/data patterns; deferred

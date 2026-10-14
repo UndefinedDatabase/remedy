@@ -87,7 +87,7 @@ from packages.orchestration.self_use_queue import SelfUseQueueEntry
 
 #: Role name -> the run_job() keywords that already count as an explicit
 #: override for that role: the label (see
-#: packages.orchestration.pingpong_job._resolve_cfg, whose "fake" fallback
+#: packages.orchestration.execution_config._resolve_cfg, whose "fake" fallback
 #: fires when the label is left None) and the provider-object injection
 #: point tests use to substitute a FakeProvider instance directly.
 #:

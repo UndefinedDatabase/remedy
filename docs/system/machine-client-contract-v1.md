@@ -47,20 +47,22 @@ Remedy refuses an order file before any step, with exit code 2: `order_file_not_
 keeps the name it had when the cost was the only cap. An order
 that names a project is refused before any step with `project_has_no_repo` and exit code 3
 when the project has no registered repository, and with `repo_not_in_project` and exit code 2
-when `--repo` names a repository that is not the project's. An order file that a mission which
-has not ended already records — a mission that is neither achieved nor abandoned — is refused
+when `--repo` names a repository that is not the project's. A repository has one lasting
+mission, and every order is a batch of jobs in it. An order file whose earlier order still has a
+job that has not finished, in a mission that is neither achieved nor abandoned, is refused
 before any step with `order_already_running` and exit code 2, and the refusal names that mission
-under `mission_id`; `--new-mission` starts another mission for it instead. An order argument that
-holds whitespace is planned as text, never read as a file.
+under `mission_id`; `--new-mission` accepts the order file again although an earlier order of it
+still has unfinished jobs, and adds it as one more order to the repository's one mission. An
+order argument that holds whitespace is planned as text, never read as a file.
 
 A header may name `project` once for each project of an order that spans several repositories,
-each project at most once (DECISION F205 D4). The mission lives in the first project and spans
-them all, and `remedy do` plans one job in each project's registered repository, in the order
-the header names them. When the repository catalog (`<data root>/org/catalog.toml`, F206) holds
-them, each repository's job comes after the job of every repository it depends on, and the
-walk's init step names each such edge, while the mission stays in the project the header names
-first. Under a commit flag each job is applied and committed in its own repository, and
-`--push` pushes each repository once, after asking every repository's upstream first. Such an
+each project at most once (DECISION F205 D4). Such an order adds one batch and its job to each
+repository's own mission, and the batches are linked by one correlation id; `remedy do` plans
+one job in each project's registered repository, in the order the header names them. When the
+repository catalog (`<data root>/org/catalog.toml`, F206) holds them, each repository's job
+comes after the job of every repository it depends on, and the walk's init step names each such
+edge. Under a commit flag each job is applied and committed in its own repository, and `--push`
+pushes each repository once, after asking every repository's upstream first. Such an
 order is refused before any step with `invalid_argument` and exit code 2 beside
 `--project`, with `repo_not_in_project` and exit code 2 beside `--repo`, and with
 `project_has_no_repo` and exit code 3 when one of its projects has no registered repository;
@@ -187,13 +189,13 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 | Key | Where | Meaning |
 |---|---|---|
 | `ok` | every answer | true for a success, false for a refusal |
-| `mission_id` | `remedy do`; digest missions and jobs | the mission the order started |
-| `job_ids` | `remedy do`; digest missions | the jobs of that mission |
+| `mission_id` | `remedy do`; digest missions and jobs | the repository's one mission, which the order was added to |
+| `job_ids` | `remedy do`; digest missions | the jobs this order planned; in the digest, every job of the mission |
 | `client` | `remedy status` | the digest for a machine client |
 | `version` | digest | the digest's version, 1 |
 | `projects` | digest | every registered project |
 | `missions` | digest projects | each project's missions |
-| `order_source_path` | digest missions | the order file a mission was started from |
+| `order_source_path` | digest missions | the order file of the mission's current order |
 | `jobs` | digest | every job |
 | `job_id` | digest jobs and decisions; `remedy change proof` | the job |
 | `state` | digest jobs | the job's state: `stopped`, `completed` and the others |
@@ -216,6 +218,10 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 | `job_apply_id` | `remedy job apply`; proof `job_applies` | the apply's own id |
 | `job_applies` | `remedy change proof` | every apply of the job, oldest first, never called verified |
 | `overall_status` | `remedy change proof` | the verdict over the job's patch intents |
+
+Two different ids are both called `order_id`. In the answer of `remedy do run` it names the
+order's batch in the repository's mission; in the answer of `remedy client order` it names the
+order process the supervisor started.
 
 ### Exit codes
 
@@ -269,7 +275,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.13`.
+Interface version: `1.14`.
 
 ### Envelope
 
@@ -831,8 +837,8 @@ Description: Read-only: the operations log's lines of one job, oldest first, eac
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`.
-Refusal tokens: none.
-Answer keys: `entries`, `files`, `job_id`, `run_id`, `unreadable`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `entries`, `files`, `job_id`, `matches`, `run_id`, `unreadable`.
 Keys under the answer keys: see below.
 
 - `entries`: `exception`, `job_id`, `level`, `logger`, `message`, `run_id`, `task_id`, `ts`

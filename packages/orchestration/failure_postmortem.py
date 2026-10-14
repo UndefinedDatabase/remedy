@@ -164,6 +164,9 @@ def is_provider_connection_error(error: str | None) -> bool:
         "connection refused", "connection reset", "connection aborted",
         "closed the connection", "broken pipe", "connectionerror",
         "econnrefused", "http 500", "http 502", "http 503", "http 504",
+        # Operator amendment amend1014-luna-mission-fixes B.5: the outages seen in practice.
+        "http 529", "overloaded", "overloaded_error", "all connection attempts failed",
+        "name or service not known", "temporary failure in name resolution",
     ))
 
 

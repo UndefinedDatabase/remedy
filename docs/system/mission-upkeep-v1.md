@@ -49,11 +49,13 @@ An upkeep job is an ordinary job of the mission: it begins with the task that ch
 job, runs under the ordinary budgets, and waits at the ordinary approval. It is known by the key
 `mission_upkeep` in its job's metadata, which holds what it was planned to carry.
 
-A mission over several projects (DECISION F205 D7) counts the completed jobs of every
-repository it spans. Its upkeep job works where its next job works, in the project and
-repository of the job its chain ends with, so it measures that repository and carries the
-findings and replaced files of that project's jobs alone; the others wait for an upkeep job
-in their own project.
+A repository has one lasting mission (operator amendment amend1011b), so each repository's
+mission counts its own completed jobs, and an order over several repositories adds a job to each
+repository's mission, where it is counted. The upkeep job works where the mission's next job
+works, in its project and repository, so it measures that repository and carries the findings
+and replaced files of that project's jobs. A mission written before amend1011b that still spans
+several projects counts the jobs of every project it spans, and its upkeep job works where its
+chain ends.
 
 ## The command line
 `remedy mission continue <mission> "<step>"` records the jobs that have ended first. When upkeep is
@@ -88,3 +90,14 @@ The round's hygiene rule fails a round whose added file sits beside the file it 
 a task does not pass. When its job halts with that finding, the job's `job_closed` line records the
 pair. A job that never applied its change left both files only in its own copy, so an upkeep job
 carries the pair once both files are in the project's repository.
+
+## Folding duplicate missions: `remedy mission reconcile`
+A repository has one lasting mission, and every order is a batch in it. Records written before
+that rule may hold several missions for one repository. `remedy mission reconcile` reports how it
+would fold them into the oldest one, and `--apply` does it after copying the whole mission area to
+`reconcile-backups/<stamp>` beside it. It refuses to fold while a job of the group has not ended.
+The same run flattens a plan chain that an older version wrote nested, so that each mission keeps
+one flat list of earlier plan versions. `--restore <dir>` puts a backup back: it refuses, with
+`reconcile_backup_invalid` and exit code 2 and before it changes anything, a path that is not a
+directory directly under `reconcile-backups/` or that holds no mission file, and it swaps the
+restored copy in with two renames, so a failed restore leaves the current area in place.

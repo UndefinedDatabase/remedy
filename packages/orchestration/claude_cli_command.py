@@ -2,9 +2,8 @@
 
 Moved unchanged out of `packages/orchestration/pingpong_provider.py` by DECISION F302 D1, under
 rule 2 of the structure rule, so that the switches F302 adds to the worker's command line land
-here and the provider's file, which may only shrink, does not grow. The provider imports every
-name back by name, so `from packages.orchestration.pingpong_provider import
-build_claude_cli_args` keeps working.
+here and the provider's file, which may only shrink, does not grow. Every consumer imports these
+names from here (operator amendment amend1014-luna-mission-fixes D.2).
 """
 
 from __future__ import annotations

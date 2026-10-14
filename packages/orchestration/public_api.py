@@ -53,20 +53,12 @@ from typing import Any
 from urllib.parse import parse_qs, unquote
 
 # DECISION F199 D3: the route table, its dataclass and its registry, lives in a module of its
-# own; both are imported back here by name, so every import path keeps working.
+# own; this module imports the names it uses from it.
 from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicApiRoute
-from packages.orchestration.public_api_writes import (
-    _JOB_APPLY_FLAGS as _JOB_APPLY_FLAGS,
-)
-from packages.orchestration.public_api_writes import (
-    _ORDER_CREATE_FLAGS as _ORDER_CREATE_FLAGS,
-)
-from packages.orchestration.public_api_writes import (
-    _ORDER_CREATE_STRINGS as _ORDER_CREATE_STRINGS,
-)
 
 # DECISION F205 D6: the write routes' argument builders and refusals live in a module of
-# their own; every name is imported back here by name, so every import path keeps working.
+# their own; this module imports the names it uses, and every other consumer imports from it
+# (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
     _TWIN_ARGV,
     PublicApiWriteRefusal,
@@ -74,22 +66,13 @@ from packages.orchestration.public_api_writes import (
     _job_lock_key,
     _order_text_and_options,
 )
-from packages.orchestration.public_api_writes import (
-    _decision_resolve_argv as _decision_resolve_argv,
-)
-from packages.orchestration.public_api_writes import (
-    _job_apply_argv as _job_apply_argv,
-)
-from packages.orchestration.public_api_writes import (
-    _job_decline_argv as _job_decline_argv,
-)
 
 #: The path prefix every route under this registry lives below; the major version is in the path.
 PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.13"
+PUBLIC_API_VERSION = "1.14"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -195,6 +178,33 @@ def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
     return build_ok(**build_client_digest(every_ended_job=all_ended_jobs))
 
 
+def _resolved_job_plan(job: str) -> tuple[tuple[str, Any] | None, dict[str, Any] | None]:
+    """((the job id, its plan), None), or (None, the refusal) for a value that names no one job: the
+    resolution and the messages of `resolve_job_id_or_fail` and `require_job_plan`, which a route
+    must not call because both exit or raise. Shared by the proof and the logs routes."""
+    from apps.cli.json_envelope import build_error
+    from packages.orchestration.data_paths import JobIdAmbiguous, JobIdError, lookup_job_id
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+
+    try:
+        job_id = lookup_job_id(job)
+    except JobIdAmbiguous as exc:
+        matches = exc.matches
+        listed = "\n".join(f"  {m[:8]}" for m in matches)
+        return None, build_error(
+            "ambiguous_job_id",
+            f"ambiguous job id prefix '{job}' matches {len(matches)} jobs:\n{listed}",
+            matches=matches,
+        )
+    except JobIdError:
+        return None, build_error(
+            "invalid_job_id", f"No job matches {job!r}. Try: remedy job list.")
+    try:
+        return (job_id, require_job_plan(job_id)), None
+    except JobNotFoundError as exc:
+        return None, build_error("job_not_found", str(exc))
+
+
 def _change_proof_answer(*, job: str) -> dict[str, Any]:
     """The answer `GET /api/v1/jobs/{job}/proof` sends: what `change.proof --json` prints with no
     `--path` (DECISION F253 D3 (3)).
@@ -204,35 +214,15 @@ def _change_proof_answer(*, job: str) -> dict[str, Any]:
     directly: both exit the process, which a route handler must never do. The messages below are
     therefore held equal to the command's by test, not shared by import.
     """
-    from apps.cli.json_envelope import build_error, build_ok
-    from packages.orchestration.data_paths import (
-        JobIdAmbiguous,
-        JobIdError,
-        lookup_job_id,
-        resolve_data_root,
-    )
-    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.proof_chain import build_proof_chain, export_proof_chain_json
     from packages.orchestration.timeline import load_run_events
 
-    try:
-        job_id = lookup_job_id(job)
-    except JobIdAmbiguous as exc:
-        matches = exc.matches
-        listed = "\n".join(f"  {m[:8]}" for m in matches)
-        return build_error(
-            "ambiguous_job_id",
-            f"ambiguous job id prefix '{job}' matches {len(matches)} jobs:\n{listed}",
-            matches=matches,
-        )
-    except JobIdError:
-        return build_error("invalid_job_id", f"No job matches {job!r}. Try: remedy job list.")
-
-    try:
-        plan = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        return build_error("job_not_found", str(exc))
-
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    job_id, plan = resolved
     data_dir = resolve_data_root()
     chain = build_proof_chain(plan, load_run_events(data_dir, job_id), path=None, data_dir=data_dir)
     return build_ok(**export_proof_chain_json(chain))
@@ -282,18 +272,44 @@ def _doctor_health_answer() -> dict[str, Any]:
 def _doctor_logs_answer(*, job: str, run: str | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/jobs/{job}/logs` sends: what `doctor.logs --json` prints (DECISION
     F203 D5). Reads the operations log's lines of the job, oldest first, kept to one run when
-    `run` is given; a job with no line answers an empty `entries`."""
+    `run` is given; a job with no line answers an empty `entries`. The job is resolved as its
+    twin resolves it, and only the resolved job's lines are read (operator amendment
+    amend1014-luna-mission-fixes B.3)."""
     from apps.cli.json_envelope import build_ok
     from packages.orchestration.structured_log import read_log_entries
 
-    result = read_log_entries(job_id=job, run_id=run)
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    job_id, _plan = resolved
+    result = read_log_entries(job_id=job_id, run_id=run)
     return build_ok(
-        job_id=job,
+        job_id=job_id,
         run_id=run,
         entries=list(result.entries),
         unreadable=result.unreadable,
         files=list(result.files),
     )
+
+
+def _client_read_refusal(client: Any, job: str) -> str | None:
+    """One sentence when a client token may not read JOB, which is not a job of one of its
+    projects, else None; a value that names no one job is left to the route's own refusal."""
+    from packages.orchestration.api_clients import client_lists_project
+    from packages.orchestration.data_paths import JobIdError, lookup_job_id
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+    from packages.orchestration.public_api_writes import job_project_keys
+
+    try:
+        plan, degraded = load_job_plan_safe(lookup_job_id(job))
+    except JobIdError:
+        return None
+    if plan is None and not degraded:
+        return None
+    if client_lists_project(client, job_project_keys(plan)):
+        return None
+    return (f"the client {client.name!r} may not read job {job!r}, which is not a job of one of "
+            "its projects")
 
 
 def _order_answer(*, order: str) -> dict[str, Any]:
@@ -351,8 +367,14 @@ _TWIN_ANSWERS: dict[str, Any] = {
 }
 
 
+#: The read routes a client token may use only for a job of one of its projects; the server's
+#: token reads every job (operator amendment amend1014-luna-mission-fixes B.3). The other read
+#: routes stay unscoped reads of one record, as DECISION F253 D16 designed them.
+_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs"})
+
+
 def answer_public_api_get(
-    path: str, query: str = "",
+    path: str, query: str = "", client: Any = None,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The (status, body, headers) this namespace answers a GET of `path` with `query`.
 
@@ -395,6 +417,10 @@ def answer_public_api_get(
                 values_kw[key] = values[0]
             else:
                 return 400, invalid, {}
+        if client is not None and route.twin in _CLIENT_SCOPED_TWINS:
+            refusal = _client_read_refusal(client, segments.get("job", ""))
+            if refusal is not None:
+                return 403, build_error("api_client_policy_refused", refusal), {}
         body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments)
         if body.get("ok"):
             status = 200

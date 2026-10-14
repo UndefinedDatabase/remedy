@@ -59,8 +59,8 @@ from packages.common.secure_fs import durable_write
 from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
 
-# DECISION F205 D1: the mission record lives in a module of its own; every name is imported
-# back here by name, so every import path keeps working.
+# DECISION F205 D1: the mission record lives in a module of its own; this module imports the
+# names it uses, and every other consumer imports from `mission_record` (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.mission_record import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
@@ -81,12 +81,6 @@ from packages.orchestration.mission_record import (
     MissionProjectError,
     MissionVerifyFirstError,
     check_spanned_project_ids,
-)
-from packages.orchestration.mission_record import (
-    MISSION_STATUS_PAUSED as MISSION_STATUS_PAUSED,
-)
-from packages.orchestration.mission_record import (
-    follow_up_target as follow_up_target,
 )
 
 #: A goal is operator input: it is small, or it is not a goal.
@@ -910,16 +904,3 @@ def execute_mission_followup(job: Any, *, cwd: Path | None = None,
     write_mission_verify_record(run)
     return run
 
-
-# DECISION F297 D7: the follow-up job's creation lives in a module of its own, step (2) of this
-# file's boundary on docs/system/structure-ledger-v1.md; every name is imported back here by name.
-# It is imported last, because that module imports this one's store inside its own functions.
-from packages.orchestration.mission_followup import (  # noqa: E402
-    MISSION_FOLLOW_UP_TASK_TYPE as MISSION_FOLLOW_UP_TASK_TYPE,
-)
-from packages.orchestration.mission_followup import (  # noqa: E402
-    build_follow_up_task as build_follow_up_task,
-)
-from packages.orchestration.mission_followup import (  # noqa: E402
-    continue_mission as continue_mission,
-)

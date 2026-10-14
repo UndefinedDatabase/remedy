@@ -1,7 +1,7 @@
 """The command catalog's types and its shared argument shorthands (F301, DECISION F301 D2).
 
-Moved unchanged out of `apps/cli/command_catalog.py`, which imports every name back by name, so
-`from apps.cli.command_catalog import ArgDef` keeps working. A group of the catalog whose entries
+Moved unchanged out of `apps/cli/command_catalog.py`; `command_catalog.py` imports the names it
+uses, and every other consumer imports from here (operator amendment amend1014-luna-mission-fixes D.2). A group of the catalog whose entries
 live in a module of their own imports from here, which is what lets a group's data leave the
 catalog without an import cycle.
 """

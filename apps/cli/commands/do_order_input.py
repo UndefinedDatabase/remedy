@@ -42,6 +42,7 @@ def read_do_order(goal: str, *, project: str | tuple[str, ...] | None, contract:
     from packages.orchestration.order_file import (
         OrderFileError,
         order_argument_names_file,
+        order_no_cap_message,
         read_order_file,
     )
 
@@ -62,12 +63,7 @@ def read_do_order(goal: str, *, project: str | tuple[str, ...] | None, contract:
             max_wall_clock_minutes = order_file.max_wall_clock_minutes
         if all(cap is None for cap in (max_cost_usd, max_total_tokens, max_provider_calls,
                                        max_wall_clock_minutes)):
-            fail("order_file_no_cost_cap",
-                 f"{goal.strip()}: an unattended order without a cap is refused; set "
-                 "`max-cost-usd:`, `max-total-tokens:`, `max-provider-calls:` or "
-                 "`max-wall-clock-minutes:` in the header, or pass --max-cost-usd, "
-                 "--max-total-tokens, --max-provider-calls or --max-wall-clock-minutes. "
-                 "Nothing was run.",
+            fail("order_file_no_cost_cap", order_no_cap_message(goal.strip()),
                  json_output=json_output, exit_code=2)
         goal = order_file.text
         if project is not None and len(order_file.projects) > 1:

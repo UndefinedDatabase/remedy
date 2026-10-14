@@ -22,7 +22,7 @@ from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
 from packages.orchestration.data_paths import job_dod_path
 from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, plan_content_hash
-from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.plan_editing import EDIT_LOG_KEY, replay_edits
 from packages.orchestration.schemas.models import SCHEMA_REGISTRY, PlannedTask, TaskPlan
 

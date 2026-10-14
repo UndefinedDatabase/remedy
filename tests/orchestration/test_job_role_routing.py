@@ -15,7 +15,7 @@ mechanisms drift apart again, which is the defect.
 import pytest
 
 from packages.orchestration import role_config
-from packages.orchestration.pingpong_job import default_role_provider_name
+from packages.orchestration.execution_config import default_role_provider_name
 
 
 class _NamedProvider:

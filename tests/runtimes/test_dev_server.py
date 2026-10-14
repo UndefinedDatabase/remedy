@@ -22,14 +22,13 @@ from packages.runtimes.dev_server import (
     choose_port,
     clear_state,
     load_state,
-    pick_free_port,
-    port_is_free,
     project_digest,
     read_log_tail,
     stop_recorded_runtime,
     validate_spec,
     verify_state,
 )
+from packages.runtimes.dev_server_ports import pick_free_port, port_is_free
 from tests.ports import worker_port
 
 

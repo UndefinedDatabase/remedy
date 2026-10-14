@@ -2,8 +2,8 @@
 
 F205 moved these out of `packages/orchestration/mission_state.py` unchanged, as step (1) of that
 file's boundary on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D1).
-`mission_state.py` imports every name back by name, so each import path keeps working; the
-storage, the links and the verify-first path stay there.
+Every consumer imports these names from here (operator amendment amend1014-luna-mission-fixes D.2); the
+storage, the links and the verify-first path stay in `mission_state.py`.
 """
 
 from __future__ import annotations
@@ -32,6 +32,14 @@ MISSION_STATUSES = (
 MISSION_ROLE_INITIAL = "initial"
 MISSION_ROLE_FOLLOW_UP = "follow_up"
 MISSION_ROLES = (MISSION_ROLE_INITIAL, MISSION_ROLE_FOLLOW_UP)
+
+#: Keys the PERSISTED mission plan body carries beyond the model's own fields. The
+#: task plan's own ``_versions``/``_version`` keys established this spelling, and
+#: reusing it means one versioning convention in the codebase rather than two. They
+#: live with the record so the order batches can seal a plan without importing the
+#: plan compiler (operator amendment amend1014-luna-mission-fixes A.1).
+PLAN_VERSIONS_KEY = "_versions"
+PLAN_VERSION_KEY = "_version"
 
 
 class MissionError(RuntimeError):

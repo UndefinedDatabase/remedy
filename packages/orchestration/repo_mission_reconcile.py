@@ -16,7 +16,7 @@ module reads them, says what folding them would do (`reconcile_repo_missions` wi
 
 Nothing is changed before the whole project area is copied to a backup directory next to the
 missions (``restore_reconcile`` puts it back), nothing is folded while a job of the group is
-running or a record in the area cannot be read, and a run that finds a job without exactly one
+not ended or a record in the area cannot be read, and a run that finds a job without exactly one
 owner afterwards restores the backup itself. The run is idempotent: batch ids are derived from
 the folded mission's id, a job already linked in the canonical mission is not linked twice, and
 a second run finds nothing to fold.
@@ -24,6 +24,8 @@ a second run finds nothing to fold.
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -33,6 +35,8 @@ from typing import Any
 from packages.orchestration.mission_record import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
+    PLAN_VERSION_KEY,
+    PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
     MissionJobLink,
@@ -40,6 +44,7 @@ from packages.orchestration.mission_record import (
     MissionOrderBatch,
 )
 from packages.orchestration.mission_state import (
+    MISSING_JOB_LABEL,
     list_missions_safe,
     mission_evidence_dir,
     mission_job_state_label,
@@ -47,10 +52,14 @@ from packages.orchestration.mission_state import (
     project_ids_with_missions,
     save_mission,
 )
+from packages.orchestration.pingpong_job import JOB_TERMINAL_STATES
 from packages.orchestration.repo_mission import canonical_candidates, repo_mission_lock
 
 BACKUP_DIRNAME = "reconcile-backups"
-_RUNNING_LABELS = ("running",)
+#: The labels of a job a fold may move: one that ended, and one whose record is gone. Anything
+#: else, a paused job or one whose plan cannot be read included, refuses the fold (operator
+#: amendment amend1014-luna-mission-fixes A.5).
+_ENDED_LABELS = frozenset({state.value for state in JOB_TERMINAL_STATES} | {MISSING_JOB_LABEL})
 
 
 def _legacy_batch(mission: Mission, link_roles: dict[str, str]) -> MissionOrderBatch:
@@ -87,10 +96,11 @@ def reconcile_repo_missions(*, apply: bool = False, root: Path | None = None) ->
     report: dict[str, Any] = {"applied": apply, "projects": [], "refused": []}
     for project_id in project_ids_with_missions(root):
         groups, refused = _groups(project_id, root)
-        running = [link.job_id for canonical, dups in groups for m in [canonical, *dups]
-                   for link in m.job_links if mission_job_state_label(link.job_id) in _RUNNING_LABELS]
-        if running:
-            refused.append(f"jobs are running: {', '.join(running)}")
+        unended = [f"{link.job_id} ({label})" for canonical, dups in groups
+                   for m in [canonical, *dups] for link in m.job_links
+                   if (label := mission_job_state_label(link.job_id)) not in _ENDED_LABELS]
+        if unended:
+            refused.append(f"jobs have not ended: {', '.join(unended)}")
         entry = {"project_id": project_id, "refused": refused, "groups": [
             {"canonical": canonical.id,
              "folded": [{"mission": m.id, "status": m.status, "job_ids": list(m.job_ids()),
@@ -103,22 +113,116 @@ def reconcile_repo_missions(*, apply: bool = False, root: Path | None = None) ->
             entry["backup"] = str(_fold_project(project_id, groups, root))
         if groups or refused:
             report["projects"].append(entry)
+    report["flatten"] = _flatten_plan_versions(apply=apply, root=root)
     return report
 
 
-def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
-                  root: Path | None) -> Path:
+# ---------------------------------------------------------------------------
+# Flatten plan versions (operator amendment amend1014-luna-mission-fixes A.1)
+# ---------------------------------------------------------------------------
+
+
+def _flat_chain(body: Any) -> list[dict[str, Any]]:
+    """Every version a plan body's chain holds at any depth, once each, ordered by version,
+    each without a chain of its own; the innermost copy of a version wins."""
+    found: dict[Any, dict[str, Any]] = {}
+
+    def walk(node: Any) -> None:
+        for version in (node or {}).get(PLAN_VERSIONS_KEY, []) if isinstance(node, dict) else []:
+            walk(version)
+            if isinstance(version, dict):
+                found.setdefault(version.get(PLAN_VERSION_KEY),
+                                 {k: v for k, v in version.items() if k != PLAN_VERSIONS_KEY})
+
+    walk(body)
+    return sorted(found.values(), key=lambda v: int(v.get(PLAN_VERSION_KEY) or 0))
+
+
+def _nested(body: Any) -> bool:
+    """Whether a plan body's chain holds a version that carries a chain itself."""
+    return isinstance(body, dict) and any(
+        isinstance(v, dict) and PLAN_VERSIONS_KEY in v for v in body.get(PLAN_VERSIONS_KEY, []))
+
+
+def _flattened(mission: Mission) -> Mission | None:
+    """The mission with a flat plan chain and chain-free sealed plans, or None when it has both.
+
+    A sealed plan's own chain is dropped only when every version in it is also in the mission's
+    flat chain; a folded legacy mission's chain is not, so it is kept, flattened.
+    """
+    plan = mission.mission_plan
+    sealed_plans = [b.sealed.get("plan") for b in mission.orders if b.sealed]
+    if not _nested(plan) and not any(isinstance(p, dict) and PLAN_VERSIONS_KEY in p
+                                     for p in sealed_plans):
+        return None
+    chain = _flat_chain(plan)
+    if isinstance(plan, dict):
+        plan = {**plan, PLAN_VERSIONS_KEY: chain}
+    orders = []
+    for batch in mission.orders:
+        body = (batch.sealed or {}).get("plan")
+        if isinstance(body, dict) and PLAN_VERSIONS_KEY in body:
+            own = _flat_chain(body)
+            rest = {k: v for k, v in body.items() if k != PLAN_VERSIONS_KEY}
+            body = rest if all(v in chain for v in own) else {**rest, PLAN_VERSIONS_KEY: own}
+            batch = replace(batch, sealed={**batch.sealed, "plan": body})
+        orders.append(batch)
+    return replace(mission, mission_plan=plan, orders=tuple(orders))
+
+
+def _record_bytes(mission: Mission) -> int:
+    return len(json.dumps(mission.to_json(), indent=2, sort_keys=True).encode())
+
+
+def _flatten_plan_versions(*, apply: bool, root: Path | None) -> list[dict[str, Any]]:
+    """Report, or with *apply* write, every live mission whose plan chain nests; one backup first."""
+    rows: list[dict[str, Any]] = []
+    backup: Path | None = None
+    for project_id in project_ids_with_missions(root):
+        for mission in list_missions_safe(project_id, root)[0]:
+            flat = _flattened(mission)
+            if flat is None:
+                continue
+            row = {"project_id": project_id, "mission": mission.id,
+                   "bytes_before": _record_bytes(mission), "bytes_after": _record_bytes(flat)}
+            if apply:
+                if backup is None:
+                    backup = _backup_area(root)
+                with repo_mission_lock(project_id, root):
+                    from packages.orchestration.mission_state import load_mission
+
+                    fresh = _flattened(load_mission(project_id, mission.id, root))
+                    if fresh is not None:
+                        save_mission(fresh, root)
+                row["backup"] = str(backup)
+            rows.append(row)
+    return rows
+
+
+def _backup_area(root: Path | None) -> Path:
+    """Copy the whole mission area beside it, before anything is written."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     area = mission_root(root)
     backup = area.parent / BACKUP_DIRNAME / stamp
     shutil.copytree(area, backup)
+    return backup
+
+
+def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
+                  root: Path | None) -> Path:
+    backup = _backup_area(root)
     owned_before = _owned_jobs(root)
     try:
         with repo_mission_lock(project_id, root):
             for canonical, dups in groups:
                 _fold_group(project_id, canonical, dups, root)
-        if _owned_jobs(root) != owned_before:
+        owned_after = _owned_jobs(root)
+        if set(owned_after) != set(owned_before):
             raise MissionError("a job lost or gained an owner while folding")
+        shared = sorted({job for job in owned_after if owned_after.count(job) > 1})
+        if shared:
+            raise MissionError(f"jobs are linked in two live missions after folding: "
+                               f"{', '.join(shared)}")
     except Exception:
         restore_reconcile(backup, root)
         raise
@@ -126,7 +230,12 @@ def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
 
 
 def _owned_jobs(root: Path | None) -> list[str]:
-    """Every job linked in any live mission, once per link, sorted: each must have one owner."""
+    """Every job linked in any live mission, once per link, sorted.
+
+    Before a fold a job may be linked twice: a fold interrupted after the canonical mission was
+    saved and before the duplicate became an alias leaves it so, and the next run folds it
+    (operator amendment amend1014-luna-mission-fixes A.3). After a fold each has one owner.
+    """
     return sorted(job for project_id in project_ids_with_missions(root)
                   for m in list_missions_safe(project_id, root)[0] for job in m.job_ids())
 
@@ -181,12 +290,42 @@ def _fold_group(project_id: str, canonical: Mission, dups: list[Mission], root: 
                 status=source.status, created_at=source.created_at, alias_of=canonical.id), root)
 
 
-def restore_reconcile(backup: Path, root: Path | None = None) -> Path:
-    """Put the whole mission area back as the *backup* holds it; the rollback path."""
+class ReconcileBackupInvalidError(MissionError):
+    """A restore was asked for from something that is not one of reconcile's own backups."""
+
+
+def _check_backup(backup: Path, area: Path) -> None:
+    """Refuse, before anything is written, a *backup* that reconcile did not make."""
+    folder = (area.parent / BACKUP_DIRNAME).resolve()
+    if not backup.is_dir():
+        raise ReconcileBackupInvalidError(f"{backup} is not a directory; nothing was restored")
+    if backup.resolve().parent != folder:
+        raise ReconcileBackupInvalidError(
+            f"{backup} is not a backup under {folder}; nothing was restored")
+    if next(backup.rglob("*.json"), None) is None:
+        raise ReconcileBackupInvalidError(
+            f"{backup} holds no mission file; nothing was restored")
+
+
+def restore_reconcile(backup: Path | str, root: Path | None = None) -> Path:
+    """Put the whole mission area back as the *backup* holds it; the rollback path.
+
+    Operator amendment amend1014-luna-mission-fixes A.2: the backup is checked before anything
+    is touched, then copied beside the area and swapped in with two renames, and the replaced
+    area (a copy of data the backup already holds) is removed only after the swap succeeded.
+    """
     area = mission_root(root)
+    backup = Path(backup)
+    _check_backup(backup, area)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    staged = area.with_name(f"{area.name}.restoring-{stamp}")
+    replaced = area.with_name(f"{area.name}.replaced-{stamp}")
+    shutil.copytree(backup, staged)
     if area.is_dir():
-        shutil.rmtree(area)
-    shutil.copytree(Path(backup), area)
+        os.replace(area, replaced)
+    os.replace(staged, area)
+    if replaced.is_dir():
+        shutil.rmtree(replaced)
     return area
 
 

@@ -3,8 +3,8 @@ out of ``pingpong_job``. F306's structure step (2) for ``run_job`` adds the conf
 resolution itself. This module holds the durable ``ExecutionConfig`` dataclass, its export/import
 pair (``_export_execution_config`` and ``_import_execution_config``), the two field resolvers
 ``default_role_provider_name`` and ``_resolve_cfg``, and ``resolve_job_execution_config``, the
-function that answers the whole record; ``pingpong_job.py`` re-exports all of them by name, so
-every ``pingpong_job.<name>`` caller keeps working unchanged.
+function that answers the whole record. Every consumer imports these names from here
+(operator amendment amend1014-luna-mission-fixes D.2).
 """
 from __future__ import annotations
 

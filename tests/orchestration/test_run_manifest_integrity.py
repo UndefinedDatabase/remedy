@@ -277,7 +277,7 @@ class TestCompleteJobInput:
         base = m.job_input_sha256
         j2 = load_job_plan(job.job_id)
         j2.execution_config.max_rounds = 99
-        from packages.orchestration.run_manifest import job_input_sha256
+        from packages.orchestration.job_input_definition import job_input_sha256
         assert job_input_sha256(j2) != base
 
     def test_test_command_secret_is_hashed_not_serialized(self, repo):

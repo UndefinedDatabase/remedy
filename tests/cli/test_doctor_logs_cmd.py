@@ -25,14 +25,24 @@ def _line(job_id, run_id, message, **extra) -> str:
     return json.dumps(entry)
 
 
+#: The saved job the lines belong to, and one with no line; the command resolves a job id
+#: before it reads (operator amendment amend1014-luna-mission-fixes B.3).
+JOB = "abc1230000000000"
+QUIET = "ccc0000000000000"
+
+
 @pytest.fixture
 def written_log():
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+    for job_id in (JOB, QUIET):
+        save_job_plan(JobPlan(job_id=job_id, job_title="logs"))
     folder = logs_dir()
     folder.mkdir(parents=True, exist_ok=True)
     lines = [
-        _line("abc123", "r1", "first"),
-        _line("abc123", "r2", "second", level="ERROR", exception="Traceback\nValueError: boom"),
-        _line("other", "r3", "elsewhere"),
+        _line(JOB, "r1", "first"),
+        _line(JOB, "r2", "second", level="ERROR", exception="Traceback\nValueError: boom"),
+        _line("def4560000000000", "r3", "elsewhere"),
         "not json at all",
     ]
     (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -47,9 +57,9 @@ def _run(argv, capsys) -> str:
 
 
 def test_json_answers_the_matching_entries_and_the_counts(written_log, capsys):
-    document = json.loads(_run(["doctor", "logs", "abc", "--json"], capsys))
+    document = json.loads(_run(["doctor", "logs", "abc123", "--json"], capsys))
     assert document["ok"] is True
-    assert document["job_id"] == "abc"
+    assert document["job_id"] == JOB
     assert document["run_id"] is None
     assert [entry["message"] for entry in document["entries"]] == ["first", "second"]
     assert document["unreadable"] == 1
@@ -57,7 +67,7 @@ def test_json_answers_the_matching_entries_and_the_counts(written_log, capsys):
 
 
 def test_text_prints_one_line_per_entry_and_the_skipped_sentence(written_log, capsys):
-    lines = _run(["doctor", "logs", "abc"], capsys).splitlines()
+    lines = _run(["doctor", "logs", "abc123"], capsys).splitlines()
     assert lines == [
         "2026-10-13T08:05:09.042Z INFO pkg.mod task=T001 run=r1 first",
         "2026-10-13T08:05:09.042Z ERROR pkg.mod task=T001 run=r2 second",
@@ -68,18 +78,28 @@ def test_text_prints_one_line_per_entry_and_the_skipped_sentence(written_log, ca
 
 
 def test_run_narrows_the_text_and_the_json_form(written_log, capsys):
-    text = _run(["doctor", "logs", "abc", "--run", "r2"], capsys)
+    text = _run(["doctor", "logs", "abc123", "--run", "r2"], capsys)
     assert "second" in text
     assert "first" not in text
-    document = json.loads(_run(["doctor", "logs", "abc", "--run", "r2", "--json"], capsys))
+    document = json.loads(_run(["doctor", "logs", "abc123", "--run", "r2", "--json"], capsys))
     assert document["run_id"] == "r2"
     assert [entry["message"] for entry in document["entries"]] == ["second"]
 
 
 def test_a_job_with_no_line_prints_the_sentence_and_exits_zero(written_log, capsys):
-    assert "No operations-log lines for job zzz." in _run(["doctor", "logs", "zzz"], capsys)
-    narrowed = _run(["doctor", "logs", "abc", "--run", "nope"], capsys)
-    assert "No operations-log lines for job abc and run nope." in narrowed
+    assert f"No operations-log lines for job {QUIET}." in _run(["doctor", "logs", "ccc0"], capsys)
+    narrowed = _run(["doctor", "logs", "abc123", "--run", "nope"], capsys)
+    assert f"No operations-log lines for job {JOB} and run nope." in narrowed
+
+
+@pytest.mark.parametrize(("value", "token"), [
+    ("zzz", "invalid_job_id"), ("feed99", "invalid_job_id"), ("abc12300-0000-4000-8000-000000000000", "job_not_found"),
+])
+def test_a_value_that_names_no_job_is_refused(written_log, capsys, value, token):
+    with pytest.raises(SystemExit) as ended:
+        grouped_main(["doctor", "logs", value, "--json"])
+    assert ended.value.code == 1
+    assert json.loads(capsys.readouterr().out)["error"] == token
 
 
 def _event_word(entry: dict) -> str:

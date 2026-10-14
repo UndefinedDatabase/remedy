@@ -39,8 +39,6 @@ from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
 from packages.orchestration.mission_compiler import (
     DETERMINISTIC_MILESTONE_ID,
     MISSION_PLAN_FILENAME,
-    PLAN_VERSION_KEY,
-    PLAN_VERSIONS_KEY,
     MissionPlanInProgressError,
     attach_milestone_dods,
     build_mission_prompt,
@@ -69,6 +67,7 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlanDraft,
     looks_like_task_list,
 )
+from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
 from packages.orchestration.mission_state import (
     MISSION_SCHEMA_VERSION,
     Mission,

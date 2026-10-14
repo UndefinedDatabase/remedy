@@ -39,7 +39,8 @@ structure rule" of `docs/agents/self_drive_protocol.md`.
 ## Boundaries and steps
 Every function longer than 300 lines and every file longer than 2,000 lines has its boundary here.
 Every other row gets its boundary when a feature first touches it or a paydown takes it. Every
-step changes no behaviour, keeps every import path working, and leaves the tests as they are.
+step changes no behaviour, re-points every consumer of a moved name to its new home in the same
+commit with no alias left behind, and changes the tests in their import lines only.
 
 ### Functions
 - `run_job` (`packages/orchestration/pingpong_job.py`). Boundary: its own phases — the pre-flight
@@ -275,7 +276,7 @@ with the code that calls it.
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
-| 192 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 190 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
@@ -339,7 +340,7 @@ with the code that calls it.
 | 128 | `packages/runtimes/dev_server.py` | `classify_state` |
 | 127 | `packages/orchestration/pingpong_loop.py` | `export_pingpong_json` |
 | 127 | `packages/orchestration/stream_evidence.py` | `capture_stream_evidence` |
-| 127 | `packages/orchestration/watchdog.py` | `act_on_trips` |
+| 123 | `packages/orchestration/watchdog.py` | `act_on_trips` |
 | 126 | `packages/orchestration/artifact_contract_gate.py` | `build_artifact_contract_gate` |
 | 125 | `packages/orchestration/exec_guard.py` | `run_guarded` |
 | 125 | `packages/orchestration/gauntlet_runner.py` | `run_order` |
@@ -399,19 +400,19 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6275 | `packages/orchestration/run_manifest.py` |
-| 5399 | `packages/orchestration/pingpong_job.py` |
-| 5234 | `packages/orchestration/pingpong_loop.py` |
-| 4810 | `packages/orchestration/ui_server.py` |
+| 6260 | `packages/orchestration/run_manifest.py` |
+| 5393 | `packages/orchestration/pingpong_job.py` |
+| 5233 | `packages/orchestration/pingpong_loop.py` |
+| 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2466 | `apps/cli/command_catalog.py` |
+| 2460 | `apps/cli/command_catalog.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
-| 1989 | `packages/runtimes/dev_server.py` |
-| 1977 | `packages/orchestration/pingpong_provider.py` |
+| 1983 | `packages/runtimes/dev_server.py` |
+| 1965 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1764 | `packages/orchestration/config.py` |
@@ -423,7 +424,7 @@ with the code that calls it.
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1026 | `apps/cli/commands/do_cmd.py` |
+| 1024 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |

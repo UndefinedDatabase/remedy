@@ -41,6 +41,8 @@ from packages.orchestration.mission_record import (
     MISSION_STATUS_ACHIEVED,
     MISSION_STATUS_ACTIVE,
     MISSION_STATUS_PAUSED,
+    PLAN_VERSION_KEY,
+    PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
     MissionOrder,
@@ -160,8 +162,12 @@ def _seal(mission: Mission) -> tuple[MissionOrderBatch, ...]:
     if not orders or orders[-1].sealed is not None:
         return orders
     plan = mission.mission_plan
-    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get("_version", 0)),
-              "plan": plan, "contract": mission.contract}
+    # The chain stays in the mission's plan slot; a sealed batch keeps its own body only
+    # (operator amendment amend1014-luna-mission-fixes A.1), so the record grows by one plan.
+    body = ({k: v for k, v in plan.items() if k != PLAN_VERSIONS_KEY}
+            if isinstance(plan, dict) else plan)
+    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get(PLAN_VERSION_KEY, 0)),
+              "plan": body, "contract": mission.contract}
     return (*orders[:-1], replace(orders[-1], sealed=sealed))
 
 
@@ -265,13 +271,13 @@ def accept_order_in_each(targets: list[tuple[Any, str]], order: MissionOrder, *,
 
 
 def link_order_job(project_id: str, mission_id: str, order_id: str, job_id: str,
-                   root: Path | None = None) -> Mission:
+                   root: Path | None = None, *, now: datetime | None = None) -> Mission:
     """Link a job to the mission under an order batch: the first job ever is ``initial``, then ``follow_up``."""
     with repo_mission_lock(project_id, root):
         current = load_mission(project_id, mission_id, root)
         role = MISSION_ROLE_FOLLOW_UP if current.job_links else MISSION_ROLE_INITIAL
         return link_job_to_mission(project_id, mission_id, job_id, role,
-                                   order_id=order_id, root=root)
+                                   order_id=order_id, now=now, root=root)
 
 
 def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],

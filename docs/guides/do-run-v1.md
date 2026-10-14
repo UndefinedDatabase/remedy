@@ -20,7 +20,7 @@ remedy do run "add a hello() function" --repo . --json
 |------|--------------|
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
 | `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
-| `plan` | Creates the mission record for the order, records the order, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
+| `plan` | Finds the repository's one mission, creating it on the repository's first order, adds the order to it as a batch, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |
 | `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
