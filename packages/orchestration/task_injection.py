@@ -30,7 +30,7 @@ from packages.orchestration.job_plan import (
     map_task_plan_to_tasks,
     plan_content_hash,
 )
-from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import job_is_terminal
 from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS as MAX_PLAN_TASKS
 from packages.orchestration.schemas.models import (

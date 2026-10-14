@@ -33,6 +33,14 @@ MISSION_ROLE_INITIAL = "initial"
 MISSION_ROLE_FOLLOW_UP = "follow_up"
 MISSION_ROLES = (MISSION_ROLE_INITIAL, MISSION_ROLE_FOLLOW_UP)
 
+#: Keys the PERSISTED mission plan body carries beyond the model's own fields. The
+#: task plan's own ``_versions``/``_version`` keys established this spelling, and
+#: reusing it means one versioning convention in the codebase rather than two. They
+#: live with the record so the order batches can seal a plan without importing the
+#: plan compiler (operator amendment amend1014-luna-mission-fixes A.1).
+PLAN_VERSIONS_KEY = "_versions"
+PLAN_VERSION_KEY = "_version"
+
 
 class MissionError(RuntimeError):
     """A mission operation failed in a way the caller must handle."""

@@ -34,7 +34,7 @@ from packages.orchestration.job_plan import (
     plan_content_hash,
     write_plan_md,
 )
-from packages.orchestration.mission_compiler import PLAN_VERSION_KEY
+from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import (
     TASK_BLOCKED,
     TASK_FAILED,

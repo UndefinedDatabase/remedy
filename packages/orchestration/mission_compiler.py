@@ -52,6 +52,7 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlan,
     MissionPlanDraft,
 )
+from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -650,14 +651,6 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
 # ---------------------------------------------------------------------------
 # T003 — planning a persisted mission: versioning and the in-progress refusal
 # ---------------------------------------------------------------------------
-
-#: Keys the PERSISTED plan body carries beyond the model's own fields. The
-#: task plan's own ``_versions``/``_version`` keys established this
-#: spelling, and reusing it means one versioning convention in the codebase
-#: rather than two.
-PLAN_VERSIONS_KEY = "_versions"
-PLAN_VERSION_KEY = "_version"
-
 
 class MissionPlanInProgressError(Exception):
     """A recompile was refused because work on the current plan has begun."""
