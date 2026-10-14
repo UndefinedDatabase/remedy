@@ -70,59 +70,14 @@ if TYPE_CHECKING:
     from packages.orchestration.project_registry import RemyProject
 
 # DECISION F205 D3: the walk's context, its targets, its apply and push and its summaries
-# live in modules of their own; every name is imported back here by name, so every
-# import path keeps working.
-from packages.orchestration.do_apply import (
-    _do_push_record as _do_push_record,
-)
+# live in modules of their own; this module imports the names it uses, and every other
+# consumer imports each name from its own module (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.do_apply import (
     _step_apply,
     do_apply_one_job,
 )
-from packages.orchestration.do_apply import (
-    do_mission_push_refusals as do_mission_push_refusals,
-)
-from packages.orchestration.do_apply import (
-    do_push_mission as do_push_mission,
-)
-from packages.orchestration.do_apply import (
-    do_waiting_job_next_lines as do_waiting_job_next_lines,
-)
-from packages.orchestration.do_cockpit import (
-    DO_COCKPIT_STOP_COMMAND as DO_COCKPIT_STOP_COMMAND,
-)
-from packages.orchestration.do_cockpit import (
-    DO_COCKPIT_WAIT_SECONDS as DO_COCKPIT_WAIT_SECONDS,
-)
-from packages.orchestration.do_cockpit import (
-    DoCockpitLaunchError as DoCockpitLaunchError,
-)
 from packages.orchestration.do_cockpit import (
     _step_ui,
-)
-from packages.orchestration.do_cockpit import (
-    do_cockpit_argv as do_cockpit_argv,
-)
-from packages.orchestration.do_cockpit import (
-    do_cockpit_paths as do_cockpit_paths,
-)
-from packages.orchestration.do_cockpit import (
-    launch_do_cockpit as launch_do_cockpit,
-)
-from packages.orchestration.do_context import (
-    DO_SHAPE_MILESTONES as DO_SHAPE_MILESTONES,
-)
-from packages.orchestration.do_context import (
-    DO_SHAPE_ONE_JOB as DO_SHAPE_ONE_JOB,
-)
-from packages.orchestration.do_context import (
-    DO_SHAPE_SOURCE_FORCE_JOB as DO_SHAPE_SOURCE_FORCE_JOB,
-)
-from packages.orchestration.do_context import (
-    DO_SHAPE_SOURCE_FORCE_MISSION as DO_SHAPE_SOURCE_FORCE_MISSION,
-)
-from packages.orchestration.do_context import (
-    DO_SHAPE_SOURCE_PLANNER as DO_SHAPE_SOURCE_PLANNER,
 )
 from packages.orchestration.do_context import (
     DO_STEP_DONE,
@@ -135,37 +90,10 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
-from packages.orchestration.do_summary import (
-    _add_measured as _add_measured,
-)
-from packages.orchestration.do_summary import (
-    _measured as _measured,
-)
-from packages.orchestration.do_summary import (
-    do_contract_summary_line as do_contract_summary_line,
-)
-from packages.orchestration.do_summary import (
-    do_cost_summary as do_cost_summary,
-)
-from packages.orchestration.do_summary import (
-    do_cost_summary_lines as do_cost_summary_lines,
-)
-from packages.orchestration.do_summary import (
-    do_mission_contract as do_mission_contract,
-)
-from packages.orchestration.do_summary import (
-    do_unmet_blocking_criteria as do_unmet_blocking_criteria,
-)
 from packages.orchestration.do_targets import (
     _shape_job_orders,
     _step_init,
     resolve_do_shape,
-)
-from packages.orchestration.do_targets import (
-    do_shape_of_plan as do_shape_of_plan,
-)
-from packages.orchestration.do_targets import (
-    mission_plan_outlines as mission_plan_outlines,
 )
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.

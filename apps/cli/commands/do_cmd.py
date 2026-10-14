@@ -15,8 +15,7 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-# DECISION F205 D3: what `remedy do` reads before any step lives in a module of its own;
-# both names are imported back here by name, so every import path keeps working.
+# DECISION F205 D3: what `remedy do` reads before any step lives in a module of its own.
 from apps.cli.commands.do_order_input import _order_repo, read_do_order
 from apps.cli.commands.run_invocation import (
     RunInvocation,
@@ -25,9 +24,10 @@ from apps.cli.commands.run_invocation import (
     invocation_from_args as _invocation_from_args,
 )
 
-# DECISION F058 D3: the `run` handlers live in a module of their own; imported back here by
-# name so `COMMAND_HANDLERS` and every test that imports them from `do_cmd` keep working.
-from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show, _print_text_report  # noqa: F401
+# DECISION F058 D3: the `run` handlers live in a module of their own; `COMMAND_HANDLERS` below
+# calls the two it names, and every other consumer imports from there (operator amendment
+# amend1014-luna-mission-fixes D.2).
+from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
 from apps.cli.json_envelope import emit_ok, fail
 
 if TYPE_CHECKING:
@@ -309,16 +309,14 @@ def _cmd_do_order(
                  json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
-    from packages.orchestration.do_sequence import (
-        DoContext,
+    from packages.orchestration.do_cockpit import launch_do_cockpit
+    from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
+    from packages.orchestration.do_summary import (
         do_contract_summary_line,
         do_cost_summary,
         do_cost_summary_lines,
-        do_job_task_listing,
         do_mission_contract,
         do_unmet_blocking_criteria,
-        launch_do_cockpit,
-        walk_do_sequence,
     )
 
     ctx = walk_do_sequence(DoContext(

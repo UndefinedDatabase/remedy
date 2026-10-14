@@ -2,10 +2,9 @@
 
 Moved unchanged out of `packages/orchestration/mission_state.py` as step (2) of that file's
 boundary on `docs/system/structure-ledger-v1.md` (F297, DECISION F297 D7), so the follow-up
-path can change without growing a file at its limit. `mission_state` imports every name back by
-name, so `from packages.orchestration.mission_state import continue_mission` keeps working; the
-store's functions are imported inside `continue_mission`, because `mission_state` imports this
-module at its end.
+path can change without growing a file at its limit. Every consumer imports these names from
+here (operator amendment amend1014-luna-mission-fixes D.2); the store's functions are imported
+inside `continue_mission`, as they were when the store imported this module back.
 """
 from __future__ import annotations
 

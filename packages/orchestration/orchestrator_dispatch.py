@@ -23,14 +23,14 @@ def dispatch_milestone_job(project_id: str, mission_id: str, payload: dict[str, 
                            now: datetime | None = None) -> Any:
     """Create, approve, bind and RUN the job one ``dispatch_job`` move asks for.
 
-    The job comes from ``dispatch`` or ``mission_state.continue_mission``; its milestone's
+    The job comes from ``dispatch`` or ``mission_followup.continue_mission``; its milestone's
     DoD, contract slice, repository grant and milestone key are attached before it runs
     through ``execute`` or ``execute_dispatched_job``, and its gate result then decides the
     milestone's contract criteria. Answers the loop's ``MoveOutcome``. When the mission's upkeep
     job is due, that job runs instead, through :func:`run_upkeep_job`.
     """
     from packages.orchestration import orchestrator_loop as loop
-    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.mission_followup import continue_mission
     from packages.orchestration.mission_upkeep import make_upkeep_job_if_due
 
     # DECISION F301 D1 (9): when upkeep is due, its job runs in place of this dispatch. The loop

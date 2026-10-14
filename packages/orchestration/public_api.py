@@ -53,35 +53,18 @@ from typing import Any
 from urllib.parse import parse_qs, unquote
 
 # DECISION F199 D3: the route table, its dataclass and its registry, lives in a module of its
-# own; both are imported back here by name, so every import path keeps working.
+# own; this module imports the names it uses from it.
 from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicApiRoute
-from packages.orchestration.public_api_writes import (
-    _JOB_APPLY_FLAGS as _JOB_APPLY_FLAGS,
-)
-from packages.orchestration.public_api_writes import (
-    _ORDER_CREATE_FLAGS as _ORDER_CREATE_FLAGS,
-)
-from packages.orchestration.public_api_writes import (
-    _ORDER_CREATE_STRINGS as _ORDER_CREATE_STRINGS,
-)
 
 # DECISION F205 D6: the write routes' argument builders and refusals live in a module of
-# their own; every name is imported back here by name, so every import path keeps working.
+# their own; this module imports the names it uses, and every other consumer imports from it
+# (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.public_api_writes import (
     _TWIN_ARGV,
     PublicApiWriteRefusal,
     _client_job_refusal,
     _job_lock_key,
     _order_text_and_options,
-)
-from packages.orchestration.public_api_writes import (
-    _decision_resolve_argv as _decision_resolve_argv,
-)
-from packages.orchestration.public_api_writes import (
-    _job_apply_argv as _job_apply_argv,
-)
-from packages.orchestration.public_api_writes import (
-    _job_decline_argv as _job_decline_argv,
 )
 
 #: The path prefix every route under this registry lives below; the major version is in the path.

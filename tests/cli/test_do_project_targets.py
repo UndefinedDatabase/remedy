@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration.do_sequence import do_contract_summary_line
+from packages.orchestration.do_summary import do_contract_summary_line
 from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
 from tests.cli.test_do_commit_flags import _bare_upstream, _pushes, _run
 from tests.cli.test_do_sequence_cli import _git, no_model_call  # noqa: F401 — fixture by name

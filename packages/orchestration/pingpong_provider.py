@@ -24,20 +24,8 @@ from packages.orchestration.call_identity import (
     prepare_call_input,
 )
 
-# DECISION F302 D1: the claude CLI's command line lives in a module of its own; every name is
-# imported back here by name, so every import path keeps working.
-from packages.orchestration.claude_cli_command import (
-    _ALLOWED_TOOLS_ARGS as _ALLOWED_TOOLS_ARGS,
-)
-from packages.orchestration.claude_cli_command import (
-    _CLI_SESSION_REF_PATTERN as _CLI_SESSION_REF_PATTERN,
-)
-from packages.orchestration.claude_cli_command import (
-    _DANGEROUS_SKIP_ARGS as _DANGEROUS_SKIP_ARGS,
-)
-from packages.orchestration.claude_cli_command import (
-    _VALID_CLI_WRITE_MODES as _VALID_CLI_WRITE_MODES,
-)
+# DECISION F302 D1: the claude CLI's command line lives in a module of its own; this module
+# imports the names it uses, and every other consumer imports from it (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias

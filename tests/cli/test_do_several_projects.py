@@ -279,11 +279,8 @@ def test_a_named_project_without_a_repository_is_refused_before_any_step(project
 def test_an_order_a_later_repositorys_mission_refuses_adds_no_batch_to_any(projects, tmp_path, capsys):
     """R-1250: the plan step asks every repository's mission first; a paused `b` leaves `a` without a
     batch for the order, and no job is planned."""
-    from packages.orchestration.mission_state import (
-        MISSION_STATUS_PAUSED,
-        list_missions,
-        set_mission_status,
-    )
+    from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
+    from packages.orchestration.mission_state import list_missions, set_mission_status
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.repo_mission import ensure_repo_mission
 

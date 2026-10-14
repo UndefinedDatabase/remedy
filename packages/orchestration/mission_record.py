@@ -2,8 +2,8 @@
 
 F205 moved these out of `packages/orchestration/mission_state.py` unchanged, as step (1) of that
 file's boundary on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D1).
-`mission_state.py` imports every name back by name, so each import path keeps working; the
-storage, the links and the verify-first path stay there.
+Every consumer imports these names from here (operator amendment amend1014-luna-mission-fixes D.2); the
+storage, the links and the verify-first path stay in `mission_state.py`.
 """
 
 from __future__ import annotations

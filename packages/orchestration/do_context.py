@@ -2,7 +2,7 @@
 shapes, and the two sentences every step reads from it;
 moved out of `packages/orchestration/do_sequence.py` unchanged, as a step of that file's
 boundary on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D3);
-`do_sequence.py` imports every name back by name, so each import path keeps working.
+every consumer imports these names from here (operator amendment amend1014-luna-mission-fixes D.2).
 """
 
 from __future__ import annotations

@@ -7,8 +7,8 @@ vocabulary), and the read-only git-helper neutralization used while inspecting a
 (``_git_helper_env``, ``_helper_neutralizing_args``, the per-reading ``_READING_HELPER_ARGS``
 memo), together with the typed failure modes of a verified untracked-file read
 (``_UntrackedRace``, ``_UntrackedSymlink``, ``_UntrackedSpecial``, ``_UntrackedMissing``).
-``run_manifest.py`` re-exports every one of these by name, so every ``run_manifest.<name>``
-caller and every test that patches a name on ``run_manifest`` keeps working unchanged. The
+``run_manifest.py`` imports the names it uses, and every other consumer imports from here
+(operator amendment amend1014-luna-mission-fixes D.2). The
 git reads themselves — ``_git_bytes``, ``_submodule_status``, ``worktree_identity`` and
 ``_read_untracked_verified`` — stay on ``run_manifest``: tests replace them there, and
 ``_read_untracked_verified`` raises ``run_manifest``'s own ``ManifestError``, which this

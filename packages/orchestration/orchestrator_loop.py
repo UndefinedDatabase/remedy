@@ -9,7 +9,7 @@ evaluate, update the mission, and append a ledger entry a human can audit.
 
 **This module is a POLICY layer (Rule A6).** It sequences verbs; it does not
 reimplement them. Every verb it calls is named in `.agent/decisions.md`'s F070
-verb map: `mission_state.continue_mission` dispatches, `long_run_executor`
+verb map: `mission_followup.continue_mission` dispatches, `long_run_executor`
 executes, `dod_gate` evaluates, `run_report` reports, `escalation` escalates,
 `safe_points` stops. A diff here that grows its own intake, executor, DoD
 mechanism, reporter or escalator is a defect, not a feature.
@@ -1006,7 +1006,7 @@ def run_mission(
 
     Seams, all defaulting to the production path:
       ``dispatch``        how a job is created for a milestone
-                          (``mission_state.continue_mission``)
+                          (``mission_followup.continue_mission``)
       ``execute``         how a dispatched job is RUN; defaults to
                           :func:`execute_dispatched_job`, i.e. the existing
                           ``long_run_executor.run_cycles``
@@ -1609,7 +1609,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
                  now: datetime | None = None) -> MoveOutcome:
     """Execute ONE move through Remedy's existing verbs. No verb is reinvented here.
 
-    The dispatch path goes through ``mission_state.continue_mission`` — which
+    The dispatch path goes through ``mission_followup.continue_mission`` — which
     creates the job, builds its plan verify-first and links it to the mission —
     then applies the audited unattended approval through
     ``job_plan.auto_approve_task_plan`` when the job has an open plan gate,

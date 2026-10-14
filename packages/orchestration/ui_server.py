@@ -35,11 +35,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-# DECISION F305 D2: the routes below one project live in a module of their own; the summary's
-# builder is imported back here by name, so every import path keeps working.
-from packages.orchestration.cockpit_project_routes import (
-    _build_project_summary_json as _build_project_summary_json,
-)
+# DECISION F305 D2: the routes below one project live in a module of their own; every consumer
+# imports the summary's builder from there (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.cockpit_project_routes import project_route_answer
 from packages.orchestration.public_api import is_public_api_path
 from packages.orchestration.ui_server_launch import (

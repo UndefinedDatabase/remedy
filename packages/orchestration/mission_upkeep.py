@@ -466,7 +466,7 @@ def make_upkeep_job_if_due(project_id: str, mission_id: str, root: Path | None =
     """Record the ended jobs, then, when upkeep is due, make the upkeep job or record that none
     was needed. The job is an ordinary follow-up job made by ``continue_mission``. STEP is the step
     the caller asked for; an upkeep job made in its place records it as ``deferred_step`` (R-1238)."""
-    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.mission_followup import continue_mission
     from packages.orchestration.pingpong_job import save_job_plan
 
     record_closed_jobs(project_id, mission_id, root, now=now)

@@ -26,8 +26,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 # DECISIONs F301 D2, F302 D1, F206 D4 and F199 D1: the types, the shorthands, the mission, stats,
-# project and doctor groups live in modules of their own; every name is imported back here by
-# name, so every import path keeps working.
+# project and doctor groups live in modules of their own; this module imports the names it uses,
+# and every other consumer imports each name from its own module (operator amendment amend1014-luna-mission-fixes D.2).
 from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
 from apps.cli.command_catalog_mission import MISSION_COMMANDS
 from apps.cli.command_catalog_project import PROJECT_COMMANDS
@@ -52,12 +52,6 @@ from apps.cli.command_catalog_types import (
     ArgDef,
     CommandEntry,
     GroupDef,
-)
-from apps.cli.command_catalog_types import (
-    ActionClass as ActionClass,
-)
-from apps.cli.command_catalog_types import (
-    Reach as Reach,
 )
 
 # ---------------------------------------------------------------------------

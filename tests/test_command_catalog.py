@@ -25,12 +25,12 @@ from apps.cli.command_catalog import (
     CATALOG,
     GROUPS,
     GroupDef,
-    Reach,
     _is_list_command,
     get_command,
     get_commands_for_group,
     get_group,
 )
+from apps.cli.command_catalog_types import Reach
 
 # ---------------------------------------------------------------------------
 # Structural integrity

@@ -9,8 +9,8 @@ byte/hash helpers (``job_input_definition_bytes``, ``job_input_definition_sha256
 (``JOB_INPUT_TOP_FIELDS``, ``JOB_INPUT_TASK_FIELDS``, ``JOB_INPUT_EXECUTION_STR_FIELDS``,
 ``JOB_INPUT_EXECUTION_INT_FIELDS``, ``JOB_INPUT_EXECUTION_BOOL_FIELDS``, ``_JOB_INPUT_SOURCE_OF``,
 ``_source_field``, ``JOB_INPUT_EXECUTION_FIELDS``, ``JOB_INPUT_EXECUTION_OPTIONAL_FIELDS``).
-``run_manifest.py`` re-exports every one of
-these by name, so every ``run_manifest.<name>`` caller keeps working unchanged. This is the first
+Every consumer imports these names from here
+(operator amendment amend1014-luna-mission-fixes D.2). This is the first
 step toward the repair R-1235's own finding text names; ``validate_job_input_definition`` and
 ``decode_job_input_definition_v1`` stay on ``run_manifest``, because the validator calls
 ``_is_hex64``, ``_safe_component``, ``VALID_ISOLATION_MODES``, ``_contains_secret`` and

@@ -294,7 +294,7 @@ def test_force_job_and_force_mission_together_exit_2(repo, capsys):
 
 
 def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_one():
-    from packages.orchestration.do_sequence import do_shape_of_plan
+    from packages.orchestration.do_targets import do_shape_of_plan
     from packages.orchestration.mission_compiler import deterministic_mission_plan
     from packages.orchestration.mission_plan_schema import MissionPlan
 
@@ -500,7 +500,7 @@ def _do_with_ui(capsys, *extra: str, order: str = ORDER) -> str:
 
 def _stand_in_for_the_cockpit(monkeypatch, launcher) -> None:
     """Replace the CLI's default launcher: no test starts a UI server or a browser."""
-    monkeypatch.setattr("packages.orchestration.do_sequence.launch_do_cockpit", launcher)
+    monkeypatch.setattr("packages.orchestration.do_cockpit.launch_do_cockpit", launcher)
 
 
 def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_url(
@@ -530,7 +530,7 @@ def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_ur
 
 def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
         repo, capsys, monkeypatch):
-    from packages.orchestration.do_sequence import DoCockpitLaunchError
+    from packages.orchestration.do_cockpit import DoCockpitLaunchError
 
     def launcher(job_id: str) -> str:
         raise DoCockpitLaunchError("the cockpit did not come up within 15s; its log: x.log")
@@ -1084,7 +1084,7 @@ def test_the_default_launcher_starts_ui_start_detached_and_reads_its_url(tmp_pat
     """The argv and the spawn's keywords, measured through a stand-in: nothing is spawned."""
     import sys
 
-    from packages.orchestration.do_sequence import (
+    from packages.orchestration.do_cockpit import (
         DoCockpitLaunchError,
         do_cockpit_argv,
         do_cockpit_paths,

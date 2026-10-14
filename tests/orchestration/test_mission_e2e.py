@@ -16,7 +16,7 @@ The scenario, in order:
           its DoD is met; declare M002 done; declare the mission achieved.
 
 **Everything runs through the public verbs.** The jobs are created by the
-loop's own dispatch (``mission_state.continue_mission``), their terminal state
+loop's own dispatch (``mission_followup.continue_mission``), their terminal state
 is written with ``pingpong_job.save_job_plan``, their Definition of Done is compiled by
 the F061 compiler and recorded with ``dod_gate.store_dod`` /
 ``save_gate_result``, and the decision is raised and answered with

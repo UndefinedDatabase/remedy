@@ -52,12 +52,6 @@ from packages.orchestration.execution_config import (
     _import_execution_config,
     resolve_job_execution_config,
 )
-from packages.orchestration.execution_config import (
-    _resolve_cfg as _resolve_cfg,
-)
-from packages.orchestration.execution_config import (
-    default_role_provider_name as default_role_provider_name,
-)
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -2496,10 +2490,10 @@ def run_job(
     None parameters mean "omitted by caller". Resolution order:
     explicit CLI value > persisted config > product default.
     """
+    from packages.orchestration.pingpong_call_record import parked_session_refs
     from packages.orchestration.pingpong_loop import (
         TaskInput,
         load_run,
-        parked_session_refs,
         run_pingpong,
     )
 

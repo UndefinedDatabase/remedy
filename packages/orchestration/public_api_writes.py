@@ -2,8 +2,8 @@
 the refusals a route makes before any command runs.
 
 Moved out of `packages/orchestration/public_api.py` unchanged, as step (1) of that file's boundary
-on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D6); `public_api.py`
-imports every name back by name, so each import path keeps working.
+on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D6); every consumer
+imports these names from here (operator amendment amend1014-luna-mission-fixes D.2).
 """
 
 from __future__ import annotations

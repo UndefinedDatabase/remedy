@@ -253,7 +253,7 @@ def _default_dispatch() -> Callable[..., Any]:
     Named explicitly so the injection driver has a production callable to
     decorate. Passing it is identical to passing nothing.
     """
-    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.mission_followup import continue_mission
 
     return continue_mission
 

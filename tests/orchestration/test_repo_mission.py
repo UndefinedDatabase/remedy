@@ -9,10 +9,10 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
 from packages.orchestration.mission_state import (
     MISSION_STATUS_ABANDONED,
     MISSION_STATUS_ACHIEVED,
-    MISSION_STATUS_PAUSED,
     MissionOrder,
     create_mission,
     list_missions,
@@ -403,7 +403,7 @@ class TestThePlanChainStaysFlat:
 
 def test_a_follow_up_job_belongs_to_the_current_order_batch(tmp_path, monkeypatch):
     """Operator amendment amend1014-luna-mission-fixes A.4."""
-    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.mission_followup import continue_mission
     from packages.orchestration.pingpong_job import JobPlan, save_job_plan
     from packages.orchestration.repo_mission import _unfinished_jobs
 

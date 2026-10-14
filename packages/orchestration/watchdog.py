@@ -476,12 +476,8 @@ def act_on_trips(
     from packages.orchestration import orchestrator_loop
     from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.escalation import enqueue_task_decision
-    from packages.orchestration.mission_state import (
-        MISSION_STATUS_ACTIVE,
-        MISSION_STATUS_PAUSED,
-        load_mission,
-        set_mission_status,
-    )
+    from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
+    from packages.orchestration.mission_state import MISSION_STATUS_ACTIVE, load_mission, set_mission_status
     from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     ordered = list(trips)
