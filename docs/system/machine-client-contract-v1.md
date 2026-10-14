@@ -269,7 +269,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.13`.
+Interface version: `1.14`.
 
 ### Envelope
 
@@ -831,8 +831,8 @@ Description: Read-only: the operations log's lines of one job, oldest first, eac
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`.
-Refusal tokens: none.
-Answer keys: `entries`, `files`, `job_id`, `run_id`, `unreadable`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `entries`, `files`, `job_id`, `matches`, `run_id`, `unreadable`.
 Keys under the answer keys: see below.
 
 - `entries`: `exception`, `job_id`, `level`, `logger`, `message`, `run_id`, `task_id`, `ts`

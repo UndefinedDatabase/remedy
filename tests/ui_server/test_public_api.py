@@ -649,7 +649,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.13"
+    assert public_api.PUBLIC_API_VERSION == "1.14"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers")):
@@ -687,7 +687,11 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
 def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server):
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/logs")
     assert (route.method, route.twin, route.refusals, route.query_values) == (
-        "GET", "doctor.logs", (), ("run",))
+        "GET", "doctor.logs",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), ("run",))
+    # Operator amendment amend1014-luna-mission-fixes B.3: the route resolves the job first.
+    job_id = _saved_job_with_id("abc1230000000000")
+    quiet = _saved_job_with_id("ccc0000000000000")
 
     def line(job_id: str, run_id: str, message: str) -> str:
         return json.dumps({
@@ -697,8 +701,8 @@ def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server)
 
     folder = logs_dir()
     folder.mkdir(parents=True, exist_ok=True)
-    lines = [line("abc123", "r1", "first"), line("abc123", "r2", "second"),
-             line("zzz999", "r9", "elsewhere")]
+    lines = [line(job_id, "r1", "first"), line(job_id, "r2", "second"),
+             line("def4560000000000", "r9", "elsewhere")]
     (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
     written = [json.loads(text) for text in lines]
 
@@ -706,28 +710,31 @@ def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server)
         return [_tcp_request(tcp_server, "GET", path, headers=headers),
                 _unix_request(unix_server, "GET", path, headers=headers)]
 
-    expected = build_ok(job_id="abc", run_id=None, entries=written[:2], unreadable=0,
+    expected = build_ok(job_id=job_id, run_id=None, entries=written[:2], unreadable=0,
                         files=[LOG_FILE_NAME])
-    for status, body, _headers in ask("/api/v1/jobs/abc/logs", _bearer(SERVER_TOKEN)):
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs", _bearer(SERVER_TOKEN)):
         assert status == 200, body
         assert body["ok"] is True
         assert [entry["message"] for entry in body["entries"]] == ["first", "second"]
         assert body == expected
 
-    for status, body, _headers in ask("/api/v1/jobs/abc/logs?run=r2", _bearer(SERVER_TOKEN)):
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs?run=r2", _bearer(SERVER_TOKEN)):
         assert status == 200, body
         assert [entry["message"] for entry in body["entries"]] == ["second"]
         assert body["run_id"] == "r2"
 
-    for status, body, _headers in ask("/api/v1/jobs/abc/logs?nope=1", _bearer(SERVER_TOKEN)):
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs?nope=1", _bearer(SERVER_TOKEN)):
         assert status == 400, body
         assert body["error"] == "api_query_invalid"
 
-    for status, body, _headers in ask("/api/v1/jobs/none/logs", _bearer(SERVER_TOKEN)):
+    for status, body, _headers in ask(f"/api/v1/jobs/{quiet}/logs", _bearer(SERVER_TOKEN)):
         assert status == 200, body
         assert body["entries"] == []
 
-    for status, body, _headers in ask("/api/v1/jobs/abc/logs"):
+    for status, body, _headers in ask("/api/v1/jobs/none/logs", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (404, "invalid_job_id"), body
+
+    for status, body, _headers in ask("/api/v1/jobs/abc123/logs"):
         assert status == 401, body
 
 
@@ -913,7 +920,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.13"
+    assert public_api.PUBLIC_API_VERSION == "1.14"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1209,7 +1216,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.13"
+    assert public_api.PUBLIC_API_VERSION == "1.14"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -2288,7 +2295,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.13"
+    assert public_api.PUBLIC_API_VERSION == "1.14"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2492,3 +2499,43 @@ def test_the_clients_test_section_names_what_the_gate_tests_fixture_uses():
                    '"serve.token"', '"project", "register", "--repo"',
                    '"serve", "stop", "--json"'):
         assert needle in gate_source, needle
+
+
+# -- the logs route resolves the job and respects a client token (operator amendment
+# -- amend1014-luna-mission-fixes B.3) -----------------------------------------------
+
+
+def _saved_job_with_id(job_id: str, project_id: str = "") -> str:
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_id=job_id, job_title="logs-route-job", user_prompt="p",
+                  tasks=[TaskEntry(title="t")], project_id=project_id)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def test_the_logs_route_refuses_an_ambiguous_prefix_and_an_unknown_job():
+    _saved_job_with_id("abcd120000000000")
+    _saved_job_with_id("abcd121111111111")
+
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/abcd12/logs")
+    assert (status, body["error"]) == (400, "ambiguous_job_id")
+    # As the proof route answers: a prefix no job matches, and a full id with no record.
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/logs")
+    assert (status, body["error"]) == (404, "invalid_job_id")
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{uuid4()}/logs")
+    assert (status, body["error"]) == (404, "job_not_found")
+
+
+def test_the_logs_route_holds_a_client_token_to_its_projects(tmp_path):
+    project = _registered_project(tmp_path)
+    own = _saved_job_of_project(str(project.id), str(tmp_path / "client-route-repo"))
+    other = _saved_job_of_project(str(uuid4()), str(tmp_path))
+    client = _client_policy(projects=(project.slug,))
+
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{other}/logs", client=client)
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{own}/logs", client=client)
+    assert status == 200 and body["job_id"] == own

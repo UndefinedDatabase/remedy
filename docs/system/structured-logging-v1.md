@@ -19,7 +19,11 @@ The file is `<data root>/logs/remedy.log`. The folder is readable by the owner o
 is every file in it (0600). The folder is made by the first line written, so a command that logs
 nothing leaves the data root as it found it. When the file reaches `logging.max_bytes` it is
 renamed to `remedy.log.1`, the older ones move up by one, and at most `logging.backup_count`
-rotated files are kept. Remedy keeps nothing outside its data root.
+rotated files are kept. Several processes write the same file, because the background service
+runs every job as a process of its own: one rotation at a time holds an exclusive lock on
+`remedy.log.lock` beside the file, and a process whose file was rotated by another writes its
+next line to the new file, so no line is lost at a rotation. Remedy keeps nothing outside its
+data root.
 
 ## One line
 
@@ -54,14 +58,19 @@ silently and never breaks a command.
 `remedy doctor logs <job>` prints the lines of one job, oldest first, across the current file and
 every rotated one: the time, the level, the logger, `task=` and `run=` with `-` for an unknown
 id, then the message, and an exception, when a line carries one, below it indented by four
-spaces. The job id may be given by its first characters, as everywhere else. `--run <run id>`
+spaces. The job id may be given by its first characters, as everywhere else; it is resolved to
+one job first, and a value that names no job, or names several, is refused with
+`invalid_job_id`, `job_not_found` or `ambiguous_job_id`, as `remedy change proof` refuses it.
+The lines are ordered by their time, because several processes write the same file. `--run <run id>`
 keeps only the lines of one run of a task. `--json` answers the same lines as JSON objects, with
 the names of the files read and the number of lines skipped. A line that is not JSON, such as a
 line written while `logging.json_lines` was false, is skipped and counted. A job with no line gets an
 answer that says so, and the command still exits 0; it reads the log and changes nothing.
 
 A program reads the same answer over the public API with `GET /api/v1/jobs/{job}/logs`, and
-`?run=<run id>` keeps one run; the client operation is `doctor.logs`. The cockpit shows no log
+`?run=<run id>` keeps one run; the client operation is `doctor.logs`. A client token (a token the
+operator wrote for one program, with the projects it may use) reads only the lines of a job of
+one of its projects, and is answered 403 `api_client_policy_refused` for any other job. The cockpit shows no log
 lines yet: its logs view belongs to F303, the feature that puts the cockpit on the public API.
 
 ## Settings

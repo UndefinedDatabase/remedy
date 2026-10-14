@@ -4401,7 +4401,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             status, body = public_api_token_refusal()
             headers: dict[str, str] = {}
         else:
-            status, body, headers = answer_public_api_get(path, query)
+            status, body, headers = answer_public_api_get(path, query, client)
         self._send_public_api_answer("GET", path, status, body, headers,
                                      client_name=client.name if client else "")
 

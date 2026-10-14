@@ -165,6 +165,29 @@ def _job_lock_key(job: str) -> str:
         return job
 
 
+def job_project_keys(plan: Any) -> list[str]:
+    """The keys a job record answers to in a client's policy: its `project_id` and, when
+    `select_project` finds that project, its slug and id; none for a job of no project or a
+    record that could not be read (DECISION F253 D17 (1))."""
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    project_id = str(plan.project_id or "") if plan is not None else ""
+    keys = [project_id] if project_id else []
+    if project_id:
+        try:
+            project, _source = select_project(project_id, ".")
+        except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
+            pass
+        else:
+            keys += [project.slug or "", str(project.id)]
+    return keys
+
+
 def _client_job_refusal(client: Any, job: str) -> str | None:
     """One sentence ending "; nothing was run" when JOB names a record that is not a job of one of
     CLIENT's projects, else None (DECISION F253 D17 (1)).
@@ -178,12 +201,6 @@ def _client_job_refusal(client: Any, job: str) -> str | None:
     from packages.orchestration.api_clients import client_lists_project
     from packages.orchestration.data_paths import JobIdError, lookup_job_id
     from packages.orchestration.pingpong_job import load_job_plan_safe
-    from packages.orchestration.project_registry import (
-        AmbiguousProjectError,
-        InvalidProjectSelectorError,
-        ProjectNotFoundError,
-        select_project,
-    )
 
     try:
         plan, degraded = load_job_plan_safe(lookup_job_id(job))
@@ -191,16 +208,7 @@ def _client_job_refusal(client: Any, job: str) -> str | None:
         return None
     if plan is None and not degraded:
         return None
-    project_id = str(plan.project_id or "") if plan is not None else ""
-    keys = [project_id] if project_id else []
-    if project_id:
-        try:
-            project, _source = select_project(project_id, ".")
-        except (AmbiguousProjectError, InvalidProjectSelectorError, ProjectNotFoundError):
-            pass
-        else:
-            keys += [project.slug or "", str(project.id)]
-    if client_lists_project(client, keys):
+    if client_lists_project(client, job_project_keys(plan)):
         return None
     return (f"the client {client.name!r} may not act on job {job!r}, which is not a job of one of "
             "its projects; nothing was run")

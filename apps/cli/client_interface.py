@@ -53,8 +53,9 @@ from typing import Any
 #: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of, and F199
 #: (DECISION F199 D3) to `1.11` for `doctor.health`, and
 #: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`, and F306 (R-1235) to `1.13` for the
-#: claude-cli configuration a job's execution configuration records.
-CLIENT_INTERFACE_VERSION = "1.13"
+#: claude-cli configuration a job's execution configuration records, and operator amendment
+#: amend1014-luna-mission-fixes (B.3) to `1.14` for the job-id refusals of `doctor.logs`.
+CLIENT_INTERFACE_VERSION = "1.14"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -144,7 +145,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
     "doctor.health": ("health_failed",),
-    "doctor.logs": (),
+    "doctor.logs": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
 }
 
 #: The top-level keys an answer of each operation can carry beside the envelope's own, sorted, per
@@ -230,7 +231,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "state",
     ),
     "doctor.health": ("checks", "verdict"),
-    "doctor.logs": ("entries", "files", "job_id", "run_id", "unreadable"),
+    "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
 }
 
 #: The tokens by kind a project ledger holds, a tree the digest carries for each job and each
