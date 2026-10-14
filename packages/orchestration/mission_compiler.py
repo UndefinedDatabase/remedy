@@ -125,7 +125,14 @@ _MISSION_RULES_TEMPLATE = """\
 - risks lists what could make this mission fail.
 - assumptions lists what you decided on your own because the goal did not say.
   Prefer conservative choices: an assumption keeps existing behavior or does
-  nothing; it never deletes, overwrites or migrates."""
+  nothing; it never deletes, overwrites or migrates.
+- Use the smallest sufficient number of milestones and job outlines: a bounded
+  one-file edit is ONE milestone with ONE outline. Inspection, baseline
+  capture, wording review and diff review are activities inside the work of a
+  deliverable, never milestones or outlines of their own.
+- Plan only what the goal asks for. Never add a license, a CI workflow, badges,
+  an environment file or any other file the goal does not name. A sentence such
+  as "Change no other files" is a hard fence on every milestone and outline."""
 
 #: Rank-5 STEERING segment. Its TRAILING NEWLINE is load bearing: the
 #: pre-migration template ended with one and `compose_prompt_segments` adds
