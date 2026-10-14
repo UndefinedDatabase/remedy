@@ -1,18 +1,21 @@
-# Context — F055 Rehearsal (dry check)
+# Context — F078 Autonomy levels
 
 ## Active Branch
-feature/f055-rehearsal, from `main` at `eea4f5cfe` (the merge commit of pull request 337).
+feature/f078-autonomy-levels, from `main` at `e688b30f3` (the merge commit of pull request 338).
 
 ## Scope
-F055 (Tier 3), as `docs/roadmap/features/T3_F055.md` and DECISION F055 D1 state: the
-`--rehearse` mode of `remedy do`, its record and summary, and the reuse of a rehearsed plan.
+F078 (Tier 3), as `docs/roadmap/features/T3_F078.md` and DECISION F078 D1 state: the autonomy
+level, its one start check and matrix, its refusals and change record, the seams that start jobs,
+the caps of `L5`, and showing the level.
 
 ## Do not touch
-Approval semantics, the estimator's internals, and what the planner plans. A structural step
+Approval semantics, budget mechanics and the gauntlet's pass definition. A level only answers who
+may start work; every gate, fence, budget and watchdog applies at every level. A structural step
 changes no behaviour.
 
 ## Active assumptions
-- A rehearsal is a walk with `--plan-only`; the rehearsed job is an ordinary planned job.
+- F078's levels are spelled `L2` to `L5`; the 0 to 7 scale of `autonomy_readiness.py` is another
+  measure and is left alone.
 - Every behaviour lands with a test that is red without it, proved by the reviewer's mutation; a
   structural step is proved by the unchanged tests.
 

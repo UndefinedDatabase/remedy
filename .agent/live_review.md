@@ -1,25 +1,25 @@
-# Live Review — F055 Rehearsal (dry check)
+# Live Review — F078 Autonomy levels
 
-> Round-by-round review record, re-headed at the F055 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F308, whose STATUS
-> line went `[x]` on its own branch at `b384780e2`; pull request 337 merged it into `main` as
-> `eea4f5cfe`. F308's round 6 was reviewed after its own handback, so operator amendment
+> Round-by-round review record, re-headed at the F078 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F055, whose STATUS
+> line went `[x]` on its own branch at `306ae4a24`; pull request 338 merged it into `main` as
+> `e688b30f3`. F055's round 9 was reviewed after its own handback, so operator amendment
 > amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
 > is happening anyway; its gate entry is appended at the end of this record by this claim. Only
 > the heading, this paragraph and the Steps section below are rewritten; everything else from the
-> Findings heading to the end of the file as it stood at `eea4f5cfe` is carried forward
+> Findings heading to the end of the file as it stood at `e688b30f3` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `eea4f5cfe`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is R-1246 and R-1276 to R-1313; F307 owns every id in it.
+> open set at `e688b30f3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is R-1246, R-1276 to R-1313 and R-1319; F307 owns every id in it.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F055 D1's. The first round claims F055, re-heads this record, books
-F308's round 6, moves the `do` group of the command catalog to a module of its own, writes the
-boundaries of `_cmd_do_order` and `_cmd_do` into the structure page, and lands T001: the
-`--rehearse` flag, the stop before any job runs, the refusals, and the reusable counters that
-prove nothing was built, applied or written. The second round lands T002, the rehearsal's record
-and summary. The third lands T003, the real run from a rehearsed plan. Then the closure.
+THE ORDER BELOW IS DECISION F078 D1's. The first round claims F078, re-heads this record, books
+F055's round 9, moves the four watchdog keys of the config registry to a module of their own, and
+lands T001: the three autonomy keys, the start matrix with its one check, and the loading of the
+level with its refusals and its record of changes. The second round puts the check at the seams
+that start jobs and keeps every refused start. The third lands the caps of the highest level and
+shows the level where it matters. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -242,3 +242,5 @@ Gate: F055 R7 — the F055 round 7 entry, the closure's third evidence attempt, 
 R-1320 READ AGAIN at F055's round 7 gate, by the reviewer: it is a defect of the product. When two runtime-flow checks race for one port, the loser's application dies on "Address already in use", `_wait_ready` has already seen the winner's application answer, and `port_listener_in_session` cannot read the dead process's sockets, so `_confirm_app_owns_port` in `packages/orchestration/dod_runners.py` goes on "without that proof" and the check passes on an application it did not start — the very case R-1251 was repaired for, left open where the owner is unreadable. The test that R-1320 names is right and catches it in about half of its serial runs. Owner: F055, by DECISION F055 D4.
 
 Gate: F055 R8 — the F055 round 8 entry, the repair of R-1320, the one full suite again, the evidence and the package, over `ae3acace0`..`d92ae972d` (4 commits, each single-parent; insertions by `git show --shortstat`: `53aea0e0b` 174, `c13b99e15` 88, `c3c6ae7bf` 18, `d92ae972d` 223). VERDICT PASS. The reviewer's `verify.py` read every commit's parent equal to the commit before it and the first equal to the base, C1's four paths byte-identical to the prepared files, C2 naming only `packages/orchestration/dod_runners.py`, byte-identical to the reviewer's dry-run copy, and `tests/orchestration/test_dod_runners.py`, C3 only the transcript, both ancestry counts from the fork `eea4f5cfe` to C3 at 33, and C4 only the handoff, `ALL True`. C2 refuses an answer on the port when the application the check started has already exited, before the owner is read, and turns a run red whose application died during the steps; `_run_app_once` measures 100 lines, at the limit and without a row. The reviewer's dry run of the same file had read `66 passed` over the runner's tests and the two ratchets and the racing test 0 failures in 30 runs, against 12 in 20 before. Two mutations in the disposable worktree `.remedy-wt/f055-s1/mut-r8`, removed afterwards, beside an unmutated control at `60 passed`: the exited-application check skipped turned the first new test red (1 failed), and the mid-check check skipped turned the second new test and the racing test red (2 failed). C3's transcript records the one full suite again on `c13b99e15`, as operator amendment amend0921-operator-feedback rule 1 orders for a tree that changed after the run: exit 0, `23069 passed, 22 skipped, 1 warning in 352.31s (0:05:52)`, no bad node id, no leftover process, the reflog unchanged, and the cost script exit 0 at 1279.63 CPU seconds, 9.4 percent more than F308's, within the 14.1 percent limit. The evidence job `f055r5e1001` ran on C3 `c3c6ae7bf958d712b77656e60a6ee9e9c33efe2a`: both counts 33, 8339 node ids collected with 169 deselected, no refused id, `8330 passed, 0 failed, 9 skipped` with exit 0, `validate_verification_tests` without a problem and `is_valid_current_run True`. The package `remedy-review-20261014-200011-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true` in the builder's own log, its SHA-256 `7be134c461b533e26dab8ca02d1f28de90a750c6a18197a9fd549f87529611aa` is the builder's `final_sha256` and the worker's own reading over the file, and its committed review subject runs from `eea4f5cfe51c434eb2ab2bb0fb0246069cfa7bca` to C3; it sits in `/home/decodeux/Repos/remedy-history/zips`, a folder this session's sandbox does not let the reviewer read, so the reviewer did not hash it itself. No deviation was declared.
+
+Gate: F055 R9 — the F055 round 9 entry, the closing round, over `d92ae972d`..`306ae4a24` (3 commits, each single-parent; insertions by `git show --shortstat`: `d6afb9cf3` 201, `1c587a5c0` 28, `306ae4a24` 176). VERDICT PASS, given by the F078 session because the F055 session ended at its handback, and booked here by operator amendment amend0827-process-diet rule 1. Verified by dry run, bytes identical: the F078 reviewer read twelve committed blobs against the F055 reviewer's prepared files under `.remedy-wt/f055-r9/prep/`, made on the same base `d92ae972d` — the block copy, the STATUS line and pull-request body copies, the prose slip, the Built State, the plan, C1's ledger, C2's rotated ledger and archive, and C3's STATUS file, README and self-use queue — and every one was equal. The worker's handback records its gates with their output: the reviewer's `verify.py` `ALL True`, the selection at `564 passed` with exit 0, the integrity check at six checks `pass` and the open set at 40 ids; the rotation moved six gate records and four finding pairs, with 40 open findings before and after. The worker declared one slip, the C1 commit run after a `cd` into the repository root that the block forbade, accepted: the commit's paths and bytes are those the block ordered. Pull request 338 was merged at the Open PR Gate of the F078 session as `e688b30f3`.
