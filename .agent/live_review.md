@@ -1,27 +1,27 @@
-# Live Review — F306 Findings paydown v8
+# Live Review — F308 The run manifest survives a task split
 
-> Round-by-round review record, re-headed at the F306 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F203, whose STATUS
-> line went `[x]` on its own branch at `167871013`; this session's Open PR Gate merged pull
-> request 334 into `main` as `f51232ee2`. F203's round 10 was reviewed after its own handback, so
-> operator amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of
-> the next round that is happening anyway; its gate entry is appended at the end of this record by
-> this claim. Only the heading, this paragraph and the Steps section below are rewritten;
-> everything else from the Findings heading to the end of the file as it stood at `f51232ee2` is
-> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
-> re-head. The open set at `f51232ee2`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, is `['R-1235', 'R-1246', 'R-1251', 'R-1252']`; F306 owns all
-> four.
+> Round-by-round review record, re-headed at the F308 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F306, whose STATUS
+> line went `[x]` on its own branch at `a72fbc307`; pull request 335 merged it into `main` as
+> `92acce515`, and operator amendment amend1014-luna-mission-fixes followed as `1622c16d7`. F306's
+> round 12 was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1
+> books its verdict here, in the first commit of the next round that is happening anyway; its gate
+> entry is appended at the end of this record by this claim. Only the heading, this paragraph and
+> the Steps section below are rewritten; everything else from the Findings heading to the end of
+> the file as it stood at `1622c16d7` is carried forward BYTE-IDENTICAL, and finding ids continue
+> the monotonic R-XXXX series across the re-head. The open set at `1622c16d7`, computed with
+> `open_finding_ids` from `scripts/rotate_live_review.py`, is R-1246, R-1252 and R-1276 to R-1313;
+> F308 owns R-1252, and F307 owns every other id in it.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F306 D1's, which also writes the feature file's slice list. The first
-round claims F306, re-heads this record, books F203's round 10, and takes T002, the structural step
-the ledger names for `packages/runtimes/dev_server.py`: its ports and readiness probe move to a
-module of their own. The second round repairs R-1251 there and in the runtime-flow runner. The
-third round takes the step the ledger names for `packages/orchestration/run_manifest.py` and
-repairs R-1252. Then R-1235 in the three steps its own text names. R-1246 is carried by name to the
-next paydown at the closure. Then the closure.
+THE ORDER BELOW IS DECISION F308 D1's. The first round claims F308, re-heads this record, books
+F306's round 12, and takes the structural steps the structure ledger owes before the repair may
+touch the functions it lists: the expectation of a task that owns no run leaves `_collect_calls`,
+the split of a task over its class cap leaves `run_job`, and the reading of the declared task list
+and its check across a job's episodes leave `packages/orchestration/run_manifest.py`, all for the
+new module `packages/orchestration/run_task_list.py`. The second round writes the split record's
+shape as DECISION F308 D2 and lands T001, T002 and the proof T003 asks for. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -259,3 +259,5 @@ Gate: F306 R11 — the F306 round 11 entry, the closure's evidence round, over `
 - R-1312 — Nit, F203: A ONE-SLOT LIST UNDER A COMMENT THAT SAYS NONE, AND ROTATION SETTINGS WITH NO FLOOR. Raised by operator amendment amend1014-luna-mission-fixes (2026-10-14), from the orchestrator's review of the packages of 2026-10-10 to 2026-10-14. SEARCHED BEFORE MINTING (checklist item 30): the ledger and its archive for `_SAVED_ROOT_LEVEL` and `max_bytes`; no entry names this defect. READ at `f89424e41`: `packages/orchestration/structured_log.py`, `_SAVED_ROOT_LEVEL: list[int] = []` sits under a comment saying "None when not saved"; `logging.max_bytes = 0` yields the unbounded file DECISION F203 D1 says must never ship, and `backup_count = 0` truncates on rotation. THE REPAIR: a module-level `int | None`, and a floor of one rotated file and a minimum size. Owner: F307. OPEN.
 
 - R-1313 — Low, F203 (FROM B.1): A MALFORMED CONFIGURATION IS ANSWERED AS A REMEDY CRASH. Raised by operator amendment amend1014-luna-mission-fixes (2026-10-14), from the orchestrator's review of the packages of 2026-10-10 to 2026-10-14. SEARCHED BEFORE MINTING (checklist item 30): the ledger and its archive for `config_invalid` and `unhandled_command_error` for a configuration error; no entry names this defect. READ at `f89424e41`: since operator amendment amend1014-luna-mission-fixes B.1, `apps/cli/grouped.py` `_dispatch` answers a `remedy.toml` that does not parse with the `unhandled_command_error` envelope and writes a crash report; the file is the operator's, not a Remedy defect. THE REPAIR: answer `config_invalid` with exit code 2 and write no crash report. Owner: F307. OPEN.
+
+Gate: F306 R12 — the F306 round 12 entry, the closing round, over `64e02e00e`..`a72fbc307` (4 commits, each single-parent; insertions by `git show --shortstat`: `cc1858bea` 243, `2184c2097` 34, `617f7aa40` 53, `a72fbc307` 178). VERDICT PASS, given by the F308 session because the F306 session ended at its handback, and booked here by operator amendment amend0827-process-diet rule 1. The reviewer's `review_f306_r12.py` read each commit's parent equal to the commit before it and the first equal to the base, every one of the fifteen committed files the block named byte-identical to the F306 reviewer's prepared copy under `.remedy-wt/f306-r12/prep/`, each commit naming exactly its prepared paths plus `.agent/handoff.md` in C4, the accepted STATUS line present once with no `[~]` line left, and `a72fbc307` equal to the second parent of the merge commit `92acce515` of pull request 335, `ALL True`; the saved block `.agent/authored/f306-r12.md` hashes to `aefe362de0a239baa459f6d5e0d70d22490248f5507b8434a36936329a15b879`, the digest its handback reports. Verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3), compared at `a72fbc307`: the F306 reviewer's dry run over those prepared files read the round's selection — `tests/docs/`, the advertised-commands, ledger-rotation, integrity, self-use generator and queue, golden-path and structure-ratchet tests — at `563 passed` with exit 0, the integrity check at `fail_count` 0 and the open set `['R-1246', 'R-1252']`, so nothing was re-run. The handback reports the rotation's reading, 10 gate records and 3 finding pairs moved with 2 open findings before and after, and the committed ledger and archive equal the prepared files that reading was simulated on. No deviation was declared, and none was found.
