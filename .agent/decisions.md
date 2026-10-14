@@ -29519,3 +29519,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in Remedy; the reposito
 ALTERNATIVES CONSIDERED: (a) deleting them, REJECTED because they are not the loop's and a move is reversible; (b) leaving them and excluding them from collection, REJECTED because it would change the test configuration to route around foreign files and the root check would still fail.
 
 HOW TO REVERSE: move both directories from `.remedy-wt/remedy-review-moved/` back into the repository root, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D14 — the operator answers Q18: the two unpacked review folders go to the history attic, outside the checkout (2026-10-14)
+
+THE PROBLEM: operator question Q18 asked where two folders should live, `remedy-review-20260708-211448-READY_FOR_REVIEW` and `remedy-review-20260708-211448-READY_FOR_REVIEW 2`. They are an old review package, unpacked twice, which appeared in the repository folder on 2026-10-13 and which F306 round 10 moved, unchanged, to `.remedy-wt/remedy-review-moved/` (DECISION F306 D3).
+
+CHOSEN: the operator answers Q18: both folders go to `~/Repos/remedy-history/attic/2026-10-14/` by one `mv` each, never `rm`. An unpacked review package never belongs in the checkout, and the orchestrator asks the operator to unpack review packages outside `~/Repos/remedy` in future. This session made the folder `~/Repos/remedy-history/attic/2026-10-14/` and moved both folders there; nothing inside them was opened, changed or deleted, and `.remedy-wt/remedy-review-moved/` is now empty. Q18 is deleted from `.agent/operator_questions.md`, which reads EMPTY again.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in Remedy. The two folders of an old review package now sit in the history folder next to the checkout instead of inside it, and no question waits for the operator.
+
+ALTERNATIVES CONSIDERED: (a) leaving them in the hidden scratch folder inside the checkout, REJECTED because an unpacked package does not belong in the checkout at all; (b) deleting them, REJECTED because a move can be undone and a deletion cannot.
+
+HOW TO REVERSE: move both folders from `~/Repos/remedy-history/attic/2026-10-14/` back to `.remedy-wt/remedy-review-moved/` in the checkout, restore Q18 from git history, and delete this paragraph.
