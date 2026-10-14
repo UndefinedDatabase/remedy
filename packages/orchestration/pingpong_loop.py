@@ -2460,6 +2460,28 @@ def empty_change_finding(reviewer_summary: str) -> ReviewFinding:
         required_fix="make the change the task asks for; a plan or a command not run is no change")
 
 
+def reject_verdict_on_empty_diff(
+    reviewer_out: ReviewerOutput, *, staged_files: list[str], is_fake: bool,
+) -> ReviewerOutput:
+    """The empty staged diff is the evidence; a reviewer's words cannot outvote it.
+
+    A failing verdict with no finding takes the empty-change finding (R-0999). Since operator
+    amendment amend1014b D3 a PASS on an empty diff is rejected the same way, before the task
+    can complete: it becomes needs_repair, the repair loop gets its second try, and
+    `no_file_changed` stays as the final defense. A fake builder is exempt, as everywhere in
+    this loop, because it writes its changes after this point of a round.
+    """
+    if staged_files:
+        return reviewer_out
+    if reviewer_out.verdict == "pass" and not is_fake:
+        reviewer_out.verdict = "needs_repair"
+        reviewer_out.findings = list(reviewer_out.findings) or [
+            empty_change_finding(reviewer_out.summary)]
+    elif not reviewer_out.findings and reviewer_out.verdict in ("needs_repair", "fail"):
+        reviewer_out.findings = [empty_change_finding(reviewer_out.summary)]
+    return reviewer_out
+
+
 # ---------------------------------------------------------------------------
 # F001: Retry wrapper for provider calls
 # ---------------------------------------------------------------------------
@@ -4048,9 +4070,8 @@ def run_pingpong(
             # point at, and a `fail` without a finding would block the task as the
             # REVIEWER's incoherence. The empty diff is the evidence, so it becomes the
             # finding and the repair loop gets its second try.
-            if (not result.staged_files and not reviewer_out.findings
-                    and reviewer_out.verdict in ("needs_repair", "fail")):
-                reviewer_out.findings = [empty_change_finding(reviewer_out.summary)]
+            reviewer_out = reject_verdict_on_empty_diff(
+                reviewer_out, staged_files=result.staged_files, is_fake=is_fake)
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)
