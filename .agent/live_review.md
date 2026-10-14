@@ -1,27 +1,25 @@
-# Live Review — F308 The run manifest survives a task split
+# Live Review — F055 Rehearsal (dry check)
 
-> Round-by-round review record, re-headed at the F308 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F306, whose STATUS
-> line went `[x]` on its own branch at `a72fbc307`; pull request 335 merged it into `main` as
-> `92acce515`, and operator amendment amend1014-luna-mission-fixes followed as `1622c16d7`. F306's
-> round 12 was reviewed after its own handback, so operator amendment amend0827-process-diet rule 1
-> books its verdict here, in the first commit of the next round that is happening anyway; its gate
-> entry is appended at the end of this record by this claim. Only the heading, this paragraph and
-> the Steps section below are rewritten; everything else from the Findings heading to the end of
-> the file as it stood at `1622c16d7` is carried forward BYTE-IDENTICAL, and finding ids continue
-> the monotonic R-XXXX series across the re-head. The open set at `1622c16d7`, computed with
-> `open_finding_ids` from `scripts/rotate_live_review.py`, is R-1246, R-1252 and R-1276 to R-1313;
-> F308 owns R-1252, and F307 owns every other id in it.
+> Round-by-round review record, re-headed at the F055 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F308, whose STATUS
+> line went `[x]` on its own branch at `b384780e2`; pull request 337 merged it into `main` as
+> `eea4f5cfe`. F308's round 6 was reviewed after its own handback, so operator amendment
+> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
+> is happening anyway; its gate entry is appended at the end of this record by this claim. Only
+> the heading, this paragraph and the Steps section below are rewritten; everything else from the
+> Findings heading to the end of the file as it stood at `eea4f5cfe` is carried forward
+> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
+> open set at `eea4f5cfe`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> is R-1246 and R-1276 to R-1313; F307 owns every id in it.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F308 D1's. The first round claims F308, re-heads this record, books
-F306's round 12, and takes the structural steps the structure ledger owes before the repair may
-touch the functions it lists: the expectation of a task that owns no run leaves `_collect_calls`,
-the split of a task over its class cap leaves `run_job`, and the reading of the declared task list
-and its check across a job's episodes leave `packages/orchestration/run_manifest.py`, all for the
-new module `packages/orchestration/run_task_list.py`. The second round writes the split record's
-shape as DECISION F308 D2 and lands T001, T002 and the proof T003 asks for. Then the closure.
+THE ORDER BELOW IS DECISION F055 D1's. The first round claims F055, re-heads this record, books
+F308's round 6, moves the `do` group of the command catalog to a module of its own, writes the
+boundaries of `_cmd_do_order` and `_cmd_do` into the structure page, and lands T001: the
+`--rehearse` flag, the stop before any job runs, the refusals, and the reusable counters that
+prove nothing was built, applied or written. The second round lands T002, the rehearsal's record
+and summary. The third lands T003, the real run from a rehearsed plan. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -234,3 +232,5 @@ Gate: F308 R3 — the F308 round 3 entry, the repairs of R-1314 and R-1315 and t
 Gate: F308 R4 — the F308 round 4 entry, the closure's integration-gate round, over `8b8d08206`..`358617a72` (5 commits, each single-parent; insertions by `git show --shortstat`: `c58085d86` 294, `68bdcff95` 6, `0b87b714b` 134, `2dff08d0d` 28, `358617a72` 206). VERDICT PASS. The reviewer's `verify.py` read every commit's parent equal to the commit before it, C1's four paths and C2's checklist page byte-identical to the prepared files, C3 naming the self-use queue and ten new files under `.agent/selfuse_f308/` and nothing else, C4 naming only the transcript and C5 only the handoff, `ALL True`. C2 adds F308's consolidation paragraph: nothing joins and no two items merge, the list stays at 34 items. C3 generated `SU-063`, "Narrow the excused handler at apps/cli/commands/status_cmd.py:81", from tier 4, and ran it as job `200387721a384487` through `claude-cli` to its approval gate, never applied: the job completed, its one task `T001` passed review after one repair round, its four provider calls used 10823 tokens, its change narrows the handler to `(OSError, ValueError, ImportError)` and lowers `MAX_EXCUSED` from 285 to 284 on its own branch, its run manifest error is empty, and `describe_self_use_run_defects` answered nothing (`run_defects.txt` reads `NONE`), so no finding is registered. That task fitted its class cap and was not split, so this run shows a manifest written but not a split one; the split is proved through the real path by the tests of round 2. C4's transcript records the feature's one full suite on `0b87b714b`: `python3 -m pytest -n auto -q`, exit 0, `23032 passed, 22 skipped, 1 warning in 344.69s (0:05:44)`, no bad node id, no leftover process, the reflog unchanged during the run, and `scripts/closure_suite_cost.py` exit 0: 1170.14 CPU seconds, 11.4 percent less than F306's 1321.14, within the 14.1 percent limit. C3 and C4 changed only `.agent/` files and the queue, so the tree the suite ran on is the tree that ships but for those records. The worker's reply gave C5 252 insertions where `git show --shortstat` reads 206; nothing on disk is wrong.
 
 Gate: F308 R5 — the F308 round 5 entry, the closure's evidence round, over `358617a72`..`e941e27fb` (2 commits, each single-parent; insertions by `git show --shortstat`: `63ca6c280` 502, `e941e27fb` 243). VERDICT PASS. The reviewer's `verify.py` read C1's single parent equal to the base, its four paths byte-identical to the prepared files and twenty commits from the fork `1622c16d7` to C1, `ALL True`; C1 `63ca6c280075c146bf6bbd102f1e99fd04e1625b` is the accepted head. The staging reclaim listed no candidate and refused one path, `review_staging.n4o46eq_`, as `class_not_job_keyed`, so no `--apply` ran. The evidence job `f308r5e1001` ran on C1: both ancestry counts 20, 8037 node ids collected with 169 deselected, no id the packaging scan refuses, `8028 passed, 0 failed, 9 skipped` with the pytest exit code 0 recorded in its `verification_tests.json`, `validate_verification_tests` without a problem and `is_valid_current_run True` at C1. The package `remedy-review-20261014-142527-READY_FOR_REVIEW.zip`, which the reviewer hashed to `b00824ae07ec3d974e55bc50ab4a16a4724b25f469099ca60ec0f63462eeeb25`, reads `READY_FOR_REVIEW`, `testzip()` None, and its committed review subject runs from `1622c16d70546143def6be8d441aa59a2522f623` to C1; it sits in `/home/decodeux/Repos/remedy-history/zips`. The worker declared three deviations, accepted: C1 is 502 insertions, two over the cap, because the block saved its 128 lines and the evidence script in one commit — the feature's one declared oversize commit, accepted, not a precedent; it ran the reclaim preview a second time to read its exit code, read-only; and its detached launcher did not capture the evidence script's own exit code, which the reviewer reads as 0 from the script's printed conditions, each of which it requires, and from the package built on that evidence.
+
+Gate: F308 R6 — the F308 round 6 entry, the closing round, over `e941e27fb`..`b384780e2` (3 commits, each single-parent; insertions by `git show --shortstat`: `fe5671c08` 196, `f7feb7d1f` 47, `b384780e2` 167). VERDICT PASS, given by the F055 session because the F308 session ended at its handback, and booked here by operator amendment amend0827-process-diet rule 1. The F308 reviewer's `verify.py`, run by the F055 reviewer against the committed commits, read each commit's parent equal to the commit before it and the first equal to the base, every file C1, C2 and C3 committed byte-identical to the prepared copy under `.remedy-wt/f308-r6/prep/`, each commit naming exactly its prepared paths plus `.agent/handoff.md` in C3, and the accepted STATUS line present once with no `[~]` line left, `ALL True`; `b384780e2` is the second parent of the merge commit `eea4f5cfe` of pull request 337, and the saved block `.agent/authored/f308-r6.md` hashes to `74c75121121c7454f101fcbbd5d1dde1442f4a2d4636d24e0f69a691cd3cfca3`, the digest its handback reports. Verified by dry run, bytes identical (operator amendment amend0930-test-load rule 3), compared at `b384780e2`: the F308 reviewer's dry run over those prepared files, saved as `.remedy-wt/f308-r6/dry.txt`, read the rotation at 12 gate records, 3 finding pairs and 4 resolved-text records moved with 39 open findings before and after, the round's selection at `564 passed` with exit 0, the integrity check at `fail_count` 0 and the open set R-1246 and R-1276 to R-1313, so nothing was re-run. No deviation was declared, and none was found. The pull request had no hosted check, because hosted CI runs only when it is dispatched (operator amendment amend1011-manual-hosted-ci), and it merged at the Open PR Gate.

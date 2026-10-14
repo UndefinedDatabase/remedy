@@ -270,7 +270,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
 
-- [ ] F055 — Rehearsal (dry check)
+- [~] F055 — Rehearsal (dry check)
 - [ ] F078 — Autonomy levels
 
 ## Tier 7 — Luna gate C: permissions (operator ruling amend1006-luna-control-plane)
