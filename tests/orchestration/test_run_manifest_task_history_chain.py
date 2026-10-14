@@ -225,7 +225,7 @@ def _snapshot_declaring(task_ids, episode_id):
 
 class TestTheTaskListIsImmutable:
     def test_the_rule_compares_the_embedded_definition(self, ep1):
-        from packages.orchestration.run_manifest import declared_job_input_task_ids
+        from packages.orchestration.run_task_list import declared_job_input_task_ids
         assert declared_job_input_task_ids(ep1) == ["T001"]
 
     def test_a_later_episode_cannot_add_a_task(self, ep1):

@@ -138,6 +138,13 @@ commit with no alias left behind, and changes the tests in their import lines on
   the parent and the node, the child job's record, the link to the project, and the two timeline
   events. Steps: (1) done by F203, the link to the project is `_link_child_to_project`; (2) the
   two timeline events become one function.
+- `validate_run_manifest` (`packages/orchestration/run_manifest.py`). Boundary: the declared task
+  list every call is bound to, the loop over the calls, the coverage, the ledgers and the
+  expectation, the episode order fields, and the embedded snapshot with the stop request. Steps:
+  (1) done by F308, the declared task list is read by `declared_job_input_task_ids` in
+  `packages/orchestration/run_task_list.py`; (2) the checks of one call become a function of their
+  own; (3) the episode order fields become a function of their own; (4) the embedded snapshot's
+  checks become a function of their own.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -155,7 +162,9 @@ with the code that calls it.
   and its decoder (`decode_job_input_definition_v1`) stay on this module, because the validator
   calls shared helpers — `_is_hex64`, `_safe_component`, `VALID_ISOLATION_MODES`,
   `_contains_secret` and `_contains_local_path` — that every other validator on this module uses
-  too, and two of which tests replace directly here.
+  too, and two of which tests replace directly here. Outside those steps, F308 moved the reading
+  of the declared task list, its check across a job's episodes and the expectation of a task
+  without a run to `packages/orchestration/run_task_list.py`.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays. Step (1), done by F306: the
   execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
@@ -267,7 +276,7 @@ with the code that calls it.
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
-| 235 | `packages/orchestration/run_manifest.py` | `validate_run_manifest` |
+| 230 | `packages/orchestration/run_manifest.py` | `validate_run_manifest` |
 | 230 | `packages/orchestration/ui_server.py` | `_RemedyHandler.do_GET` |
 | 221 | `scripts/build_review_manifest.py` | `_gate_semantic_problems` |
 | 220 | `packages/orchestration/job_apply.py` | `apply_job` |
@@ -398,14 +407,13 @@ with the code that calls it.
 | 102 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 102 | `packages/orchestration/pingpong_job.py` | `_finalize_job_workspace` |
 | 101 | `packages/orchestration/mission_compiler.py` | `compile_mission_plan` |
-| 101 | `packages/orchestration/run_manifest.py` | `validate_task_lifecycle_chain` |
 | 101 | `packages/orchestration/ui_view_model.py` | `build_checklist` |
 
 ## Files above 1,000 lines
 
 | Lines | File |
 |---|---|
-| 6232 | `packages/orchestration/run_manifest.py` |
+| 6212 | `packages/orchestration/run_manifest.py` |
 | 5355 | `packages/orchestration/pingpong_job.py` |
 | 5233 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |

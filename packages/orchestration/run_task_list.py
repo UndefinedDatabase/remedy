@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from packages.orchestration.context_compiler import ClassBudgetFit
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.run_manifest import RunManifestV1
 
 
 # F308, step (2) of `_collect_calls`'s boundary: the task without a run gets its own function.
@@ -119,3 +120,31 @@ def split_task_over_class_cap(
         save_job_plan(job)
         return True
     return False
+
+
+# F308: the ids a run manifest's embedded job-input definition declares, read in one place.
+def declared_job_input_task_ids(manifest: RunManifestV1) -> list[str]:
+    """The task ids the EMBEDDED, immutable JobInputDefinition declares."""
+    out: list[str] = []
+    ji = getattr(getattr(manifest.episode_snapshot, "input", None), "job_input", None)
+    if isinstance(ji, dict) and isinstance(ji.get("tasks"), list):
+        for t in ji["tasks"]:
+            if isinstance(t, dict):
+                out.append(str(t.get("task_id", "")))
+    return out
+
+
+# F308: the declared task list's agreement check across a job's episodes gets its own function.
+def task_list_chain_problems(ordered: list[RunManifestV1]) -> list[str]:
+    """Problems where the declared task list is not identical across a job's episode chain."""
+    problems: list[str] = []
+    # The immutable task list, as the FIRST episode's embedded definition declares it.
+    baseline_ids = declared_job_input_task_ids(ordered[0])
+    for m in ordered[1:]:
+        ids = declared_job_input_task_ids(m)
+        if ids != baseline_ids:
+            problems.append(
+                f"episode {m.episode_id}: its embedded job input declares tasks {ids}, but "
+                f"episode {ordered[0].episode_id} declared {baseline_ids}: the task list is "
+                f"immutable across a job's episodes — no addition, removal or reordering")
+    return problems

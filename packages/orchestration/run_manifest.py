@@ -66,7 +66,11 @@ from packages.orchestration.job_input_definition import (
     job_input_definition_bytes,
     job_input_definition_sha256,
 )
-from packages.orchestration.run_task_list import expect_task_without_run
+from packages.orchestration.run_task_list import (
+    declared_job_input_task_ids,
+    expect_task_without_run,
+    task_list_chain_problems,
+)
 from packages.orchestration.workspace_identity import (
     _READING_HELPER_ARGS,
     GIT_INCOMPLETE,
@@ -2324,17 +2328,6 @@ LEDGER_CALL_BIJECTION_FIELDS = ("call_id", "episode_id", "role", "round", "kind"
                                 "prepared_input_fingerprint", "ok")
 
 
-def declared_job_input_task_ids(manifest: RunManifestV1) -> list[str]:
-    """The task ids the EMBEDDED, immutable JobInputDefinition declares."""
-    out: list[str] = []
-    ji = getattr(getattr(manifest.episode_snapshot, "input", None), "job_input", None)
-    if isinstance(ji, dict) and isinstance(ji.get("tasks"), list):
-        for t in ji["tasks"]:
-            if isinstance(t, dict):
-                out.append(str(t.get("task_id", "")))
-    return out
-
-
 def validate_ledger_set(manifest: RunManifestV1) -> list[str]:
     """F2/F5 (round 14): the ledger SET is exactly the set the expectation accounts for.
 
@@ -2734,12 +2727,7 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
     # not in it describes work no recorded input asked for, so the manifest cannot be a faithful
     # account of its own inputs. The binding uses the snapshot's definition (immutable) — never a
     # later, mutable `job.tasks` list.
-    declared_task_ids: list[str] = []
-    _ji = getattr(getattr(manifest.episode_snapshot, "input", None), "job_input", None)
-    if isinstance(_ji, dict) and isinstance(_ji.get("tasks"), list):
-        for _t in _ji["tasks"]:
-            if isinstance(_t, dict):
-                declared_task_ids.append(str(_t.get("task_id", "")))
+    declared_task_ids = declared_job_input_task_ids(manifest)
 
     for i, c in enumerate(calls, start=1):
         ident = c.identity
@@ -4341,15 +4329,7 @@ def validate_task_lifecycle_chain(ordered_manifests: list[RunManifestV1]) -> lis
     if not ordered:
         return problems
 
-    # The immutable task list, as the FIRST episode's embedded definition declares it.
-    baseline_ids = declared_job_input_task_ids(ordered[0])
-    for m in ordered[1:]:
-        ids = declared_job_input_task_ids(m)
-        if ids != baseline_ids:
-            problems.append(
-                f"episode {m.episode_id}: its embedded job input declares tasks {ids}, but "
-                f"episode {ordered[0].episode_id} declared {baseline_ids}: the task list is "
-                f"immutable across a job's episodes — no addition, removal or reordering")
+    problems.extend(task_list_chain_problems(ordered))
 
     # history[task_id] = (episode_id, the expectation that established the terminal state)
     settled: dict[str, tuple[str, TaskCallExpectationV1]] = {}
