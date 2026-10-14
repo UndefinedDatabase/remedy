@@ -195,7 +195,8 @@ def test_folder_and_file_modes_and_rotation_keep_owner_only_files(tmp_path):
     assert stat.S_IMODE(os.stat(root / "logs").st_mode) == 0o700
     folder = root / "logs"
     names = sorted(p.name for p in folder.iterdir())
-    assert names == [LOG_FILE_NAME, LOG_FILE_NAME + ".1", LOG_FILE_NAME + ".2"]
+    # The rotation lock (operator amendment amend1014-luna-mission-fixes B.2) is owner-only too.
+    assert names == [LOG_FILE_NAME, LOG_FILE_NAME + ".1", LOG_FILE_NAME + ".2", LOG_FILE_NAME + ".lock"]
     for name in names:
         assert stat.S_IMODE(os.stat(folder / name).st_mode) == 0o600
     assert not (folder / (LOG_FILE_NAME + ".3")).exists()
@@ -345,3 +346,54 @@ def test_an_event_written_through_the_setup_is_read_back_with_its_run(tmp_path):
     (entry,) = result.entries
     assert entry["job_id"] == "job-e2e"
     assert entry["run_id"] == "att-9"
+
+
+_WRITER = r"""
+import logging, sys
+sys.path.insert(0, sys.argv[3])
+from packages.orchestration.structured_log import (
+    JsonLogFormatter, LogContextFilter, OwnerOnlyRotatingFileHandler)
+handler = OwnerOnlyRotatingFileHandler(sys.argv[1], maxBytes=4000, backupCount=200,
+                                       encoding="utf-8", delay=True)
+handler.setFormatter(JsonLogFormatter())
+handler.addFilter(LogContextFilter())
+logger = logging.getLogger("writer")
+logger.propagate = False
+logger.setLevel(logging.INFO)
+logger.addHandler(handler)
+for counter in range(400):
+    logger.info("line %d of %s", counter, sys.argv[2], extra={"job_id": sys.argv[2]})
+handler.close()
+"""
+
+
+def test_four_processes_sharing_the_file_lose_no_line_and_read_back_in_time_order(tmp_path):
+    """Operator amendment amend1014-luna-mission-fixes B.2: rotation is exclusive across
+    processes, a writer follows a file another process rotated, and the reader orders by time."""
+    import subprocess
+    import sys
+
+    from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir, read_log_entries
+
+    path = logs_dir(tmp_path) / LOG_FILE_NAME
+    repo = str(pathlib.Path(__file__).resolve().parents[2])
+    jobs = [f"job{index}{'0' * 12}" for index in range(4)]
+    writers = [subprocess.Popen([sys.executable, "-c", _WRITER, str(path), job, repo])
+               for job in jobs]
+    assert [writer.wait(timeout=120) for writer in writers] == [0, 0, 0, 0]
+
+    seen: list[tuple[str, str]] = []
+    for file in path.parent.glob(LOG_FILE_NAME + "*"):
+        if file.name.endswith(".lock"):
+            continue
+        for line in file.read_text(encoding="utf-8").splitlines():
+            entry = json.loads(line)
+            seen.append((entry["job_id"], entry["message"]))
+    expected = {(job, f"line {n} of {job}") for job in jobs for n in range(400)}
+    assert len(seen) == len(expected) == 1600
+    assert set(seen) == expected
+
+    entries = read_log_entries(job_id=jobs[0], root=tmp_path).entries
+    assert len(entries) == 400
+    stamps = [entry["ts"] for entry in entries]
+    assert stamps == sorted(stamps)
