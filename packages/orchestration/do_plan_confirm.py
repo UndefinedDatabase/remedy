@@ -34,12 +34,16 @@ def plan_summary_lines(job: Any) -> list[str]:
 
 def make_plan_confirmer(
     *,
-    ask: Callable[[str], str] = input,
+    ask: Callable[[str], str],
     write: Callable[[str], None] | None = None,
 ) -> Callable[[Any], bool]:
-    """The confirmer an interactive terminal's walk carries: show the plan, ask, True only on `y`."""
+    """The confirmer an interactive terminal's walk carries: show the plan, ask, True only on `y`.
+
+    *ask* reads one line (the CLI passes `input`; this package reads no terminal itself).
+    """
     def say(text: str) -> None:
-        print(text, file=sys.stderr, flush=True)  # noqa: T201 — the plan the person is asked to approve
+        sys.stderr.write(text + "\n")
+        sys.stderr.flush()
 
     def confirm(job: Any) -> bool:
         out = write or say
@@ -63,8 +67,3 @@ def approve_confirmed_plan(job: Any) -> None:
     plan = job.task_plan if isinstance(job.task_plan, dict) else {}
     questions = list(plan.get("clarifications_resolved") or [])
     resolve_task_plan_approval(job, reason="approve", answers={}, questions=questions)
-
-
-def interactive_plan_confirmer() -> Callable[[Any], bool] | None:
-    """The confirmer when a person is at the terminal (stdin and stderr are both a TTY); else None."""
-    return make_plan_confirmer() if sys.stdin.isatty() and sys.stderr.isatty() else None

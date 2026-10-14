@@ -27,6 +27,7 @@ apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
 apps.cli.commands.do_order_input
+apps.cli.commands.do_plan_prompt
 apps.cli.commands.do_rehearsal_refusals
 apps.cli.commands.doctor_health_cmd
 apps.cli.commands.doctor_logs_cmd
@@ -167,8 +168,12 @@ packages.orchestration.diff_view_source
 packages.orchestration.do_apply
 packages.orchestration.do_cockpit
 packages.orchestration.do_context
+packages.orchestration.do_lane
+packages.orchestration.do_plan_confirm
+packages.orchestration.do_progress
 packages.orchestration.do_rehearsal
 packages.orchestration.do_run
+packages.orchestration.do_scope
 packages.orchestration.do_sequence
 packages.orchestration.do_summary
 packages.orchestration.do_targets
