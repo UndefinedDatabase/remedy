@@ -553,12 +553,9 @@ def _cmd_job_run(
     # Per-role model override flags are validated and resolved at the CLI
     # layer (invalid values exit 2) before any run work begins.
     _resolve_cli_role_configs(
-        builder_provider=builder_provider,
-        builder_model=builder_model,
-        builder_effort=builder_effort,
-        reviewer_provider=reviewer_provider,
-        reviewer_model=reviewer_model,
-        reviewer_effort=reviewer_effort,
+        builder_provider=builder_provider, builder_model=builder_model,
+        builder_effort=builder_effort, reviewer_provider=reviewer_provider,
+        reviewer_model=reviewer_model, reviewer_effort=reviewer_effort,
         repair_provider=repair_provider,
         repair_model=repair_model,
         repair_effort=repair_effort,
@@ -635,6 +632,9 @@ def _cmd_job_run(
             f"job {job_id} is cancelled and never runs again.",
             json_output=json_output,
         )
+    if _recorded is not None:
+        from apps.cli.commands.job_run_refusals import refuse_unapproved_job_run
+        refuse_unapproved_job_run(_recorded, job_id, json_output=json_output)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other

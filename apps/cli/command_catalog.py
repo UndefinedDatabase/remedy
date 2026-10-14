@@ -1680,7 +1680,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         may_mutate_repo=False,
-        may_execute_commands=True,
+        may_execute_commands=True, exit_codes=(0, 1, 2, 3),
     ),
     *STATS_COMMANDS,
     CommandEntry(

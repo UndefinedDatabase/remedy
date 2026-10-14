@@ -469,8 +469,8 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
 | `--json` | yes | no | no | no | Output as JSON |
 
-Exit codes: `0`, `1`, `2`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `serve_unreachable`.
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `plan_awaiting_approval`, `plan_rejected`, `serve_unreachable`.
 Answer keys: `context_strategy`, `cost_mirror`, `created_at`, `execution_config`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_title`, `job_workspace_path`, `next_command`, `pending_tasks`, `postmortem`, `repair_rounds_allowed`, `repair_rounds_source`, `repo_path`, `result_diff`, `status`, `target_guard`, `tasks`, `warning`, `worktree`.
 Keys under the answer keys: see below.
 
