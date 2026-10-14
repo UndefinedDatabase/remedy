@@ -91,6 +91,7 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
+from packages.orchestration.do_lane import settle_do_lane
 from packages.orchestration.do_plan_confirm import approve_confirmed_plan
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
@@ -234,6 +235,8 @@ class OrderJobPlan:
             return "intake: llm"
         if self.intake_fallback_reason == "forced":
             return "intake: heuristic (forced by --no-llm)"
+        if self.intake_fallback_reason == "bounded":
+            return "intake: heuristic (bounded lane, no provider call)"
         if self.intake_fallback_reason == "provider_unavailable":
             return "intake: heuristic fallback (provider unavailable)"
         if self.intake_fallback_reason == "provider_error":
@@ -603,7 +606,9 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
         return DO_STEP_SKIPPED, (
             f"{ctx.repo_root} has no commit holding a tracked file — nothing to study")
 
-    call_fn = None if ctx.no_llm else study_call_fn()
+    # Amend1014 D1: a tiny repository of a bounded order is studied from facts, with no narration call.
+    lane = settle_do_lane(ctx)
+    call_fn = None if ctx.no_llm or (lane.bounded and ctx.tiny_repo) else study_call_fn()
     result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
     updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
     if updated is not None:
@@ -668,7 +673,8 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.intake import resolve_planner_target
 
     planner_name, _ = resolve_planner_target(ctx.planner_provider, ctx.planner_model)
-    if not ctx.no_llm:
+    lane = settle_do_lane(ctx)
+    if not ctx.no_llm and not lane.bounded:
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.mission_plan_schema import MissionPlanDraft
 
@@ -686,12 +692,36 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+    kept_note = ""
+    if call_fn is not None:
+        outcome, kept_note = _deterministic_plan_for_invented_scope(ctx, project_id, outcome, planner_name)
     ctx.mission_plan = outcome.plan
     ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
         f"mission {ctx.mission_id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
-        f"{contract_note}")
+        f"lane: {lane.lane} ({lane.reason}){kept_note}; {contract_note}")
+
+
+def _deterministic_plan_for_invented_scope(
+        ctx: DoContext, project_id: str, outcome: Any, planner_name: str) -> tuple[Any, str]:
+    """``(outcome, note)``: the planner's plan, or the deterministic one when it names files the order did not.
+
+    Amend1014 D6: the guard is this comparison, not the prompt's wording. The plan that invented
+    scope stays on disk as the previous version; the deterministic plan names only the order's
+    own deliverables. ``note`` is "" when the planner's plan is kept.
+    """
+    from packages.orchestration.do_lane import tracked_repo_files
+    from packages.orchestration.do_scope import mission_plan_text, order_scope_violations
+    from packages.orchestration.mission_compiler import plan_mission
+
+    invented = order_scope_violations(
+        ctx.order, mission_plan_text(outcome.plan), tracked_repo_files(ctx.repo_root))
+    if not invented:
+        return outcome, ""
+    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name)
+    return kept, (f"; the planner's plan named files the order did not request ({', '.join(invented)}), "
+                  f"so the deterministic plan of the order's own deliverables was kept")
 
 
 def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
@@ -748,10 +778,11 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.repo_mission import link_order_job
 
+    lane = settle_do_lane(ctx)
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
                                          force_mission=ctx.force_mission,
-                                         projects=len(ctx.projects))
+                                         projects=len(ctx.projects), bounded=lane.bounded)
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
@@ -763,7 +794,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 order,
                 project=target.project,
                 repo_path=target.repo,
-                no_llm=ctx.no_llm,
+                no_llm=ctx.no_llm or lane.bounded,
                 run_unattended=ctx.run_unattended,
                 deterministic_tasks=tasks,
                 planner_model=ctx.planner_model,
@@ -771,6 +802,8 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
             )
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
+        if lane.bounded and not ctx.no_llm:
+            shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]

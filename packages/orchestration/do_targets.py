@@ -15,6 +15,7 @@ from packages.orchestration.do_context import (
     DO_SHAPE_MILESTONES,
     DO_SHAPE_ONE_JOB,
     DO_SHAPE_REPOSITORIES,
+    DO_SHAPE_SOURCE_BOUNDED,
     DO_SHAPE_SOURCE_FORCE_JOB,
     DO_SHAPE_SOURCE_FORCE_MISSION,
     DO_SHAPE_SOURCE_PLANNER,
@@ -165,8 +166,10 @@ def do_shape_of_plan(plan: Any) -> str:
 
 
 def resolve_do_shape(plan: Any, *, force_job: bool = False, force_mission: bool = False,
-                     projects: int = 1) -> tuple[str, str]:
+                     projects: int = 1, bounded: bool = False) -> tuple[str, str]:
     """``(shape, shape_source)``: a force flag wins over the plan; both at once is refused.
+
+    A bounded order (amend1014-do-golden-path-now D1) is one job, whatever the plan outlines.
 
     An order over several *projects* plans one job per repository, and refuses a force
     flag (DECISION F205 D4).
@@ -182,6 +185,8 @@ def resolve_do_shape(plan: Any, *, force_job: bool = False, force_mission: bool 
         return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_FORCE_JOB
     if force_mission:
         return DO_SHAPE_MILESTONES, DO_SHAPE_SOURCE_FORCE_MISSION
+    if bounded:
+        return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_BOUNDED
     return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
 
 
@@ -226,6 +231,8 @@ def _shape_job_orders(
                  DoJobTarget(project, ctx.project_repos[str(project.id)]))
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:
+        if ctx.lane is not None and ctx.lane.bounded and ctx.lane.deliverable:
+            return [(order, [deliverable_task(ctx.lane.deliverable, order)], sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]

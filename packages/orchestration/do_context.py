@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from packages.orchestration.do_lane import DoLaneDecision
     from packages.orchestration.project_registry import RemyProject
 
 #: The two shapes (DECISION F268 D5), and where the one in force came from; an order over
@@ -22,6 +23,7 @@ DO_SHAPE_MILESTONES = "milestones"
 DO_SHAPE_REPOSITORIES = "one job per repository"
 DO_SHAPE_SOURCE_PLANNER = "planner"
 DO_SHAPE_SOURCE_PROJECTS = "the order's projects"
+DO_SHAPE_SOURCE_BOUNDED = "bounded lane"
 DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
 DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
 
@@ -117,6 +119,10 @@ class DoContext:
     #: Shows a pending plan of tasks to the person and returns True when they approve it; the
     #: CLI supplies it only on an interactive terminal. ``None`` asks nobody (amend1014 D3).
     confirm_plan: Callable[[Any], bool] | None = None
+    #: The lane the order walks (amend1014 D1), decided once by `settle_do_lane`; ``None`` until then.
+    lane: DoLaneDecision | None = None
+    #: The repository is small enough that its study needs no provider narration.
+    tiny_repo: bool = False
     #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
     halt_reason: str = ""
     repo_root: str = ""
