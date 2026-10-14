@@ -8,16 +8,14 @@ the target; `--yes` of `do` becomes `--run-unattended`. D1 to D6, mandatory test
 acceptance run. Not a planner rewrite; no next roadmap feature until this is handed back.
 
 ## Current Step
-On `feature/do-golden-path` (from `main` at `e688b30f3`). F078 stays untouched on
-`feature/f078-autonomy-levels` (committed, pushed, no pull request). Implementation and tests are
-written; remaining: commits in small steps, the one closure gate, the real acceptance run, the
-pull request, the handback.
+Done and pushed: code commits C1 to C10, the closure gate green at `b6741dfbb` (23134 passed), the
+real acceptance run reached the builder and stopped on a provider limit (the Ollama builder is
+prose-only), the handback written, the pull request open and not merged.
 
 ## Next Steps
-1. Commit in logical steps (D2 planner, D1 lane, D4/D5 progress and cockpit, D3 flag, D6 prompt).
-2. Closure: the repository's required integration gate once; record command, interpreter, SHA.
-3. Real acceptance run against a fresh committed one-file repository with the real provider config.
-4. Push, open the pull request, write `.agent/handoff.md`; do not merge.
+1. Operator: review the pull request; answer the one question in `.agent/handoff.md` about the
+   Ollama builder.
+2. After the merge, F078 resumes on `feature/f078-autonomy-levels` (its plan names round 4).
 
 ## Risks
 - The `.data` incident tree is blocked by a deny rule here; the captured-plan fixture is rebuilt

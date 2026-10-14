@@ -1,229 +1,124 @@
-# Handback — F055 round 9 — the closing round: book round 8, resolve R-1320, rotate the ledger, accept F055 in STATUS, open the pull request
+# Handback — amend1014-do-golden-path-now: the `remedy do` golden path is repaired; the real acceptance run reached the builder and stopped on a provider limit
 
 ## Session
 
-SESSION 1 of feature F055 · round 9 · rounds so far 9
+Operator amendment amend1014-do-golden-path-now · branch `feature/do-golden-path` (from `main` at
+`e688b30f3`) · code commits C1 to C10, `9e88a356e`..`b6741dfbb` · the pull request is open and
+**not merged**. The interrupted F078 feature was already committed and pushed on
+`feature/f078-autonomy-levels` (clean tree, `9d3187143`, no pull request); nothing of it was
+reset, restored, stashed or touched. The Open PR Gate found no open pull request. `.agent/STOP`
+(the operator's stop file) is untracked and was left alone.
 
-Context self-assessment: every step landed on the first attempt — the digest checks on all
-fourteen prepared files, C1's seven byte copies, C2's ledger rotation (exit 0, both files
-byte-identical to the reviewer's simulated output), C3's three byte copies and gates 1 through 5
-(all green) — so this closing round ends the session here: F055 is closed, its pull request is
-left open and unmerged for the next session's Open PR Gate, and the next feature starts fresh.
+## State: what the command does now
 
-Fortschritt: 100 % (F055 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+`remedy do "<the incident order>" --repo .` on a committed one-file repository, with no flag:
+first output at 0.34 s, deterministic study, the one-milestone plan with a deterministic DoD, one
+job and one task for `README.md`, **zero planning or study provider calls**, the cockpit URL
+printed before the builder starts, progress lines on stderr with a heartbeat every ten seconds, a
+stop before apply, the target untouched. `--yes` of `do` is deleted; `--run-unattended` replaces it.
 
-## Range
+## Real acceptance run — the honest result
 
-Review of `d92ae972d54df53b4e2e485860a0400f7b06d96a`..`<this commit>` (then this commit).
+Command, exactly the human one apart from the path, at commit `b6741dfbb`, a fresh committed
+repository holding only `README.md` (`# Test\n`), isolated data root, the default configuration
+(`builder`, `reviewer`, `planner` and `study` all `ollama`, model `muse-glimmer:latest`):
 
-## Commits
+```
+remedy do "Add one concise project-description paragraph below the existing heading in README.md. Change no other files." --repo .
+```
 
-### `d6afb9cf3166cb5e922eb9dd4854ed0452041140` F055 R9 C1: book round 8, resolve R-1320, the Built State, save the block, the STATUS line and the PR body
-| Path | +/- | Reason |
+| Measure | Result |
+|---|---|
+| Time to first visible output | 0.341 s after launch; the first provider call can happen only after `run started`, at 1.06 s |
+| Phase durations | init 0.0 s · study 0.0 s · plan 0.1 s · shape 0.0 s · ui 0.5 s · run 135.7 s |
+| Resolved provider per call | builder `ollama` ×3, reviewer `ollama` ×3 (rounds 1 to 3; `provider_evidence.json`, `prompt_trace.jsonl`) |
+| Provider calls by role | planning 0 · study 0 · intake 0 · DoD 0 · builder 3 · reviewer 3. No mission-level prompt trace exists. |
+| Jobs and tasks | 1 job, 1 task, deliverable `README.md` (no synthetic inspection task) |
+| Cockpit | URL printed at 1.06 s after launch, 6 ms before `run started`; HTTP 200 on the URL after the run failed (checked on the first run); `remedy ui stop` clean |
+| Final state | `blocked`: `task_..._gate_failed: final_status=repair_exhausted; no_file_changed; reviewer_verdict=fail` |
+| Target `git status` before / after | both empty; `README.md` still `# Test`; one commit |
+| Generated diff | **none** (`result.diff` is 0 bytes) |
+
+**This is a failed acceptance on the criterion "an actual README diff in Remedy's isolated
+workspace".** Cause, measured: the builder's reply described the edit and printed the new file in
+prose (`files_changed: []`, `parse_source: heuristic_fallback`), and the reviewer correctly failed
+a claimed change that is not in the staged diff. The `no_file_changed` gate fired on the one REAL
+task, not on an inspection task. I found no code path that applies an Ollama builder's text to the
+workspace: `OllamaPingPongProvider.build` returns text, `pingpong_loop` writes a builder's changes
+into staging only for the fake provider, and a writing provider (claude-cli) edits the workspace
+itself. So with the all-Ollama default, no order can produce a diff; that predates this amendment,
+and repairing it is a provider rewrite the amendment forbids. I did not run claude-cli, because
+the order says no Claude process was expected and it spends usage nobody authorized.
+**Operator question (one):** should a follow-up feature let the Ollama builder's structured reply
+be applied to the workspace, or should `remedy do`'s default builder be a writing provider?
+
+A second, labelled **fake-provider** run of the same command (`--builder-provider fake
+--reviewer-provider fake`, commit `e5ca409a0`) shows the rest of the path: one job, one task,
+cockpit before the run, `run done — 1.1 s`, apply stopped, target `git status` empty, and a diff in
+the job workspace (`docs/README.md`, the fake builder's fixed output, not a real paragraph).
+
+## Provider calls for the incident, before and after
+
+| | Before (the incident, as the order measured it) | After (this branch) |
 |---|---|---|
-| `.agent/authored/f055-r9.md` | +112/-0 | NEW: byte copy of `block.md` |
-| `.agent/authored/f055-r9-status_line.txt` | +1/-0 | NEW: byte copy of `src-status_line.txt` |
-| `.agent/authored/f055-r9-pr_body.md` | +45/-0 | NEW: byte copy of `src-pr_body.md` |
-| `.agent/live_review.md` | +4/-0 | byte copy of `dry-C1-live_review.md`: books round 8's verdict, resolves R-1320 |
-| `.agent/prose_slips.md` | +1/-0 | byte copy of `dry-prose_slips.md`: round 7's prose slip |
-| `docs/roadmap/features/T3_F055.md` | +33/-0 | byte copy of `dry-T3_F055.md`: the Built State section |
-| `.agent/plan.md` | +5/-6 | byte copy of `dry-plan.md`: advances to the closing round |
+| Study narration | 3 | 0 |
+| Mission plan | 1 | 0 |
+| Milestone DoD compilation | 3 | 0 |
+| Intake | 1 | 0 |
+| Task plan | 1 | 0 |
+| Builder | 1 | 1 per round (3 in the real run, as no round changed a file) |
+| Reviewer | 1 | 1 per round (3) |
+| Total | 11 sequential, about 7.5 minutes | 6 in the real run; 2 on a first-round pass |
 
-### `1c587a5c06c5e7db4aca966a7cf49f4c6984c795` F055 R9 C2: rotate the finding ledger into its archive
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-28 | rotated out: 6 gate records and 4 finding pairs (8 records) moved to the archive |
-| `.agent/live_review_archive.md` | +28/-0 | the same records appended, byte-verbatim, sha256-verified before and after the move |
-
-### (this commit) F055 R9 C3: accept F055 in STATUS with its README sync and the self-use queue
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `dry-STATUS.md`: F055's line flips `[~]` to `[x]` with its full STATUS-line template |
-| `README.md` | +11/-2 | byte copy of `dry-README.md`: the Tier 3 count (10→11), the overall count (145→146) and the Tier 3 capability-catalog paragraph for F055 |
-| `scripts/self_use_queue.json` | +1/-1 | byte copy of `dry-self_use_queue.json`: SU-064's `consumed_by` set to `F055` |
-| `.agent/handoff.md` | this commit | full rewrite per the handback template — this commit (C3) carries both the STATUS/README/queue copies and the handback, per the R-0149 self-reference exception |
-
-C3 is the closure's ACCEPTED HEAD (it carries no application code change beyond the bookkeeping
-named above; the accepted HEAD the STATUS line and the evidence job cover is round 8's C3,
-`c3c6ae7bf958d712b77656e60a6ee9e9c33efe2a`, as the STATUS line's own `accepted HEAD` field
-states).
-
-## External actions
-
-- Preconditions checked before any write: `git rev-parse HEAD` and
-  `origin/feature/f055-rehearsal` both read `d92ae972d54df53b4e2e485860a0400f7b06d96a`;
-  `git status --porcelain` was empty; `.agent/STOP` absent. `git branch --show-current` read
-  `feature/f055-rehearsal` immediately before every commit (C1, C2, C3).
-- Push after C3: reported in the final reply, since it runs after this commit and does not exist
-  yet when this file is written.
-- `gh pr list` and `gh pr create`: reported in the final reply, for the same reason. No
-  `gh pr merge` was run or will be run this round.
-- No other provider call, no staging reclaim, no self-use run (not ordered by this block).
-
-## Verification
-
-**Digests verified before anything else**, each with a Python sha256 reader (run as
-`python3 -I <absolute path>`): `block.md` (112 lines) and all thirteen other prepared files
-(`dry-C1-live_review.md`, `dry-prose_slips.md`, `dry-T3_F055.md`, `dry-plan.md`,
-`src-status_line.txt`, `src-pr_body.md`, `sim-rotation.txt`, `sim-C2-live_review.md`,
-`sim-C2-live_review_archive.md`, `dry-STATUS.md`, `dry-README.md`, `dry-self_use_queue.json`,
-`selection.txt`, `verify.py`) matched the digests given in the prompt — all `OK`, `ALL_OK: True`.
-
-**C1's seven byte copies**, each proved equal immediately after copying with a Python
-byte-for-byte comparison: all seven `equal=True` (reported in full in the commit message's own
-diff; summarized here as the block permits).
-
-**C2 — ledger rotation**: `python3 scripts/rotate_live_review.py`, run once from a Python wrapper
-with `cwd=/home/decodeux/Repos/remedy`, capturing exit code and output:
-```
-EXIT_CODE: 0
-gate records moved: 6
-finding pairs moved: 4 (8 records)
-resolved-text records moved: 0
-old ledger size: 182741 bytes
-new ledger size: 163188 bytes
-old archive size: 6816503 bytes
-new archive size: 6836056 bytes
-open findings before: 40
-open findings after: 40
-gate headers matching neither known form (left in place): 1
-written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
-```
-Every line matches `sim-rotation.txt` except the `written:` line, which correctly names the
-primary checkout's folder rather than the reviewer's dry-run folder. Afterward,
-`.agent/live_review.md` and `.agent/live_review_archive.md` were each read and compared
-byte-for-byte against `sim-C2-live_review.md` and `sim-C2-live_review_archive.md`: both
-`equal=True` (sha256 `66b25d653e86ed3e75cd1b2a81bfaebf34d176ddd072ed516127c86c8f3201af` and
-`eb66815f0cf79c4d15b79dcb837969216b97d7318c6fbc24dd30d4c7e069ca7a`, matching on both sides).
-`git status --porcelain` before the commit showed exactly those two files.
-
-**C3's three byte copies**, each proved equal immediately after copying: `docs/roadmap/STATUS.md`
-vs `dry-STATUS.md`, `README.md` vs `dry-README.md`, `scripts/self_use_queue.json` vs
-`dry-self_use_queue.json` — all three `equal=True`.
-
-**Gate 1** (after C3's three copies, before this handoff) — `git status --porcelain` showed
-exactly the three C3 files modified; then
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r9/prep/verify.py /home/decodeux/Repos/remedy --worktree`:
-```
-True d6afb9cf3 has the single parent d92ae972d
-True 1c587a5c0 has the single parent d6afb9cf3
-True the commit C1 exists
-True the commit C2 exists
-True C1 .agent/authored/f055-r9.md equals block.md
-True C1 .agent/live_review.md equals dry-C1-live_review.md
-True C1 .agent/prose_slips.md equals dry-prose_slips.md
-True C1 docs/roadmap/features/T3_F055.md equals dry-T3_F055.md
-True C1 .agent/plan.md equals dry-plan.md
-True C1 .agent/authored/f055-r9-status_line.txt equals src-status_line.txt
-True C1 .agent/authored/f055-r9-pr_body.md equals src-pr_body.md
-True C1 names exactly its paths []
-True C2 .agent/live_review.md equals sim-C2-live_review.md
-True C2 .agent/live_review_archive.md equals sim-C2-live_review_archive.md
-True C2 names exactly its paths []
-True working tree docs/roadmap/STATUS.md equals dry-STATUS.md
-True working tree README.md equals dry-README.md
-True working tree scripts/self_use_queue.json equals dry-self_use_queue.json
-True the STATUS line once, no [~] line
-ALL True
-```
-One run, green.
-
-**Gate 2** — `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`:
-```
-11	2	README.md
-1	1	docs/roadmap/STATUS.md
-1	1	scripts/self_use_queue.json
-```
-
-**Gate 3** — `python3 -m pytest -q -rfEs` over `selection.txt`'s eight paths (`tests/docs/`,
-`tests/cli/test_advertised_commands.py`, `tests/orchestration/test_live_review_rotation.py`,
-`tests/orchestration/test_integrity_gate.py`, `tests/orchestration/test_self_use_generator.py`,
-`tests/orchestration/test_self_use_queue.py`, `tests/cli/test_golden_path.py`,
-`tests/test_structure_ratchet.py`), run via a Python subprocess wrapper with
-`cwd=/home/decodeux/Repos/remedy`, no `-n`, `REMEDY_TEST_MAX_WORKERS` unset:
-```
-EXIT_CODE: 0
-564 passed in 50.25s
-```
-No FAILED, ERROR or SKIPPED line. This was the round's only pytest run.
-
-**Gate 4** — `python3 -m apps.cli.main integrity check --json`:
-```
-EXIT_CODE: 0
-{"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
-```
-Six checks `pass`, `fail_count` 0.
-
-**Gate 5** — `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
-```
-EXIT_CODE: 0
-['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313', 'R-1319']
-```
-List length 40: `R-1246`, then `R-1276` to `R-1313` (38 ids), then `R-1319` — exactly as the block
-names.
-
-**Gate 6** — after the pull request; reported in the final reply only, since the pull request
-does not exist yet when this file is written.
-
-## Authored-text proofs
-
-C1's seven reviewer-authored texts (`block.md`, `dry-C1-live_review.md`, `dry-prose_slips.md`,
-`dry-T3_F055.md`, `dry-plan.md`, `src-status_line.txt`, `src-pr_body.md`) against the files they
-produced: each confirmed byte-equal by a Python equality check at copy time and again by Gate 1's
-per-path check. C2's two ledger files against `sim-C2-live_review.md` and
-`sim-C2-live_review_archive.md`: confirmed byte-equal at verification time and again by Gate 1's
-per-path check. C3's three texts (`dry-STATUS.md`, `dry-README.md`, `dry-self_use_queue.json`)
-against the files they produced: confirmed byte-equal at copy time and again by Gate 1's per-path
-check. No other reviewer-authored text was applied this round.
-
-## Deviations & assumptions
-
-One declared: the C1 commit was run as `cd /home/decodeux/Repos/remedy && git commit -m "..."`,
-which the block's constraint "Never `cd`; use absolute paths and `git -C`" forbids. This is a
-genuine departure, not a sequence change — nothing else about C1 (its paths, its byte-equality
-proofs, its subject, its trailer) differed from the block's order, and the working directory
-reset before the next tool call, so no later command ran from the wrong directory. C2 and C3's
-commits, and every other command this round, used `git -C /home/decodeux/Repos/remedy` or an
-absolute-path Python wrapper as ordered. Recorded here per the handback template's instruction
-that any departure belongs in this section even when it is otherwise correct.
-
-No other deviation. The gates, the copies and the rotation all read exactly as the block
-described on the first attempt.
-
-## For the operator, in plain sentences
-
-Remedy can now rehearse an order — plan it, show what it would cost, risk and write, and stop
-before anything runs or changes — and a rehearsed plan runs for real once it is approved, without
-planning again. A job whose plan still waits for approval can no longer be run around that
-approval. A check that starts an application no longer passes when that application died. The
-whole test collection ran on the shipped code and passed. The paid self-repair run stopped at its
-approval gate as it should. The review package is
-`remedy-review-20261014-200011-READY_FOR_REVIEW.zip`, in
-`/home/decodeux/Repos/remedy-history/zips`. A pull request is open and will be merged at the start
-of the next session unless the operator merges it earlier.
-
-## Next
-
-1. Phase 1 rule 1: `.agent/STOP` — absent at this handoff.
-2. The Open PR Gate, which merges F055's pull request in the NEXT session and never in this one.
-3. The booking of round 9's verdict in the next feature's first commit.
-4. Rule A5: the next unchecked STATUS line.
-
-Operator questions open: 0.
-Open findings: 40 (R-1246, R-1276 to R-1313 and R-1319), all owned by F307.
-
-## Item status
+## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | Gate 1's checks `True`; books round 8's verdict, resolves R-1320, the Built State |
-| C2 | done | rotation exit 0, both ledger files byte-identical to the reviewer's simulated output |
-| C3 | done | three byte copies proved equal; Gates 1-5 all green before the handoff |
-| Gate 1 | done | `ALL True`, one run |
-| Gate 2 | done | numstat reported above |
-| Gate 3 | done | exit 0, `564 passed`, no FAILED/ERROR/SKIPPED |
-| Gate 4 | done | `fail_count` 0, six checks `pass` |
-| Gate 5 | done | list length 40, exactly the ids the block names |
-| Gate 6 | pending | runs after the pull request; reported in the final reply only |
-| Push | pending | runs after this commit; reported in the final reply only |
-| Pull request | pending | runs after this commit; reported in the final reply only |
+| D1 lane | done | `do_lane.py` `select_do_lane`, pure, table-tested (13 rows plus properties), no model; bounded lane studies a tiny repository from facts, plans and compiles the DoD deterministically, shapes one job and one task, calls no planner |
+| D2 one deliverable, one task | done | verbs verify, confirm, locate, find, identify, assess, audit; `coalesce_deliverable_tasks` merges by the same file, last task's title, cycle-safe; `no_file_changed` untouched |
+| D3 `--run-unattended` | done | `--yes` deleted from `do` (catalog, parser, handler, rehearsal refusal, serve and API launcher, contract, guides, tests); full plan: terminal question or stop naming the flag |
+| D4 no silent waits | done | `do_progress.py`; heartbeat names the step and both providers, not the active one (the run log writes no role event during a call) |
+| D5 cockpit first | done | sequence init, study, plan, shape, ui, run, apply; launch failure prints `remedy ui start <job id>` and the run goes on |
+| D6 no invented scope | done | two prompt rules (golden updated, declared) and the guard `do_scope.py`, which falls back to the deterministic plan |
+| Test 1 incident end to end | done | `test_do_bounded_lane.py::test_the_incident_order_is_one_job_one_task_with_no_flag_and_no_planning_call` and the cockpit-order test |
+| Test 2 call count | done | tripwires on every planning and study factory; builder and reviewer counted |
+| Test 3 captured plan replay | done | `test_task_deliverables.py`, with and without `files_hint`; rebuilt from the order's task titles because `.data` is blocked by a deny rule here |
+| Test 4 visible progress | done | `test_do_progress.py` (injected sink and clock, flush), plus the human-walk test |
+| Test 5 machine output | done | json: one document, stderr empty |
+| Test 6 cockpit on failure | done | blocked run keeps the started cockpit; launcher failure prints the real command |
+| Test 7 scale-up | done | two files keep two tasks in the full lane, `--force-mission` keeps two jobs, many-file repository and a vague order is full |
+| Test 8 scope fabrication | done | LICENSE, CI, `.env.example` proposed by a stub planner are replaced by the deterministic plan |
+| Test 9 vocabulary | done | catalog, parser, client interface, documents and callers carry no `remedy do ... --yes` |
+| Test 10 existing safety | done | target byte and status unchanged without `--apply`; apply, commit and push gates untouched |
+| Real acceptance run | **deviated** | shape, calls, progress, cockpit order and absence of the synthetic gate failure are proven; no README diff (provider limit above) |
+
+## Verification (real, trimmed)
+
+- Closure gate, once green: `python3 -m pytest -n auto -q` from the repository root, Python 3.10.12,
+  commit `b6741dfbb597c7c109f1bc8e59270fcdb0af359d`, tree `cd64a6283891227588b7a15e885642a7cdd75b33`:
+  `23134 passed, 22 skipped, 1 warning in 331.56s`, exit 0. Log: `~/.remedy-loop/amend1014-suite3.txt`.
+- Two earlier full runs were red and are this branch's own, both repaired in C9 and C10:
+  run 1 at `6e056c629`, `8 failed, 23126 passed` (the task-plan prompt did not name the new verbs;
+  four new modules missing from the reachability allowlist; a lint-excused print, a blind handler
+  and a terminal read inside packages; a new role-config call site; `context.md` without "Steps");
+  run 2 at `31458f162`, `3 failed, 23131 passed` (the task-plan prompt golden). No test was
+  deleted, no assertion weakened, no ceiling raised.
+- The new tests fail on the old revision (checked in a detached worktree of `e688b30f3`: 23 failed,
+  10 errors, the errors being fixtures that need the new modules).
+- The tree after `b6741dfbb` differs only in this handback and `.agent/plan.md`.
+
+## Deviations
+
+1. The mission-prompt golden and the task-plan prompt golden carry declared content changes.
+2. `F295_GATE_TEST_SHA256` changed because F295's gate test's `do` line now carries `--run-unattended`.
+3. The shared audit sentence "auto-approved via --yes" stays (`job` commands keep their `--yes`; F035's feature file pins it); a `do` approval records "auto-approved via --run-unattended".
+4. Existing tests that drove the LLM planner on a one-file order now name two files, because a one-file order deliberately makes no planning call; `--force-job` also selects the bounded lane as the order says.
+5. `_cmd_do_order`, `plan_order_job` and `do_cmd.py` shrank (184, 250, 1018 lines); three structure rows and the two pins fell with them.
+6. Commits C3 to C5 each pass their own focused tests, but the structure ratchet is only whole at C5.
+7. The `.data` incident tree could not be read (deny rule), so the captured plan is rebuilt from the order's own titles.
+
+## Remaining blockers and next steps
+
+1. Operator: the Ollama builder question above. Until answered, the default all-Ollama configuration cannot produce a diff for any order.
+2. Review and merge the pull request when satisfied; I did not merge it.
+3. F078 resumes on its own branch afterward (`.agent/plan.md` there names round 4).
