@@ -271,13 +271,13 @@ def accept_order_in_each(targets: list[tuple[Any, str]], order: MissionOrder, *,
 
 
 def link_order_job(project_id: str, mission_id: str, order_id: str, job_id: str,
-                   root: Path | None = None) -> Mission:
+                   root: Path | None = None, *, now: datetime | None = None) -> Mission:
     """Link a job to the mission under an order batch: the first job ever is ``initial``, then ``follow_up``."""
     with repo_mission_lock(project_id, root):
         current = load_mission(project_id, mission_id, root)
         role = MISSION_ROLE_FOLLOW_UP if current.job_links else MISSION_ROLE_INITIAL
         return link_job_to_mission(project_id, mission_id, job_id, role,
-                                   order_id=order_id, root=root)
+                                   order_id=order_id, now=now, root=root)
 
 
 def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],

@@ -399,3 +399,27 @@ class TestThePlanChainStaysFlat:
         for key in set(before) - {"mission_plan", "orders"}:
             assert json.dumps(after[key], sort_keys=True) == json.dumps(before[key], sort_keys=True)
         assert not reconcile_repo_missions(apply=True, root=tmp_path)["flatten"]
+
+
+def test_a_follow_up_job_belongs_to_the_current_order_batch(tmp_path, monkeypatch):
+    """Operator amendment amend1014-luna-mission-fixes A.4."""
+    from packages.orchestration.mission_state import continue_mission
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    from packages.orchestration.repo_mission import _unfinished_jobs
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, batch = accept_order(project, repo, _order("feature"), root=tmp_path)
+    first = JobPlan(job_title="first", project_id=str(project.id))
+    save_job_plan(first)
+    link_order_job(mission.project_id, mission.id, batch.order_id, str(first.job_id), root=tmp_path)
+
+    follow = continue_mission(mission.project_id, mission.id, "next step", root=tmp_path)
+
+    mission = load_mission(mission.project_id, mission.id, tmp_path)
+    [link] = [link for link in mission.job_links if link.job_id == str(follow.job_id)]
+    assert link.order_id == batch.order_id
+    [row] = order_batch_view(mission)
+    assert row["order_id"] == batch.order_id and str(follow.job_id) in row["job_ids"]
+    assert _unfinished_jobs(mission, batch.order_id)

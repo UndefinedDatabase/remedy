@@ -116,6 +116,16 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         metadata={"mission_id": mission.id, "mission_role": role},
     )
     save_job_plan(job)
-    link_job_to_mission(project_id, mission.id, str(job.job_id), role, now=now,
-                        root=root)
+    batch = mission.current_order()
+    if batch is None:
+        # A legacy record before its first order batch has no order to attribute the job to.
+        link_job_to_mission(project_id, mission.id, str(job.job_id), role, now=now,
+                            root=root)
+    else:
+        # Operator amendment amend1014-luna-mission-fixes A.4: a follow-up is work of the
+        # current order, so its batch shows it and its order file still counts as unfinished.
+        from packages.orchestration.repo_mission import link_order_job
+
+        link_order_job(project_id, mission.id, batch.order_id, str(job.job_id), now=now,
+                       root=root)
     return job
