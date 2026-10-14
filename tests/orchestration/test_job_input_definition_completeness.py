@@ -21,6 +21,7 @@ import tests.orchestration.test_run_manifest as T
 from packages.orchestration import manifest_schema as _S
 from packages.orchestration.run_manifest import (
     JOB_INPUT_EXECUTION_FIELDS,
+    JOB_INPUT_EXECUTION_OPTIONAL_FIELDS,
     JOB_INPUT_TOP_FIELDS,
     VALID_ISOLATION_MODES,
     decode_job_input_definition_v1,
@@ -82,13 +83,22 @@ class TestRequiredFactsArePresent:
         with pytest.raises(_S.SchemaError):
             decode_job_input_definition_v1(d)
 
-    @pytest.mark.parametrize("field", sorted(JOB_INPUT_EXECUTION_FIELDS))
+    @pytest.mark.parametrize(
+        "field", sorted(JOB_INPUT_EXECUTION_FIELDS - JOB_INPUT_EXECUTION_OPTIONAL_FIELDS))
     def test_every_material_execution_field_is_required(self, field):
         d = _d()
         d["execution"].pop(field)
         with pytest.raises(_S.SchemaError) as exc:
             decode_job_input_definition_v1(d)
         assert "execution" in str(exc.value)
+
+    @pytest.mark.parametrize("field", sorted(JOB_INPUT_EXECUTION_OPTIONAL_FIELDS))
+    def test_a_definition_written_before_f306_lacks_the_four_keys_and_still_validates(self, field):
+        """R-1235's third step: a record written before this round carries none of the four
+        claude-cli launch keys — that absence must not become a validation failure."""
+        d = _d()
+        d["execution"].pop(field)
+        decode_job_input_definition_v1(d)      # does not raise
 
     def test_an_empty_execution_block_is_rejected_even_with_a_matching_hash(self):
         from packages.orchestration.run_manifest import job_input_definition_sha256

@@ -1,0 +1,5 @@
+Entry ID: SU-062
+Entry Title: Narrow the excused handler at apps/cli/commands/status_cmd.py:56
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/status_cmd.py:1:except Exception:  # noqa: BLE001 — slug lookup failure falls back to a truncated id)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f306-r8-selfuse/SU-062.md

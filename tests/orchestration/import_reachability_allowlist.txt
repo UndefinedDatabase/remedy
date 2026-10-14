@@ -181,6 +181,7 @@ packages.orchestration.event_replay
 packages.orchestration.evidence_index
 packages.orchestration.evidence_mode
 packages.orchestration.exec_guard
+packages.orchestration.execution_config
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
 packages.orchestration.file_provenance
@@ -202,6 +203,7 @@ packages.orchestration.job_apply
 packages.orchestration.job_burn
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
+packages.orchestration.job_input_definition
 packages.orchestration.job_plan
 packages.orchestration.job_runner
 packages.orchestration.lessons
@@ -361,6 +363,7 @@ packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.workspace
+packages.orchestration.workspace_identity
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees
 packages.providers.claude_planner.provider
@@ -368,5 +371,6 @@ packages.providers.ollama_builder.provider
 packages.providers.ollama_planner.provider
 packages.runtimes
 packages.runtimes.dev_server
+packages.runtimes.dev_server_ports
 packages.runtimes.runtime_config
 packages.runtimes.runtime_supervisor

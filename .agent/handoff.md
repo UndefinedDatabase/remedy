@@ -1,152 +1,215 @@
-# Handback — F203 round 10: the closing round — Built State, rotation, STATUS flip, README sync, pull request
+# Handback — F306 round 12 — the closing round: book round 11, resolve R-1235, re-assign R-1246 and R-1252, rotate the ledger, register F307, accept F306 in STATUS, open the pull request
 
 ## Session
 
-SESSION 2 of feature F203 · round 10 · rounds so far 10
+SESSION 3 of feature F306 · round 12 · rounds so far 12
 
-Context self-assessment: this round was almost entirely prepared-bytes copies and mechanical gates with no product code to write, so the work was verifying every digest and numstat before each commit and reading each gate's own decisive output rather than trusting a summary; nothing surprised me and every reading matched what the block predicted.
+Context self-assessment: four commits, five gates, a push and one pull request all ran exactly as
+the block ordered, with every sha256 check, every byte comparison and every numstat reading matching
+on the first try, and context held comfortably throughout. The session ends here because F306 is
+closed and the next feature starts in a fresh session.
 
-Fortschritt: 100 % (F203 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: 100 % (F306 is accepted; its pull request waits for the next session's Open PR Gate) —
+Schätzung
 
 ## Range
 
-Review of `4755df689`..(this commit)
+Review of `64e02e00e`..`617f7aa40`
 
 ## Commits
 
-### a1d19885e F203 R10 C1: book round 9, the Built State, save the round 10 block, the STATUS line and the PR body
+### cc1858bea F306 R12 C1: book round 11 and R-1235, re-assign R-1246 and R-1252 to F307, the Built State, save the round 12 block, the STATUS line and the PR body
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f203-r10-pr_body.md` | +54/-0 | NEW FILE, byte copy of `src-pr_body.md` (the PR body text) |
-| `.agent/authored/f203-r10-status_line.txt` | +1/-0 | NEW FILE, byte copy of `src-status_line.txt` (the STATUS line text) |
-| `.agent/authored/f203-r10.md` | +127/-0 | NEW FILE, byte copy of `block.md` (127 lines, sha256 `9587e72ab0e0a370a408c9cf0ed04023633fe84c606180bb31049cb7db372921`) |
-| `.agent/live_review.md` | +2/-0 | append of `append-live_review.txt`, booking round 9's PASS verdict |
-| `.agent/plan.md` | +5/-7 | replaced by `src-plan.md` |
-| `docs/roadmap/features/T12_F203.md` | +37/-0 | Built State section appended, replaced by `sim-T12_F203.md` |
+| `.agent/live_review.md` | +6/-0 | round 11's PASS verdict and R-1235's resolution booked, byte-identical to `sim-C1-live_review.md` |
+| `docs/roadmap/features/T2_F306.md` | +33/-0 | Built State added, byte-identical to `sim-T2_F306.md` |
+| `.agent/plan.md` | +7/-7 | rewritten for the closing round, byte-identical to `src-plan.md` |
+| `.agent/authored/f306-r12-status_line.txt` | +1/-0 | NEW FILE, the accepted STATUS line, byte-identical to `src-status_line.txt` |
+| `.agent/authored/f306-r12-pr_body.md` | +50/-0 | NEW FILE, the pull request body, byte-identical to `src-pr_body.md` |
+| `.agent/authored/f306-r12.md` | +146/-0 | NEW FILE, byte copy of `block.md` (146 lines, sha256 `aefe362de0a239baa459f6d5e0d70d22490248f5507b8434a36936329a15b879`) |
 
-### 9c8aa4c6a F203 R10 C2: rotate the finding ledger into its archive
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +0/-30 | `scripts/rotate_live_review.py` moved 9 gate records and 3 finding pairs (6 records) to the archive |
-| `.agent/live_review_archive.md` | +30/-0 | received the moved records, byte-verified before and after |
-
-### (this commit) F203 R10 C3: accept F203 in STATUS with its README sync and the self-use queue
+### 2184c2097 F306 R12 C2: rotate the finding ledger into its archive
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | F203's line flipped `[~]` to `[x]` with its closure annotation, replaced by `sim-STATUS.md` |
-| `README.md` | +10/-2 | accepted count 142→143, Tier 12 row 6→7, Tier 12 accepted paragraph added, replaced by `sim-README.md` |
-| `scripts/self_use_queue.json` | +1/-1 | item SU-061's `consumed_by` set from `""` to `"F203"`, replaced by `sim-self_use_queue.json` |
-| `.agent/handoff.md` | this commit | this handback, full rewrite per `docs/agents/handback_template.md` |
+| `.agent/live_review.md` | +0/-34 | rotated out by `scripts/rotate_live_review.py`, byte-identical to `sim-C2-live_review.md` |
+| `.agent/live_review_archive.md` | +34/-0 | rotated in, byte-identical to `sim-C2-live_review_archive.md` |
+
+### 617f7aa40 F306 R12 C3: register F307 — Findings paydown v9 under amend0911-feedback rule B: feature file, STATUS line, pin 307, README counters
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/features/T2_F307.md` | +42/-0 | NEW FILE, F307's feature file, byte-identical to `sim-T2_F307.md` |
+| `docs/roadmap/STATUS.md` | +4/-0 | F307's line and pin added, byte-identical to `sim-C3-STATUS.md` |
+| `README.md` | +2/-2 | counters updated, byte-identical to `sim-C3-README.md` |
+| `tests/docs/test_docs_consistency.py` | +5/-1 | F307 added to its fixtures, byte-identical to `sim-test_docs_consistency.py` |
+
+### (this commit) F306 R12 C4: accept F306 in STATUS with its README sync and the self-use queue
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | F306's `[~]` line becomes the accepted line, byte-identical to `sim-STATUS.md` |
+| `README.md` | +14/-3 | `144 of 307`, Tier 2 row `45 \| 46`, F306's paragraph closes the Tier 2 list, byte-identical to `sim-README.md` |
+| `scripts/self_use_queue.json` | +1/-1 | SU-062's `consumed_by` becomes `F306`, byte-identical to `sim-self_use_queue.json` |
+| `.agent/handoff.md` | this commit | full rewrite per `docs/agents/handback_template.md` |
 
 ## External actions
 
-- `git -C /home/decodeux/Repos/remedy push origin feature/f203-structured-logging` after C3 — result in the session's final reply (with retry-on-500 up to three times per the block).
-- `gh pr create --repo UndefinedDatabase/remedy --base main --head feature/f203-structured-logging --title "F203 — Structured logging & correlation" --body-file .agent/authored/f203-r10-pr_body.md` after the push — result (PR URL and number) in the session's final reply only, because the handoff cannot name a PR number that does not exist while it is written.
-- No worktree added or removed. No `gh pr merge` or `gh pr edit`.
+- No worktree added or removed. No `gh pr merge`, `gh pr edit`. No branch created, switched or
+  deleted. No stash touched.
+- Push (`git -C /home/decodeux/Repos/remedy push origin feature/f306-findings-paydown-v8`) and
+  `gh pr create` both run after this commit; their outcomes (push result, PR number and URL, and the
+  `gh pr list` reading) are reported in the session's final reply only, per the write-once rule —
+  neither existed when this file was written.
 
 ## Verification
 
-Preconditions (before any write): `git rev-parse HEAD` read `4755df68922822725a84822e6f14ed7fd3e0c263`, equal to `git rev-parse origin/feature/f203-structured-logging`; `git status --porcelain` empty; `.agent/STOP` absent; `git branch --show-current` read `feature/f203-structured-logging` immediately before C1, before C2 and before C3. All block/bundle digests (`block.md`, `verify.py`, `run_selection.py`, `selection.txt`, and the twelve Bundle `src-`/`sim-`/`append-` files) matched the block's sha256 readings before use.
+Preconditions confirmed before C1: `git rev-parse HEAD` read `64e02e00e87ea0c715411e8d3c81626942f5171d`,
+equal to `git rev-parse origin/feature/f306-findings-paydown-v8`; `git status --porcelain` was empty;
+`git branch --show-current` read `feature/f306-findings-paydown-v8`; `.agent/STOP` was absent.
 
-C1: `git diff --cached --numstat` before commit read exactly the six Bundle paths at `54 0`, `1 0`, `127 0`, `2 0`, `5 7`, `37 0` — all matching the block's specification exactly. `git status --porcelain` after staging named only those six paths.
+The block itself was verified first: 146 lines, sha256
+`aefe362de0a239baa459f6d5e0d70d22490248f5507b8434a36936329a15b879` — matches the digest given in the
+prompt that delivered it. Every one of the fifteen prepared files the Bundle names (`sim-C1-live_review.md`,
+`sim-T2_F306.md`, `src-plan.md`, `src-status_line.txt`, `src-pr_body.md`, `sim-C2-live_review.md`,
+`sim-C2-live_review_archive.md`, `sim-T2_F307.md`, `sim-C3-STATUS.md`, `sim-C3-README.md`,
+`sim-test_docs_consistency.py`, `sim-STATUS.md`, `sim-README.md`, `sim-self_use_queue.json`,
+`sim-rotation.txt`) was checked by a Python sha256 reader before any use — all fifteen `OK`.
 
-C2 (`python3 scripts/rotate_live_review.py` once, `cwd=/home/decodeux/Repos/remedy`) — exit 0, whole output:
+`git branch --show-current` read `feature/f306-findings-paydown-v8` immediately before every one of
+the four commits, as ordered.
+
+C1: each of the five Bundle files plus the block copy was written by a read-only-source Python copy
+script, proved byte-equal to its source by a second, read-only Python script, then
+`git diff --cached --numstat` read exactly `50 0 .agent/authored/f306-r12-pr_body.md`,
+`1 0 .agent/authored/f306-r12-status_line.txt`, `146 0 .agent/authored/f306-r12.md`,
+`6 0 .agent/live_review.md`, `7 7 .agent/plan.md`, `33 0 docs/roadmap/features/T2_F306.md` —
+matching the Bundle's pairs exactly.
+
+C2: `python3 scripts/rotate_live_review.py`, run once through a Python wrapper with
+`cwd="/home/decodeux/Repos/remedy"`, exit 0:
 ```
-gate records moved: 9
+gate records moved: 10
 finding pairs moved: 3 (6 records)
 resolved-text records moved: 0
-old ledger size: 159430 bytes
-new ledger size: 138996 bytes
-old archive size: 6733544 bytes
-new archive size: 6753978 bytes
-open findings before: 4
-open findings after: 4
+old ledger size: 168174 bytes
+new ledger size: 139918 bytes
+old archive size: 6753978 bytes
+new archive size: 6782234 bytes
+open findings before: 2
+open findings after: 2
 gate headers matching neither known form (left in place): 1
 written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
 ```
-Lines 2-11 are byte-identical to `sim-rotation.txt`'s lines 2-11; the last line differs only in naming this primary checkout's paths instead of the reviewer's simulation worktree, exactly as the block anticipated. After the run, `.agent/live_review.md` and `.agent/live_review_archive.md` were each read byte-equal to `sim-C2-live_review.md` and `sim-C2-live_review_archive.md`. `git status --porcelain` after staging named only those two paths, numstat `0 30` and `30 0`.
+Exit code and every line but the `written:` line matched `sim-rotation.txt` exactly; the `written:`
+line differs only in the folder, as the block anticipates. Both ledger files were then proved
+byte-equal to their C2 Bundle files by a read-only Python script, and `git diff --cached --numstat`
+read exactly `0 34 .agent/live_review.md` and `34 0 .agent/live_review_archive.md`.
 
-C3 step 1: the three files were copied over their paths (not yet committed); `git status --porcelain` read exactly `README.md`, `docs/roadmap/STATUS.md` and `scripts/self_use_queue.json` modified, no other path.
+C3: the four Bundle files were written by a read-only-source Python copy script, proved byte-equal
+to their sources, then `git diff --cached --numstat` read exactly `2 2 README.md`,
+`4 0 docs/roadmap/STATUS.md`, `42 0 docs/roadmap/features/T2_F307.md`,
+`5 1 tests/docs/test_docs_consistency.py` — matching the Bundle's pairs exactly.
 
-Gate 1 (`git status --porcelain` read the three C3 files only, then `python3 .../prep/verify.py /home/decodeux/Repos/remedy`) — exit implied 0, every line `True`:
-```
-found True F203 R10 C1: a1d19885e6bb76b8310c854dae6800c3bb754ab6
-equal at F203 R10 C1 True .agent/authored/f203-r10.md
-equal at F203 R10 C1 True .agent/authored/f203-r10-status_line.txt
-equal at F203 R10 C1 True .agent/authored/f203-r10-pr_body.md
-equal at F203 R10 C1 True .agent/live_review.md
-equal at F203 R10 C1 True .agent/plan.md
-equal at F203 R10 C1 True docs/roadmap/features/T12_F203.md
-F203 R10 C1 names exactly its paths True
-found True F203 R10 C2: 9c8aa4c6a68e80e0ea42d7c1e41a48291a73c039
-equal at F203 R10 C2 True .agent/live_review.md
-equal at F203 R10 C2 True .agent/live_review_archive.md
-F203 R10 C2 names exactly its paths True
-C1 ledger is the base plus the slice True
-equal in the working tree True docs/roadmap/STATUS.md
-equal in the working tree True README.md
-equal in the working tree True scripts/self_use_queue.json
-ALL True
-```
+C4: the three Bundle files were written by a read-only-source Python copy script and proved
+byte-equal to their sources before any gate ran.
 
-Gate 2 (Python reading of `.agent/authored/f203-r10-status_line.txt` without its trailing newline against `docs/roadmap/STATUS.md`) — `occurrences of status line: 1`; `lines starting with '- [~]': 0`.
+Gate 1: `git status --porcelain` read exactly `M README.md`, `M docs/roadmap/STATUS.md`,
+`M scripts/self_use_queue.json` — the three C4 files and nothing else. Every file this round copied,
+read with `git show <commit>:<path>` for C1–C3 and from the working tree for C4, compared byte-equal
+to its Bundle file: all fifteen comparisons `True`.
 
-Gate 3 (`python3 .../prep/run_selection.py /home/decodeux/Repos/remedy`) — exit 0, no `SKIPPED`/`FAILED`/`ERROR` line, no "process(es) behind" line, summary: `563 passed in 31.95s` (the simulation read `563 passed`, matching).
+Gate 2: the content of `src-status_line.txt` without its trailing newline occurs exactly once in
+`docs/roadmap/STATUS.md`, and no line of the file begins `- [~]`.
 
-Gate 4 (`python3 -m apps.cli.main integrity check --json`, `cwd=/home/decodeux/Repos/remedy`) — exit 0:
+Gate 3: `python3 -m pytest -q -rfEs tests/docs/ tests/cli/test_advertised_commands.py
+tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py
+tests/orchestration/test_self_use_generator.py tests/orchestration/test_self_use_queue.py
+tests/cli/test_golden_path.py tests/test_structure_ratchet.py`, run once through a Python wrapper —
+exit 0, `563 passed in 61.60s (0:01:01)`, no FAILED, ERROR or SKIPPED line. Matches the reviewer's
+simulated reading exactly (563 passed); only the seconds differ, as the block allows.
+
+Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 0:
 ```
 {"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
+Six checks, all `pass`; `"fail_count": 0`.
 
-Gate 5 (`python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`, `cwd=/home/decodeux/Repos/remedy`) — exit 0: `['R-1235', 'R-1246', 'R-1251', 'R-1252']`, exactly as ordered.
+Gate 5: `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`
+— exit 0, `['R-1246', 'R-1252']`, matching the block's prediction exactly.
 
-C3 step 3 measurement (`git diff --numstat` of the three files before commit): `README.md` `10 2`, `docs/roadmap/STATUS.md` `1 1`, `scripts/self_use_queue.json` `1 1` — all matching the Bundle's C3 pairs exactly.
+Gate 6 (after the pull request): runs after this commit's push and `gh pr create`; its command, exit
+code, the push outcome, the pull request's number and URL, and the `gh pr list` reading are in the
+session's final reply only, per the write-once rule.
 
 ## Authored-text proofs
 
-- `.agent/authored/f203-r10.md` against `block.md`: byte-equal, 127 lines, sha256 `9587e72ab0e0a370a408c9cf0ed04023633fe84c606180bb31049cb7db372921` (confirmed independently and by Gate 1's "equal at F203 R10 C1 True .agent/authored/f203-r10.md").
-- `.agent/authored/f203-r10-status_line.txt` against `src-status_line.txt`: byte-equal, sha256 `c0c396e1895a2ddc0a79bf6e3b826901cbdf60a0fa94524acc8ba37913cd59c2`.
-- `.agent/authored/f203-r10-pr_body.md` against `src-pr_body.md`: byte-equal, sha256 `a3950fbd603135063c7a05f383a782536c3e114785688b5b7534feef884be823`.
-- `.agent/plan.md` against `src-plan.md`: byte-equal (Gate 1's "equal at F203 R10 C1 True .agent/plan.md").
-- `docs/roadmap/features/T12_F203.md` against `sim-T12_F203.md`: byte-equal (Gate 1's corresponding line); verified directly that the delta against the pre-round file is exactly the 37-line Built State section, 0 deletions.
-- `.agent/live_review.md` at C1 against `sim-C1-live_review.md`, and independently equal to the base at `4755df689` plus `append-live_review.txt`: byte-equal both ways (Gate 1's "equal at F203 R10 C1" and "C1 ledger is the base plus the slice", both True).
-- `.agent/live_review.md` and `.agent/live_review_archive.md` at C2 against `sim-C2-live_review.md` and `sim-C2-live_review_archive.md`: byte-equal (Gate 1's two corresponding lines, True).
-- `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` against `sim-STATUS.md`, `sim-README.md` and `sim-self_use_queue.json`: byte-equal (Gate 1's three "equal in the working tree" lines, True).
+- `.agent/authored/f306-r12.md` against `block.md`: byte-equal, 146 lines, sha256
+  `aefe362de0a239baa459f6d5e0d70d22490248f5507b8434a36936329a15b879`.
+- `.agent/live_review.md` (C1) against `sim-C1-live_review.md`: byte-equal.
+- `docs/roadmap/features/T2_F306.md` against `sim-T2_F306.md`: byte-equal.
+- `.agent/plan.md` against `src-plan.md`: byte-equal.
+- `.agent/authored/f306-r12-status_line.txt` against `src-status_line.txt`: byte-equal.
+- `.agent/authored/f306-r12-pr_body.md` against `src-pr_body.md`: byte-equal.
+- `.agent/live_review.md` (C2) against `sim-C2-live_review.md`: byte-equal.
+- `.agent/live_review_archive.md` against `sim-C2-live_review_archive.md`: byte-equal.
+- `docs/roadmap/features/T2_F307.md` against `sim-T2_F307.md`: byte-equal.
+- `docs/roadmap/STATUS.md` (C3) against `sim-C3-STATUS.md`: byte-equal.
+- `README.md` (C3) against `sim-C3-README.md`: byte-equal.
+- `tests/docs/test_docs_consistency.py` against `sim-test_docs_consistency.py`: byte-equal.
+- `docs/roadmap/STATUS.md` (C4) against `sim-STATUS.md`: byte-equal.
+- `README.md` (C4) against `sim-README.md`: byte-equal.
+- `scripts/self_use_queue.json` against `sim-self_use_queue.json`: byte-equal.
+- The specific proof Gate 2 states: the STATUS line in `docs/roadmap/STATUS.md` is byte-identical to
+  `.agent/authored/f306-r12-status_line.txt` without its trailing newline, occurring exactly once
+  (count 1).
 
 ## Deviations & assumptions
 
-None. Every copy's sha256 matched the Bundle's digest before staging; every commit's `git diff --cached --numstat` matched the Bundle's pairs for that commit exactly; `git status --porcelain` named only the paths each commit was allowed to touch; `git branch --show-current` read `feature/f203-structured-logging` immediately before each commit; all five gates read exactly what the block ordered. No extra commit, no dropped one, no reordering.
-
-Note on self-review: this handback's own commit (C3) has not yet been self-reviewed at the time this file is written, by construction — that review happens after this text is written, immediately before the commit, and is reported in the session's final reply rather than claimed here.
+None. Every copy, every rotation reading, every numstat and every gate matched the block's prediction
+on the first attempt; no branching instruction, retry path or fallback in the block was ever reached.
 
 ## For the operator, in plain sentences
 
-Structured logging is finished. Remedy now keeps one private log on this machine in which every line names the job, the task and the run it belongs to, with secrets removed before anything is written, and old lines are rotated away by size. One command shows a person one job's or one run's lines in order, and a program gets the same answer from the background service's local web interface. The terminal keeps showing warnings and errors exactly as it did before. The whole test collection passed on the code that ships. A review package was built and saved. A pull request is open and will be merged at the start of the next working session unless the operator merges it sooner. Four small problems stay written down for the next clean-up feature. Nothing waits for the operator.
+This clean-up feature repaired two of the four small problems it had written down when it began, and
+one more that its own whole test run found, each with a test that fails without its repair. Two
+checks that start an application at the same time no longer share one network port. A check now
+refuses an answer that came from a program it did not start. Four large pieces of code were split
+into smaller ones on the way. The paid test run Remedy did on itself stopped, as it should, at its
+own approval gate. The whole collection of tests was run once on the code that ships, and it passed.
+The review package is named remedy-review-20261014-005334-READY_FOR_REVIEW.zip and sits in the
+folder /home/decodeux/Repos/remedy-history/zips. A pull request is open and will be merged at the
+start of the next session unless the operator merges it earlier. Two problems stay written down for
+the next clean-up feature: a set of tests about how orders are shaped still uses written sample text
+instead of four real orders from a specific day, because reading those real orders needs a
+permission setting a session may not yet have; and when a run splits a task into smaller pieces, the
+written record of that job's run is left unwritten for the new pieces. One question still waits in
+the operator's questions file, about the two old review folders, whose move is already done and
+reversible.
 
 ## Next
 
-1. Phase 1 rule 1: check `.agent/STOP` first.
-2. The Open PR Gate, which merges F203's pull request in the next session.
-3. The next feature's first commit books round 10's verdict.
-4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md` is `F306 — Findings paydown v8`.
+1. Phase 1 rule 1: `.agent/STOP` — absent at this handoff.
+2. The Open PR Gate, which merges F306's pull request in the NEXT session and never in this one.
+3. The booking of round 12's verdict in the next feature's first commit.
+4. Rule A5: the next unchecked line in `docs/roadmap/STATUS.md`.
 
-Operator questions open: 0.
-Open findings: 4 (R-1235, R-1246, R-1251 and R-1252, Low, owned by F306).
+Operator questions open: 1.
+Open findings: 2 (R-1246 and R-1252, Low, owned by F307).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `a1d19885e` |
-| C2 | done | `9c8aa4c6a`, rotation exit 0, both files byte-verified |
-| C3 | done | this commit |
-| Push | pending at write time | runs after this commit; result in the session's final reply |
-| Pull request | pending at write time | runs after the push; result (URL and number) in the session's final reply |
-| Gate 1 | passed | `ALL True` |
-| Gate 2 | passed | status line occurs once, no `- [~]` line remains |
-| Gate 3 | passed | exit 0, `563 passed in 31.95s`, no SKIPPED/FAILED/ERROR |
-| Gate 4 | passed | six checks pass, `fail_count` 0 |
-| Gate 5 | passed | `['R-1235', 'R-1246', 'R-1251', 'R-1252']` |
+| C1 | done | |
+| C2 | done | rotation exit 0, both ledger files byte-equal to their Bundle files |
+| C3 | done | |
+| C4 | done | this handback, committed together with the three files |
+| Gate 1 | done | `git status --porcelain` showed only the three C4 files; all fifteen byte comparisons `True` |
+| Gate 2 | done | STATUS line occurs exactly once; no `- [~]` line |
+| Gate 3 | done | exit 0, 563 passed, no FAILED/ERROR/SKIPPED |
+| Gate 4 | done | exit 0, six checks `pass`, `fail_count` 0 |
+| Gate 5 | done | open set `['R-1246', 'R-1252']` |
+| Push | pending | runs after this commit; outcome reported in the session's final reply only |
+| Pull request | pending | created after the push; number and URL reported in the session's final reply only |

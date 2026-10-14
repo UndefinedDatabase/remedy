@@ -27,7 +27,6 @@ different code path.
 from __future__ import annotations
 
 import contextlib
-import contextvars
 import dataclasses
 import errno
 import functools
@@ -53,6 +52,52 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     parse_canonical_call_number,
 )
+from packages.orchestration.job_input_definition import (
+    JOB_INPUT_EXECUTION_BOOL_FIELDS,
+    JOB_INPUT_EXECUTION_FIELDS,
+    JOB_INPUT_EXECUTION_INT_FIELDS,
+    JOB_INPUT_EXECUTION_OPTIONAL_FIELDS,
+    JOB_INPUT_EXECUTION_STR_FIELDS,
+    JOB_INPUT_TASK_FIELDS,
+    JOB_INPUT_TOP_FIELDS,
+    _safe_scalar,
+    build_job_input_definition,
+    is_secret_key,
+    job_input_definition_bytes,
+    job_input_definition_sha256,
+)
+from packages.orchestration.job_input_definition import (
+    _h as _h,
+)
+from packages.orchestration.job_input_definition import (
+    _redacted_command_identity as _redacted_command_identity,
+)
+from packages.orchestration.job_input_definition import (
+    _source_field as _source_field,
+)
+from packages.orchestration.job_input_definition import (
+    job_input_sha256 as job_input_sha256,
+)
+from packages.orchestration.workspace_identity import (
+    _READING_HELPER_ARGS,
+    GIT_INCOMPLETE,
+    GIT_OK,
+    GIT_UNAVAILABLE,
+    UNAVAILABLE,
+    WorktreeIdentity,
+    _git_helper_env,
+    _helper_neutralizing_args,
+    _is_sha,
+    _remedy_repo_root,
+    _UntrackedMissing,
+    _UntrackedRace,
+    _UntrackedSpecial,
+    _UntrackedSymlink,
+    probe_provider_version,
+)
+from packages.orchestration.workspace_identity import (
+    _run_probe as _run_probe,
+)
 
 MANIFEST_VERSION = 1
 
@@ -69,16 +114,11 @@ LEDGERS_SUBDIR = "call_ledgers"
 MANIFEST_DIR_MODE = 0o700
 MANIFEST_FILE_MODE = 0o600
 
-UNAVAILABLE = "unavailable"
 REDACTED = "[REDACTED]"
 
 #: The durable marker a job created/first-run under F012 carries. Its presence is how a
 #: completed/stopped job WITHOUT a manifest is judged blocking (marked) vs legacy (unmarked).
 MANIFEST_REQUIRED_VERSION = 1
-
-_SECRET_TERMS = ("token", "key", "secret", "password", "credential")
-_VERSION_PROBE_TIMEOUT_S = 5
-_VERSION_PROBE_MAX_CHARS = 200
 
 COVERAGE_COMPLETE = "complete"
 COVERAGE_INCOMPLETE = "incomplete"
@@ -94,22 +134,6 @@ class ManifestError(RuntimeError):
 
 class ManifestConflictError(ManifestError):
     """A different manifest already exists for this episode."""
-
-
-# ---------------------------------------------------------------------------
-# Redaction
-# ---------------------------------------------------------------------------
-
-
-def is_secret_key(key: str) -> bool:
-    low = str(key or "").lower()
-    return any(term in low for term in _SECRET_TERMS)
-
-
-def _safe_scalar(value: Any) -> Any:
-    from packages.orchestration.failure_postmortem import safe_text
-
-    return safe_text(value) if isinstance(value, str) else value
 
 
 # ---------------------------------------------------------------------------
@@ -197,166 +221,6 @@ def on_call_finalized(ctx: FinalizedCallContext, sink: list) -> None:
 # ---------------------------------------------------------------------------
 # Probes and current-state inspection
 # ---------------------------------------------------------------------------
-
-
-def _run_probe(argv: list[str], cwd: str | None = None) -> str:
-    try:
-        proc = subprocess.run(argv, capture_output=True, text=True, shell=False,
-                              timeout=_VERSION_PROBE_TIMEOUT_S, cwd=cwd)
-    except Exception:  # noqa: BLE001 — version probe failure just means version unavailable
-        return UNAVAILABLE
-    if proc.returncode != 0 or not proc.stdout or not proc.stdout.strip():
-        return UNAVAILABLE
-    from packages.orchestration.failure_postmortem import safe_text
-
-    return safe_text(proc.stdout.strip())[:_VERSION_PROBE_MAX_CHARS]
-
-
-def probe_provider_version(provider: str, cwd: str | None = None) -> str:
-    import shutil
-
-    name = (provider or "").strip().lower()
-    if name in ("", "fake"):
-        return UNAVAILABLE
-    exe = "claude" if name.startswith("claude") else name
-    path = shutil.which(exe)
-    if not path:
-        return UNAVAILABLE
-    return _run_probe([path, "--version"], cwd=cwd)
-
-
-def _remedy_repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _is_sha(v: str) -> bool:
-    return len(v) == 40 and all(c in "0123456789abcdef" for c in v)
-
-
-#: A worktree-identity component either succeeded (bytes), or explicitly did not. It is NEVER
-#: mapped to empty bytes: a failed `git diff` that reads as "no diff" would make a dirty tree
-#: look clean, which is exactly the fail-open bug F3 exists to close.
-GIT_OK = "ok"
-GIT_UNAVAILABLE = "unavailable"     # not a git repo / git missing
-GIT_INCOMPLETE = "incomplete"       # a component failed (nonzero, timeout, unsupported file)
-
-
-@dataclass(frozen=True)
-class WorktreeIdentity:
-    """The strict content identity of a git worktree — Remedy's or the target's.
-
-    ``status`` is ``ok`` only when every component was collected; ``unavailable`` when the
-    path is not a usable git repo; ``incomplete`` when a component failed (a git error, a
-    timeout, an untracked special file) — never silently clean. The comparison treats
-    ``incomplete``/``unavailable`` as a coverage problem, never as equality."""
-
-    status: str
-    head: str                       # HEAD commit sha, or "unavailable"
-    digest: str                     # content digest (only meaningful when status == ok)
-    problems: tuple[str, ...] = ()
-    #: F4: True when the tree has staged/unstaged/untracked/submodule changes, False when a
-    #: successful collection found none, None when the identity is unavailable/incomplete.
-    #: ``problems`` means COLLECTION FAILURE, not dirtiness.
-    dirty: bool | None = None
-
-    def to_json(self) -> dict[str, Any]:
-        return {"status": self.status, "head": self.head, "digest": self.digest,
-                "problems": list(self.problems), "dirty": self.dirty}
-
-    @classmethod
-    def from_json(cls, d: dict[str, Any]) -> WorktreeIdentity:
-        return cls(status=str(d.get("status", GIT_UNAVAILABLE)),
-                   head=str(d.get("head", "")), digest=str(d.get("digest", "")),
-                   problems=tuple(d.get("problems") or []), dirty=d.get("dirty"))
-
-
-#: F7 (round 12): every configured helper git might EXECUTE during a read-only inspection.
-#:
-#: A "read-only" verification that runs arbitrary repository-configured commands is not read-only:
-#: `core.fsmonitor` alone was enough to make `worktree_identity()` execute a script and still
-#: report `status=ok, problems=[]`. Reading a repository must never mean running its code.
-#:
-#: `filter.*.process` is disabled by pointing it at `false` AND clearing `required`, so a
-#: required-but-disabled filter cannot turn into a silent success.
-_HELPER_NEUTRALIZING_ARGS: tuple[str, ...] = (
-    "-c", "core.fsmonitor=false",
-    "-c", "core.fsmonitorHookVersion=0",
-    "-c", "core.hooksPath=/dev/null",
-    "-c", "diff.external=",
-    "-c", "core.sshCommand=false",
-    "-c", "protocol.ext.allow=never",
-    "-c", "uploadpack.packObjectsHook=",
-)
-
-#: F7: the config a repository can point at a program, discovered per repo and neutralized.
-_HELPER_CONFIG_PATTERN = r"^(filter\..*\.(clean|smudge|process|required)|diff\..*\.(command|textconv)|core\.fsmonitor)$"
-
-
-def _git_helper_env() -> dict[str, str]:
-    """F7: a constrained environment for read-only inspection.
-
-    Global and system git config can point at helpers too, and they are not facts about the
-    repository F012 is hashing — so they are taken out of the picture entirely rather than
-    trusted to be harmless.
-    """
-    env = dict(os.environ)
-    env["GIT_CONFIG_GLOBAL"] = os.devnull
-    env["GIT_CONFIG_SYSTEM"] = os.devnull
-    env["GIT_OPTIONAL_LOCKS"] = "0"        # never take a lock for a read
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_ASKPASS"] = ""
-    env["GIT_ALLOW_PROTOCOL"] = "none"
-    env.pop("GIT_EXTERNAL_DIFF", None)
-    env.pop("GIT_SSH_COMMAND", None)
-    return env
-
-
-#: F294: the helper discovery of the ONE `worktree_identity` reading in progress, per directory.
-#: A reading runs six git commands back to back; discovering the configured helpers before each
-#: of them started six `git config` processes where one answers them all. The memo lives only for
-#: that reading and only in its own thread, so a later reading always discovers afresh.
-_READING_HELPER_ARGS: contextvars.ContextVar[dict[str, list[str]] | None] = contextvars.ContextVar(
-    "remedy_reading_helper_args", default=None)
-
-
-def _helper_neutralizing_args(cwd: str, env: dict[str, str]) -> list[str]:
-    """F7 (round 12): discover this repository's configured helpers and neutralize each one.
-
-    The clean/smudge substitution keeps the identity meaningful: it digests the RAW working-tree
-    bytes, and both sides of every comparison are captured the same way, so drift detection is
-    unaffected while no configured command ever runs.
-
-    F294: inside one `worktree_identity` reading the answer for a directory is discovered once
-    and reused. Only a discovery that ended with git's own answer, exit 0 (helpers listed) or
-    exit 1 (nothing configured), is remembered; a discovery that failed is retried by the next
-    command.
-    """
-    memo = _READING_HELPER_ARGS.get()
-    if memo is not None and cwd in memo:
-        return list(memo[cwd])
-    args = list(_HELPER_NEUTRALIZING_ARGS)
-    try:
-        proc = subprocess.run(
-            ["git", "config", "--name-only", "--get-regexp", _HELPER_CONFIG_PATTERN],
-            capture_output=True, shell=False, timeout=5, cwd=cwd, env=env)
-    except Exception:  # noqa: BLE001 — helper discovery failure falls back to default neutralization
-        return args
-    if proc.returncode == 0:
-        for name in proc.stdout.decode("utf-8", "replace").split():
-            name = name.strip()
-            if name.endswith((".clean", ".smudge")):
-                args += ["-c", f"{name}=cat"]          # a passthrough, never the configured command
-            elif name.endswith(".process"):
-                args += ["-c", f"{name}=false"]
-            elif name.endswith(".required"):
-                args += ["-c", f"{name}=false"]        # a disabled filter must not be "required"
-            elif name.endswith((".command", ".textconv")):
-                args += ["-c", f"{name}="]
-            elif name == "core.fsmonitor":
-                args += ["-c", "core.fsmonitor=false"]
-    if memo is not None and proc.returncode in (0, 1):
-        memo[cwd] = list(args)          # nothing configured is git's exit 1
-    return args
 
 
 def _git_bytes(repo_path: str, args: list[str], *, timeout: int = 15):
@@ -626,22 +490,6 @@ def _read_worktree_identity(repo_path: str, *, root_dir_fd: int | None
     status = GIT_OK if not problems else GIT_INCOMPLETE
     dirty_val: bool | None = dirty if status == GIT_OK else None
     return WorktreeIdentity(status, head, h.hexdigest(), tuple(problems), dirty=dirty_val)
-
-
-class _UntrackedRace(Exception):
-    pass
-
-
-class _UntrackedSymlink(Exception):
-    pass
-
-
-class _UntrackedSpecial(Exception):
-    pass
-
-
-class _UntrackedMissing(Exception):
-    pass
 
 
 def _read_untracked_verified(root_fd: int, rel: str) -> tuple[bytes, str]:
@@ -1174,103 +1022,6 @@ def capture_episode_input_snapshot(job: Any, *, episode_id: str, capture_phase: 
         status=SNAPSHOT_OK, problems=(), input=snap)
 
 
-def _h(text: str) -> str:
-    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
-
-
-def _redacted_command_identity(command: str) -> dict[str, Any]:
-    """A test/CLI command can carry a secret (a token in an env-style arg). Keep a
-    deterministic identity that still moves when the command changes, without serializing
-    the secret: the redacted text plus a hash of the RAW command."""
-    return {"redacted": _safe_scalar(command or ""), "sha256": _h(command or "")}
-
-
-def build_job_input_definition(job: Any) -> dict[str, Any]:
-    """The COMPLETE typed job-input definition (F1): every persisted input that can change
-    which work runs, how many calls run, what prompts are assembled, what tests run, or what
-    provider options are used. A single opaque job-file hash is NOT enough."""
-    ec = getattr(job, "execution_config", None)
-
-    def _g(name: str, default: Any = "") -> Any:
-        if ec is not None:
-            return getattr(ec, name, default)
-        # A job that has not run yet carries no resolved execution config: every value IS the
-        # product default, so every SOURCE is "default". Recording an empty source instead would
-        # make a planning-only job's own definition invalid — and the contract says a
-        # planning-only job (zero calls) has a valid manifest (T0_F012).
-        if name.endswith("_source"):
-            return "default"
-        return default
-
-    tasks = []
-    for idx, t in enumerate(getattr(job, "tasks", [])):
-        tasks.append({
-            "order": idx,
-            "task_id": t.task_id,
-            "source_heading_number": getattr(t, "source_heading_number", 0),
-            "title_sha256": _h(getattr(t, "title", "") or ""),
-            "body_sha256": _h(getattr(t, "body", "") or ""),
-            "acceptance_sha256": _h(getattr(t, "acceptance", "") or ""),
-        })
-
-    execution = {
-        "builder": _g("builder"), "builder_source": _g("builder_source"),
-        "builder_model": _g("builder_model"), "builder_model_source": _g("builder_model_source"),
-        "builder_effort": _g("builder_effort"), "builder_effort_source": _g("builder_effort_source"),
-        "reviewer": _g("reviewer"), "reviewer_source": _g("reviewer_source"),
-        "reviewer_model": _g("reviewer_model"), "reviewer_model_source": _g("reviewer_model_source"),
-        "reviewer_effort": _g("reviewer_effort"), "reviewer_effort_source": _g("reviewer_effort_source"),
-        "repair_provider": _g("repair_provider"), "repair_provider_source": _g("repair_provider_source"),
-        "repair_model": _g("repair_model"), "repair_model_source": _g("repair_model_source"),
-        "repair_effort": _g("repair_effort"), "repair_effort_source": _g("repair_effort_source"),
-        "max_rounds": _g("max_rounds", 0), "max_rounds_source": _g("max_rounds_source"),
-        "repair_rounds_allowed": _g("repair_rounds_allowed", 0),
-        "repair_rounds_source": _g("repair_rounds_source"),
-        "test_command": _redacted_command_identity(_g("test_command")),
-        "test_command_source": _g("test_command_source"),
-        "claude_cli_write_mode": _g("claude_cli_write_mode"),
-        "claude_cli_write_mode_source": _g("claude_cli_write_mode_source"),
-        "context_strategy": _g("context_strategy"),
-        # F2 invocation controls — material inputs, hashed with their source.
-        "timeout_sec": _g("timeout_sec", 0), "timeout_sec_source": _g("timeout_sec_source"),
-        "timeout_profile": _g("timeout_profile"),
-        "timeout_profile_source": _g("timeout_profile_source"),
-        "max_output_chars": _g("max_output_chars", 0),
-        "max_output_chars_source": _g("max_output_chars_source"),
-        "stream_evidence": bool(_g("stream_evidence", False)),
-        "stream_evidence_source": _g("stream_evidence_source"),
-        "max_tasks": _g("max_tasks", 0), "max_tasks_source": _g("max_tasks_source"),
-    }
-    return {
-        "job_input_v": 1,
-        "job_title_sha256": _h(getattr(job, "job_title", "") or ""),
-        "job_file_sha256": str(getattr(job, "job_file_sha256", "") or ""),
-        "isolation_mode": str(getattr(job, "isolation_mode", "") or ""),
-        "tasks": tasks,
-        "execution": execution,
-    }
-
-
-def job_input_definition_bytes(definition: dict[str, Any]) -> bytes:
-    """F6: THE canonical byte encoding of a JobInputDefinition. Every producer and every
-    verifier hashes exactly these bytes — capture, manifest construction, validation, the
-    current candidate, the diff, recovery and export."""
-    return json.dumps(definition, sort_keys=True, ensure_ascii=False).encode("utf-8")
-
-
-def job_input_definition_sha256(definition: dict[str, Any]) -> str:
-    """F6: the ONE canonical hash helper. ``manifest.job_input_sha256`` MUST equal this over the
-    manifest's own EMBEDDED ``snapshot.job_input`` — so the recorded hash cannot drift from the
-    definition it claims to identify."""
-    return hashlib.sha256(job_input_definition_bytes(definition)).hexdigest()
-
-
-def job_input_sha256(job: Any, models: dict[str, str] | None = None) -> str:
-    """The identity of the COMPLETE job-input definition. ``models`` is accepted for
-    backward compatibility but is now derived from the definition itself."""
-    return job_input_definition_sha256(build_job_input_definition(job))
-
-
 _VALID_SOURCES = frozenset({"default", "persisted", "invocation", "cli", "env",
                             "project", "user", "operator_attestation"})
 
@@ -1347,7 +1098,7 @@ def validate_job_input_definition(d: Any) -> list[str]:
     if ex is None:
         return problems
     _t(_S.no_unknown_keys, ex, JOB_INPUT_EXECUTION_FIELDS, "job_input.execution")
-    missing = sorted(JOB_INPUT_EXECUTION_FIELDS - set(ex))
+    missing = sorted(JOB_INPUT_EXECUTION_FIELDS - JOB_INPUT_EXECUTION_OPTIONAL_FIELDS - set(ex))
     if missing:
         problems.append(f"job_input.execution is missing material field(s) {missing}")
     for f in JOB_INPUT_EXECUTION_STR_FIELDS:
@@ -1378,8 +1129,7 @@ def validate_job_input_definition(d: Any) -> list[str]:
     sha = _t(_S.req_str, tc, "sha256", "job_input.execution.test_command", max_len=64)
     if sha is not None and not _is_hex64(sha):
         problems.append("job_input.execution.test_command.sha256 is not 64 lowercase hex")
-    red = _t(_S.req_str, tc, "redacted", "job_input.execution.test_command",
-             max_len=_S.MAX_VALUE_LEN, allow_empty=True)
+    red = _t(_S.req_str, tc, "redacted", "job_input.execution.test_command", max_len=_S.MAX_VALUE_LEN, allow_empty=True)
     # F6: the test command's stored representation is its SAFE redacted identity + hash only.
     if red is not None and (_contains_secret(red) or _contains_local_path(red)
                             or _S.has_control_chars(red)):
@@ -3318,39 +3068,6 @@ def require_canonical_bytes(raw: bytes, obj: Any, *, where: str) -> None:
 #: ``JobPlan.isolation_mode`` ("worktree" for a job-owned git worktree, "copy" for the
 #: non-git filtered-copy fallback).
 VALID_ISOLATION_MODES = frozenset({"worktree", "copy"})
-
-#: F7: the EXACT JobInputDefinitionV1 schema.
-JOB_INPUT_TOP_FIELDS = frozenset({"job_input_v", "job_title_sha256", "job_file_sha256",
-                                  "isolation_mode", "tasks", "execution"})
-JOB_INPUT_TASK_FIELDS = frozenset({"order", "task_id", "source_heading_number",
-                                   "title_sha256", "body_sha256", "acceptance_sha256"})
-#: The EXACT material execution field set. Every value has a paired ``_source``. This list and
-#: ``ExecutionConfig``'s dataclass fields are kept in lockstep by a guard test, so a future
-#: material field cannot be added without updating F012's hashed definition.
-JOB_INPUT_EXECUTION_STR_FIELDS = (
-    "builder", "builder_model", "builder_effort",
-    "reviewer", "reviewer_model", "reviewer_effort",
-    "repair_provider", "repair_model", "repair_effort",
-    "claude_cli_write_mode", "timeout_profile",
-)
-JOB_INPUT_EXECUTION_INT_FIELDS = ("max_rounds", "repair_rounds_allowed", "timeout_sec",
-                                  "max_output_chars", "max_tasks")
-JOB_INPUT_EXECUTION_BOOL_FIELDS = ("stream_evidence",)
-#: ``repair_rounds_allowed`` pairs with ``repair_rounds_source`` — not ``*_allowed_source``.
-_JOB_INPUT_SOURCE_OF = {"repair_rounds_allowed": "repair_rounds_source"}
-
-
-def _source_field(name: str) -> str:
-    return _JOB_INPUT_SOURCE_OF.get(name, f"{name}_source")
-
-
-JOB_INPUT_EXECUTION_FIELDS = frozenset(
-    list(JOB_INPUT_EXECUTION_STR_FIELDS) + list(JOB_INPUT_EXECUTION_INT_FIELDS)
-    + list(JOB_INPUT_EXECUTION_BOOL_FIELDS)
-    + [_source_field(f) for f in JOB_INPUT_EXECUTION_STR_FIELDS]
-    + [_source_field(f) for f in JOB_INPUT_EXECUTION_INT_FIELDS]
-    + [_source_field(f) for f in JOB_INPUT_EXECUTION_BOOL_FIELDS]
-    + ["test_command", "test_command_source", "context_strategy"])
 
 
 def decode_job_input_definition_v1(raw: Any) -> dict[str, Any]:

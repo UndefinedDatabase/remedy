@@ -46,10 +46,12 @@ step changes no behaviour, keeps every import path working, and leaves the tests
   guards, the configuration it resolves for the job, the budget accumulators and their nested
   helpers, the episode start, and the main loop over the tasks with the job's terminal steps after
   it; and the stop, pause and budget check that each of its safe points once wrote out. Steps: (1)
-  done by F300 T004, every safe point calls `_settle_safe_point`; (2) the configuration
-  resolution becomes a function of its own; (3) the terminal steps after the task loop become a
-  function of their own; (4) the handling of one task's result becomes a function of its own;
-  (5) the budget helpers become one object in a module of their own, holding the accumulators.
+  done by F300 T004, every safe point calls `_settle_safe_point`; (2) done by F306, the
+  configuration resolution is `resolve_job_execution_config` in
+  `packages/orchestration/execution_config.py`, which `pingpong_job.py` re-exports; (3) the
+  terminal steps after the task loop become a function of their own; (4) the handling of one
+  task's result becomes a function of its own; (5) the budget helpers become one object in a
+  module of their own, holding the accumulators.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
@@ -140,9 +142,19 @@ with the code that calls it.
 
 - `packages/orchestration/run_manifest.py`: the workspace identity and its probes, then the
   storage — the write, the recovery and the anchored read — each to a module of its own; the
-  decoders last.
+  decoders last. Step (1), done by F306: the probes and the workspace identity record,
+  `packages/orchestration/workspace_identity.py`; the git reads, including the verified read of
+  untracked files, stay on this module, because tests replace them there and
+  `_read_untracked_verified` raises this module's own `ManifestError`. Step (2), done by F306: the
+  job-input definition's builder and its field-set constants,
+  `packages/orchestration/job_input_definition.py`; its validation (`validate_job_input_definition`)
+  and its decoder (`decode_job_input_definition_v1`) stay on this module, because the validator
+  calls shared helpers — `_is_hex64`, `_safe_component`, `VALID_ISOLATION_MODES`,
+  `_contains_secret` and `_contains_local_path` — that every other validator on this module uses
+  too, and two of which tests replace directly here.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
-  stop and park path, each to a module of its own; `run_job` stays.
+  stop and park path, each to a module of its own; `run_job` stays. Step (1), done by F306: the
+  execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
   pack and the prompt builders, the staging, diff and target guard, and the export and token
   accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
@@ -176,7 +188,8 @@ with the code that calls it.
 - `scripts/remedy_smoke.sh`: the long block of surface checks and the patch lifecycle, each to a
   file sourced in place, after the tests that read the script's text are pointed at both.
 - `packages/runtimes/dev_server.py`: the spec, paths and lock, the ports and the probe, and the
-  shutdown of a process tree, each to a module of its own.
+  shutdown of a process tree, each to a module of its own. Step (1), done by F306: the ports and
+  the readiness probe, `packages/runtimes/dev_server_ports.py`.
 - `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
   contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
   to a module of its own. Step (1), done by F302: the claude CLI's command line,
@@ -221,7 +234,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1559 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1486 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -361,10 +374,10 @@ with the code that calls it.
 | 112 | `packages/runtimes/dev_server.py` | `DevServer.start` |
 | 112 | `scripts/build_review_manifest.py` | `_verify_task_provenance_integrity` |
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
-| 111 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 111 | `packages/orchestration/ui_view_model.py` | `build_next_action` |
 | 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
+| 110 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_ledger_chain` |
 | 109 | `apps/cli/commands/init_cmd.py` | `_handle_init` |
 | 108 | `packages/orchestration/serve_daemon.py` | `run_supervisor` |
@@ -386,8 +399,8 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6558 | `packages/orchestration/run_manifest.py` |
-| 5626 | `packages/orchestration/pingpong_job.py` |
+| 6275 | `packages/orchestration/run_manifest.py` |
+| 5399 | `packages/orchestration/pingpong_job.py` |
 | 5234 | `packages/orchestration/pingpong_loop.py` |
 | 4810 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
@@ -397,7 +410,7 @@ with the code that calls it.
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
-| 2052 | `packages/runtimes/dev_server.py` |
+| 1989 | `packages/runtimes/dev_server.py` |
 | 1977 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |

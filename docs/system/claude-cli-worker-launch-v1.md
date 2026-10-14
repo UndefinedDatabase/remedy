@@ -2,9 +2,8 @@
 
 > Status (F302, 2026-10-10): being built. DECISIONs F302 D1 to D4 in `.agent/decisions.md` hold
 > the rules this page states; the feature is `docs/roadmap/features/T3_F302.md`. Built: the lean
-> start, its two keys, the measurement before and after it, and `remedy stats calls`. A job's
-> record does not yet name the configuration its calls ran under; finding R-1235 carries that to
-> F297.
+> start, its two keys, the measurement before and after it, and `remedy stats calls`. Since F306
+> a job's execution configuration records both keys (finding R-1235).
 
 Remedy starts Claude Code as a worker for every builder, reviewer and planner call of the
 `claude-cli` provider: `claude -p <prompt> --output-format json`, with the model, the reviewer's
@@ -50,6 +49,12 @@ environment variable; both are false unless set.
 With both true, the command line is the one Remedy used before F302. The keys are read through the
 process's cached configuration, `get_config()`, so every call one Remedy process makes reads the
 same values.
+
+## What a job records
+Each run reads both keys once, from the same cached configuration its calls read, and records
+each value and where it came from (`env`, `project`, `user` or `default`) in the job's execution
+configuration and in the job-input definition its run manifest hashes; a definition written before
+F306 lacks the four keys and still validates.
 
 ## Before and after
 `.agent/f302_after.md` holds the same fixed question asked with the command line before F302 and

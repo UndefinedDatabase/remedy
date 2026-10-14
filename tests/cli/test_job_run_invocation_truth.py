@@ -13,6 +13,7 @@ import pytest
 
 from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 from apps.cli.grouped import build_parser
+from packages.orchestration import config as config_module
 from packages.orchestration import pingpong_loop as PL
 from packages.orchestration.pingpong_job import (
     ExecutionConfig,
@@ -136,4 +137,21 @@ def test_explicit_normal_profile_overrides_persisted_patient(data_root, repo, sp
     assert spy[0]["timeout_profile"] == "normal"
     ec = load_job_plan(job.job_id).execution_config
     assert ec.timeout_profile == "normal" and ec.timeout_profile_source == "invocation"
+
+
+# --------------------------------------------------------------------------- R-1235 (T008)
+
+
+def test_the_claude_cli_launch_keys_are_recorded_from_the_env(data_root, repo, spy, monkeypatch):
+    """R-1235's third step: a real `job run` records what its calls actually read, not a
+    persisted guess — set only by its own environment variable here, never the operator's
+    `remedy.toml`."""
+    monkeypatch.setenv("REMEDY_CLAUDE_CLI_ALL_TOOLS", "true")
+    config_module.reset_config()
+    job = _plan(repo, max_tasks=1, max_tasks_source="persisted")
+    _run(["job", "run", job.job_id])
+    ec = load_job_plan(job.job_id).execution_config
+    assert (ec.claude_cli_all_tools, ec.claude_cli_all_tools_source) == (True, "env")
+    assert (ec.claude_cli_customizations, ec.claude_cli_customizations_source) == (
+        False, "default")
 

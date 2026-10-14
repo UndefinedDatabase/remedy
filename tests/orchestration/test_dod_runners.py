@@ -19,6 +19,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -57,6 +59,8 @@ from packages.orchestration.dod_runners import (
 )
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
 from packages.orchestration.project_tests import NO_TEST_COMMAND_MESSAGE
+from packages.runtimes.dev_server import http_probe
+from tests.ports import worker_port
 
 #: A process that exits 0 / non-zero without touching anything.
 EXIT_OK = ["python3", "-c", "print('f061 ok')"]
@@ -562,7 +566,7 @@ def write_runtime_config(root: Path, *, cmd: list[str], health_path: str = "/hea
         "[runtime]",
         f"cmd = [{argv}]",
         'cwd = "."',
-        "port = 5173",
+        f"port = {worker_port(3)}",
         f'health_path = "{health_path}"',
         f"ready_timeout_s = {ready_timeout_s}",
     ]
@@ -736,6 +740,81 @@ class TestRuntimeFlowRunner:
         run_check(flow({"action": "open", "path": "/health"}),
                   flow_worktree, timeout_sec=60)
         assert sorted(p.name for p in flow_worktree.iterdir()) == before
+
+    def test_a_squatter_on_the_requested_port_does_not_pass_the_check(
+            self, flow_worktree: Path, monkeypatch):
+        """R-1251: a live process already on the port must not stand in for
+        the application this check itself starts."""
+        from packages.orchestration import dod_runners
+
+        squat_port = worker_port(4)
+        squatter = subprocess.Popen(
+            [sys.executable, str(FLOW_APP)], cwd=str(flow_worktree),
+            env={**os.environ, "PORT": str(squat_port)},
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            url = f"http://127.0.0.1:{squat_port}/health"
+            deadline = time.monotonic() + 10.0
+            while time.monotonic() < deadline:
+                status, _ = http_probe(url, timeout=1.0)
+                if status == 200:
+                    break
+                time.sleep(0.05)
+            else:
+                raise AssertionError("the squatter never became ready")
+
+            monkeypatch.setattr(dod_runners, "choose_port",
+                                lambda *_a, **_kw: squat_port)
+            ev = run_check(flow({"action": "open", "path": "/health"}),
+                           flow_worktree, timeout_sec=60)
+            assert ev.status == STATUS_FAILED
+            assert ev.reason == REASON_APP_START_FAILED
+            assert ("but not from the application this check started"
+                   in ev.output_tail)
+        finally:
+            squatter.terminate()
+            try:
+                squatter.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                squatter.kill()
+                squatter.wait(timeout=5.0)
+
+    def test_two_checks_racing_for_one_port_do_not_see_each_others_app(
+            self, tmp_path: Path, monkeypatch):
+        """R-1251: a requested-port collision between two flow checks must
+        never let the loser's result stand on the winner's application."""
+        from packages.orchestration import dod_runners
+
+        shared_port = worker_port(5)
+        monkeypatch.setattr(dod_runners, "choose_port",
+                            lambda *_a, **_kw: shared_port)
+
+        roots = [tmp_worktree(tmp_path / f"racer-{i}") for i in range(2)]
+        for root in roots:
+            write_runtime_config(root, cmd=[sys.executable, "flow_app.py"])
+
+        results: list[CheckEvidence | None] = [None, None]
+
+        def _run(i: int) -> None:
+            results[i] = run_check(
+                flow({"action": "open", "path": "/health"}),
+                roots[i], timeout_sec=60)
+
+        threads = [threading.Thread(target=_run, args=(i,)) for i in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=70.0)
+        assert not any(t.is_alive() for t in threads), "a racer thread did not finish"
+
+        for ev in results:
+            assert ev is not None
+            if ev.status == STATUS_PASSED:
+                assert "flow-app: listening on" in ev.output_tail
+        # The two checks may not overlap in time, so only the property every
+        # interleaving keeps is asserted here; the squatter test above is the
+        # deterministic proof.
 
 
 # ---------------------------------------------------------------------------

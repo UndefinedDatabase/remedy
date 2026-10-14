@@ -52,8 +52,9 @@ from typing import Any
 #: to `1.9` for the repository of each job and the projects of each mission in the digest, and
 #: F297 (R-1238) to `1.10` for the step a mission's upkeep job was made in place of, and F199
 #: (DECISION F199 D3) to `1.11` for `doctor.health`, and
-#: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`.
-CLIENT_INTERFACE_VERSION = "1.12"
+#: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`, and F306 (R-1235) to `1.13` for the
+#: claude-cli configuration a job's execution configuration records.
+CLIENT_INTERFACE_VERSION = "1.13"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -334,7 +335,8 @@ EXECUTION_CONFIG_KEY_TREE: dict[str, Any] = {key: {} for key in (
     "claude_cli_write_mode", "claude_cli_write_mode_source", "context_strategy", "timeout_sec",
     "timeout_sec_source", "timeout_profile", "timeout_profile_source", "max_output_chars",
     "max_output_chars_source", "stream_evidence", "stream_evidence_source", "max_tasks",
-    "max_tasks_source",
+    "max_tasks_source", "claude_cli_customizations", "claude_cli_customizations_source",
+    "claude_cli_all_tools", "claude_cli_all_tools_source",
 )}
 
 #: The keys of a job's target guard as its record exports them, a tree several answers carry

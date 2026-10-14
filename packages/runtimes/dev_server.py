@@ -27,12 +27,9 @@ import json
 import os
 import shlex
 import signal
-import socket
 import subprocess
 import threading
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -40,6 +37,18 @@ from pathlib import Path
 from typing import Any
 
 from packages.common.secure_fs import durable_write
+from packages.runtimes.dev_server_ports import (
+    DEFAULT_HOST,
+    RuntimeProbeResult,
+    choose_port,
+    http_probe,
+)
+from packages.runtimes.dev_server_ports import (
+    pick_free_port as pick_free_port,
+)
+from packages.runtimes.dev_server_ports import (
+    port_is_free as port_is_free,
+)
 
 #: How much of a log file is ever read back into memory or evidence.
 LOG_TAIL_BYTES = 64 * 1024
@@ -58,7 +67,6 @@ READY_STATUS_MAX = 399
 #: Placeholder replaced with the effective port in argv and env values.
 PORT_PLACEHOLDER = "{port}"
 
-DEFAULT_HOST = "127.0.0.1"
 GRACE_SECONDS = 3.0
 
 #: Versioned schema for the effective-spec fingerprint.
@@ -1208,77 +1216,6 @@ def verify_state(state: RuntimeState | None,
     if check.verified:
         return True, ""
     return False, check.reason or check.classification
-
-
-# ---------------------------------------------------------------------------
-# Ports and readiness
-# ---------------------------------------------------------------------------
-
-def port_is_free(port: int, host: str = DEFAULT_HOST) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            sock.bind((host, int(port)))
-        except OSError:
-            return False
-    return True
-
-
-def pick_free_port(host: str = DEFAULT_HOST) -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind((host, 0))
-        return int(sock.getsockname()[1])
-
-
-def choose_port(requested: int, host: str = DEFAULT_HOST) -> int:
-    """Prefer the requested port; fall back to a free one. Never kill the squatter."""
-    if port_is_free(requested, host):
-        return int(requested)
-    return pick_free_port(host)
-
-
-@dataclass
-class RuntimeProbeResult:
-    ok: bool = False
-    status_code: int = 0
-    url: str = ""
-    port: int = 0
-    elapsed_s: float = 0.0
-    error: str = ""
-    error_class: str = ""       # "" | "config" | "start" | "ready" | "stop"
-    log_tail: str = ""
-    pid: int = 0
-    survivors: list[int] = field(default_factory=list)
-    log_error: str = ""
-
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "ok": self.ok,
-            "log_error": self.log_error,
-            "status_code": self.status_code,
-            "url": self.url,
-            "port": self.port,
-            "elapsed_s": round(self.elapsed_s, 3),
-            "error": self.error,
-            "error_class": self.error_class,
-            "log_tail": self.log_tail,
-            "pid": self.pid,
-            "survivors": list(self.survivors),
-        }
-
-
-def http_probe(url: str, timeout: float = 3.0) -> tuple[int, str]:
-    """One HTTP GET. Returns (status, error). Never raises."""
-    req = urllib.request.Request(url, method="GET")  # noqa: S310 - loopback only
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
-            return int(resp.status), ""
-    except urllib.error.HTTPError as exc:
-        return int(exc.code), ""
-    except urllib.error.URLError as exc:
-        return 0, str(exc.reason)
-    except (TimeoutError, OSError) as exc:
-        return 0, str(exc)
 
 
 # ---------------------------------------------------------------------------

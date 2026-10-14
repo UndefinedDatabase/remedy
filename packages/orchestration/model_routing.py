@@ -1429,10 +1429,10 @@ ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("apps/cli/commands/do_cmd.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/artifact_summary.py", "summary"),
     ("packages/orchestration/chat_answer.py", "summary"),
+    ("packages/orchestration/execution_config.py", DYNAMIC_ROLE_MARKER),
     # amend0920-selfuse-real D1: make_structured_call_fn asks the `planner` role
     # which planning SERVICE to build, when no --planner-provider named one.
     ("packages/orchestration/intake.py", "planner"),
-    ("packages/orchestration/pingpong_job.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/result_tour.py", "summary"),
     ("packages/orchestration/role_config.py", "orchestrator"),
     ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),

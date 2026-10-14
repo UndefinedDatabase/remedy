@@ -20,6 +20,7 @@ import tests.orchestration.test_run_manifest as T
 from packages.orchestration import manifest_schema as _S
 from packages.orchestration.run_manifest import (
     JOB_INPUT_EXECUTION_FIELDS,
+    JOB_INPUT_EXECUTION_OPTIONAL_FIELDS,
     JOB_INPUT_TOP_FIELDS,
     decode_job_input_definition_v1,
     validate_job_input_definition,
@@ -63,7 +64,7 @@ def _without_execution_field(field):
     return d
 
 
-for _f in sorted(JOB_INPUT_EXECUTION_FIELDS):
+for _f in sorted(JOB_INPUT_EXECUTION_FIELDS - JOB_INPUT_EXECUTION_OPTIONAL_FIELDS):
     _BROKEN[f"missing execution.{_f}"] = _without_execution_field(_f)
 
 for _f in sorted(JOB_INPUT_TOP_FIELDS):
@@ -85,6 +86,15 @@ class TestTheTypedPredicateAndTheRawDecoderAgree:
 
     def test_a_complete_definition_is_accepted_by_both(self):
         job_input = _ji()
+        assert validate_job_input_definition(job_input) == []
+        decode_job_input_definition_v1(job_input)
+        assert _wrapper(job_input).is_ok()
+
+    @pytest.mark.parametrize("field", sorted(JOB_INPUT_EXECUTION_OPTIONAL_FIELDS))
+    def test_a_definition_missing_an_optional_key_is_accepted_by_both(self, field):
+        """R-1235's third step: a record written before F306 carries none of the four claude-cli
+        launch keys, and that absence must not make the two readers disagree."""
+        job_input = _without_execution_field(field)
         assert validate_job_input_definition(job_input) == []
         decode_job_input_definition_v1(job_input)
         assert _wrapper(job_input).is_ok()

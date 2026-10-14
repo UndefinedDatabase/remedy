@@ -1,19 +1,17 @@
-# Plan — F203 Structured logging & correlation
+# Plan — F306 Findings paydown v8
 
 ## Goal
-Remedy writes what it does to one operations log: a JSON line per record carrying the job, task
-and run ids, owner-only under `<data root>/logs/`, rotated by size; a person or a program can read
-one job's or run's lines in order on the command line and on the public API; and no `print`
-remains in `packages/` unexcused (docs/roadmap/features/T12_F203.md; DECISIONs F203 D1 to D7).
+Pay down the four findings open at the claim — R-1235, R-1246, R-1251 and R-1252 — each by the
+repair its own text names, after the structural steps the structure ledger owes for the files they
+touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md; DECISIONs F306
+D1 to D3).
 
 ## Current Step
-Round 10 on `feature/f203-structured-logging`, session 2, the closing round: book round 9's PASS,
-the Built State, the ledger rotation, the STATUS flip with the README sync and the self-use entry
-`SU-061`'s `consumed_by`, the handback, the push and the pull request, left unmerged.
+Session 3, round 12 on `feature/f306-findings-paydown-v8`, the closing round: round 11 is booked,
+R-1235 resolved, R-1246 and R-1252 re-assigned to F307, the Built State written; then the ledger
+rotation, F307's registration, F306's STATUS line with the README sync and SU-062's
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F203's pull request; the next
-   feature's first commit books round 10's verdict; Rule A5 names the next feature.
-
-## Risks
-- R-1235, R-1246, R-1251 and R-1252 are owned by F306; F203 owns no open finding.
+1. The next session: the Open PR Gate merges F306's pull request, books round 12's verdict in the
+   next feature's first commit, and Rule A5 picks the next unchecked STATUS line.
