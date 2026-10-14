@@ -132,9 +132,20 @@ AUTONOMY_CHANGES_FILENAME = "level_changes.jsonl"
 # record, under the same durable data class.
 AUTONOMY_DEFERRED_FILENAME = "deferred_starts.jsonl"
 
+# One line per idea draft L5 was asked to start on its own, allowed or not (DECISION F078 D3 (4));
+# kept beside the other two records, under the same durable data class.
+AUTONOMY_IDEA_STARTS_FILENAME = "idea_starts.jsonl"
+
+# The three effort bands an idea draft is rated at, lowest first; autonomy.idea_max_effort names
+# one of these as the cap L5 may start on its own (DECISION F078 D3 (4)).
+AUTONOMY_EFFORT_BANDS: tuple[str, ...] = ("low", "medium", "high")
+
 # The two events AUTONOMY_DEFERRED_FILENAME ever carries.
 _EVENT_DEFERRED = "deferred"
 _EVENT_TAKEN = "taken"
+
+# The second event AUTONOMY_IDEA_STARTS_FILENAME carries beside _EVENT_DEFERRED.
+_EVENT_STARTED = "started"
 
 
 def _resolve_relative_path(value: str | None, source: ConfigSource,
@@ -153,10 +164,10 @@ def _resolve_relative_path(value: str | None, source: ConfigSource,
 
 
 def _reject_env_sourced_keys(cfg: RemedyConfig) -> None:
-    """(a) none of the three keys may come from the environment.
+    """(a) none of these keys may come from the environment.
 
     A level change must leave a file edit behind, which is the paper trail the feature exists
-    to keep.
+    to keep; the three caps of L5 (DECISION F078 D3 (4)) are config-file-only for the same reason.
     """
     from packages.orchestration.config import ConfigSource
 
@@ -164,6 +175,9 @@ def _reject_env_sourced_keys(cfg: RemedyConfig) -> None:
         ("autonomy.level", "REMEDY_AUTONOMY_LEVEL"),
         ("autonomy.gauntlet_evidence", "REMEDY_AUTONOMY_GAUNTLET_EVIDENCE"),
         ("autonomy.change_adr", "REMEDY_AUTONOMY_CHANGE_ADR"),
+        ("autonomy.idea_max_effort", "REMEDY_AUTONOMY_IDEA_MAX_EFFORT"),
+        ("autonomy.idea_starts_per_day", "REMEDY_AUTONOMY_IDEA_STARTS_PER_DAY"),
+        ("autonomy.idea_usd_per_day", "REMEDY_AUTONOMY_IDEA_USD_PER_DAY"),
     ):
         if cfg.get_source(key) == ConfigSource.ENV:
             raise AutonomyConfigError(
@@ -226,13 +240,16 @@ def _previous_level(changes_path: Path, path: str | None) -> str:
 
 def _record_change(
     changes_dir: Path, changes_path: Path, *, path: str | None, config_path: str | None,
-    old: str, new: str, change_adr: str | None, source: str, when: datetime,
+    old: str, new: str, change_adr: str | None, source: str, when: datetime, record: bool,
 ) -> None:
-    """(e) check the decision record and append one change line, creating the folder.
+    """(e) check the decision record and, when RECORD, append one change line, creating the folder.
 
     PATH is the config file as the report holds it, named in both refusal sentences below.
     CONFIG_PATH is that same file resolved to one absolute string (R-1321): the only form the
-    written record, and AutonomyPolicy.config_path, ever carry.
+    written record, and AutonomyPolicy.config_path, ever carry. Every check and refusal applies
+    whether or not RECORD is set — only the write itself is skipped for a reading caller
+    (`record=False`, DECISION F078 D3 (2)), so `remedy status` can show a pending change honestly
+    without writing the record a later refusal might then contradict.
     """
     if change_adr is None:
         raise AutonomyConfigError(
@@ -244,13 +261,15 @@ def _record_change(
             f"The decision record {change_adr} for the change from {old} to {new} does not "
             "exist."
         )
+    if not record:
+        return
     changes_dir.mkdir(parents=True, exist_ok=True)
-    record = {
+    change_record = {
         "at": when.isoformat(), "config_path": config_path, "from": old, "to": new,
         "change_adr": change_adr, "source": source,
     }
     with changes_path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record) + "\n")
+        fh.write(json.dumps(change_record) + "\n")
 
 
 def load_autonomy_policy(
@@ -258,6 +277,7 @@ def load_autonomy_policy(
     *,
     root: Path | None = None,
     now: datetime | None = None,
+    record: bool = True,
 ) -> AutonomyPolicy:
     """The autonomy level in force, validated, with its supporting keys and any change recorded.
 
@@ -265,7 +285,10 @@ def load_autonomy_policy(
     the environment; a level from no file is the default and reads or writes nothing; the level
     must be one of AUTONOMY_LEVELS; L3 and higher need gauntlet evidence that actually passed;
     and a level that differs from the last one recorded for this config file needs a decision
-    record, which is then appended to <data root>/autonomy/level_changes.jsonl.
+    record, which is then appended to <data root>/autonomy/level_changes.jsonl. With
+    ``record=False`` (DECISION F078 D3 (2)) every one of those checks still runs unchanged, but an
+    accepted change is not appended — ``changed_from`` still names the previous level, so a caller
+    that only reads (``remedy status``) sees a pending change honestly without writing it.
     """
     from packages.orchestration.config import ConfigSource, get_config
 
@@ -318,7 +341,7 @@ def load_autonomy_policy(
 
     _record_change(
         changes_dir, changes_path, path=path, config_path=resolved_path, old=old, new=level,
-        change_adr=change_adr, source=level_value.source.value, when=when,
+        change_adr=change_adr, source=level_value.source.value, when=when, record=record,
     )
     return AutonomyPolicy(level, resolved_path, evidence, change_adr, old)
 
@@ -450,3 +473,147 @@ def deferral_detail(
         f"{verdict.reason} The next job of milestone {milestone_id} waits for you: run "
         f"`remedy mission run {mission_id} --project {project_id}` to start it yourself."
     )
+
+
+# ---------------------------------------------------------------------------
+# T003: the level shown without writing, and the three caps of L5 (DECISION F078 D3)
+# ---------------------------------------------------------------------------
+
+
+def autonomy_status_summary(
+    config: RemedyConfig | None = None, *, root: Path | None = None,
+) -> dict[str, Any]:
+    """The level in force and today's open deferrals, READ ONLY (DECISION F078 D3 (2)).
+
+    `remedy status` and `remedy mission run` both answer this. `load_autonomy_policy` is called
+    with ``record=False``: every check it performs still runs, but an accepted change is never
+    appended, so a command that only reports the level never writes the record a later refusal
+    might then contradict. A refused configuration answers `level` and `config_path` as None and
+    `error` as the refusal's own sentence.
+    """
+    try:
+        policy = load_autonomy_policy(config, root=root, record=False)
+    except AutonomyConfigError as exc:
+        return {
+            "level": None, "config_path": None, "error": str(exc),
+            "deferred_starts": len(open_deferred_starts(root)),
+        }
+    return {
+        "level": policy.level, "config_path": policy.config_path, "error": None,
+        "deferred_starts": len(open_deferred_starts(root)),
+    }
+
+
+def _idea_starts_path(root: Path | None) -> Path:
+    data_root = root if root is not None else resolve_data_root()
+    return data_class_dir("autonomy", data_root) / AUTONOMY_IDEA_STARTS_FILENAME
+
+
+def _idea_start_records(path: Path) -> list[dict[str, Any]]:
+    """Every object line of PATH that parses as one; a line that is not one is skipped."""
+    if not path.is_file():
+        return []
+    records: list[dict[str, Any]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict):
+            records.append(record)
+    return records
+
+
+def claim_idea_start(
+    policy: AutonomyPolicy, idea_id: str, *, effort_band: str, estimated_usd: float,
+    config: RemedyConfig | None = None, root: Path | None = None, now: datetime | None = None,
+) -> AutonomyStartVerdict:
+    """Whether idea draft IDEA_ID may start on its own, within the three caps of L5 (DECISION
+    F078 D3 (4)); ready for the idea engine (F063, F065), which calls this before starting one.
+
+    The matrix is asked first, exactly as every other origin — an idea draft is refused below L5
+    with the matrix's own reason. At L5 the three caps of `AUTONOMY_KEY_SPECS` apply in order: the
+    effort band, then the day's started count, then the day's started cost; the first one that
+    refuses wins. Every refusal appends one `deferred` line and every allowed start one `started`
+    line of `<data root>/autonomy/idea_starts.jsonl`, so a refused idea waits for the operator and
+    is never lost. "Today" is the UTC date of NOW.
+    """
+    if effort_band not in AUTONOMY_EFFORT_BANDS:
+        raise ValueError(f"not a known autonomy effort band: {effort_band!r}")
+
+    from packages.orchestration.config import get_config
+
+    cfg = config if config is not None else get_config()
+    _reject_env_sourced_keys(cfg)
+    max_effort = cfg.get_value("autonomy.idea_max_effort").value
+    if max_effort not in AUTONOMY_EFFORT_BANDS:
+        raise AutonomyConfigError(
+            f"autonomy.idea_max_effort is {max_effort!r}, and it must be low, medium or high."
+        )
+    starts_cap = cfg.get_value("autonomy.idea_starts_per_day").value
+    usd_cap = cfg.get_value("autonomy.idea_usd_per_day").value
+
+    when = now if now is not None else datetime.now(timezone.utc)
+    today = when.date().isoformat()
+    path = _idea_starts_path(root)
+    todays_started = [
+        r for r in _idea_start_records(path)
+        if r.get("event") == _EVENT_STARTED and isinstance(r.get("at"), str)
+        and r["at"][:10] == today
+    ]
+    count = len(todays_started)
+    total = sum(
+        r["estimated_usd"] for r in todays_started
+        if isinstance(r.get("estimated_usd"), (int, float))
+    )
+
+    def _append(event: str, reason: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = {
+            "event": event, "at": when.isoformat(), "idea_id": idea_id,
+            "effort_band": effort_band, "estimated_usd": estimated_usd, "level": policy.level,
+            "reason": reason,
+        }
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(line) + "\n")
+
+    verdict = autonomy_may_start(START_ORIGIN_IDEA, policy.level)
+    if not verdict.allowed:
+        _append(_EVENT_DEFERRED, verdict.reason)
+        return verdict
+
+    if AUTONOMY_EFFORT_BANDS.index(effort_band) > AUTONOMY_EFFORT_BANDS.index(max_effort):
+        reason = (
+            f"The idea draft {idea_id} needs effort {effort_band}, and autonomy level L5 starts "
+            f"idea drafts on its own only up to effort {max_effort}; it waits for you to start it."
+        )
+        _append(_EVENT_DEFERRED, reason)
+        return AutonomyStartVerdict(
+            allowed=False, origin=START_ORIGIN_IDEA, level=policy.level, reason=reason)
+
+    if count >= starts_cap:
+        reason = (
+            f"Autonomy level L5 has already started {count} idea draft"
+            f"{'' if count == 1 else 's'} on its own today, its limit; the idea draft {idea_id} "
+            "waits for you to start it."
+        )
+        _append(_EVENT_DEFERRED, reason)
+        return AutonomyStartVerdict(
+            allowed=False, origin=START_ORIGIN_IDEA, level=policy.level, reason=reason)
+
+    new_total = total + estimated_usd
+    if new_total > usd_cap:
+        reason = (
+            f"Starting the idea draft {idea_id} would bring today's estimated cost of idea drafts "
+            f"to {new_total:.2f} dollars, over the limit of {usd_cap:.2f}; it waits for you to "
+            "start it."
+        )
+        _append(_EVENT_DEFERRED, reason)
+        return AutonomyStartVerdict(
+            allowed=False, origin=START_ORIGIN_IDEA, level=policy.level, reason=reason)
+
+    _append(_EVENT_STARTED, verdict.reason)
+    return verdict

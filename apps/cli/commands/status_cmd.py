@@ -132,15 +132,15 @@ def _cmd_status(
     if stops_pending and first_active_short:
         stops_next = f"remedy job stop --status {first_active_short}"
     runtime_next = 'remedy do "<mission>"'
-
+    from packages.orchestration.autonomy_gate import autonomy_status_summary
     if json_output:
         result = {
             "project": project_slug,
             "scope": "all projects" if scope.all_projects else (project_slug or "current"),
             "jobs": dict(by_state),
-            "decisions_open": decisions_open,
-            "runtime": runtime_status,
+            "decisions_open": decisions_open, "runtime": runtime_status,
             "stops_pending": stops_pending,
+            "autonomy": autonomy_status_summary(),
         }
         if runtime_warning:
             result["runtime_warning"] = runtime_warning
@@ -229,6 +229,24 @@ def _print_status_text(
     print(f"  Next: {runtime_next}")
     print(f"Stops: {stops_pending} pending")
     print(f"  Next: {stops_next}")
+
+    from packages.orchestration.autonomy_gate import autonomy_status_summary, open_deferred_starts
+
+    summary = autonomy_status_summary()
+    level = summary["level"]
+    config_path = summary["config_path"]
+    error = summary["error"]
+    deferred_starts = summary["deferred_starts"]
+    if error:
+        print(f"Autonomy: the configured level cannot be used. {error}")
+    else:
+        where = "the default" if config_path is None else f"set in {config_path}"
+        print(f"Autonomy: level {level}, {where}")
+    if deferred_starts:
+        n = deferred_starts
+        print(f"  {n} start{'' if n == 1 else 's'} deferred by the autonomy level")
+        oldest = min(open_deferred_starts(), key=lambda r: r.get("at", ""))
+        print(f"  Next: remedy mission run {oldest['mission_id']} --project {oldest['project_id']}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

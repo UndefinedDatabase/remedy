@@ -670,10 +670,12 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
             iterations=result.iterations,
             max_iterations=limits.max_iterations,
             ledger_entries=len(entries),
+            autonomy_level=policy.level,
         )
         return
 
     print(mission.id)
+    print(f"  Autonomy level: {policy.level}")
     print(f"  Terminal: {result.terminal}")
     if result.detail:
         print(f"  {result.detail}")

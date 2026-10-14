@@ -98,4 +98,34 @@ AUTONOMY_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=str,
         default=None,
     ),
+    ConfigKeySpec(
+        key="autonomy.idea_max_effort",
+        env_var="REMEDY_AUTONOMY_IDEA_MAX_EFFORT",
+        description=(
+            "The largest effort band (low, medium or high) of an idea draft that autonomy level L5 may "
+            "start on its own; a larger one waits for you (DECISION F078 D3)."
+        ),
+        value_type=str,
+        default="low",
+    ),
+    ConfigKeySpec(
+        key="autonomy.idea_starts_per_day",
+        env_var="REMEDY_AUTONOMY_IDEA_STARTS_PER_DAY",
+        description=(
+            "How many idea drafts autonomy level L5 may start on its own per day, counted in UTC; the "
+            "next one waits for you (DECISION F078 D3)."
+        ),
+        value_type=int,
+        default=1,
+    ),
+    ConfigKeySpec(
+        key="autonomy.idea_usd_per_day",
+        env_var="REMEDY_AUTONOMY_IDEA_USD_PER_DAY",
+        description=(
+            "How many dollars of estimated cost the idea drafts autonomy level L5 starts on its own may "
+            "add up to per day, counted in UTC; one that would pass it waits for you (DECISION F078 D3)."
+        ),
+        value_type=float,
+        default=1.0,
+    ),
 )
