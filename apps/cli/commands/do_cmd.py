@@ -299,8 +299,8 @@ def _cmd_do_order(
                  json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
+    from apps.cli.commands.do_plan_prompt import interactive_plan_confirmer
     from packages.orchestration.do_cockpit import launch_do_cockpit
-    from packages.orchestration.do_plan_confirm import interactive_plan_confirmer
     from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (

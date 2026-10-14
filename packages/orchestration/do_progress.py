@@ -35,7 +35,8 @@ _END_DETAIL_CHARS = 240
 
 def write_progress_to_stderr(text: str) -> None:
     """The default sink: one line on the stderr of the moment, flushed at once."""
-    print(text, file=sys.stderr, flush=True)  # noqa: T201 — the progress line the person watches
+    sys.stderr.write(text + "\n")
+    sys.stderr.flush()
 
 
 class DoProgress:
@@ -116,13 +117,10 @@ class DoProgress:
 
 
 def _role_provider(role: str, override: str | None) -> str:
-    """The provider *role* resolves to, as the run resolves it; the word `default` when it cannot be told."""
-    from packages.orchestration.role_config import resolve_role_config
+    """The provider *role* resolves to, by the one function `run_job` records it with (R-0768)."""
+    from packages.orchestration.execution_config import default_role_provider_name
 
-    try:
-        return str(resolve_role_config(role, cli_args={"provider": override} if override else None).provider)
-    except Exception:  # noqa: BLE001 — a progress line never stops the walk it describes
-        return "default"
+    return override or default_role_provider_name(role)
 
 
 def do_step_intro(name: str, ctx: DoContext) -> str:
@@ -141,7 +139,10 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
             return f"bounded one-deliverable lane ({lane.reason}), no provider call"
         if ctx.no_llm:
             return f"full lane ({lane.reason}), deterministic plan because of --no-llm, no provider call"
-        return f"full lane ({lane.reason}), planner {_role_provider('planner', ctx.planner_provider)}"
+        from packages.orchestration.intake import resolve_planner_target
+
+        return (f"full lane ({lane.reason}), planner "
+                f"{resolve_planner_target(ctx.planner_provider, ctx.planner_model)[0]}")
     if name == "shape":
         return "shaping the jobs and their tasks"
     if name == "ui":

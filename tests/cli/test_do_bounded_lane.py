@@ -430,12 +430,13 @@ def test_a_full_plan_runs_when_the_flag_approves_it(repo, capsys, monkeypatch):
 @pytest.mark.parametrize(("answer", "ran"), [("y", True), ("n", False), ("", False)])
 def test_an_interactive_terminal_shows_the_plan_and_asks_before_a_full_plan_runs(
         repo, capsys, monkeypatch, answer, ran):
+    from apps.cli.commands import do_plan_prompt
     from packages.orchestration import do_plan_confirm
 
     _plan_with_mocked_llm(monkeypatch)
     asked: list[str] = []
     monkeypatch.setattr(
-        do_plan_confirm, "interactive_plan_confirmer",
+        do_plan_prompt, "interactive_plan_confirmer",
         lambda: do_plan_confirm.make_plan_confirmer(
             ask=lambda question: asked.append(question) or answer, write=lambda line: None))
 
