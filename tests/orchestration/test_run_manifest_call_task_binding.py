@@ -259,3 +259,24 @@ class TestASplitTheRunRecorded:
         with pytest.raises(ManifestError) as exc:
             _finalize_with(job, wrapper)
         assert "no longer matches" in str(exc.value)
+
+    def test_an_edit_from_outside_after_a_recorded_split_is_refused(self, data_root, repo):
+        """R-1315: the refusal names the DEFINITION's list unchanged, then — because this
+        episode recorded a split — the list after it, under its own words, before naming the
+        edit from outside that is the actual cause."""
+        from packages.orchestration.pingpong_job import TASK_SPLIT, TaskEntry
+        from packages.orchestration.run_task_list import record_task_split
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        job.tasks[0].status = TASK_SPLIT
+        _insert_split_parts(job)
+        record_task_split(job, "T001", ["T001a", "T001b"], "context too large")
+        job.tasks.append(TaskEntry(task_id="T999", source_heading_number=2, title="new",
+                                    body="b", acceptance="a"))
+        with pytest.raises(ManifestError) as exc:
+            _finalize_with(job, wrapper)
+        message = str(exc.value)
+        assert "['T001']" in message, message
+        assert "with this episode's recorded splits applied" in message, message
+        assert "['T001', 'T001a', 'T001b']" in message, message

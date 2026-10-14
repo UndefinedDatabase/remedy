@@ -75,6 +75,25 @@ class TestTaskIdsAfterSplits:
         assert after == ["T001"]
         assert any("not a map" in p for p in problems), problems
 
+    def test_a_part_split_again_in_the_same_episode_is_accepted(self):
+        """R-1314: the second split's parent, `T001a`, is created by the first split, not
+        present in the original `ids` — it must be counted in the list AS IT STANDS after the
+        splits before it, not in `ids` itself."""
+        after, problems = task_ids_after_splits(
+            ["T001"],
+            [_split("T001", ["T001a", "T001b"]), _split("T001a", ["T001c", "T001d"])])
+        assert after == ["T001", "T001a", "T001c", "T001d", "T001b"]
+        assert problems == []
+
+    def test_the_same_two_splits_in_the_opposite_order_leave_the_second_unapplied(self):
+        """R-1314: processed in reverse, the split of `T001a` comes first — before `T001a`
+        exists — so it is refused; the split of `T001` still applies on its own."""
+        after, problems = task_ids_after_splits(
+            ["T001"],
+            [_split("T001a", ["T001c", "T001d"]), _split("T001", ["T001a", "T001b"])])
+        assert after == ["T001", "T001a", "T001b"]
+        assert len(problems) == 1, problems
+
 
 # --------------------------------------------------------------------------- decode_task_splits_v1
 

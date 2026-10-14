@@ -176,8 +176,11 @@ def task_ids_after_splits(ids: list[str], splits: Any) -> tuple[list[str], list[
     """`ids` with each split's parts inserted directly after its parent, in the splits' order.
 
     Answers (the list after the splits, the problems). A split with a problem is not applied —
-    a parent not in `ids` exactly once, a parent already split, parts that are empty, repeated,
-    or already present in the list, or a record that is not a map of exactly `TASK_SPLIT_FIELDS`.
+    a parent that does not occur exactly once in the list AS IT STANDS after the splits before
+    it (so a part split again in the same episode counts correctly, and a split whose parent is
+    created only by a LATER split in the order stays refused), a parent already split, parts
+    that are empty, repeated, or already present in the list, or a record that is not a map of
+    exactly `TASK_SPLIT_FIELDS`.
     """
     out = list(ids)
     problems: list[str] = []
@@ -189,9 +192,9 @@ def task_ids_after_splits(ids: list[str], splits: Any) -> tuple[list[str], list[
             continue
         parent = str(s.get("parent_task_id", ""))
         parts_raw = s.get("part_task_ids")
-        if ids.count(parent) != 1:
+        if out.count(parent) != 1:
             problems.append(
-                f"split of {parent!r}: its parent appears {ids.count(parent)} time(s) in the "
+                f"split of {parent!r}: its parent appears {out.count(parent)} time(s) in the "
                 f"task list (must be exactly once)")
             continue
         if parent in split_parents:
@@ -267,11 +270,14 @@ def checked_episode_task_list(
     live_task_ids = tuple(str(getattr(tk, "task_id", "") or "")
                           for tk in getattr(job, "tasks", []))
     if declared_task_ids and live_task_ids and live_task_ids != tuple(after):
+        splits_clause = (
+            f", with this episode's recorded splits applied: {list(after)}" if splits else "")
         raise ManifestError(
-            f"the job's task list {list(live_task_ids)} no longer matches the episode-start "
-            f"snapshot's job-input definition {list(after)} (F7: tasks were added, "
-            f"removed or reordered after capture; this episode cannot be finalized against a "
-            f"definition it did not run)")
+            f"the job's task list {list(live_task_ids)} "
+            f"no longer matches the episode-start snapshot's job-input definition "
+            f"{list(declared_task_ids)}{splits_clause} "
+            f"(F7: tasks were added, removed or reordered after capture; this episode "
+            f"cannot be finalized against a definition it did not run)")
     return tuple(after), tuple(splits)
 
 
