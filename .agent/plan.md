@@ -7,10 +7,11 @@ and write, and a real run reuses the rehearsed plan without planning again
 (docs/roadmap/features/T3_F055.md; DECISIONs F055 D1 to D3).
 
 ## Current Step
-Session 1, round 3 on `feature/f055-rehearsal`: book round 2, resolve R-1316 and register
-R-1317, write the boundaries of `_cmd_job_run` and `_cmd_status`, then repair R-1317 and land
-T003 — the staleness warning, the rehearsed label and the end-to-end proofs.
+Session 1, round 4 on `feature/f055-rehearsal`, the closure's first round: book round 3,
+resolve R-1317, register and repair R-1318, the checklist's consolidation pass, the closure's
+self-use item run to its approval gate, and the feature's one full suite.
 
 ## Next Steps
-1. The closure sequence: the one full suite, the self-use run, the evidence, the STATUS line and
-   the pull request.
+1. The evidence bundle and the review package.
+2. The closing round: the Built State, the resolutions, the rotation, the STATUS line and the
+   pull request.
