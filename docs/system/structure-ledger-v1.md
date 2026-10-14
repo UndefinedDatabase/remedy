@@ -157,6 +157,20 @@ commit with no alias left behind, and changes the tests in their import lines on
   planner, the contract template, and an order file a mission still runs) and the one call into
   `_cmd_do_order`. Steps: (1) the refusals before any step become one function that exits 2 or
   returns; (2) the call stays.
+- `_cmd_job_run` (`apps/cli/commands/do_cmd.py`). Boundary: the checks of its flags, the budgets
+  it resolves from them, the refusals before anything runs (a job that cannot be continued, a
+  cancelled job, a plan not approved), the forward to a supervisor that answers, the run, and its
+  answer. Steps: (1) the refusals before anything runs become one function that fails or returns;
+  (2) the budgets resolved from the flags become a function of their own; (3) the answer becomes a
+  function of its own, once the client-interface tests, which key the answer's sites by this
+  function, read them through the function that gives them. Until a step is taken, a feature's
+  edits of this function are line-neutral (DECISION F055 D3).
+- `_cmd_status` (`apps/cli/commands/status_cmd.py`). Boundary: the scope and project it reads,
+  the jobs grouped by state, the counts of open decisions and pending stops, the runtime's state,
+  and its answer, the JSON document or the text lines. Steps: (1) the counts of open decisions and
+  pending stops become a function each; (2) the runtime's state becomes a function of its own;
+  (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
+  this function are line-neutral (DECISION F055 D3).
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
