@@ -391,6 +391,11 @@ class JobApplyResult:
     #: DECISION F270 D4 (3): `remedy do`'s walk of several jobs asks --commit-auto
     #: for each job's title before the mission's goal; not a record field.
     commit_auto_title_first: bool = False
+    #: Operator amendment amend1014b D6: applied files that were already dirty when the job
+    #: started (so the apply or commit holds the person's earlier edit too), and the dirty
+    #: paths the job never touched, left byte-identical.
+    baseline_files_applied: list[str] = field(default_factory=list)
+    preserved_dirty_paths: list[str] = field(default_factory=list)
     #: DECISION F276 D6: what became of a COPY-mode job's staging workspace after
     #: this apply — "released <n> bytes", "already gone", or "kept (<reason>)".
     #: Empty for a worktree job, which has no staging copy. NOT a record field,
@@ -487,7 +492,8 @@ DETACHED_HEAD_OPENING = "The target is on a detached HEAD"
 DIRTY_TREE_OPENING = "The target has uncommitted changes"
 
 
-def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[str], bool]:
+def checkout_refusals(target: Path, *, landing: str, what: str,
+                      allow_dirty: bool = False) -> tuple[list[str], bool]:
     """The operator checkout's refusals every ``--commit…`` flag shares; ``(sentences, stop)``.
 
     DECISION F270 D2 (2) and D3 (2): a target below its repository's top
@@ -495,7 +501,10 @@ def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[st
     revert in progress, and a dirty tree. ``landing`` says what lands ("the
     task commits"), ``what`` the act ("merge into"). Reads only. ``stop`` is
     True when the target is not a repository's top level, because nothing
-    after that can be asked.
+    after that can be asked. ``allow_dirty`` (operator amendment amend1014b, DECISION D5) skips
+    the dirty-tree refusal: a copy-and-commit works from the captured working tree, so
+    cleanliness is not required; only the history merge, which cannot carry a baseline, asks
+    for a clean tree.
     """
     rc, top, _err = _history_git(target, "rev-parse", "--show-toplevel")
     if rc != 0 or Path(top.strip()).resolve() != target.resolve():
@@ -524,7 +533,7 @@ def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[st
     if rc != 0:
         refusals.append(f"git status failed in the target ({err.strip()[:150]}), so "
                         f"its tree cannot be shown clean.")
-    elif dirty:
+    elif dirty and not allow_dirty:
         refusals.append(f"{DIRTY_TREE_OPENING} in {_named_paths(dirty)}; "
                         f"commit or stash them and re-run.")
     return refusals, False
@@ -547,6 +556,10 @@ def _history_refusals(
                                        what="merge into")
     if stop:
         return refusals
+    if getattr(job, "start_baseline", None):
+        refusals.append("The job started from a dirty working tree, so its branch holds a "
+                        "baseline commit of your uncommitted files; a merge would commit them. "
+                        "Use --commit-auto, which commits only the reviewed files.")
     if skip_blocked:
         refusals.append("--commit-with-history merges the whole job branch and cannot "
                         "leave protected paths out, so it does not combine with "
@@ -792,7 +805,8 @@ def _commit_refusals(target: Path, planned: list[str]) -> list[str]:
     target's ``.gitignore`` matches. A staging job is not refused: the commit
     holds only the copied files.
     """
-    refusals, stop = checkout_refusals(target, landing="the commit", what="commit on")
+    refusals, stop = checkout_refusals(target, landing="the commit", what="commit on",
+                                       allow_dirty=True)
     if stop or not planned:
         return refusals
     rc, out, err = _history_git(target, "check-ignore", "--", *planned)
@@ -1235,7 +1249,10 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
         return None, f"job_result_diff_invalid: {err}"
 
     repo = Path(job.repo_path)
-    base = getattr(job, "worktree_base_commit", "")
+    # Amend1014b D5: result.diff is the delta from the captured start state, so a dirty-start
+    # job is rebuilt from the baseline commit on its own branch, not from the target's HEAD.
+    base = ((getattr(job, "start_baseline", None) or {}).get("commit")
+            or getattr(job, "worktree_base_commit", ""))
     if not base:
         return None, "job_result_diff_invalid: no recorded base commit"
 
@@ -1794,6 +1811,10 @@ def _apply_from_workspace(
                 f"(DECISION D-E of T2_F263.md)"))
         return _block(result, f"baseline_check_failed: {block_reasons}")
 
+    drift = _baseline_drift_block(job, target)
+    if drift:
+        return _block(result, drift)
+
     # --- Mode fidelity: the source must still carry the reviewed file mode ---
     _reviewed, mode_proofs = _reviewed_files_and_proofs(job)
     mode_blocks: list[str] = []
@@ -2004,10 +2025,30 @@ def _apply_from_workspace(
             _persist_outcome(applied)
             return result
 
+    _note_start_baseline(job, result, applied)
     result.status = "applied"
     result.finished_at = datetime.now(timezone.utc).isoformat()
     _persist_outcome(applied)
     return result
+
+
+def _note_start_baseline(job: Any, result: JobApplyResult, applied: list[str]) -> None:
+    """Amend1014b D6: say which applied files carried the person's earlier edit, and what was kept."""
+    start = getattr(job, "start_baseline", None) or {}
+    dirty = [e["path"] for e in start.get("entries", [])]
+    result.baseline_files_applied = sorted(set(applied) & set(dirty))
+    result.preserved_dirty_paths = sorted(set(dirty) - set(applied))
+
+
+def _baseline_drift_block(job: Any, target: Path) -> str:
+    """Amend1014b D5: a dirty-start job refuses when the target's HEAD or branch moved. "" when fine."""
+    start = getattr(job, "start_baseline", None)
+    if not start:
+        return ""
+    from packages.orchestration.dirty_baseline import baseline_drift
+
+    moved = [m for m in baseline_drift(target, start) if m.startswith(("HEAD ", "the branch"))]
+    return f"{TARGET_CHANGED_DURING_RUN}: {'; '.join(moved)}" if moved else ""
 
 
 # ---------------------------------------------------------------------------
@@ -2019,7 +2060,7 @@ def _apply_from_workspace(
 APPLY_REFUSAL_TOKENS: tuple[str, ...] = (
     "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused", "job_not_found",
     "job_not_ready", "merge_conflict", "post_test_failed", "push_failed", "push_no_upstream",
-    "push_refused", "push_refused_by_contract", "target_changed", "target_detached_head",
+    "push_refused", "push_refused_by_contract", "target_changed_during_run", "target_detached_head",
     "target_dirty",
 )
 
@@ -2035,6 +2076,23 @@ _JOB_NOT_READY_REASONS = frozenset({
 
 #: The reason prefixes of a target that changed since the job's baseline.
 _TARGET_CHANGED_REASONS = frozenset({"baseline_check_failed", "baseline_check_before_apply_failed"})
+
+#: Amend1014b D5: the one token and reason prefix for a target that moved after the job captured
+#: its start state. Nothing is applied and the target's bytes are never overwritten.
+TARGET_CHANGED_DURING_RUN = "target_changed_during_run"
+
+
+def _target_changed_sentence(reason: str) -> str:
+    """The sentence of a target-changed refusal, naming the changed paths (never a bare token)."""
+    import re
+
+    paths: list[str] = []
+    for entry in re.findall(r"'([^']+)'", reason):
+        head, _sep, tail = entry.partition(": ")
+        paths.append(tail if head.startswith(("target_", "workspace_", "missing_")) else head)
+    named = _named_paths(sorted(set(paths))) if paths else "a reviewed file"
+    return (f"{TARGET_CHANGED_DURING_RUN}: {named} changed in the target after the job captured "
+            f"its start state, so nothing was applied and the target was not overwritten.")
 
 
 def _flag_refusal_token(prefix: str, sentence: str) -> str:
@@ -2086,7 +2144,9 @@ def apply_refusal(result: JobApplyResult) -> tuple[str, str] | None:
     if cause == "blocked_paths" or (cause == "no_files_to_apply" and result.files_blocked):
         return "blocked_paths", sentence
     if cause in _TARGET_CHANGED_REASONS:
-        return "target_changed", sentence
+        return TARGET_CHANGED_DURING_RUN, _target_changed_sentence(reason)
+    if cause == TARGET_CHANGED_DURING_RUN:
+        return TARGET_CHANGED_DURING_RUN, sentence
     return "apply_failed", sentence
 
 
@@ -2282,6 +2342,9 @@ def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
         "push_open_criteria": result.push_open_criteria,
         "push_unchecked_criteria": result.push_unchecked_criteria,
     }
+    if result.baseline_files_applied or result.preserved_dirty_paths:
+        raw["baseline_files_applied"] = result.baseline_files_applied
+        raw["preserved_dirty_paths"] = result.preserved_dirty_paths
     return _redact_json_value(raw)
 
 
@@ -2457,6 +2520,14 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             lines.append(
                 f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
             )
+        if result.baseline_files_applied:
+            lines.append(
+                f"{_named_paths(result.baseline_files_applied)} already held uncommitted edits when "
+                f"the job started, so the file{' (and any commit of it)' if result.commit_sha else ''} "
+                f"contains those edits as well as the reviewed change.")
+        if result.preserved_dirty_paths:
+            lines.append(f"Left uncommitted and byte-identical: "
+                         f"{_named_paths(result.preserved_dirty_paths)}.")
         # DECISION F276 D6: this apply is what consumes a copy job's staging
         # workspace, so this is where the operator is told what became of it.
         if result.staging_release:

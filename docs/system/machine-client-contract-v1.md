@@ -330,8 +330,8 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--repo` | yes | no | yes | no | Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory) |
 | `--project` | yes | no | yes | no | Select a registered project by slug or id instead of the repository's own |
 | `--json` | yes | no | no | no | Output JSON |
-| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or ollama (default: the builder role config) |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake or ollama (default: the reviewer role config) |
+| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: pi, the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools) |
 | `--builder-model` | yes | no | yes | no | Model for the builder role on every task `do` runs (default: the builder role config) |
 | `--reviewer-model` | yes | no | yes | no | Model for the reviewer role on every task `do` runs (default: the reviewer role config) |
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
@@ -452,10 +452,10 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--tasks` | yes | no | yes | no | Max tasks to execute (omitted keeps persisted; 0=all) |
 | `--timeout-sec` | yes | no | yes | no | Raw per-call timeout in seconds (omitted keeps persisted/default) |
 | `--max-output-chars` | yes | no | yes | no | Max provider output chars (omitted keeps persisted/default) |
-| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or ollama (persisted on continuation) |
+| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: pi, the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation) |
 | `--builder-model` | yes | no | yes | no | Model for builder role |
 | `--builder-effort` | yes | no | yes | no | Effort level for builder role |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake or ollama (persisted on continuation) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools; persisted on continuation) |
 | `--reviewer-model` | yes | no | yes | no | Model for reviewer role |
 | `--reviewer-effort` | yes | no | yes | no | Effort level for reviewer role |
 | `--repair-provider` | yes | no | yes | no | Provider for repair role |
@@ -548,8 +548,8 @@ Description: Review and apply job workspace changes to target repo, under its mi
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
-Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed`, `target_detached_head`, `target_dirty`.
-Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `push_unchecked_criteria`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
+Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed_during_run`, `target_detached_head`, `target_dirty`.
+Answer keys: `approved`, `baseline_files_applied`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `preserved_dirty_paths`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `push_unchecked_criteria`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
 Keys under the answer keys: see below.
 
 - `execution_config`: `builder`, `builder_effort`, `builder_effort_source`, `builder_model`, `builder_model_source`, `builder_source`, `claude_cli_all_tools`, `claude_cli_all_tools_source`, `claude_cli_customizations`, `claude_cli_customizations_source`, `claude_cli_write_mode`, `claude_cli_write_mode_source`, `context_strategy`, `max_output_chars`, `max_output_chars_source`, `max_rounds`, `max_rounds_source`, `max_tasks`, `max_tasks_source`, `repair_effort`, `repair_effort_source`, `repair_model`, `repair_model_source`, `repair_provider`, `repair_provider_source`, `repair_rounds_allowed`, `repair_rounds_source`, `reviewer`, `reviewer_effort`, `reviewer_effort_source`, `reviewer_model`, `reviewer_model_source`, `reviewer_source`, `stream_evidence`, `stream_evidence_source`, `test_command`, `test_command_present`, `test_command_source`, `timeout_profile`, `timeout_profile_source`, `timeout_sec`, `timeout_sec_source`

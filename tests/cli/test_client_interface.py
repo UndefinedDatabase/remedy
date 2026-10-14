@@ -303,7 +303,7 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
                    "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
                    "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
-                   "target_changed", "target_detached_head", "target_dirty"}),
+                   "target_changed_during_run", "target_detached_head", "target_dirty"}),
         "the token apply_refusal in packages/orchestration/job_apply.py returns, one of its "
         "APPLY_REFUSAL_TOKENS, which tests/cli/test_job_apply_refusals.py drives to every one "
         "(DECISION F304 D4)",
@@ -445,12 +445,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)": (
         frozenset({
-            "approved", "blocked_reason", "blocked_reasons", "commit_message_mode", "commit_sha",
+            "approved", "baseline_files_applied", "blocked_reason", "blocked_reasons",
+            "commit_message_mode", "commit_sha",
             "commit_with_history", "context_strategy", "dry_run", "execution_config",
             "file_readiness", "files_applied", "files_blocked", "files_planned", "files_skipped",
             "finished_at", "history_commits", "job_apply_id", "job_id", "job_status", "job_title",
             "job_workspace_path", "merge_commit", "merge_conflicts", "merged_branch",
-            "missing_source_files", "modes_applied", "post_test_command_present",
+            "missing_source_files", "modes_applied", "preserved_dirty_paths",
+            "post_test_command_present",
             "post_test_passed", "post_test_summary", "push", "push_error", "push_open_criteria",
             "push_ref", "push_remote", "push_unchecked_criteria", "pushed", "reviewed_task_files",
             "skip_blocked",
