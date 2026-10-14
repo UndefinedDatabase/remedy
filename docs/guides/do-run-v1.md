@@ -45,6 +45,19 @@ fails at the first job that is not applied, naming it and why.
   line. Enter continues; `q` or end of input stops the walk and asks every job
   of the walk to stop.
 
+## --rehearse
+
+`--rehearse` plans the order exactly as `remedy do` does and stops where
+`--plan-only` stops: `run` reports stopped with a detail that begins
+`--rehearse: no job was run and nothing was written to the repository`. No
+builder or reviewer is built, nothing is applied, and the repository is not
+touched. A job whose plan of tasks waits for approval keeps waiting: its
+`Next:` lines name `remedy decision resolve <job_id> plan:approval --reason approve`
+and then `remedy job run <job_id>`. `--rehearse` is refused before any step,
+with exit 2 and the error `invalid_argument`, when it is given with `--yes`,
+`--apply`, `--commit`, `--commit-auto`, `--commit-with-history` or `--push`
+(DECISION F055 D1).
+
 ## JSON output
 
 `--json` prints one object with these keys:

@@ -237,7 +237,7 @@ def _cmd_do_order(
     commit: str | None = None,
     commit_auto: bool = False,
     commit_with_history: bool = False,
-    push_source: str = "",
+    push_source: str = "", rehearse: bool = False,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
@@ -345,7 +345,7 @@ def _cmd_do_order(
         commit_auto=commit_auto,
         commit_with_history=commit_with_history,
         push=bool(push_source),
-        push_source=push_source,
+        push_source=push_source, rehearse=rehearse,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
@@ -401,11 +401,9 @@ def _cmd_do_order(
 def _cmd_do(
     goal: str,
     *,
-    repo: str | None = None,
-    project: str | None = None,
+    repo: str | None = None, project: str | None = None,
     json_output: bool = False,
-    builder_provider: str | None = None,
-    reviewer_provider: str | None = None,
+    builder_provider: str | None = None, reviewer_provider: str | None = None,
     builder_model: str | None = None,
     reviewer_model: str | None = None,
     planner_model: str | None = None,
@@ -424,11 +422,10 @@ def _cmd_do(
     plan_only: bool = False,
     apply: bool = False,
     contract: str | None = None,
-    commit: str | None = None,
-    commit_auto: bool = False,
+    commit: str | None = None, commit_auto: bool = False,
     commit_with_history: bool = False,
     push: bool = False,
-    new_mission: bool = False,
+    new_mission: bool = False, rehearse: bool = False,
 ) -> None:
     """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
 
@@ -438,6 +435,9 @@ def _cmd_do(
     not ended already records is refused before any step with `order_already_running`,
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
+    from apps.cli.commands.do_rehearsal_refusals import refuse_rehearsal_conflicts
+    refuse_rehearsal_conflicts(rehearse=rehearse, yes=yes, apply=apply, commit=commit, commit_auto=commit_auto,
+                               commit_with_history=commit_with_history, push=push, json_output=json_output)
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
     # cap be any one of the four job budgets an order file's header or the flags can set.
@@ -503,7 +503,7 @@ def _cmd_do(
                   max_wall_clock_minutes=max_wall_clock_minutes,
                   max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
                   force_job=force_job, force_mission=force_mission,
-                  step_by_step=step_by_step, plan_only=plan_only,
+                  step_by_step=step_by_step, plan_only=plan_only or rehearse, rehearse=rehearse,
                   # Every commit flag implies --apply (T2_F270.md, DECISION F270 D4 (1)).
                   apply=apply or bool(mode), contract=contract,
                   commit=commit, commit_auto=commit_auto,
@@ -959,7 +959,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         commit_auto=bool(getattr(args, "commit_auto", False)),
         commit_with_history=bool(getattr(args, "commit_with_history", False)),
         push=bool(getattr(args, "push", False)),
-        new_mission=bool(getattr(args, "new_mission", False)),
+        new_mission=bool(getattr(args, "new_mission", False)), rehearse=bool(getattr(args, "rehearse", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

@@ -86,6 +86,8 @@ class DoContext:
     force_mission: bool = False
     step_by_step: bool = False
     plan_only: bool = False
+    #: `--rehearse`: the walk stops where `--plan-only` stops and says so (DECISION F055 D1).
+    rehearse: bool = False
     #: `--apply`: the apply step applies every job instead of stopping (DECISION F268 D9).
     apply: bool = False
     #: The commit flag every apply passes to `apply_job`, at most one of the three
