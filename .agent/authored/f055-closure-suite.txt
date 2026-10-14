@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 374.4s (the launcher's reading); pytest's own reported wall time: 373.62s (0:06:13)
+summary line: 23067 passed, 22 skipped, 1 warning in 373.62s (0:06:13)
+bad node ids (failed + errors):
+  NONE
+leftover processes: NONE
+tree it ran on: 71305a2c7 (F055 R4 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C3 and C4 changed only .agent/ files, the checklist page and the self-use queue
+reflog before: 71305a2c7 HEAD@{2026-10-14 17:21:29 +0200}: commit: F055 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 71305a2c7 HEAD@{2026-10-14 17:21:29 +0200}: commit: F055 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F055 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1283.70 CPU seconds, 373.63 wall seconds, 23089 tests collected, exit status 0, recorded 2026-10-14T15:27:50Z
+This closure's suite used 1283.70 CPU seconds, 9.7 percent more than F308's 1170.14, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F308's closure run:
+  +9.45 s  tests/runtimes/test_supervisor_portability.py (35.60 -> 45.05)
+  +7.87 s  tests/orchestration/test_review_zip_hygiene.py (31.38 -> 39.25)
+  +6.95 s  tests/orchestration/test_self_use_runner.py (3.59 -> 10.54)
+  +5.31 s  tests/orchestration/test_token_ledger.py (6.93 -> 12.24)
+  +4.53 s  tests/cli/test_rehearsal.py (0.00 -> 4.53)
+  +4.06 s  tests/orchestration/test_job_worktree_integration.py (6.64 -> 10.70)
+  +3.57 s  tests/orchestration/test_stream_export_e2e.py (3.42 -> 6.99)
+  +3.55 s  tests/ui_server/test_multi_project_live.py (14.81 -> 18.36)
+  +3.40 s  tests/orchestration/test_public_api_gate_paths.py (13.95 -> 17.35)
+  +3.01 s  tests/ui_server/test_public_api.py (8.94 -> 11.95)
