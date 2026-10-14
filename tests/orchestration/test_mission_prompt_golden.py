@@ -13,6 +13,10 @@ exactly as it stood at commit ed5b2421. It was obtained with
 `git show ed5b2421:packages/orchestration/mission_compiler.py` and sliced in by
 line index; not one byte of it was retyped.
 
+DECLARED CONTENT CHANGE (operator amendment amend1014-do-golden-path-now D6, in its own reviewed
+diff): the Rules block gained two bullets at its end, the smallest sufficient number of milestones
+and outlines, and no file the goal does not name; every other byte is still the frozen text.
+
 It must NEVER be edited to make a failing test pass. An intentional change to
 the prompt's CONTENT is precisely the event this file exists to fail on: if a
 future change is meant to alter the words, that change updates this constant in
@@ -63,6 +67,13 @@ any single job. Break the goal below into the ordered milestones that reach it.
 - assumptions lists what you decided on your own because the goal did not say.
   Prefer conservative choices: an assumption keeps existing behavior or does
   nothing; it never deletes, overwrites or migrates.
+- Use the smallest sufficient number of milestones and job outlines: a bounded
+  one-file edit is ONE milestone with ONE outline. Inspection, baseline
+  capture, wording review and diff review are activities inside the work of a
+  deliverable, never milestones or outlines of their own.
+- Plan only what the goal asks for. Never add a license, a CI workflow, badges,
+  an environment file or any other file the goal does not name. A sentence such
+  as "Change no other files" is a hard fence on every milestone and outline.
 
 Return ONLY a JSON object matching the {schema_v} schema.
 """
