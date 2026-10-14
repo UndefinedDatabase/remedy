@@ -123,6 +123,16 @@ def _role_provider(role: str, override: str | None) -> str:
     return override or default_role_provider_name(role)
 
 
+def _role_label(role: str, provider: str | None, model: str | None) -> str:
+    """The provider, and for the Pi harness the model server and model it drives (amend1014b)."""
+    name = _role_provider(role, provider)
+    if name != "pi":
+        return name
+    from packages.orchestration.role_config import resolve_role_config
+
+    return f"pi (ollama/{model or resolve_role_config(role).model})"
+
+
 def do_step_intro(name: str, ctx: DoContext) -> str:
     """The sentence a step's start line carries: what it does, and which provider if it calls one."""
     if name == "init":
@@ -148,7 +158,7 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
     if name == "ui":
         return "opening the cockpit before the run"
     if name == "run":
-        return (f"builder {_role_provider('builder', ctx.builder_provider)}, "
-                f"reviewer {_role_provider('reviewer', ctx.reviewer_provider)}")
+        return (f"builder {_role_label('builder', ctx.builder_provider, ctx.builder_model)}, "
+                f"reviewer {_role_label('reviewer', ctx.reviewer_provider, ctx.reviewer_model)}")
     return "checking what the run proposes" if name == "apply" else name
 

@@ -14,6 +14,35 @@ remedy do "add a hello() function" --repo . --json
 remedy do run "add a hello() function" --repo . --json
 ```
 
+## The ordinary command and the default harness
+
+```
+remedy do "<order>" --apply
+```
+
+is the ordinary use: the reviewed change is applied to your files, nothing is committed, and the
+walk reports what is now uncommitted. Add `--commit-auto` to commit.
+
+- **Pi is the default execution harness**, with the local Ollama model `muse-glimmer:latest`, for
+  the builder, the reviewer and the repair role. Pi supplies the agent loop and the file tools;
+  Ollama is the model server and by itself is not a coding harness (a raw Ollama call returns
+  text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
+  job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
+  (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
+  model call with the action to take, and never falls back to another provider.
+- **A dirty working tree is the baseline.** At the start Remedy captures what `git status` shows
+  (bytes, executable bit, symlinks, deletions), seeds the job workspace from it and measures the
+  proposed change from that state. Nothing is stashed, reset, checked out or committed in your
+  repository. A state it cannot represent exactly (unresolved merge conflicts, a submodule or
+  nested repository, a very large dirty set) stops the walk before any step and names the cause.
+- **Concurrent edits still block.** If a file the job changed was edited, or HEAD moved, after
+  the start state was captured, the apply stops with `target_changed_during_run`, names the paths
+  and overwrites nothing.
+- **`--commit-auto` commits only the files the job changed.** Other uncommitted files stay
+  uncommitted and byte-identical, and the report names them. If the committed file already held
+  your uncommitted edits, the report says so: the commit contains them too.
+- Nothing is applied without `--apply` or a commit flag.
+
 ## Two lanes
 
 An ordinary, bounded request needs nothing but the order:
@@ -149,7 +178,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--repo` — target repository path (default `.`)
 - `--project` — select a registered project by slug or id instead of the repository's own
 - `--json` — the JSON output above
-- `--builder-provider`, `--reviewer-provider` — claude, claude-cli, fake or ollama
+- `--builder-provider` — `pi` (the default), claude, claude-cli or fake; `ollama` is refused
+- `--reviewer-provider` — `pi` (the default), claude, claude-cli, fake or ollama
 - `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
 - `--planner-model` — model for every planner call of the plan and shape steps
 - `--planner-provider` — which service makes those planner calls: `ollama`
