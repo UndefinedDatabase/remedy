@@ -2,7 +2,7 @@
 
 `docs/roadmap/features/T12_F295.md` closes on one test that drives Remedy exactly as Luna's runner
 will (`docs/roadmap/design/luna-control-plane-v1.md`, "Gate A"): an order file with a cost cap,
-`remedy do <file> --json --no-ui --yes` with the fake builder and reviewer, the digest from
+`remedy do <file> --json --no-ui --run-unattended` with the fake builder and reviewer, the digest from
 `remedy status --json`, one decision answered with `remedy decision resolve --json`, `remedy job
 apply <job> --approve --json`, and `remedy change proof <job> --json`. This is that test.
 
@@ -117,7 +117,7 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     # 1. Propose: the order file, unattended, with the fake providers. The deadline has passed,
     #    so the budget stops the run before any task runs; `remedy do` says so and exits 1.
     code, done = _remedy(
-        ["do", str(order_file), "--no-ui", "--yes", "--no-llm",
+        ["do", str(order_file), "--no-ui", "--run-unattended", "--no-llm",
          "--builder-provider", "fake", "--reviewer-provider", "fake",
          "--deadline", PAST_DEADLINE], repo, env)
     assert code == 1, done

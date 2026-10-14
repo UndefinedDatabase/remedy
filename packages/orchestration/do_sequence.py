@@ -91,6 +91,7 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
+from packages.orchestration.do_plan_confirm import approve_confirmed_plan
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
     _shape_job_orders,
@@ -180,6 +181,9 @@ def do_step_by_step_halt(ctx: DoContext, done: str, coming: str) -> bool:
 # apps/cli/commands/do_cmd.py (the F147 golden path), not copied.
 # ---------------------------------------------------------------------------
 
+
+#: The audit reason of a task plan that `--run-unattended` approved.
+DO_UNATTENDED_REASON = "auto-approved via --run-unattended"
 
 #: The plan label of a job planned without an LLM task plan (DECISION F268 D6).
 DO_DETERMINISTIC_PLAN_LABEL = "deterministic, one task per deliverable"
@@ -321,14 +325,14 @@ def plan_order_job(
     project: RemyProject,
     repo_path: str = "",
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     deterministic_tasks: list[TaskEntry] | None = None,
     planner_model: str | None = None,
     planner_provider: str | None = None,
 ) -> OrderJobPlan:
     """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
-    ``repo_path`` is the job's target repository. ``yes`` auto-approves an LLM
+    ``repo_path`` is the job's target repository. ``run_unattended`` auto-approves an LLM
     task plan through ``job_plan.auto_approve_task_plan`` (F034). The job is
     saved and attached to ``project``. The deterministic plan is one task per
     deliverable of the order (DECISION F268 D6); ``deterministic_tasks`` names
@@ -485,24 +489,22 @@ def plan_order_job(
             write_plan_md(
                 fp_result.plan, job_evidence_export_dir(str(job.job_id)),
                 transformations=fp_result.transformations)
-            if yes:
-                # F034: --yes covers approval AND clarifications. Every open
-                # question runs on its documented default, recorded in the
-                # assumption log — unattended, but never silent. The semantics
-                # live in job_plan.auto_approve_task_plan so the
-                # orchestrator loop runs the SAME approval, not a copy of it.
+            if run_unattended:
+                # F034: --run-unattended covers approval AND clarifications: every open question
+                # runs on its documented default, in the assumption log, never silent. The semantics
+                # live in job_plan.auto_approve_task_plan, which the orchestrator loop runs too.
                 from packages.orchestration.job_plan import (
                     AUTO_APPROVAL_MODE,
                     announce_plan_approval,
                     auto_approve_task_plan,
                 )
                 fp_dict = auto_approve_task_plan(
-                    fp_dict, job_evidence_export_dir(str(job.job_id)))
+                    fp_dict, job_evidence_export_dir(str(job.job_id)), reason=DO_UNATTENDED_REASON)
                 job.task_plan = fp_dict
                 save_job_plan(job)
                 announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
                 plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (approved via --yes)"
+                    f"task plan {fp_result.plan.schema_v} (approved via --run-unattended)"
                 )
             else:
                 plan_label = (
@@ -762,7 +764,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 project=target.project,
                 repo_path=target.repo,
                 no_llm=ctx.no_llm,
-                yes=ctx.yes,
+                run_unattended=ctx.run_unattended,
                 deterministic_tasks=tasks,
                 planner_model=ctx.planner_model,
                 planner_provider=ctx.planner_provider,
@@ -884,13 +886,16 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
             return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
 
         blocked = task_plan_blocks_execution(job)
+        if blocked == "pending" and ctx.confirm_plan is not None and ctx.confirm_plan(job):
+            approve_confirmed_plan(job)
+            blocked = task_plan_blocks_execution(job)
         if blocked is not None:
             approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
             ctx.next_lines.append(approve)
             ctx.next_lines.append(f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
             return DO_STEP_STOPPED, (
                 f"job {job_id}'s task plan is {blocked}, not approved; it was not run "
-                f"(--yes approves it unattended). Approve it with: {approve}")
+                f"(--run-unattended runs a generated plan without asking). Approve it with: {approve}")
 
         done = run_job(job_id, builder_name=ctx.builder_provider,
                        reviewer_name=ctx.reviewer_provider,

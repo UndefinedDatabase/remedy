@@ -549,7 +549,7 @@ def test_the_childs_arguments_after_the_prefix_equal_the_built_command(order_set
     release.touch()
     launcher.wait(record.order_id, timeout=30)
     assert _order_printed(record)["argv"] == [
-        "do", "run", str(release), "0", "--json", "--no-ui", "--yes", "--", "order.md"]
+        "do", "run", str(release), "0", "--json", "--no-ui", "--run-unattended", "--", "order.md"]
 
 
 def test_the_orders_working_folder_is_its_own_folder_on_its_data_root(order_setup):

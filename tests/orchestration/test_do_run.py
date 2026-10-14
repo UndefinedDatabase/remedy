@@ -259,15 +259,15 @@ class TestPlannerProviderFlag:
 
 
 # ---------------------------------------------------------------------------
-# DECISION F288 D2 (4): the --yes path announces its saved approval
+# DECISION F288 D2 (4): the --run-unattended path announces its saved approval
 # ---------------------------------------------------------------------------
 
 
 class TestYesPathAnnouncesPlanApproved:
-    """`plan_order_job`'s `--yes` branch writes `plan_approved` after the
+    """`plan_order_job`'s `--run-unattended` branch writes `plan_approved` after the
     unattended approval it saves, the same way the human approval door does."""
 
-    def test_yes_path_writes_one_plan_approved_with_auto_yes_mode(self, tmp_path, monkeypatch):
+    def test_unattended_path_writes_one_plan_approved_with_auto_yes_mode(self, tmp_path, monkeypatch):
         import subprocess
 
         from packages.orchestration.timeline import load_run_events
@@ -283,7 +283,7 @@ class TestYesPathAnnouncesPlanApproved:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        shaped = _shape_order(repo, "test mission", yes=True)
+        shaped = _shape_order(repo, "test mission", run_unattended=True)
 
         data = shaped.to_json()
         events = load_run_events(tmp_path / "data", data["job_id"])

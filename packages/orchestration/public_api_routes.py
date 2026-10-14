@@ -198,7 +198,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
-            "run <options> --no-ui --yes -- order.md` would inside its own folder under the "
+            "run <options> --no-ui --run-unattended -- order.md` would inside its own folder under the "
             "data root, and answers 202 with its record read exactly as the route above reads "
             "it. `order` is the order file's whole text, header included, and required; "
             "`no_llm`, `new_mission`, `force_job` and `force_mission` each pass their `remedy "

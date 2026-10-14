@@ -90,7 +90,7 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 
 ## The path, step by step
 
-1. **Propose.** `remedy do <order file> --json --no-ui --yes` plans the order and runs its first
+1. **Propose.** `remedy do <order file> --json --no-ui --run-unattended` plans the order and runs its first
    job with the builder and reviewer the client names, and stops before the apply. The gate test
    adds `--no-llm` and the fake providers, and a `--deadline` that has already passed, so the
    budget stops the job and raises one decision. A run that does not finish answers `ok` false
@@ -175,7 +175,7 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 |---|---|---|
 | `--json` | every command | one JSON object on standard output |
 | `--no-ui` | `remedy do` | do not open the cockpit |
-| `--yes` | `remedy do` | approve the plan of tasks unattended; every open question takes its documented default |
+| `--run-unattended` | `remedy do` | run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push |
 | `--no-llm` | `remedy do` | plan without a model call (the gate test's choice) |
 | `--builder-provider` | `remedy do` | the builder, here `fake` |
 | `--reviewer-provider` | `remedy do` | the reviewer, here `fake` |
@@ -256,7 +256,7 @@ for them, and `remedy patch approve-hunks <job> --approve-hunk <id> --reject-hun
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
 - It never starts an order file that carries no cost cap.
-- It never asks a question on stdin when `--yes` is given: the builder's and the reviewer's
+- It never asks a question on stdin when `--run-unattended` is given: the builder's and the reviewer's
   child processes read end of file, and the gate test fails on any read of stdin.
 - It never resumes a job its budget stopped until that budget decision is answered:
   `remedy job resume` refuses it with exit code 3 and `budget_decision_open`.
@@ -336,7 +336,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--reviewer-model` | yes | no | yes | no | Model for the reviewer role on every task `do` runs (default: the reviewer role config) |
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the configured planner role) |
-| `--yes` | yes | no | no | no | Approve the job's plan of tasks unattended: audited, every open question takes its documented default |
+| `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
 | `--no-ui` | yes | no | no | no | Do not open the cockpit |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |
@@ -349,7 +349,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--new-mission` | yes | no | no | no | Accept an order file again although an earlier order of it still has unfinished jobs; it adds one more order to the repository's one mission and never starts a second mission; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
-| `--rehearse` | yes | no | no | no | Plan what you ask as `remedy do` does and stop before any job of the mission runs: no builder or reviewer worker is built, nothing is applied and nothing is written into the repository, and the job's plan of tasks keeps its approval open for you; refused with --yes, --apply, a commit flag or --push |
+| `--rehearse` | yes | no | no | no | Plan what you ask as `remedy do` does and stop before any job of the mission runs: no builder or reviewer worker is built, nothing is applied and nothing is written into the repository, and the job's plan of tasks keeps its approval open for you; refused with --run-unattended, --apply, a commit flag or --push |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
 | `--contract` | yes | no | yes | no | Force this contract template as the floor of the mission's acceptance criteria, instead of the one Remedy proposes: api-service, cli-tool, python-library or website |
 | `--commit` | yes | no | yes | no | Implies --apply: apply each job as `remedy job apply --approve --commit` does, landing one commit of exactly its copied files on your current branch, as you, with this one line as its first line, followed by the job's number when the mission has several jobs; each job runs only after the one before it is committed. Refused before any step with --plan-only, another commit flag, a dirty tree or a detached HEAD |

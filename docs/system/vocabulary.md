@@ -202,7 +202,7 @@ The commands per surviving group:
   `--planner-model`, and the `--*-provider` triplet — `--builder-provider`,
   `--reviewer-provider` and `--planner-provider`, the last of which
   amend0920-selfuse-real added once a second planning service existed to
-  choose), `--yes`, `--json`. Nothing else under `do`.
+  choose), `--run-unattended`, `--json`. Nothing else under `do`.
 - `mission list | show <id> [--full] | plan <id> | contract <id> | run <id> |
   continue <id> "<next step>" | pause | resume | achieve | abandon | watchdog |
   handoff | report | readiness | start "<goal>"`. `mission list` IS the operator's

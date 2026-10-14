@@ -389,7 +389,7 @@ an hourly token expectation when one is configured, otherwise the job's own
 earlier provider calls — and trips only when a window of calls spends more
 than a floor at more than a set multiple of that expectation, so a tiny run or
 a steadily expensive one never trips; a job approved unattended with
-`remedy do run --yes` is paused before its next provider call and gets one
+`remedy do run --run-unattended` is paused before its next provider call and gets one
 decision that shows the arithmetic and offers resume or abandon, and
 `remedy job run` continues it; a job a person started keeps running; either
 way the alarm shows in `remedy job show`, in the report of
@@ -829,7 +829,7 @@ cap, and refuses an order file that sets no cost cap; `remedy status --json` car
 program can read every minute, listing every project's missions and jobs with their cost, every open
 decision with its question and its default, and the jobs that wait for approval; every kind of
 decision can be answered with `--json`, including raising or ending the budget of a job that stopped
-at its limit; a run with `--yes --no-ui --json` never waits for typed input; and the page
+at its limit; a run with `--run-unattended --no-ui --json` never waits for typed input; and the page
 `docs/system/machine-client-contract-v1.md` names every command, flag, answer field and exit code of
 that path, which a test keeps equal to a second test that drives the whole path).
 

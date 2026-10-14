@@ -214,7 +214,7 @@ def _cmd_do_order(
     order_source_sha256: str = "",
     json_output: bool = False,
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
     builder_model: str | None = None,
@@ -310,6 +310,7 @@ def _cmd_do_order(
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from packages.orchestration.do_cockpit import launch_do_cockpit
+    from packages.orchestration.do_plan_confirm import interactive_plan_confirmer
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
         do_contract_summary_line,
@@ -334,7 +335,7 @@ def _cmd_do_order(
         planner_provider=planner_provider,
         contract_template=contract,
         no_ui=no_ui,
-        yes=yes,
+        run_unattended=run_unattended,
         no_llm=no_llm,
         force_job=force_job,
         force_mission=force_mission,
@@ -349,6 +350,7 @@ def _cmd_do_order(
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
+        confirm_plan=None if json_output else interactive_plan_confirmer(),
     ))
     jobs = do_job_task_listing(ctx)
     # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
@@ -415,7 +417,7 @@ def _cmd_do(
     max_cost_usd: str | None = None,
     deadline: str | None = None,
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     force_job: bool = False,
     force_mission: bool = False,
     step_by_step: bool = False,
@@ -436,7 +438,7 @@ def _cmd_do(
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
     from apps.cli.commands.do_rehearsal_refusals import refuse_rehearsal_conflicts
-    refuse_rehearsal_conflicts(rehearse=rehearse, yes=yes, apply=apply, commit=commit, commit_auto=commit_auto,
+    refuse_rehearsal_conflicts(rehearse=rehearse, run_unattended=run_unattended, apply=apply, commit=commit, commit_auto=commit_auto,
                                commit_with_history=commit_with_history, push=push, json_output=json_output)
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
@@ -494,7 +496,7 @@ def _cmd_do(
                  json_output=json_output, exit_code=2, mission_id=running.id)
     _cmd_do_order(goal, repo=repo, **order_source_kwargs,
                   json_output=json_output, no_llm=no_llm,
-                  yes=yes, builder_provider=builder_provider,
+                  run_unattended=run_unattended, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
                   reviewer_model=reviewer_model, planner_model=planner_model,
                   planner_provider=planner_provider,
@@ -948,7 +950,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
-        yes=getattr(args, "yes", False),
+        run_unattended=bool(getattr(args, "run_unattended", False)),
         force_job=bool(getattr(args, "force_job", False)),
         force_mission=bool(getattr(args, "force_mission", False)),
         step_by_step=bool(getattr(args, "step_by_step", False)),

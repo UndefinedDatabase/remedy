@@ -80,7 +80,9 @@ class DoContext:
     #: (DECISION F269 D1 (4)).
     contract_template: str | None = None
     no_ui: bool = False
-    yes: bool = False
+    #: `--run-unattended`: run a generated plan of tasks without confirmation; every open
+    #: question takes its documented default. Never implies apply, commit or push.
+    run_unattended: bool = False
     no_llm: bool = False
     force_job: bool = False
     force_mission: bool = False
@@ -112,6 +114,9 @@ class DoContext:
     #: `DoCockpitLaunchError` when it does not come up; the CLI supplies
     #: `launch_do_cockpit`. ``None`` opens nothing and prints the command.
     ui_launcher: Callable[[str], str] | None = None
+    #: Shows a pending plan of tasks to the person and returns True when they approve it; the
+    #: CLI supplies it only on an interactive terminal. ``None`` asks nobody (amend1014 D3).
+    confirm_plan: Callable[[Any], bool] | None = None
     #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
     halt_reason: str = ""
     repo_root: str = ""

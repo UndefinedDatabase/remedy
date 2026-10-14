@@ -183,8 +183,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--intent-id", default=None, dest="intent_id", help=arg.help)
             elif arg.name == "--note":
                 parser.add_argument("--note", default=arg.default, dest="note", help=arg.help)
-            elif arg.name == "--yes":
-                parser.add_argument("--yes", action="store_true", dest="yes", help=arg.help)
+            elif arg.name in ("--yes", "--run-unattended"):
+                parser.add_argument(arg.name, action="store_true", dest=arg.name[2:].replace("-", "_"), help=arg.help)
             elif arg.name == "--task-scoped":
                 parser.add_argument("--task-scoped", action="store_true", dest="task_scoped", help=arg.help)
             elif arg.name == "--allowed-files":
