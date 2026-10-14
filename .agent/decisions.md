@@ -29531,3 +29531,171 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in Remedy. The two fold
 ALTERNATIVES CONSIDERED: (a) leaving them in the hidden scratch folder inside the checkout, REJECTED because an unpacked package does not belong in the checkout at all; (b) deleting them, REJECTED because a move can be undone and a deletion cannot.
 
 HOW TO REVERSE: move both folders from `~/Repos/remedy-history/attic/2026-10-14/` back to `.remedy-wt/remedy-review-moved/` in the checkout, restore Q18 from git history, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D1 — A repository mission's plan chain stays flat, a sealed batch keeps its own plan only, and reconcile flattens records written nested (2026-10-14)
+
+THE PROBLEM: since operator amendment amend1011b a repository has one lasting mission and every order is a batch in it. `plan_mission` in `packages/orchestration/mission_compiler.py` appended the previous plan body, including its own `_versions` list, to the new body's `_versions`, and `_seal` in `packages/orchestration/repo_mission.py` copied that whole body into every sealed batch. The record therefore doubled with every planned order: fourteen orders measured 23.8 MB on disk, nested fourteen deep.
+
+CHOSEN: (1) the previous body joins the chain without its own `_versions` key, so each plan adds one flat version; (2) a sealed batch's `plan` is the current body without its `_versions` key, and the chain itself stays in the mission's plan slot, as DECISION amend1011b D3 keeps it; (3) the two key names `PLAN_VERSIONS_KEY` and `PLAN_VERSION_KEY` moved from `mission_compiler.py` to `packages/orchestration/mission_record.py` in a structural commit of their own, because `repo_mission.py` must not import the plan compiler, and every consumer imports them from there; (4) `remedy mission reconcile` gains the step "flatten plan versions": a nested chain becomes one flat list ordered by `_version`, each version once with its innermost copy kept; a sealed plan loses its chain when every version in it is also in the mission's chain, and keeps it, flattened, when it is not (a folded legacy mission's chain), so nothing is lost; the dry run reports each record and its sizes before and after, and `--apply` writes under one backup of the mission area.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a repository's mission record now grows by one plan per order instead of doubling. Records already written nested are flattened when the operator runs `remedy mission reconcile --apply`; the dry run shows how much smaller they become.
+
+ALTERNATIVES CONSIDERED: (a) dropping the chain from the sealed batches only, REJECTED because the mission's own chain would still nest; (b) a lazy import of the compiler inside `_seal`, REJECTED because a function-level import still joins the reachability set of every entry point; (c) dropping a sealed legacy plan's chain unconditionally, REJECTED because a folded mission's earlier versions are in no other place.
+
+HOW TO REVERSE: revert the commits `amend1014 A.1` and `amend1014 A.1a`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D2 — `remedy mission reconcile --restore` checks the backup before it touches anything and swaps the restored copy in atomically (2026-10-14)
+
+THE PROBLEM: `restore_reconcile` in `packages/orchestration/repo_mission_reconcile.py` deleted the whole mission area before it checked that the backup path exists, so a typo removed every project's missions and then raised.
+
+CHOSEN: a backup is refused, before anything is written, unless it is an existing directory directly under `<data root>/reconcile-backups/` that holds at least one `*.json` file; the refusal is the error token `reconcile_backup_invalid` with exit code 2 on the command line. A valid backup is copied beside the area as `<missions dir>.restoring-<stamp>`, then two renames swap it in (`area` to `<missions dir>.replaced-<stamp>`, the copy to `area`), and the replaced area, which is a copy of data the backup already holds, is removed only after the swap. `docs/system/mission-upkeep-v1.md` documents the command, which no page described before.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a mistyped or wrong backup path now leaves every mission where it was and says what was wrong. A restore that fails half-way leaves the current missions in place.
+
+ALTERNATIVES CONSIDERED: (a) checking only that the path exists, REJECTED because any directory with JSON files, such as the data root itself, would then replace the missions; (b) restoring in place file by file, REJECTED because a failure half-way would leave a mixed area.
+
+HOW TO REVERSE: revert the commit `amend1014 A.2`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D3 — A fold interrupted half-way is folded by the next run: job ownership is compared as a set, and afterwards each job has exactly one live mission (2026-10-14)
+
+THE PROBLEM: `_fold_project` compared the sorted list of every linked job before and after the fold. A fold that crashed after the canonical mission was saved with the duplicate's links, but before the duplicate became an alias, leaves one job linked twice; the next run then saw "two owners became one", raised, restored the backup, and could never finish.
+
+CHOSEN: the fold compares the SET of linked job ids before and after (no job lost, no job gained), and separately requires that after the fold every job is linked in exactly one live mission. A job linked in two live missions before the fold is the half-written case and is folded, not refused.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: an interrupted `remedy mission reconcile --apply` can be run again and finishes the fold.
+
+ALTERNATIVES CONSIDERED: (a) refusing a group with a doubly linked job and asking the operator, REJECTED because the state is one only reconcile itself produces and it knows how to finish it.
+
+HOW TO REVERSE: revert the commit `amend1014 A.3`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D4 — A follow-up job is linked under the mission's current order batch (2026-10-14)
+
+THE PROBLEM: `continue_mission` in `packages/orchestration/mission_followup.py` linked the next job with no order id, so in a repository's one mission a follow-up appeared under "jobs linked before order records", not under its order, and an order file whose follow-up was still running counted as finished.
+
+CHOSEN: `continue_mission` links through `link_order_job` with the current batch's order id (`mission.current_order()`); a legacy record that has no batch yet keeps the old call. `link_order_job` gained a keyword `now`, passed through to the link. `git grep -n "link_job_to_mission("` finds no other production writer that links without an order id besides that legacy branch.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a follow-up job, and the cleanup job the upkeep makes through the same path, now count as work of the order they continue: `remedy mission show` lists them under it, and starting the same order file again is refused while they run.
+
+ALTERNATIVES CONSIDERED: (a) attributing the follow-up to the order of the previous job, REJECTED because the current batch is the order the mission's plan and contract slots serve.
+
+HOW TO REVERSE: revert the commit `amend1014 A.4`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D5 — Reconcile refuses to fold while any job of the group has not ended (2026-10-14)
+
+THE PROBLEM: reconcile refused a fold only when a job's state was exactly `running`; a paused, planned or unreadable job was folded under it.
+
+CHOSEN: a fold is refused for every job whose state is outside `JOB_TERMINAL_STATES` (completed, failed, cancelled) and for every job whose plan cannot be read; the refusal names each job and its state. A job whose record no longer exists counts as ended, as before.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: `remedy mission reconcile --apply` now waits until every job of the missions it would fold has finished, and says which jobs it waits for.
+
+ALTERNATIVES CONSIDERED: (a) a list of states that block, REJECTED because a new state would then be folded silently; a list of the states that allow a fold fails safe.
+
+HOW TO REVERSE: revert the commits `amend1014 A.5` and `amend1014 A.5b`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D6 — The logging setup runs inside the F277 error boundary (2026-10-14)
+
+THE PROBLEM: `_dispatch` in `apps/cli/grouped.py` called `configure_structured_logging()` before its `try`, and that setup reads the configuration, so a malformed `remedy.toml` turned every command, `--json` ones included, into a raw Python traceback with nothing on standard output.
+
+CHOSEN: the call moved inside the `try`. When it fails, a new function `configure_stream_logging_only()` in `packages/orchestration/structured_log.py` installs the terminal's handler alone, without reading the configuration, and the original error is raised again, so the boundary answers it as it answers any handler error: the `unhandled_command_error` envelope under `--json`, one line otherwise, and a crash report. Whether a broken configuration deserves a token of its own (`config_invalid`, exit code 2, no crash report) is registered for the paydown as R-1313.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: with a broken `remedy.toml` every command now ends with one readable error, and a program reading `--json` gets one JSON object instead of a traceback.
+
+ALTERNATIVES CONSIDERED: (a) catching the configuration error and carrying on with defaults, REJECTED because a command would then run under settings the operator did not write.
+
+HOW TO REVERSE: revert the commit `amend1014 B.1`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D7 — Several processes share the one operations log: rotation holds an exclusive lock, every write follows a rotated file, and the reader orders lines by time (2026-10-14)
+
+THE PROBLEM: the supervisor runs every job as a process of its own, and each installs a `RotatingFileHandler` on the same file. Concurrent rotations lost lines (six processes of 1500 lines each kept 7943 of 9000), and the reader's "file order is time order" no longer held.
+
+CHOSEN: one file stays. (1) `doRollover` runs under `fcntl.flock(LOCK_EX)` on `remedy.log.lock` beside the log, owner-only like the log; under the lock a writer whose file another process already rotated reopens the new file and rotates again only if that file is itself over the size. (2) Before every write a writer compares the inode of its open file with the inode at the log's name, and reopens when they differ or the file is gone. (3) A line is still written by one `write` call followed by a flush, in append mode. (4) `read_log_entries` sorts the matching lines by their `ts` with a stable sort, so the times never go backwards. The re-check under the lock compares inodes rather than re-reading only the size, because the size alone cannot tell "another process rotated" from "this file is still under the limit"; one existing test now also expects the lock file in the folder listing.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: no line of the operations log is lost when several jobs write it at once, and `remedy doctor logs` shows a job's lines in time order. The log folder holds one more small file, `remedy.log.lock`.
+
+ALTERNATIVES CONSIDERED: (a) one file per process, REJECTED because the reader would have to merge files and the folder would grow with every job; (b) a logging server process, REJECTED as far more machinery than the problem needs.
+
+HOW TO REVERSE: revert the commit `amend1014 B.2`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D8 — The logs route and `remedy doctor logs` resolve the job first, and a client token reads only the logs of its own projects' jobs (2026-10-14)
+
+THE PROBLEM: `GET /api/v1/jobs/{job}/logs` passed the raw value to the log reader, which matches by prefix, so two jobs sharing a prefix both answered, and any client token read any job's lines.
+
+CHOSEN: (1) the route resolves the value with `lookup_job_id` and `require_job_plan`, through one helper `_resolved_job_plan` that the proof route now shares, with the proof route's tokens and statuses: `ambiguous_job_id` 400, `invalid_job_id` 404 for a value that names no job, `job_not_found` 404 for a full id with no record; then it reads the resolved id's lines only. (2) Because a route may declare only the refusals its twin command answers, `remedy doctor logs` resolves the job the same way and answers the same three tokens, so the client interface rises to `1.14` with those tokens and the answer key `matches`, and the public API to `1.14`. (3) The GET door now receives the matched client token's policy; for the logs route, a client token whose projects do not name the job's project is answered 403 `api_client_policy_refused` at the door, before the route, as the write door answers it; the project keys are read by `job_project_keys`, which the write door's job check now shares. The other read routes stay unscoped reads of one record, as DECISION F253 D16 designed them. A prefix that matches nothing answers `invalid_job_id`, as the proof route answers it, where the amendment's text named `job_not_found`; both are 404.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: asking for the log of a job by a prefix that matches several jobs, or none, is now refused with a clear word instead of answering mixed or empty lines, and a program with its own token can read only the logs of jobs in its projects.
+
+ALTERNATIVES CONSIDERED: (a) declaring `api_client_policy_refused` among the route's refusals, REJECTED because the route table's guard allows only the twin's own tokens, and the write door already answers that token outside the table; (b) leaving the CLI command unresolved, REJECTED because the route and its twin must answer alike.
+
+HOW TO REVERSE: revert the commit `amend1014 B.3`, which also lowers both interface versions back to `1.13`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D9 — An order without a cap is refused at the API door, before anything starts (2026-10-14)
+
+THE PROBLEM: `POST /api/v1/orders` with the server's token accepted an order whose header sets no cap and answered 202; `remedy do` then refused it with `order_file_no_cost_cap`, which a program saw only when it polled.
+
+CHOSEN: `_order_text_and_options` in `packages/orchestration/public_api_writes.py` refuses such an order with 400 `order_file_no_cost_cap` and the sentence `remedy do` prints, now one function `order_no_cap_message` in `packages/orchestration/order_file.py` that both use. The check runs after the project and the client policy checks and before the order is started, so the refusals tested before keep their order. The token is named in the route's description, as the door's other refusal `api_order_project_unknown` is, and not in its refusals table, because that table may list only the twin `client.order`'s own tokens.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a program that sends an order with no spending limit gets the refusal at once, and nothing is started.
+
+ALTERNATIVES CONSIDERED: (a) checking the cap first, before the project, REJECTED because the tests of the earlier refusals send orders without caps and would then test this refusal instead.
+
+HOW TO REVERSE: revert the commit `amend1014 B.4`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D10 — Model failover fires on an overloaded or unreachable service, also when claude-cli exits non-zero on one (2026-10-14)
+
+THE PROBLEM: `is_failover_trigger` in `packages/orchestration/model_failover.py` treated every non-zero exit as a non-trigger, and the connection predicate did not know HTTP 529, `overloaded_error`, "All connection attempts failed" or a name that cannot be resolved, the gaps that happen in practice.
+
+CHOSEN: `is_provider_connection_error` in `packages/orchestration/failure_postmortem.py` also matches `http 529`, `overloaded`, `overloaded_error`, `all connection attempts failed`, `name or service not known` and `temporary failure in name resolution`. A non-zero exit is a trigger when its error text, which carries the last lines of the error stream since amend0921, matches the connection or the unavailable predicate; any other non-zero exit stays a non-trigger. A timeout and a rate limit stay non-triggers, with one exception: the rate governor's own wording table counts "overload" as a rate-limit reason, and an overloaded service is the outage this feature exists for, not a quota, so the reason `overloaded` does not block the failover. The existing test that pinned "a non-zero exit that reads as unavailable is no trigger" now expects a trigger, with two new tests for the cases that stay non-triggers.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: when Claude's service is overloaded or cannot be reached, a role with a backup model in its chain now switches to it after the normal retries, instead of failing the call.
+
+ALTERNATIVES CONSIDERED: (a) removing "overload" from the rate governor's table, REJECTED because the governor's wait is still right for the first retries; only the failover decision differs.
+
+HOW TO REVERSE: revert the commit `amend1014 B.5`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D11 — The hand-written documents describe one lasting mission per repository, and the retired phrases are pinned absent (2026-10-14)
+
+THE PROBLEM: operator amendment amend1011b made a repository's mission its one lasting mission and every order a batch; the generated tables followed the code, but the prose of `docs/system/machine-client-contract-v1.md`, `docs/system/public-http-api-v1.md`, `README.md`, `docs/guides/do-run-v1.md` and `docs/system/mission-upkeep-v1.md` still described a mission per order and an umbrella mission over several projects.
+
+CHOSEN: each page now states the current model in its own style; the contract page's key table also names the two meanings of `order_id` apart (a batch id in a `remedy do --json` answer, the supervisor's order id in `remedy client order`), in the hand-written table because the second meaning appears only in the generated section. F205's feature file gains a dated amendment section. A test in `tests/docs/test_docs_consistency.py` holds three retired phrases absent from `README.md`, `docs/system/` and `docs/guides/`, matched across line breaks.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing in Remedy; a reader of any one page now gets the model Remedy actually follows.
+
+ALTERNATIVES CONSIDERED: (a) a changelog paragraph on each page, REJECTED because a page states the current truth.
+
+HOW TO REVERSE: revert the commit `amend1014 C`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D12 — A structural step leaves no alias behind, and ruff's PLC0414 holds it (2026-10-14)
+
+THE PROBLEM: rule 4 of the structure rule in `docs/agents/self_drive_protocol.md` said a structural step "keeps every import path working", so each split left `from m import x as x` re-exports behind. That contradicts `AGENTS.md` ("Replacing is deleting … no deprecated alias", amend0905-vocab-rebuild) and the operator's ruling of 2026-10-07 that no structure is kept beside the one that replaced it.
+
+CHOSEN: (1) rule 4 now says a structural step "re-points every consumer of a moved name to its new home in the same commit, so that each name has exactly one import path and no alias, re-export or forwarding function stays behind", and its proof is the tests, changed in their import lines only, staying green; the structure ledger's page says the same. (2) `pyproject.toml` selects ruff's `PLC0414`. It named 51 aliases, not the nine the amendment listed; all 51 were re-exports their host module did not use itself, so each was deleted and its consumers (18 files, one string monkeypatch target among them) import from the defining module. The leftovers the amendment named went too: the `parked_session_refs` re-export of `pingpong_loop.py`, and `_print_text_report` in `do_cmd.py`. Kept as plain imports, because their modules use them: `_cmd_run_list` and `_cmd_run_show` in `do_cmd.py`, and the route table in `public_api.py`, which `answer_public_api_get` reads at call time. Comments that claimed "every name is imported back here" now say where consumers import from. Seven files and two functions shrank, so their ledger rows and the pins `MAX_FUNCTION_LINES` (30657 to 30651) and `MAX_FILE_LINES` (73791 to 73740) came down in the same commit.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing Remedy does changes. Each name now has one import path, and ruff refuses a new alias.
+
+ALTERNATIVES CONSIDERED: (a) deleting only the nine listed aliases, REJECTED because the guard would stay red on the other 42 and the amendment says to treat every one the same way.
+
+HOW TO REVERSE: restore the sentence in `docs/agents/self_drive_protocol.md` and in `docs/system/structure-ledger-v1.md`, drop `PLC0414` from `pyproject.toml`, revert the commits `amend1014 D.1` and `amend1014 D.2`, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D13 — F308, the run manifest survives a task split, is registered directly after F306 (2026-10-14)
+
+THE PROBLEM: finding R-1252 (a task the run splits leaves the job's run manifest unwritten) has hit the self-use run of five closures in a row; DECISION F306 D2 found its repair too large for a paydown round.
+
+CHOSEN: the repair is a feature of its own, F308, registered thin in `docs/roadmap/features/T2_F308.md` under its own Tier 2 heading directly after F306's STATUS line, so that rule A5 selects it before Luna gate C; `TOTAL_FEATURES` and the README's status line and Tier 2 total rise by one in the same commit, and R-1252's owner line moves to F308. `docs/roadmap/ROADMAP.md` is untouched.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing yet; the next session builds F308 before the Luna gate C features.
+
+ALTERNATIVES CONSIDERED: (a) leaving R-1252 with the paydown F307, REJECTED because the operator ranks evidence above speed and the repair changes the manifest's persisted schema, which is a feature's work.
+
+HOW TO REVERSE: delete the F308 line, its heading and its feature file, lower `TOTAL_FEATURES` and the README counters by one, move R-1252's owner back to F307, and delete this paragraph.
+
+## DECISION amend1014-luna-mission-fixes D16 — Every remaining finding of the orchestrator's review is registered for the rolling paydown F307 (2026-10-14)
+
+THE PROBLEM: the orchestrator's review of the packages of 2026-10-10 to 2026-10-14 found 37 defects that need no fix before the next paydown, and B.1 raised one more question, whether a broken configuration deserves its own refusal.
+
+CHOSEN: each is a finding in `.agent/live_review.md`, R-1276 to R-1313, owned by F307, each verified against the code at `f89424e41` before it was written, each searched for in the ledger and its archive first; none was already there, and none had been repaired since the review.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: nothing; the next findings paydown has 38 more items to work through.
+
+ALTERNATIVES CONSIDERED: (a) fixing the Medium ones here, REJECTED because the amendment fixes only what cannot wait for the paydown.
+
+HOW TO REVERSE: delete R-1276 to R-1313 from the ledger, and delete this paragraph.
