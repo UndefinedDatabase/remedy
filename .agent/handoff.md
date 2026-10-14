@@ -1,300 +1,253 @@
-# Handback — F055 round 4 — book round 3, repair R-1318, the consolidation pass, the self-use item, and the one full suite
+# Handback — F055 round 5 — book round 4, then the closure's evidence job and review package on the accepted head
 
 ## Session
 
-SESSION 1 of feature F055 · round 4 · rounds so far 4
+SESSION 1 of feature F055 · round 5 · rounds so far 5
 
-Context self-assessment: C1 to C6 landed clean on the first attempt, every gate came back green
-on the one run that counts, and the context budget stayed comfortable throughout — no retries,
-no stale reads, no amendment needed.
+Context self-assessment: C1 and C2 landed clean on the first attempt with Gate 1 reading `ALL
+True`, but A2's evidence job raised a producer-side refusal this session could not safely work
+around within its own constraints (no second pytest run), so the round stops short of the
+package it set out to build; the context budget stayed comfortable throughout.
 
-Fortschritt: ~85 % (T001 to T003 landed; the consolidation pass, the self-use run and the one full suite done · the evidence, the package and the closing round remain) — Schätzung
+Fortschritt: ~80 % (the block's record-keeping half, C1/C2, is done and pushed; the evidence job
+is blocked on an unexplained pytest exit-1-with-zero-failures reading that the test-load rule
+forbids re-running this round to diagnose, so the package, the closing round and everything after
+A2 are not yet reachable) — Schätzung
 
 ## Range
 
-Review of `a2a0c20ad`..`f276ad48e` (then this commit).
+Review of `d8bd1aafd`..`c667646e75be8570615e5acab8e6ac9ba58272ab` (then this commit).
 
 ## Commits
 
-### `45bb3dde9` F055 R4 C1: book round 3, resolve R-1317, register R-1318, save the block and the self-use script
+### `5e8dee0592caac84296b742516e9ab19d8391302` F055 R5 C1: book round 4, resolve R-1318, register R-1319, save the block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f055-r4-selfuse.py` | +122/-0 | NEW: byte copy of `selfuse.py` |
-| `.agent/authored/f055-r4.md` | +171/-0 | NEW: byte copy of `block.md` |
-| `.agent/live_review.md` | +6/-0 | byte copy of `dry-live_review.md` (round 3 booked PASS, R-1317 resolved, R-1318 registered) |
-| `.agent/plan.md` | +6/-5 | byte copy of `dry-plan.md` |
-| `.agent/prose_slips.md` | +1/-0 | byte copy of `dry-prose_slips.md` (round 3 slip appended) |
+| `.agent/authored/f055-r5.md` | +132/-0 | NEW: byte copy of `block.md` |
+| `.agent/live_review.md` | +6/-0 | byte copy of `dry-live_review.md` (round 4 booked PASS, R-1318 resolved, R-1319 registered) |
+| `.agent/plan.md` | +5/-6 | byte copy of `dry-plan.md` |
 
-### `9dca5e9cd` F055 R4 C2: the planning counter is shown to count (R-1318)
+### `c667646e75be8570615e5acab8e6ac9ba58272ab` F055 R5 C2: save the evidence script
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/cli/test_rehearsal.py` | +28/-0 | NEW test: installs `_setup_llm_mocks` before `count_planning_calls` wraps `job_plan.plan_job_llm`, so nothing re-patches the counting wrapper away, then rehearses an order on the planner's branch and asserts `counts["plan_job_llm"] > 0` |
+| `.agent/authored/f055-r5-create_f055_evidence.py` | +376/-0 | NEW: byte copy of `create_f055_evidence.py`, the closure's evidence-bundle producer for this round, alone (no other path in this commit) |
 
-### `b43eee568` F055 R4 C3: the checklist's consolidation pass for F055
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | +15/-0 | byte copy of `dry-planner_reviewer_prompt.md`: F055's consolidation paragraph, nothing joined, no two items merged, the list stays at 34 items |
+C2 is the closure's ACCEPTED HEAD: full sha `c667646e75be8570615e5acab8e6ac9ba58272ab`.
 
-### `71305a2c7` F055 R4 C4: the closure's self-use item run to its approval gate, never applied
+### (this commit) F055 R5 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/selfuse_f055/SU-064.md` | +17/-0 | NEW: the job's own markdown, copied from the job file path `run_next_self_use_item` returned |
-| `.agent/selfuse_f055/changed_paths.txt` | +2/-0 | NEW: the two paths the job's task changed |
-| `.agent/selfuse_f055/entry_and_job_file.txt` | +5/-0 | NEW: entry id/title/provenance/consumed_by and the job file path |
-| `.agent/selfuse_f055/execution_config.txt` | +43/-0 | NEW: the plan's `execution_config`, JSON, sorted keys |
-| `.agent/selfuse_f055/full_transcript.txt` | +14/-0 | NEW: job id/title/state/stop reason/stop source, execution, per-task summary |
-| `.agent/selfuse_f055/job_diff.txt` | +32/-0 | NEW: `git diff HEAD...remedy/job-3d8b8562cbc64f34`, verbatim |
-| `.agent/selfuse_f055/result_state.txt` | +12/-0 | NEW: job id/state/stop reason/source/error, budgets, budget actuals, workspace path, per-task state |
-| `.agent/selfuse_f055/run_defects.txt` | +1/-0 | NEW: `describe_self_use_run_defects(plan)` — empty, so `NONE` |
-| `.agent/selfuse_f055/staleness_after.txt` | +2/-0 | NEW: the staleness catalog read from the job branch (no workspace left to read) |
-| `.agent/selfuse_f055/timing.txt` | +3/-0 | NEW: started/finished timestamps and wall seconds |
-| `scripts/self_use_queue.json` | +8/-0 | `generate_and_append_if_empty()`'s one appended entry, `SU-064`, `consumed_by` empty |
-
-### `f276ad48e` F055 R4 C5: the closure's one full suite and its CPU cost
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f055-closure-suite.txt` | +28/-0 | NEW: the suite transcript in the shape of `f308-closure-suite.txt` — exit 0, `23067 passed, 22 skipped`, `NONE` bad node ids, `NONE` leftover processes, the cost script's reading (9.7 percent more CPU than F308's, within the 14.1 percent limit) |
-
-### (this commit) F055 R4 C6: handback
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | this commit | rewritten |
+| `.agent/handoff.md` | this commit | full rewrite, per the block's non-zero-exit stop clause |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` (read-only, checked
-  before writing this handback): `[]` — no open pull request for this branch.
-- No branch created this round: preconditions held at the start — `HEAD` and
-  `origin/feature/f055-rehearsal` both `a2a0c20ad`, `git status --porcelain` empty, no
-  `.agent/STOP`.
-- `python3 launch.py selfuse ...` then `python3 wait.py selfuse ... 50` (C4): started the
-  reviewer-prepared wrapper detached, waited for `selfuse.exit`, got `exit 0 wall 178.8`.
-  Inside that run, `selfuse.py` itself added and removed one detached worktree at
-  `.remedy-wt/f055-r4-jobtree` (pointed at `remedy/job-3d8b8562cbc64f34`, to read the job
-  branch's staleness catalog once the runner had already removed the job's own workspace), and
-  removed it again before exiting; nothing under that path remains.
-- `python3 launch.py suite ...` then `python3 wait.py suite ... 50` (C5): started the suite
-  wrapper detached, waited for `suite.exit`, got `exit 0 wall 374.4`.
-- `python3 scripts/closure_suite_cost.py --feature F055 --record ~/.remedy-loop/test_load.jsonl`
-  (C5): exit 0, reading quoted verbatim in the Closure suite section below.
-- Push after C6 follows this commit: `git push origin feature/f055-rehearsal`; its outcome is
-  reported in the session's final reply only — it does not exist yet when this file is written.
-- No `gh pr merge`, `gh pr edit`, `gh pr create`, no STATUS edit, no ledger rotation — none
-  ordered by this block. The one real provider call budget spent this round is C4's self-use
-  run (`actual_call_count: 2`, `measured_cost_usd: 0.6761364`, `total_tokens: 11577`); no other
-  provider call was made.
+- `git rev-parse HEAD` / `origin/feature/f055-rehearsal` both read `d8bd1aafd...` and
+  `git status --porcelain` was empty before any write; no `.agent/STOP`. `git branch
+  --show-current` read `feature/f055-rehearsal` immediately before every commit below.
+- Push after C2: `git push -u origin feature/f055-rehearsal` — exit 0 on the first attempt (no
+  HTTP 500, no retry needed): `d8bd1aafd..c667646e7  feature/f055-rehearsal -> feature/f055-rehearsal`.
+- A1, the staging reclaim preview: `python3 -m apps.cli.main data reclaim --orphans`, exit 0.
+  `Reclaimable: nothing` — no candidate listed, so `--apply` was skipped per the block's own
+  instruction for that case. The one refused path, with its reason: `review_staging.n4o46eq_
+  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only` (1.5 MB).
+- A2, the evidence job: `git reflog -n 3 --date=iso` and `git branch --show-current` recorded
+  (both quoted in Verification below), then `python3
+  .agent/authored/f055-r5-create_f055_evidence.py .remedy-wt/f055-r5-evidence` launched detached
+  from a Python wrapper (`cwd=/home/decodeux/Repos/remedy`), polled over roughly 17 minutes, whole
+  output written to `/home/decodeux/Repos/remedy/.remedy-wt/f055-r5-worker/evidence.log`, exit code
+  captured inside the wrapper to `/home/decodeux/Repos/remedy/.remedy-wt/f055-r5-worker/evidence.exit`.
+  Result: **exit 1**. Per the block's non-zero-exit clause this round stops here: no A3 was
+  attempted, and this handback is written and pushed instead.
+- No `gh pr create/merge/edit`, no STATUS/README edit, no ledger rotation, no queue edit, no
+  self-use run, no other provider call. `git reflog -n 3` and `git branch --show-current` were
+  re-read after A2 (see Verification) — neither moved, so this is a clean stop rather than the
+  block's "commit nothing more" branch (there was nothing more to lose either way: A2 commits
+  nothing by design).
+- Push after C3 follows this commit: `git push origin feature/f055-rehearsal`; its outcome is
+  reported in the session's final reply (Gate 6), since it does not exist yet when this file is
+  written.
 
 ## Verification
 
-**Digests verified before anything else**: `block.md` 171 lines /
-`b886bdf1c0654eaa8bbca0b21f7f1a22aa13451fcd96099b5d9952b039670a8d` — matched. All eight prepared
-files' sha256 (`dry-live_review.md`, `dry-prose_slips.md`, `dry-plan.md`,
-`dry-planner_reviewer_prompt.md`, `selfuse.py`, `launch.py`, `wait.py`, `verify.py`) matched the
-digests given in the prompt, checked with a Python sha256 reader before use.
+**Digests verified before anything else**, each with a Python sha256 reader: `block.md` 132 lines
+/ `c67e60d3f6bf2d43c6ea8c665e7b8ec4a6527fcff2ac690d064bdc244027b662` — matched. All four other
+prepared files' sha256 (`create_f055_evidence.py`, `dry-live_review.md`, `dry-plan.md`,
+`verify.py`) matched the digests given in the prompt.
 
-**C2's one-file test run** (block's own exception — "not the round's test run"):
-`python3 -m pytest tests/cli/test_rehearsal.py -q` while writing the test — `18 passed in
-14.48s`, exit 0.
-
-**Gate 1** — `git -C /home/decodeux/Repos/remedy status --porcelain` empty, then
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r4/prep/verify.py /home/decodeux/Repos/remedy`:
+**Gate 1** — `git status --porcelain` empty, then
+`python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r5/prep/verify.py /home/decodeux/Repos/remedy c667646e75be8570615e5acab8e6ac9ba58272ab`:
 ```
-True 45bb3dde9 has the single parent a2a0c20ad (F055 R4 C1)
-True 9dca5e9cd has the single parent 45bb3dde9 (F055 R4 C2)
-True b43eee568 has the single parent 9dca5e9cd (F055 R4 C3)
-True 71305a2c7 has the single parent b43eee568 (F055 R4 C4)
-True f276ad48e has the single parent 71305a2c7 (F055 R4 C5)
-True exactly one commit with the subject prefix F055 R4 C1
-True exactly one commit with the subject prefix F055 R4 C2
-True exactly one commit with the subject prefix F055 R4 C3
-True exactly one commit with the subject prefix F055 R4 C4
-True exactly one commit with the subject prefix F055 R4 C5
-True the range holds C1 to C5 and at most C6 (5)
-True C1 .agent/authored/f055-r4.md equals block.md
-True C1 .agent/authored/f055-r4-selfuse.py equals selfuse.py
+True C1's single parent is d8bd1aafd
+True C2's single parent is C1
+True C1's subject begins 'F055 R5 C1:'
+True C2's subject begins 'F055 R5 C2:'
+True C1 .agent/authored/f055-r5.md equals block.md
 True C1 .agent/live_review.md equals dry-live_review.md
-True C1 .agent/prose_slips.md equals dry-prose_slips.md
 True C1 .agent/plan.md equals dry-plan.md
 True C1 names exactly its paths []
-True C3 docs/agents/planner_reviewer_prompt.md equals dry-planner_reviewer_prompt.md
-True C3 names exactly its paths []
-True C2 names only tests/cli/test_rehearsal.py ['tests/cli/test_rehearsal.py']
-True C2's test reads plan_job_llm above zero on the counter
-True C4 names the queue and the self-use folder only ['scripts/self_use_queue.json']
-True C4 adds ten self-use files (10)
-True C5 names only the transcript ['.agent/authored/f055-closure-suite.txt']
+True C2 .agent/authored/f055-r5-create_f055_evidence.py equals create_f055_evidence.py
+True C2 names exactly its paths []
+True fork..C2 ancestry 25 plain 25, both 25
+True at most one commit after C2 (0)
 ALL True
 ```
 One run, green.
 
-**Gate 2** — the ten files under `.agent/selfuse_f055/`, each non-empty (bytes):
-`SU-064.md` 1033, `changed_paths.txt` 61, `entry_and_job_file.txt` 395,
-`execution_config.txt` 1367, `full_transcript.txt` 1578, `job_diff.txt` 1335,
-`result_state.txt` 801, `run_defects.txt` 5, `staleness_after.txt` 59, `timing.txt` 105.
+**A1's reading** — quoted whole above in External actions; exit 0.
 
-**Gate 3** — the suite of C5 itself: exit code 0, summary line
-`23067 passed, 22 skipped, 1 warning in 373.62s (0:06:13)`, bad node ids `NONE`, as the
-transcript records.
+**A2's reading** — `git reflog -n 3 --date=iso` before launch:
+```
+c667646e7 HEAD@{2026-10-14 17:38:45 +0200}: commit: F055 R5 C2: save the evidence script
+5e8dee059 HEAD@{2026-10-14 17:38:32 +0200}: commit: F055 R5 C1: book round 4, resolve R-1318, register R-1319, save the block
+d8bd1aafd HEAD@{2026-10-14 17:32:08 +0200}: commit: F055 R4 C6: handback
+```
+`git branch --show-current`: `feature/f055-rehearsal`.
 
-**Gate 4** — `python3 -m apps.cli.main integrity check --json`:
+The job's whole output (`evidence.log`, all 15 lines, verbatim):
+```
+head c667646e75be8570615e5acab8e6ac9ba58272ab
+ancestry-path count 25
+plain count 25
+collected node ids 8337, deselected 169
+red control: unsafe among the real ids 0 []
+red control: planted id -> a local absolute path
+pytest exit 1, {'passed': 8328, 'failed': 0, 'skipped': 9}, output_hash 53f4899ddb44b2ef8198d76bc09ffc85bf519043de5067c20d139ce7a6cf5b35
+Traceback (most recent call last):
+  File "/home/decodeux/Repos/remedy/.agent/authored/f055-r5-create_f055_evidence.py", line 376, in <module>
+    sys.exit(main())
+  File "/home/decodeux/Repos/remedy/.agent/authored/f055-r5-create_f055_evidence.py", line 348, in main
+    summary = create_manual_completion_bundle(
+  File "/home/decodeux/Repos/remedy/packages/orchestration/job_evidence.py", line 2826, in create_manual_completion_bundle
+    raise ValueError("a recorded verification command failed; refusing to build a clean bundle")
+ValueError: a recorded verification command failed; refusing to build a clean bundle
+```
+Wrapper exit code (`evidence.exit`): `1`.
+
+Reading against the block's expectations: `head` equals C2's full sha — match. Ancestry 25 /
+plain 25 — match. `collected node ids` 8337, `deselected` 169 — exactly the precheck's 8337, not
+merely within a few of it. Red control `unsafe among the real ids 0 []` — match. Planted id
+answers `a local absolute path` — match. The one mismatch is `pytest exit 0` expected versus
+**exit 1** actual, which is what triggers this round's stop.
+
+`git reflog -n 3 --date=iso` and `git branch --show-current` again, after A2: both identical to
+the readings taken before launch (reflog's three entries unchanged, branch still
+`feature/f055-rehearsal`); `git status --porcelain` empty. Neither moved.
+
+**Every failed node id — could not be produced**, and the reason is stated precisely rather than
+guessed at: the parsed counts (`passed=8328, failed=0, skipped=9`, summing exactly to the 8337
+selected) carry no failure, yet pytest's own return code is 1, which pytest sets whenever
+`session.testsfailed` is nonzero — a count that also rises on collection, setup or teardown
+*errors*, not only on assertion failures. The evidence script's own summary-line regex
+(`.agent/authored/f055-r5-create_f055_evidence.py:315-320`) only matches the words `passed`,
+`failed` and `skipped`; it has no `error` bucket, so an error count would move the exit code
+without appearing anywhere in the recorded counts. The actual pytest `-v` output that would show
+which node id(s) errored (`run.stdout` inside that script, at its line 312-314) was held only in
+that subprocess's own memory and was never written to any file before the process exited — it is
+gone now. `.pytest_cache/v/cache/lastfailed` was read (a file inspection, not a second pytest
+invocation) on the chance it had been refreshed by this run: its mtime is
+`2026-10-14 17:27:50+02:00`, which **predates** this round's A2 launch and matches exactly the
+timestamp F055 round 4's own closure-suite record already carries (`recorded
+2026-10-14T15:27:50Z`), so its 88 entries belong to an earlier, unrelated session and reporting
+them as this run's failures would misattribute stale data rather than inform. The test-load rule
+(amend0930-test-load) forbids any further pytest command this round, so no rerun was attempted to
+pin the real cause down. This is recorded as a deviation below rather than papered over.
+
+**A3 — not attempted.** The block orders it "from the clean, pushed tree at C2" as a step that
+follows A2; A2 did not reach a state A3 could build from.
+
+**Gate 5 (integrity check + open-id listing)** — ordered "after A3, before C3". Run anyway, out of
+its literal sequence, because it is read-only, costs nothing, and runs no test:
+`python3 -m apps.cli.main integrity check --json`:
 ```
 {"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-Then
-`python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
+Then `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
 ```
-['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313', 'R-1318']
+['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313', 'R-1319']
 ```
-40 ids: `R-1246`, then `R-1276` to `R-1313`, then `R-1318`, in order, as required.
+40 ids: `R-1246`, then `R-1276` to `R-1313`, then `R-1319`, in order, as required. `git status
+--porcelain` empty throughout. This is reported as informational — not as a completed Gate 5 —
+because A3 never happened and the gate's own ordering names A3 as its precondition.
 
-**Gate 5** — after the push (reported in the reply only — see Next for the one line this file
-cannot yet carry).
+**Gate 6** — after this commit's push: reported in the session's final reply only, since it does
+not exist yet when this file is written.
 
 ## Authored-text proofs
 
-`.agent/authored/f055-r4.md` against `block.md`: byte-identical, sha256
-`b886bdf1c0654eaa8bbca0b21f7f1a22aa13451fcd96099b5d9952b039670a8d`, confirmed by my own copy
-script at write time and again independently by `verify.py`'s Gate 1 (`git show <C1>:<path>`
-compared to the prep file's bytes — `True`). `.agent/authored/f055-r4-selfuse.py` against
-`selfuse.py`: byte-identical, confirmed the same two ways. `docs/agents/planner_reviewer_prompt.md`
-against `dry-planner_reviewer_prompt.md` (C3): byte-identical, confirmed the same two ways, and
-`git show --numstat` on `b43eee568` read exactly `15\t0`, matching the block's own stated count.
-The three remaining `dry-*.md` copies applied in C1 (`live_review.md`, `prose_slips.md`,
-`plan.md`) were each confirmed byte-equal by a Python equality check at copy time (printed `True`
-for all five C1 paths together) and again by Gate 1's per-path check. No other reviewer-authored
-text was applied this round.
-
-## Self-use run
-
-Entry `SU-064`, "Narrow the excused handler at apps/cli/commands/status_cmd.py:96"
-(generated — self-use-generator tier 4, excused handler). Job id `3d8b8562cbc64f34`. Builder:
-`claude-cli`, model `claude-sonnet-4-6`, effort `medium` (source `cli`); reviewer: `claude-cli`,
-model `claude-sonnet-4-6`, effort `medium` (source `cli`) — from `execution_config.txt`. Job
-state `completed`, stop reason empty, stop source empty — from `result_state.txt`. Task `T001`:
-status `applied_to_job_workspace`, reviewer verdict `pass`, final status `staged_review_passed`,
-`repair_rounds_used` 0 — from `result_state.txt`. Wall seconds `174.2` — from `timing.txt`.
-Changed paths, from `changed_paths.txt`:
-```
-apps/cli/commands/status_cmd.py
-tests/test_ble001_ratchet.py
-```
-
-Job diff (`job_diff.txt`, verbatim):
-```
-$ git diff HEAD...remedy/job-3d8b8562cbc64f34  (exit 0)
-diff --git a/apps/cli/commands/status_cmd.py b/apps/cli/commands/status_cmd.py
-index 9d824b069..823c2acab 100644
---- a/apps/cli/commands/status_cmd.py
-+++ b/apps/cli/commands/status_cmd.py
-@@ -89,11 +89,11 @@ def _cmd_status(
-     for j in jobs:
-         if job_is_terminal(j.state):
-             continue
-+        from packages.orchestration.safe_points import StopControlError, stop_requested
-         try:
--            from packages.orchestration.safe_points import stop_requested
-             if stop_requested(str(j.job_id)) is not None:
-                 stops_pending += 1
--        except Exception:  # noqa: BLE001 — stop-check failure must not break the status overview
-+        except (OSError, StopControlError):
-             pass
- 
-     runtime_status = "unknown"
-diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
-index ff1f68ae3..cb21e641a 100644
---- a/tests/test_ble001_ratchet.py
-+++ b/tests/test_ble001_ratchet.py
-@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
- 
- #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
- #: commit that removes a mark lowers this number in the same commit, and it is never raised.
--MAX_EXCUSED = 285
-+MAX_EXCUSED = 284
- 
- 
- def _marks() -> list[tuple[str, int, str]]:
-```
-
-`run_defects.txt` (verbatim):
-```
-NONE
-```
-
-## Closure suite
-
-(`.agent/authored/f055-closure-suite.txt`, whole and verbatim)
-```
-command: python3 -m pytest -n auto -q
-real exit code: 0
-wall time: 374.4s (the launcher's reading); pytest's own reported wall time: 373.62s (0:06:13)
-summary line: 23067 passed, 22 skipped, 1 warning in 373.62s (0:06:13)
-bad node ids (failed + errors):
-  NONE
-leftover processes: NONE
-tree it ran on: 71305a2c7 (F055 R4 C4: the closure's self-use item run to its approval gate, never applied)
-tree note: C3 and C4 changed only .agent/ files, the checklist page and the self-use queue
-reflog before: 71305a2c7 HEAD@{2026-10-14 17:21:29 +0200}: commit: F055 R4 C4: the closure's self-use item run to its approval gate, never applied
-reflog after: 71305a2c7 HEAD@{2026-10-14 17:21:29 +0200}: commit: F055 R4 C4: the closure's self-use item run to its approval gate, never applied
-reflog unchanged during the run: yes
-cost command: python3 scripts/closure_suite_cost.py --feature F055 --record ~/.remedy-loop/test_load.jsonl
-cost exit code: 0
-Test load: 1283.70 CPU seconds, 373.63 wall seconds, 23089 tests collected, exit status 0, recorded 2026-10-14T15:27:50Z
-This closure's suite used 1283.70 CPU seconds, 9.7 percent more than F308's 1170.14, within the 14.1 percent limit.
-The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
-The test modules whose CPU time rose most since F308's closure run:
-  +9.45 s  tests/runtimes/test_supervisor_portability.py (35.60 -> 45.05)
-  +7.87 s  tests/orchestration/test_review_zip_hygiene.py (31.38 -> 39.25)
-  +6.95 s  tests/orchestration/test_self_use_runner.py (3.59 -> 10.54)
-  +5.31 s  tests/orchestration/test_token_ledger.py (6.93 -> 12.24)
-  +4.53 s  tests/cli/test_rehearsal.py (0.00 -> 4.53)
-  +4.06 s  tests/orchestration/test_job_worktree_integration.py (6.64 -> 10.70)
-  +3.57 s  tests/orchestration/test_stream_export_e2e.py (3.42 -> 6.99)
-  +3.55 s  tests/ui_server/test_multi_project_live.py (14.81 -> 18.36)
-  +3.40 s  tests/orchestration/test_public_api_gate_paths.py (13.95 -> 17.35)
-  +3.01 s  tests/ui_server/test_public_api.py (8.94 -> 11.95)
-```
+`.agent/authored/f055-r5.md` against `block.md`: byte-identical, sha256
+`c67e60d3f6bf2d43c6ea8c665e7b8ec4a6527fcff2ac690d064bdc244027b662`, confirmed by my own copy
+script at write time and again independently by `verify.py`'s Gate 1 check (`git show
+<C1>:<path>` compared to the prep file's bytes — `True`). `.agent/live_review.md` against
+`dry-live_review.md` and `.agent/plan.md` against `dry-plan.md` (both C1): each confirmed
+byte-equal by a Python equality check at copy time and again by Gate 1's per-path check.
+`.agent/authored/f055-r5-create_f055_evidence.py` against `create_f055_evidence.py` (C2):
+byte-identical, confirmed the same two ways. No other reviewer-authored text was applied this
+round.
 
 ## Deviations & assumptions
 
-None. C1 to C5 and gates 1 to 4 all matched this block exactly on the first run; no amendment was
-needed.
+- **A2 exited non-zero (1) instead of the expected 0.** The block's own clause for this case was
+  followed: this round stops, writes this handback with the log's tail (here, the whole 15-line
+  log, since it is short) and pushes, rather than attempting A3 or C3's normal path. See
+  Verification above for the full reading and the exact ValueError raised
+  (`packages/orchestration/job_evidence.py:2826`, "a recorded verification command failed;
+  refusing to build a clean bundle").
+- **"Every failed node id" could not be produced.** The parsed verification counts show zero
+  failures; pytest's exit code 1 most plausibly reflects a collection/setup/teardown *error*
+  count that the evidence script's regex never captures, but the raw output that would name such
+  a node id was never persisted and the test-load rule forbids a second pytest run this round to
+  recover it. This is reported as an inability rather than guessed at — see Verification for the
+  full reasoning, including why `.pytest_cache/v/cache/lastfailed`'s 88 stale entries (predating
+  this run) are not reported as this run's failures.
+- **A3 was not attempted** and **Gate 5's integrity/open-id check was run anyway, out of its
+  literal "after A3" order**, purely because it is read-only and costs nothing; it is reported as
+  informational, not as a completed gate, since A3 — its stated precondition — never happened.
+- `.agent/plan.md` is not rewritten in C3: the block's C3 path list is `.agent/handoff.md` only,
+  and that restriction is honoured here even though the plan's "Next Steps" line (written in C1,
+  before A2 ran) now assumes a package that was not built. The accurate state lives in this
+  handback instead.
+- No other deviation: C1 and C2 matched the block exactly (Gate 1 `ALL True`), the push after C2
+  needed no retry, and A1's reading was taken and reported exactly as ordered.
+
+## For the operator, in plain sentences
+
+No review package exists yet for this feature — the evidence-collection step that builds it ran
+into an internal safety check refusing to certify a "clean" result, because the test run it was
+grading returned a failing exit code while reporting zero failed tests, a contradiction nobody
+has explained yet. No old scratch copies were cleaned up this round beyond the routine check,
+which found one small 1.5 MB leftover it correctly left alone because it belongs to no job.
+Nothing here needs you yet: the next session needs to read the full test output directly (rather
+than the short summary this round could afford) to find out what actually went wrong before
+anything is rebuilt.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP` — absent at this handoff.
 2. Rule 2, the Open PR Gate: no pull request is open for this branch yet.
-3. The reviewer reviews round 4, books its verdict and registers every self-use run defect in the
-   next round's first commit.
-4. The evidence bundle and the review package (the suite came back green).
-5. The closing round: the Built State, the resolutions, the rotation, the STATUS line and the
-   pull request.
+3. The evidence job's exit-1-with-zero-failures contradiction needs a fresh, fully-captured pytest
+   run (writing the complete output to disk before any parsing, not just holding it in memory) to
+   identify what actually errored, since this round's one permitted run did not preserve enough
+   detail to say.
+4. Once that is understood and repaired, redo A2, then A3 (the review package), then the closing
+   round: the Built State, the rotation, SU-064's `consumed_by`, the STATUS flip with the README
+   sync, and the pull request, left unmerged.
 
 Operator questions open: 0.
-Open findings: 40 (R-1318 owned by F055, R-1246 and R-1276 to R-1313 by F307).
-
-## For the operator, in plain sentences
-
-The paid run was asked to narrow one overly broad error handler down to the specific exceptions
-it should catch, and it finished with a reviewer pass, staged but not applied anywhere. The
-test collection ran once on the code about to ship and every test passed except the handful
-already marked as skipped before this round began. The run took a little over six minutes.
-The cost script said this feature's computer time came in under the ceiling it compares against,
-a bit higher than the previous feature's but still well within what is allowed. Nothing new waits
-for you.
+Open findings: 40 (R-1246, R-1276 to R-1313 and R-1319, all owned by F307).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | Gate 1's five C1 path-equality checks `True`; 306 insertions |
-| C2 | done | the new test passes alone (18 passed) and under Gate 1's node-text check; 28 insertions |
-| C3 | done | `git show --numstat` read exactly `15\t0`, matching the block |
-| C4 | done | self-use run exit 0, `run_defects.txt` `NONE`, queue diff exactly one appended entry with empty `consumed_by` |
-| C5 | done | suite exit 0, `23067 passed, 22 skipped`, cost script exit 0 within the 14.1 percent limit |
-| C6 | done | this commit |
+| C1 | done | Gate 1's checks `True`; 143 insertions |
+| C2 | done | Gate 1's checks `True`; 376 insertions; full sha `c667646e75be8570615e5acab8e6ac9ba58272ab` is the accepted head |
+| A1 | done | exit 0, `Reclaimable: nothing`, `--apply` skipped per the block's own rule for that case, one refused path reported |
+| A2 | deviated | evidence job exited 1 instead of 0; stopped per the block's own non-zero-exit clause rather than proceeding to A3 |
+| A3 | skipped | blocked by A2's non-zero exit; the block's precondition for A3 ("from the clean, pushed tree at C2" after a successful A2) was not met |
+| C3 | done | this commit |
 | Gate 1 | done | `ALL True`, one run |
-| Gate 2 | done | all ten files non-empty |
-| Gate 3 | done | exit 0, summary line as recorded, `NONE` bad node ids |
-| Gate 4 | done | `fail_count` 0; 40 open finding ids in order |
-| Gate 5 | done | reported in the reply, after the push |
-| R-1318 | done | repaired in C2: `test_planning_counter_counts_a_real_planning_call` installs `_setup_llm_mocks` before `count_planning_calls` wraps `job_plan.plan_job_llm`, then proves `counts["plan_job_llm"] > 0` on a real rehearsed-plan run |
+| Gate 2 (A1) | done | empty reading and the one refused path recorded |
+| Gate 3 (A2) | deviated | every line matched expectation except `pytest exit 1` where `pytest exit 0` was required |
+| Gate 4 (A3) | skipped | A3 never ran |
+| Gate 5 | deviated | run anyway out of order for visibility; `fail_count 0`, 40 open ids exactly as required, but not counted as a completed gate since A3 — its precondition — never happened |
+| Gate 6 | done | reported in the reply, after this commit's push |
