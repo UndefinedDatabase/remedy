@@ -25,6 +25,7 @@ a second run finds nothing to fold.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -273,12 +274,42 @@ def _fold_group(project_id: str, canonical: Mission, dups: list[Mission], root: 
                 status=source.status, created_at=source.created_at, alias_of=canonical.id), root)
 
 
-def restore_reconcile(backup: Path, root: Path | None = None) -> Path:
-    """Put the whole mission area back as the *backup* holds it; the rollback path."""
+class ReconcileBackupInvalidError(MissionError):
+    """A restore was asked for from something that is not one of reconcile's own backups."""
+
+
+def _check_backup(backup: Path, area: Path) -> None:
+    """Refuse, before anything is written, a *backup* that reconcile did not make."""
+    folder = (area.parent / BACKUP_DIRNAME).resolve()
+    if not backup.is_dir():
+        raise ReconcileBackupInvalidError(f"{backup} is not a directory; nothing was restored")
+    if backup.resolve().parent != folder:
+        raise ReconcileBackupInvalidError(
+            f"{backup} is not a backup under {folder}; nothing was restored")
+    if next(backup.rglob("*.json"), None) is None:
+        raise ReconcileBackupInvalidError(
+            f"{backup} holds no mission file; nothing was restored")
+
+
+def restore_reconcile(backup: Path | str, root: Path | None = None) -> Path:
+    """Put the whole mission area back as the *backup* holds it; the rollback path.
+
+    Operator amendment amend1014-luna-mission-fixes A.2: the backup is checked before anything
+    is touched, then copied beside the area and swapped in with two renames, and the replaced
+    area (a copy of data the backup already holds) is removed only after the swap succeeded.
+    """
     area = mission_root(root)
+    backup = Path(backup)
+    _check_backup(backup, area)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    staged = area.with_name(f"{area.name}.restoring-{stamp}")
+    replaced = area.with_name(f"{area.name}.replaced-{stamp}")
+    shutil.copytree(backup, staged)
     if area.is_dir():
-        shutil.rmtree(area)
-    shutil.copytree(Path(backup), area)
+        os.replace(area, replaced)
+    os.replace(staged, area)
+    if replaced.is_dir():
+        shutil.rmtree(replaced)
     return area
 
 

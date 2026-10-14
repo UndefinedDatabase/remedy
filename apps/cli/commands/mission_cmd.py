@@ -110,6 +110,7 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
     """Fold duplicate repository missions (DECISION amend1011b D6): a dry run unless *apply*."""
     from packages.orchestration.mission_state import MissionError
     from packages.orchestration.repo_mission_reconcile import (
+        ReconcileBackupInvalidError,
         reconcile_repo_missions,
         restore_reconcile,
     )
@@ -120,6 +121,8 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
             report: dict[str, Any] = {"restored_from": restore, "mission_area": str(area)}
         else:
             report = reconcile_repo_missions(apply=apply)
+    except ReconcileBackupInvalidError as exc:
+        fail("reconcile_backup_invalid", str(exc), json_output=json_output, exit_code=2)
     except (MissionError, OSError) as exc:
         fail("mission_error", str(exc), json_output=json_output)
     if json_output:
