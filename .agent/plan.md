@@ -7,11 +7,10 @@ and write, and a real run reuses the rehearsed plan without planning again
 (docs/roadmap/features/T3_F055.md; DECISIONs F055 D1 to D4).
 
 ## Current Step
-Session 1, round 8 on `feature/f055-rehearsal`: book round 7, move R-1320 to F055 (DECISION F055
-D4) and repair it — a definition-of-done check no longer passes when the application it started
-died — then the one full suite again on the repaired tree, the evidence job on the new accepted
-head and the review package.
+Session 1, round 9 on `feature/f055-rehearsal`, the closing round: book round 8, resolve R-1320,
+the Built State, then the ledger rotation, F055's STATUS line with the README sync and SU-064's
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the resolutions, the rotation, the STATUS line with the
-   README sync, SU-064's `consumed_by`, and the pull request, left unmerged.
+1. The next session: the Open PR Gate merges F055's pull request, books round 9's verdict in the
+   next feature's first commit, and Rule A5 picks the next unchecked STATUS line.
