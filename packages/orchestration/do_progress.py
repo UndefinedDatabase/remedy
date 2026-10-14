@@ -16,7 +16,6 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from pathlib import Path
 
 from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_lane import DO_TINY_REPO_MAX_FILES, settle_do_lane
@@ -54,7 +53,7 @@ class DoProgress:
         self._clock = clock
         self._interval = interval
         self._poll = poll
-        self._active: tuple[str, float, Callable[[], str]] | None = None
+        self._active: tuple[str, float, str] | None = None
         self._last_beat = 0.0
         self._lock = threading.Lock()
 
@@ -67,16 +66,16 @@ class DoProgress:
         with self._lock:
             if self._active is None:
                 return False
-            name, started, describe = self._active
+            name, started, intro = self._active
             now = self._clock()
             if now - self._last_beat < self._interval:
                 return False
             self._last_beat = now
-        self.line(f"{name}: {describe()} — {now - started:.0f}s elapsed")
+        self.line(f"{name}: {intro} — {now - started:.0f}s elapsed")
         return True
 
     @contextmanager
-    def step(self, name: str, intro: str, describe: Callable[[], str] | None = None) -> Iterator[Callable[[str, str], None]]:
+    def step(self, name: str, intro: str) -> Iterator[Callable[[str, str], None]]:
         """Announce *name* started, beat while it runs, and yield the function that announces its end.
 
         The end line is written by calling the yielded ``end(status, detail)``; a step that raises
@@ -85,7 +84,7 @@ class DoProgress:
         started = self._clock()
         self.line(f"{name} started — {intro}")
         with self._lock:
-            self._active = (name, started, describe or (lambda: intro))
+            self._active = (name, started, intro)
             self._last_beat = started
         stop = threading.Event()
         thread = threading.Thread(target=self._beat_until, args=(stop,), daemon=True)
@@ -126,23 +125,6 @@ def _role_provider(role: str, override: str | None) -> str:
         return "default"
 
 
-def _latest_run_phase(job_id: str) -> str:
-    """``role provider`` of the newest run-log event that names one, or "" when the log says none."""
-    import json
-
-    from packages.orchestration.data_paths import run_log_dir
-
-    try:
-        logs = sorted(Path(run_log_dir(job_id)).glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
-        for raw in reversed(logs[-1].read_text(encoding="utf-8").splitlines()[-60:]):
-            event = json.loads(raw)
-            if event.get("role") and event.get("provider"):
-                return f"{event['role']} {event['provider']}"
-    except (OSError, ValueError, IndexError):
-        return ""
-    return ""
-
-
 def do_step_intro(name: str, ctx: DoContext) -> str:
     """The sentence a step's start line carries: what it does, and which provider if it calls one."""
     if name == "init":
@@ -155,8 +137,10 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
         return f"scan, narrated by provider {_role_provider('study', None)}"
     if name == "plan":
         lane = settle_do_lane(ctx)
-        if lane.bounded or ctx.no_llm:
+        if lane.bounded:
             return f"bounded one-deliverable lane ({lane.reason}), no provider call"
+        if ctx.no_llm:
+            return f"full lane ({lane.reason}), deterministic plan because of --no-llm, no provider call"
         return f"full lane ({lane.reason}), planner {_role_provider('planner', ctx.planner_provider)}"
     if name == "shape":
         return "shaping the jobs and their tasks"
@@ -167,9 +151,3 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
                 f"reviewer {_role_provider('reviewer', ctx.reviewer_provider)}")
     return "checking what the run proposes" if name == "apply" else name
 
-
-def do_step_describer(name: str, ctx: DoContext, intro: str) -> Callable[[], str]:
-    """What a heartbeat of *name* says: the run names the role the job's own log last named."""
-    if name != "run":
-        return lambda: intro
-    return lambda: (_latest_run_phase(ctx.job_ids[0]) if ctx.job_ids else "") or intro
