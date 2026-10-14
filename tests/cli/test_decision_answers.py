@@ -440,7 +440,7 @@ class TestUnattendedEndToEnd:
         from packages.orchestration.do_sequence import plan_order_job
         from packages.orchestration.project_registry import resolve_project
         return plan_order_job("test mission", project=resolve_project(repo),
-                              repo_path=str(repo), yes=True).to_json()
+                              repo_path=str(repo), run_unattended=True).to_json()
 
     def test_default_recorded_and_logged_without_a_human(
             self, tmp_path, monkeypatch):
@@ -449,7 +449,7 @@ class TestUnattendedEndToEnd:
         from packages.orchestration.pingpong_job import load_job_plan
 
         data = self._run_unattended(tmp_path, monkeypatch)
-        assert "approved via --yes" in data["plan_label"]
+        assert "approved via --run-unattended" in data["plan_label"]
 
         job = load_job_plan(data["job_id"])
         recs = job.task_plan["clarifications_resolved"]

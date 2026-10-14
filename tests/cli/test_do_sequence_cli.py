@@ -1176,7 +1176,7 @@ def test_a_do_jobs_run_manifest_is_written_and_named_in_the_digest(repo, capsys)
 
     from packages.orchestration.data_paths import job_record_path
 
-    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1"))
+    data = json.loads(_do(capsys, "--json", "--run-unattended", "--max-cost-usd", "1"))
 
     for job_id in data["job_ids"]:
         record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
@@ -1201,7 +1201,7 @@ def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
 
     from packages.orchestration.data_paths import job_record_path
 
-    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1", "--plan-only"))
+    data = json.loads(_do(capsys, "--json", "--run-unattended", "--max-cost-usd", "1", "--plan-only"))
     [job_id] = data["job_ids"]
 
     # R-1184 (DECISION F304 D8): a run its budget stopped answers as a refusal, report beside it.

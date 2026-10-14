@@ -59,7 +59,7 @@ def _seed_project_job_and_decision(tmp_path: Path) -> str:
         "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n", encoding="utf-8")
     result = subprocess.run(
         [sys.executable, "-m", "apps.cli.main", "do", str(order_file), "--json",
-         "--no-ui", "--yes", "--no-llm", "--builder-provider", "fake",
+         "--no-ui", "--run-unattended", "--no-llm", "--builder-provider", "fake",
          "--reviewer-provider", "fake", "--deadline", _SEED_PAST_DEADLINE],
         cwd=str(repo), capture_output=True, text=True, env=env, timeout=120)
     assert result.returncode == 1, result.stdout + result.stderr

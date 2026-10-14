@@ -187,12 +187,12 @@ def test_rehearsal_of_a_pending_task_plan_names_the_approval_before_the_run_line
     assert not worktrees_created
 
 
-# ── (d) --rehearse refuses together with --yes or a commit/apply/push flag ──────
+# ── (d) --rehearse refuses together with --run-unattended or a commit/apply/push flag ──────
 
 
 @pytest.mark.parametrize(("flag", "message_tail"), [
-    (("--yes",),
-     "--rehearse leaves the plan's approval open for you to answer, and --yes would approve "
+    (("--run-unattended",),
+     "--rehearse leaves the plan's approval open for you to answer, and --run-unattended would approve "
      "it unattended. Nothing was run."),
     (("--apply",),
      "--rehearse runs no job, so --apply would have nothing to apply, commit or push. "

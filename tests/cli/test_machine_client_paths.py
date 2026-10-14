@@ -25,7 +25,7 @@ ORDER_FILE_TEXT = "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.
 ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 
 #: How the gate test starts every order: unattended, with its builder and reviewer.
-UNATTENDED = ("--no-ui", "--yes", "--no-llm", *ROLES)
+UNATTENDED = ("--no-ui", "--run-unattended", "--no-llm", *ROLES)
 
 
 def _git(repo: Path, *args: str) -> str:

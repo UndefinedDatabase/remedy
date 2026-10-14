@@ -21,7 +21,7 @@ LOST — nothing to resume.
 `OrderLauncher` starts an order the same way, but an order has no id until it
 starts: a new one, `orders/<order id>/`, holds the order's own text (`order.md`),
 its record (`order.json`) and its two logs (`out.log`, `err.log`), and the order
-runs as `remedy do run <options> --json --no-ui --yes -- order.md` from inside
+runs as `remedy do run <options> --json --no-ui --run-unattended -- order.md` from inside
 that folder, so a data root whose path holds whitespace never confuses the order
 file for order text (DECISION F253 D13 (1)). `read_order_record`, `order_state`
 and `order_answer` read what `remedy client order` answers.
@@ -379,7 +379,7 @@ _ORDER_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 
 #: The four options `OrderLauncher.start` always adds, after the caller's own
 #: (DECISION F253 D13 (2)).
-ORDER_RUN_ALWAYS_OPTIONS = ("--json", "--no-ui", "--yes")
+ORDER_RUN_ALWAYS_OPTIONS = ("--json", "--no-ui", "--run-unattended")
 
 #: An order key a client chooses: one to 64 letters, digits, `.`, `_` or `-`, beginning with a
 #: letter or a digit; read with `fullmatch`, so it can never name a path outside `order-keys/`

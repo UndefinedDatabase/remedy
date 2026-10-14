@@ -54,7 +54,7 @@ holds, the runner:
 2. writes one `job_burn_tripped` event to the job's run log, carrying the reading and whether the
    job runs unattended;
 3. when the job's plan was approved to run with nobody watching, which is what
-   `remedy do run --yes` records, asks for a pause of the job and raises one decision. Its
+   `remedy do run --run-unattended` records, asks for a pause of the job and raises one decision. Its
    question starts with `[burn_alarm]` and states the numbers in a sentence, its options are
    `resume` and `abandon`, and it has no safe default. A second trip updates that open decision
    instead of adding one. The job parks before its next provider call, and
