@@ -66,7 +66,7 @@ def test_a_dirty_tree_is_target_dirty_and_changes_nothing(repo, monkeypatch, cap
     (repo / "scratch.txt").write_text("wip\n")
     before = _state(repo)
 
-    data = _refused(capsys, *_approve(job, repo, "--commit", "Add the page"))
+    data = _refused(capsys, *_approve(job, repo, "--commit-with-history"))
 
     assert data["error"] == "target_dirty"
     assert "uncommitted changes in scratch.txt" in data["message"]
@@ -148,7 +148,7 @@ def test_a_preview_that_meets_a_refusal_still_exits_0(repo, monkeypatch, capsys,
     job = _completed(repo, monkeypatch)
     (repo / "scratch.txt").write_text("wip\n")
 
-    main(["job", "apply", job.job_id, "--repo", str(repo), *preview, "--commit", "Add the page",
+    main(["job", "apply", job.job_id, "--repo", str(repo), *preview, "--commit-with-history",
           "--json"])
 
     data = json.loads(capsys.readouterr().out)
@@ -161,12 +161,26 @@ def test_the_text_answer_prints_the_summary_and_exits_1(repo, monkeypatch, capsy
     (repo / "scratch.txt").write_text("wip\n")
 
     with pytest.raises(SystemExit) as exc:
-        main(["job", "apply", *_approve(job, repo, "--commit", "Add the page")])
+        main(["job", "apply", *_approve(job, repo, "--commit-with-history")])
 
     assert exc.value.code == 1
     out, err = capsys.readouterr()
-    assert f"BLOCKED: {COMMIT_REFUSED}: {DIRTY_TREE_OPENING} in scratch.txt" in out
-    assert err.startswith(f"Error: {COMMIT_REFUSED}: {DIRTY_TREE_OPENING}")
+    assert f"BLOCKED: {HISTORY_REFUSED}: {DIRTY_TREE_OPENING} in scratch.txt" in out
+    assert err.startswith(f"Error: {HISTORY_REFUSED}: {DIRTY_TREE_OPENING}")
+
+
+def test_a_dirty_tree_no_longer_refuses_a_commit_and_the_dirt_survives(repo, monkeypatch, capsys):
+    """Amend1014b D6: --commit works from the working tree; only the job's file is committed."""
+    job = _completed(repo, monkeypatch)
+    (repo / "scratch.txt").write_text("wip\n")
+
+    main(["job", "apply", *_approve(job, repo, "--commit", "Add the page"), "--json"])
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["status"] == "applied" and data["commit_sha"]
+    assert (repo / "scratch.txt").read_text() == "wip\n"
+    assert "scratch.txt" in _git(repo, "status", "--porcelain")
+    assert "scratch.txt" not in _git(repo, "show", "--name-only", "--format=", "HEAD")
 
 
 # Every token the rule declares, read from the result an apply returns.
@@ -181,8 +195,8 @@ _CAUSES = [
     ("blocked_paths", {"blocked_reason": "no_files_to_apply",
                        "files_blocked": [".env: secret_file"]}),
     ("apply_failed", {"blocked_reason": "no_files_to_apply"}),
-    ("target_changed", {"blocked_reason": "baseline_check_failed: ['a.txt: target_changed_since_job']"}),
-    ("target_changed", {"blocked_reason": "baseline_check_before_apply_failed: ['a.txt']"}),
+    ("target_changed_during_run", {"blocked_reason": "baseline_check_failed: ['a.txt: target_changed_since_job']"}),
+    ("target_changed_during_run", {"blocked_reason": "baseline_check_before_apply_failed: ['a.txt']"}),
     ("target_dirty", {"blocked_reason": f"{COMMIT_REFUSED}: {DIRTY_TREE_OPENING} in a.txt; "
                                         f"commit or stash them and re-run."}),
     ("target_detached_head", {"blocked_reason": f"{HISTORY_REFUSED}: {DETACHED_HEAD_OPENING}; "
