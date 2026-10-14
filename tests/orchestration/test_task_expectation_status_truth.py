@@ -46,7 +46,7 @@ from packages.orchestration.run_manifest import (
 
 #: The exact allowed pairs. Anything not listed here must be refused.
 _ALLOWED = {
-    EXPECT_SKIPPED: {"skipped", "vetoed"},
+    EXPECT_SKIPPED: {"skipped", "vetoed", "split"},
     EXPECT_NOT_DISPATCHED: {"pending"},
     EXPECT_FAILED_PRE_DISPATCH: {"failed", "blocked"},
     EXPECT_EXECUTED: {"passed", "applied_to_job_workspace", "running", "pending",
@@ -83,7 +83,7 @@ class TestEveryPairFollowsOneClosedMatrix:
                              sorted(itertools.product(sorted(VALID_TASK_EXPECTATIONS),
                                                       sorted(VALID_TASK_STATUSES))))
     def test_the_exhaustive_matrix(self, expectation, status):
-        """All 42 pairs. Allowed ones pass; every other one is refused."""
+        """Every pair. Allowed ones pass; every other one is refused."""
         probs = validate_task_expectation_truth(_te(expectation, status))
         if status in _ALLOWED[expectation]:
             assert probs == [], f"{expectation} + {status} should be legal: {probs}"
@@ -231,4 +231,4 @@ class TestTheInputsThemselvesAreClosed:
 
         assert VALID_TASK_STATUSES == {PJ.TASK_PENDING, PJ.TASK_RUNNING, PJ.TASK_PASSED,
                                        PJ.TASK_APPLIED, PJ.TASK_BLOCKED, PJ.TASK_FAILED,
-                                       PJ.TASK_SKIPPED, PJ.TASK_VETOED}
+                                       PJ.TASK_SKIPPED, PJ.TASK_VETOED, PJ.TASK_SPLIT}
