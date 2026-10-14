@@ -1,145 +1,176 @@
-# Handback — F055 round 2 — book round 1 and R-1316, land T002 (the rehearsal's record and summary), repair R-1316
+# Handback — F055 round 3 — book round 2, resolve R-1316, register and repair R-1317, land T003
 
 ## Session
 
-SESSION 1 of feature F055 · round 2 · rounds so far 2
+SESSION 1 of feature F055 · round 3 · rounds so far 3
 
-Context self-assessment: C1 to C3 landed clean on the first attempt; gate 3's first run (after
-C3) came back red on a guard the block never named, `tests/test_ble001_ratchet.py`, over my own
-new excused handler; I stopped before C4 and reported it rather than routing around it, the
-coordinator sent amendment 1, and the fix plus its one-line golden update, applied as C4, left
-every gate green on the one further run gate 3 is allowed.
+Context self-assessment: C1 to C5 landed clean on the first attempt; gate 1's first run (before
+the amendment) came back red on two path-allowlist gaps and a source-contiguity check the
+original `verify.py` missed, I stopped before C6 and reported it rather than routing around it,
+the coordinator sent amendment 1, and after it widened the allowlist and fixed the check every
+gate came back green on the one run that counts.
 
-Fortschritt: ~60 % (T001 and T002 landed · T003 open) — Schätzung
+Fortschritt: ~80 % (T001 to T003 landed · the closure open) — Schätzung
 
 ## Range
 
-Review of `153c503d2`..`9ca5196d1` (then this commit).
+Review of `20630636b`..`93c397422` (then this commit).
 
 ## Commits
 
-### `b6e34d5ea` F055 R2 C1: book round 1 and R-1316, DECISION F055 D2
+### `47eb42d3e` F055 R3 C1: book round 2, resolve R-1316, register R-1317, DECISION F055 D3
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f055-r2.md` | +199/-0 | byte copy of `block.md` |
-| `.agent/decisions.md` | +12/-0 | byte copy of `dry-decisions.md` (DECISION F055 D2 appended) |
-| `.agent/live_review.md` | +4/-0 | byte copy of `dry-live_review.md` (F055 R1 booked, R-1316 registered) |
-| `.agent/plan.md` | +14/-8 | byte copy of `dry-plan.md` |
-| `.agent/prose_slips.md` | +2/-0 | byte copy of `dry-prose_slips.md` |
+| `.agent/authored/f055-r3.md` | +167/-0 | NEW: byte copy of `block.md` |
+| `.agent/decisions.md` | +12/-0 | byte copy of `dry-decisions.md` (DECISION F055 D3 appended) |
+| `.agent/live_review.md` | +6/-0 | byte copy of `dry-live_review.md` (round 2 booked, R-1316 resolved, R-1317 registered) |
+| `.agent/plan.md` | +6/-7 | byte copy of `dry-plan.md` |
+| `.agent/prose_slips.md` | +1/-0 | byte copy of `dry-prose_slips.md` |
 
-### `cdcf7e3ef` F055 R2 C2: a rehearsal writes its record and summary beside the job
+### `aa105b063` F055 R3 C2: the boundaries of _cmd_job_run and _cmd_status (structure page)
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/guides/do-run-v1.md` | +13/-0 | `src-guide.md` inserted before `## JSON output` |
-| `packages/orchestration/do_rehearsal.py` | +388/-6 | NEW: `build_job_rehearsal`, `render_rehearsal_summary`, `write_job_rehearsal`; `stop_walk_for_rehearsal` now writes each job's rehearsal before its Next lines |
+| `docs/system/structure-ledger-v1.md` | +14/-0 | `src-boundaries.md` inserted after the `_cmd_do` bullet |
 
-### `d5cb55bab` F055 R2 C3: the rehearsal's record, its golden summary, and the applicator counter's proof
+### `f1b4a0310` F055 R3 C3: remedy job run refuses a plan that is not approved (R-1317)
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/cli/test_rehearsal.py` | +38/-0 | scenarios (k) and (l), including R-1316's positive control |
-| `tests/orchestration/fixtures/rehearsal/golden/rehearsal.md` | +41/-0 | NEW: golden summary |
-| `tests/orchestration/test_do_rehearsal.py` | +242/-0 | NEW: scenarios (a) to (j) |
+| `apps/cli/commands/job_run_refusals.py` | +29/-0 | NEW: `refuse_unapproved_job_run` — exit 3, `plan_awaiting_approval` or `plan_rejected` |
+| `apps/cli/commands/do_cmd.py` | +6/-6 | `_cmd_job_run` calls the refusal after the cancelled-job refusal; line-neutral (205) via joining `_resolve_cli_role_configs`'s kwargs |
+| `apps/cli/command_catalog.py` | +1/-1 | `job.run` gains `exit_codes=(0, 1, 2, 3),` on the `may_execute_commands=True,` line |
+| `apps/cli/client_interface.py` | +2/-1 | **amendment 1**: `OPERATION_REFUSAL_TOKENS["job.run"]` gains `plan_awaiting_approval`, `plan_rejected` — required by `test_declared_tokens_equal_the_tokens_the_handler_reaches[job.run]` once the catalog declares exit 3 |
+| `docs/guides/exit-codes.md` | +1/-0 | **amendment 1**: `remedy job run` row added to the above-the-floor table — required by `test_guide_tables_equal_the_module_and_the_catalog` |
+| `docs/system/machine-client-contract-v1.md` | +2/-2 | regenerated via `write_client_interface_page()` |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1/-0 | `apps.cli.commands.job_run_refusals` added, alphabetically placed — `test_import_reachability.py` asked |
 
-### `9ca5196d1` F055 R2 C4: the head reader names its exceptions, and an unavailable whole-job estimate reads without a unit
+### `ff7f04e12` F055 R3 C4: a moved repository warns at the approval and the run, and status labels a waiting rehearsal
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f055-r2-amend1.md` | +26/-0 | byte copy of `amend1.md` (amendment 1) |
-| `packages/orchestration/do_rehearsal.py` | +3/-2 | `_rehearsal_repo_head` catches `(OSError, subprocess.SubprocessError)`, no `noqa`; the whole-job line carries no unit when unavailable |
-| `tests/orchestration/fixtures/rehearsal/golden/rehearsal.md` | +1/-1 | the whole-job line only |
-| `tests/orchestration/test_do_rehearsal.py` | +22/-0 | the priced whole-job USD-form test |
+| `packages/orchestration/do_rehearsal.py` | +27/-1 | NEW: `rehearsal_staleness_warning`, `job_waits_after_rehearsal`; module docstring gains DECISION F055 D3 |
+| `apps/cli/commands/decision.py` | +7/-1 | `_consume_plan_approval` prints the staleness warning (when any) to stderr before consuming the approval |
+| `apps/cli/commands/do_cmd.py` | +6/-6 | `_cmd_job_run` prints the warning directly after C3's refusal; line-neutral (205) via joining `resolve_job_budgets`'s and `run_job`'s kwargs |
+| `apps/cli/commands/status_cmd.py` | +6/-6 | each `by_state` job entry gains `"rehearsed"`; both text lines append `  (rehearsed)`; line-neutral (179) via joining the dict's keys |
+| `docs/guides/do-run-v1.md` | +12/-0 | `src-guide.md` inserted before `## JSON output` |
+| `apps/cli/client_interface.py` | +1/-1 | **amendment 1**: `ANSWER_KEY_TREES["status.run"]`'s per-job tree gains `"rehearsed": {}` — required by `test_a_real_runs_answers_return_only_keys_the_interface_names` |
+| `docs/system/machine-client-contract-v1.md` | +1/-1 | regenerated via `write_client_interface_page()` |
 
-### (this commit) F055 R2 C5: handback
+### `93c397422` F055 R3 C5: the rehearsal's real run, its warning, its label and the approval refusal, proved
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | this commit | — |
+| `tests/run_side_effect_counters.py` | +25/-0 | NEW: `count_planning_calls`, wrapping `intake.make_structured_call_fn`, `intake.make_provider_call_fn`, `job_plan.plan_job_llm`, `mission_compiler.plan_mission` in place |
+| `tests/cli/test_rehearsal.py` | +175/-0 | NEW: scenarios (m) to (q) — approve+run with no second planning call, `--force-mission` on two deliverables, the staleness warning (moved vs. unmoved), R-1317's two refusals, `remedy status`'s label appearing and disappearing |
+| `tests/orchestration/test_do_rehearsal.py` | +75/-0 | NEW: unit tests of `rehearsal_staleness_warning` (no record, no recorded head, equal heads, unreadable head, moved head) and `job_waits_after_rehearsal` |
+
+### (this commit) F055 R3 C6: handback
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | this commit | rewritten |
+| `.agent/authored/f055-r3-amend1.md` | +17/-0 | NEW: byte copy of `amend1.md` |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` (read-only, re-checked
-  before writing this handback, since the round ran long enough to be worth a fresh look): `[]` —
-  no open pull request.
-- No branch created this round: C0 found `feature/f055-rehearsal` already at `153c503d2`, matching
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` (read-only, checked
+  before writing this handback): `[]` — no open pull request.
+- No branch created this round: C0 found `feature/f055-rehearsal` already at `20630636b`, matching
   origin, clean, no `.agent/STOP`.
-- Push after C5 follows this commit: `git push -u origin feature/f055-rehearsal`; its outcome is
+- Push after C6 follows this commit: `git push -u origin feature/f055-rehearsal`; its outcome is
   reported in the session's final reply only — it does not exist yet when this file is written.
-- No worktree added or removed beyond the pre-existing `.remedy-wt/f055-r2-worker/` scratch
+- No worktree added or removed beyond the pre-existing `.remedy-wt/f055-r3-worker/` scratch
   directory the block named for copy/hash/measure scripts; nothing under it is tracked.
 - No `gh pr merge`, `gh pr edit`, `gh pr create`, no STATUS edit, no ledger rotation, no self-use
-  run, no provider call — none ordered by this block or its amendment. `tests/cli/test_rehearsal.py`
-  scenario (l) is the one real `--apply` run this round made, through the fake builder/reviewer
-  providers the fixture already wires, exactly as its sibling scenarios do.
+  run, no live provider call — none ordered by this block or its amendment. `tests/cli/test_rehearsal.py`
+  scenarios (m), (p) and (q) are the real `job run` invocations this round made, through the fake
+  builder/reviewer providers the fixture already wires, exactly as the round's other scenarios do.
 
 ## Verification
 
-**Block verified before anything else**: `block.md` 199 lines /
-`62e74df689f44ce7ab85080b8d7207dcee7e659c0438e0046082178469cd6c23` — matched. `verify.py`
-(original) `b295c9565970b461f5ae6cbeadbc57979c26a1e12db6a8b457c89de1b1d1f2ca`, `run_selection.py`
+**Block verified before anything else**: `block.md` 167 lines /
+`5ecd65e44b895ddf19374cff1cb577395f1edf660657aa2b2d565e4bf5473375` — matched. `verify.py`
+(original) `1337645ee58949a7c97ac7e2ac7db6e0a20c7f25487869bf2f2afbb7f7b2fd25`, `run_selection.py`
 `aca3c3bba1921d12b1d6d57e9d7b518daa64c3d0ec98428c70da8e09b770f389`, `selection.txt`
-`1efbc969c1043485b6afc1c9c4be6bd673fffdccb88c625ef59b25ff4dc2183f`, `src-guide.md`
-`3afec791b0272c6b581aeaa4a6348a567193ec77bba1a58bc24bbce0c5afd689`, `dry-live_review.md`
-`e4fab0470010a5b040bb811d17f9c6a4bf5324594347c9b6050bed671bfa0bbc`, `dry-prose_slips.md`
-`9e7f5425f6bee1072ff77b2168a18ec94beee40158f43130af7883e108fe2e63`, `dry-decisions.md`
-`a08efd1674e1f9d6e96bbc9412bec2b1d1fa7b507c1dec6182d45a6ee310305d`, `dry-plan.md`
-`2bb782617e5659b2415661917b09c6af1af11ec02986270cd7b73652f95f3b08` — all matched.
-**Amendment 1**, read after gate 3's first run: `amend1.md` 26 lines /
-`4d34335049a6a38eb9acc14dec064e6e1ddbc667473b1e55241339669fc16652` — matched. Replacement
-`verify.py` 110 lines / `9912622c1496bdc6854d7a2a9baf7a6c215a69f9edfe96a7c6db7ab2b00dbaaf` —
+`220772443e247923144ff8b8b1b6cbeed7a5e418acb9ca4913f8624ff1ad671e`, `src-boundaries.md`
+`ef246e8bf7d98fa8a2eddd9b26005e46e975c7a7d072b7381183738fc73fe7d6`, `src-guide.md`
+`826084dd6a09cb2aa365d1ce5faaeee4a29311d52eaaf98cf39fcda65ed80fcf`, `dry-live_review.md`
+`a86a03bb0b4b8d7fb0fdce4f5ba992d0c551f1a670f5be1a532ebf338331d832`, `dry-prose_slips.md`
+`4301beaf77e77216c673998a48bec489f3a88654dbc48629fe9104c90555b495`, `dry-decisions.md`
+`39201560ca657e8ca8211ba8147706d7f55cac0162ce2d4fa0ab86de7607e1fc`, `dry-plan.md`
+`1b7670f9c2f4028fd50994ef1a316db98819464fcbe6b8c3af43b9db0bccd8e1` — all matched.
+**Amendment 1**, read after gate 1's first (red) run: `amend1.md` 17 lines /
+`048396ca226a920f579c1ed704b30f6ff42c1b8619208dd5b8862d3afecea389` — matched. Replacement
+`verify.py` 113 lines / `091f47666b4a8d2adcb9e24ac883b62b17190dc9b8269f22f770b4728da879e4` —
 matched.
 
 **Gate 1** — `git status --porcelain` empty, then
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r2/prep/verify.py /home/decodeux/Repos/remedy`
-(the replaced `verify.py`, run after C4):
-```
-True b6e34d5ea has the single parent 153c503d2
-True b6e34d5ea subject begins 'F055 R2 C<n>:'
-True cdcf7e3ef has the single parent b6e34d5ea
-True cdcf7e3ef subject begins 'F055 R2 C<n>:'
-True d5cb55bab has the single parent cdcf7e3ef
-True d5cb55bab subject begins 'F055 R2 C<n>:'
-True 9ca5196d1 has the single parent d5cb55bab
-True 9ca5196d1 subject begins 'F055 R2 C<n>:'
-True the commit C1 exists
-True the commit C2 exists
-True the commit C3 exists
-True the commit C4 exists
-[... 5 C1-path-equality lines, 4 path-set checks, C2's guide + 13 needle checks + prefix-once
-check, and C4's amendment-copy, no-BLE001, exception-names, golden-unit and golden-single-line
-checks — all True ...]
-ALL True
-```
-(42 checks total, every one `True`.)
+`python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r3/prep/verify.py /home/decodeux/Repos/remedy`:
+- First run, after C5, with the ORIGINAL `verify.py`, before the amendment — RED:
+  ```
+  False C3 names its paths; missing [], unexpected ['apps/cli/client_interface.py', 'docs/guides/exit-codes.md']
+  False C4 names its paths; missing [], unexpected ['apps/cli/client_interface.py']
+  False the warning is authored
+  ALL False
+  ```
+  Every other line (33 of 36) read `True`. Root cause of the first two: declaring `job.run`'s
+  exit 3 in the catalog, which the block's own C3 step 3 explicitly orders, forces
+  `apps/cli/client_interface.py`'s `OPERATION_REFUSAL_TOKENS` and `docs/guides/exit-codes.md`'s
+  table into sync too (both asserted by name-tests the block's own bundle lists), and the
+  original `verify.py`'s `ALLOWED` sets for C3/C4 did not name either file. Root cause of the
+  third: C4's committed `rehearsal_staleness_warning` wrapped the warning sentence across three
+  adjacent string-literal lines (the rendered runtime string was correct and every unit test
+  passed), but the original `verify.py` read the source as one contiguous span. Per my standing
+  instructions I stopped before C6, pushed nothing, and reported the exact reading (reproduced
+  above) rather than routing around it. The coordinator's amendment 1 widened `ALLOWED["C3"]` and
+  `ALLOWED["C4"]` to include both files, and changed the warning check to read adjacent string
+  literals as one (`re.sub(r'"\s*\n\s*f?"', "", code)`), declaring C1 to C5 as committed and the
+  `do_rehearsal.py` wrapping unchanged.
+- Second run, after `git checkout -- packages/orchestration/do_rehearsal.py` (discarding my local,
+  now-unneeded reformatting) and with the replacement `verify.py` — the one amendment 1 counts —
+  GREEN:
+  ```
+  True 47eb42d3e has the single parent 20630636b
+  True 47eb42d3e subject begins 'F055 R3 C<n>:'
+  True aa105b063 has the single parent 47eb42d3e
+  True aa105b063 subject begins 'F055 R3 C<n>:'
+  True f1b4a0310 has the single parent aa105b063
+  True f1b4a0310 subject begins 'F055 R3 C<n>:'
+  True ff7f04e12 has the single parent f1b4a0310
+  True ff7f04e12 subject begins 'F055 R3 C<n>:'
+  True 93c397422 has the single parent ff7f04e12
+  True 93c397422 subject begins 'F055 R3 C<n>:'
+  [... 5 C1-path-equality lines, 5 path-set checks (C2 to C5), C2's page-insertion check, C3's
+  pending/rejected/no-BLE001 checks, C4's warning/no-BLE001/status-label/guide-insertion checks —
+  all True ...]
+  ALL True
+  ```
+  (36 checks total, every one `True`; the C6-amendment-copy check does not run yet — C6 did not
+  exist when this gate ran, exactly as the block's "once each, after C5 and before C6" orders.)
 
-**Gate 2** — `python3 -m ruff check` over the three files the block and the amendment name
-(`do_rehearsal.py`, `test_do_rehearsal.py`, `test_rehearsal.py`): `All checks passed!`, run once
-after C4.
+**Gate 2** — `python3 -m ruff check` over every Python file C3, C4 and C5 touched
+(`job_run_refusals.py`, `do_cmd.py`, `command_catalog.py`, `client_interface.py`,
+`do_rehearsal.py`, `decision.py`, `status_cmd.py`, `run_side_effect_counters.py`,
+`test_rehearsal.py`, `test_do_rehearsal.py`): `All checks passed!`, run once after C5.
 
-**Gate 3** — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r2/prep/run_selection.py
-/home/decodeux/Repos/remedy <output file>`, run TWICE this round, as amendment 1 orders and
-reports:
-- First run, after C3, before C4 — RED:
-  ```
-  FAILED tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises
-  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
-  SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in
-  SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-  79 paths
-  1 failed, 3507 passed, 3 skipped in 69.18s (0:01:29)
-  exit 1
-  ```
-  Decisive line: `AssertionError: 286 excused blind handlers, above the frozen 285: narrow the
-  new handler to the exceptions it expects instead of excusing it`
-  (`tests/test_ble001_ratchet.py:42`) — my own new `# noqa: BLE001` in `_rehearsal_repo_head`,
-  a guard the block never named. No `process(es) behind` line either run.
-- Second run, after C4 (the one amendment 1 counts) — GREEN:
-  ```
-  SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
-  SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in
-  SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
-  79 paths
-  3509 passed, 3 skipped in 56.42s
-  exit 0
-  ```
-  No FAILED or ERROR line, no line naming a process left behind.
+**Gate 3** — `python3 /home/decodeux/Repos/remedy/.remedy-wt/f055-r3/prep/run_selection.py
+/home/decodeux/Repos/remedy <output file>`, run ONCE, after C5 and the amendment:
+```
+SKIPPED [1] tests/regression/test_named_bugs.py:295: D3 quarantine (F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:312: D3 quarantine (F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:321: D3 quarantine (F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:385: D3 quarantine (F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:394: D3 quarantine (F252)
+SKIPPED [1] tests/regression/test_named_bugs.py:401: D3 quarantine (F252)
+SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:507: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_ux_quality.py:543: D3 quarantine (F252)
+SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in
+SKIPPED [1] tests/test_repair_context_reviewer_memory.py:257: UI source not found
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:441: D3 quarantine (F252)
+SKIPPED [1] tests/ui_contracts/test_graph_architecture.py:484: D3 quarantine (F252)
+124 paths
+5857 passed, 13 skipped in 73.93s (0:01:13)
+exit 0
+```
+No FAILED or ERROR line, no line naming a process left behind. Every SKIPPED is a pre-existing
+quarantine, none of them in a file this round touched.
 
 **Gate 4** — `python3 -m apps.cli.main integrity check --json`:
 ```
@@ -149,125 +180,112 @@ reports:
 **Gate 5** —
 `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
 ```
-['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313', 'R-1316']
+['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313', 'R-1317']
 ```
-40 ids: `R-1246`, then `R-1276` to `R-1313`, then `R-1316`, in order, as required.
+40 ids: `R-1246`, then `R-1276` to `R-1313`, then `R-1317`, in order, as required.
 
-**Gate 6** — the golden fixture `tests/orchestration/fixtures/rehearsal/golden/rehearsal.md`,
-printed in full:
+**Gate 6** — `git show --stat` for C3 and C4:
 ```
-# Rehearsal of job job-rehearsal-fixture
+f1b4a0310 F055 R3 C3: remedy job run refuses a plan that is not approved (R-1317)
+ apps/cli/client_interface.py                       |  3 ++-
+ apps/cli/command_catalog.py                        |  2 +-
+ apps/cli/commands/do_cmd.py                        | 12 ++++-----
+ apps/cli/commands/job_run_refusals.py              | 29 ++++++++++++++++++++++
+ docs/guides/exit-codes.md                          |  1 +
+ docs/system/machine-client-contract-v1.md          |  4 +--
+ tests/orchestration/import_reachability_allowlist.txt |  1 +
+ 7 files changed, 42 insertions(+), 10 deletions(-)
 
-Rehearsed at 2026-10-14T00:00:00+00:00 on /tmp/rehearsal-fixture at commit deadbeefcafef00dfacade0123456789abcdef0. No job was run, no builder or reviewer was built, nothing was applied, and nothing was written to the repository.
-
-## What planning cost
-
-2 planning call(s) recorded in the job's prompt trace (intake, task_plan): about 500 prompt tokens, estimated from 2000 prompt characters. The answers' tokens and the price of these calls are not recorded, so no cost in dollars is claimed. The study and the mission's own plan are not counted here.
-
-## What the run would cost
-
-| Task | Title | Plan band | Estimate in USD |
-|---|---|---|---|
-| T001 | Write the thing | M | 80.0000–80.0000 |
-| T002 | Polish it | none | not available |
-
-Whole job: not available. Basis: estimate_unavailable.
-
-## Risks
-
-- the fixture might drift
-
-Normalization:
-- merge T001, T002 → T001: too small to split
-
-## Definition of done
-
-| Check | Kind | Blocking | Source |
-|---|---|---|---|
-| tests-pass | custom_cmd | yes | compiled |
-| lint-clean | custom_cmd | no | standard |
-
-Not compiled: lint-clean.
-
-## What the run could write
-
-- would write `src/app.py`
-- would be blocked `.git/config`: denied:builtin:git directory
-
-## To run it for real
-
-- `remedy job run job-rehearsal-fixture`
+ff7f04e12 F055 R3 C4: a moved repository warns at the approval and the run, and status labels a waiting rehearsal
+ apps/cli/client_interface.py              |  2 +-
+ apps/cli/commands/decision.py             |  8 +++++++-
+ apps/cli/commands/do_cmd.py               | 12 ++++++------
+ apps/cli/commands/status_cmd.py           | 12 ++++++------
+ docs/guides/do-run-v1.md                  | 12 ++++++++++++
+ docs/system/machine-client-contract-v1.md |  2 +-
+ packages/orchestration/do_rehearsal.py    | 28 +++++++++++++++++++++++++++-
+ 7 files changed, 60 insertions(+), 16 deletions(-)
 ```
+Measures, read with the ratchet's own scoped measure at C5 (HEAD): `_cmd_job_run` 205,
+`_cmd_status` 179, `apps/cli/commands/do_cmd.py` 1024 — all three exact; `tests/test_structure_ratchet.py`
+(5 tests) green.
 
 ## Authored-text proofs
 
-`.agent/authored/f055-r2.md` against `block.md`: byte-identical, sha256
-`62e74df689f44ce7ab85080b8d7207dcee7e659c0438e0046082178469cd6c23`, confirmed twice — once by my
+`.agent/authored/f055-r3.md` against `block.md`: byte-identical, sha256
+`5ecd65e44b895ddf19374cff1cb577395f1edf660657aa2b2d565e4bf5473375`, confirmed twice — once by my
 own copy script and again independently by `verify.py`'s Gate 1 (`git show <C1>:<path>` compared
-to the prep file's bytes). `.agent/authored/f055-r2-amend1.md` against `amend1.md`: byte-identical,
-sha256 `4d34335049a6a38eb9acc14dec064e6e1ddbc667473b1e55241339669fc16652`, same double
-confirmation. The four `dry-*.md` copies applied in C1 (`live_review.md`, `prose_slips.md`,
+to the prep file's bytes). `.agent/authored/f055-r3-amend1.md` against `amend1.md`: byte-identical,
+sha256 `048396ca226a920f579c1ed704b30f6ff42c1b8619208dd5b8862d3afecea389`, confirmed by my own copy
+script at write time (the replacement `verify.py`'s own `C6`-amendment-copy check was not run as
+part of this round's "once each" gate pass, since C6 did not exist yet when gates ran — see Gate 1
+above). The four `dry-*.md` copies applied in C1 (`live_review.md`, `prose_slips.md`,
 `decisions.md`, `plan.md`) were each confirmed byte-equal by sha256 at copy time and again by
 Gate 1's per-path check. No other reviewer-authored text was applied this round.
 
 ## Deviations & assumptions
 
-1. **Gate 3 ran twice, not once**, by amendment 1's own order: its first run (after C3, before
-   C4) came back red on `tests/test_ble001_ratchet.py::test_the_count_of_excused_handlers_never_rises`
-   — a guard the block never named, tripped by my own `# noqa: BLE001` excuse in
-   `_rehearsal_repo_head`. Per my standing instructions I stopped before C4, pushed nothing, and
-   reported the exact reading. The coordinator's amendment 1 narrowed the handler's exception
-   tuple instead of excusing it, adjusted the whole-job line's unit to match, and declared this
-   the C4 that resolves the blocker; gate 3's second run, after that C4, is the one the amendment
-   counts, and is reported above as green. Both readings are kept in Verification, not just the
-   final one, per the amendment's own instruction.
-2. **The whole-job line's unit**, originally `Whole job: <low>–<high> USD, or "not available".`
-   as one phrase, is now two: a unit only when both bounds are measured
-   (`Whole job: <low>–<high> USD. Basis: ...`), and none when not
-   (`Whole job: not available. Basis: ...`) — amendment 1's own fix for a template gap the
-   original block left open; the golden file changed in that one line only, confirmed by gate 1's
-   `verify.py`.
+1. **Amendment 1** (`.agent/authored/f055-r3-amend1.md`), sent after gate 1's first run this
+   round (reproduced in Verification above): the original `verify.py`'s `ALLOWED` sets for C3 and
+   C4 did not name `apps/cli/client_interface.py` (either commit) or `docs/guides/exit-codes.md`
+   (C3), although the block's own C3 step 3 ordered the catalog change that forces both into sync;
+   and its warning check read the source as one line, where C4's committed code wrapped the
+   sentence across three string-literal lines. Both are named in the amendment as the reviewer's
+   slips, not mine. Per my standing instructions I stopped before C6 on the first (red) reading,
+   pushed nothing, and reported it precisely rather than routing around it. The amendment widened
+   `ALLOWED["C3"]` and `ALLOWED["C4"]`, changed the warning check to read adjacent string literals
+   as one, declared C1 to C5 as committed with no code change needed, and ordered: discard my
+   local (uncommitted, now-superseded) reformatting of the warning string, run gates 1 to 6 once
+   each including gate 3, then C6 and the push. All of that is done; gate 1's second (and only
+   counted) run is green, reproduced above.
+2. **`apps/cli/client_interface.py` and `docs/guides/exit-codes.md` touched in C3, and
+   `apps/cli/client_interface.py` touched again in C4** — beyond the block's originally named
+   paths for those commits, now accepted by amendment 1 (deviation 1 above) and bounded to exactly
+   what `tests/cli/test_exit_codes.py` and `tests/cli/test_client_interface.py` asked for: the new
+   refusal tokens, the new exit code, and the new `status.run` answer key.
 
-No other departure from the block's or the amendment's ordered sequence.
+No other departure from the block's or the amendment's ordered commit sequence.
 
 ## For the operator, in plain sentences
 
-This round booked the previous round's verdict and a test-coverage gap it found, then built the
-rehearsal's own record and readable summary: what the planning cost, what each task and the whole
-job would cost, the plan's risks and what was normalized, every check of the definition of done
-and which were not compiled, and which files a real run could write or would be blocked from,
-all written beside the job without running anything. A positive-control test now proves the
-applicator counter other tests rely on actually counts. One blocker came up mid-round: a frozen
-count of exception handlers that excuse themselves from a stricter lint rule, which a narrower
-exception list resolved along with a small wording gap in the summary's cost line the same fix
-exposed. All six checks the round requires came back clean on the run that counts. One round
-remains before this feature closes: reusing a rehearsed plan for a real run without planning
-twice.
+This round booked round 2's verdict, closed the finding it opened, and registered the new one
+this round repairs, then landed the real-run half of the rehearsal feature: running a rehearsed,
+approved job no longer plans it again; a job whose plan still waits for approval, or was turned
+down, is refused with the same words and exit code every other job command already uses; a
+repository that moved since a rehearsal warns at the approval and at the run, without stopping
+either; and the status overview marks a waiting rehearsed job, and stops marking it once it runs
+for real. One round came back from the reviewer with an amendment: the gate that checks a
+commit's files against the block's list was itself narrower than the round actually needed, over
+two small, necessary consequences of a change the block had already ordered, plus one gate check
+that misread a wrapped sentence as broken when it was not. Nothing about the feature's behaviour
+changed because of it. All six checks the round requires came back clean on the run that counts.
+The feature's three task slices are now all landed; what remains is the closure sequence.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP` — absent at this handoff.
 2. Rule 2, the Open PR Gate: no pull request is open for this branch yet.
-3. Book round 2's verdict in the next round's first commit.
-4. T003, under DECISION F055 D3.
+3. Book round 3's verdict in the next round's first commit.
+4. The closure sequence.
 
 Operator questions open: 0.
-Open findings: 40 (R-1316 owned by F055, R-1246 and R-1276 to R-1313 by F307).
+Open findings: 40 (R-1317 owned by F055, R-1246 and R-1276 to R-1313 by F307).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | preconditions held: HEAD and origin both `153c503d2`, clean, no STOP |
-| C1 | done | Gate 1 `ALL True`; 223 insertions |
-| C2 | done | all needles present; 395 insertions |
-| C3 | done | 10 + 2 new tests pass; 321 insertions |
-| C4 | done | amendment 1's fix; ratchet back to 285; golden's one-line change confirmed; 52 insertions |
-| C5 | done | this commit |
-| Gate 1 | done | `ALL True`, replaced `verify.py` |
+| C0 | done | preconditions held: HEAD and origin both `20630636b`, clean, no STOP |
+| C1 | done | Gate 1 all five path-equality checks `True`; 192 insertions |
+| C2 | done | the anchor was unique, C2's page equals C1's with the two boundaries inserted; 14 insertions |
+| C3 | done | R-1317's refusal authored and proven; 42 insertions (amendment 1 widened its allowed paths) |
+| C4 | done | the warning and the label landed; 60 insertions (amendment 1 widened its allowed paths and fixed the gate's own read of the warning) |
+| C5 | done | 17 passed in `test_rehearsal.py` (12 existing + 5 new), 17 passed in `test_do_rehearsal.py` (11 existing + 6 new); 275 insertions |
+| C6 | done | this commit |
+| Gate 1 | done | first run RED (two allowlist gaps, one contiguity misread — all three the gate's own, per amendment 1); second run, after the amendment, `ALL True` |
 | Gate 2 | done | `All checks passed!` |
-| Gate 3 | done | first run (after C3) RED — `test_the_count_of_excused_handlers_never_rises`, 286 excused handlers; second run (after C4, the counted one) GREEN — 3509 passed, 3 skipped, exit 0 |
+| Gate 3 | done | run once, after C5 and the amendment — 5857 passed, 13 skipped (pre-existing quarantines), exit 0 |
 | Gate 4 | done | `fail_count` 0 |
 | Gate 5 | done | 40 ids, in order |
-| Gate 6 | done | golden printed in full above |
-| R-1316 | done | `tests/cli/test_rehearsal.py` scenario (l): a real `--apply` run reads `apply_job` above zero on `count_applicator_calls` |
+| Gate 6 | done | `git show --stat` for C3/C4 and the three measures reported above |
+| R-1317 | done | `tests/cli/test_rehearsal.py` scenario (p): `job run` on a rehearsed job's pending then rejected plan exits 3 with `plan_awaiting_approval` then `plan_rejected`, under `--json`, the job staying `planned` with no provider built |
