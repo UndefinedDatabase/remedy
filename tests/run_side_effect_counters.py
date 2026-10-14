@@ -53,6 +53,31 @@ def count_applicator_calls(monkeypatch) -> collections.Counter:
     return counts
 
 
+def count_planning_calls(monkeypatch) -> collections.Counter:
+    """Count every planning call a walk makes, keyed by name: the two call_fn factories
+    (`make_structured_call_fn`, `make_provider_call_fn`) and the two planners they feed
+    (`plan_job_llm`, `plan_mission`) — every caller looks each one up fresh at call time,
+    so wrapping the module attribute in place reaches every caller (F055 D3 (5))."""
+    from packages.orchestration import intake, job_plan, mission_compiler
+
+    counts: collections.Counter = collections.Counter()
+
+    def _wrap(module: object, name: str) -> None:
+        original = getattr(module, name)
+
+        def counting(*args, **kwargs):
+            counts[name] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(module, name, counting)
+
+    _wrap(intake, "make_structured_call_fn")
+    _wrap(intake, "make_provider_call_fn")
+    _wrap(job_plan, "plan_job_llm")
+    _wrap(mission_compiler, "plan_mission")
+    return counts
+
+
 def count_worktree_creations(monkeypatch) -> list[str]:
     """Record each `worktrees.create`'s job id, in call order."""
     from packages.orchestration import worktrees

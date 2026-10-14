@@ -18,6 +18,7 @@ import pytest
 from apps.cli.grouped import main
 from tests.run_side_effect_counters import (
     count_applicator_calls,
+    count_planning_calls,
     count_role_provider_builds,
     count_worktree_creations,
     snapshot_repository_state,
@@ -79,6 +80,21 @@ def _do_json(capsys, *extra: str, order: str = ORDER) -> dict:
 
 def _step(data: dict, name: str) -> dict:
     return next(s for s in data["steps"] if s["name"] == name)
+
+
+def _plan_with_mocked_llm(monkeypatch) -> None:
+    """Route the shape step's planning through the (mocked) LLM task-plan branch, as scenario
+    (c) does, so a rehearsed job's task plan waits for a person's approval (DECISION F055 D3)."""
+    from packages.orchestration import do_sequence
+    from tests.cli.test_plan_approval import _setup_llm_mocks
+
+    real_plan_order_job = do_sequence.plan_order_job
+
+    def planned_on_the_llm_branch(order, **kwargs):
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        return real_plan_order_job(order, **{**kwargs, "no_llm": False})
+
+    monkeypatch.setattr(do_sequence, "plan_order_job", planned_on_the_llm_branch)
 
 
 # ── (a) a rehearsal moves nothing ────────────────────────────────────────────
@@ -263,3 +279,162 @@ def test_a_real_apply_run_moves_the_applicator_counter(repo, capsys, monkeypatch
     _do_json(capsys, "--apply")
 
     assert applicator_calls["apply_job"] > 0
+
+
+# ── (m) rehearse, approve, run: no second planning call (R-1317, DECISION F055 D3) ──
+
+
+def test_approve_then_run_a_rehearsed_job_completes_with_no_further_planning_call(
+        repo, capsys, monkeypatch):
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    _plan_with_mocked_llm(monkeypatch)
+
+    data = _do_json(capsys, "--rehearse", "--force-job", order="Write m.md")
+    [job_id] = data["job_ids"]
+    assert load_job_plan(job_id).task_plan["_approval"] == "pending"
+
+    planning_calls = count_planning_calls(monkeypatch)
+
+    main(["decision", "resolve", job_id, "plan:approval", "--reason", "approve"])
+    capsys.readouterr()
+    main(["job", "run", job_id, *FAKE_ROLES, "--json"])
+    capsys.readouterr()
+
+    assert load_job_plan(job_id).state == JOB_COMPLETED
+    assert not planning_calls
+
+
+# ── (n) --rehearse --force-mission on two deliverables: two jobs, neither run ──
+
+
+def test_rehearse_force_mission_on_two_deliverables_yields_two_planned_jobs(
+        repo, capsys, monkeypatch):
+    from packages.core.models import RunState
+    from packages.orchestration.data_paths import job_evidence_dir
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    role_builds = count_role_provider_builds(monkeypatch)
+    applicator_calls = count_applicator_calls(monkeypatch)
+    worktrees_created = count_worktree_creations(monkeypatch)
+    before = snapshot_repository_state(repo)
+
+    data = _do_json(capsys, "--rehearse", "--force-mission",
+                    order="Write docs/alpha.md and docs/beta.md")
+
+    after = snapshot_repository_state(repo)
+    assert (data["shape"], data["shape_source"]) == ("milestones", "--force-mission")
+    job_ids = data["job_ids"]
+    assert len(job_ids) == 2
+    jobs = [load_job_plan(j) for j in job_ids]
+    assert [job.state for job in jobs] == [RunState.PLANNED, RunState.PLANNED]
+    for job_id in job_ids:
+        evidence_dir = job_evidence_dir(job_id)
+        assert (evidence_dir / "rehearsal.json").is_file()
+        assert (evidence_dir / "rehearsal.md").is_file()
+    assert not role_builds
+    assert not applicator_calls
+    assert not worktrees_created
+    assert after == before
+
+
+# ── (o) a moved repository warns at approval and at run; an unmoved one does not ──
+
+
+def test_a_moved_repository_warns_at_approval_and_run_an_unmoved_one_does_not(
+        repo, capsys, monkeypatch):
+    _plan_with_mocked_llm(monkeypatch)
+
+    # Job A: rehearsed, then the repository moves — both the approval and the run warn.
+    data_a = _do_json(capsys, "--rehearse", "--force-job", order="Write oa.md")
+    [job_a] = data_a["job_ids"]
+    (repo / "extra.txt").write_text("more\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "moved")
+
+    main(["decision", "resolve", job_a, "plan:approval", "--reason", "approve"])
+    assert "the plan may be stale" in capsys.readouterr().err
+
+    main(["job", "run", job_a, *FAKE_ROLES, "--json"])
+    assert "the plan may be stale" in capsys.readouterr().err
+
+    # Job B: rehearsed AFTER the move, with no further commit — neither warns.
+    data_b = _do_json(capsys, "--rehearse", "--force-job", order="Write ob.md")
+    [job_b] = data_b["job_ids"]
+
+    main(["decision", "resolve", job_b, "plan:approval", "--reason", "approve"])
+    assert "the plan may be stale" not in capsys.readouterr().err
+
+    main(["job", "run", job_b, *FAKE_ROLES, "--json"])
+    assert "the plan may be stale" not in capsys.readouterr().err
+
+
+# ── (p) R-1317: job run refuses a rehearsed job whose plan is not approved ──────
+
+
+def test_job_run_refuses_a_rehearsed_jobs_plan_pending_then_rejected(
+        repo, capsys, monkeypatch):
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    _plan_with_mocked_llm(monkeypatch)
+    role_builds = count_role_provider_builds(monkeypatch)
+
+    data = _do_json(capsys, "--rehearse", "--force-job", order="Write p.md")
+    [job_id] = data["job_ids"]
+
+    with pytest.raises(SystemExit) as exc:
+        main(["job", "run", job_id, *FAKE_ROLES, "--json"])
+    assert exc.value.code == 3
+    out = json.loads(capsys.readouterr().out)
+    assert out["ok"] is False
+    assert out["error"] == "plan_awaiting_approval"
+    assert load_job_plan(job_id).state == RunState.PLANNED
+    assert not role_builds
+
+    main(["decision", "resolve", job_id, "plan:approval", "--reason", "reject"])
+    capsys.readouterr()
+
+    with pytest.raises(SystemExit) as exc2:
+        main(["job", "run", job_id, *FAKE_ROLES, "--json"])
+    assert exc2.value.code == 3
+    out2 = json.loads(capsys.readouterr().out)
+    assert out2["ok"] is False
+    assert out2["error"] == "plan_rejected"
+    assert load_job_plan(job_id).state == RunState.PLANNED
+    assert not role_builds
+
+
+# ── (q) remedy status labels a waiting rehearsed job, and drops it once it runs ──
+
+
+def test_status_labels_a_waiting_rehearsed_job_and_drops_the_label_once_it_runs(
+        repo, capsys, monkeypatch):
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    _plan_with_mocked_llm(monkeypatch)
+
+    data = _do_json(capsys, "--rehearse", "--force-job", order="Write q.md")
+    [job_id] = data["job_ids"]
+
+    main(["status", "--json"])
+    before = json.loads(capsys.readouterr().out)
+    entry = next(e for e in before["jobs"]["planned"] if e["job_id"] == job_id)
+    assert entry["rehearsed"] is True
+
+    main(["status"])
+    text = capsys.readouterr().out
+    short = job_id[:8]
+    line = next(l for l in text.splitlines() if short in l)
+    assert line.rstrip().endswith("(rehearsed)")
+
+    main(["decision", "resolve", job_id, "plan:approval", "--reason", "approve"])
+    capsys.readouterr()
+    main(["job", "run", job_id, *FAKE_ROLES, "--json"])
+    capsys.readouterr()
+    assert load_job_plan(job_id).state == JOB_COMPLETED
+
+    main(["status", "--json"])
+    after = json.loads(capsys.readouterr().out)
+    entry2 = next(e for e in after["jobs"]["completed"] if e["job_id"] == job_id)
+    assert entry2["rehearsed"] is False
