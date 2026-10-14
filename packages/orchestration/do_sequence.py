@@ -99,7 +99,7 @@ from packages.orchestration.do_context import (
 )
 from packages.orchestration.do_lane import settle_do_lane
 from packages.orchestration.do_plan_confirm import approve_confirmed_plan
-from packages.orchestration.do_progress import do_step_describer, do_step_intro
+from packages.orchestration.do_progress import do_step_intro
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
     _shape_job_orders,
@@ -150,7 +150,7 @@ def _announced_step(ctx: DoContext, name: str, step: DoStep) -> tuple[str, str]:
     if ctx.progress is None:
         return step(ctx)
     intro = do_step_intro(name, ctx)
-    with ctx.progress.step(name, intro, do_step_describer(name, ctx, intro)) as end:
+    with ctx.progress.step(name, intro) as end:
         status, detail = step(ctx)
         end(status, detail)
     return status, detail
