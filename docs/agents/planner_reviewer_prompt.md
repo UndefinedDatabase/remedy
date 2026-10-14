@@ -677,6 +677,21 @@ end the response with:
   reading of the guards that bind the file the order changes, here the equality guard that pins a
   closed set the order widens. It was repaired inside its round, and nothing pushed was wrong. The
   list stays at 34 items.
+  Consolidated again at F055's closure on 2026-10-14: nothing joined and no two items were merged,
+  because none of F055's lines in `.agent/prose_slips.md` names a lesson the list lacks. A block
+  that added a flag without naming the page the client-interface test regenerates from the
+  catalog, a block that ordered a reader of git without naming the exceptions its handler may
+  catch while a ratchet freezes the excused ones, and a reviewer's check that allowed fewer
+  paths than the tests the block named require, are item 34's reading of the guards that bind
+  the file the order changes; Next lines worded so that one walk or two read the same, a figure
+  whose unit the template left open, and a check that read a wrapped string as one line are item
+  18's reading of an ordered recipe against the property it must establish; and a worker that
+  drafted an edit before its branch existed is a slip in following a block, which no item about
+  a block's text can prevent. Its findings were each repaired inside the feature: R-1316 and
+  R-1318, counters a guarantee reads at zero that no test had seen move, are item 18's reading
+  of an ordered list of tests against the property it must establish, and R-1317 was a defect
+  of the product the reviewer found while reading the path a rehearsed plan runs on. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
