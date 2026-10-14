@@ -10,8 +10,17 @@ class TestBuilderProviderParse:
 
     def test_the_four_providers_and_omission_are_accepted(self):
         from apps.cli.commands.do_cmd import _validate_role_override
-        for name in ("fake", "claude", "claude-cli", "ollama", None):
+        for name in ("fake", "claude", "claude-cli", "pi", None):
             _validate_role_override("builder", "provider", name)
+
+    def test_a_raw_ollama_builder_is_refused_before_any_call(self):
+        """Amend1014b D1: Ollama alone returns text and cannot write; the message names pi."""
+        from apps.cli.commands.do_cmd import _validate_role_override
+        for role in ("builder", "repair"):
+            with pytest.raises(SystemExit) as exc:
+                _validate_role_override(role, "provider", "ollama")
+            assert exc.value.code == 2
+        _validate_role_override("reviewer", "provider", "ollama")
 
     def test_the_retired_values_exit_2(self):
         from apps.cli.commands.do_cmd import _validate_role_override
