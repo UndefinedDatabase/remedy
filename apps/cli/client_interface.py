@@ -520,7 +520,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         },
     },
     "status.run": {
-        "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}}},
+        "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}, "rehearsed": {}}},
         "client": DIGEST_KEY_TREE,
     },
     "job.run": JOB_REPORT_KEY_TREES,

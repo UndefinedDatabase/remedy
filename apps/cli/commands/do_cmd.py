@@ -599,10 +599,8 @@ def _cmd_job_run(
         from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
         try:
             budgets = resolve_job_budgets(
-                cli_max_total_tokens=max_total_tokens,
-                cli_max_provider_calls=max_provider_calls,
-                cli_max_wall_clock_minutes=max_wall_clock_minutes,
-                cli_max_cost_usd=max_cost_usd,
+                cli_max_total_tokens=max_total_tokens, cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes, cli_max_cost_usd=max_cost_usd,
                 cli_deadline=deadline,
             )
         except (BudgetConfigError, ValueError) as exc:
@@ -635,6 +633,9 @@ def _cmd_job_run(
     if _recorded is not None:
         from apps.cli.commands.job_run_refusals import refuse_unapproved_job_run
         refuse_unapproved_job_run(_recorded, job_id, json_output=json_output)
+        from packages.orchestration.do_rehearsal import rehearsal_staleness_warning
+        if (warning := rehearsal_staleness_warning(_recorded)):
+            print(warning, file=sys.stderr)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other
@@ -658,8 +659,7 @@ def _cmd_job_run(
 
     job = run_job(
         job_id,
-        builder_name=builder_provider,
-        reviewer_name=reviewer_provider,
+        builder_name=builder_provider, reviewer_name=reviewer_provider,
         builder_model=builder_model,
         builder_effort=builder_effort,
         reviewer_model=reviewer_model,

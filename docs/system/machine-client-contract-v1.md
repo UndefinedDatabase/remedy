@@ -410,7 +410,7 @@ Keys under the answer keys: see below.
     - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
 - `jobs`: `*`
-  - `*`: `job_id`, `name`, `short_id`, `state`
+  - `*`: `job_id`, `name`, `rehearsed`, `short_id`, `state`
 
 #### `remedy decision resolve`
 

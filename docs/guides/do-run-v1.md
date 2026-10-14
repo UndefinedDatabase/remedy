@@ -71,6 +71,18 @@ files of the plan the run could write and which the fences would block, or
 that the plan declared no scope. The job keeps the repository's commit at
 the rehearsal (DECISION F055 D2).
 
+### Running a rehearsed plan for real
+
+A rehearsed job is an ordinary planned job. To run it, answer its approval
+with `remedy decision resolve <job_id> plan:approval --reason approve` and
+then run `remedy job run <job_id>`; neither plans the job again. When the
+repository's commit has moved since the rehearsal, both commands print a
+warning that the plan may be stale and go on; the person decides. `remedy job
+run` refuses a job whose plan of tasks still waits for approval
+(`plan_awaiting_approval`, exit 3) or was rejected (`plan_rejected`, exit 3).
+While a rehearsed job waits, `remedy status` shows `(rehearsed)` after its
+name (DECISION F055 D3).
+
 ## JSON output
 
 `--json` prints one object with these keys:

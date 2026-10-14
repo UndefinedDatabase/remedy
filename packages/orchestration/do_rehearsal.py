@@ -1,7 +1,8 @@
 """F055 — a rehearsal's stop: `remedy do`'s `--rehearse` flag plans an order and halts at the
 same boundary `--plan-only` halts at, naming the approval each waiting job still needs and the
 run that would follow it, without running any job (DECISION F055 D1); the rehearsal's own
-record and readable summary, written beside each job it walks (DECISION F055 D2).
+record and readable summary, written beside each job it walks (DECISION F055 D2); the staleness
+warning a moved repository earns and the label a waiting rehearsed job carries (DECISION F055 D3).
 """
 
 from __future__ import annotations
@@ -329,6 +330,31 @@ def _rehearsal_repo_head(repo_path: str) -> str:
     except (OSError, subprocess.SubprocessError):
         return ""
     return proc.stdout.strip()
+
+
+# WHY: a plan rehearsed against yesterday's repository may no longer match it — this names the
+# risk, once, at the two places a stale plan could run, and never refuses: the person decides.
+def rehearsal_staleness_warning(job: Any) -> str | None:
+    """One sentence when the target's HEAD moved since the job's rehearsal, else `None`."""
+    rehearsal = job.metadata.get("rehearsal")
+    rehearsed = rehearsal.get("repo_head", "") if isinstance(rehearsal, dict) else ""
+    if not rehearsed:
+        return None
+    now = _rehearsal_repo_head(job.repo_path)
+    if not now or now == rehearsed:
+        return None
+    return (f"Warning: job {job.job_id} was rehearsed at commit {rehearsed[:12]}, and its "
+            f"repository is now at commit {now[:12]}; the plan may be stale, so check it "
+            f"before you run it.")
+
+
+# WHY: `remedy status` labels a job that still waits on the approval a rehearsal left open, so an
+# operator can tell a rehearsed plan from an ordinary one before answering its decision.
+def job_waits_after_rehearsal(job: Any) -> bool:
+    """True for a `planned` job whose metadata holds a rehearsal record."""
+    from packages.core.models import RunState
+
+    return job.state == RunState.PLANNED and "rehearsal" in job.metadata
 
 
 def _read_trace_entries(path: Path) -> list[dict]:

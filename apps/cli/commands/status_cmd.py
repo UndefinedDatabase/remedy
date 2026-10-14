@@ -58,14 +58,14 @@ def _cmd_status(
 
     jobs, degraded, skipped_files = scoped_jobs(scope)
 
+    from packages.orchestration.do_rehearsal import job_waits_after_rehearsal
     by_state: dict[str, list[dict]] = defaultdict(list)
     for j in jobs:
         state = j.state.value
         by_state[state].append({
-            "job_id": str(j.job_id),
-            "short_id": str(j.job_id)[:8],
-            "name": j.job_title,
-            "state": state,
+            "job_id": str(j.job_id), "short_id": str(j.job_id)[:8],
+            "name": j.job_title, "state": state,
+            "rehearsed": job_waits_after_rehearsal(j),
         })
 
     decisions_open = 0
@@ -168,14 +168,14 @@ def _cmd_status(
             if group:
                 print(f"  {s} ({len(group)}):")
                 for entry in group:
-                    print(f"    {entry['short_id']}  {entry['name']}")
+                    print(f"    {entry['short_id']}  {entry['name']}{'  (rehearsed)' if entry['rehearsed'] else ''}")
                 printed = True
         for s in sorted(by_state.keys()):
             if s not in state_order:
                 group = by_state[s]
                 print(f"  {s} ({len(group)}):")
                 for entry in group:
-                    print(f"    {entry['short_id']}  {entry['name']}")
+                    print(f"    {entry['short_id']}  {entry['name']}{'  (rehearsed)' if entry['rehearsed'] else ''}")
                 printed = True
         if not printed:
             print("  No jobs.")
