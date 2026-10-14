@@ -17,6 +17,10 @@ Declared content change (operator amendment amend1011-order-shape, 2026-10-11):
 the rules gained one bullet naming the inspection verbs the deliverable
 validator rejects; the constant below carries it.
 
+Declared content change (operator amendment amend1014-do-golden-path-now D2, 2026-10-14): that
+bullet names seven more inspection verbs (verify, confirm, locate, find, identify, assess, audit)
+and says one file is one task; the constant below carries it.
+
 It must NEVER be edited to make a failing test pass. An intentional change to
 the prompt's CONTENT is precisely the event this file exists to fail on: if a
 future change is meant to alter the words, that change updates this constant in
@@ -55,8 +59,10 @@ and token band estimates.
 - Every task produces a deliverable: a file changed or created, a test, a
   check. Never make reading, analysing or exploring a task of its own: a task
   whose title begins with analyze, analyse, inspect, review, read, explore,
-  investigate, examine, study, understand, survey or research is rejected.
-  Put that reading inside the task that produces something.
+  investigate, examine, study, understand, survey, research, verify, confirm,
+  locate, find, identify, assess or audit is rejected. Put that reading inside
+  the task that produces something, and give one file one task: reading it,
+  drafting the change and making it are the steps of that one task.
 - RESOLVE the intake's clarifications into plan choices wherever the
   intake, the repo facts, or ordinary engineering judgement settle them.
   Record each one you resolved in clarifications_resolved with your
