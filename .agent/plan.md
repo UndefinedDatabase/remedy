@@ -6,10 +6,11 @@ Remedy's own change, while an edit of the task list from outside is still refuse
 (docs/roadmap/features/T2_F308.md; DECISIONs F308 D1 and D2).
 
 ## Current Step
-Session 1, round 3 on `feature/f308-run-manifest-task-split`: round 2 booked with R-1314 and
-R-1315 registered; both repaired in `packages/orchestration/run_task_list.py` with their tests;
-the run manifest's design document gains its section on the split.
+Session 1, round 4 on `feature/f308-run-manifest-task-split`, the closure's first round: round 3
+booked, the checklist's consolidation pass, the closure's self-use item run to its approval gate,
+and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure sequence: the one full suite, the self-use run, the evidence, the Built State,
-   the resolutions of R-1252, R-1314 and R-1315, and the pull request.
+1. The evidence bundle and the review package, or a repair round naming every bad node id.
+2. The closing round: the Built State, the resolutions of R-1252, R-1314 and R-1315, the ledger
+   rotation, the STATUS line with the README, and the pull request.
