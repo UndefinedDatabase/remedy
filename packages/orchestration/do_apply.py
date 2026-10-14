@@ -133,6 +133,12 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
         ctx.landed.append({"job_id": job_id, "sha": result.commit_sha,
                            "branch": result.target_branch, "repo": repo})
         said += f" and landed {result.commit_sha[:12]} on {result.target_branch}"
+    # Amend1014b D6: say what the file held and what was left alone, never a bare "applied".
+    if result.baseline_files_applied:
+        said += (f"; {', '.join(result.baseline_files_applied)} already held your uncommitted edits, "
+                 f"so the {'commit' if result.commit_sha else 'file'} contains them too")
+    if result.preserved_dirty_paths:
+        said += f"; left uncommitted and untouched: {', '.join(result.preserved_dirty_paths)}"
     ctx.applied[job_id] = said
     return ""
 

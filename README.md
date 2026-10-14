@@ -16,7 +16,10 @@ flowchart TD
 ```
 
 **Local-first.** Everything runs on your machine. Providers (Claude CLI, Ollama) are
-optional plug-ins behind interfaces; the core has no cloud dependency.
+optional plug-ins behind interfaces; the core has no cloud dependency. The default local
+execution chain is the Pi harness (the `pi` command) driving Ollama with `muse-glimmer:latest`:
+install Pi and run `ollama pull muse-glimmer:latest`, then `remedy doctor health` checks the
+chain without running an agent.
 
 **Human approval.** No automatic commit, push, merge or apply. Ever. The final
 gate (`commit_execution_gate`) is `NEEDS_HUMAN_APPROVAL` by design.
