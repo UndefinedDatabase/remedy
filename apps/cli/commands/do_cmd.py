@@ -1,7 +1,7 @@
 """CLI handler for ``remedy do "<order>"``: plan and run an order through the F268 sequence.
 
 Every `remedy do`, with or without the word `run`, walks
-`packages/orchestration/do_sequence.py` — init, study, plan, shape, run, ui,
+`packages/orchestration/do_sequence.py` — init, study, plan, shape, ui, run,
 apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
 The module also holds the `job.run`, `job.apply`, `job.decline` and
 `job.evidence` handlers; the `run.show` and `run.list` handlers live in
@@ -241,38 +241,28 @@ def _cmd_do_order(
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
-    init, study, plan, shape, run, ui and apply, in that order, through
-    `packages.orchestration.do_sequence`; the walk stops before apply unless
-    `--apply`, and the ui step opens the cockpit detached through
-    `launch_do_cockpit` unless `--no-ui` (DECISION F268 D9).
-    `--force-job` / `--force-mission` override the planner's shape and exit 2
-    together (DECISION F268 D5). `--step-by-step` halts between steps and
-    reads each answer with `input`; `--plan-only` ends the walk after
-    shape (DECISION F268 D8). `--json` carries the mission's `contract` body,
-    or null when it has none (DECISION F269 D4 (6)), and
-    `unmet_blocking_criteria`, its blocking criteria not met after the walk in
-    contract order; the text output prints one `Contract:` line counting the
-    met criteria and naming each of those with its status (D6 (4)), `shape` /
-    `shape_source`, `mission_plan_path`
-    and `jobs`, every job's tasks with their deliverables. In a walk of two or
-    more jobs only the first runs and `waiting_job_ids` names the rest
-    (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
-    `do` ends with the measured tokens per role and cost read back from it,
-    under `cost` in `--json` (DECISION F268 D11). `--project` selects the
-    project the init step uses; the budget flags are resolved before the first
-    step and reach the run, as do `--builder-model` and `--reviewer-model`,
-    which every `remedy job run` Next line carries too; `--planner-model`
-    reaches every structured planner call (DECISION F268 D16 (4) to (7)), and
-    `--planner-provider` names which SERVICE makes those calls — `ollama` or
-    `claude-cli`, checked by `_cmd_do` before any step (operator amendment
-    amend0920-selfuse-real, DECISION D1).
-    `contract` is the template `--contract` forces, already checked by
-    `_cmd_do`; ``None`` lets the plan step apply the one proposed from the
-    order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
-    ``commit_with_history`` are the commit flag, already checked by `_cmd_do`,
-    and ``push_source`` says why the mission is pushed once, or "" (DECISION
-    F270 D4); `--json` carries `landed`, each commit the walk landed with its
-    job, and `push`, the mission's one push or null (D4 (7)).
+    init, study, plan, shape, ui, run and apply, in that order, through
+    `packages.orchestration.do_sequence`; the walk stops before apply unless `--apply`, and the
+    ui step opens the cockpit detached through `launch_do_cockpit` before the run unless `--no-ui`
+    (DECISION F268 D9, operator amendment amend1014-do-golden-path-now D5). Unless `--json`, the walk
+    says what it is doing on stderr as it goes (D4). `--force-job` / `--force-mission` override the
+    planner's shape and exit 2 together (DECISION F268 D5). `--step-by-step` halts between steps
+    and reads each answer with `input`; `--plan-only` ends the walk after shape (D8). `--json`
+    carries the mission's `contract` body, or null (DECISION F269 D4 (6)), and
+    `unmet_blocking_criteria`; the text output prints one `Contract:` line (D6 (4)), `shape` /
+    `shape_source`, `mission_plan_path` and `jobs`, every job's tasks with their deliverables. In a
+    walk of two or more jobs only the first runs and `waiting_job_ids` names the rest (DECISION
+    F268 D12). Every job run is mirrored into the F103 ledger, and `do` ends with the measured
+    tokens per role and cost read back from it, under `cost` in `--json` (D11). `--project`
+    selects the project the init step uses; the budget flags are resolved before the first step
+    and reach the run, as do `--builder-model` and `--reviewer-model`; `--planner-model` reaches
+    every structured planner call (D16 (4) to (7)), and `--planner-provider` names which SERVICE
+    makes those calls (amend0920-selfuse-real, DECISION D1). `contract` is the template
+    `--contract` forces, already checked by `_cmd_do`; ``None`` lets the plan step apply the one
+    proposed from the order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
+    ``commit_with_history`` are the commit flag, already checked by `_cmd_do`, and
+    ``push_source`` says why the mission is pushed once, or "" (DECISION F270 D4); `--json`
+    carries `landed` and `push` (D4 (7)).
     """
     if not order or not order.strip():
         fail("invalid_argument", "order must not be empty.",
@@ -311,6 +301,7 @@ def _cmd_do_order(
 
     from packages.orchestration.do_cockpit import launch_do_cockpit
     from packages.orchestration.do_plan_confirm import interactive_plan_confirmer
+    from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
         do_contract_summary_line,
@@ -350,6 +341,7 @@ def _cmd_do_order(
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
+        progress=None if json_output else DoProgress(),
         confirm_plan=None if json_output else interactive_plan_confirmer(),
     ))
     jobs = do_job_task_listing(ctx)

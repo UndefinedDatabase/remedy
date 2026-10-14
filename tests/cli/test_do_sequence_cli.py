@@ -200,7 +200,7 @@ def test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply(repo, ca
     # DECISION F269 D4 (6): the mission's contract body, as its record holds it.
     assert data["contract"] == _recorded_contract(repo, data)
     assert [s["name"] for s in data["steps"]] == [
-        "init", "study", "plan", "shape", "run", "ui", "apply"]
+        "init", "study", "plan", "shape", "ui", "run", "apply"]
     assert _step(data, "apply")["status"] == "stopped"
 
 
@@ -311,7 +311,7 @@ def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_
 # ── T003: --step-by-step and --plan-only (DECISION F268 D8) ─────────────────
 
 PLAIN_RUN_STEPS = [("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-                   ("run", "done"), ("ui", "skipped"), ("apply", "stopped")]
+                   ("ui", "skipped"), ("run", "done"), ("apply", "stopped")]
 
 
 def _answer_every_halt(monkeypatch, answer):
@@ -396,8 +396,8 @@ def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]] == [
         ("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-        ("run", "stopped")]
-    assert _step(data, "run")["detail"].startswith("not run: stopped by 'q'")
+        ("ui", "stopped")]
+    assert _step(data, "ui")["detail"].startswith("not run: stopped by 'q'")
     assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
     requests = [stop_requested(j) for j in job_ids]
     assert all(r is not None and r.source == "do" for r in requests), requests
@@ -435,7 +435,7 @@ def test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to
     job_ids = data["job_ids"]
     if after_shape:
         assert steps == [("init", "done"), ("study", "done"), ("plan", "done"),
-                         ("shape", "done"), ("run", "stopped")]
+                         ("shape", "done"), ("ui", "stopped")]
         assert len(halts) == 4
         assert len(job_ids) >= 2
     else:
@@ -524,8 +524,8 @@ def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_ur
     assert f"http://127.0.0.1:43210/?job={job_ids[0]}&token=t" in ui["detail"]
     assert "remedy ui stop" in ui["detail"]
     assert "remedy ui stop" in data["next"]
-    assert [(s["name"], s["status"]) for s in data["steps"]][-2:] == [
-        ("ui", "done"), ("apply", "stopped")]
+    assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
+        ("ui", "done"), ("run", "done"), ("apply", "stopped")]
 
 
 def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
@@ -651,7 +651,7 @@ def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_wait
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
-        ("run", "done"), ("ui", "skipped"), ("apply", "done")]
+        ("ui", "skipped"), ("run", "done"), ("apply", "done")]
     assert f"job {job_ids[0]} applied 1 file(s)" in _step(data, "apply")["detail"]
     assert "<!-- Remedy: " in (repo / "docs" / "README.md").read_text()
     assert data["stopped_before_apply"] is False

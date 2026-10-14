@@ -36,7 +36,7 @@ def _spy_table(calls: list[str], *, outcomes: dict[str, str] | None = None) -> d
 
 
 def test_the_sequence_is_exactly_the_seven_step_names_in_order():
-    assert DO_SEQUENCE == ("init", "study", "plan", "shape", "run", "ui", "apply")
+    assert DO_SEQUENCE == ("init", "study", "plan", "shape", "ui", "run", "apply")
 
 
 def test_the_real_table_holds_a_step_for_every_name_and_nothing_else():

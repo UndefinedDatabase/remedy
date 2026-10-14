@@ -153,7 +153,7 @@ def test_a_failed_walk_in_text_mode_still_writes_error_init_failed_on_stderr(rep
               "--project", "no-such-project"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
-    assert captured.err.startswith("Error: init failed: ")
+    assert captured.err.splitlines()[-1].startswith("Error: init failed: ")
 
 
 # ── the budget flags (DECISION F268 D16 (5)) ─────────────────────────────────
@@ -246,7 +246,7 @@ def test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder(r
 
     assert data["mission_id"]
     assert isinstance(data["steps"], list)
-    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "run"]
+    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "ui"]
     assert _step(data, "run")["status"] == "done"
     [job_id] = data["job_ids"]
     config = load_job_plan(job_id).execution_config
