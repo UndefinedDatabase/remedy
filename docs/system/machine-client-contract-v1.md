@@ -191,7 +191,6 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 | `ok` | every answer | true for a success, false for a refusal |
 | `mission_id` | `remedy do`; digest missions and jobs | the repository's one mission, which the order was added to |
 | `job_ids` | `remedy do`; digest missions | the jobs this order planned; in the digest, every job of the mission |
-| `order_id` | `remedy do`; `remedy client order` | two different ids: in a `remedy do --json` answer, the id of the order's batch in the mission; in `remedy client order`, the id the supervisor gave the order process it started |
 | `client` | `remedy status` | the digest for a machine client |
 | `version` | digest | the digest's version, 1 |
 | `projects` | digest | every registered project |
@@ -219,6 +218,10 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 | `job_apply_id` | `remedy job apply`; proof `job_applies` | the apply's own id |
 | `job_applies` | `remedy change proof` | every apply of the job, oldest first, never called verified |
 | `overall_status` | `remedy change proof` | the verdict over the job's patch intents |
+
+Two different ids are both called `order_id`. In the answer of `remedy do run` it names the
+order's batch in the repository's mission; in the answer of `remedy client order` it names the
+order process the supervisor started.
 
 ### Exit codes
 
