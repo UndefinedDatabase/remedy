@@ -149,7 +149,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: F306's closure under operator amendment amend0911-feedback rule B and
 #: placed after F303, the fifth unaccepted line below F306, under its own
 #: Tier 2 heading; see T2_F307.md.
-TOTAL_FEATURES = 307
+#: One more, F308 (the run manifest survives a task split), was registered
+#: on 2026-10-14 by operator amendment amend1014-luna-mission-fixes from
+#: finding R-1252 and placed directly after F306, under its own Tier 2
+#: heading; see T2_F308.md.
+TOTAL_FEATURES = 308
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
