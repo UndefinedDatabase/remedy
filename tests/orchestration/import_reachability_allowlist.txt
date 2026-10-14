@@ -5,6 +5,7 @@
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.client_interface
 apps.cli.command_catalog
+apps.cli.command_catalog_do
 apps.cli.command_catalog_doctor
 apps.cli.command_catalog_mission
 apps.cli.command_catalog_project

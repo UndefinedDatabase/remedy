@@ -191,7 +191,8 @@ with the code that calls it.
   group, `apps/cli/command_catalog_mission.py`. Step (2), done by F302: the `stats` group,
   `apps/cli/command_catalog_stats.py`. Step (3), done by F206: the `project` group,
   `apps/cli/command_catalog_project.py`. Step (4), done by F199: the `doctor` group,
-  `apps/cli/command_catalog_doctor.py`.
+  `apps/cli/command_catalog_doctor.py`. Step (5), done by F055: the `do` group,
+  `apps/cli/command_catalog_do.py`.
 - `packages/orchestration/job_evidence.py`: the manual-completion bundle, the verification runner,
   and the run-manifest cross-checks with the postmortems, each to a module of its own.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
@@ -419,7 +420,7 @@ with the code that calls it.
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2460 | `apps/cli/command_catalog.py` |
+| 2412 | `apps/cli/command_catalog.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
