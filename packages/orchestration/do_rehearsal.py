@@ -248,7 +248,8 @@ def render_rehearsal_summary(record: dict[str, Any]) -> str:
     lines.append("")
     total = record["estimate_total"]
     whole = _format_usd_band(total["band_usd_low"], total["band_usd_high"])
-    lines.append(f"Whole job: {whole} USD. Basis: {total['basis']}.")
+    whole_text = f"{whole} USD" if whole != "not available" else whole
+    lines.append(f"Whole job: {whole_text}. Basis: {total['basis']}.")
     lines.append("")
 
     lines.append("## Risks")
@@ -325,7 +326,7 @@ def _rehearsal_repo_head(repo_path: str) -> str:
         proc = subprocess.run(
             ["git", "-C", repo_path, "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=10, check=True)
-    except Exception:  # noqa: BLE001 — any failure here means "unknown head", never a crash
+    except (OSError, subprocess.SubprocessError):
         return ""
     return proc.stdout.strip()
 

@@ -13,7 +13,7 @@ Rehearsed at 2026-10-14T00:00:00+00:00 on /tmp/rehearsal-fixture at commit deadb
 | T001 | Write the thing | M | 80.0000–80.0000 |
 | T002 | Polish it | none | not available |
 
-Whole job: not available USD. Basis: estimate_unavailable.
+Whole job: not available. Basis: estimate_unavailable.
 
 ## Risks
 

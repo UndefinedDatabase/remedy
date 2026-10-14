@@ -110,6 +110,28 @@ def test_the_priced_tasks_band_prices_and_the_unpriced_one_is_not_available():
     assert record["estimate_total"]["band_usd_high"] is None
 
 
+def test_a_fully_priced_whole_job_reads_the_usd_form():
+    """Amendment 1: the unit only appears once both bounds are measured; unavailable reads
+    with no unit at all."""
+    priced = TaskEntry(
+        task_id="T001", title="Write the thing",
+        inputs={"plan": {"planned_id": "T001", "title": "Write the thing", "depends_on": [],
+                          "est_tokens_band": "M", "files_hint": []}},
+        files_hint=[])
+    job = JobPlan(job_id="job-priced-fixture", repo_path="/tmp/rehearsal-fixture",
+                  tasks=[priced], task_plan=None)
+    record = build_job_rehearsal(
+        job, trace_entries=_trace_entries(), dod=_two_checks_dod(),
+        predictive_config=_priced_config(), fence_spec=FenceSpec(), fence_error="",
+        repo_head=REPO_HEAD, rehearsed_at=REHEARSED_AT)
+    total = record["estimate_total"]
+    assert total["band_usd_low"] is not None
+    assert total["band_usd_high"] is not None
+    summary = render_rehearsal_summary(record)
+    assert f"Whole job: {total['band_usd_low']:.4f}–{total['band_usd_high']:.4f} USD. Basis: " in summary
+    assert "Whole job: not available" not in summary
+
+
 # ── (d) the fence simulation ─────────────────────────────────────────────────
 
 
