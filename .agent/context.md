@@ -1,28 +1,16 @@
-# Context — F055 Rehearsal (dry check)
+# Context — amend1014-do-golden-path-now
 
 ## Active Branch
-feature/f055-rehearsal, from `main` at `eea4f5cfe` (the merge commit of pull request 337).
+feature/do-golden-path, from `main` at `e688b30f3`. F078 is parked on feature/f078-autonomy-levels.
 
 ## Scope
-F055 (Tier 3), as `docs/roadmap/features/T3_F055.md` and DECISION F055 D1 state: the
-`--rehearse` mode of `remedy do`, its record and summary, and the reuse of a rehearsed plan.
+`remedy do` only: lane classifier, plan normalization, progress, cockpit order, `--run-unattended`,
+scope guard, docs. No planner rewrite, no data-model change, no UI redesign.
 
 ## Do not touch
-Approval semantics, the estimator's internals, and what the planner plans. A structural step
-changes no behaviour.
-
-## Active assumptions
-- A rehearsal is a walk with `--plan-only`; the rehearsed job is an ordinary planned job.
-- Every behaviour lands with a test that is red without it, proved by the reviewer's mutation; a
-  structural step is proved by the unchanged tests.
+`no_file_changed`, apply approval, repository isolation, non-human content policy; F078's files.
 
 ## Constraints
-- Every pytest run in a round is targeted; the closure runs the one full suite.
-- A round touching `docs/roadmap/**` also gates `tests/docs/`.
-- Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
-  larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
-- Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
-- The functions and files on `docs/system/structure-ledger-v1.md` may not grow.
-
-## Steps
-The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
+- Structure ratchet: `plan_order_job`, `_cmd_do_order`, `_cmd_do` and `do_cmd.py` may not grow
+  (this branch lowered three rows); `do_sequence.py` stays under 1000 lines.
+- One test run at a time (`scripts/remedy_pytest.sh`); the full suite once at closure.
