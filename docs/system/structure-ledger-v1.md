@@ -145,6 +145,18 @@ commit with no alias left behind, and changes the tests in their import lines on
   `packages/orchestration/run_task_list.py`; (2) the checks of one call become a function of their
   own; (3) the episode order fields become a function of their own; (4) the embedded snapshot's
   checks become a function of their own.
+- `_cmd_do_order` (`apps/cli/commands/do_cmd.py`). Boundary: the checks of its arguments, the
+  budgets it resolves before the walk, the context it builds and walks, and the answer it gives,
+  the JSON document or the text lines. Steps: (1) the budgets resolved before the walk become a
+  function of their own; (2) the context the walk carries is built by a function of its own; (3)
+  the answer becomes a function of its own, once the client-interface tests, which key the
+  answer's sites by this function, read them through the function that gives them. Until a step
+  is taken, a feature's edits of this function are line-neutral (DECISION F055 D1).
+- `_cmd_do` (`apps/cli/commands/do_cmd.py`). Boundary: the order read before any step, the
+  refusals before any step (the rehearsal's conflicting flags, the commit and push flags, the
+  planner, the contract template, and an order file a mission still runs) and the one call into
+  `_cmd_do_order`. Steps: (1) the refusals before any step become one function that exits 2 or
+  returns; (2) the call stays.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
