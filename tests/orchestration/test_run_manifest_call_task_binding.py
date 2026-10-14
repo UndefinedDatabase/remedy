@@ -189,3 +189,94 @@ class TestJobPlanMutationAfterCaptureBlocksFinalization:
         with pytest.raises(ManifestError) as exc:
             _finalize_with(job, wrapper)
         assert "no longer matches" in str(exc.value)
+
+
+# --------------------------------------------------------------------------- F308 splits
+
+
+def _insert_split_parts(job):
+    """Mutate `job.tasks` the way a real split leaves it: the parts directly after T001."""
+    from packages.orchestration.pingpong_job import TaskEntry
+
+    job.tasks[1:1] = [
+        TaskEntry(task_id="T001a", source_heading_number=1, title="a", body="b",
+                  acceptance="a"),
+        TaskEntry(task_id="T001b", source_heading_number=1, title="b", body="b",
+                  acceptance="a"),
+    ]
+
+
+class TestASplitTheRunRecorded:
+    """F308, DECISION F308 D2 (4): the F7 check applies THIS episode's own recorded splits."""
+
+    def test_a_recorded_split_finalizes_and_the_manifest_names_it(self, data_root, repo):
+        from packages.orchestration.pingpong_job import TASK_SPLIT
+        from packages.orchestration.run_task_list import record_task_split
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        job.tasks[0].status = TASK_SPLIT
+        _insert_split_parts(job)
+        record_task_split(job, "T001", ["T001a", "T001b"], "context too large")
+
+        m = _finalize_with(job, wrapper)
+        assert len(m.task_splits) == 1
+        assert m.task_splits[0]["parent_task_id"] == "T001"
+        assert m.task_splits[0]["part_task_ids"] == ["T001a", "T001b"]
+
+    def test_the_same_parts_with_no_split_record_are_refused(self, data_root, repo):
+        from packages.orchestration.pingpong_job import TASK_SPLIT
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        job.tasks[0].status = TASK_SPLIT
+        _insert_split_parts(job)
+        with pytest.raises(ManifestError) as exc:
+            _finalize_with(job, wrapper)
+        assert "no longer matches" in str(exc.value)
+
+    def test_a_split_record_whose_parent_is_not_recorded_split_is_refused(self, data_root, repo):
+        from packages.orchestration.run_task_list import record_task_split
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        # The parent keeps whatever status the real run left it at — never TASK_SPLIT.
+        _insert_split_parts(job)
+        record_task_split(job, "T001", ["T001a", "T001b"], "context too large")
+        with pytest.raises(ManifestError):
+            _finalize_with(job, wrapper)
+
+    def test_a_split_record_of_another_episode_is_refused(self, data_root, repo):
+        from packages.orchestration.pingpong_job import TASK_SPLIT
+        from packages.orchestration.run_task_list import record_task_split
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        job.tasks[0].status = TASK_SPLIT
+        _insert_split_parts(job)
+        record_task_split(job, "T001", ["T001a", "T001b"], "context too large")
+        job.metadata["task_splits"][0]["episode_id"] = "some-other-episode"
+        with pytest.raises(ManifestError) as exc:
+            _finalize_with(job, wrapper)
+        assert "no longer matches" in str(exc.value)
+
+    def test_an_edit_from_outside_after_a_recorded_split_is_refused(self, data_root, repo):
+        """R-1315: the refusal names the DEFINITION's list unchanged, then — because this
+        episode recorded a split — the list after it, under its own words, before naming the
+        edit from outside that is the actual cause."""
+        from packages.orchestration.pingpong_job import TASK_SPLIT, TaskEntry
+        from packages.orchestration.run_task_list import record_task_split
+
+        job = _real(repo)
+        wrapper = _capture(job)
+        job.tasks[0].status = TASK_SPLIT
+        _insert_split_parts(job)
+        record_task_split(job, "T001", ["T001a", "T001b"], "context too large")
+        job.tasks.append(TaskEntry(task_id="T999", source_heading_number=2, title="new",
+                                    body="b", acceptance="a"))
+        with pytest.raises(ManifestError) as exc:
+            _finalize_with(job, wrapper)
+        message = str(exc.value)
+        assert "['T001']" in message, message
+        assert "with this episode's recorded splits applied" in message, message
+        assert "['T001', 'T001a', 'T001b']" in message, message

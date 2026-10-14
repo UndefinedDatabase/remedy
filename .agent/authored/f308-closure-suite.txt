@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 345.4s (the launcher's reading); pytest's own reported wall time: 344.69s (0:05:44)
+summary line: 23032 passed, 22 skipped, 1 warning in 344.69s (0:05:44)
+bad node ids (failed + errors):
+  NONE
+leftover processes: NONE
+tree it ran on: 0b87b714b (F308 R4 C3: the closure's self-use item run to its approval gate, never applied)
+tree note: C3 changed only .agent/ files and the self-use queue
+reflog before: 0b87b714b HEAD@{2026-10-14 13:44:24 +0200}: commit: F308 R4 C3: the closure's self-use item run to its approval gate, never applied
+reflog after: 0b87b714b HEAD@{2026-10-14 13:44:24 +0200}: commit: F308 R4 C3: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F308 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1170.14 CPU seconds, 344.70 wall seconds, 23054 tests collected, exit status 0, recorded 2026-10-14T11:50:17Z
+This closure's suite used 1170.14 CPU seconds, 11.4 percent less than F306's 1321.14, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F306's closure run:
+  +3.36 s  tests/orchestration/test_self_use_generator.py (3.84 -> 7.20)
+  +1.02 s  tests/orchestration/test_run_manifest_call_task_binding.py (2.21 -> 3.23)
+  +0.52 s  tests/orchestration/test_persisted_run_call_schema.py (1.77 -> 2.29)
+  +0.44 s  tests/cli/test_job_show.py (1.24 -> 1.68)
+  +0.40 s  tests/orchestration/test_review_final_verifier_reproducible.py (1.06 -> 1.46)
+  +0.39 s  tests/orchestration/test_structured_log.py (0.08 -> 0.47)
+  +0.38 s  tests/cli/test_plan_cli.py (5.03 -> 5.41)
+  +0.37 s  tests/orchestration/test_job_evidence.py (9.01 -> 9.38)
+  +0.36 s  tests/cli/test_job_rerun_manifest.py (1.72 -> 2.08)
+  +0.33 s  tests/cli/test_do_flags.py (4.44 -> 4.77)

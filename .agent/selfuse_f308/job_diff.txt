@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-200387721a384487  (exit 0)
+diff --git a/apps/cli/commands/status_cmd.py b/apps/cli/commands/status_cmd.py
+index f535e879d..3dcabc126 100644
+--- a/apps/cli/commands/status_cmd.py
++++ b/apps/cli/commands/status_cmd.py
+@@ -78,7 +78,7 @@ def _cmd_status(
+             events = load_run_events(resolve_data_root(), j.job_id)
+             decs = list_decisions(j, events)
+             decisions_open += sum(1 for d in decs if d.status == "open")
+-        except Exception:  # noqa: BLE001 — decision-count failure must not break the status overview
++        except (OSError, ValueError, ImportError):
+             pass
+ 
+     # F276 T002: the same three states this block used to spell for itself, now read
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index ff1f68ae3..cb21e641a 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 285
++MAX_EXCUSED = 284
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:

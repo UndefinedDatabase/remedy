@@ -3415,47 +3415,9 @@ def run_job(
                     compiled_context_candidates = list(task.files_hint)
                     compiled_context_token_budget = fit_result.cap_tokens
                 else:
-                    from packages.orchestration.escalation import (
-                        auto_apply_safe_default,
-                        enqueue_task_decision,
-                    )
-                    from packages.orchestration.task_granularity import (
-                        split_one_task,
-                    )
-                    decision = enqueue_task_decision(
-                        job,
-                        task_id=task.task_id,
-                        question="task context exceeds its class cap",
-                        options=["split task"],
-                        safe_default="split task",
-                        impact=(
-                            f"tier1_tokens={fit_result.tier1_tokens} "
-                            f"cap_tokens={fit_result.cap_tokens} "
-                            f"task_class={fit_result.task_class}"
-                        ),
-                        now=datetime.now(timezone.utc),
-                    )
-                    answered = auto_apply_safe_default(
-                        job, decision, now=datetime.now(timezone.utc))
-                    split_entries: list[TaskEntry] = []
-                    if answered is not None and answered["answer"] == "split task":
-                        planned = task_entry_to_planned_task(task)
-                        if planned is not None:
-                            used_ids = {t.task_id for t in job.tasks}
-                            children = split_one_task(planned, used_ids=used_ids)
-                            if children:
-                                split_entries = [
-                                    planned_task_to_task_entry(
-                                        child,
-                                        task_class=task.task_class,
-                                        source_heading_number=task.source_heading_number,
-                                    )
-                                    for child in children
-                                ]
-                    if split_entries:
-                        job.tasks[idx + 1:idx + 1] = split_entries
-                        task.status = TASK_SPLIT
-                        _persist_job(job)
+                    from packages.orchestration.run_task_list import split_task_over_class_cap
+
+                    if split_task_over_class_cap(job, task, idx, fit_result):
                         continue
 
             if task_log is None:

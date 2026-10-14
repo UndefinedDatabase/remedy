@@ -1,17 +1,15 @@
-# Plan — F306 Findings paydown v8
+# Plan — F308 The run manifest survives a task split
 
 ## Goal
-Pay down the four findings open at the claim — R-1235, R-1246, R-1251 and R-1252 — each by the
-repair its own text names, after the structural steps the structure ledger owes for the files they
-touch, or carry it by name to the next paydown (docs/roadmap/features/T2_F306.md; DECISIONs F306
-D1 to D3).
+A task the run splits leaves the job's run manifest written and valid, with the split recorded as
+Remedy's own change, while an edit of the task list from outside is still refused
+(docs/roadmap/features/T2_F308.md; DECISIONs F308 D1 and D2).
 
 ## Current Step
-Session 3, round 12 on `feature/f306-findings-paydown-v8`, the closing round: round 11 is booked,
-R-1235 resolved, R-1246 and R-1252 re-assigned to F307, the Built State written; then the ledger
-rotation, F307's registration, F306's STATUS line with the README sync and SU-062's
-`consumed_by`, and the pull request, left unmerged.
+Session 1, round 6 on `feature/f308-run-manifest-task-split`, the closing round: round 5 booked,
+R-1252, R-1314 and R-1315 resolved, the Built State written; then the ledger rotation, F308's
+STATUS line with the README sync and SU-063's `consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The next session: the Open PR Gate merges F306's pull request, books round 12's verdict in the
+1. The next session: the Open PR Gate merges F308's pull request, books round 6's verdict in the
    next feature's first commit, and Rule A5 picks the next unchecked STATUS line.

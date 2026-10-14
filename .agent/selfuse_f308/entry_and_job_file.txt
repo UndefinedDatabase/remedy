@@ -1,0 +1,5 @@
+Entry ID: SU-063
+Entry Title: Narrow the excused handler at apps/cli/commands/status_cmd.py:81
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/status_cmd.py:1:except Exception:  # noqa: BLE001 — decision-count failure must not break the status overview)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f308-r4-selfuse/SU-063.md

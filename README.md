@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-144 of 308 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+145 of 308 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 45 | 47 |
+| 2 | Minimal Self-Build Runtime | 46 | 47 |
 | 3 | Full Token Economy & Autonomy | 10 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
@@ -321,7 +321,12 @@ change still reads as valid. Four large pieces of code were split into smaller
 modules on the way, and the job runner's largest function lost the part that works
 out a job's settings. Remedy then narrowed one more error handler in its own
 `remedy status` command in a self-repair run that stopped, as it should, at its
-approval gate).
+approval gate),
+F308 the run's record survives a task split (when Remedy splits a task because
+its work does not fit, the job now writes down which task became which parts,
+when and why, and the job's record of what ran is written and stays valid instead
+of being lost; a task list changed in any other way after a run began is still
+refused).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

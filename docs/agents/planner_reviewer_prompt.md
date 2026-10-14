@@ -671,6 +671,12 @@ end the response with:
   validator requires, are item 34's reading of the guards that bind the file the order changes,
   here the structure ratchet and the tests that enumerate a field set. Each was repaired inside its
   round, and nothing pushed was wrong. The list stays at 34 items.
+  Consolidated again at F308's closure on 2026-10-14: nothing joined and no two items were merged,
+  because F308's one line in `.agent/prose_slips.md` names no lesson the list lacks. A block that
+  widened a closed set of task statuses without naming the test that mirrors that set is item 34's
+  reading of the guards that bind the file the order changes, here the equality guard that pins a
+  closed set the order widens. It was repaired inside its round, and nothing pushed was wrong. The
+  list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

@@ -266,7 +266,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — The run manifest survives a task split (operator amendment amend1014-luna-mission-fixes)
 
-- [ ] F308 — The run manifest survives a task split
+- [x] F308 — The run manifest survives a task split (T001–T003 complete; R-1252, R-1314 and R-1315 resolved; accepted 2026-10-14 · live review PASS — ACCEPTED · Evidence job f308r5e1001 · package remedy-review-20261014-142527-READY_FOR_REVIEW.zip · SHA-256 b00824ae07ec3d974e55bc50ab4a16a4724b25f469099ca60ec0f63462eeeb25 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 63ca6c280075c146bf6bbd102f1e99fd04e1625b)
 
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
 
