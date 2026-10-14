@@ -67,9 +67,12 @@ from packages.orchestration.job_input_definition import (
     job_input_definition_sha256,
 )
 from packages.orchestration.run_task_list import (
+    checked_episode_task_list,
     declared_job_input_task_ids,
+    decode_task_splits_v1,
     expect_task_without_run,
     task_list_chain_problems,
+    task_split_problems,
 )
 from packages.orchestration.workspace_identity import (
     _READING_HELPER_ARGS,
@@ -1181,7 +1184,7 @@ VALID_TASK_EXPECTATIONS = frozenset({
 #: during or after its dispatch, but never THROUGH one — so it joins every expectation the
 #: table above already allows a task with no finalized call to carry, and no other.
 _TASK_EXPECTATION_ALLOWED_STATUSES = {
-    EXPECT_SKIPPED: frozenset({"skipped", "vetoed"}),
+    EXPECT_SKIPPED: frozenset({"skipped", "vetoed", "split"}),
     EXPECT_NOT_DISPATCHED: frozenset({"pending"}),
     EXPECT_FAILED_PRE_DISPATCH: frozenset({"failed", "blocked"}),
     EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "running", "pending",
@@ -1206,7 +1209,7 @@ _TASK_EXPECTATION_ALLOWED_STATUSES = {
 _COMPLETED_WORKED_STATUSES = {
     EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
     EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace", "vetoed"}),
-    EXPECT_SKIPPED: frozenset({"skipped", "vetoed"}),
+    EXPECT_SKIPPED: frozenset({"skipped", "vetoed", "split"}),
 }
 
 
@@ -1227,7 +1230,7 @@ def _allowed_statuses_for(expectation: str, episode_status: str,
 
 #: Every task status the JobPlan can persist. A status outside this set is a forged record.
 VALID_TASK_STATUSES = frozenset({"pending", "running", "passed", "applied_to_job_workspace",
-                                 "blocked", "failed", "skipped", "vetoed"})
+                                 "blocked", "failed", "skipped", "vetoed", "split"})
 
 #: The expectations that mean "no run was ever dispatched for this task".
 _EXPECTATIONS_WITHOUT_RUN = frozenset({EXPECT_SKIPPED, EXPECT_NOT_DISPATCHED,
@@ -2003,6 +2006,8 @@ class RunManifestV1:
     # stop produced this stopped record. Empty for non-stopped manifests.
     stop_request_id: str = ""
     budgets: dict[str, Any] | None = None
+    # F308, DECISION F308 D2: the splits THIS episode recorded, applied to the task list.
+    task_splits: tuple[dict[str, Any], ...] = ()
     manifest_v: int = MANIFEST_VERSION
 
     @property
@@ -2031,6 +2036,7 @@ class RunManifestV1:
             "previous_episode_id": self.previous_episode_id,
             "stop_request_id": self.stop_request_id,
             "budgets": self.budgets,
+            **({"task_splits": [dict(s) for s in self.task_splits]} if self.task_splits else {}),
         }
 
     def canonical_bytes(self) -> bytes:
@@ -2722,12 +2728,12 @@ def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
     seen_ids: set[tuple] = set()
     seen_artifacts: set[str] = set()
     calls = sorted(manifest.calls, key=lambda c: c.identity.sequence)
-    # F7 (round 10): every Call is BOUND to the EMBEDDED job-input definition. The definition is
-    # the immutable record of which tasks this episode was given; a call naming a task that is
-    # not in it describes work no recorded input asked for, so the manifest cannot be a faithful
-    # account of its own inputs. The binding uses the snapshot's definition (immutable) — never a
-    # later, mutable `job.tasks` list.
+    # F7 (round 10): every Call is BOUND to the EMBEDDED job-input definition, with each split
+    # this episode recorded applied (F308) — never to a later, mutable `job.tasks` list. A call
+    # naming a task outside that list describes work no recorded input asked for, and a split
+    # record that does not hold is a problem of its own.
     declared_task_ids = declared_job_input_task_ids(manifest)
+    problems.extend(task_split_problems(manifest))
 
     for i, c in enumerate(calls, start=1):
         ident = c.identity
@@ -3347,7 +3353,7 @@ def decode_run_manifest_v1(raw: Any) -> RunManifestV1:
                                "episode_snapshot", "job_input_sha256", "calls", "coverage",
                                "call_expectation", "call_ledgers", "prior_episode_ids",
                                "episode_ordinal", "previous_episode_id",
-                               "stop_request_id", "budgets"}, "manifest")
+                               "stop_request_id", "budgets", "task_splits"}, "manifest")
         if _S.req_int(d, "manifest_v", "manifest", minimum=0, maximum=1000) != MANIFEST_VERSION:
             raise ManifestError(
                 f"unsupported manifest_v {d.get('manifest_v')!r} "
@@ -3384,6 +3390,7 @@ def decode_run_manifest_v1(raw: Any) -> RunManifestV1:
             stop_request_id=_S.req_str(d, "stop_request_id", "manifest",
                                        max_len=_S.MAX_ID_LEN, allow_empty=True),
             budgets=_decode_budgets_field(d.get("budgets")),
+            task_splits=decode_task_splits_v1(d.get("task_splits", [])),
         )
     except _S.SchemaError as exc:
         raise ManifestError(f"manifest schema: {exc}") from None
@@ -4115,21 +4122,8 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
             + "; ".join(snap_problems or list(episode_snapshot.problems))[:300])
     snap = episode_snapshot.input
     # F7 (round 10): the task list a Call is bound to comes from the IMMUTABLE embedded
-    # definition, never from the live `job.tasks` list — the JobPlan is mutable and may have
-    # been re-planned since this episode's snapshot was captured.
-    declared_task_ids = tuple(
-        str(tk.get("task_id", "")) for tk in (snap.job_input.get("tasks") or [])
-        if isinstance(tk, dict))
-    # F7: and if live state HAS moved on, finalizing against it would silently record work the
-    # snapshot never described. That is a blocking contradiction, not a merge.
-    live_task_ids = tuple(str(getattr(tk, "task_id", "") or "")
-                          for tk in getattr(job, "tasks", []))
-    if declared_task_ids and live_task_ids and live_task_ids != declared_task_ids:
-        raise ManifestError(
-            f"the job's task list {list(live_task_ids)} no longer matches the episode-start "
-            f"snapshot's job-input definition {list(declared_task_ids)} (F7: tasks were added, "
-            f"removed or reordered after capture; this episode cannot be finalized against a "
-            f"definition it did not run)")
+    # definition, with each split THIS episode recorded (F308) applied to it.
+    declared_task_ids, task_splits = checked_episode_task_list(job, snap.job_input, episode_id)
     # F6 (round 10): a pre-work stop and a planning-only job are the two phases that genuinely
     # expect zero calls. The phase is read from the snapshot's own capture phase and the
     # terminal status — both immutable facts of this record.
@@ -4182,6 +4176,7 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
         previous_episode_id=str(previous_episode_id or ""),
         stop_request_id=str(stop_request_id or ""),
         budgets=budgets_snapshot,
+        task_splits=task_splits,
     )
 
 
@@ -4231,7 +4226,7 @@ def _bind_artifact_refs(manifest: RunManifestV1) -> RunManifestV1:
         episode_ordinal=manifest.episode_ordinal,
         previous_episode_id=manifest.previous_episode_id,
         stop_request_id=manifest.stop_request_id,
-        budgets=manifest.budgets)
+        budgets=manifest.budgets, task_splits=manifest.task_splits)
 
 
 def _decode_existing_episode(raw: bytes, episode_id: str) -> RunManifestV1:

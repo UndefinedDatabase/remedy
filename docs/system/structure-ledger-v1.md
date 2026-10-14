@@ -264,13 +264,13 @@ with the code that calls it.
 | 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
 | 317 | `scripts/build_review_zip.py` | `main` |
 | 312 | `packages/orchestration/test_execution_service.py` | `execute_test_run` |
-| 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 300 | `packages/orchestration/repository_snapshot.py` | `revert_repository_apply` |
 | 299 | `packages/orchestration/final_verifier.py` | `build_final_verifier_report` |
 | 282 | `apps/cli/commands/job.py` | `_cmd_run_next_task_local` |
 | 280 | `packages/orchestration/patch_apply.py` | `apply_patch_intent` |
 | 279 | `packages/orchestration/repository_snapshot.py` | `create_snapshot` |
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
+| 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
 | 252 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
@@ -413,7 +413,7 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6212 | `packages/orchestration/run_manifest.py` |
+| 6207 | `packages/orchestration/run_manifest.py` |
 | 5355 | `packages/orchestration/pingpong_job.py` |
 | 5233 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
