@@ -1,0 +1,5 @@
+Entry ID: SU-064
+Entry Title: Narrow the excused handler at apps/cli/commands/status_cmd.py:96
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/status_cmd.py:1:except Exception:  # noqa: BLE001 — stop-check failure must not break the status overview)
+Entry Consumed By: 
+Job File Path: /home/decodeux/Repos/remedy/.remedy-wt/f055-r4-selfuse/SU-064.md
