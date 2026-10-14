@@ -255,6 +255,26 @@ class TestTheTaskListIsImmutable:
                                   episode_snapshot=_snapshot_declaring(["T001"], "ep2"))
         assert validate_task_lifecycle_chain([ep1, ep2]) == []
 
+    def test_a_later_episode_may_declare_the_split_the_earlier_one_left(self, ep1):
+        """F308, DECISION F308 D2 (7): episode 1 split T001 into T001a/T001b; episode 2 picks
+        up exactly where episode 1 left off."""
+        split_ep1 = dataclasses.replace(
+            ep1, task_splits=({"parent_task_id": "T001", "part_task_ids": ["T001a", "T001b"],
+                               "episode_id": "ep1", "reason": "r"},))
+        ep2 = dataclasses.replace(_faithful(split_ep1),
+                                  episode_snapshot=_snapshot_declaring(
+                                      ["T001", "T001a", "T001b"], "ep2"))
+        assert validate_task_lifecycle_chain([split_ep1, ep2]) == []
+
+    def test_a_later_episode_must_declare_the_whole_split(self, ep1):
+        split_ep1 = dataclasses.replace(
+            ep1, task_splits=({"parent_task_id": "T001", "part_task_ids": ["T001a", "T001b"],
+                               "episode_id": "ep1", "reason": "r"},))
+        ep2 = dataclasses.replace(_faithful(split_ep1),
+                                  episode_snapshot=_snapshot_declaring(["T001", "T001a"], "ep2"))
+        probs = validate_task_lifecycle_chain([split_ep1, ep2])
+        assert any("immutable across a job's episodes" in p for p in probs), probs
+
 
 # --------------------------------------------------------------------------- the seams
 

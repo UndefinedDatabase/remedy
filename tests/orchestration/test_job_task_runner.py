@@ -3775,3 +3775,83 @@ class TestClassBudgetCannotFitEscalation:
         records = escalation_records(result)
         assert len(records) == 1
         assert records[0]["answer"] == "split task"
+
+    def test_a_split_job_writes_its_run_manifest_naming_the_split(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        """F308 (R-1252): a split the run makes is recorded, and the manifest it writes names
+        it — the self-use run's original hazard, now closed."""
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES_MULTI_ACCEPTANCE, str(demo_repo))
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert result.run_manifest_error == ""
+
+        from packages.orchestration.pingpong_job import job_evidence_dir
+        from packages.orchestration.run_manifest import load_latest_manifest_verified
+        from packages.orchestration.run_task_list import declared_job_input_task_ids
+
+        ref = load_latest_manifest_verified(job_evidence_dir(result.job_id), job_id=result.job_id)
+        assert len(ref.task_splits) == 1
+        split = dict(ref.task_splits[0])
+        assert split["parent_task_id"] == "T001"
+        assert split["part_task_ids"] == ["T001a", "T001b"]
+        assert split["episode_id"] == result.active_episode_id
+        assert split["reason"].startswith("task context exceeds its class cap: ")
+
+        assert declared_job_input_task_ids(ref) == ["T001", "T001a", "T001b"]
+
+        by_task = {t.task_id: t for t in ref.call_expectation.tasks}
+        assert by_task["T001"].expectation == "skipped"
+        assert by_task["T001"].task_status_at_finalization == "split"
+
+        assert result.metadata["task_splits"] == [split]
+
+    def test_a_split_job_paused_by_its_task_cap_and_resumed_keeps_a_valid_chain(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        """F308 (R-1252): the self-use run's own case — a split task paused by `max_tasks`
+        before its parts finish, then resumed, keeps a valid episode chain."""
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES_MULTI_ACCEPTANCE, str(demo_repo))
+
+        paused = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+            max_tasks=1,
+        )
+        assert paused.state == JOB_PAUSED
+        assert paused.run_manifest_error == ""
+
+        from packages.orchestration.pingpong_job import job_evidence_dir
+        from packages.orchestration.run_manifest import (
+            load_latest_manifest_verified,
+            validate_index_and_tree,
+        )
+
+        paused_ref = load_latest_manifest_verified(
+            job_evidence_dir(paused.job_id), job_id=paused.job_id)
+        assert paused_ref.status == "paused"
+        assert len(paused_ref.task_splits) == 1
+        assert paused_ref.task_splits[0]["parent_task_id"] == "T001"
+
+        done = run_job(
+            paused.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+        assert done.state == JOB_COMPLETED
+        assert done.run_manifest_error == ""
+        assert validate_index_and_tree(
+            job_evidence_dir(done.job_id), job_id=done.job_id) == []
