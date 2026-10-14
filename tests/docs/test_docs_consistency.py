@@ -2319,3 +2319,23 @@ class TestF012Round40IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "[x] F012" in status
+
+
+# Operator amendment amend1011b made a repository's mission its one lasting mission and every
+# order a batch in it; these phrases describe the mission-per-order model it replaced.
+RETIRED_MISSION_PHRASES = (
+    "starts another mission for it",
+    "spans them all",
+    "Creates the mission record for the order",
+)
+
+
+def test_no_page_describes_a_mission_per_order():
+    """Operator amendment amend1014-luna-mission-fixes C: the hand-written pages follow the
+    one-mission model; a phrase is matched across line breaks."""
+    pages = [REPO / "README.md", *sorted((REPO / "docs" / "system").glob("*.md")),
+             *sorted((REPO / "docs" / "guides").glob("*.md"))]
+    found = [(page.relative_to(REPO).as_posix(), phrase) for page in pages
+             for phrase in RETIRED_MISSION_PHRASES
+             if phrase in " ".join(page.read_text(encoding="utf-8").split())]
+    assert found == []

@@ -211,10 +211,11 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "refusal is `remedy do`'s own, read back only once the order is polled. "
             "`order_key` names the order with a key the client chooses, one to 64 letters, "
             "digits, `.`, `_` or `-`, beginning with a letter or a digit, any other value "
-            "answering 400 `api_body_invalid`; an order with a key whose order file a mission "
-            "that has not ended records is refused before anything starts with 409 "
-            "`order_already_running`, the mission's id under `mission_id`, unless `new_mission` "
-            "is `true`, and the record's `order_file` then names the key's file."
+            "answering 400 `api_body_invalid`; an order with a key whose order file an earlier "
+            "order of a mission that has not ended still has unfinished jobs for is refused "
+            "before anything starts with 409 `order_already_running`, the mission's id under "
+            "`mission_id`, unless `new_mission` is `true`, which adds it as one more order to the "
+            "repository's one mission, and the record's `order_file` then names the key's file."
         ),
     ),
     PublicApiRoute(

@@ -836,8 +836,8 @@ line can now rely on what it is told: an order that names a project runs in that
 registered repository wherever the program stands, and `remedy project register --repo <path>`
 registers one without touching its working copy; an approved apply that did not land answers with
 a refusal word for its cause and is never reported as a success, and `remedy job decline` turns a
-finished result down with a reason; one order file runs in one mission at a time unless
-`--new-mission` asks for another, and `remedy job run` reports a job that ended stuck as a refusal;
+finished result down with a reason; an order file is not started again while an earlier order of
+it still has unfinished jobs unless `--new-mission` asks for it, and `remedy job run` reports a job that ended stuck as a refusal;
 each finished job in the status overview carries what an approval needs, its changed files, its
 tasks, its checks and one recommendation word and one risk word by rules the page states, with its
 provider calls and its tokens beside its cost; an order may be capped by any one budget; and the
@@ -874,11 +874,12 @@ describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line
-each, and `remedy do` then plans one job in each project's repository under one mission, applies
-and commits each job in its own repository and pushes each repository once, never forced and
-stopping at the first refusal; the mission's record stays in the first project and names the
-projects it spans, while every job's records stay in its own project; the next job of the mission
-works where its chain ends, and so does its cleanup job; the status digest and the local web
+each, and `remedy do` then plans one job in each project's repository, applies and commits each
+job in its own repository and pushes each repository once, never forced and stopping at the first
+refusal; since operator amendment amend1011b each repository keeps its one lasting mission, so
+such an order adds one batch and its job to each repository's own mission, linked by one
+correlation id, and every job's records stay in its own project; the next job of a mission works
+in that mission's repository, and so does its cleanup job; the status digest and the local web
 interface name each job's repository and each mission's projects, and a client token may start an
 order only when its policy names every project in it; the cockpit's band of repository chips is
 the follow-up feature the STATUS ledger registers directly behind this one),
