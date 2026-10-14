@@ -15,11 +15,17 @@ Scope: init registers and ignores and writes no file into the repository
 mission record for the order, writes the contract template forced or proposed
 onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
-overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
-runs the first job on the chosen providers; ui opens the cockpit for the job
-that ran as a detached process unless `--no-ui`; apply stops before apply and
-prints the apply command for the job that ran, unless `--apply`, which applies
-it (DECISION F268 D9).
+overriding it, and plans the jobs, each bounded by deliverables (D5, D6); ui
+opens the cockpit for the job that runs first as a detached process unless
+`--no-ui`, BEFORE the run so it is there when the run blocks or fails
+(operator amendment amend1014-do-golden-path-now D5); run runs the first job on
+the chosen providers; apply stops before apply and prints the apply command for
+the job that ran, unless `--apply`, which applies it (DECISION F268 D9).
+
+Operator amendment amend1014-do-golden-path-now D1: a bounded one-deliverable order walks the
+bounded lane of `do_lane.py` (no planning provider call; only the builder and the reviewer
+run), anything else the full lane, and a human-facing walk says what it is doing through
+`do_progress.py` (D4).
 
 DECISION F268 D12 (amending D10): in a walk of two or more jobs only the first
 runs. Every other job waits, because a job's workspace is cut from the target's
@@ -93,6 +99,7 @@ from packages.orchestration.do_context import (
 )
 from packages.orchestration.do_lane import settle_do_lane
 from packages.orchestration.do_plan_confirm import approve_confirmed_plan
+from packages.orchestration.do_progress import do_step_describer, do_step_intro
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
     _shape_job_orders,
@@ -101,7 +108,7 @@ from packages.orchestration.do_targets import (
 )
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
-DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "ui", "apply")
+DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "ui", "run", "apply")
 
 
 #: A step takes the context and returns ``(status, detail)``; the walker names it.
@@ -117,7 +124,7 @@ def walk_do_sequence(ctx: DoContext,
     """
     steps = DO_STEP_TABLE if table is None else table
     for index, name in enumerate(DO_SEQUENCE):
-        status, detail = steps[name](ctx)
+        status, detail = _announced_step(ctx, name, steps[name])
         ctx.results.append(DoStepResult(name=name, status=status, detail=detail))
         if status in DO_WALK_ENDING_STATUSES:
             break
@@ -132,6 +139,21 @@ def walk_do_sequence(ctx: DoContext,
                 detail=f"not run: {ctx.halt_reason}{note}"))
             break
     return ctx
+
+
+def _announced_step(ctx: DoContext, name: str, step: DoStep) -> tuple[str, str]:
+    """Call *step*, and when the walk has a progress sink say it started, beat while it runs, say it ended.
+
+    Operator amendment amend1014-do-golden-path-now D4: the start line is written, flushed, before
+    the step's first line of work, so a step that blocks is never silent.
+    """
+    if ctx.progress is None:
+        return step(ctx)
+    intro = do_step_intro(name, ctx)
+    with ctx.progress.step(name, intro, do_step_describer(name, ctx, intro)) as end:
+        status, detail = step(ctx)
+        end(status, detail)
+    return status, detail
 
 
 #: The answer at a `--step-by-step` halt that stops the walk; end of input stops it too.

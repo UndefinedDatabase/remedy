@@ -36,7 +36,7 @@ MAX_FUNCTION_ROWS = 159
 #: The summed `Lines` column of "Functions above 100 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FUNCTION_LINES = 30478
+MAX_FUNCTION_LINES = 30470
 #: The row count of "Files above 1,000 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
@@ -44,7 +44,7 @@ MAX_FILE_ROWS = 36
 #: The summed `Lines` column of "Files above 1,000 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_LINES = 73601
+MAX_FILE_LINES = 73595
 
 _FUNCTION_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \| `([^`]+)` \|$")
 _FILE_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \|$")

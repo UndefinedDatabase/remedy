@@ -299,7 +299,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 252 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 250 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
@@ -317,7 +317,7 @@ with the code that calls it.
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
-| 190 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
@@ -464,7 +464,7 @@ with the code that calls it.
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1024 | `apps/cli/commands/do_cmd.py` |
+| 1018 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |

@@ -135,7 +135,7 @@ flight-plan rename and the help surface were split off at the soft limit
 and belong to the follow-up feature the STATUS ledger registers directly
 after it),
 F268 remedy do, the one-command start (`remedy do "<order>"` walks one
-sequence held as data — init, study, plan, shape, run, ui, apply — so it
+sequence held as data — init, study, plan, shape, ui, run, apply — so it
 registers the repository, studies it once, plans a mission whose every task
 names the deliverable it produces, runs the first job and stops before apply
 unless `--apply`; `--plan-only` stops after planning and `--step-by-step`

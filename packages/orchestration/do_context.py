@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from packages.orchestration.do_lane import DoLaneDecision
+    from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.project_registry import RemyProject
 
 #: The two shapes (DECISION F268 D5), and where the one in force came from; an order over
@@ -123,6 +124,8 @@ class DoContext:
     lane: DoLaneDecision | None = None
     #: The repository is small enough that its study needs no provider narration.
     tiny_repo: bool = False
+    #: Where a human-facing walk says what it is doing (amend1014 D4); ``None`` under `--json`.
+    progress: DoProgress | None = None
     #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
     halt_reason: str = ""
     repo_root: str = ""
