@@ -1,243 +1,214 @@
-# Handback — F308 round 5 — the closure's evidence job and review package on the accepted head
+# Handback — F308 round 6 — the closing round
 
 ## Session
 
-SESSION 1 of feature F308 · round 5 · rounds so far 5
+SESSION 1 of feature F308 · round 6 · rounds so far 6
 
-Context self-assessment: C1 landed clean on the first attempt; the evidence job and the review
-package both came back exactly as their gates require on the first run, and context held
-comfortably throughout the round.
+Context self-assessment: all three commits, the rotation and all five gates landed clean on the
+first attempt, with no deviation from the block's ordered sequence. The session ends here because
+F308 is closed — its pull request is open, nothing more for this feature is ordered — and the next
+feature starts in a fresh session.
 
-Fortschritt: ~95 % (everything but the closing round is done) — Schätzung
+Fortschritt: 100 % (F308 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `358617a72`..`63ca6c280`
+Review of `e941e27fb`..`f7feb7d1f`
 
 ## Commits
 
-| Commit | Path | +/- |
+### `fe5671c08` F308 R6 C1: book round 5, resolve R-1252, R-1314 and R-1315, the Built State, save the block, the STATUS line and the PR body
+| Path | +/- | Reason |
 |---|---|---|
-| `63ca6c280` F308 R5 C1 | `.agent/authored/f308-r5-create_f308_evidence.py` | +367/-0 |
-| `63ca6c280` F308 R5 C1 | `.agent/authored/f308-r5.md` | +128/-0 |
-| `63ca6c280` F308 R5 C1 | `.agent/live_review.md` | +2/-0 |
-| `63ca6c280` F308 R5 C1 | `.agent/plan.md` | +5/-6 |
-| (this commit) F308 R5 C2 | `.agent/handoff.md` | this commit |
+| `.agent/authored/f308-r6.md` | +110/-0 | the block, saved verbatim (NEW FILE) |
+| `.agent/authored/f308-r6-status_line.txt` | +1/-0 | the STATUS line, reviewer-authored (NEW FILE) |
+| `.agent/authored/f308-r6-pr_body.md` | +43/-0 | the PR body, reviewer-authored (NEW FILE) |
+| `.agent/live_review.md` | +8/-0 | Gate: F308 R5 entry and the R-1252/R-1314/R-1315 resolutions |
+| `.agent/prose_slips.md` | +1/-0 | round 5's prose slip |
+| `docs/roadmap/features/T2_F308.md` | +28/-0 | the Built State section |
+| `.agent/plan.md` | +5/-5 | advanced to round 6 |
 
-C1 totals 502 insertions (`4 files changed, 502 insertions(+), 6 deletions(-)` from
-`git show --shortstat`), one line over the AGENTS.md 500-insertion cap. See Deviations below for
-the declared exception.
+Totals (`git show --shortstat fe5671c08`): `7 files changed, 196 insertions(+), 5 deletions(-)`.
+
+### `f7feb7d1f` F308 R6 C2: rotate the finding ledger into its archive
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +0/-47 | 12 gate records, 3 finding pairs (6 records) and 4 resolved-text records moved out |
+| `.agent/live_review_archive.md` | +47/-0 | the same records appended, byte-verbatim |
+
+Totals (`git show --shortstat f7feb7d1f`): `2 files changed, 47 insertions(+), 47 deletions(-)`.
+
+### (this commit) F308 R6 C3: accept F308 in STATUS with its README sync and the self-use queue
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | the `[x]` STATUS line flip for F308 |
+| `README.md` | +8/-3 | the capability sync for F308, same commit as the STATUS flip |
+| `scripts/self_use_queue.json` | +1/-1 | SU-063's `consumed_by` edit |
+| `.agent/handoff.md` | this commit | this handback |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` (Open PR Gate check,
-  read-only): `[]` — no open pull request for this branch, matching the block's own claim.
-- Push after C1: `git push -u origin feature/f308-run-manifest-task-split` succeeded on the first
-  attempt (`358617a72..63ca6c280 feature/f308-run-manifest-task-split ->
-  feature/f308-run-manifest-task-split`); no HTTP 500, no retry needed.
-- Push after C2 runs after this commit; its outcome and the local-tip-equals-origin check (Gate 6)
-  are reported in the session's final reply only, per the write-once rule — they do not exist yet
-  when this file is written.
-- No worktree added or removed beyond the pre-existing `.remedy-wt/f308-r5-worker/` scratch
-  directory the block told the worker to use for copy/launch/proof scripts and the two run logs;
-  nothing under it is tracked or committed (confirmed ignored by `.gitignore:235:.remedy-wt/`).
-- No `gh pr merge`, `gh pr edit`, `gh pr create`, no STATUS/README edit, no ledger rotation, no
-  queue edit, no self-use run, no provider call — none ordered by this block.
+None yet in this commit's history. The push and `gh pr create` run after this commit per the
+block's ordering; their commands and outcomes are reported in the session's final reply only —
+they do not exist yet when this file is written. No `gh pr merge` ran or will run this session.
 
 ## Verification
 
 **Preconditions before C1**: `git rev-parse HEAD` and `git rev-parse
-origin/feature/f308-run-manifest-task-split` both read `358617a72bdb99ade1862d61874ea31d4b412e44`;
-`git status --porcelain` empty; `.agent/STOP` absent; `git branch --show-current` read
-`feature/f308-run-manifest-task-split`.
+origin/feature/f308-run-manifest-task-split` both read
+`e941e27fbd42b709fe20cc2c94c39b46e7b017f7`; `git status --porcelain` empty; `.agent/STOP` absent;
+`git branch --show-current` read `feature/f308-run-manifest-task-split` before every commit.
 
-**Digests** (all four prepared files plus `block.md` itself, checked with a Python sha256 reader
-before use): `block.md` 128 lines / `9b4d29f72356b376a55d8f75f7a547a9fa3844e92d69b42344b85296ece71fc6`;
-`create_f308_evidence.py` / `d2aed14b692582f508b629cf12fefe029383ccf2a6860ca3245c866ea72ae950`;
-`dry-live_review.md` / `74fea76f7df24f4344de4a05f76761fe064d95e5fc07c131398252d12e8b752b`;
-`dry-plan.md` / `8be32a65b12198fdae929e663ca814f9d5fc3e556c74434cb20579f4a76b8a69`; `verify.py` /
-`dee289d44d4c1029ef1a4aa46af371a2176cb6298686639f5faa153f6bbe74d7` — all matched exactly.
+**Digests** (all 14 prepared files, checked with a Python sha256 reader before use — `block.md`
+itself via the prompt's own digest, line count 110): every one of `dry-C1-live_review.md`,
+`dry-plan.md`, `dry-prose_slips.md`, `dry-README.md`, `dry-self_use_queue.json`, `dry-STATUS.md`,
+`dry-T2_F308.md`, `selection.txt`, `sim-C2-live_review_archive.md`, `sim-C2-live_review.md`,
+`sim-rotation.txt`, `src-pr_body.md`, `src-status_line.txt`, `verify.py` matched its stated digest
+exactly; no mismatch.
 
-**Gate 1** (after C1): `git status --porcelain` empty, then
-`python3 /home/decodeux/Repos/remedy/.remedy-wt/f308-r5/prep/verify.py /home/decodeux/Repos/remedy 63ca6c280075c146bf6bbd102f1e99fd04e1625b`
+**C1 copy proofs** (Python byte copy, hash compared src vs dest after write): all seven pairs
+`equal=True`, matching the sha256 each file carries in the prompt (reported per-file above).
+
+**C2 — rotation**: `python3 scripts/rotate_live_review.py` from a Python wrapper,
+`cwd=/home/decodeux/Repos/remedy`, exit 0:
+```
+gate records moved: 12
+finding pairs moved: 3 (6 records)
+resolved-text records moved: 4
+old ledger size: 189322 bytes
+new ledger size: 155053 bytes
+old archive size: 6782234 bytes
+new archive size: 6816503 bytes
+open findings before: 39
+open findings after: 39
+gate headers matching neither known form (left in place): 1
+written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+```
+Every line equals `sim-rotation.txt` except the `written:` line, which correctly names the primary
+checkout's folder instead of the reviewer's dry worktree. `.agent/live_review.md` and
+`.agent/live_review_archive.md` then compared byte-for-byte equal to `sim-C2-live_review.md` and
+`sim-C2-live_review_archive.md` (sha256 `311b8257e8af4589e2a4f115660d28177f12ae7c17f01680b57b21098e5cbef4`
+and `42fc391edf4966f867201f228ca07e83ced9a46db744470f678a3ab072ae4fa3`, each matching the prompt's
+digest for the corresponding `sim-C2-*` file).
+
+**C3 copy proofs**: `dry-STATUS.md` → `docs/roadmap/STATUS.md`, `dry-README.md` → `README.md`,
+`dry-self_use_queue.json` → `scripts/self_use_queue.json`, each a Python byte copy proved equal by
+hash afterwards: all three `equal=True`.
+
+**Gate 1** (after C3's three copies, before the handoff): `git status --porcelain` read exactly
+```
+ M README.md
+ M docs/roadmap/STATUS.md
+ M scripts/self_use_queue.json
+```
+then
+`python3 /home/decodeux/Repos/remedy/.remedy-wt/f308-r6/prep/verify.py /home/decodeux/Repos/remedy --worktree`
 — exit 0, every line `True`:
 ```
-True C1's single parent is round 4's handback
-True C1 has exactly one parent
-True C1's subject prefix
-True C1 .agent/authored/f308-r5.md equals block.md
-True C1 .agent/authored/f308-r5-create_f308_evidence.py equals create_f308_evidence.py
-True C1 .agent/live_review.md equals dry-live_review.md
+True fe5671c08 has the single parent e941e27fb
+True f7feb7d1f has the single parent fe5671c08
+True the commit C1 exists
+True the commit C2 exists
+True C1 .agent/authored/f308-r6.md equals block.md
+True C1 .agent/live_review.md equals dry-C1-live_review.md
+True C1 .agent/prose_slips.md equals dry-prose_slips.md
+True C1 docs/roadmap/features/T2_F308.md equals dry-T2_F308.md
 True C1 .agent/plan.md equals dry-plan.md
+True C1 .agent/authored/f308-r6-status_line.txt equals src-status_line.txt
+True C1 .agent/authored/f308-r6-pr_body.md equals src-pr_body.md
 True C1 names exactly its paths []
-True twenty commits from the fork to C1
+True C2 .agent/live_review.md equals sim-C2-live_review.md
+True C2 .agent/live_review_archive.md equals sim-C2-live_review_archive.md
+True C2 names exactly its paths []
+True working tree docs/roadmap/STATUS.md equals dry-STATUS.md
+True working tree README.md equals dry-README.md
+True working tree scripts/self_use_queue.json equals dry-self_use_queue.json
+True the STATUS line once, no [~] line
 ALL True
 ```
 
-**A1 — staging reclaim** (`python3 -m apps.cli.main data reclaim --orphans`, run once as ordered;
-see Deviations for the second, read-only invocation):
+**Gate 2**: `git -C /home/decodeux/Repos/remedy diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`:
 ```
-Data root: /home/decodeux/Repos/remedy/.data
-  Reclaimable: nothing
-  Refused (kept, with the reason):
-    review_staging.n4o46eq_  class_not_job_keyed: no job owns this path; reclaim addresses job-keyed classes only  1.5 MB
-  Not reclaimed — reclaim addresses ephemeral classes only: [21 durable/unclassified data-root
-  categories, 0 B eligible among them]
-  Would free 0 B in 0 paths — nothing deleted; re-run with --apply
+8	3	README.md
+1	1	docs/roadmap/STATUS.md
+1	1	scripts/self_use_queue.json
 ```
-No candidate was listed, so `--apply` was correctly skipped per the block's own branch. One
-refused path, with its reason, is quoted above in full.
 
-**A2 — the evidence job**. `git reflog -n 3 --date=iso` before the run:
+**Gate 3**: `python3 -m pytest -q -rfEs` over the eight paths in `selection.txt`
+(`tests/docs/`, `tests/cli/test_advertised_commands.py`,
+`tests/orchestration/test_live_review_rotation.py`, `tests/orchestration/test_integrity_gate.py`,
+`tests/orchestration/test_self_use_generator.py`, `tests/orchestration/test_self_use_queue.py`,
+`tests/cli/test_golden_path.py`, `tests/test_structure_ratchet.py`) — exit 0:
 ```
-63ca6c280 HEAD@{2026-10-14 13:58:36 +0200}: commit: F308 R5 C1: book round 4 and the plan, save the block and the evidence script
-358617a72 HEAD@{2026-10-14 13:53:54 +0200}: commit: F308 R4 C5: handback
-2dff08d0d HEAD@{2026-10-14 13:51:15 +0200}: commit: F308 R4 C4: the closure's one full suite and its CPU cost
+564 passed in 45.67s
 ```
-`git branch --show-current`: `feature/f308-run-manifest-task-split`. Launched detached (Python
-`subprocess.Popen(..., start_new_session=True)`, `cwd=/home/decodeux/Repos/remedy`) running
-`python3 .agent/authored/f308-r5-create_f308_evidence.py .remedy-wt/f308-r5-evidence`, polled over
-roughly 25 minutes until the log stopped growing and the process no longer appeared in `ps aux`.
-Whole output, `/home/decodeux/Repos/remedy/.remedy-wt/f308-r5-worker/evidence.log`:
-```
-head 63ca6c280075c146bf6bbd102f1e99fd04e1625b
-ancestry-path count 20
-plain count 20
-collected node ids 8037, deselected 169
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 8028, 'failed': 0, 'skipped': 9}, output_hash c2e6b6ed489cf52d609057e05b4efc260082e11ccc7001884440c9938703cbd2
-validate_verification_tests problems [] passed 8028
-is_valid_current_run True
-validation_errors []
-gates written: ['artifact_contract_gate.json', 'change_provenance_gate.json', 'commit_execution_gate.json', 'fresh_evidence_gate.json', 'runtime_integration_gate.json', 'final_verifier_report.json']
-{job_id f308r5e1001, head_commit 63ca6c280075c146bf6bbd102f1e99fd04e1625b, authority_count 15,
- partition {T001:5, T002:5, T003:5}, commit_count 20, verdict PASS_WITH_RISKS,
- manual_completion true, operator_attested_tasks [T001,T002,T003], total_passed 8028}
-```
-Readings against the block's expectations: `head` equals C1's full sha (match); ancestry-path
-count 20 and plain count 20 (match, equal); collected node ids 8037, matching the precheck's 8037
-exactly, with `deselected` 169 (matching the precheck's "169 deselected" exactly); red control
-`unsafe among the real ids 0` (match); planted id answers `a local absolute path` (match); pytest
-exit 0 (match), 8028 passed / 0 failed / 9 skipped; `validate_verification_tests problems []`
-(match); `is_valid_current_run True` and `validation_errors []` (match). `.remedy-wt/f308-r5-evidence/`
-holds 26 top-level artifacts including all six `*_gate.json`/`final_verifier_report.json` files.
-Process exit code: see Deviations — not directly captured by the detached-launch wrapper; inferred
-0 from the script's own success-return logic and the printed facts above, all consistent with a
-clean `sys.exit(0)`. `git reflog -n 3 --date=iso` and `git branch --show-current` after the run were
-re-checked and read identically to before the run — neither moved.
+No FAILED, ERROR or SKIPPED line (`-rfEs` reported none). This was the round's only pytest run; no
+`REMEDY_TEST_MAX_WORKERS` set, no `-n` passed.
 
-**A3 — the review package**. `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f308-r5-evidence`
-from a Python wrapper (`cwd=/home/decodeux/Repos/remedy`, `REMEDY_REVIEW_DIR` unset), whole output
-to `/home/decodeux/Repos/remedy/.remedy-wt/f308-r5-worker/zip.log`, exit 0:
+**Gate 4**: `python3 -m apps.cli.main integrity check --json` — exit 0:
 ```
-{"member_count": 8364, "authoritative_count": 15, "symlink_count": 0, "tombstone_count": 0,
- "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20261014-142527-READY_FOR_REVIEW.zip",
- "final_sha256": "b00824ae07ec3d974e55bc50ab4a16a4724b25f469099ca60ec0f63462eeeb25",
- "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW",
- "evidence_authoritative": true, "review_subject_alignment": "PASS",
- "manifest_sha256": "e45b823cf30792f14282f3ad0d4700a42ccda706c039f1ad381b2495eb53bf29"}
-REVIEW_PACKAGE_CREATED=true
-PACKAGE_STATUS=READY_FOR_REVIEW
-REVIEW_SUBJECT_ALIGNMENT=PASS
-EVIDENCE_AUTHORITATIVE=true
-REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
-ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261014-142527-READY_FOR_REVIEW.zip
+{"check_count": 6, "checks": [{"message": "handlers=188", "name": "handler_import", "status": "pass"}, {"message": "last Gate verdict PASS", "name": "live_review_verdict", "status": "pass"}, {"message": "unchecked=0, context_complete=False", "name": "plan_consistency", "status": "pass"}, {"message": "untracked=0, relevant=0", "name": "relevant_untracked", "status": "pass"}, {"message": "no reviewer scratch, evidence dir or archive at the root", "name": "repo_root_hygiene", "status": "pass"}, {"message": "no open blocker/high findings", "name": "high_blockers_open", "status": "pass"}], "fail_count": 0, "ok": true, "passed": true, "schema_version": 1, "version": 1}
 ```
-Independent re-check (Python `hashlib`/`zipfile`, read-only): SHA-256 of the zip bytes
-`b00824ae07ec3d974e55bc50ab4a16a4724b25f469099ca60ec0f63462eeeb25` (matches the tool's own
-`final_sha256`); `zipfile.is_zipfile` `True`; `ZipFile.testzip()` `None`. `.review_zip_manifest.json`
-inside the package, `committed_review_subject`: `base_commit`
-`1622c16d70546143def6be8d441aa59a2522f623` (matches the required base) and `head_commit`
-`63ca6c280075c146bf6bbd102f1e99fd04e1625b` (matches C1, the accepted head). Directory:
-`/home/decodeux/Repos/remedy-history/zips` (absolute, outside the checkout, as the script always
-writes). `PACKAGE_STATUS` read `READY_FOR_REVIEW` (not merely exit 0, per the block's own
-distinction).
+Six checks `pass`, `"fail_count": 0`.
 
-**Gate 5** (after A3, before C2): `python3 -m apps.cli.main integrity check --json` → exit 0, six
-checks `pass`, `"fail_count": 0`:
+**Gate 5**: `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
 ```
-handler_import pass, live_review_verdict pass (last Gate verdict PASS), plan_consistency pass,
-relevant_untracked pass (untracked=0, relevant=0), repo_root_hygiene pass, high_blockers_open pass
+['R-1246', 'R-1276', 'R-1277', 'R-1278', 'R-1279', 'R-1280', 'R-1281', 'R-1282', 'R-1283', 'R-1284', 'R-1285', 'R-1286', 'R-1287', 'R-1288', 'R-1289', 'R-1290', 'R-1291', 'R-1292', 'R-1293', 'R-1294', 'R-1295', 'R-1296', 'R-1297', 'R-1298', 'R-1299', 'R-1300', 'R-1301', 'R-1302', 'R-1303', 'R-1304', 'R-1305', 'R-1306', 'R-1307', 'R-1308', 'R-1309', 'R-1310', 'R-1311', 'R-1312', 'R-1313']
 ```
-Open finding ids, `python3 -c "import scripts.rotate_live_review as r; print(r.open_finding_ids(open('.agent/live_review.md').read()))"`:
-`R-1246, R-1252, R-1276 .. R-1315` in order (42 ids total) — matches the required `R-1246`,
-`R-1252`, then `R-1276` to `R-1315` in order. `git status --porcelain` empty.
+`R-1246`, then `R-1276` to `R-1313` in order, length 39 — matches the block's required list exactly.
 
-**Gate 6**: reported in the session's final reply only (runs after this commit's push).
+**Gate 6**: runs after the push and the pull request; reported in the session's final reply only.
 
 ## Authored-text proofs
 
-`.agent/authored/f308-r5.md` against `block.md` and `.agent/authored/f308-r5-create_f308_evidence.py`
-against `create_f308_evidence.py`: both byte-identical, confirmed twice — once by the worker's own
-copy script (`hashlib.sha256` comparison at copy time) and again independently by `verify.py`'s
-Gate 1 (`git show <C1>:<path>` compared to the prep file's bytes). No other reviewer-authored text
-was applied this round.
+`.agent/authored/f308-r6.md` against `block.md`: byte-identical (sha256
+`74c75121121c7454f101fcbbd5d1dde1442f4a2d4636d24e0f69a691cd3cfca3`, both the copy-time check and
+`verify.py`'s Gate 1). `.agent/authored/f308-r6-status_line.txt` against `src-status_line.txt`:
+byte-identical; its bytes also appear verbatim inside the committed `docs/roadmap/STATUS.md`
+(grep-confirmed, Python substring check `True`) — the STATUS line was applied exactly as authored,
+touching no other line (`verify.py`'s "the STATUS line once, no [~] line"). `.agent/live_review.md`
+(C1) against `dry-C1-live_review.md`: byte-identical, which carries the Gate: F308 R5 entry and the
+three resolution entries (R-1252, R-1314, R-1315) verbatim. `.agent/authored/f308-r6-pr_body.md`
+against `src-pr_body.md`: byte-identical; this is the file `gh pr create --body-file` reads
+directly, so the PR body is authored text by construction. No other reviewer-authored text was
+applied this round.
 
 ## Deviations & assumptions
 
-1. **C1 is 502 insertions**, one over the AGENTS.md 500-insertion cap (`git show --shortstat`:
-   `4 files changed, 502 insertions(+), 6 deletions(-)`). Declared here as the AGENTS.md exception
-   requires, with the inseparability reason: the block's own Gate 1 (`verify.py`) asserts that C1
-   names *exactly* its four paths as a single commit and is the closure's one ACCEPTED HEAD;
-   splitting the four byte-exact copies (`block.md` 128 lines, `create_f308_evidence.py` 367
-   lines, `.agent/live_review.md` +2, `.agent/plan.md` +5/-6) across more than one commit would
-   break that single-head invariant the round is built on. Checked against every other commit in
-   this feature (`1622c16d7..63ca6c280`, 20 commits): the next-largest is `dc08a2ab2` at 314
-   insertions: C1 is the only commit over 500 in the whole feature. "Accepted, not a precedent."
-2. **A1 ran a second time.** After capturing the full, required output on the first run, I ran
-   `python3 -m apps.cli.main data reclaim --orphans` a second time (output discarded) only to
-   check its exit code, which the block did not actually require for A1. The command never took
-   `--apply` either time, so it is read-only and no state changed between the two runs; still, the
-   block said "once" and I ran it twice. The reported A1 reading above is from the first run.
-3. **A2's process exit code was not directly captured.** The detached-launch wrapper
-   (`a2_launch.py`) used `subprocess.Popen(..., start_new_session=True)` and returned immediately
-   without calling `.wait()`; the child was reparented to init on the parent's exit and reaped
-   before any process of mine retrieved its real `$?`. I did not re-run the job to get a clean
-   capture, because the block's test-load rule makes A2's pytest run the round's only test run and
-   a second run would violate it. Instead I inferred exit 0 from `create_f308_evidence.py`'s own
-   source (`return 0 if not problems and validation["is_valid_current_run"] and run.returncode ==
-   0 else 1`, followed by `sys.exit(main())`) together with the printed facts the log actually
-   shows — `pytest exit 0`, `validate_verification_tests problems []` and `is_valid_current_run
-   True` are exactly the three conditions that return 0 — and the fully populated, otherwise-clean
-   evidence directory the run produced. This is a sound inference, not a literal captured exit
-   code, and I am flagging the gap plainly rather than reporting a number I did not actually read
-   from the OS.
-
-No other departure from the block's ordered sequence.
+None. The block's ordered commit sequence (C1, C2, C3) was followed exactly; all five gates passed
+on the first run; no retry, no reordering, no extra or dropped commit.
 
 ## For the operator, in plain sentences
 
-The review package for this feature was built: `remedy-review-20261014-142527-READY_FOR_REVIEW.zip`
-in `/home/decodeux/Repos/remedy-history/zips`. No old scratch copies were cleaned up this round —
-the staging reclaim found nothing eligible to free, so 0 bytes were freed; one small staging
-leftover (1.5 MB) was looked at and correctly left alone because no job owns it under the current
-rules. Nothing waits for you.
+When Remedy splits a piece of work that is too large, its record of what ran is now kept instead
+of lost; a task list changed any other way is still refused. The whole test collection ran once on
+the shipped code and passed. The paid self-repair run stopped at its approval gate as it should.
+The review package is `remedy-review-20261014-142527-READY_FOR_REVIEW.zip`, in
+`/home/decodeux/Repos/remedy-history/zips`. A pull request is open and will be merged at the start
+of the next session unless the operator merges it earlier.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP` — absent at this handoff.
-2. Rule 2, the Open PR Gate: no pull request is open for this branch yet.
-3. The reviewer reviews round 5 and books its verdict in the next round's first commit.
-4. The closing round: the Built State, the resolutions of R-1252, R-1314 and R-1315, the
-   rotation, SU-063's `consumed_by`, the STATUS flip with the README sync, and the pull request,
-   left unmerged.
+2. The Open PR Gate, which merges F308's pull request in the NEXT session and never in this one.
+3. The booking of round 6's verdict in the next feature's first commit.
+4. Rule A5.
 
 Operator questions open: 0.
-Open findings: 42 (R-1252, R-1314 and R-1315 owned by F308, the rest by F307).
+Open findings: 39 (R-1246 and R-1276 to R-1313), all owned by F307.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | verify.py `ALL True`; 502 insertions declared (see Deviations) |
-| A1 | done | no candidate listed; `--apply` correctly skipped; refused path recorded |
-| A2 | done | all readings match; exit code inferred, not captured (see Deviations) |
-| A3 | done | `PACKAGE_STATUS=READY_FOR_REVIEW`, manifest base/head match, zip integrity confirmed |
-| C2 | done | this commit |
-| Gate 1 | done | all lines `True`, `ALL True` |
-| Gate 2 | done | A1's readings as listed there |
-| Gate 3 | done | A2's readings as listed there |
-| Gate 4 | done | A3's readings as listed there |
-| Gate 5 | done | six checks `pass`, `fail_count` 0; open set 42 ids in order; tree clean |
-| Gate 6 | pending | runs after push; reported in the session's final reply only |
+| C1 | done | `verify.py` `ALL True`; all seven copies proved byte-equal |
+| C2 | done | exit 0; output matches `sim-rotation.txt` but for the `written:` line; both files byte-equal to the simulated outputs |
+| C3 | done | all three copies proved byte-equal; this commit |
+| Gate 1 | done | `git status --porcelain` exact three files; `verify.py` `ALL True` |
+| Gate 2 | done | numstat reported above |
+| Gate 3 | done | `564 passed`, exit 0, no FAILED/ERROR/SKIPPED |
+| Gate 4 | done | six checks `pass`, `fail_count` 0 |
+| Gate 5 | done | 39 open ids, `R-1246` then `R-1276`..`R-1313`, in order |
+| Push | pending | runs after this commit; reported in the final reply only |
+| Pull request | pending | runs after this commit; reported in the final reply only |
+| Gate 6 | pending | runs after the pull request; reported in the final reply only |
