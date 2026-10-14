@@ -251,6 +251,12 @@ def _cmd_worker_doctor(*, json_output: bool = False) -> None:
             _check(f"provider_{spec.provider_id}", False,
                    f"no doctor probe defined for {spec.provider_id}")
 
+    # Amend1014b D4: the default execution chain, link by link; it runs no agent.
+    from packages.orchestration.pi_provider import default_chain_checks
+
+    for name, ok, detail in default_chain_checks():
+        _check(name, ok, detail)
+
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 

@@ -95,7 +95,7 @@ FAILOVER_CHAINS_CONFIG_KEY: str = "model_failover.chains"
 FAILOVER_LINK_KEYS: tuple[str, ...] = ("provider", "model", "tier")
 
 #: Providers this feature treats as LOCAL, for the core-never-local rule below.
-LOCAL_PROVIDERS: frozenset[str] = frozenset({"ollama"})
+LOCAL_PROVIDERS: frozenset[str] = frozenset({"ollama", "pi"})
 
 #: The roles the core-never-local rule EXEMPTS: every role of ROLE_TASK_CLASSES whose class the
 #: shipped table routes to the cheap tier — today teacher, summary and study. DERIVED, so a class
