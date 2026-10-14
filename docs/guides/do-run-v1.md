@@ -14,16 +14,49 @@ remedy do "add a hello() function" --repo . --json
 remedy do run "add a hello() function" --repo . --json
 ```
 
+## Two lanes
+
+An ordinary, bounded request needs nothing but the order:
+
+```
+remedy do "Add one concise project-description paragraph below the heading in README.md. Change no other files." --repo .
+```
+
+`remedy do` reads the order and the repository and picks a lane without asking a model. A
+**bounded** order, one repository and exactly one file (named in the order, or the only file the
+repository tracks) with one plain part, walks the bounded lane: a deterministic scan of a tiny
+repository, the one-milestone plan, one job and one task for that file, and **no planning
+provider call**. Only the builder and the reviewer are called, in Remedy's isolated workspace,
+and the walk stops before apply. Anything else, several files, several projects, an order file or
+`--force-mission`, or any order whose scope is not clearly one file, walks the **full lane**,
+which plans milestones, jobs and tasks with the planner and keeps an approval boundary: on a
+terminal Remedy shows the plan and asks whether to run it; with no terminal it stops and names
+`--run-unattended`. `--run-unattended` runs a generated plan without asking and takes the
+documented default for every open question; it never applies, commits, pushes, merges or
+deploys, because the target repository only changes with `--apply` or a commit flag.
+`--force-job` also selects the bounded lane. A planner that names a file the order did not ask
+for is not believed: the walk keeps the deterministic plan of the order's own deliverables
+(operator amendment amend1014-do-golden-path-now D1, D6).
+
+## While it works
+
+Unless `--json`, `remedy do` says what it is doing on stderr as it goes: each step before it
+starts (with the provider of a step that calls one), a heartbeat at least every ten seconds
+while a step stays blocked, and each step's end with its elapsed time. The cockpit URL is printed
+the moment the cockpit is up, before the builder runs, and stays usable if the run blocks or
+fails; if the cockpit does not come up the run goes on and the exact `remedy ui start <job id>`
+is printed. `--json` keeps stdout one document and stderr silent (D4, D5).
+
 ## The steps, in order
 
 | Step | What it does |
 |------|--------------|
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
-| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
+| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. A tiny repository of a bounded order is studied from facts alone. |
 | `plan` | Finds the repository's one mission, creating it on the repository's first order, adds the order to it as a batch, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
+| `ui` | Opens the cockpit for the job that runs first as a detached process, before the run, unless `--no-ui` or `--plan-only`. |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |
-| `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
 | `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply` or a commit flag, which applies them; with a push, it then pushes the mission once. |
 
 A step that stops or fails ends the walk; the steps after it are not called.
@@ -54,7 +87,7 @@ builder or reviewer is built, nothing is applied, and the repository is not
 touched. A job whose plan of tasks waits for approval keeps waiting: its
 `Next:` lines name `remedy decision resolve <job_id> plan:approval --reason approve`
 and then `remedy job run <job_id>`. `--rehearse` is refused before any step,
-with exit 2 and the error `invalid_argument`, when it is given with `--yes`,
+with exit 2 and the error `invalid_argument`, when it is given with `--run-unattended`,
 `--apply`, `--commit`, `--commit-auto`, `--commit-with-history` or `--push`
 (DECISION F055 D1).
 
@@ -125,7 +158,7 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   (operator amendment amend0920-selfuse-real, DECISION D1). The planner the
   walk actually used is the one its prompt traces and the mission plan
   record name.
-- `--yes` — approve the job's plan of tasks unattended
+- `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
 - `--no-ui` — do not open the cockpit
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,
   `--max-cost-usd`, `--deadline` — the job's budgets

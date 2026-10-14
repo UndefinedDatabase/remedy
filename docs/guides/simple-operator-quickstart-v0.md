@@ -27,7 +27,11 @@ remedy do run "<goal>" --repo <path>
 ```
 
 Creates a new job from your goal and starts the first safe actions.
-This is the normal entry point for Remedy.
+This is the normal entry point for Remedy. A small request, such as one change to one
+file, needs nothing else: Remedy runs it at once in its own isolated workspace, opens the
+cockpit before the work starts, says what it is doing, and stops before it touches your
+repository; you apply the proposed change with `--apply` or `remedy job apply`. For a broad
+plan that Remedy generates, run it without being asked by adding `--run-unattended`.
 
 ### Check job status
 
