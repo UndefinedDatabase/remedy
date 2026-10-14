@@ -6,11 +6,10 @@ Remedy's own change, while an edit of the task list from outside is still refuse
 (docs/roadmap/features/T2_F308.md; DECISIONs F308 D1 and D2).
 
 ## Current Step
-Session 1, round 2 on `feature/f308-run-manifest-task-split`: round 1 booked; DECISION F308 D2
-writes the split record's shape; T001 and T002 land in `packages/orchestration/run_task_list.py`
-and in line-neutral edits of `packages/orchestration/run_manifest.py`, and T003's tests prove them.
+Session 1, round 3 on `feature/f308-run-manifest-task-split`: round 2 booked with R-1314 and
+R-1315 registered; both repaired in `packages/orchestration/run_task_list.py` with their tests;
+the run manifest's design document gains its section on the split.
 
 ## Next Steps
-1. The record of the built state: a section on the split in `docs/roadmap/features/T0_F012.md`,
-   and the Built State of `docs/roadmap/features/T2_F308.md`.
-2. The closure sequence: the one full suite, the self-use run, the evidence and the pull request.
+1. The closure sequence: the one full suite, the self-use run, the evidence, the Built State,
+   the resolutions of R-1252, R-1314 and R-1315, and the pull request.
