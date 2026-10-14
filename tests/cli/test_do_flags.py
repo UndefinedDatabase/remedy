@@ -213,8 +213,8 @@ def test_builder_and_reviewer_models_are_the_jobs_cli_models_and_on_the_next_lin
 
 
 def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monkeypatch):
-    """Without `--no-llm`: every structured call the plan and shape steps build is
-    recorded, and none is served, so each step plans deterministically."""
+    """Without `--no-llm`, on an order naming two files (the full lane): every structured call the
+    plan and shape steps build is recorded, and none is served, so each step plans deterministically."""
     calls: list[tuple[str, object]] = []
 
     def recorder(model_cls, **kwargs):
@@ -224,7 +224,8 @@ def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monke
     monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", recorder)
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", lambda *a, **kw: None)
 
-    data = _do_json(capsys, "--planner-model", "p1", "--plan-only", llm=True)
+    data = json.loads(_do(capsys, "--json", "--planner-model", "p1", "--plan-only", llm=True,
+                          order="Write CONTRIBUTING.md and CHANGELOG.md"))
 
     assert data["job_ids"]
     assert calls

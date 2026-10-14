@@ -239,7 +239,7 @@ def test_the_order_plans_one_job_of_at_most_three_tasks_by_the_planners_shape(re
     data = _do_json(capsys)
 
     [job_id] = data["job_ids"]
-    assert (data["shape"], data["shape_source"]) == ("one job", "planner")
+    assert (data["shape"], data["shape_source"]) == ("one job", "bounded lane")
     from packages.orchestration.pingpong_job import load_job_plan
     assert 1 <= len(load_job_plan(job_id).tasks) <= 3
 
@@ -1001,6 +1001,10 @@ def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo,
 # ── F273 R-0977: each `do` job records the milestone its outline came from ──
 
 
+#: An order naming two files walks the full lane, where the planner's own shape decides.
+TWO_DOCS_ORDER = "Write docs/one.md and docs/two.md"
+
+
 def two_milestone_plan(monkeypatch) -> None:
     """The no-provider planner plans two milestones, M1 then M2, one outline each."""
     from packages.orchestration import mission_compiler
@@ -1030,7 +1034,7 @@ def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, mo
 
     two_milestone_plan(monkeypatch)
 
-    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs", order=TWO_DOCS_ORDER))
 
     assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
@@ -1056,7 +1060,7 @@ def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_cr
     commit_a_passing_suite(repo)
     two_milestone_plan(monkeypatch)
 
-    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs", order=TWO_DOCS_ORDER))
 
     assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
