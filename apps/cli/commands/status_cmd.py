@@ -152,6 +152,43 @@ def _cmd_status(
         emit_ok(**result)
         return
 
+    _print_status_text(
+        project_slug=project_slug,
+        scope=scope,
+        jobs=jobs,
+        degraded=degraded,
+        by_state=by_state,
+        skipped_files=skipped_files,
+        jobs_next=jobs_next,
+        decisions_open=decisions_open,
+        decisions_next=decisions_next,
+        runtime_status=runtime_status,
+        runtime_warning=runtime_warning,
+        runtime_next=runtime_next,
+        stops_pending=stops_pending,
+        stops_next=stops_next,
+    )
+
+
+# Structure-ledger step (3) for `_cmd_status` (F078): the text overview's print lines, moved
+# unchanged so the function above stays line-neutral under DECISION F055 D3.
+def _print_status_text(
+    *,
+    project_slug,
+    scope,
+    jobs,
+    degraded,
+    by_state,
+    skipped_files,
+    jobs_next,
+    decisions_open,
+    decisions_next,
+    runtime_status,
+    runtime_warning,
+    runtime_next,
+    stops_pending,
+    stops_next,
+) -> None:
     if project_slug:
         print(f"Project: {project_slug}")
     print()

@@ -171,6 +171,7 @@ commit with no alias left behind, and changes the tests in their import lines on
   pending stops become a function each; (2) the runtime's state becomes a function of its own;
   (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
   this function are line-neutral (DECISION F055 D3).
+  Step (3), done by F078: the text lines, `_print_status_text` in the same file.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -325,7 +326,7 @@ with the code that calls it.
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
 | 183 | `packages/orchestration/task_edit_runtime.py` | `edit_task_at_runtime` |
-| 179 | `apps/cli/commands/status_cmd.py` | `_cmd_status` |
+| 155 | `apps/cli/commands/status_cmd.py` | `_cmd_status` |
 | 179 | `scripts/build_review_manifest.py` | `validate_evidence_candidate` |
 | 178 | `packages/orchestration/subtree_rerun.py` | `prepare_subtree_rerun` |
 | 177 | `apps/cli/commands/job.py` | `_cmd_job_resume` |
