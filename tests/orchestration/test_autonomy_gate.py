@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -435,3 +436,78 @@ def test_relative_paths_resolve_against_the_config_folder_not_cwd(tmp_path, monk
     assert policy.gauntlet_evidence == str(evidence)
     assert policy.change_adr == str(adr)
     assert policy.changed_from == "L2"
+
+
+# ---------------------------------------------------------------------------
+# (k) R-1321: the record is keyed by the RESOLVED config file, not the string
+# load_config hands back unchanged from two different folders
+# ---------------------------------------------------------------------------
+
+
+def test_two_projects_at_the_relative_default_path_do_not_share_the_change_key(tmp_path, monkeypatch):
+    """Before the fix, `load_config(project_path=Path("remedy.toml"), ...)` from two folders both
+    wrote and read the key `"remedy.toml"`, so project B's L3 silently inherited project A's
+    already-recorded change and skipped its own decision record."""
+    root = tmp_path / "data"
+    folder_a = tmp_path / "a"
+    folder_b = tmp_path / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    for folder in (folder_a, folder_b):
+        (folder / "matrix.json").write_text(json.dumps({"passed": True}), encoding="utf-8")
+    (folder_a / "adr.md").write_text("why", encoding="utf-8")
+    (folder_a / "remedy.toml").write_text(
+        '[remedy]\nautonomy.level = "L3"\nautonomy.gauntlet_evidence = "matrix.json"\n'
+        'autonomy.change_adr = "adr.md"\n', encoding="utf-8",
+    )
+    (folder_b / "remedy.toml").write_text(
+        '[remedy]\nautonomy.level = "L3"\nautonomy.gauntlet_evidence = "matrix.json"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(folder_a)
+    cfg_a = load_config(project_path=Path("remedy.toml"), user_path=tmp_path / "user.toml")
+    policy_a = load_autonomy_policy(cfg_a, root=root)
+    assert policy_a.changed_from == "L2"
+    assert len(_change_lines(root)) == 1
+
+    # Project B, in its OWN folder, is also changing from L2 to L3 for the first time — and must
+    # be refused for lacking its own decision record, not accepted because A already recorded L3.
+    monkeypatch.chdir(folder_b)
+    cfg_b_no_adr = load_config(project_path=Path("remedy.toml"), user_path=tmp_path / "user.toml")
+    with pytest.raises(AutonomyConfigError, match=re.escape(
+        "The autonomy level in remedy.toml changed from L2 to L3, and every change needs "
+        "its decision record: set autonomy.change_adr to the file that records why."
+    )):
+        load_autonomy_policy(cfg_b_no_adr, root=root)
+    assert len(_change_lines(root)) == 1
+
+    (folder_b / "adr.md").write_text("why", encoding="utf-8")
+    (folder_b / "remedy.toml").write_text(
+        '[remedy]\nautonomy.level = "L3"\nautonomy.gauntlet_evidence = "matrix.json"\n'
+        'autonomy.change_adr = "adr.md"\n', encoding="utf-8",
+    )
+    cfg_b = load_config(project_path=Path("remedy.toml"), user_path=tmp_path / "user.toml")
+    policy_b = load_autonomy_policy(cfg_b, root=root)
+    assert policy_b.changed_from == "L2"
+
+    lines = _change_lines(root)
+    assert len(lines) == 2
+    config_paths = {json.loads(line)["config_path"] for line in lines}
+    assert config_paths == {
+        str((folder_a / "remedy.toml").resolve()),
+        str((folder_b / "remedy.toml").resolve()),
+    }
+
+
+def test_l3_with_evidence_that_is_not_utf8_is_refused(tmp_path):
+    """R-1321's second, smaller defect: unreadable bytes must not crash out of the loader."""
+    evidence = tmp_path / "matrix.json"
+    evidence.write_bytes(b"\xff\xfe\x00\x01")
+    cfg = _load(tmp_path, project=(
+        '[remedy]\nautonomy.level = "L3"\nautonomy.gauntlet_evidence = "matrix.json"\n'
+    ))
+    with pytest.raises(AutonomyConfigError, match=re.escape(
+        f"The gauntlet evidence {evidence} is not a gauntlet matrix Remedy can read."
+    )):
+        load_autonomy_policy(cfg, root=tmp_path / "data")

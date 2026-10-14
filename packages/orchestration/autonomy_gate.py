@@ -124,15 +124,17 @@ AUTONOMY_CHANGES_FILENAME = "level_changes.jsonl"
 
 def _resolve_relative_path(value: str | None, source: ConfigSource,
                             project_path: str | None, user_path: str | None) -> str | None:
-    """Resolve VALUE against the folder of the config file of its OWN source; keep it if absolute."""
+    """VALUE resolved to one absolute path: against the folder of the config file of its OWN
+    source when relative, and through ``Path.resolve()`` either way (R-1321), so the result is
+    always the same canonical string and never a second spelling of the same file."""
     if value is None:
         return None
     if Path(value).is_absolute():
-        return value
+        return str(Path(value).resolve())
     from packages.orchestration.config import ConfigSource
 
     base = project_path if source == ConfigSource.PROJECT else user_path
-    return str(Path(base).parent / value)
+    return str((Path(base).parent / value).resolve())
 
 
 def _reject_env_sourced_keys(cfg: RemedyConfig) -> None:
@@ -173,11 +175,14 @@ def _check_gauntlet_evidence(level: str, evidence: str | None, path: str | None)
         raise AutonomyConfigError(f"The gauntlet evidence {evidence} does not exist.")
     try:
         parsed = json.loads(evidence_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, ValueError):
+        # R-1321's second, smaller defect: a read failure or bytes that are not UTF-8
+        # (UnicodeDecodeError, a ValueError) reads the same refusal as evidence that is not JSON —
+        # never an uncaught crash out of this loader.
         parsed = None
     if not isinstance(parsed, dict):
         raise AutonomyConfigError(
-            f"The gauntlet evidence {evidence} is not a gauntlet matrix Remedy can read."
+            "The gauntlet evidence " + evidence + " is not a gauntlet matrix Remedy can read."
         )
     if parsed.get("passed") is not True:
         raise AutonomyConfigError(
@@ -205,10 +210,15 @@ def _previous_level(changes_path: Path, path: str | None) -> str:
 
 
 def _record_change(
-    changes_dir: Path, changes_path: Path, *, path: str | None, old: str, new: str,
-    change_adr: str | None, source: str, when: datetime,
+    changes_dir: Path, changes_path: Path, *, path: str | None, config_path: str | None,
+    old: str, new: str, change_adr: str | None, source: str, when: datetime,
 ) -> None:
-    """(e) check the decision record and append one change line, creating the folder."""
+    """(e) check the decision record and append one change line, creating the folder.
+
+    PATH is the config file as the report holds it, named in both refusal sentences below.
+    CONFIG_PATH is that same file resolved to one absolute string (R-1321): the only form the
+    written record, and AutonomyPolicy.config_path, ever carry.
+    """
     if change_adr is None:
         raise AutonomyConfigError(
             f"The autonomy level in {path} changed from {old} to {new}, and every change needs "
@@ -221,7 +231,7 @@ def _record_change(
         )
     changes_dir.mkdir(parents=True, exist_ok=True)
     record = {
-        "at": when.isoformat(), "config_path": path, "from": old, "to": new,
+        "at": when.isoformat(), "config_path": config_path, "from": old, "to": new,
         "change_adr": change_adr, "source": source,
     }
     with changes_path.open("a", encoding="utf-8") as fh:
@@ -275,17 +285,24 @@ def load_autonomy_policy(
 
     _check_gauntlet_evidence(level, evidence, path)
 
+    # R-1321: the record is keyed by the level's config file RESOLVED to one absolute path, never
+    # by the string the report holds — a relative `load_config(project_path=...)` call (the
+    # unconfigured default included) can hand that same string back from two different folders.
+    # The refusal sentences above and below keep naming the file as the report holds it; only the
+    # key and AutonomyPolicy.config_path take the resolved form.
+    resolved_path = str(Path(path).resolve()) if path is not None else None
+
     # (e) every accepted level is one line in <data root>/autonomy/level_changes.jsonl, keyed by
     # the config file it came from, so two projects at two levels never read as changing each other.
     changes_dir = data_class_dir("autonomy", data_root)
     changes_path = changes_dir / AUTONOMY_CHANGES_FILENAME
-    old = _previous_level(changes_path, path)
+    old = _previous_level(changes_path, resolved_path)
 
     if old == level:
-        return AutonomyPolicy(level, path, evidence, change_adr, None)
+        return AutonomyPolicy(level, resolved_path, evidence, change_adr, None)
 
     _record_change(
-        changes_dir, changes_path, path=path, old=old, new=level, change_adr=change_adr,
-        source=level_value.source.value, when=when,
+        changes_dir, changes_path, path=path, config_path=resolved_path, old=old, new=level,
+        change_adr=change_adr, source=level_value.source.value, when=when,
     )
-    return AutonomyPolicy(level, path, evidence, change_adr, old)
+    return AutonomyPolicy(level, resolved_path, evidence, change_adr, old)
