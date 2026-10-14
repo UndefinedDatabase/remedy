@@ -7,11 +7,12 @@ passed gauntlet, every level change needs a decision record, and the level is vi
 matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D3).
 
 ## Current Step
-Session 1, round 3 on `feature/f078-autonomy-levels`: book round 2 and resolve R-1321, take
-`_cmd_status`'s step (3), show the level in `remedy status` and `remedy mission run`, and land the
-caps of `L5`.
+Session 1 ended at the operator's stop after round 3 on `feature/f078-autonomy-levels`. Round 4
+is prepared and not started: book round 3, harden the two numeric caps, prove each level's
+increment end to end and every existing gate at `L5`, bring the page up to date, and add one line
+each to the files of F063 and F068.
 
 ## Next Steps
-1. The end-to-end proof per level, every existing gate still firing at `L5`, the page brought up
-   to date, and one line each in the files of F063 and F068.
-2. The closure sequence: the one full suite, the self-use run, the evidence and the pull request.
+1. Round 4, as `.agent/handoff.md` names it.
+2. The closure sequence: the one full suite, the consolidation pass, the self-use run, the
+   evidence and the package, the Built State, the STATUS line and the pull request.
