@@ -39,7 +39,8 @@ structure rule" of `docs/agents/self_drive_protocol.md`.
 ## Boundaries and steps
 Every function longer than 300 lines and every file longer than 2,000 lines has its boundary here.
 Every other row gets its boundary when a feature first touches it or a paydown takes it. Every
-step changes no behaviour, keeps every import path working, and leaves the tests as they are.
+step changes no behaviour, re-points every consumer of a moved name to its new home in the same
+commit with no alias left behind, and changes the tests in their import lines only.
 
 ### Functions
 - `run_job` (`packages/orchestration/pingpong_job.py`). Boundary: its own phases — the pre-flight

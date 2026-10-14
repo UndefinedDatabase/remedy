@@ -620,9 +620,11 @@ never rise. This section is the one place the rule that pays them down is writte
    that commit writes one into the page first.
 3. A FEATURE THAT REPLACES A STRUCTURE deletes what it replaces before it closes. When a deletion
    must wait, the feature's closure registers it as the first step of the next paydown.
-4. A STRUCTURAL STEP changes no behaviour and keeps every import path working; its proof is the
-   unchanged tests staying green, and it lowers the rows and the pins of the ratchet it shrinks in
-   the same commit.
+4. A STRUCTURAL STEP changes no behaviour and re-points every consumer of a moved name to its new
+   home in the same commit, so that each name has exactly one import path and no alias, re-export
+   or forwarding function stays behind; its proof is the tests, changed in their import lines
+   only, staying green, and it lowers the rows and the pins of the ratchet it shrinks in the same
+   commit.
 5. A NEW DEBT never enters by itself: the ratchet fails on it. A row is added only by a DECISION
    that says why the function or file cannot be cut, in the same commit as its row, its boundary
    and its steps, and that commit raises the ratchet's pins by exactly that row.
