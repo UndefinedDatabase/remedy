@@ -39,6 +39,7 @@ from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS, PlannedT
 INSPECTION_VERBS: tuple[str, ...] = (
     "analyze", "analyse", "inspect", "review", "read", "explore",
     "investigate", "examine", "study", "understand", "survey", "research",
+    "verify", "confirm", "locate", "find", "identify", "assess", "audit",
 )
 
 #: The `inputs` key a task's deliverable is recorded under.
@@ -180,6 +181,71 @@ def _fold_into(target: PlannedTask, inspection: PlannedTask) -> PlannedTask:
         "depends_on": list(dict.fromkeys(depends)),
         "files_hint": hints,
     })
+
+
+def explicit_order_paths(text: str) -> list[str]:
+    """The path-like tokens *text* names, and [] when it names none (no fallback to the text itself)."""
+    found = extract_order_deliverables(text)
+    return [] if found == [text.strip()] else found
+
+
+def _plan_deliverable(task: PlannedTask) -> str:
+    """The concrete file a planned task serves: its first `files_hint`, else the one file its text names.
+
+    "" when it names none or several, so such a task is never merged.
+    """
+    hint = next((str(h).strip() for h in task.files_hint if str(h).strip()), "")
+    if hint:
+        return hint
+    named = explicit_order_paths(" ".join([task.title, task.goal, *task.acceptance]))
+    return named[0] if len(named) == 1 else ""
+
+
+def _merge_same_deliverable(group: list[PlannedTask], deliverable: str) -> PlannedTask:
+    """One task for *group*, which all serve *deliverable*: the last task's title, every step in order."""
+    last = group[-1]
+    members = {t.id for t in group}
+    depends = [d for t in group for d in t.depends_on if d not in members]
+    steps = "\n".join(f"Step {n}, {t.title}: {t.goal}" for n, t in enumerate(group, start=1))
+    return last.model_copy(update={
+        "goal": f"{last.goal}\nThis one task does all of these, in order:\n{steps}",
+        "acceptance": list(dict.fromkeys(a for t in group for a in t.acceptance)),
+        "depends_on": list(dict.fromkeys(depends)),
+        "files_hint": list(dict.fromkeys([deliverable, *(h for t in group for h in t.files_hint)])),
+    })
+
+
+def coalesce_deliverable_tasks(plan: TaskPlan) -> TaskPlan | None:
+    """The plan with every set of tasks serving ONE concrete file merged into a single task (amend1014 D2).
+
+    Tasks are keyed by their first `files_hint` and nothing else; a task naming no file is never
+    merged, and short titles alone merge nothing. The merged task takes the title of the LAST
+    task of its set, the final mutating action, with the others' work as its numbered steps; the
+    tasks that waited for any of them wait for it. A set whose merge would put a task outside the
+    set between two of its members (a dependency cycle) is left as planned. Returns None when
+    nothing merged or when the merged plan is no valid `TaskPlan`.
+    """
+    tasks = list(plan.tasks)
+    by_file: dict[str, list[PlannedTask]] = {}
+    for task in tasks:
+        if (key := _plan_deliverable(task)):
+            by_file.setdefault(key, []).append(task)
+    merged_any = False
+    for key, group in ((k, g) for k, g in by_file.items() if len(g) > 1):
+        ids = {t.id for t in group}
+        merged = _merge_same_deliverable(group, key)
+        rewired = [
+            merged if t.id == merged.id else
+            t.model_copy(update={"depends_on": list(dict.fromkeys(
+                merged.id if d in ids else d for d in t.depends_on))})
+            for t in tasks if t.id == merged.id or t.id not in ids]
+        try:
+            candidate = TaskPlan.model_validate(
+                {**plan.model_dump(), "tasks": [t.model_dump() for t in rewired]})
+        except ValidationError:
+            continue
+        tasks, plan, merged_any = rewired, candidate, True
+    return plan if merged_any else None
 
 
 def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:

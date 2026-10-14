@@ -257,26 +257,32 @@ class OrderJobPlan:
 def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
     """The plan and its job tasks, every task a deliverable; raises :class:`OrderJobPlanError` otherwise.
 
-    DECISION amend1011 D1: a plan rejected for inspection tasks is repaired once, by
-    folding each into the task that needs it; a plan still rejected afterwards fails.
+    DECISION amend1011 D1 and operator amendment amend1014-do-golden-path-now D2: a plan is
+    normalized before it may run, each inspection task folded into the task that needs it and
+    the tasks serving one file merged into one; the planner's own plan is the last candidate,
+    and a plan still rejected afterwards fails.
     """
     from packages.orchestration.job_plan import map_task_plan_to_tasks
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
+        coalesce_deliverable_tasks,
         fold_inspection_tasks,
         record_llm_task_deliverables,
         validate_deliverable_plan,
     )
 
-    for attempt in (plan, fold_inspection_tasks(plan)):
+    folded = fold_inspection_tasks(plan)
+    candidates = (coalesce_deliverable_tasks(folded or plan), folded, plan)
+    error: DeliverablePlanError | None = None
+    for attempt in candidates:
         if attempt is None:
-            break
+            continue
         tasks = map_task_plan_to_tasks(attempt)
         record_llm_task_deliverables(tasks)
         try:
             validate_deliverable_plan(tasks)
         except DeliverablePlanError as exc:
-            error = exc
+            error = error or exc
             continue
         return attempt, tasks
     raise OrderJobPlanError(f"task plan rejected: {error}") from error
