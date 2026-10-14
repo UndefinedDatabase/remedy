@@ -44,6 +44,7 @@ from packages.orchestration.mission_record import (
     MissionOrderBatch,
 )
 from packages.orchestration.mission_state import (
+    MISSING_JOB_LABEL,
     list_missions_safe,
     mission_evidence_dir,
     mission_job_state_label,
@@ -51,10 +52,14 @@ from packages.orchestration.mission_state import (
     project_ids_with_missions,
     save_mission,
 )
+from packages.orchestration.pingpong_job import JOB_TERMINAL_STATES
 from packages.orchestration.repo_mission import canonical_candidates, repo_mission_lock
 
 BACKUP_DIRNAME = "reconcile-backups"
-_RUNNING_LABELS = ("running",)
+#: The labels of a job a fold may move: one that ended, and one whose record is gone. Anything
+#: else, a paused job or one whose plan cannot be read included, refuses the fold (operator
+#: amendment amend1014-luna-mission-fixes A.5).
+_ENDED_LABELS = frozenset({state.value for state in JOB_TERMINAL_STATES} | {MISSING_JOB_LABEL})
 
 
 def _legacy_batch(mission: Mission, link_roles: dict[str, str]) -> MissionOrderBatch:
@@ -91,10 +96,11 @@ def reconcile_repo_missions(*, apply: bool = False, root: Path | None = None) ->
     report: dict[str, Any] = {"applied": apply, "projects": [], "refused": []}
     for project_id in project_ids_with_missions(root):
         groups, refused = _groups(project_id, root)
-        running = [link.job_id for canonical, dups in groups for m in [canonical, *dups]
-                   for link in m.job_links if mission_job_state_label(link.job_id) in _RUNNING_LABELS]
-        if running:
-            refused.append(f"jobs are running: {', '.join(running)}")
+        unended = [f"{link.job_id} ({label})" for canonical, dups in groups
+                   for m in [canonical, *dups] for link in m.job_links
+                   if (label := mission_job_state_label(link.job_id)) not in _ENDED_LABELS]
+        if unended:
+            refused.append(f"jobs have not ended: {', '.join(unended)}")
         entry = {"project_id": project_id, "refused": refused, "groups": [
             {"canonical": canonical.id,
              "folded": [{"mission": m.id, "status": m.status, "job_ids": list(m.job_ids()),

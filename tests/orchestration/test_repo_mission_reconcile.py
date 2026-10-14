@@ -96,3 +96,21 @@ class TestAFoldInterruptedHalfWayStaysRepairable:
         [live] = list_missions(project_id, tmp_path)
         assert sorted(live.job_ids()) == ["j1", "j2"]
 
+
+class TestReconcileRefusesEveryJobThatHasNotEnded:
+    def test_a_paused_job_of_a_duplicate_refuses_the_fold_naming_it(self, tmp_path, monkeypatch):
+        from packages.orchestration.pingpong_job import JOB_PAUSED, JobPlan, save_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        project_id = str(uuid4())
+        paused = "c" * 16
+        save_job_plan(JobPlan(job_id=paused, job_title="t", project_id=project_id,
+                              state=JOB_PAUSED), tmp_path)
+        _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        _legacy(project_id, tmp_path, "second", [paused], 5)
+
+        report = reconcile_repo_missions(apply=True, root=tmp_path)
+
+        [refusal] = report["refused"]
+        assert any(paused in reason and "paused" in reason for reason in refusal["reasons"])
+        assert len(list_missions(project_id, tmp_path)) == 2
