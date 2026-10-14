@@ -112,7 +112,11 @@ def _order_text_and_options(body: dict[str, Any],
     (R-1244, DECISION F205 D6).
     """
     from packages.orchestration.api_clients import client_order_refusal
-    from packages.orchestration.order_file import OrderFileError, parse_order_file_text
+    from packages.orchestration.order_file import (
+        OrderFileError,
+        order_no_cap_message,
+        parse_order_file_text,
+    )
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
         InvalidProjectSelectorError,
@@ -148,6 +152,12 @@ def _order_text_and_options(body: dict[str, Any],
             order_file.max_total_tokens, order_file.max_provider_calls)
         if refusal is not None:
             raise PublicApiWriteRefusal(403, "api_client_policy_refused", refusal)
+    # The body passes no cap, so the header must (operator amendment amend1014-luna-mission-fixes
+    # B.4): refused here, before anything starts, as `remedy do` refuses it.
+    if all(cap is None for cap in (order_file.max_cost_usd, order_file.max_total_tokens,
+                                   order_file.max_provider_calls,
+                                   order_file.max_wall_clock_minutes)):
+        raise PublicApiWriteRefusal(400, "order_file_no_cost_cap", order_no_cap_message("order"))
     options = [f"--{flag.replace('_', '-')}" for flag in _ORDER_CREATE_FLAGS if body.get(flag)]
     options += [f"--{key.replace('_', '-')}={body[key]}" for key in _ORDER_CREATE_STRINGS
                 if key in body]

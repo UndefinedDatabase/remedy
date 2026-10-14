@@ -1742,7 +1742,9 @@ def test_a_client_order_for_a_project_listed_by_slug_or_by_id_is_202(tmp_path):
     for listed in (project.slug, str(project.id)):
         calls, start = _recording_order_starter(_fixture_order_record())
         client = _client_policy(projects=(listed,))
-        status, answer, _headers = _post_order_as(client, _client_order(project), start)
+        # An order needs a cap to start (operator amendment amend1014-luna-mission-fixes B.4).
+        status, answer, _headers = _post_order_as(
+            client, _client_order(project, **{"max-cost-usd": 1}), start)
         assert status == 202, answer
         assert len(calls) == 1
 
@@ -1757,7 +1759,7 @@ def test_a_client_order_naming_several_projects_is_held_to_every_one(tmp_path):
     second_repo.mkdir()
     subprocess.run(["git", "init", "-q", str(second_repo)], check=True)
     second = register_project_repo("second-route-repo", second_repo)
-    text = (f"---\nproject: {first.slug}\nproject: {second.slug}\n---\n"
+    text = (f"---\nproject: {first.slug}\nproject: {second.slug}\nmax-cost-usd: 1\n---\n"
             "Add a line saying hello to README.md\n")
 
     calls, start = _recording_order_starter(_fixture_order_record())
@@ -2539,3 +2541,22 @@ def test_the_logs_route_holds_a_client_token_to_its_projects(tmp_path):
     status, body, _headers = public_api.answer_public_api_get(
         f"/api/v1/jobs/{own}/logs", client=client)
     assert status == 200 and body["job_id"] == own
+
+
+def test_an_order_without_a_cost_cap_is_refused_at_the_door_and_starts_nothing(
+        registered_project_slug):
+    """Operator amendment amend1014-luna-mission-fixes B.4: refused with `remedy do`'s own token
+    and sentence before the order is started, not only once it is polled."""
+    from packages.orchestration.serve_paths import serve_paths
+
+    calls, start = _recording_order_starter(_fixture_order_record())
+    text = f"---\nproject: {registered_project_slug}\n---\nAdd a line saying hello to README.md\n"
+
+    status, answer, _headers = _post_order({"order": text}, start)
+
+    assert (status, answer["error"]) == (400, "order_file_no_cost_cap")
+    assert "an unattended order without a cap is refused" in answer["message"]
+    assert calls == []
+    paths = serve_paths()
+    keys = paths.root / "order-keys"
+    assert not keys.exists() or not any(keys.iterdir())
