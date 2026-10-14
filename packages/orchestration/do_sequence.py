@@ -51,6 +51,7 @@ inside run, before each job — points where no provider call is in flight — a
 reads one line through the context's `read_line`; `q` or end of input stops the
 walk and asks every job of the walk to stop through `safe_points.request_stop`.
 `--plan-only` ends the walk after shape: run reports stopped and runs no job.
+`--rehearse` stops where `--plan-only` stops, through `stop_walk_for_rehearsal` (DECISION F055 D1).
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
+from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
     _shape_job_orders,
     _step_init,
@@ -849,6 +851,8 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
     if ctx.plan_only:
+        if ctx.rehearse:
+            return stop_walk_for_rehearsal(ctx)
         ctx.next_lines.extend(f"remedy job run {job_id}{_job_run_role_flags(ctx)}"
                               for job_id in ctx.job_ids)
         return DO_STEP_STOPPED, (

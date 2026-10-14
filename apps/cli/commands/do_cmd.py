@@ -237,7 +237,7 @@ def _cmd_do_order(
     commit: str | None = None,
     commit_auto: bool = False,
     commit_with_history: bool = False,
-    push_source: str = "",
+    push_source: str = "", rehearse: bool = False,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
@@ -345,7 +345,7 @@ def _cmd_do_order(
         commit_auto=commit_auto,
         commit_with_history=commit_with_history,
         push=bool(push_source),
-        push_source=push_source,
+        push_source=push_source, rehearse=rehearse,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
@@ -401,11 +401,9 @@ def _cmd_do_order(
 def _cmd_do(
     goal: str,
     *,
-    repo: str | None = None,
-    project: str | None = None,
+    repo: str | None = None, project: str | None = None,
     json_output: bool = False,
-    builder_provider: str | None = None,
-    reviewer_provider: str | None = None,
+    builder_provider: str | None = None, reviewer_provider: str | None = None,
     builder_model: str | None = None,
     reviewer_model: str | None = None,
     planner_model: str | None = None,
@@ -424,11 +422,10 @@ def _cmd_do(
     plan_only: bool = False,
     apply: bool = False,
     contract: str | None = None,
-    commit: str | None = None,
-    commit_auto: bool = False,
+    commit: str | None = None, commit_auto: bool = False,
     commit_with_history: bool = False,
     push: bool = False,
-    new_mission: bool = False,
+    new_mission: bool = False, rehearse: bool = False,
 ) -> None:
     """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
 
@@ -438,6 +435,9 @@ def _cmd_do(
     not ended already records is refused before any step with `order_already_running`,
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
+    from apps.cli.commands.do_rehearsal_refusals import refuse_rehearsal_conflicts
+    refuse_rehearsal_conflicts(rehearse=rehearse, yes=yes, apply=apply, commit=commit, commit_auto=commit_auto,
+                               commit_with_history=commit_with_history, push=push, json_output=json_output)
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
     # cap be any one of the four job budgets an order file's header or the flags can set.
@@ -503,7 +503,7 @@ def _cmd_do(
                   max_wall_clock_minutes=max_wall_clock_minutes,
                   max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
                   force_job=force_job, force_mission=force_mission,
-                  step_by_step=step_by_step, plan_only=plan_only,
+                  step_by_step=step_by_step, plan_only=plan_only or rehearse, rehearse=rehearse,
                   # Every commit flag implies --apply (T2_F270.md, DECISION F270 D4 (1)).
                   apply=apply or bool(mode), contract=contract,
                   commit=commit, commit_auto=commit_auto,
@@ -553,12 +553,9 @@ def _cmd_job_run(
     # Per-role model override flags are validated and resolved at the CLI
     # layer (invalid values exit 2) before any run work begins.
     _resolve_cli_role_configs(
-        builder_provider=builder_provider,
-        builder_model=builder_model,
-        builder_effort=builder_effort,
-        reviewer_provider=reviewer_provider,
-        reviewer_model=reviewer_model,
-        reviewer_effort=reviewer_effort,
+        builder_provider=builder_provider, builder_model=builder_model,
+        builder_effort=builder_effort, reviewer_provider=reviewer_provider,
+        reviewer_model=reviewer_model, reviewer_effort=reviewer_effort,
         repair_provider=repair_provider,
         repair_model=repair_model,
         repair_effort=repair_effort,
@@ -602,10 +599,8 @@ def _cmd_job_run(
         from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
         try:
             budgets = resolve_job_budgets(
-                cli_max_total_tokens=max_total_tokens,
-                cli_max_provider_calls=max_provider_calls,
-                cli_max_wall_clock_minutes=max_wall_clock_minutes,
-                cli_max_cost_usd=max_cost_usd,
+                cli_max_total_tokens=max_total_tokens, cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes, cli_max_cost_usd=max_cost_usd,
                 cli_deadline=deadline,
             )
         except (BudgetConfigError, ValueError) as exc:
@@ -635,6 +630,12 @@ def _cmd_job_run(
             f"job {job_id} is cancelled and never runs again.",
             json_output=json_output,
         )
+    if _recorded is not None:
+        from apps.cli.commands.job_run_refusals import refuse_unapproved_job_run
+        refuse_unapproved_job_run(_recorded, job_id, json_output=json_output)
+        from packages.orchestration.do_rehearsal import rehearsal_staleness_warning
+        if (warning := rehearsal_staleness_warning(_recorded)):
+            print(warning, file=sys.stderr)
 
     # DECISION F200 D5: a plain `job run <job>` on a job that exists runs in the serve
     # supervisor while one answers, and this command follows it to its end; any other
@@ -658,8 +659,7 @@ def _cmd_job_run(
 
     job = run_job(
         job_id,
-        builder_name=builder_provider,
-        reviewer_name=reviewer_provider,
+        builder_name=builder_provider, reviewer_name=reviewer_provider,
         builder_model=builder_model,
         builder_effort=builder_effort,
         reviewer_model=reviewer_model,
@@ -959,7 +959,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         commit_auto=bool(getattr(args, "commit_auto", False)),
         commit_with_history=bool(getattr(args, "commit_with_history", False)),
         push=bool(getattr(args, "push", False)),
-        new_mission=bool(getattr(args, "new_mission", False)),
+        new_mission=bool(getattr(args, "new_mission", False)), rehearse=bool(getattr(args, "rehearse", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

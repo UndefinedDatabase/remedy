@@ -1,15 +1,16 @@
-# Plan — F308 The run manifest survives a task split
+# Plan — F055 Rehearsal (dry check)
 
 ## Goal
-A task the run splits leaves the job's run manifest written and valid, with the split recorded as
-Remedy's own change, while an edit of the task list from outside is still refused
-(docs/roadmap/features/T2_F308.md; DECISIONs F308 D1 and D2).
+`remedy do --rehearse` plans an order and stops at the approval of its plan, building no worker,
+applying nothing and writing nothing into the repository; it records what a run would cost, risk
+and write, and a real run reuses the rehearsed plan without planning again
+(docs/roadmap/features/T3_F055.md; DECISIONs F055 D1 to D4).
 
 ## Current Step
-Session 1, round 6 on `feature/f308-run-manifest-task-split`, the closing round: round 5 booked,
-R-1252, R-1314 and R-1315 resolved, the Built State written; then the ledger rotation, F308's
-STATUS line with the README sync and SU-063's `consumed_by`, and the pull request, left unmerged.
+Session 1, round 9 on `feature/f055-rehearsal`, the closing round: book round 8, resolve R-1320,
+the Built State, then the ledger rotation, F055's STATUS line with the README sync and SU-064's
+`consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The next session: the Open PR Gate merges F308's pull request, books round 6's verdict in the
+1. The next session: the Open PR Gate merges F055's pull request, books round 9's verdict in the
    next feature's first commit, and Rule A5 picks the next unchecked STATUS line.

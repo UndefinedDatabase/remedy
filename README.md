@@ -26,14 +26,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-145 of 308 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+146 of 308 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 46 | 47 |
-| 3 | Full Token Economy & Autonomy | 10 | 29 |
+| 3 | Full Token Economy & Autonomy | 11 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 38 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -427,6 +427,15 @@ as strong as the role requires, and a model on this machine may stand in only fo
 are allowed a cheap model; a timeout, a rate limit or an unreadable answer never switches models;
 after a backup has answered, that role's next calls go to the backups for a few minutes before the
 usual model is tried again; the page `docs/system/model-failover-v1.md` describes it).
+
+F055 rehearsal before a run (`remedy do run --rehearse` plans what you ask and stops before any
+job runs: it builds no worker, applies nothing and writes nothing into the repository, and leaves
+beside each job a record and a readable summary of what the planning cost, what each task would
+cost, what could go wrong, what will be checked and which files the run may and may not write;
+running the rehearsed plan for real is approving it and running the job, which plans nothing again
+and warns when the repository moved since the rehearsal; `remedy job run` now refuses a job whose
+plan still waits for approval or was rejected, and a check of the definition of done no longer
+passes when the application it started died; the guide `docs/guides/do-run-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —

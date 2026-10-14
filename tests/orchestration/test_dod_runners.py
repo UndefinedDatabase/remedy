@@ -816,6 +816,85 @@ class TestRuntimeFlowRunner:
         # interleaving keeps is asserted here; the squatter test above is the
         # deterministic proof.
 
+    def test_an_app_already_exited_when_port_ownership_is_checked_does_not_pass(
+            self, flow_worktree: Path, monkeypatch):
+        """R-1320: readiness was seen, but the check's own application was
+        already dead by the time ownership of the port was confirmed — as in
+        the race, a squatter's live answer must not stand in for it."""
+        from packages.orchestration import dod_runners
+
+        squat_port = worker_port(6)
+        squatter = subprocess.Popen(
+            [sys.executable, str(FLOW_APP)], cwd=str(flow_worktree),
+            env={**os.environ, "PORT": str(squat_port)},
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            url = f"http://127.0.0.1:{squat_port}/health"
+            deadline = time.monotonic() + 10.0
+            while time.monotonic() < deadline:
+                status, _ = http_probe(url, timeout=1.0)
+                if status == 200:
+                    break
+                time.sleep(0.05)
+            else:
+                raise AssertionError("the squatter never became ready")
+
+            monkeypatch.setattr(dod_runners, "choose_port",
+                                lambda *_a, **_kw: squat_port)
+            monkeypatch.setattr(dod_runners, "port_listener_in_session",
+                                lambda *_a, **_kw: None)
+
+            def _wait_for_the_checks_own_exit(proc, _url, _deadline):
+                proc.wait(timeout=10.0)
+                return ""
+
+            monkeypatch.setattr(dod_runners, "_wait_ready",
+                                _wait_for_the_checks_own_exit)
+
+            ev = run_check(flow({"action": "open", "path": "/health"}),
+                           flow_worktree, timeout_sec=60)
+            assert ev.status == STATUS_FAILED
+            assert ev.reason == REASON_APP_START_FAILED
+            assert "had already exited" in ev.output_tail
+        finally:
+            squatter.terminate()
+            try:
+                squatter.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                squatter.kill()
+                squatter.wait(timeout=5.0)
+
+    def test_an_app_that_exits_during_the_steps_does_not_pass(
+            self, tmp_path: Path, monkeypatch):
+        """R-1320: the application was alive and owned the port when that was
+        checked, but died while the flow steps ran — a check whose own
+        application died must not pass."""
+        from packages.orchestration import dod_runners
+
+        write_runtime_config(
+            tmp_path,
+            cmd=[sys.executable, "-c",
+                 "import time; time.sleep(0.5); raise SystemExit(3)"],
+            ready_timeout_s=5.0)
+
+        monkeypatch.setattr(dod_runners, "_wait_ready",
+                            lambda *_a, **_kw: "")
+        monkeypatch.setattr(dod_runners, "port_listener_in_session",
+                            lambda *_a, **_kw: None)
+
+        def _slow_steps(_steps, _base_url, _deadline, _log):
+            time.sleep(1.5)
+            return ""
+
+        monkeypatch.setattr(dod_runners, "_walk_steps", _slow_steps)
+
+        ev = run_check(flow({"action": "open", "path": "/health"}),
+                       tmp_path, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_APP_START_FAILED
+        assert "exited mid-check" in ev.output_tail
+
 
 # ---------------------------------------------------------------------------
 # Evidence shape

@@ -640,6 +640,11 @@ def _confirm_app_owns_port(port: int, proc: Any, health_path: str,
     when the run may proceed (owned, or unreadable and so unproven either way);
     else ``(REASON_APP_START_FAILED, detail)``.
     """
+    if proc.poll() is not None:
+        detail = (f"port {port} answered {health_path}, but the application this check "
+                  f"started had already exited (exit code {proc.returncode})")
+        log.append(detail)
+        return REASON_APP_START_FAILED, detail
     owner = port_listener_in_session(port, proc.pid)
     if owner is False:
         detail = (f"port {port} answered {health_path}, but not from the "
@@ -730,6 +735,10 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
                         port, proc, spec.health_path, log)
                     if not reason and body is not None:
                         reason = body(base_url)
+                    if not reason and proc.poll() is not None:
+                        detail = f"the application this check started exited mid-check (exit code {proc.returncode})"
+                        log.append(detail)
+                        reason = REASON_APP_START_FAILED
         finally:
             # ALWAYS stopped: success, red outcome, or an exception on the way
             # out. A stop failure only overrides a reason when the run itself

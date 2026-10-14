@@ -173,9 +173,15 @@ def _consume_plan_approval(job: Any, reason: str, answers: dict[str, str],
     DECISION F015 D2: the approval is consumed under the plan-edit lock against the
     record as it stands then, so a plan edit accepted after this command loaded the
     job is approved rather than written over, and an approval that closed meanwhile
-    is named as having none pending.
+    is named as having none pending. DECISION F055 D3 (3): a moved repository's
+    staleness warning prints to standard error first; it never refuses.
     """
+    from packages.orchestration.do_rehearsal import rehearsal_staleness_warning
     from packages.orchestration.plan_editing import PlanEditRefused, consume_plan_approval
+
+    warning = rehearsal_staleness_warning(job)
+    if warning:
+        print(warning, file=sys.stderr)
 
     try:
         return consume_plan_approval(job, reason=reason, answers=answers, questions=questions)

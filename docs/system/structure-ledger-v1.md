@@ -145,6 +145,32 @@ commit with no alias left behind, and changes the tests in their import lines on
   `packages/orchestration/run_task_list.py`; (2) the checks of one call become a function of their
   own; (3) the episode order fields become a function of their own; (4) the embedded snapshot's
   checks become a function of their own.
+- `_cmd_do_order` (`apps/cli/commands/do_cmd.py`). Boundary: the checks of its arguments, the
+  budgets it resolves before the walk, the context it builds and walks, and the answer it gives,
+  the JSON document or the text lines. Steps: (1) the budgets resolved before the walk become a
+  function of their own; (2) the context the walk carries is built by a function of its own; (3)
+  the answer becomes a function of its own, once the client-interface tests, which key the
+  answer's sites by this function, read them through the function that gives them. Until a step
+  is taken, a feature's edits of this function are line-neutral (DECISION F055 D1).
+- `_cmd_do` (`apps/cli/commands/do_cmd.py`). Boundary: the order read before any step, the
+  refusals before any step (the rehearsal's conflicting flags, the commit and push flags, the
+  planner, the contract template, and an order file a mission still runs) and the one call into
+  `_cmd_do_order`. Steps: (1) the refusals before any step become one function that exits 2 or
+  returns; (2) the call stays.
+- `_cmd_job_run` (`apps/cli/commands/do_cmd.py`). Boundary: the checks of its flags, the budgets
+  it resolves from them, the refusals before anything runs (a job that cannot be continued, a
+  cancelled job, a plan not approved), the forward to a supervisor that answers, the run, and its
+  answer. Steps: (1) the refusals before anything runs become one function that fails or returns;
+  (2) the budgets resolved from the flags become a function of their own; (3) the answer becomes a
+  function of its own, once the client-interface tests, which key the answer's sites by this
+  function, read them through the function that gives them. Until a step is taken, a feature's
+  edits of this function are line-neutral (DECISION F055 D3).
+- `_cmd_status` (`apps/cli/commands/status_cmd.py`). Boundary: the scope and project it reads,
+  the jobs grouped by state, the counts of open decisions and pending stops, the runtime's state,
+  and its answer, the JSON document or the text lines. Steps: (1) the counts of open decisions and
+  pending stops become a function each; (2) the runtime's state becomes a function of its own;
+  (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
+  this function are line-neutral (DECISION F055 D3).
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -191,7 +217,8 @@ with the code that calls it.
   group, `apps/cli/command_catalog_mission.py`. Step (2), done by F302: the `stats` group,
   `apps/cli/command_catalog_stats.py`. Step (3), done by F206: the `project` group,
   `apps/cli/command_catalog_project.py`. Step (4), done by F199: the `doctor` group,
-  `apps/cli/command_catalog_doctor.py`.
+  `apps/cli/command_catalog_doctor.py`. Step (5), done by F055: the `do` group,
+  `apps/cli/command_catalog_do.py`.
 - `packages/orchestration/job_evidence.py`: the manual-completion bundle, the verification runner,
   and the run-manifest cross-checks with the postmortems, each to a module of its own.
 - `packages/orchestration/job_apply.py`: the result model, the history, commit and push policy,
@@ -419,7 +446,7 @@ with the code that calls it.
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2460 | `apps/cli/command_catalog.py` |
+| 2412 | `apps/cli/command_catalog.py` |
 | 2544 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |

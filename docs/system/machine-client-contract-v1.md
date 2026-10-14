@@ -349,6 +349,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--new-mission` | yes | no | no | no | Accept an order file again although an earlier order of it still has unfinished jobs; it adds one more order to the repository's one mission and never starts a second mission; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
+| `--rehearse` | yes | no | no | no | Plan what you ask as `remedy do` does and stop before any job of the mission runs: no builder or reviewer worker is built, nothing is applied and nothing is written into the repository, and the job's plan of tasks keeps its approval open for you; refused with --yes, --apply, a commit flag or --push |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
 | `--contract` | yes | no | yes | no | Force this contract template as the floor of the mission's acceptance criteria, instead of the one Remedy proposes: api-service, cli-tool, python-library or website |
 | `--commit` | yes | no | yes | no | Implies --apply: apply each job as `remedy job apply --approve --commit` does, landing one commit of exactly its copied files on your current branch, as you, with this one line as its first line, followed by the job's number when the mission has several jobs; each job runs only after the one before it is committed. Refused before any step with --plan-only, another commit flag, a dirty tree or a detached HEAD |
@@ -409,7 +410,7 @@ Keys under the answer keys: see below.
     - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
 - `jobs`: `*`
-  - `*`: `job_id`, `name`, `short_id`, `state`
+  - `*`: `job_id`, `name`, `rehearsed`, `short_id`, `state`
 
 #### `remedy decision resolve`
 
@@ -468,8 +469,8 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--deadline` | yes | no | yes | no | UTC deadline as ISO 8601 string (F018 budget override) |
 | `--json` | yes | no | no | no | Output as JSON |
 
-Exit codes: `0`, `1`, `2`.
-Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `serve_unreachable`.
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `invalid_argument`, `invalid_budget`, `job_blocked`, `job_failed`, `job_not_resumable`, `job_not_started`, `job_stopped`, `job_stopped_by_budget`, `plan_awaiting_approval`, `plan_rejected`, `serve_unreachable`.
 Answer keys: `context_strategy`, `cost_mirror`, `created_at`, `execution_config`, `finished_at`, `handoff_available`, `has_workspace_changes`, `isolation_mode`, `job_id`, `job_title`, `job_workspace_path`, `next_command`, `pending_tasks`, `postmortem`, `repair_rounds_allowed`, `repair_rounds_source`, `repo_path`, `result_diff`, `status`, `target_guard`, `tasks`, `warning`, `worktree`.
 Keys under the answer keys: see below.
 

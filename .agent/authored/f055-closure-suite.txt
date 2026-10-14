@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 353.1s (the launcher's reading); pytest's own reported wall time: 352.31s (0:05:52)
+summary line: 23069 passed, 22 skipped, 1 warning in 352.31s (0:05:52)
+bad node ids (failed + errors):
+  NONE
+leftover processes: NONE
+tree it ran on: c13b99e15 (F055 R8 C2: a runtime-flow check whose own application died never passes (R-1320))
+tree note: the run the operator amendment amend0921-operator-feedback rule 1 orders on the repaired tree; it replaces the run on 71305a2c7
+reflog before: c13b99e15 HEAD@{2026-10-14 19:32:21 +0200}: commit: F055 R8 C2: a runtime-flow check whose own application died never passes (R-1320)
+reflog after: c13b99e15 HEAD@{2026-10-14 19:32:21 +0200}: commit: F055 R8 C2: a runtime-flow check whose own application died never passes (R-1320)
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F055 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1279.63 CPU seconds, 352.32 wall seconds, 23091 tests collected, exit status 0, recorded 2026-10-14T17:38:33Z
+This closure's suite used 1279.63 CPU seconds, 9.4 percent more than F308's 1170.14, within the 14.1 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 14.1 percent.
+The test modules whose CPU time rose most since F308's closure run:
+  +11.67 s  tests/runtimes/test_supervisor_portability.py (35.60 -> 47.27)
+  +7.46 s  tests/orchestration/test_review_zip_hygiene.py (31.38 -> 38.84)
+  +7.11 s  tests/ui_server/test_multi_project_live.py (14.81 -> 21.92)
+  +5.29 s  tests/cli/test_rehearsal.py (0.00 -> 5.29)
+  +4.85 s  tests/orchestration/test_subtree_rerun_prepare.py (10.27 -> 15.12)
+  +4.31 s  tests/orchestration/test_self_use_runner.py (3.59 -> 7.90)
+  +4.12 s  tests/orchestration/test_review_package_full_integration.py (3.39 -> 7.51)
+  +3.88 s  tests/orchestration/test_job_worktree_integration.py (6.64 -> 10.52)
+  +3.77 s  tests/orchestration/test_run_manifest.py (4.47 -> 8.24)
+  +2.93 s  tests/cli/test_serve_client_parity.py (6.55 -> 9.48)

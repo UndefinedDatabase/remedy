@@ -108,7 +108,8 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     ),
     "job.run": (
         "invalid_argument", "invalid_budget", "job_blocked", "job_failed", "job_not_resumable",
-        "job_not_started", "job_stopped", "job_stopped_by_budget", "serve_unreachable",
+        "job_not_started", "job_stopped", "job_stopped_by_budget", "plan_awaiting_approval",
+        "plan_rejected", "serve_unreachable",
     ),
     "job.resume": (
         "ambiguous_job_id", "budget_decision_open", "builder_error", "builder_unavailable",
@@ -519,7 +520,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         },
     },
     "status.run": {
-        "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}}},
+        "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}, "rehearsed": {}}},
         "client": DIGEST_KEY_TREE,
     },
     "job.run": JOB_REPORT_KEY_TREES,

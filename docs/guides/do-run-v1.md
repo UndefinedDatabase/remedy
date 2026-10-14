@@ -45,6 +45,44 @@ fails at the first job that is not applied, naming it and why.
   line. Enter continues; `q` or end of input stops the walk and asks every job
   of the walk to stop.
 
+## --rehearse
+
+`--rehearse` plans the order exactly as `remedy do` does and stops where
+`--plan-only` stops: `run` reports stopped with a detail that begins
+`--rehearse: no job was run and nothing was written to the repository`. No
+builder or reviewer is built, nothing is applied, and the repository is not
+touched. A job whose plan of tasks waits for approval keeps waiting: its
+`Next:` lines name `remedy decision resolve <job_id> plan:approval --reason approve`
+and then `remedy job run <job_id>`. `--rehearse` is refused before any step,
+with exit 2 and the error `invalid_argument`, when it is given with `--yes`,
+`--apply`, `--commit`, `--commit-auto`, `--commit-with-history` or `--push`
+(DECISION F055 D1).
+
+### What a rehearsal records
+
+For every job it plans, a rehearsal writes `rehearsal.json` and its readable
+summary `rehearsal.md` into the job's own evidence folder, and the `run`
+step's detail names each summary. The summary says what the planning cost,
+as the job's prompt trace records it and without a dollar figure that was
+never measured; what each task would cost, as a band from the shared
+estimator or "not available"; the plan's risks and normalization; every
+check of the job's definition of done and which were not compiled; and which
+files of the plan the run could write and which the fences would block, or
+that the plan declared no scope. The job keeps the repository's commit at
+the rehearsal (DECISION F055 D2).
+
+### Running a rehearsed plan for real
+
+A rehearsed job is an ordinary planned job. To run it, answer its approval
+with `remedy decision resolve <job_id> plan:approval --reason approve` and
+then run `remedy job run <job_id>`; neither plans the job again. When the
+repository's commit has moved since the rehearsal, both commands print a
+warning that the plan may be stale and go on; the person decides. `remedy job
+run` refuses a job whose plan of tasks still waits for approval
+(`plan_awaiting_approval`, exit 3) or was rejected (`plan_rejected`, exit 3).
+While a rehearsed job waits, `remedy status` shows `(rehearsed)` after its
+name (DECISION F055 D3).
+
 ## JSON output
 
 `--json` prints one object with these keys:
