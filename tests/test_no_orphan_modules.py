@@ -74,6 +74,8 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "the documented `python -m apps.cli.main` bridge the runtime process-boundary tests launch"),
     ("packages/contracts/interfaces.py",
      "Protocol contracts satisfied structurally, never imported; the kernel boundary architecture.md names"),
+    ("packages/orchestration/autonomy_gate.py",
+     "F078's start check; round 2 wires it into the seams that start jobs (DECISION F078 D1)"),
     ("packages/orchestration/autonomy_loop.py",
      "the sole token_policy_applied emitter, kept by DECISION F275 D18 as that event's test vehicle"),
     ("packages/orchestration/bench_run.py",

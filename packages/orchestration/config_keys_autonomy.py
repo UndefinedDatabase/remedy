@@ -63,4 +63,39 @@ AUTONOMY_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=3.0,
     ),
+    ConfigKeySpec(
+        key="autonomy.level",
+        env_var="REMEDY_AUTONOMY_LEVEL",
+        description=(
+            "Who may start work on Remedy's own initiative: L2, every start is your own command; L3, the "
+            "mission loop may also start the next job of a mission you started; L4, order files may also be "
+            "started without you; L5, idea drafts may also be started, within their caps. Every approval, "
+            "fence, budget and watchdog applies at every level. L3 and higher need "
+            "autonomy.gauntlet_evidence, and every change needs autonomy.change_adr; set it in remedy.toml, "
+            "never in the environment (DECISION F078 D1)."
+        ),
+        value_type=str,
+        default="L2",
+    ),
+    ConfigKeySpec(
+        key="autonomy.gauntlet_evidence",
+        env_var="REMEDY_AUTONOMY_GAUNTLET_EVIDENCE",
+        description=(
+            "The matrix.json of a gauntlet attempt that passed; a level of L3 or higher is refused without "
+            "it. A relative path is read from the folder of the config file that sets it (DECISION F078 D1)."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="autonomy.change_adr",
+        env_var="REMEDY_AUTONOMY_CHANGE_ADR",
+        description=(
+            "The file that records why the autonomy level was last changed; a change of autonomy.level is "
+            "refused without it. A relative path is read from the folder of the config file that sets it "
+            "(DECISION F078 D1)."
+        ),
+        value_type=str,
+        default=None,
+    ),
 )
