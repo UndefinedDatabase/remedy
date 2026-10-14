@@ -66,6 +66,7 @@ from packages.orchestration.job_input_definition import (
     job_input_definition_bytes,
     job_input_definition_sha256,
 )
+from packages.orchestration.run_task_list import expect_task_without_run
 from packages.orchestration.workspace_identity import (
     _READING_HELPER_ARGS,
     GIT_INCOMPLETE,
@@ -1721,12 +1722,9 @@ def _collect_calls(job: Any, owned_episode_id: str = "",
     """
     from packages.orchestration.pingpong_job import (
         TASK_APPLIED,
-        TASK_BLOCKED,
-        TASK_FAILED,
         TASK_PASSED,
         TASK_RUNNING,
         TASK_SKIPPED,
-        TASK_VETOED,
     )
     from packages.orchestration.pingpong_loop import load_run
 
@@ -1766,33 +1764,7 @@ def _collect_calls(job: Any, owned_episode_id: str = "",
         observed_prior = 0
 
         if not run_id:
-            # F6: a task whose status says it ran, but which carries no run to point at, is
-            # MISSING evidence — not a zero-call task. Publishing it as "complete" would be the
-            # manifest certifying its own blind spot.
-            if must_have_calls:
-                problems.append(
-                    f"task {task_id} is {status!r} but has no run id, so its calls cannot be "
-                    f"accounted for")
-                expectations.append(TaskCallExpectationV1(
-                    task_id=task_id, expectation=EXPECT_EXECUTED, run_id="",
-                    expected_call_count=1, task_status_at_finalization=status,
-                    dispatch_state=DISPATCH_THIS_EPISODE))
-            elif status in (TASK_FAILED, TASK_BLOCKED):
-                # F4 (round 12): failed/blocked with NO run is its own truth — the task never
-                # reached dispatch. Calling it "not dispatched" would lose the failure; calling
-                # it "dispatched_no_calls" would invent a run that never existed.
-                expectations.append(TaskCallExpectationV1(
-                    task_id=task_id, expectation=EXPECT_FAILED_PRE_DISPATCH, run_id="",
-                    task_status_at_finalization=status, dispatch_state=DISPATCH_NEVER))
-            else:
-                # F027 D2 (6): a vetoed task with no run is EXPECT_SKIPPED exactly as a
-                # skipped one is — the veto struck before dispatch, same as a skip.
-                expectations.append(TaskCallExpectationV1(
-                    task_id=task_id,
-                    expectation=(EXPECT_SKIPPED if status in (TASK_SKIPPED, TASK_VETOED)
-                                 else EXPECT_NOT_DISPATCHED),
-                    run_id="", task_status_at_finalization=status,
-                    dispatch_state=DISPATCH_NEVER))
+            expect_task_without_run(task_id, status, must_have_calls, problems, expectations)
             continue
 
         # F4 (round 12): the task OWNS a run, so it WAS dispatched — whatever its status says.

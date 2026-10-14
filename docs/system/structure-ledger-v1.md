@@ -116,7 +116,8 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `_collect_calls` (`packages/orchestration/run_manifest.py`). Boundary: the three parts of its
   per-task loop — the task without a run, the lineage and membership check of each entry, and the
   expectation check. Steps: (1) the check of one entry becomes a function, lineage still first;
-  (2) the task without a run becomes a function.
+  (2) the task without a run becomes a function. Step (2), done by F308: the task without a run is
+  `expect_task_without_run` in `packages/orchestration/run_task_list.py`.
 - `execute_move` (`packages/orchestration/orchestrator_loop.py`). Boundary: one branch per kind
   of move, the dispatch branch holding most of its lines. Steps: (1) done by F301, the dispatch
   branch is `dispatch_milestone_job` in `packages/orchestration/orchestrator_dispatch.py`, which
@@ -250,7 +251,7 @@ with the code that calls it.
 | 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
 | 317 | `scripts/build_review_zip.py` | `main` |
 | 312 | `packages/orchestration/test_execution_service.py` | `execute_test_run` |
-| 303 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
+| 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 300 | `packages/orchestration/repository_snapshot.py` | `revert_repository_apply` |
 | 299 | `packages/orchestration/final_verifier.py` | `build_final_verifier_report` |
 | 282 | `apps/cli/commands/job.py` | `_cmd_run_next_task_local` |
@@ -400,7 +401,7 @@ with the code that calls it.
 
 | Lines | File |
 |---|---|
-| 6260 | `packages/orchestration/run_manifest.py` |
+| 6232 | `packages/orchestration/run_manifest.py` |
 | 5393 | `packages/orchestration/pingpong_job.py` |
 | 5233 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
