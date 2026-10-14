@@ -6,10 +6,10 @@ Remedy's own change, while an edit of the task list from outside is still refuse
 (docs/roadmap/features/T2_F308.md; DECISIONs F308 D1 and D2).
 
 ## Current Step
-Session 1, round 5 on `feature/f308-run-manifest-task-split`, the closure's evidence round: round
-4 booked; the staging reclaim, the evidence job on the accepted head and the review package.
+Session 1, round 6 on `feature/f308-run-manifest-task-split`, the closing round: round 5 booked,
+R-1252, R-1314 and R-1315 resolved, the Built State written; then the ledger rotation, F308's
+STATUS line with the README sync and SU-063's `consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The closing round: the Built State, the resolutions of R-1252, R-1314 and R-1315, the ledger
-   rotation, SU-063's `consumed_by`, the STATUS line with the README, and the pull request, left
-   unmerged.
+1. The next session: the Open PR Gate merges F308's pull request, books round 6's verdict in the
+   next feature's first commit, and Rule A5 picks the next unchecked STATUS line.
