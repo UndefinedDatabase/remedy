@@ -7,6 +7,13 @@ inside its own body.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from packages.orchestration.context_compiler import ClassBudgetFit
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
 
 # F308, step (2) of `_collect_calls`'s boundary: the task without a run gets its own function.
 def expect_task_without_run(
@@ -55,3 +62,60 @@ def expect_task_without_run(
                          else EXPECT_NOT_DISPATCHED),
             run_id="", task_status_at_finalization=status,
             dispatch_state=DISPATCH_NEVER))
+
+
+# F308, outside `run_job`'s named steps: the split of a task over its class cap gets its own
+# function.
+def split_task_over_class_cap(
+    job: JobPlan, task: TaskEntry, idx: int, fit_result: ClassBudgetFit,
+) -> bool:
+    """Answer True when it replaced the task with its parts."""
+    from packages.orchestration.escalation import (
+        auto_apply_safe_default,
+        enqueue_task_decision,
+    )
+    from packages.orchestration.pingpong_job import (
+        TASK_SPLIT,
+        planned_task_to_task_entry,
+        save_job_plan,
+        task_entry_to_planned_task,
+    )
+    from packages.orchestration.task_granularity import (
+        split_one_task,
+    )
+    decision = enqueue_task_decision(
+        job,
+        task_id=task.task_id,
+        question="task context exceeds its class cap",
+        options=["split task"],
+        safe_default="split task",
+        impact=(
+            f"tier1_tokens={fit_result.tier1_tokens} "
+            f"cap_tokens={fit_result.cap_tokens} "
+            f"task_class={fit_result.task_class}"
+        ),
+        now=datetime.now(timezone.utc),
+    )
+    answered = auto_apply_safe_default(
+        job, decision, now=datetime.now(timezone.utc))
+    split_entries: list[TaskEntry] = []
+    if answered is not None and answered["answer"] == "split task":
+        planned = task_entry_to_planned_task(task)
+        if planned is not None:
+            used_ids = {t.task_id for t in job.tasks}
+            children = split_one_task(planned, used_ids=used_ids)
+            if children:
+                split_entries = [
+                    planned_task_to_task_entry(
+                        child,
+                        task_class=task.task_class,
+                        source_heading_number=task.source_heading_number,
+                    )
+                    for child in children
+                ]
+    if split_entries:
+        job.tasks[idx + 1:idx + 1] = split_entries
+        task.status = TASK_SPLIT
+        save_job_plan(job)
+        return True
+    return False

@@ -52,7 +52,9 @@ commit with no alias left behind, and changes the tests in their import lines on
   `packages/orchestration/execution_config.py`, which `pingpong_job.py` re-exports; (3) the
   terminal steps after the task loop become a function of their own; (4) the handling of one
   task's result becomes a function of its own; (5) the budget helpers become one object in a
-  module of their own, holding the accumulators.
+  module of their own, holding the accumulators. Outside those steps, F308 moved the split of a
+  task whose context exceeds its class cap to `split_task_over_class_cap` in
+  `packages/orchestration/run_task_list.py`.
 - `run_pingpong` (`packages/orchestration/pingpong_loop.py`). Boundary: the builder, test and
   reviewer phases its own banners name, and the target snapshot check written out four times.
   Steps: (1) the snapshot check becomes one function each place calls, each keeping its own exit
@@ -157,6 +159,8 @@ with the code that calls it.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays. Step (1), done by F306: the
   execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
+  Outside those steps, F308 moved the split of a task whose context exceeds its class cap to
+  `split_task_over_class_cap` in `packages/orchestration/run_task_list.py`.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
   pack and the prompt builders, the staging, diff and target guard, and the export and token
   accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
@@ -236,7 +240,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1486 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1448 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -402,7 +406,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6232 | `packages/orchestration/run_manifest.py` |
-| 5393 | `packages/orchestration/pingpong_job.py` |
+| 5355 | `packages/orchestration/pingpong_job.py` |
 | 5233 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
