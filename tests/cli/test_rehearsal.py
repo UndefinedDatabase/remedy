@@ -225,3 +225,41 @@ def test_rehearse_json_run_step_is_stopped_with_its_prefix(repo, capsys):
     assert run["status"] == "stopped"
     assert run["detail"].startswith(
         "--rehearse: no job was run and nothing was written to the repository; ")
+
+
+# ── (k) --rehearse writes rehearsal.json and rehearsal.md beside the job ────────
+
+
+def test_rehearse_writes_the_rehearsal_record_and_names_it_in_the_run_step(repo, capsys):
+    from packages.orchestration.data_paths import job_evidence_dir
+
+    before = snapshot_repository_state(repo)
+    real_head = _git(repo, "rev-parse", "HEAD").strip()
+
+    data = _do_json(capsys, "--rehearse")
+
+    after = snapshot_repository_state(repo)
+    assert after == before
+    [job_id] = data["job_ids"]
+    evidence_dir = job_evidence_dir(job_id)
+    json_path = evidence_dir / "rehearsal.json"
+    md_path = evidence_dir / "rehearsal.md"
+    assert json_path.is_file()
+    assert md_path.is_file()
+    record = json.loads(json_path.read_text(encoding="utf-8"))
+    assert record["schema_v"] == "rehearsal_v1"
+    assert record["repo_head"] == real_head
+
+    run = _step(data, "run")
+    assert str(md_path) in run["detail"]
+
+
+# ── (l) R-1316: the applicator counter, proven to count ─────────────────────────
+
+
+def test_a_real_apply_run_moves_the_applicator_counter(repo, capsys, monkeypatch):
+    applicator_calls = count_applicator_calls(monkeypatch)
+
+    _do_json(capsys, "--apply")
+
+    assert applicator_calls["apply_job"] > 0
