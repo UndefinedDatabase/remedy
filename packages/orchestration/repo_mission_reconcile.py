@@ -16,7 +16,7 @@ module reads them, says what folding them would do (`reconcile_repo_missions` wi
 
 Nothing is changed before the whole project area is copied to a backup directory next to the
 missions (``restore_reconcile`` puts it back), nothing is folded while a job of the group is
-running or a record in the area cannot be read, and a run that finds a job without exactly one
+not ended or a record in the area cannot be read, and a run that finds a job without exactly one
 owner afterwards restores the backup itself. The run is idempotent: batch ids are derived from
 the folded mission's id, a job already linked in the canonical mission is not linked twice, and
 a second run finds nothing to fold.
