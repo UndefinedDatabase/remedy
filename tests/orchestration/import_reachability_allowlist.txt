@@ -99,6 +99,7 @@ packages.orchestration.artifact_index
 packages.orchestration.artifact_markdown
 packages.orchestration.artifact_preview
 packages.orchestration.artifact_summary
+packages.orchestration.autonomy_gate
 packages.orchestration.autonomy_readiness
 packages.orchestration.bench_history
 packages.orchestration.block_lint

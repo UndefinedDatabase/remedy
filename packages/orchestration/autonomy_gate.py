@@ -11,10 +11,12 @@ different question entirely.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from packages.orchestration.data_paths import data_class_dir, resolve_data_root
 
@@ -26,6 +28,10 @@ AUTONOMY_LEVELS: tuple[str, ...] = ("L2", "L3", "L4", "L5")
 
 # The level Remedy runs at until an operator configures otherwise.
 AUTONOMY_DEFAULT_LEVEL = "L2"
+
+# The mission loop's terminal when the configured level refuses its next start (DECISION F078 D2
+# (2)): the run ends honestly, with no job created, rather than pretending nothing was asked.
+TERMINAL_AUTONOMY_DEFERRED = "deferred_by_autonomy"
 
 # The four places a start can come from; a seam names one of these when it calls the gate.
 START_ORIGIN_MANUAL = "manual"
@@ -120,6 +126,15 @@ class AutonomyPolicy:
 # One line per accepted level change lives here, under the durable "autonomy" data class
 # (DECISION F078 D1 (4)), keyed by the config file that recorded it.
 AUTONOMY_CHANGES_FILENAME = "level_changes.jsonl"
+
+# One line per start the mission loop asked for and could not take, and one closing it when the
+# operator's next command takes the grant instead (DECISION F078 D2 (3)); kept beside the change
+# record, under the same durable data class.
+AUTONOMY_DEFERRED_FILENAME = "deferred_starts.jsonl"
+
+# The two events AUTONOMY_DEFERRED_FILENAME ever carries.
+_EVENT_DEFERRED = "deferred"
+_EVENT_TAKEN = "taken"
 
 
 def _resolve_relative_path(value: str | None, source: ConfigSource,
@@ -306,3 +321,132 @@ def load_autonomy_policy(
         change_adr=change_adr, source=level_value.source.value, when=when,
     )
     return AutonomyPolicy(level, resolved_path, evidence, change_adr, old)
+
+
+# ---------------------------------------------------------------------------
+# T002: the mission loop's own starts (DECISION F078 D2)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _AutonomyScope:
+    """The active `autonomy_start_scope`'s level and how many manual starts it still holds."""
+
+    level: str
+    manual_starts: int
+
+
+# None outside `autonomy_start_scope`; the running loop's own grant while inside one. A ContextVar
+# rather than a module global so two missions running at once never see each other's scope.
+_ACTIVE_SCOPE: ContextVar[_AutonomyScope | None] = ContextVar("_autonomy_active_scope", default=None)
+
+
+@contextmanager
+def autonomy_start_scope(policy: AutonomyPolicy, *, manual_starts: int):
+    """Grant the caller MANUAL_STARTS starts of its own before the mission loop's own apply.
+
+    `remedy mission run` opens one around its whole `run_mission` call, with `manual_starts=1`:
+    its own command is the start of the first job the run dispatches, and every further dispatch
+    in the same run is the loop's own (DECISION F078 D2 (1)). Reset on exit, including on an
+    exception, so a crashed run never leaves a stale scope for the next one in the same process.
+    """
+    token = _ACTIVE_SCOPE.set(_AutonomyScope(level=policy.level, manual_starts=manual_starts))
+    try:
+        yield
+    finally:
+        _ACTIVE_SCOPE.reset(token)
+
+
+def _deferred_path(root: Path | None) -> Path:
+    data_root = root if root is not None else resolve_data_root()
+    return data_class_dir("autonomy", data_root) / AUTONOMY_DEFERRED_FILENAME
+
+
+def _deferred_records(path: Path) -> list[dict[str, Any]]:
+    """Every object line of PATH that parses as one; a line that is not one is skipped."""
+    if not path.is_file():
+        return []
+    records: list[dict[str, Any]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict):
+            records.append(record)
+    return records
+
+
+def _open_by_mission(path: Path) -> dict[tuple[Any, Any], list[dict[str, Any]]]:
+    """Every deferred line not yet closed by a later taken line of the same project and mission."""
+    open_lines: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+    for record in _deferred_records(path):
+        key = (record.get("project_id"), record.get("mission_id"))
+        if record.get("event") == _EVENT_DEFERRED:
+            open_lines.setdefault(key, []).append(record)
+        elif record.get("event") == _EVENT_TAKEN:
+            open_lines[key] = []
+    return open_lines
+
+
+def claim_loop_start(
+    project_id: str, mission_id: str, milestone_id: str, *,
+    root: Path | None = None, now: datetime | None = None,
+) -> AutonomyStartVerdict | None:
+    """Answer whether THIS start may proceed; None outside any `autonomy_start_scope`.
+
+    Inside one (DECISION F078 D2 (2)), a manual start left in the scope is spent first and
+    answers `autonomy_may_start("manual", level)` — the operator's own command, which closes any
+    open deferral of this mission with one `taken` line. Once the grant is spent, every further
+    start in the scope asks `autonomy_may_start("orchestrator", level)`; a refusal writes one
+    `deferred` line and the caller ends the run without creating a job.
+    """
+    scope = _ACTIVE_SCOPE.get()
+    if scope is None:
+        return None
+    when = now if now is not None else datetime.now(timezone.utc)
+    path = _deferred_path(root)
+
+    if scope.manual_starts > 0:
+        scope.manual_starts -= 1
+        verdict = autonomy_may_start(START_ORIGIN_MANUAL, scope.level)
+        if _open_by_mission(path).get((project_id, mission_id)):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            record = {
+                "event": _EVENT_TAKEN, "at": when.isoformat(),
+                "project_id": project_id, "mission_id": mission_id,
+            }
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(record) + "\n")
+        return verdict
+
+    verdict = autonomy_may_start(START_ORIGIN_ORCHESTRATOR, scope.level)
+    if not verdict.allowed:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "event": _EVENT_DEFERRED, "at": when.isoformat(), "origin": START_ORIGIN_ORCHESTRATOR,
+            "level": scope.level, "project_id": project_id, "mission_id": mission_id,
+            "milestone_id": milestone_id,
+        }
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+    return verdict
+
+
+def open_deferred_starts(root: Path | None = None) -> list[dict[str, Any]]:
+    """Every deferred start not yet closed by a taken line of the same project and mission."""
+    path = _deferred_path(root)
+    return [record for records in _open_by_mission(path).values() for record in records]
+
+
+def deferral_detail(
+    verdict: AutonomyStartVerdict, project_id: str, mission_id: str, milestone_id: str,
+) -> str:
+    """The run's detail when a start is deferred: the verdict's reason, and how to start it by hand."""
+    return (
+        f"{verdict.reason} The next job of milestone {milestone_id} waits for you: run "
+        f"`remedy mission run {mission_id} --project {project_id}` to start it yourself."
+    )
