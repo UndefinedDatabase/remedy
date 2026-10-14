@@ -301,6 +301,25 @@ def check_providers(
     return _result("providers", HEALTH_PASS, detail + "; no provider was called")
 
 
+# The one next step for a default local chain with a missing link.
+DEFAULT_CHAIN_HINT: str = (
+    "the default builder and reviewer run the Pi harness on the local Ollama model; install Pi "
+    "and `ollama pull muse-glimmer:latest`, or pick an explicit provider"
+)
+
+
+# Check `default_chain`: Pi, its model, the Ollama endpoint and the model in it; no agent runs.
+def check_default_chain() -> HealthCheckResult:
+    from packages.orchestration.pi_provider import default_chain_checks
+
+    checks = default_chain_checks()
+    broken = [f"{name}: {detail}" for name, ok, detail in checks if not ok]
+    if broken:
+        return _result("default_chain", HEALTH_WARN, "; ".join(broken), DEFAULT_CHAIN_HINT)
+    return _result("default_chain", HEALTH_PASS,
+                   "; ".join(detail for _n, _o, detail in checks) + "; no agent was run")
+
+
 # The one next step for large leftover staging copies.
 RECLAIM_HINT: str = (
     "preview them with `remedy data reclaim --orphans`, then free them with "
@@ -392,6 +411,7 @@ def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]
         check_snapshot_manifests(root),
         check_worktrees(),
         check_providers(),
+        check_default_chain(),
         check_staging_copies(root),
         check_disk_floor(),
         check_crash_reports(root),

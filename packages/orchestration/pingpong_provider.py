@@ -1960,6 +1960,10 @@ def create_provider(name: str, *, model: str = "") -> PingPongProvider:
         return ClaudeCliProvider(model=model)
     if name == "ollama":
         return OllamaPingPongProvider(model=model)
+    if name == "pi":
+        # Imported here: pi_provider imports this module for the output types.
+        from packages.orchestration.pi_provider import make_pi_provider
+        return make_pi_provider("builder", cwd=None, model=model)
     raise RuntimeError(
-        f"Unknown provider: {name!r}. Available: fake, claude, claude-cli, ollama"
+        f"Unknown provider: {name!r}. Available: fake, claude, claude-cli, ollama, pi"
     )

@@ -81,8 +81,8 @@ def _configure_chains_toml(monkeypatch, tmp_path, toml_body: str) -> None:
 
 
 class TestConstants:
-    def test_local_providers_is_ollama(self):
-        assert LOCAL_PROVIDERS == frozenset({"ollama"})
+    def test_local_providers_are_ollama_and_the_pi_harness_on_it(self):
+        assert LOCAL_PROVIDERS == frozenset({"ollama", "pi"})
 
     def test_the_local_roles_are_exactly_the_cheap_tier_roles(self):
         assert FAILOVER_LOCAL_ROLES == {"teacher", "summary", "study"}
