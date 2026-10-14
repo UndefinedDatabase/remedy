@@ -62,13 +62,15 @@ class TestDefaults:
     def test_defaults_preserve_current_behavior(self):
         cfg = resolve_role_config("builder")
         assert cfg.role == "builder"
-        assert cfg.provider == DEFAULT_PROVIDER == "ollama"
+        # Amend1014b D1: the mutating roles default to the Pi harness; the model is unchanged.
+        assert DEFAULT_PROVIDER == "ollama"
+        assert cfg.provider == "pi"
         assert cfg.model == DEFAULT_MODEL == resolve_model_alias("ollama-default")
         assert cfg.effort == DEFAULT_EFFORT == "medium"
 
     def test_defaults_with_empty_sources(self):
         cfg = resolve_role_config("reviewer", cli_args={}, config_file={})
-        assert cfg.provider == DEFAULT_PROVIDER
+        assert cfg.provider == "pi"
         assert cfg.model == DEFAULT_MODEL
         assert cfg.effort == DEFAULT_EFFORT
 
@@ -85,7 +87,7 @@ class TestConfigFile:
 
     def test_config_file_partial_override_keeps_defaults(self):
         cfg = resolve_role_config("builder", config_file={"model": "custom"})
-        assert cfg.provider == DEFAULT_PROVIDER
+        assert cfg.provider == "pi"
         assert cfg.model == "custom"
         assert cfg.effort == DEFAULT_EFFORT
 
@@ -336,7 +338,7 @@ class TestRoutedCallEvidenceForInheritingRoles:
         assert cfg.routed_call is None
         # ...and the ordinary config resolution is untouched by that absence.
         assert cfg.role == role
-        assert cfg.provider == DEFAULT_PROVIDER
+        assert cfg.provider == "pi"
         assert cfg.model == DEFAULT_MODEL
         assert cfg.effort == DEFAULT_EFFORT
 
@@ -1244,7 +1246,7 @@ class TestTheTenOlderRolesAreUntouched:
         )
 
         for role in KNOWN_ROLES:
-            if role in ("self_use",):
+            if role in ("self_use", "builder", "reviewer", "repair"):
                 continue
             cfg = resolve_role_config(role)
             assert cfg.provider == DEFAULT_PROVIDER, role

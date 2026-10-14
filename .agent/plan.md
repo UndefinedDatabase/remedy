@@ -1,23 +1,26 @@
-# Plan — amend1014-do-golden-path-now
+# Plan — amend1014b-pi-default-repeatable-do
 
 ## Goal
-Repair the `remedy do` golden path (operator amendment amend1014-do-golden-path-now, 2026-10-14):
-a bounded one-deliverable order runs as one job and one task with no planning provider call,
-opens the cockpit before the worker, shows progress at once, and proposes a diff without touching
-the target; `--yes` of `do` becomes `--run-unattended`. D1 to D6, mandatory tests 1 to 10, a real
-acceptance run. Not a planner rewrite; no next roadmap feature until this is handed back.
+Operator amendment amend1014b (2026-10-15), closing PR #339 on `feature/do-golden-path`:
+Pi (JSON mode, local Ollama `muse-glimmer:latest`) is the default builder/reviewer/repair harness,
+and a dirty working tree is the captured baseline so `remedy do ... --apply` then
+`... --commit-auto` run back to back. D1 to D7, tests 1 to 18, real acceptance A to E.
 
 ## Current Step
-Done and pushed: code commits C1 to C10, the closure gate green at `b6741dfbb` (23134 passed), the
-real acceptance run reached the builder and stopped on a provider limit (the Ollama builder is
-prose-only), the handback written, the pull request open and not merged.
+Production code in place and trial-verified (A, B, C ran against the real model):
+`pi_provider.py`, `dirty_baseline.py`, role defaults, seeding, apply from the baseline commit,
+`target_changed_during_run`, empty-diff pass rejection, health chain. Old tests updated.
+Next: commit slices, then the 18 mandated tests.
 
 ## Next Steps
-1. Operator: review the pull request; answer the one question in `.agent/handoff.md` about the
-   Ollama builder.
-2. After the merge, F078 resumes on `feature/f078-autonomy-levels` (its plan names round 4).
+1. Commit slices (provider+wiring / baseline+apply / loop guard+health) with tests.
+2. Mandated tests 1 to 18 (fake `pi` executable for subprocess contract).
+3. Docs (quickstart, do guide, docs/README), dated decision, PR #339 title and body.
+4. Real acceptance A to E recorded; closure gate once; handoff.
+
+## Review Strategy
+PR #339 has no review comments on any of the three channels (checked 2026-10-15).
 
 ## Risks
-- The `.data` incident tree is blocked by a deny rule here; the captured-plan fixture is rebuilt
-  from the order's task titles.
-- Shared audit sentence "auto-approved via --yes" stays for `job` commands that keep `--yes`.
+- Structure ratchet (`run_pingpong`, `_cmd_do` must not grow): the loop edit is net negative.
+- `.agent/STOP` is untracked and must stay untouched; F078 branch untouched.

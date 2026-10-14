@@ -22,10 +22,15 @@ Each stage can stop the pipeline with an explicit `stop_reason`.
 remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fake --reviewer-provider fake --no-llm --json
 ```
 
-### Real Ollama via `remedy do` (requires running Ollama)
+### Real local run via `remedy do` (requires Pi and running Ollama)
+
+The default builder and reviewer are the Pi harness on the local Ollama model
+`muse-glimmer:latest`; no provider flag is needed. Pi reads, edits and tests inside the
+job's isolated workspace, and Ollama is only the model server (a raw Ollama call returns
+text and cannot write a file, so `--builder-provider ollama` is refused).
 
 ```sh
-remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --json
+remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider pi --json
 ```
 
 ### Real Ollama smoke via pytest (opt-in)

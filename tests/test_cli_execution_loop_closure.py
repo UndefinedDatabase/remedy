@@ -73,7 +73,7 @@ class TestDoProviderCliParsing:
     def test_invalid_provider_fails(self):
         """A provider outside the four `create_provider` builds exits 2."""
         from apps.cli.commands.do_cmd import _validate_role_override
-        for name in ("fake", "claude", "claude-cli", "ollama", None):
+        for name in ("fake", "claude", "claude-cli", "pi", None):
             _validate_role_override("builder", "provider", name)
         for bad in ("fixture", "none", "bogus-mode"):
             with pytest.raises(SystemExit) as exc:
