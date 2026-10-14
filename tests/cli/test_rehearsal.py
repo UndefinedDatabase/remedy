@@ -438,3 +438,31 @@ def test_status_labels_a_waiting_rehearsed_job_and_drops_the_label_once_it_runs(
     after = json.loads(capsys.readouterr().out)
     entry2 = next(e for e in after["jobs"]["completed"] if e["job_id"] == job_id)
     assert entry2["rehearsed"] is False
+
+
+# ── (r) R-1318: the planning counter, proven to count ───────────────────────
+
+
+def test_planning_counter_counts_a_real_planning_call(repo, capsys, monkeypatch):
+    """`_setup_llm_mocks` replaces `job_plan.plan_job_llm` with its own stub lambda via
+    `monkeypatch.setattr` — the same attribute `count_planning_calls` wraps. When the mocks
+    install AFTER the counter (as `_plan_with_mocked_llm` does, lazily, inside
+    `plan_order_job`), that later setattr wins and overwrites the counting wrapper, so the
+    counter never fires and `assert not planning_calls` elsewhere passes for the wrong
+    reason. Install the mocks first here, so the counter wraps the already-mocked attribute
+    last and nothing re-patches it afterward, and prove it actually counts."""
+    from packages.orchestration import do_sequence
+    from tests.cli.test_plan_approval import _setup_llm_mocks
+
+    _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+
+    counts = count_planning_calls(monkeypatch)
+
+    real_plan_order_job = do_sequence.plan_order_job
+    monkeypatch.setattr(
+        do_sequence, "plan_order_job",
+        lambda order, **kwargs: real_plan_order_job(order, **{**kwargs, "no_llm": False}))
+
+    _do_json(capsys, "--rehearse", "--force-job", order="Write r1318.md")
+
+    assert counts["plan_job_llm"] > 0
