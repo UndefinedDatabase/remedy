@@ -24,6 +24,7 @@ a second run finds nothing to fold.
 
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -33,6 +34,8 @@ from typing import Any
 from packages.orchestration.mission_record import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
+    PLAN_VERSION_KEY,
+    PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
     MissionJobLink,
@@ -103,15 +106,104 @@ def reconcile_repo_missions(*, apply: bool = False, root: Path | None = None) ->
             entry["backup"] = str(_fold_project(project_id, groups, root))
         if groups or refused:
             report["projects"].append(entry)
+    report["flatten"] = _flatten_plan_versions(apply=apply, root=root)
     return report
 
 
-def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
-                  root: Path | None) -> Path:
+# ---------------------------------------------------------------------------
+# Flatten plan versions (operator amendment amend1014-luna-mission-fixes A.1)
+# ---------------------------------------------------------------------------
+
+
+def _flat_chain(body: Any) -> list[dict[str, Any]]:
+    """Every version a plan body's chain holds at any depth, once each, ordered by version,
+    each without a chain of its own; the innermost copy of a version wins."""
+    found: dict[Any, dict[str, Any]] = {}
+
+    def walk(node: Any) -> None:
+        for version in (node or {}).get(PLAN_VERSIONS_KEY, []) if isinstance(node, dict) else []:
+            walk(version)
+            if isinstance(version, dict):
+                found.setdefault(version.get(PLAN_VERSION_KEY),
+                                 {k: v for k, v in version.items() if k != PLAN_VERSIONS_KEY})
+
+    walk(body)
+    return sorted(found.values(), key=lambda v: int(v.get(PLAN_VERSION_KEY) or 0))
+
+
+def _nested(body: Any) -> bool:
+    """Whether a plan body's chain holds a version that carries a chain itself."""
+    return isinstance(body, dict) and any(
+        isinstance(v, dict) and PLAN_VERSIONS_KEY in v for v in body.get(PLAN_VERSIONS_KEY, []))
+
+
+def _flattened(mission: Mission) -> Mission | None:
+    """The mission with a flat plan chain and chain-free sealed plans, or None when it has both.
+
+    A sealed plan's own chain is dropped only when every version in it is also in the mission's
+    flat chain; a folded legacy mission's chain is not, so it is kept, flattened.
+    """
+    plan = mission.mission_plan
+    sealed_plans = [b.sealed.get("plan") for b in mission.orders if b.sealed]
+    if not _nested(plan) and not any(isinstance(p, dict) and PLAN_VERSIONS_KEY in p
+                                     for p in sealed_plans):
+        return None
+    chain = _flat_chain(plan)
+    if isinstance(plan, dict):
+        plan = {**plan, PLAN_VERSIONS_KEY: chain}
+    orders = []
+    for batch in mission.orders:
+        body = (batch.sealed or {}).get("plan")
+        if isinstance(body, dict) and PLAN_VERSIONS_KEY in body:
+            own = _flat_chain(body)
+            rest = {k: v for k, v in body.items() if k != PLAN_VERSIONS_KEY}
+            body = rest if all(v in chain for v in own) else {**rest, PLAN_VERSIONS_KEY: own}
+            batch = replace(batch, sealed={**batch.sealed, "plan": body})
+        orders.append(batch)
+    return replace(mission, mission_plan=plan, orders=tuple(orders))
+
+
+def _record_bytes(mission: Mission) -> int:
+    return len(json.dumps(mission.to_json(), indent=2, sort_keys=True).encode())
+
+
+def _flatten_plan_versions(*, apply: bool, root: Path | None) -> list[dict[str, Any]]:
+    """Report, or with *apply* write, every live mission whose plan chain nests; one backup first."""
+    rows: list[dict[str, Any]] = []
+    backup: Path | None = None
+    for project_id in project_ids_with_missions(root):
+        for mission in list_missions_safe(project_id, root)[0]:
+            flat = _flattened(mission)
+            if flat is None:
+                continue
+            row = {"project_id": project_id, "mission": mission.id,
+                   "bytes_before": _record_bytes(mission), "bytes_after": _record_bytes(flat)}
+            if apply:
+                if backup is None:
+                    backup = _backup_area(root)
+                with repo_mission_lock(project_id, root):
+                    from packages.orchestration.mission_state import load_mission
+
+                    fresh = _flattened(load_mission(project_id, mission.id, root))
+                    if fresh is not None:
+                        save_mission(fresh, root)
+                row["backup"] = str(backup)
+            rows.append(row)
+    return rows
+
+
+def _backup_area(root: Path | None) -> Path:
+    """Copy the whole mission area beside it, before anything is written."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     area = mission_root(root)
     backup = area.parent / BACKUP_DIRNAME / stamp
     shutil.copytree(area, backup)
+    return backup
+
+
+def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
+                  root: Path | None) -> Path:
+    backup = _backup_area(root)
     owned_before = _owned_jobs(root)
     try:
         with repo_mission_lock(project_id, root):

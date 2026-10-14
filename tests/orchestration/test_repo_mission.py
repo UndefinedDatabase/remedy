@@ -333,3 +333,69 @@ def test_no_production_code_creates_a_mission_except_through_the_repository_miss
              if "create_mission(" in path.read_text(encoding="utf-8")}
 
     assert found <= allowed, sorted(found - allowed)
+
+
+# -- the plan chain stays flat (operator amendment amend1014-luna-mission-fixes A.1) --------
+
+
+class TestThePlanChainStaysFlat:
+    """Each planned order adds ONE flat version; nothing nests, nothing doubles."""
+
+    def test_six_planned_orders_keep_one_flat_chain_and_flat_sealed_plans(self, tmp_path):
+        import json
+
+        from packages.orchestration.mission_compiler import PLAN_VERSIONS_KEY, plan_mission
+        from packages.orchestration.mission_state import mission_dir_for_project
+
+        repo = _repo(tmp_path, "app")
+        project = _project(repo)
+        sizes = {}
+        for plans_so_far in range(1, 7):
+            mission, _ = accept_order(project, repo, _order(f"order {plans_so_far}"), root=tmp_path)
+            planned = plan_mission(mission.project_id, mission.id, None, root=tmp_path).mission
+            versions = planned.mission_plan[PLAN_VERSIONS_KEY]
+            assert not [v for v in versions if PLAN_VERSIONS_KEY in v]
+            assert len(versions) == plans_so_far - 1
+            for batch in planned.orders:
+                if batch.sealed is not None and batch.sealed.get("plan") is not None:
+                    assert PLAN_VERSIONS_KEY not in batch.sealed["plan"]
+            record = mission_dir_for_project(mission.project_id, tmp_path) / f"{mission.id}.json"
+            sizes[plans_so_far] = len(json.dumps(json.loads(record.read_text())))
+        assert sizes[6] < 3 * sizes[3]
+
+    def test_reconcile_flattens_a_nested_chain_and_keeps_every_other_field(self, tmp_path):
+        import json
+        from dataclasses import replace as dc_replace
+
+        from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
+        from packages.orchestration.mission_state import mission_dir_for_project
+
+        repo = _repo(tmp_path, "app")
+        project = _project(repo)
+        mission, _ = accept_order(project, repo, _order("one"), root=tmp_path)
+        v1 = {"milestones": ["a"], PLAN_VERSION_KEY: 1, PLAN_VERSIONS_KEY: []}
+        v2 = {"milestones": ["b"], PLAN_VERSION_KEY: 2, PLAN_VERSIONS_KEY: [v1]}
+        v3 = {"milestones": ["c"], PLAN_VERSION_KEY: 3, PLAN_VERSIONS_KEY: [v1, v2]}
+        current = {"milestones": ["d"], PLAN_VERSION_KEY: 4, PLAN_VERSIONS_KEY: [v1, v2, v3]}
+        sealed = dc_replace(mission.orders[0], sealed={"plan": v3, "contract": None,
+                                                       "plan_version": 3, "sealed_at": "t"})
+        save_mission(dc_replace(mission, mission_plan=current,
+                                orders=(sealed, *mission.orders[1:])), tmp_path)
+        record = mission_dir_for_project(mission.project_id, tmp_path) / f"{mission.id}.json"
+        before = json.loads(record.read_text())
+
+        report = reconcile_repo_missions(root=tmp_path)
+        assert [row["mission"] for row in report["flatten"]] == [mission.id]
+        assert report["flatten"][0]["bytes_after"] < report["flatten"][0]["bytes_before"]
+        assert json.loads(record.read_text()) == before
+
+        done = reconcile_repo_missions(apply=True, root=tmp_path)
+        assert done["flatten"][0]["backup"]
+        after = json.loads(record.read_text())
+        chain = after["mission_plan"][PLAN_VERSIONS_KEY]
+        assert [v[PLAN_VERSION_KEY] for v in chain] == [1, 2, 3]
+        assert not [v for v in chain if PLAN_VERSIONS_KEY in v]
+        assert PLAN_VERSIONS_KEY not in after["orders"][0]["sealed"]["plan"]
+        for key in set(before) - {"mission_plan", "orders"}:
+            assert json.dumps(after[key], sort_keys=True) == json.dumps(before[key], sort_keys=True)
+        assert not reconcile_repo_missions(apply=True, root=tmp_path)["flatten"]

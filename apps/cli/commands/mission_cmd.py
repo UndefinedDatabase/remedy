@@ -130,6 +130,10 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
         return
     if not report["projects"]:
         print("Every repository has at most one mission; nothing to fold.")
+    for row in report.get("flatten", []):
+        verb = "flattened" if apply else "would flatten"
+        print(f"project {row['project_id']}: {verb} the plan versions of {row['mission']} "
+              f"({row['bytes_before']} -> {row['bytes_after']} bytes)")
     for entry in report["projects"]:
         for reason in entry["refused"]:
             print(f"project {entry['project_id']}: NOT folded — {reason}")
@@ -139,7 +143,8 @@ def _cmd_mission_reconcile(*, apply: bool = False, restore: str | None = None,
                       f"({len(folded['job_ids'])} job(s))")
         if entry.get("backup"):
             print(f"  backup: {entry['backup']}  (undo: remedy mission reconcile --restore <dir>)")
-    if not apply and any(entry["groups"] for entry in report["projects"]):
+    if not apply and (any(entry["groups"] for entry in report["projects"])
+                      or report.get("flatten")):
         print("This was a dry run. Carry it out with: remedy mission reconcile --apply")
 
 

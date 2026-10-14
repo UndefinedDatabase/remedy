@@ -791,7 +791,9 @@ def plan_mission(
     previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
     versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))
     if previous:
-        versions.append(previous)
+        # Operator amendment amend1014-luna-mission-fixes A.1: the previous body goes in
+        # WITHOUT its own chain, so each plan adds one flat version and nothing nests.
+        versions.append({k: v for k, v in previous.items() if k != PLAN_VERSIONS_KEY})
     version = len(versions) + 1
 
     body = plan.model_dump()

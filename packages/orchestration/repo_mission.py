@@ -41,6 +41,8 @@ from packages.orchestration.mission_record import (
     MISSION_STATUS_ACHIEVED,
     MISSION_STATUS_ACTIVE,
     MISSION_STATUS_PAUSED,
+    PLAN_VERSION_KEY,
+    PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
     MissionOrder,
@@ -160,8 +162,12 @@ def _seal(mission: Mission) -> tuple[MissionOrderBatch, ...]:
     if not orders or orders[-1].sealed is not None:
         return orders
     plan = mission.mission_plan
-    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get("_version", 0)),
-              "plan": plan, "contract": mission.contract}
+    # The chain stays in the mission's plan slot; a sealed batch keeps its own body only
+    # (operator amendment amend1014-luna-mission-fixes A.1), so the record grows by one plan.
+    body = ({k: v for k, v in plan.items() if k != PLAN_VERSIONS_KEY}
+            if isinstance(plan, dict) else plan)
+    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get(PLAN_VERSION_KEY, 0)),
+              "plan": body, "contract": mission.contract}
     return (*orders[:-1], replace(orders[-1], sealed=sealed))
 
 
