@@ -58,6 +58,19 @@ with exit 2 and the error `invalid_argument`, when it is given with `--yes`,
 `--apply`, `--commit`, `--commit-auto`, `--commit-with-history` or `--push`
 (DECISION F055 D1).
 
+### What a rehearsal records
+
+For every job it plans, a rehearsal writes `rehearsal.json` and its readable
+summary `rehearsal.md` into the job's own evidence folder, and the `run`
+step's detail names each summary. The summary says what the planning cost,
+as the job's prompt trace records it and without a dollar figure that was
+never measured; what each task would cost, as a band from the shared
+estimator or "not available"; the plan's risks and normalization; every
+check of the job's definition of done and which were not compiled; and which
+files of the plan the run could write and which the fences would block, or
+that the plan declared no scope. The job keeps the repository's commit at
+the rehearsal (DECISION F055 D2).
+
 ## JSON output
 
 `--json` prints one object with these keys:
