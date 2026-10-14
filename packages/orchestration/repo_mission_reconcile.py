@@ -210,8 +210,13 @@ def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
         with repo_mission_lock(project_id, root):
             for canonical, dups in groups:
                 _fold_group(project_id, canonical, dups, root)
-        if _owned_jobs(root) != owned_before:
+        owned_after = _owned_jobs(root)
+        if set(owned_after) != set(owned_before):
             raise MissionError("a job lost or gained an owner while folding")
+        shared = sorted({job for job in owned_after if owned_after.count(job) > 1})
+        if shared:
+            raise MissionError(f"jobs are linked in two live missions after folding: "
+                               f"{', '.join(shared)}")
     except Exception:
         restore_reconcile(backup, root)
         raise
@@ -219,7 +224,12 @@ def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
 
 
 def _owned_jobs(root: Path | None) -> list[str]:
-    """Every job linked in any live mission, once per link, sorted: each must have one owner."""
+    """Every job linked in any live mission, once per link, sorted.
+
+    Before a fold a job may be linked twice: a fold interrupted after the canonical mission was
+    saved and before the duplicate became an alias leaves it so, and the next run folds it
+    (operator amendment amend1014-luna-mission-fixes A.3). After a fold each has one owner.
+    """
     return sorted(job for project_id in project_ids_with_missions(root)
                   for m in list_missions_safe(project_id, root)[0] for job in m.job_ids())
 

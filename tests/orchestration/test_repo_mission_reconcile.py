@@ -74,3 +74,25 @@ class TestRestoreValidatesFirst:
         assert len(list_missions(project_id, tmp_path)) == 2
         assert not [p.name for p in tmp_path.iterdir()
                     if ".restoring-" in p.name or ".replaced-" in p.name]
+
+
+class TestAFoldInterruptedHalfWayStaysRepairable:
+    def test_a_canonical_saved_with_the_duplicates_links_is_folded_not_refused(self, tmp_path):
+        from dataclasses import replace
+
+        from packages.orchestration.mission_state import load_mission, save_mission
+
+        project_id = str(uuid4())
+        old = _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        dup = _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        # The crash: the canonical was saved with the duplicate's link, the duplicate not aliased yet.
+        canonical = load_mission(project_id, old.id, tmp_path)
+        dup_links = load_mission(project_id, dup.id, tmp_path).job_links
+        save_mission(replace(canonical, job_links=(*canonical.job_links, *dup_links)), tmp_path)
+
+        report = reconcile_repo_missions(apply=True, root=tmp_path)
+
+        assert not report["refused"]
+        [live] = list_missions(project_id, tmp_path)
+        assert sorted(live.job_ids()) == ["j1", "j2"]
+
