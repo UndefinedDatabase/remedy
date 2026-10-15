@@ -1,124 +1,82 @@
-# Handback — amend1014-do-golden-path-now: the `remedy do` golden path is repaired; the real acceptance run reached the builder and stopped on a provider limit
+# Handback — amend1014b: Pi is the default harness and a dirty tree is the baseline; the two incident commands now run back to back, for real
 
 ## Session
 
-Operator amendment amend1014-do-golden-path-now · branch `feature/do-golden-path` (from `main` at
-`e688b30f3`) · code commits C1 to C10, `9e88a356e`..`b6741dfbb` · the pull request is open and
-**not merged**. The interrupted F078 feature was already committed and pushed on
-`feature/f078-autonomy-levels` (clean tree, `9d3187143`, no pull request); nothing of it was
-reset, restored, stashed or touched. The Open PR Gate found no open pull request. `.agent/STOP`
-(the operator's stop file) is untracked and was left alone.
+Operator amendment amend1014b (2026-10-15) · branch `feature/do-golden-path`, pull request #339 (open,
+non-draft, **not merged**; title and body updated to cover the Pi default and the repeatable
+dirty-baseline runs) · commits B1 to B10, `9ec2a0065`..`12d3522d8` (on top of `e3d4d333a`) · tip tree
+`084a6bd2d91f33515897f01853a54f4023dbb91f`. No review comments existed on any of the three channels
+of PR #339. `.agent/STOP` (untracked) and the F078 branch were not touched. Python 3.10.12.
 
-## State: what the command does now
+## Result, plainly
 
-`remedy do "<the incident order>" --repo .` on a committed one-file repository, with no flag:
-first output at 0.34 s, deterministic study, the one-milestone plan with a deterministic DoD, one
-job and one task for `README.md`, **zero planning or study provider calls**, the cockpit URL
-printed before the builder starts, progress lines on stderr with a heartbeat every ten seconds, a
-stop before apply, the target untouched. `--yes` of `do` is deleted; `--run-unattended` replaces it.
+**Success.** Both ordered commands worked consecutively in a fresh incident repository with no
+provider flag, no commit, stash or reset between them, against the real Pi 1.2.0 and the real
+`muse-glimmer:latest`. Acceptances A to E all passed (below).
 
-## Real acceptance run — the honest result
+## Acceptance (real Pi + Ollama, fresh fixtures, isolated data roots, `python3 -m apps.cli.grouped`)
 
-Command, exactly the human one apart from the path, at commit `b6741dfbb`, a fresh committed
-repository holding only `README.md` (`# Test\n`), isolated data root, the default configuration
-(`builder`, `reviewer`, `planner` and `study` all `ollama`, model `muse-glimmer:latest`):
-
-```
-remedy do "Add one concise project-description paragraph below the existing heading in README.md. Change no other files." --repo .
-```
-
-| Measure | Result |
-|---|---|
-| Time to first visible output | 0.341 s after launch; the first provider call can happen only after `run started`, at 1.06 s |
-| Phase durations | init 0.0 s · study 0.0 s · plan 0.1 s · shape 0.0 s · ui 0.5 s · run 135.7 s |
-| Resolved provider per call | builder `ollama` ×3, reviewer `ollama` ×3 (rounds 1 to 3; `provider_evidence.json`, `prompt_trace.jsonl`) |
-| Provider calls by role | planning 0 · study 0 · intake 0 · DoD 0 · builder 3 · reviewer 3. No mission-level prompt trace exists. |
-| Jobs and tasks | 1 job, 1 task, deliverable `README.md` (no synthetic inspection task) |
-| Cockpit | URL printed at 1.06 s after launch, 6 ms before `run started`; HTTP 200 on the URL after the run failed (checked on the first run); `remedy ui stop` clean |
-| Final state | `blocked`: `task_..._gate_failed: final_status=repair_exhausted; no_file_changed; reviewer_verdict=fail` |
-| Target `git status` before / after | both empty; `README.md` still `# Test`; one commit |
-| Generated diff | **none** (`result.diff` is 0 bytes) |
-
-**This is a failed acceptance on the criterion "an actual README diff in Remedy's isolated
-workspace".** Cause, measured: the builder's reply described the edit and printed the new file in
-prose (`files_changed: []`, `parse_source: heuristic_fallback`), and the reviewer correctly failed
-a claimed change that is not in the staged diff. The `no_file_changed` gate fired on the one REAL
-task, not on an inspection task. I found no code path that applies an Ollama builder's text to the
-workspace: `OllamaPingPongProvider.build` returns text, `pingpong_loop` writes a builder's changes
-into staging only for the fake provider, and a writing provider (claude-cli) edits the workspace
-itself. So with the all-Ollama default, no order can produce a diff; that predates this amendment,
-and repairing it is a provider rewrite the amendment forbids. I did not run claude-cli, because
-the order says no Claude process was expected and it spends usage nobody authorized.
-**Operator question (one):** should a follow-up feature let the Ollama builder's structured reply
-be applied to the workspace, or should `remedy do`'s default builder be a writing provider?
-
-A second, labelled **fake-provider** run of the same command (`--builder-provider fake
---reviewer-provider fake`, commit `e5ca409a0`) shows the rest of the path: one job, one task,
-cockpit before the run, `run done — 1.1 s`, apply stopped, target `git status` empty, and a diff in
-the job workspace (`docs/README.md`, the fake builder's fixed output, not a real paragraph).
-
-## Provider calls for the incident, before and after
-
-| | Before (the incident, as the order measured it) | After (this branch) |
+| | Command | Result |
 |---|---|---|
-| Study narration | 3 | 0 |
-| Mission plan | 1 | 0 |
-| Milestone DoD compilation | 3 | 0 |
-| Intake | 1 | 0 |
-| Task plan | 1 | 0 |
-| Builder | 1 | 1 per round (3 in the real run, as no round changed a file) |
-| Reviewer | 1 | 1 per round (3) |
-| Total | 11 sequential, about 7.5 minutes | 6 in the real run; 2 on a first-round pass |
+| A | `do "<order>" --repo .` | builder and reviewer `pi (ollama/muse-glimmer:latest)`; one job, one task, planning calls 0; cockpit URL printed before `run started` (ui step 0.3 s); run 42.9 s; Pi builder 8 model turns, tools read/bash/bash/edit/read/bash/bash, 29.9 s; reviewer 3 turns, `read,grep,find,ls`, 12.0 s; non-empty `result.diff` (`+Test is a minimal example project…`); target bytes and `git status` unchanged; cockpit stopped after |
+| B | `do "<order>" --repo . --apply` | applied 1 file, run 69.4 s, README holds the paragraph, `git status` ` M README.md`, no commit |
+| C | `do "…last scentence…" --repo . --commit-auto` run **immediately** after B | no clean-tree refusal; job started from B's bytes (`start_baseline` lists README.md, `diff` shows only the second paragraph as `+`); run 103.4 s; one commit touching only README.md; tree clean; no stash; report says README.md "already held your uncommitted edits, so the commit contains them too" |
+| D | `notes.txt` dirtied, README order with `--commit-auto` | commit holds only README.md; `notes.txt` ` M`, sha256 identical; report names `left uncommitted and untouched: notes.txt`; stash empty |
+| E | target README edited after the job worktree appeared, then `--apply` | apply blocked; `job apply --json` error `target_changed_during_run`, message names `README.md`; concurrent bytes sha256 identical; no commit; job dir and evidence kept |
+
+Pi call records (argv with the prompt as a hash, tools, turns, usage, exit) are in
+`<data root>/runs/<run>/pi/<role>.jsonl`. Pi argv: `pi --mode json --no-session --provider ollama
+--model muse-glimmer:latest --offline --no-approve --no-extensions --no-mcp --no-skills
+--no-prompt-templates --no-themes --tools <role list> -- <prompt>`. Ollama answered at
+`http://localhost:11434` with the model installed (`remedy doctor health` `default_chain`).
+
+## Verification
+
+- Closure gate, once, `python3 -m pytest tests -q -n auto` through `scripts/remedy_pytest.sh`, Python
+  3.10.12, at `b14ab678e` (tree `b6e881efd3510e92241baed31515418dd09d5cf0`): `1 failed, 23150 passed,
+  22 skipped`. The one failure, `tests/cli/test_do_sequence_cli.py::test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job`,
+  asserted the old refusal sentence; B10 changes that one assertion, and that file plus
+  `tests/cli/test_do_pi_default.py` pass (`57 passed`) at the tip. The tip tree differs from the gated one by
+  that single test line, so the green result is **not** a full-suite result for the tip; a second full run
+  was not spent on it.
+- Two earlier full runs hung to their timeout: the default builder became the installed `pi`, so a
+  provider-less test would have started a real agent. `tests/conftest.py::_no_live_pi_reach` refuses the
+  Ollama lookup the Pi chain makes before it spawns anything (like `_no_live_ollama_reach`).
+- `ruff check packages apps tests` clean. The structure ratchet is green with three function rows and two
+  file rows lowered (`run_pingpong`, `_apply_from_workspace`, `summarize_job_apply`, `pingpong_job.py`,
+  `job_apply.py`) and the two pins lowered; no row rose.
+- `remedy-review` is not an installed skill in this session; a self-review of the diff stat and of each
+  commit ran instead (no external review was run).
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| D1 lane | done | `do_lane.py` `select_do_lane`, pure, table-tested (13 rows plus properties), no model; bounded lane studies a tiny repository from facts, plans and compiles the DoD deterministically, shapes one job and one task, calls no planner |
-| D2 one deliverable, one task | done | verbs verify, confirm, locate, find, identify, assess, audit; `coalesce_deliverable_tasks` merges by the same file, last task's title, cycle-safe; `no_file_changed` untouched |
-| D3 `--run-unattended` | done | `--yes` deleted from `do` (catalog, parser, handler, rehearsal refusal, serve and API launcher, contract, guides, tests); full plan: terminal question or stop naming the flag |
-| D4 no silent waits | done | `do_progress.py`; heartbeat names the step and both providers, not the active one (the run log writes no role event during a call) |
-| D5 cockpit first | done | sequence init, study, plan, shape, ui, run, apply; launch failure prints `remedy ui start <job id>` and the run goes on |
-| D6 no invented scope | done | two prompt rules (golden updated, declared) and the guard `do_scope.py`, which falls back to the deterministic plan |
-| Test 1 incident end to end | done | `test_do_bounded_lane.py::test_the_incident_order_is_one_job_one_task_with_no_flag_and_no_planning_call` and the cockpit-order test |
-| Test 2 call count | done | tripwires on every planning and study factory; builder and reviewer counted |
-| Test 3 captured plan replay | done | `test_task_deliverables.py`, with and without `files_hint`; rebuilt from the order's task titles because `.data` is blocked by a deny rule here |
-| Test 4 visible progress | done | `test_do_progress.py` (injected sink and clock, flush), plus the human-walk test |
-| Test 5 machine output | done | json: one document, stderr empty |
-| Test 6 cockpit on failure | done | blocked run keeps the started cockpit; launcher failure prints the real command |
-| Test 7 scale-up | done | two files keep two tasks in the full lane, `--force-mission` keeps two jobs, many-file repository and a vague order is full |
-| Test 8 scope fabrication | done | LICENSE, CI, `.env.example` proposed by a stub planner are replaced by the deterministic plan |
-| Test 9 vocabulary | done | catalog, parser, client interface, documents and callers carry no `remedy do ... --yes` |
-| Test 10 existing safety | done | target byte and status unchanged without `--apply`; apply, commit and push gates untouched |
-| Real acceptance run | **deviated** | shape, calls, progress, cockpit order and absence of the synthetic gate failure are proven; no README diff (provider limit above) |
+| D1 Pi default | done | role defaults `pi`/`muse-glimmer:latest` for builder, reviewer, repair; planner/study stay direct; explicit `--builder-provider pi`; raw `ollama` builder/repair refused at the CLI naming `pi`; raw Ollama reviewer kept |
+| D2 subprocess contract | done | `pi_provider.py`, argv vector, cwd = job workspace, private `<data root>/pi_agent/models.json`, env allowlist, role tools, guarded run; wall floor 900 s (decision recorded) |
+| D3 JSONL authoritative | done | `pi_events.py`; LF framing, `message_end`, `agent_settled`, summed turns/usage; empty-diff pass rejected (`empty_diff_gate.py`) for job tasks; `no_file_changed` untouched |
+| D4 prerequisites | done | checked at provider construction before any model call, no fallback; `doctor health` gained `default_chain`, `worker doctor` the same links; neither runs an agent |
+| D5 working tree is baseline | done | `dirty_baseline.py`; captured before the worktree exists, seeded and committed on the job branch; apply source rebuilt from that commit; HEAD/branch movement and changed deliverables stop as `target_changed_during_run` |
+| D6 apply and commit-auto | done | `--commit`/`--commit-auto` no longer need a clean tree; only the job's files are added and committed; disclosure and preserved paths in the report and the JSON |
+| D7 fences kept | done | no gate weakened (see deviations for one narrowing of scope of the new rule) |
+| Tests 1 to 18 | done | 1, 2, 9: `test_pi_provider.py`; 3, 4: `test_pi_events.py` and `test_pi_provider.py`; 5, 6: `test_pi_provider.py`; 7, 8: `test_pi_provider.py` and the updated role/execution tests; 10 to 14: `test_dirty_baseline.py`; 15, 16, 18: `test_do_pi_default.py` and the existing `test_do_bounded_lane.py`; 17: the existing full-lane/scale tests in `test_do_bounded_lane.py`/`test_do_order_file.py`, unchanged and green (no new scale-up test was written) |
+| Acceptance A to E | done | table above |
 
-## Verification (real, trimmed)
+## Deviations and remaining limits
 
-- Closure gate, once green: `python3 -m pytest -n auto -q` from the repository root, Python 3.10.12,
-  commit `b6741dfbb597c7c109f1bc8e59270fcdb0af359d`, tree `cd64a6283891227588b7a15e885642a7cdd75b33`:
-  `23134 passed, 22 skipped, 1 warning in 331.56s`, exit 0. Log: `~/.remedy-loop/amend1014-suite3.txt`.
-- Two earlier full runs were red and are this branch's own, both repaired in C9 and C10:
-  run 1 at `6e056c629`, `8 failed, 23126 passed` (the task-plan prompt did not name the new verbs;
-  four new modules missing from the reachability allowlist; a lint-excused print, a blind handler
-  and a terminal read inside packages; a new role-config call site; `context.md` without "Steps");
-  run 2 at `31458f162`, `3 failed, 23131 passed` (the task-plan prompt golden). No test was
-  deleted, no assertion weakened, no ceiling raised.
-- The new tests fail on the old revision (checked in a detached worktree of `e688b30f3`: 23 failed,
-  10 errors, the errors being fixtures that need the new modules).
-- The tree after `b6741dfbb` differs only in this handback and `.agent/plan.md`.
+- A reviewer pass on an empty diff is rejected only for job tasks with a non-fake builder (a single
+  `remedy run` may still end a clean `builder_no_changes`, which an existing test pins).
+- `--commit-with-history` still asks for a clean tree and refuses a dirty-start job (its branch holds the
+  baseline commit); recorded in the decision.
+- The refusal token `target_changed` was renamed `target_changed_during_run` (no alias).
+- The token line shows one ledger "call" per Pi invocation; the real model-turn count is in
+  `usage_actuals.model_turns` and the Pi call records.
+- Cancellation is the Pi process group dying on a signal (`pi_killed`); the guarded runner has no separate cancel channel.
+- Tool events are recorded after the call returns, not streamed live; the heartbeat keeps the wait visible.
+- `do` text joins "to <repo>" after the disclosure sentence in the apply line; wording only.
+- Pi runs with the user's permissions; no sandbox is claimed. Remedy's workspace, scope, hash and apply gates are the isolation.
 
-## Deviations
+## Next expected operator action
 
-1. The mission-prompt golden and the task-plan prompt golden carry declared content changes.
-2. `F295_GATE_TEST_SHA256` changed because F295's gate test's `do` line now carries `--run-unattended`.
-3. The shared audit sentence "auto-approved via --yes" stays (`job` commands keep their `--yes`; F035's feature file pins it); a `do` approval records "auto-approved via --run-unattended".
-4. Existing tests that drove the LLM planner on a one-file order now name two files, because a one-file order deliberately makes no planning call; `--force-job` also selects the bounded lane as the order says.
-5. `_cmd_do_order`, `plan_order_job` and `do_cmd.py` shrank (184, 250, 1018 lines); three structure rows and the two pins fell with them.
-6. Commits C3 to C5 each pass their own focused tests, but the structure ratchet is only whole at C5.
-7. The `.data` incident tree could not be read (deny rule), so the captured plan is rebuilt from the order's own titles.
-
-## Remaining blockers and next steps
-
-1. Operator: the Ollama builder question above. Until answered, the default all-Ollama configuration cannot produce a diff for any order.
-2. Review and merge the pull request when satisfied; I did not merge it.
-3. F078 resumes on its own branch afterward (`.agent/plan.md` there names round 4).
+Review PR #339 and say whether to merge it (not merged here). A second full-suite run of the tip is
+optional; F078 resumes on `feature/f078-autonomy-levels` after the merge.
