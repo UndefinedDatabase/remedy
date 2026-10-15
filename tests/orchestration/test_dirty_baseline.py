@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration import dirty_baseline as DB
+from packages.orchestration.dirty_baseline import job_start_baseline
 from packages.orchestration.job_apply import (
     TARGET_CHANGED_DURING_RUN,
     apply_job,
@@ -83,8 +84,8 @@ def test_the_workspace_is_seeded_from_the_visible_bytes_and_the_diff_is_the_delt
 
     assert job.state == JOB_COMPLETED
     assert seen["saw"] == _DIRTY                                   # not the HEAD blob "# Base\n"
-    assert {e["path"] for e in job.start_baseline["entries"]} == {"README.md", "notes.txt"}
-    assert job.start_baseline["commit"] and job.start_baseline["head"] == head_before.strip()
+    assert {e["path"] for e in job_start_baseline(job)["entries"]} == {"README.md", "notes.txt"}
+    assert job_start_baseline(job)["commit"] and job_start_baseline(job)["head"] == head_before.strip()
     diff = job_result_diff_source(job)[0].read_text()
     added = [ln for ln in diff.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
     assert added == ["+The job's reviewed paragraph."]            # the person's sentence is context
@@ -98,7 +99,7 @@ def test_a_clean_target_records_no_baseline(repo, monkeypatch):
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "readme")
     job = _run(repo, monkeypatch, {})
-    assert job.state == JOB_COMPLETED and job.start_baseline is None
+    assert job.state == JOB_COMPLETED and job_start_baseline(job) == {}
 
 
 # --- 11. apply over an unchanged dirty baseline ---------------------------------------------
