@@ -29869,3 +29869,7 @@ amend1015f D7: the command-line equivalent the face shows under its button is bu
 amend1015f D8 (Part 1.2 a and b): `task_lifecycle` (amend1015 D2), the `apply-pending` rule (amend1015 D3) and the one token reader `job_tokens` (amend1015 D5) were built this morning. The story reads them and adds no second mapping; Part 1.2 builds only what the story still finds wrong, each with a reproducing test first. Reverse: none.
 
 amend1015f D9: the README's name resolution, the `[roles]` configuration, the S, M and L planning lanes, the dirty-file snapshot, a steering note over the public API and the rename of the `ui_server` modules are registered as findings for F307 Paydown v9 and not built here. Reverse: none.
+
+## DECISION amend1015f D10 and up — Phase 1: the run story over the public API (2026-10-15)
+
+amend1015f D10: the story's twin command `remedy client story` belongs to the `client` group, and `apps/cli/command_catalog.py` sits on its structure row (2412 lines), which only falls. So the `client` group moved unchanged into `apps/cli/command_catalog_client.py` first, as step (6) of that file's boundary in `docs/system/structure-ledger-v1.md`, in a commit of its own; the row fell to 2347 and `MAX_FILE_LINES` with it. Reverse: move the block back.
