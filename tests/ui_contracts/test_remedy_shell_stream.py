@@ -53,7 +53,7 @@ class TestShellSubscribesToTheStream:
 
     def test_shell_builds_its_deps_from_the_real_factory_and_the_browser_env(self):
         code = strip_ts_comments(SHELL.read_text())
-        assert "createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window))" in code, (
+        assert "createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window, serverToken))" in code, (
             "the stream must run against the real endpoints, not a stub"
         )
 

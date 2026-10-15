@@ -311,7 +311,9 @@ class TestTheCtaGoesThroughTheRule:
         assert occurrences, "primary_action.label must be read at least once"
         for m in occurrences:
             prefix = code[max(0, m.start() - 40):m.start()]
-            assert prefix.endswith("digestCtaText(digest."), (
+            # amend1015 P3.4: `digestCtaCommand`, the copy module's second reader of the label,
+            # is the one other permitted caller — the rule keeps its one home in that module.
+            assert prefix.endswith(("digestCtaText(digest.", "digestCtaCommand(digest.")), (
                 f"primary_action.label found outside digestCtaText(digest. ...): "
                 f"...{code[max(0, m.start() - 40):m.end() + 10]}..."
             )

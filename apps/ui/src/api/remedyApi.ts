@@ -1,5 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
-import { costMetricsOf, tokensMetricOf } from "./cockpitTruth";
+import { costMetricsOf, taskCheckedOf, tokensMetricOf } from "./cockpitTruth";
 import { decisionCardModels } from "./decisionCard";
 import { readDiffEnvelope } from "./diffViewModel";
 import type { DiffEnvelope } from "./diffViewModel";
@@ -139,7 +139,7 @@ export function normalizeDashboardPayload(
       label,
       state,
       kind,
-      checked: Boolean(t.verified ?? t.accepted ?? state === "done"),
+      checked: taskCheckedOf(t, state),
       muted: Boolean(state === "pending" || state === "suggested"),
       nodeId: String(t.related_node_id || t.id || `task-${idx}`),
       nextAction: undefined,

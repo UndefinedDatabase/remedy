@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DIGEST_CTA_RULE_IDS, digestCtaText, digestStateLabel } from "./digestCardCopy";
+import { DIGEST_CTA_RULE_IDS, digestCtaCommand, digestCtaText, digestStateLabel } from "./digestCardCopy";
 
 /** All seven `RunState` values from `packages/core/models.py`, written as a
  *  TABLE so a state added to that enum has an obvious place to land here.
@@ -50,6 +50,12 @@ const CTA_TABLE: readonly {
     shape: "with an answer command",
     label: `Answer the open decision: \`${ANSWER_COMMAND}\``,
     text: "Answer the open decision",
+  },
+  {
+    ruleId: "apply-pending",
+    shape: "with the apply command",
+    label: "Apply the reviewed result: `remedy job apply 94357b52d079416e --repo /tmp/r --approve`",
+    text: "Apply the reviewed result",
   },
   {
     ruleId: "open-decision",
@@ -180,6 +186,7 @@ describe("digestCtaText keeps report markup out of the cockpit", () => {
       FORBIDDEN_TOKENS.some((token) => row.label.includes(token)));
     expect(withMarkup.map((row) => `${row.ruleId} ${row.shape}`)).toEqual([
       "open-decision with an answer command",
+      "apply-pending with the apply command",
       "blocked-failed with an evidence ref",
     ]);
   });
@@ -227,11 +234,12 @@ describe("digestCtaText answers the empty cases without inventing an instruction
 });
 
 describe("DIGEST_CTA_RULE_IDS", () => {
-  it("names the five rules recommended_next_action can return", () => {
+  it("names the six rules recommended_next_action can return", () => {
     expect([...DIGEST_CTA_RULE_IDS]).toEqual([
       "open-decision",
       "stopped-by-operator",
       "blocked-failed",
+      "apply-pending",
       "all-green",
       "indeterminate",
     ]);
@@ -239,5 +247,17 @@ describe("DIGEST_CTA_RULE_IDS", () => {
 
   it("is a closed set with no duplicates", () => {
     expect(new Set(DIGEST_CTA_RULE_IDS).size).toBe(DIGEST_CTA_RULE_IDS.length);
+  });
+});
+
+describe("digestCtaCommand (amend1015 P3.4)", () => {
+  it("answers the trailing command of an apply-pending label", () => {
+    expect(digestCtaCommand("Apply the reviewed result: `remedy job apply j --repo /tmp/r --approve`"))
+      .toBe("remedy job apply j --repo /tmp/r --approve");
+  });
+
+  it("answers null for a label that carries no command", () => {
+    expect(digestCtaCommand("Review and merge the branch")).toBe(null);
+    expect(digestCtaCommand("No recommendation — the run state is not recorded")).toBe(null);
   });
 });

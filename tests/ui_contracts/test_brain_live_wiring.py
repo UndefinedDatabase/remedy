@@ -37,7 +37,7 @@ def _source(path: Path) -> str:
 class TestTheShellWiresTheLedgerReader:
     def test_the_shell_reads_the_ledger_from_the_ring_and_the_page_reader(self):
         shell = _source(SHELL)
-        assert "useBrainLedger(dashboard.jobId, stream.recent, readEventsPage)" in shell, (
+        assert "useBrainLedger(dashboard.jobId, stream.recent, readEventsPage, ledgerRefreshKey)" in shell, (
             "the ledger cannot fold live rows it is never handed, nor page a hole "
             "shut without a reader"
         )
@@ -74,7 +74,7 @@ class TestThePathIsBuiltInOnePlace:
         start = deps.index("export function createBrainStreamHostDeps(")
         end = deps.index("\nexport ", start + 1)
         body = deps[start:end]
-        assert "eventsSincePath(jobId, cursor)" in body, (
+        assert "eventsSincePath(jobId, cursor, env.token)" in body, (
             "the stream's own snapshot/tail must share the graph's path builder"
         )
 

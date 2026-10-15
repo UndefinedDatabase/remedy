@@ -38,7 +38,7 @@ def _line(src: str, tag: str) -> str:
 def test_the_shell_builds_one_scrubber_and_hands_it_to_the_bar_the_stage_and_the_pill():
     shell = _source(SHELL)
     assert shell.count("useTimelineScrub(") == 1
-    assert "const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows);" in shell
+    assert "const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows, dashboard.phases);" in shell
     assert "<PhaseTimeline scrub={scrub} />" in shell
     assert "scrub={scrub}" in _line(shell, "<BrainGraphStage")
     assert 'replay={scrub.state.mode === "scrubbed"}' in _line(shell, "<RightLivePanel")

@@ -238,7 +238,23 @@
   flex: none;
 }
 
-.taskState { flex: none; font-size: 12px; color: var(--remedy-muted); }
+/* amend1015 P3.2 (DECISION amend1015 D11): the whole row is the button, and it looks like one
+   — a touch-sized row with a hover tile and a chevron — while the state word is a status chip,
+   not a dotted link of its own inside it. */
+.taskRow { min-height: 40px; cursor: pointer; }
+.taskState {
+  flex: none;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+}
+.taskState [data-term] { text-decoration: none; }
+.taskChevron { flex: none; color: var(--remedy-faint); font-size: 16px; line-height: 1; }
+.taskRow:hover .taskChevron { color: var(--remedy-blue-strong); }
+.addTaskHint { margin: 4px 2px 0; font-size: 12px; color: var(--remedy-muted); }
 .taskRow.current .taskState { color: var(--remedy-blue-strong); font-weight: 600; }
 .taskRow.current .taskState::before { content: "• "; }
 .taskRow.done .taskState { color: var(--remedy-muted); }

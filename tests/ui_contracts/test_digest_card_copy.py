@@ -388,13 +388,14 @@ class TestEveryRuleIdIsAccountedFor:
     is the point: the client cannot bind an affordance to a rule it has never
     heard of, and the wire carries the id as a bare string."""
 
-    def test_the_report_still_returns_five_rules(self):
+    def test_the_report_still_returns_six_rules(self):
+        # amend1015 D3 added `apply-pending`, the sixth, and the tuple names it.
         ids = next_action_rule_ids()
-        assert len(ids) == 5, (
+        assert len(ids) == 6, (
             f"the parse read {ids}; a reader that returns nothing would make "
             f"the assertion below vacuous"
         )
-        assert len(set(ids)) == 5, f"the report's rule ids must be distinct; {ids}"
+        assert len(set(ids)) == 6, f"the report's rule ids must be distinct; {ids}"
 
     def test_every_reported_rule_id_appears_in_the_closed_tuple(self):
         listed = declared_rule_ids()

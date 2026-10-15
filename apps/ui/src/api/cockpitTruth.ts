@@ -6,6 +6,11 @@ import type { RemedyMetric } from "./types";
 
 const EM_DASH = "—" as const;
 
+// Any value read as a plain object; anything else reads as the empty payload.
+function objectOf(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 function numberOf(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
@@ -13,17 +18,18 @@ function numberOf(value: unknown): number | null {
 /** The TOKENS tile (amend1015 P1.5): the ledger's tokens in plus out — the reading `remedy do`
  *  prints — else its harness invocations, else the older event estimate, else an em dash.
  *  A run that made at least one call never reads "—". */
-export function tokensMetricOf(tokenUsage: any): RemedyMetric {
-  const tu = tokenUsage || {};
-  const ledger = tu.ledger || {};
+export function tokensMetricOf(tokenUsage: unknown): RemedyMetric {
+  const tu = objectOf(tokenUsage);
+  const ledger = objectOf(tu.ledger);
   const tokensIn = numberOf(ledger.tokens_in);
   const tokensOut = numberOf(ledger.tokens_out);
   const base = { key: "tokens", label: "Tokens" } as const;
   if (tokensIn !== null || tokensOut !== null) {
     const tooltip: Record<string, number> = {};
     for (const role of Array.isArray(ledger.roles) ? ledger.roles : []) {
-      const sum = (numberOf(role?.tokens_in) ?? 0) + (numberOf(role?.tokens_out) ?? 0);
-      if (sum > 0) tooltip[String(role.role || "other")] = sum;
+      const r = objectOf(role);
+      const sum = (numberOf(r.tokens_in) ?? 0) + (numberOf(r.tokens_out) ?? 0);
+      if (sum > 0) tooltip[String(r.role || "other")] = sum;
     }
     return { ...base, value: (tokensIn ?? 0) + (tokensOut ?? 0), tooltip, unknown: false };
   }
@@ -31,7 +37,8 @@ export function tokensMetricOf(tokenUsage: any): RemedyMetric {
   if (invocations > 0) return { ...base, value: invocations, suffix: " invocations", unknown: false };
   const estimate = tu.known ? numberOf(tu.total_tokens) ?? 0 : 0;
   if (estimate > 0) {
-    const byRole = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
+    const roles = objectOf(tu.by_role) as Record<string, number>;
+    const byRole = Object.keys(roles).length > 0 ? roles : undefined;
     return { ...base, value: estimate, tooltip: byRole, unknown: false };
   }
   return { ...base, value: EM_DASH, unknown: true };
@@ -41,8 +48,8 @@ export function tokensMetricOf(tokenUsage: any): RemedyMetric {
  *  `show_cost_usd = true` under `[cockpit]` in `.remedy/config.toml`. It is `unknown` at load
  *  because no budget tick has arrived yet — the honest em dash, never a fake zero;
  *  `metricsWithCostTicker` fills it from the live stream (DECISION F022 D6). */
-export function costMetricsOf(tokenUsage: any): RemedyMetric[] {
-  return tokenUsage?.show_cost_usd === true ? [{ key: "cost", label: "Cost", value: EM_DASH, unknown: true }] : [];
+export function costMetricsOf(tokenUsage: unknown): RemedyMetric[] {
+  return objectOf(tokenUsage).show_cost_usd === true ? [{ key: "cost", label: "Cost", value: EM_DASH, unknown: true }] : [];
 }
 
 /** The job states that END a job (packages/core/models.py RunState, plus the dashboard's own
@@ -53,3 +60,13 @@ const FINISHED_JOB_STAGES = new Set(["completed", "failed", "cancelled", "stoppe
 export function jobFinishedOf(stage: string | undefined | null): boolean {
   return FINISHED_JOB_STAGES.has(String(stage || "").toLowerCase());
 }
+
+/** A task row's check mark, the same fact the row's icon and the "x of y completed" count read
+ *  (amend1015 P3.1). `verified ?? accepted ?? done` never reached the state when the server
+ *  sent `verified: false`, so a row drawn done was counted not done. */
+export function taskCheckedOf(raw: { verified?: unknown; accepted?: unknown }, state: string): boolean {
+  return state === "done" || Boolean(raw.verified) || Boolean(raw.accepted);
+}
+
+/** What "+ Add Task" says on a job that has ended: the server would refuse the task with 409. */
+export const ADD_TASK_FINISHED_HINT = "This job has already finished.";

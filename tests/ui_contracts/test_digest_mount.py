@@ -270,19 +270,22 @@ class TestDismissalReReadsThePortRatherThanHardcoding:
 
 
 class TestPrimaryActionAndOpenDecisionsStayUnwired:
-    """Mutation (e): adding a literal `onPrimaryAction={() => {}}` prop must
-    turn this guard red. Constraint 6: `onOpenDecisions` and
-    `onPrimaryAction` are OMITTED from the JSX entirely — the props are
-    optional and omitting them is how "unwired" reads, rather than passing
-    an explicit no-op that would misstate a decision as made."""
+    """Constraint 6: `onOpenDecisions` is OMITTED from the JSX entirely — the
+    prop is optional and omitting it is how "unwired" reads, rather than
+    passing an explicit no-op that would misstate a decision as made.
+    `onPrimaryAction` is wired since operator amendment amend1015 P3.4, and only
+    to copy the recommended command."""
 
-    def test_on_primary_action_is_not_wired_anywhere(self):
+    def test_on_primary_action_only_copies_the_command(self):
+        # Operator amendment amend1015 P3.4 (2026-10-15) supersedes this round's absence: the
+        # card's primary action is wired, and to the clipboard ONLY — it copies the command the
+        # recommendation names and resolves nothing in-page (DECISION F040 D5 stays unmade).
         raw = shell_raw()
-        assert "onPrimaryAction" not in raw, (
-            "onPrimaryAction must not occur anywhere in RemedyShell.tsx this "
-            "round, not even as an explicit no-op — DECISION F040 D5's "
-            "in-page action needs its own resolution design first"
-        )
+        props = re.findall(r"onPrimaryAction=\{(.*?)\}\}", raw)
+        assert len(props) == 1, f"onPrimaryAction must be wired exactly once; found {props}"
+        assert "navigator.clipboard?.writeText(command)" in props[0], props[0]
+        for token in ("fetch", "XMLHttpRequest", "post", "send"):
+            assert token not in props[0], f"the primary action must not {token}: {props[0]}"
 
     def test_on_open_decisions_is_not_wired_anywhere(self):
         raw = shell_raw()
@@ -294,8 +297,7 @@ class TestPrimaryActionAndOpenDecisionsStayUnwired:
     def test_the_absence_scan_would_notice_either_prop_if_added(self):
         # Discriminator: a substring scan cannot be fooled by a broken
         # reader, but this proves the literal token really is detectable.
-        salted = shell_raw() + '\nconst leak = onPrimaryAction;\nconst leak2 = onOpenDecisions;\n'
-        assert "onPrimaryAction" in salted
+        salted = shell_raw() + '\nconst leak2 = onOpenDecisions;\n'
         assert "onOpenDecisions" in salted
 
 

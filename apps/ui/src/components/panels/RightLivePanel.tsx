@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { BrainStreamStatus } from "../../api/brainStream";
 import type { FeedRow } from "../../api/feedRow";
+import { jobFinishedOf } from "../../api/cockpitTruth";
 import { orderDecisionInbox } from "../../api/decisionOrder";
 import { jobPauseAction } from "../../api/pauseView";
 import { liveIsActive } from "../../cockpitLogic";
@@ -28,7 +29,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
           the URL beside it. */}
       <DecisionInboxCard decisions={orderDecisionInbox(dashboard.decisionInbox)} tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
       <ActivityFeedCard activity={dashboard.activity} recent={recent} recentDropped={recentDropped} tasks={dashboard.tasks} onSelectNode={onSelectNode} jobId={dashboard.jobId} serverToken={serverToken} stage={dashboard.live.stage} focusedTaskId={focusedTaskId} />
-      <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} />
+      <TaskChecklistCard tasks={dashboard.tasks} jobId={dashboard.jobId} serverToken={serverToken} onSelectNode={onSelectNode} finished={jobFinishedOf(dashboard.live.stage)} />
       {/* The plan view's entry point (T5_F292 T001, DECISION F292 D2), first of the quiet buttons
           below the tasks card it reads beside; the shell owns whether the view is open. */}
       {onOpenPlan && (<button type="button" className={styles.advancedToggle} data-ui="plan-button" onClick={onOpenPlan}>Plan</button>)}

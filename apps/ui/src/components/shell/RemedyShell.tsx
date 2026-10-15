@@ -388,6 +388,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
           visibility={visibility}
           port={digestPort}
           onDismissed={() => setDismissedAtMs(digestPort.readDismissal(dashboard.jobId))}
+          onPrimaryAction={(_ruleId, command) => { void navigator.clipboard?.writeText(command).catch(() => undefined); }}
         />
       )}
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
