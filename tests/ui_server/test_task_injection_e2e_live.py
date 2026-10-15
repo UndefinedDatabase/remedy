@@ -3,7 +3,7 @@ the command line, both answers to `job.inject`'s draft carried to their effects
 (DECISIONS F028 D2, D5, D6 and D8).
 
 Structured like `test_task_veto_e2e_live.py`'s own live class — `@pytest.mark.subprocess`,
-a real UI server started in a thread, and a real POST through `HTTPConnection` — and this
+the write door served in a thread, and a real POST through `HTTPConnection` — and this
 file keeps its OWN copies of that file's `_make_repo`, server-start, POST, job-data,
 GET-json and events-since helpers, per that file's own header rule, rather than importing
 them.
@@ -22,10 +22,8 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import subprocess
 import sys
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -36,6 +34,7 @@ from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, map_task_pla
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
+from tests.ui_server.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -102,25 +101,10 @@ def _save_approved_two_task_job(root: Path, repo_path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`."""
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -145,15 +129,15 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
     return json.loads(job_record_path(job_id, data_dir).read_text())
 
 
-def _get_json(port: int, token: str, job_id: str, endpoint: str) -> dict:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/{endpoint}?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        return json.loads(resp.read())
-    finally:
-        conn.close()
+def _task_origins(job_id: str) -> dict[str, str]:
+    """Each task's provenance as the run report reads it (`report_task_origin`), where this test
+    read the cockpit's dashboard before it went (DECISION amend1015f D27)."""
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.report_task_record import report_task_origin
+
+    job = load_job_plan(job_id)
+    assert job is not None
+    return {t.task_id: report_task_origin(t) for t in job.tasks}
 
 
 def _by_planned(job_data: dict, planned_id: str) -> dict:
@@ -164,25 +148,11 @@ def _by_planned(job_data: dict, planned_id: str) -> dict:
 
 
 def _all_events_since(port: int, token: str, job_id: str) -> list[dict]:
-    """Every event `events-since` will hand back, paged from cursor 0 — mirrors
-    `test_task_veto_e2e_live.py`'s own helper exactly."""
-    events: list[dict] = []
-    cursor = "0"
-    while True:
-        conn = HTTPConnection("127.0.0.1", port, timeout=10)
-        try:
-            conn.request("GET", f"/api/jobs/{job_id}/events-since?token={token}&cursor={cursor}")
-            resp = conn.getresponse()
-            assert resp.status == 200
-            body = json.loads(resp.read())
-        finally:
-            conn.close()
-        events.extend(body["events"])
-        next_cursor = body["cursor"]
-        if next_cursor == cursor or not body["events"]:
-            break
-        cursor = next_cursor
-    return events
+    """Every event of the job's run log, from position 0 — where this test read the
+    cockpit's `events-since` route before it went (DECISION amend1015f D27). PORT and TOKEN
+    stay in the signature so every call site reads as it did."""
+    del port, token
+    return run_log_frames(job_id, Path(os.environ["REMEDY_DATA_DIR"]))
 
 
 def _make_repo(tmp_path: Path, name: str) -> Path:
@@ -258,7 +228,7 @@ class TestTaskInjectionE2ELive:
         # --- the injection, through a live write door -------------------------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.inject", job_id=job_id,
                                  nonce="n-inject-a",
                                  args={"text": INJECT_TEXT, "after": a_task_id})
@@ -274,9 +244,8 @@ class TestTaskInjectionE2ELive:
             assert status == 200, body
             assert body["outcome"] == "confirmed", body
 
-            dashboard = _get_json(port, token, job_id, "dashboard")
-            assert not any(t["origin"] == "human_injected" for t in dashboard["tasks"]), \
-                dashboard["tasks"]
+            origins = _task_origins(job_id)
+            assert "human_injected" not in origins.values(), origins
         finally:
             os.environ.pop("REMEDY_DATA_DIR", None)
 
@@ -316,16 +285,15 @@ class TestTaskInjectionE2ELive:
         assert len(matching) == 1, (markdown, matching)
         assert matching[0].startswith(f"- `{injected_task_id[:8]}`")
 
-        # --- through a live door again: the dashboard and the events stream ----
+        # --- the task records and the run log, after the run -------------------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
-            dashboard = _get_json(port, token, job_id, "dashboard")
-            by_id = {t["id"]: t for t in dashboard["tasks"]}
-            assert by_id[injected_task_id]["origin"] == "human_injected"
-            for tid, item in by_id.items():
+            port, token = _start_door_for_job(job_id, tmp_path)
+            origins = _task_origins(job_id)
+            assert origins[injected_task_id] == "human_injected"
+            for tid, origin in origins.items():
                 if tid != injected_task_id:
-                    assert item["origin"] == "", (tid, item)
+                    assert origin == "", (tid, origin)
 
             events = _all_events_since(port, token, job_id)
             injected_frames = [e for e in events if e.get("event") == "task_injected"]

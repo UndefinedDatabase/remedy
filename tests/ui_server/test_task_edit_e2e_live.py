@@ -3,7 +3,7 @@ edited through the real door, is relaunched through the CLI, and its new
 trace and its ledger show the edit and the second run.
 
 Structured like `test_pause_e2e_live.py`'s own live classes — `@pytest.mark.subprocess`,
-a real UI server started in a thread, and a real POST through `HTTPConnection` — and
+the write door served in a thread, and a real POST through `HTTPConnection` — and
 this file keeps its OWN copies of that file's server-start and POST helpers, per
 that file's own header rule, rather than importing them. The plan itself is saved
 directly (mirroring `tests/orchestration/test_task_edit_runtime.py`'s `_save_job`),
@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import subprocess
 import sys
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -29,6 +27,7 @@ from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, map_task_pla
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
+from tests.ui_server.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -73,25 +72,10 @@ def _save_approved_two_task_job(root: Path, repo_path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`."""
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -121,31 +105,12 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _get_events_since(port: int, token: str, job_id: str, cursor: str) -> dict:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/events-since?token={token}&cursor={cursor}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        return json.loads(resp.read())
-    finally:
-        conn.close()
-
-
 def _all_events_since(port: int, token: str, job_id: str) -> list[dict]:
-    """Every event `events-since` will hand back, paged from cursor 0 —
-    `_build_events_since_json` caps one page at 50, so a job with more events
-    than that needs more than one request to read them all."""
-    events: list[dict] = []
-    cursor = "0"
-    while True:
-        body = _get_events_since(port, token, job_id, cursor)
-        events.extend(body["events"])
-        next_cursor = body["cursor"]
-        if next_cursor == cursor or not body["events"]:
-            break
-        cursor = next_cursor
-    return events
+    """Every event of the job's run log, from position 0 — where this test read the
+    cockpit's `events-since` route before it went (DECISION amend1015f D27). PORT and TOKEN
+    stay in the signature so every call site reads as it did."""
+    del port, token
+    return run_log_frames(job_id, Path(os.environ["REMEDY_DATA_DIR"]))
 
 
 @pytest.mark.subprocess
@@ -187,7 +152,7 @@ class TestTaskEditE2ELive:
         # --- the edit, through the real door --------------------------------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(
                 port, token, "job.edit-task", job_id=job_id, nonce="n-edit-t1",
                 args={"task_id": t1_task_id,
@@ -235,7 +200,7 @@ class TestTaskEditE2ELive:
         # --- the fan: the live server's events-since holds two starts -------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             events = _all_events_since(port, token, job_id)
         finally:
             os.environ.pop("REMEDY_DATA_DIR", None)

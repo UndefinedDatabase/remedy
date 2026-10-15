@@ -62,3 +62,23 @@ class SupervisorThread:
         self.stop.set()
         self.thread.join(10)
         assert not self.thread.is_alive(), "the supervisor did not end"
+
+
+def run_log_frames(job_id: str, data_dir: Path) -> list[dict]:
+    """The job's run-log events in the order a reader of the log sees them, each as
+    `{"seq", "event", "task_id", "metadata"}`.
+
+    The live tests read these where they read the cockpit's `events-since` route before it went
+    (DECISION amend1015f D27): `seq` is the event's position in the log, as the route's was, and
+    `task_id` is the top-level field or else the one nested in `metadata`, as the route read it.
+    """
+    from packages.orchestration.timeline import load_run_events
+
+    frames: list[dict] = []
+    for seq, event in enumerate(load_run_events(data_dir, job_id)):
+        metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        linkage = event.get("task_id") or metadata.get("task_id", "")
+        frames.append({"seq": seq, "event": event.get("event", ""),
+                       "task_id": linkage if isinstance(linkage, str) else "",
+                       "metadata": metadata})
+    return frames

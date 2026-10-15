@@ -20,7 +20,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from tests.ui_server.server_start import wait_for_server_info
+from tests.ui_server.door_host import start_door_for_job
 
 # The wire spelling is pinned here on purpose: a test that imports the constant
 # it is checking cannot catch a rename of the header the browser has to send.
@@ -64,7 +64,7 @@ def command_rate_limit(monkeypatch):
 
 
 class TestCommandChannelDoor:
-    """Integration tests that start a real server on a free port."""
+    """Integration tests that serve the write door on a free port."""
 
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
@@ -75,34 +75,10 @@ class TestCommandChannelDoor:
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
-    def _start_server(self, **kwargs):
-        """Start the server in a background thread, return (port, token)."""
-        import secrets as _s
-
-        from packages.orchestration.ui_server import start_ui_server
-
-        info_file = str(self.tmp_path / "server_info.json")
-        token = _s.token_urlsafe(16)
-
-        def run():
-            try:
-                start_ui_server(
-                    self.job_id,
-                    host="127.0.0.1",
-                    port=0,
-                    token=token,
-                    open_browser=False,
-                    info_file=info_file,
-                    **kwargs,
-                )
-            except (SystemExit, KeyboardInterrupt):
-                pass
-
-        t = threading.Thread(target=run, daemon=True)
-        t.start()
-
-        info = wait_for_server_info(info_file, t)
-        return info["port"], token
+    def _start_server(self):
+        """Serve the write door in a background thread, return (port, token): the
+        supervisor socket's own handler on a loopback port (DECISION amend1015f D27)."""
+        return start_door_for_job(self.job_id, self.tmp_path)
 
     # -- request helpers ---------------------------------------------------
 

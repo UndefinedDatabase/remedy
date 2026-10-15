@@ -1,6 +1,7 @@
 """F035 R7 T003, DECISION F035 D7 — the ownership ledger end to end: one real job, acted on
-through both doors, whose ledger file, `remedy job ownership`, the browser's `ownership` route
-and the job report all agree entry for entry, sentence for sentence and task for task.
+through both doors, whose ledger file, `remedy job ownership` and the job report all agree entry
+for entry, sentence for sentence and task for task. (The cockpit's `ownership` read route was a
+fourth reader; it went with the cockpit, DECISION amend1015f D27.)
 
 A three-task job runs in a subprocess with a fake provider held at its FIRST build call
 (`HandshakeFakeProvider`, mirroring `test_steering_note_e2e_live.py`'s own one — a module-level
@@ -16,9 +17,9 @@ third task leaves nothing left to run.
 
 Structured like `test_steering_note_e2e_live.py` and `test_pause_e2e_live.py` — `@pytest.mark.
 subprocess`, its own runner, server starter and door helper — and this file keeps its OWN
-copies of those files' `_start_ui_server_for_job` and `_post`, per their shared header rule
+copies of those files' `_start_door_for_job` and `_post`, per their shared header rule
 ("each live test file owns its own copies of that file's helpers... the established convention
-here"), and its own `_get_json`, mirroring `test_task_veto_e2e_live.py`'s.
+here").
 
 DEVIATION FROM DECISION F035 D7's PROSE (declared in the round 7 handback): the decision's own
 words group "the veto and the message" together under one phrase, `You (browser, token #1)`.
@@ -35,11 +36,9 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import subprocess
 import sys
 import textwrap
-import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
@@ -47,6 +46,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.data_paths import job_evidence_export_dir, job_record_path
+from tests.ui_server.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -138,25 +138,10 @@ print("FINAL:" + final.state, flush=True)
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`."""
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -173,17 +158,6 @@ def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
                               "Content-Type": "application/json"})
         resp = conn.getresponse()
         return resp.status, json.loads(resp.read())
-    finally:
-        conn.close()
-
-
-def _get_json(port: int, token: str, job_id: str, endpoint: str) -> dict:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/{endpoint}?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        return json.loads(resp.read())
     finally:
         conn.close()
 
@@ -249,7 +223,7 @@ class TestOwnershipE2ELive:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
 
                 # --- through the door, one real token: veto the THIRD task -----------
                 status, body = _post(port, token, "job.veto-task", job_id=job_id,
@@ -347,18 +321,9 @@ class TestOwnershipE2ELive:
         veto_entry, chat_entry, note_entry, pause_entry, resume_entry = entries
 
         # ------------------------------------------------------------------------
-        # (b) `remedy job ownership --json` and the browser's route answer the same
-        #     entries, each the file's entry plus its sentence
+        # (b) `remedy job ownership --json` answers the same entries, each the
+        #     file's entry plus its sentence
         # ------------------------------------------------------------------------
-        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
-        try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
-            route_body = _get_json(port, token, job_id, "ownership")
-        finally:
-            os.environ.pop("REMEDY_DATA_DIR", None)
-        assert route_body["error"] == ""
-        assert route_body["entries"] == entries
-
         ownership_cmd = subprocess.run(
             [sys.executable, "-m", "apps.cli.main", "job", "ownership", job_id, "--json"],
             cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=60)
@@ -366,7 +331,6 @@ class TestOwnershipE2ELive:
             f"job ownership exited {ownership_cmd.returncode}: {ownership_cmd.stderr}")
         cli_body = json.loads(ownership_cmd.stdout)
         assert cli_body["entries"] == entries
-        assert cli_body["entries"] == route_body["entries"]
 
         # ------------------------------------------------------------------------
         # each sentence equals a literal this test writes out, whose consumption

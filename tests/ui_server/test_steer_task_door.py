@@ -7,37 +7,21 @@ The effect's own rules are proved in `tests/orchestration/test_steer_task.py`.
 from __future__ import annotations
 
 import json
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan
-from tests.ui_server.server_start import wait_for_server_info
+from tests.ui_server.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Mirrors `test_command_dispatch.py`'s own copy exactly (finding R-0701)."""
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / "server_info.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 class TestSteerTaskDoor:
@@ -88,7 +72,7 @@ class TestSteerTaskDoor:
 
     def test_an_accepted_note_writes_a_record_with_channel_cockpit_and_the_task_id(self):
         t1 = self._task_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-steer",
                                   {"task_id": t1, "message": "Keep it small."})
 
@@ -110,7 +94,7 @@ class TestSteerTaskDoor:
                 t.status = TASK_PASSED
         from packages.orchestration.pingpong_job import save_job_plan
         save_job_plan(self.job)
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-passed",
                                   {"task_id": t1, "message": "Too late."})
 
@@ -120,7 +104,7 @@ class TestSteerTaskDoor:
         assert self._audit_outcomes() == ["rejected_state"]
 
     def test_an_unknown_task_is_409_naming_unknown_task(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-unknown",
                                   {"task_id": "no-such-task", "message": "hello"})
 
@@ -129,7 +113,7 @@ class TestSteerTaskDoor:
         assert self._records() == []
 
     def test_a_missing_task_id_is_400_before_the_job_is_read(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-no-task", {"message": "hello"})
 
         assert status == 400, body
@@ -138,7 +122,7 @@ class TestSteerTaskDoor:
 
     def test_an_empty_message_is_400_on_its_field_and_writes_nothing(self):
         t1 = self._task_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-empty-message",
                                   {"task_id": t1, "message": "   "})
 
@@ -153,7 +137,7 @@ class TestSteerTaskDoor:
         t1 = self._task_id("T1")
         self.job.state = RunState.COMPLETED
         save_job_plan(self.job)
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-ended",
                                   {"task_id": t1, "message": "Too late."})
 

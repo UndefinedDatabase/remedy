@@ -3,7 +3,7 @@ write door, both answers to the replan proposal carried to their effects
 (DECISION F027 D9).
 
 Structured like `test_task_edit_e2e_live.py`'s own live classes — `@pytest.mark.subprocess`,
-a real UI server started in a thread, and a real POST through `HTTPConnection` — and this
+the write door served in a thread, and a real POST through `HTTPConnection` — and this
 file keeps its OWN copies of that file's plan, server-start, POST and events-since helpers,
 per that file's own header rule, rather than importing them.
 
@@ -19,10 +19,8 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import subprocess
 import sys
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -33,6 +31,7 @@ from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY, map_task_pla
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
+from tests.ui_server.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -76,25 +75,10 @@ def _save_approved_diamond_job(root: Path, repo_path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`."""
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -120,19 +104,38 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Helpers new to THIS file — GET routes, the plan-order lookup and the events page
+# Helpers new to THIS file — the records the cockpit's read routes showed, the plan-order
+# lookup and the run log (the read routes went with the cockpit, DECISION amend1015f D27)
 # ---------------------------------------------------------------------------
 
 
-def _get_json(port: int, token: str, job_id: str, endpoint: str) -> dict:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/{endpoint}?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        return json.loads(resp.read())
-    finally:
-        conn.close()
+def _decisions(job_id: str) -> list[dict]:
+    """The job's decision inbox, built in-process by the one builder the route called."""
+    from packages.orchestration.decision_inbox import build_decision_inbox
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.timeline import load_run_events
+
+    job = load_job_plan(job_id)
+    assert job is not None
+    events = load_run_events(Path(os.environ["REMEDY_DATA_DIR"]), job_id)
+    return build_decision_inbox(job, events)["decisions"]
+
+
+def _vetoes(job_id: str) -> tuple[list, list[str], list[str]]:
+    """The job's veto entries, the tasks a veto still admits, and what each vetoed task left
+    unreachable, read from `task_veto` as the dashboard's section read them."""
+    from packages.orchestration import task_veto
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id)
+    assert job is not None
+    entries = task_veto.vetoed_tasks(job_id)
+    vetoed = {e.task_id for e in entries}
+    vetoable = [t.task_id for t in job.tasks
+                if task_veto.veto_refusal(job.state, t.status,
+                                          already_vetoed=t.task_id in vetoed) is None]
+    unreachable = list(task_veto.veto_unreachable(job.tasks, sorted(vetoed)))
+    return entries, vetoable, unreachable
 
 
 def _by_planned(job_data: dict, planned_id: str) -> dict:
@@ -143,25 +146,11 @@ def _by_planned(job_data: dict, planned_id: str) -> dict:
 
 
 def _all_events_since(port: int, token: str, job_id: str) -> list[dict]:
-    """Every event `events-since` will hand back, paged from cursor 0 — mirrors
-    `test_task_edit_e2e_live.py`'s own helper exactly."""
-    events: list[dict] = []
-    cursor = "0"
-    while True:
-        conn = HTTPConnection("127.0.0.1", port, timeout=10)
-        try:
-            conn.request("GET", f"/api/jobs/{job_id}/events-since?token={token}&cursor={cursor}")
-            resp = conn.getresponse()
-            assert resp.status == 200
-            body = json.loads(resp.read())
-        finally:
-            conn.close()
-        events.extend(body["events"])
-        next_cursor = body["cursor"]
-        if next_cursor == cursor or not body["events"]:
-            break
-        cursor = next_cursor
-    return events
+    """Every event of the job's run log, from position 0 — where this test read the
+    cockpit's `events-since` route before it went (DECISION amend1015f D27). PORT and TOKEN
+    stay in the signature so every call site reads as it did."""
+    del port, token
+    return run_log_frames(job_id, Path(os.environ["REMEDY_DATA_DIR"]))
 
 
 def _run_log_reasons(data_dir: Path, job_id: str) -> list[str]:
@@ -218,7 +207,7 @@ class TestTaskVetoE2ELive:
         # --- the veto for B, through a live write door ----------------------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.veto-task", job_id=job_id,
                                  nonce="n-veto-b",
                                  args={"task_id": b_task_id, "reason": VETO_REASON})
@@ -227,13 +216,14 @@ class TestTaskVetoE2ELive:
             assert body["reason"] == VETO_REASON
             assert body["unreachable"] == [d_task_id]
 
-            dashboard = _get_json(port, token, job_id, "dashboard")
-            [veto_entry] = dashboard["vetoes"]["tasks"]
-            assert veto_entry["reason"] == VETO_REASON
-            assert veto_entry["unreachable_task_ids"] == [d_task_id]
-            assert b_task_id not in dashboard["vetoes"]["vetoable_task_ids"]
+            entries, vetoable, unreachable = _vetoes(job_id)
+            [veto_entry] = entries
+            assert veto_entry.task_id == b_task_id
+            assert veto_entry.reason == VETO_REASON
+            assert unreachable == [d_task_id]
+            assert b_task_id not in vetoable
 
-            decisions = _get_json(port, token, job_id, "decisions")["decisions"]
+            decisions = _decisions(job_id)
             open_vetoes = [
                 d for d in decisions if d["id"].startswith("veto:") and d["status"] == "open"
             ]
@@ -275,7 +265,7 @@ class TestTaskVetoE2ELive:
         # --- the live server: exactly one task_vetoed frame; the accept answer
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             events = _all_events_since(port, token, job_id)
             vetoed_events = [e for e in events if e.get("event") == "task_vetoed"]
             assert len(vetoed_events) == 1, events
@@ -324,7 +314,7 @@ class TestTaskVetoE2ELive:
         # --- the veto for B, through a live write door, before any run ------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.veto-task", job_id=job_id,
                                  nonce="n-veto-b2",
                                  args={"task_id": b_task_id, "reason": VETO_REASON})
@@ -350,7 +340,7 @@ class TestTaskVetoE2ELive:
         decision_id = f"veto:{request_id}"
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(
                 port, token, "decision.resolve", job_id=job_id, nonce="n-replan",
                 args={"decision_id": decision_id, "answer": "replan_follow_up"})
@@ -359,7 +349,7 @@ class TestTaskVetoE2ELive:
             follow_up_job_id = body["follow_up_job_id"]
             assert follow_up_job_id
 
-            decisions = _get_json(port, token, job_id, "decisions")["decisions"]
+            decisions = _decisions(job_id)
             assert not any(
                 d["id"] == decision_id and d["status"] == "open" for d in decisions), decisions
         finally:

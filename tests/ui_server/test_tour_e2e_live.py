@@ -1,5 +1,6 @@
-"""F036 R6 S4 — one real job's guided tour, proved end to end through its file,
-the browser's route and the command line (DECISION F036 D7 (3)).
+"""F036 R6 S4 — one real job's guided tour, proved end to end through its file
+and the command line (DECISION F036 D7 (3)). The browser's `tour` route was a
+third reader; it went with the cockpit (DECISION amend1015f D27).
 
 Structured like `tests/orchestration/test_resume_kill.py`'s subprocess run: a
 fixture job's own copy of the real multi-cycle pipeline (`run_cycles` +
@@ -10,12 +11,10 @@ the child's environment never carries `REMEDY_TOUR_MODEL_WRITTEN`, so the
 stored tour is the mechanical one, generator `fallback`, and no test here
 reaches a live model.
 
-Three readers of the SAME stored tour, each through its own real door:
+Two readers of the SAME stored tour, each through its own real door:
   1. the file        — `stored_tour_versions` / `load_result_tour` in this
                         process, against the child's own data root;
-  2. the browser      — a real UI server on port 0, `GET /api/jobs/<id>/tour`,
-                        exactly `tour_view(job)` (DECISION F036 D5);
-  3. the command line — `python3 -m apps.cli.main job show <id> --tour` in a
+  2. the command line — `python3 -m apps.cli.main job show <id> --tour` in a
                         second subprocess, its JSON `tour` section and its
                         stderr's `render_tour_lines` both read back the same
                         tour.
@@ -26,8 +25,6 @@ import json
 import os
 import subprocess
 import sys
-import threading
-from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
@@ -42,7 +39,6 @@ from packages.orchestration.result_tour import (
     tour_problems,
     tour_view,
 )
-from tests.ui_server.server_start import wait_for_server_info
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -121,51 +117,13 @@ def _run_the_fixture_job(data_dir: Path, tmp_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers new to THIS file — a real server on port 0, own copy per the
-# `tests/ui_server/*_e2e_live.py` header convention (each file keeps its own
-# rather than importing a sibling test file's).
-# ---------------------------------------------------------------------------
-
-
-def _start_server(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    info = wait_for_server_info(info_file, t)
-    return info["port"], token
-
-
-def _get_tour(port: int, token: str, job_id: str) -> tuple[int, dict]:
-    conn = HTTPConnection("127.0.0.1", port, timeout=5)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/tour?token={token}")
-        resp = conn.getresponse()
-        return resp.status, json.loads(resp.read())
-    finally:
-        conn.close()
-
-
-# ---------------------------------------------------------------------------
 # The proof
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.subprocess
 class TestTourE2ELive:
-    def test_one_real_jobs_tour_through_its_file_the_route_and_the_command_line(
+    def test_one_real_jobs_tour_through_its_file_and_the_command_line(
             self, tmp_path, monkeypatch):
         data_dir = tmp_path / "remedy_data"
         data_dir.mkdir()
@@ -199,16 +157,7 @@ class TestTourE2ELive:
             "stored": True, "version": 1, "tour": tour, "error": "",
         }
 
-        # --- 2. THE BROWSER: a real server on port 0, as test_tour_route.py
-        #        starts it, serves exactly tour_view(job) at the tour route -------
-        port, token = _start_server(job_id, tmp_path)
-        status, body = _get_tour(port, token, job_id)
-        assert status == 200
-        assert body == expected_view
-        assert body["stored"] is True
-        assert body["version"] == 1
-
-        # --- 3. THE COMMAND LINE: `job show --tour` in its own subprocess -------
+        # --- 2. THE COMMAND LINE: `job show --tour` in its own subprocess -------
         cli = subprocess.run(
             [sys.executable, "-m", "apps.cli.main", "job", "show", job_id, "--tour"],
             cwd=str(REPO_ROOT), env=_child_env(data_dir),

@@ -12,14 +12,13 @@ reads the job's control directory can tell those two cases apart.
 from __future__ import annotations
 
 import json
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from tests.ui_server.server_start import wait_for_server_info
+from tests.ui_server.door_host import start_door_for_job
 
 # Pinned as a literal for the reason its sibling gives: a test that imports the
 # constant it checks cannot catch a rename of the header the browser must send.
@@ -41,32 +40,10 @@ def _make_job() -> JobPlan:
     )
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`.
-
-    Module-level because both dispatch-effect classes below need it identically
-    (finding R-0701). Two copies of a server-start helper drift, and the failure
-    mode is quiet: a timeout raised in one copy makes one class flaky on a slow
-    runner while its sibling stays green, and the divergence reads as an
-    environment problem rather than as a duplicate.
-    """
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / "server_info.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 class TestJobStopDispatchEffects:
@@ -107,7 +84,7 @@ class TestJobStopDispatchEffects:
         """D5's effect really ran: the request_id on the wire is the one on disk."""
         from packages.orchestration import safe_points
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-effect",
                                   args={"reason": "operator asked"})
 
@@ -116,14 +93,15 @@ class TestJobStopDispatchEffects:
         assert path.exists(), "the door answered accepted but requested no stop"
         signal = json.loads(path.read_bytes())
         assert signal["request_id"] == body["request_id"], (signal, body)
-        assert signal["source"] == "ui", signal
+        # The door is the supervisor socket's (amend1015f D27): it records the socket's source.
+        assert signal["source"] == "cli", signal
         assert signal["reason"] == "operator asked", signal
 
     def test_the_nonce_record_holds_the_body_the_client_received(self):
         """D8's replay is byte-exact only if the store holds what was sent."""
         from packages.orchestration.command_nonce import lookup_nonce_result
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-published")
 
         assert status == 200, body
@@ -133,7 +111,7 @@ class TestJobStopDispatchEffects:
 
     def test_a_retry_of_the_same_nonce_is_audited_replayed(self):
         """Finding R-0636: a replay REPEATS an acceptance rather than being one."""
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         first = self._post(port, token, "nonce-twice")
         second = self._post(port, token, "nonce-twice")
 
@@ -147,7 +125,7 @@ class TestJobStopDispatchEffects:
         def explode(*_args, **_kwargs):
             raise safe_points.StopControlError("containment could not be guaranteed")
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(safe_points, "request_stop", explode)
         status, body = self._post(port, token, "nonce-raises")
 
@@ -197,7 +175,7 @@ class TestTaskPlanApprovalDispatchEffects:
         """The effect ran: the plan is `approved` in a job RELOADED from storage."""
         from packages.orchestration.pingpong_job import load_job_plan
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-fp-effect")
 
         assert status == 200, body
@@ -217,7 +195,7 @@ class TestTaskPlanApprovalDispatchEffects:
         self.job.task_plan = {"_approval": "pending", "clarifications_resolved": [
             {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}]}
         save_job_plan(self.job)
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-fp-answered",
                                      answers={"q1": "use PostgreSQL"})
 
@@ -243,7 +221,7 @@ class TestTaskPlanApprovalDispatchEffects:
             saves.append(str(job.job_id))
             return real_save_job(job, *args, **kwargs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(pingpong_job, "save_job_plan", counting_save_job)
         status, body = self._approve(port, token, "nonce-fp-save-once")
 
@@ -283,7 +261,7 @@ class TestTaskPlanApprovalDispatchEffects:
                       actor="cli")
             return real_questions(clarifications)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(job_plan, "open_clarification_questions",
                             questions_after_a_concurrent_edit)
         status, body = self._approve(port, token, "nonce-fp-race")
@@ -308,7 +286,7 @@ class TestTaskPlanApprovalDispatchEffects:
                                   questions=[])
             return real_questions(clarifications)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(job_plan, "open_clarification_questions",
                             questions_after_a_concurrent_approval)
         status, body = self._approve(port, token, "nonce-fp-closed")
@@ -425,7 +403,7 @@ class TestApproveHunksDispatchEffects:
         from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
 
         self._with_evidence()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(
             port, token, "nonce-hunks-effect",
             approved=[self.hunk_ids[0]],
@@ -444,7 +422,7 @@ class TestApproveHunksDispatchEffects:
         from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
 
         self._with_evidence()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(
             port, token, "nonce-hunks-body",
             approved=[self.hunk_ids[0]],
@@ -463,7 +441,7 @@ class TestApproveHunksDispatchEffects:
 
         reason = "  DSN=postgres://x is out of scope  "
         self._with_evidence()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(
             port, token, "nonce-hunks-reason",
             rejected=[{"id": self.hunk_ids[2], "reason": reason}])
@@ -479,7 +457,7 @@ class TestApproveHunksDispatchEffects:
         answers to is the core's `unknown_hunk`, and a refused decision is not a
         decision — nothing at all reaches `job.metadata`."""
         self._with_evidence()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-hunks-refused",
                                      approved=["not-a-hunk-id"])
 
@@ -496,7 +474,7 @@ class TestApproveHunksDispatchEffects:
         raised. THE DISCRIMINATOR is the status — a door that let the absence reach
         `_safe_error(500, ...)` would report the operator's own missing evidence as a
         server fault."""
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-hunks-no-diff",
                                      approved=["h1"])
 
@@ -552,7 +530,7 @@ class TestChatSendDispatchEffects:
     def test_an_accepted_message_is_sealed_certified_and_published(self):
         from packages.orchestration.command_nonce import lookup_nonce_result
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._send(port, token, "nonce-chat", message="  Keep it small.  ")
 
         assert status == 200, body
@@ -568,7 +546,7 @@ class TestChatSendDispatchEffects:
                                    control_root_path=self.control) == {"status": 200, "body": body}
 
     def test_a_retry_of_the_same_nonce_records_the_message_once(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         first = self._send(port, token, "nonce-chat-twice", message="Once.")
         second = self._send(port, token, "nonce-chat-twice", message="Once.")
 
@@ -577,7 +555,7 @@ class TestChatSendDispatchEffects:
         assert self._audit_outcomes() == ["accepted", "replayed"]
 
     def test_a_blank_message_is_400_on_its_field_and_writes_nothing(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._send(port, token, "nonce-chat-blank", message="   ")
 
         assert status == 400, body
@@ -591,7 +569,7 @@ class TestChatSendDispatchEffects:
 
         self.job.state = RunState.COMPLETED
         save_job_plan(self.job)
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._send(port, token, "nonce-chat-ended", message="Too late.")
 
         assert status == 409, body
@@ -605,7 +583,7 @@ class TestChatSendDispatchEffects:
         def refuse(*_args, **_kwargs):
             raise steering.SecureFsError("disk full at /secret/path")
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(steering, "write_file_atomically", refuse)
         status, body = self._send(port, token, "nonce-chat-fails", message="Hello.")
 
@@ -696,7 +674,7 @@ class TestPlanEditDispatchEffects:
             self, command, args, expected_ids):
         from packages.orchestration.ui_server import token_fingerprint
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-" + command.replace(".", "-"), command,
                                   {**args, "expected_version": 1})
 
@@ -711,7 +689,7 @@ class TestPlanEditDispatchEffects:
 
     def test_an_edit_naming_no_version_is_a_shape_error_on_that_field(self):
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         for nonce, version in (("nonce-none", None), ("nonce-bool", True), ("nonce-zero", 0)):
             args = {"task_id": "T3"}
             if version is not None:
@@ -722,7 +700,7 @@ class TestPlanEditDispatchEffects:
         assert self._audit_outcomes() == ["rejected_shape"] * 3
 
     def test_a_stale_version_is_a_conflict_naming_the_current_one(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         self._post(port, token, "nonce-first", "job.plan-delete-task",
                    {"task_id": "T3", "expected_version": 1})
         before = self._record_bytes()
@@ -741,7 +719,7 @@ class TestPlanEditDispatchEffects:
     def test_refused_arguments_are_a_shape_error_on_args_with_the_reason(
             self, args, status, says, outcome):
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         code, body = self._post(port, token, "nonce-args", "job.plan-delete-task",
                                 {**args, "expected_version": 1})
         assert (code, body["field"]) == (status, "args"), body
@@ -751,7 +729,7 @@ class TestPlanEditDispatchEffects:
 
     def test_an_edit_the_planners_checks_refuse_is_409_with_the_violation(self):
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-invalid", "job.plan-edit-acceptance",
                                   {"task_id": "T1", "op": "remove", "index": 0,
                                    "expected_version": 1})
@@ -768,7 +746,7 @@ class TestPlanEditDispatchEffects:
         job.task_plan["_approval"] = "approved"
         save_job_plan(job)
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-closed", "job.plan-delete-task",
                                   {"task_id": "T3", "expected_version": 1})
         assert status == 409, body
@@ -777,7 +755,7 @@ class TestPlanEditDispatchEffects:
         assert self._record_bytes() == before
 
     def test_a_retried_nonce_replays_the_edit_and_never_applies_it_twice(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         args = {"task_id": "T3", "expected_version": 1}
         first = self._post(port, token, "nonce-retry", "job.plan-delete-task", args)
         second = self._post(port, token, "nonce-retry", "job.plan-delete-task", args)
@@ -854,7 +832,7 @@ class TestEditTaskDispatchEffects:
         from packages.orchestration.ui_server import token_fingerprint
 
         entry = self._entry_for("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-edit", "job.edit-task",
                                   {"task_id": entry.task_id, "expected_version": 1,
                                    "fields": {"title": "New T1", "goal": "new goal"}})
@@ -873,7 +851,7 @@ class TestEditTaskDispatchEffects:
     def test_a_missing_expected_version_is_a_shape_error_on_that_field(self):
         entry = self._entry_for("T1")
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-noversion", "job.edit-task",
                                   {"task_id": entry.task_id, "fields": {"title": "x"}})
         assert (status, body["field"]) == (400, "expected_version"), body
@@ -882,7 +860,7 @@ class TestEditTaskDispatchEffects:
 
     def test_a_stale_version_is_409_with_the_current_one(self):
         entry = self._entry_for("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         self._post(port, token, "nonce-first", "job.edit-task",
                   {"task_id": entry.task_id, "expected_version": 1,
                    "fields": {"title": "x", "goal": "y"}})
@@ -922,7 +900,7 @@ class TestEditTaskDispatchEffects:
                     t.inputs = {}
         save_job_plan(job)
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-refuse", "job.edit-task",
                                   {"task_id": entry.task_id, "expected_version": 1,
                                    "fields": {"title": "x"}})
@@ -1003,7 +981,7 @@ class TestVetoTaskDispatchEffects:
         from packages.orchestration.ui_server import token_fingerprint
 
         t1 = self._task_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-veto",
                                   {"task_id": t1, "reason": "known-bad approach"})
 
@@ -1033,7 +1011,7 @@ class TestVetoTaskDispatchEffects:
 
         t1 = self._task_id("T1")
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-bad-reason",
                                   {"task_id": t1, "reason": reason})
 
@@ -1046,7 +1024,7 @@ class TestVetoTaskDispatchEffects:
 
     def test_a_missing_task_id_is_a_400_on_task_id(self):
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-no-task",
                                   {"reason": "known-bad approach"})
         assert status == 400, body
@@ -1056,7 +1034,7 @@ class TestVetoTaskDispatchEffects:
 
     def test_an_already_vetoed_task_is_409_naming_the_code(self):
         t1 = self._task_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         self._post(port, token, "nonce-first", {"task_id": t1, "reason": "first"})
         status, body = self._post(port, token, "nonce-second",
                                   {"task_id": t1, "reason": "second"})
@@ -1072,7 +1050,7 @@ class TestVetoTaskDispatchEffects:
         job.state = RunState.COMPLETED
         save_job_plan(job)
         t1 = self._task_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-done", {"task_id": t1, "reason": "x"})
         assert status == 409, body
         assert body["error"].startswith("job_not_vetoable"), body
@@ -1207,7 +1185,7 @@ class TestInjectionDispatchEffects:
             [_injection_draft_json()]))
         monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-inject", "job.inject",
                                   {"text": "add a widget"})
 
@@ -1227,7 +1205,7 @@ class TestInjectionDispatchEffects:
         monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
 
         t1_entry_id = self._entry_id("T1")
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-after", "job.inject",
                                   {"text": "add a widget", "after": t1_entry_id})
 
@@ -1242,7 +1220,7 @@ class TestInjectionDispatchEffects:
             [_injection_draft_json()]))
         monkeypatch.setattr(ti, "injection_budget_inputs", _permissive_injection_budget_inputs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         _, draft = self._post(port, token, "nonce-draft", "job.inject",
                               {"text": "add a widget"})
         assert draft["outcome"] == "drafted", draft
@@ -1267,7 +1245,7 @@ class TestInjectionDispatchEffects:
             [_injection_draft_json(est_tokens_band="M")]))
         monkeypatch.setattr(ti, "injection_budget_inputs", _shortfall_injection_budget_inputs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         _, draft = self._post(port, token, "nonce-shortfall-draft", "job.inject",
                               {"text": "add a widget"})
         assert draft["outcome"] == "shortfall", draft
@@ -1284,7 +1262,7 @@ class TestInjectionDispatchEffects:
             "packages.orchestration.task_injection.injection_budget_inputs",
             _permissive_injection_budget_inputs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
 
         status, body = self._post(port, token, "nonce-bad-text", "job.inject", {"text": ""})
         assert status == 400, body
@@ -1314,7 +1292,7 @@ class TestInjectionDispatchEffects:
             "packages.orchestration.task_injection.injection_budget_inputs",
             _permissive_injection_budget_inputs)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-terminal", "job.inject",
                                   {"text": "add a widget"})
         assert status == 409, body
@@ -1370,7 +1348,7 @@ class TestVetoProposalAnswerDispatchEffects:
     def test_accepting_the_reduced_scope_is_a_200(self):
         from packages.orchestration import task_veto as tv
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-accept", self.decision_id,
                                   "accept_reduced_scope")
         assert status == 200, body
@@ -1381,7 +1359,7 @@ class TestVetoProposalAnswerDispatchEffects:
     def test_a_replan_is_a_200_and_creates_the_follow_up_job(self):
         from packages.orchestration.pingpong_job import load_job_plan
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-replan", self.decision_id,
                                   "replan_follow_up")
         assert status == 200, body
@@ -1391,14 +1369,14 @@ class TestVetoProposalAnswerDispatchEffects:
         assert load_job_plan(body["follow_up_job_id"]) is not None
 
     def test_a_second_answer_of_the_same_veto_is_409(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         self._post(port, token, "nonce-first", self.decision_id, "accept_reduced_scope")
         status, body = self._post(port, token, "nonce-second", self.decision_id,
                                   "accept_reduced_scope")
         assert status == 409, body
 
     def test_an_unknown_veto_id_is_409(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-unknown", "veto:no-such-request",
                                   "accept_reduced_scope")
         assert status == 409, body

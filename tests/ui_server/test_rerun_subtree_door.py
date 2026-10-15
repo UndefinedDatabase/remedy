@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -17,7 +16,7 @@ import pytest
 
 from packages.orchestration.pingpong_job import JOB_COMPLETED, parse_job_file, run_job
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
-from tests.ui_server.server_start import wait_for_server_info
+from tests.ui_server.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -52,25 +51,10 @@ def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True, check=True)
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Mirrors `test_command_dispatch.py`'s own copy exactly (finding R-0701)."""
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / "server_info.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 @pytest.fixture
@@ -134,7 +118,7 @@ class TestRerunSubtreeDoor:
 
     def test_needs_confirmation_is_a_200_that_changes_nothing(self):
         before = self._record_bytes()
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-needs-confirmation",
                                   {"task_id": "T001"})
 
@@ -144,7 +128,7 @@ class TestRerunSubtreeDoor:
         assert self._record_bytes() == before
 
     def test_confirm_cost_prepares_and_answers_200(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-prepared",
                                   {"task_id": "T001", "confirm_cost": True})
 
@@ -154,7 +138,7 @@ class TestRerunSubtreeDoor:
         assert self._record_bytes() != b""
 
     def test_a_refusal_is_a_409_naming_unknown_task(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-refused",
                                   {"task_id": "no-such-task", "confirm_cost": True})
 
@@ -162,7 +146,7 @@ class TestRerunSubtreeDoor:
         assert body["error"].startswith("unknown_task:"), body
 
     def test_a_non_bool_confirm_cost_is_400_before_the_job_is_read(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-bad-confirm-cost",
                                   {"task_id": "T001", "confirm_cost": "yes"})
 
@@ -170,7 +154,7 @@ class TestRerunSubtreeDoor:
         assert body["field"] == "confirm_cost", body
 
     def test_a_missing_task_id_is_400_before_the_job_is_read(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-no-task", {})
 
         assert status == 400, body

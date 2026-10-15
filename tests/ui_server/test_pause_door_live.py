@@ -22,7 +22,6 @@ import os
 import subprocess
 import sys
 import textwrap
-import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
@@ -31,6 +30,7 @@ import psutil
 import pytest
 
 from packages.orchestration.data_paths import job_record_path
+from tests.ui_server.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -148,35 +148,10 @@ def _test_owned_children(baseline_pids: set[int], tmp_path: Path) -> list[psutil
     return owned
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`.
-
-    Mirrors `test_command_dispatch.py`'s helper of the same name and purpose —
-    each live test file owns its own copy, the established convention here. The
-    info file is named UNIQUELY per call: several tests here start a second
-    server, in the SAME `tmp_path`, to submit the unpause — a shared filename
-    would let the second wait read the first server's stale, already-published
-    info before the new thread ever writes its own (R-0734's race, one level up).
-    """
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -279,7 +254,7 @@ class TestJobScopeLiveDoor:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 # Job scope: no --task. Task 2's build call is in flight now
                 # (SlowProvider sleeps): the call it interrupts finishes, and no
                 # reviewer call for task 2 ever starts.
@@ -316,7 +291,7 @@ class TestJobScopeLiveDoor:
         # The unpause answers PARKED — this door starts no process of its own.
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.unpause", job_id=job_id,
                                  nonce="n-unpause")
             assert status == 200, body
@@ -381,7 +356,7 @@ class TestTaskScopeLiveDoor:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 # Naming the third task WHILE the first runs: tasks 1 and 2 are not
                 # in this pause's withheld set (LINEAR: only the paused task and
                 # what follows it in plan order are withheld).
@@ -411,7 +386,7 @@ class TestTaskScopeLiveDoor:
 
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.unpause", job_id=job_id,
                                  nonce="n-unpause-task", args={"task": third_task_id})
             assert status == 200, body
@@ -452,7 +427,7 @@ class TestRefusalsLiveDoor:
         self.control = tmp_path / "control"
 
     def test_an_unknown_task_is_409_and_audited_rejected_state(self):
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = _post(port, token, "job.pause", job_id=self.job_id,
                              nonce="n-unknown-task", args={"task": "not-a-real-task"})
         assert status == 409, body
@@ -466,7 +441,7 @@ class TestRefusalsLiveDoor:
         self.job.state = RunState.COMPLETED
         save_job_plan(self.job)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = _post(port, token, "job.pause", job_id=self.job_id,
                              nonce="n-completed")
         assert status == 409, body
@@ -479,7 +454,7 @@ class TestRefusalsLiveDoor:
         self.job.state = RunState.COMPLETED
         save_job_plan(self.job)
 
-        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
         status, body = _post(port, token, "job.unpause", job_id=self.job_id,
                              nonce="n-completed-unpause")
         assert status == 409, body
@@ -516,7 +491,7 @@ class TestWithdrawLiveDoor:
         save_job_plan(job)
         job_id = str(job.job_id)
 
-        port, token = _start_ui_server_for_job(job_id, tmp_path)
+        port, token = _start_door_for_job(job_id, tmp_path)
         status, body = _post(port, token, "job.pause", job_id=job_id, nonce="n-request")
         assert status == 200, body
         assert body["outcome"] == "requested", body
