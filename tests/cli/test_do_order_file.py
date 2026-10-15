@@ -536,7 +536,7 @@ def test_another_order_file_is_a_further_order_of_the_same_repository_mission(re
 #: tokens and never its 1,200 cache tokens.
 REPORTED_USAGE = {"input_tokens": 10, "output_tokens": 5, "cache_read": 1000,
                   "cache_creation": 200, "total_cost_usd": None}
-REPORTING_ROLES = ("--builder-provider", "ollama", "--reviewer-provider", "ollama")
+REPORTING_ROLES = ("--builder-provider", "claude", "--reviewer-provider", "claude")
 
 
 class _UsageReportingProvider(FakeProvider):
@@ -555,13 +555,16 @@ class _UsageReportingProvider(FakeProvider):
 
 @pytest.fixture
 def usage_reporting_ollama(monkeypatch):
-    """`ollama` names the stand-in, so the run counts its calls as a real provider's; no model runs."""
+    """`claude` names the stand-in, so the run counts its calls as a real provider's; no model runs.
+
+    It was `ollama` until a raw Ollama builder was refused (amend1014b D1); any real provider name serves.
+    """
     from packages.orchestration import pingpong_loop
 
     real_create_provider = pingpong_loop.create_provider
 
     def create_provider(name, **kwargs):
-        if name == "ollama":
+        if name == "claude":
             return _UsageReportingProvider()
         return real_create_provider(name, **kwargs)
 

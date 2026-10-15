@@ -29,6 +29,7 @@ from apps.cli.commands.run_invocation import (
 # amend1014-luna-mission-fixes D.2).
 from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.do_role_guards import non_writing_provider_refusal, unrepresentable_baseline
 
 if TYPE_CHECKING:
     import argparse
@@ -43,9 +44,6 @@ _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 # before being passed through to role_config.resolve_role_config.
 # Exactly the names create_provider (packages/orchestration/pingpong_provider.py) builds.
 _VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake", "pi"})
-#: A raw Ollama completion returns prose and cannot write a file, so it may not be a mutating
-#: role's provider (operator amendment amend1014b, DECISION D1). Pi is the local agentic one.
-_NON_WRITING_PROVIDER_ROLES = ("builder", "repair")
 _VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
 _ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
 
@@ -59,21 +57,10 @@ def _validate_role_override(role: str, field: str, value: object) -> None:
     """
     if value is None:
         return
-    if field == "provider" and value not in _VALID_ROLE_PROVIDERS:
-        fail(
-            "invalid_argument",
-            f"invalid --{role}-provider: {value!r}. "
-            f"Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}.",
-            json_output=False, exit_code=2,
-        )
-    if field == "provider" and value == "ollama" and role in _NON_WRITING_PROVIDER_ROLES:
-        fail(
-            "invalid_argument",
-            f"--{role}-provider ollama cannot write files: a raw Ollama call returns text, not a "
-            f"change. Use --{role}-provider pi, the local agentic provider (Pi plus the same "
-            f"Ollama model), or omit the flag. Nothing was run.",
-            json_output=False, exit_code=2,
-        )
+    if field == "provider" and (why := (
+            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}."
+            if value not in _VALID_ROLE_PROVIDERS else non_writing_provider_refusal(role, str(value)))):
+        fail("invalid_argument", why, json_output=False, exit_code=2)
     if field == "effort" and value not in _VALID_ROLE_EFFORTS:
         fail(
             "invalid_argument",
@@ -205,23 +192,13 @@ def _resolve_do_commit_flags(
     source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
     if key and not mode:
         print(DO_PUSH_KEY_WITHOUT_COMMIT, file=sys.stderr)
-    if top is not None:
-        # Amend1014b D5: a dirty tree is the baseline, not a refusal; only a state the capture
-        # cannot represent exactly stops the run, before any step, naming the actual cause.
-        from packages.orchestration.dirty_baseline import (
-            DirtyBaselineUnsupported,
-            capture_dirty_baseline,
-        )
-        try:
-            capture_dirty_baseline(top)
-        except DirtyBaselineUnsupported as exc:
-            _refuse_before_any_step([str(exc)])
+    if top is not None and (why := unrepresentable_baseline(top)):
+        _refuse_before_any_step([why])      # amend1014b D5: a dirty tree is a baseline, not a refusal
     if not mode or top is None:
         return mode, source
     landing, what = (("the task commits", "merge into") if mode == "history"
                      else ("the commit", "commit on"))
-    refusals, _stop = checkout_refusals(top, landing=landing, what=what,
-                                        allow_dirty=mode != "history")
+    refusals, _stop = checkout_refusals(top, landing=landing, what=what, allow_dirty=mode != "history")
     if source:
         refusals += upstream_push_refusals(top)
     if refusals:

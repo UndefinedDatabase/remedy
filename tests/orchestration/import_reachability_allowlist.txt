@@ -165,6 +165,7 @@ packages.orchestration.diff_repair
 packages.orchestration.diff_repair_apply
 packages.orchestration.diff_repair_response
 packages.orchestration.diff_view_source
+packages.orchestration.dirty_baseline
 packages.orchestration.do_apply
 packages.orchestration.do_cockpit
 packages.orchestration.do_context
@@ -172,6 +173,7 @@ packages.orchestration.do_lane
 packages.orchestration.do_plan_confirm
 packages.orchestration.do_progress
 packages.orchestration.do_rehearsal
+packages.orchestration.do_role_guards
 packages.orchestration.do_run
 packages.orchestration.do_scope
 packages.orchestration.do_sequence
@@ -181,6 +183,7 @@ packages.orchestration.dod_compiler
 packages.orchestration.dod_gate
 packages.orchestration.dod_runners
 packages.orchestration.dod_schema
+packages.orchestration.empty_diff_gate
 packages.orchestration.era_integrity
 packages.orchestration.escalation
 packages.orchestration.event_ledger
@@ -209,6 +212,7 @@ packages.orchestration.hunk_repair_findings
 packages.orchestration.intake
 packages.orchestration.integrity_gate
 packages.orchestration.job_apply
+packages.orchestration.job_apply_baseline
 packages.orchestration.job_burn
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
@@ -248,6 +252,8 @@ packages.orchestration.patch_intent
 packages.orchestration.path_utils
 packages.orchestration.pause_control
 packages.orchestration.permissions
+packages.orchestration.pi_events
+packages.orchestration.pi_provider
 packages.orchestration.pingpong_call_record
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job

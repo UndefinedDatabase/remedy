@@ -21,6 +21,7 @@ from packages.orchestration import mission_state as MS
 from packages.orchestration.config import get_key_spec, load_config, push_after_mission_enabled
 from packages.orchestration.job_apply import (
     COMMIT_REFUSED,
+    HISTORY_REFUSED,
     PUSH_REFUSED,
     apply_job,
     commit_subject_problem,
@@ -297,14 +298,13 @@ class TestFlagRefusals:
                             PUSH_REFUSED, before, repo)
         assert "refused alone" in sentence
 
-    @pytest.mark.parametrize("mode", [{"commit_message": "Add the page"},
-                                      {"commit_auto": True}])
-    def test_f4_a_dirty_tree_is_refused_naming_the_path(self, repo, monkeypatch, mode):
+    def test_f4_a_dirty_tree_is_refused_for_the_history_merge_only(self, repo, monkeypatch):
+        """Amend1014b D5: --commit and --commit-auto work from the working tree; the merge cannot."""
         job = _completed(repo, monkeypatch)
         (repo / "scratch.txt").write_text("wip\n")
         before = _state(repo)
-        sentence = _refused(apply_job(job.job_id, str(repo), approve=True, **mode),
-                            COMMIT_REFUSED, before, repo)
+        sentence = _refused(apply_job(job.job_id, str(repo), approve=True, commit_with_history=True),
+                            HISTORY_REFUSED, before, repo)
         assert "uncommitted changes in scratch.txt" in sentence
         assert not (repo / "one.txt").exists()
 
@@ -349,12 +349,11 @@ class TestFlagRefusals:
         job = _completed(repo, monkeypatch)
         (repo / "scratch.txt").write_text("wip\n")
         before = _state(repo)
-        preview = apply_job(job.job_id, str(repo), commit_message="Add the page", push=True)
+        preview = apply_job(job.job_id, str(repo), commit_with_history=True, push=True)
         assert preview.status == "dry_run" and _state(repo) == before
         summary = summarize_job_apply(preview)
-        assert "With --approve, --commit --push would be refused:" in summary
+        assert "With --approve, --commit-with-history --push would be refused:" in summary
         assert "uncommitted changes in scratch.txt" in summary and "no upstream" in summary
-        assert "--approve --commit 'Add the page' --push" in summary
 
 
 class TestPush:

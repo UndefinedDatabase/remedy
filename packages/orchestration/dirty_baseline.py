@@ -247,3 +247,42 @@ def baseline_drift(repo_path: str | Path, recorded: dict[str, Any]) -> list[str]
         if (now.kind, now.sha256, now.executable) != (item["kind"], item["sha256"], item["executable"]):
             moved.append(item["path"])
     return moved
+
+
+def job_start_baseline(job: Any) -> dict[str, Any]:
+    """The dirty start a job recorded (no file bytes), or {} for a job that started clean.
+
+    It lives inside the job's `target_last_known` record, so no job field or serializer grew.
+    """
+    return (getattr(job, "target_last_known", None) or {}).get("start_baseline") or {}
+
+
+def seed_job_workspace(job: Any, handle: Any, baseline: DirtyBaseline) -> None:
+    """Seed the job's worktree from the captured baseline and record that on the job; no-op if clean."""
+    from packages.orchestration import worktrees as W
+
+    if not baseline.entries:
+        return
+    seed_workspace_from_baseline(baseline, handle.path)
+    commit = W.snapshot(handle)
+    job.target_last_known = {"start_baseline": {**baseline.to_dict(), "commit": commit}}
+    job.worktree_head = commit
+
+
+def create_seeded_worktree(job: Any, worktree_id: str) -> Any:
+    """Create the job's worktree and record it on the job, seeded from the visible working tree.
+
+    The capture comes first, so a state it cannot represent leaves no worktree behind.
+    """
+    from packages.orchestration import worktrees as W
+
+    baseline = capture_dirty_baseline(job.repo_path)
+    handle = W.create(worktree_id, job.repo_path)
+    job.isolation_mode = "worktree"
+    job.worktree_branch = handle.branch
+    job.worktree_path = handle.relative_path
+    job.worktree_base_commit = handle.base_commit
+    job.worktree_head = handle.head_commit
+    job.worktree_cleanup_status = "active"
+    seed_job_workspace(job, handle, baseline)
+    return handle

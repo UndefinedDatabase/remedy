@@ -1,6 +1,6 @@
 # Self-health v1: Remedy checks its own health
 
-> Status (F199, 2026-10-13): built. The command, its eight checks, the crash report and the
+> Status (F199, 2026-10-13): built. The command, its nine checks, the crash report and the
 > supervisor's health route exist. DECISIONs F199 D1 and D2 in `.agent/decisions.md` hold the rules
 > this page states; the feature is `docs/roadmap/features/T12_F199.md`.
 
@@ -25,6 +25,7 @@ The checks run in this order.
 | `snapshots` | The 20 newest workspace snapshots under the data root: each manifest against its recorded hash and each recovery file against its recorded hash | Never | A snapshot's manifest does not match its hash, or a recovery file is missing or changed (the detail names the snapshot folder) | Run `remedy snapshot inspect <job id> <snapshot id>` for each named snapshot; a damaged snapshot cannot restore the files it recorded, so no revert should rely on it |
 | `worktrees` | `git worktree list` of each registered project's repository on this machine | A worktree is prunable because its folder is gone | Never | Run `git worktree prune` in each named repository; it forgets the worktrees whose folders are gone and changes no other file |
 | `providers` | Whether the `claude` command, the `ANTHROPIC_API_KEY` variable and the `ollama` command are present; no provider is called and the key is never printed | None of the three is present | Never | Install the Claude Code command line or Ollama, or set `ANTHROPIC_API_KEY`; `remedy worker doctor` checks a worker's own tooling |
+| `default_chain` | The default local execution chain (amend1014b): `pi` on the path, the Ollama endpoint answering, and `muse-glimmer:latest` installed in it; no agent is run and no file is written | Any link is missing | Never | Install Pi and run `ollama pull muse-glimmer:latest`, or pick an explicit provider |
 | `staging_copies` | The size of leftover staging copies that `remedy data reclaim --orphans` would free, against `data.reclaim_warn_gb` | The size is at or above the warning level, or cannot be measured | Never | Preview with `remedy data reclaim --orphans`, then free with `--apply` |
 | `disk` | The free disk, as the budget guard reads it, against `budget.min_free_disk_bytes` | The free disk cannot be read | The free disk is below the configured floor | Free disk space under the data root, or lower the floor; `remedy data reclaim --orphans` previews what Remedy's own staging copies would free |
 | `crash_reports` | The crash reports under `<data root>/crash/` modified in the last 7 days | One or more such reports exist (the detail counts them and names the newest) | Never | Read the newest report; it holds the traceback with secrets removed and stays on this machine; a report older than 7 days no longer warns |

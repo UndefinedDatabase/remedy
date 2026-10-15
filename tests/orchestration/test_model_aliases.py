@@ -80,6 +80,7 @@ class TestRelocationIsFaithful:
     def test_provider_default_models_table(self):
         assert role_config._PROVIDER_DEFAULT_MODELS == {
             "ollama": resolve_model_alias("ollama-default"),
+            "pi": resolve_model_alias("ollama-default"),
             "claude-cli": resolve_model_alias("claude-flagship"),
             "claude": resolve_model_alias("claude-flagship"),
             "fake": resolve_model_alias("fake"),

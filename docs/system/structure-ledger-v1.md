@@ -277,7 +277,7 @@ with the code that calls it.
 | Lines | File | Function |
 |---|---|---|
 | 1448 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1317 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
@@ -285,7 +285,7 @@ with the code that calls it.
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
-| 352 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
+| 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
 | 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
@@ -319,7 +319,7 @@ with the code that calls it.
 | 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
 | 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
-| 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
+| 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
@@ -441,13 +441,13 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5355 | `packages/orchestration/pingpong_job.py` |
+| 5350 | `packages/orchestration/pingpong_job.py` |
 | 5233 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2412 | `apps/cli/command_catalog.py` |
-| 2544 | `packages/orchestration/job_apply.py` |
+| 2542 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |

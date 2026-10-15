@@ -396,9 +396,6 @@ class JobPlan:
     # F263 T001: the TARGET checkout's last known state (`human_change.TargetState` plus the
     # checkpoint ref keeping its tree alive). A human change is measured against it.
     target_last_known: dict | None = None
-    # Operator amendment amend1014b, DECISION D5: the dirty working tree captured at invocation
-    # (`dirty_baseline.DirtyBaseline.to_dict`, no file bytes). None for a job that started clean.
-    start_baseline: dict | None = None
     # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
     root_changed_files: list[str] = field(default_factory=list)
     reviewed_task_files: list[str] = field(default_factory=list)
@@ -777,7 +774,6 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "job_initial_tree": job.job_initial_tree,
         "job_initial_tree_ref": job.job_initial_tree_ref,
         "target_last_known": job.target_last_known,
-        "start_baseline": job.start_baseline,
         # F011: the last stop episode. Absent from every job file written before F011, and
         # absent from a job that was never stopped — both load as "no stop", not as an error.
         "stop": {
@@ -905,7 +901,6 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         job_initial_tree=data.get("job_initial_tree", ""),
         job_initial_tree_ref=data.get("job_initial_tree_ref", ""),
         target_last_known=data.get("target_last_known") or None,
-        start_baseline=data.get("start_baseline") or None,
         handoff_coverage_verdict=(data.get("handoff_coverage") or {}).get("verdict", ""),
         root_changed_files=(data.get("handoff_coverage") or {}).get("root_changed_files", []),
         reviewed_task_files=(data.get("handoff_coverage") or {}).get("reviewed_task_files", []),
@@ -1195,42 +1190,15 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
         job.isolation_mode = "copy"
         return _create_job_workspace_copy(job), None
 
-    from packages.orchestration import dirty_baseline as DB
+    from packages.orchestration.dirty_baseline import create_seeded_worktree
 
-    # Captured BEFORE the worktree exists, so an unrepresentable state leaves nothing behind.
-    baseline = DB.capture_dirty_baseline(job.repo_path)
-    wt_id = job_worktree_id(job.job_id)
-    handle = W.create(wt_id, job.repo_path)
-    job.isolation_mode = "worktree"
-    job.worktree_branch = handle.branch
-    job.worktree_path = handle.relative_path
-    job.worktree_base_commit = handle.base_commit
-    job.worktree_head = handle.head_commit
-    job.worktree_cleanup_status = "active"
-    _seed_start_baseline(job, handle, baseline)
+    handle = create_seeded_worktree(job, job_worktree_id(job.job_id))
     job.job_initial_tree = W.write_tree(handle)
     job.job_initial_tree_ref = W.checkpoint_ref(
         job_worktree_id(job.job_id), "job-initial")
     W.set_checkpoint_ref(job.repo_path, job.job_initial_tree_ref, job.job_initial_tree)
     _record_target_last_known(job)
     return handle.path, handle
-
-
-def _seed_start_baseline(job: JobPlan, handle: Any, baseline: Any) -> None:
-    """Amend1014b D5: seed the workspace from the target's VISIBLE working tree, not from HEAD.
-
-    A clean target changes nothing here. A dirty one has its changed bytes written into the
-    workspace and committed on the job's own branch, so the job's diff and the apply's baseline
-    proofs are measured from what the person saw. The target is only read.
-    """
-    from packages.orchestration import dirty_baseline as DB
-    from packages.orchestration import worktrees as W
-
-    if not baseline.entries:
-        return
-    DB.seed_workspace_from_baseline(baseline, handle.path)
-    job.start_baseline = {**baseline.to_dict(), "commit": W.snapshot(handle)}
-    job.worktree_head = job.start_baseline["commit"]
 
 
 def _record_target_last_known(job: JobPlan) -> None:
@@ -1246,7 +1214,7 @@ def _record_target_last_known(job: JobPlan) -> None:
     state = HC.capture_target_state(job.repo_path)
     ref = W.checkpoint_ref(job_worktree_id(job.job_id), HC.LAST_KNOWN_REF_NAME)
     W.set_checkpoint_ref(job.repo_path, ref, state.tree)
-    job.target_last_known = {**state.to_dict(), "ref": ref}
+    job.target_last_known = {**(job.target_last_known or {}), **state.to_dict(), "ref": ref}
 
 
 def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:

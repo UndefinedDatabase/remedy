@@ -192,7 +192,9 @@ def test_a_flag_rule_is_refused_before_any_step(repo, capsys, flags, sentence):
 def test_a_dirty_tree_is_refused_before_any_step(repo, capsys):
     (repo / "notes.txt").write_text("the operator's own work\n")
 
-    code, data, err = _run(capsys, "--commit", MESSAGE)
+    # Amend1014b D5: a copy-and-commit works from the working tree; only the history merge,
+    # which cannot carry a baseline, still asks for a clean one.
+    code, data, err = _run(capsys, "--commit-with-history")
 
     assert code == 2 and data is None
     assert "uncommitted changes in notes.txt" in err and "Nothing was run." in err
