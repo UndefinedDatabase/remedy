@@ -191,6 +191,7 @@ def _story(gate: Gate, job_id: str) -> dict:
 
 def test_a_done_run_reads_done_and_its_apply_lands_once(gate: Gate) -> None:
     story = _story(gate, gate.done_job)
+    assert _story(gate, gate.done_job) == story  # a read changes nothing, so it repeats
 
     assert story["state"] == "done"
     [building] = [step for step in story["steps"] if step["id"] == "building"]

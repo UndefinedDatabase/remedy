@@ -42,6 +42,7 @@
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | explanations / terms | [explanation-layer-user-guide-v1.md](guides/explanation-layer-user-guide-v1.md) | guide |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
+| HTTP clients | [http-clients.md](guides/http-clients.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
