@@ -409,6 +409,26 @@ def _read_projects(projects: list[Any], day_moment: datetime) -> _ProjectReads:
     return reads
 
 
+def _listed_plans(job_ids: Collection[str] | None) -> tuple[list[JobPlan], bool, list[str]]:
+    """(the plans the digest reads, degraded, the skipped files): every job's, or with JOB_IDS
+    only those, an id with no record left out and an unreadable one named (DECISION F253 D4 (1)).
+    Moved out of `build_client_digest` unchanged."""
+    if job_ids is None:
+        return list_job_plans_safe()
+    plans: list[JobPlan] = []
+    degraded = False
+    skipped_files: list[str] = []
+    for job_id in sorted(set(job_ids)):
+        plan, plan_degraded = load_job_plan_safe(job_id)
+        if plan is None:
+            if plan_degraded:
+                degraded = True
+                skipped_files.append(job_id)
+            continue
+        plans.append(plan)
+    return plans, degraded, skipped_files
+
+
 def _ended_job_window(job_entries: list[dict[str, Any]],
                       ended_jobs: list[tuple[str, str, dict[str, Any]]], *, windowed: bool,
                       every_ended_job: bool) -> dict[str, Any]:
@@ -476,20 +496,9 @@ def build_client_digest(now: datetime | None = None, *,
     abandoned_job_ids, usage_by_job_id = reads.abandoned_job_ids, reads.usage_by_job_id
     every_ledger_read = reads.every_ledger_read
 
-    if job_ids is None:
-        plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
-        degraded = degraded or jobs_degraded
-        skipped_files.extend(jobs_skipped)
-    else:
-        plans = []
-        for job_id in sorted(set(job_ids)):
-            plan, plan_degraded = load_job_plan_safe(job_id)
-            if plan is None:
-                if plan_degraded:
-                    degraded = True
-                    skipped_files.append(job_id)
-                continue
-            plans.append(plan)
+    plans, jobs_degraded, jobs_skipped = _listed_plans(job_ids)
+    degraded = degraded or jobs_degraded
+    skipped_files.extend(jobs_skipped)
 
     job_entries: list[dict[str, Any]] = []
     ended_jobs: list[tuple[str, str, dict[str, Any]]] = []
