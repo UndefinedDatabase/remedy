@@ -18,6 +18,7 @@ because no route of the public API takes a steering note (DECISION amend1015f D5
 Public API::
 
     build_client_story(plan, *, events, now) -> dict
+    job_client_story(job_id, plan) -> dict
 """
 
 from __future__ import annotations
@@ -386,3 +387,12 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         },
         "note_open": False,
     }
+
+
+def job_client_story(job_id: str, plan: Any) -> dict[str, Any]:
+    """The story of the resolved job JOB_ID whose record is PLAN, with its run log read from the data
+    root this process resolves; `remedy client story` and `GET /api/v1/jobs/{job}/story` share it."""
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import load_run_events
+
+    return build_client_story(plan, events=load_run_events(resolve_data_root(), job_id))

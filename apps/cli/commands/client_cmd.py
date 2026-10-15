@@ -18,6 +18,11 @@ D20), as `remedy client order` reads an order: the job's run record
 (`packages.orchestration.serve_runs.read_run_record`), its `state` and, once that is not
 `running`, the `answer` `remedy job run` printed. A value that names no one job, or a job with no
 run record, is refused `run_not_found`, exit 3.
+
+`remedy client story <job>` prints one job's run story
+(`packages.orchestration.client_story.job_client_story`, operator amendment
+amend1015-face-migration, DECISION amend1015f D14), the answer `GET /api/v1/jobs/{job}/story`
+sends. The job is resolved as `remedy doctor logs` resolves it.
 """
 
 from __future__ import annotations
@@ -134,6 +139,25 @@ def _cmd_client_run(job: str, *, json_output: bool = False) -> None:
     print(f"Run of job {record.job_id}: {payload['state']}")
 
 
+def _cmd_client_story(job: str, *, json_output: bool = False) -> None:
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from packages.orchestration.client_story import job_client_story
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+
+    job_id = resolve_job_id_or_fail(job, json_output=json_output)
+    try:
+        plan = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output)
+    # A call, hand-verified in tests/cli/test_client_interface.py
+    # (`apps.cli.commands.client_cmd:_cmd_client_story:**story`).
+    story = job_client_story(job_id, plan)
+    if json_output:
+        emit_ok(**story)
+        return
+    print(f"Job {job_id}: {story['state']}, next {story['next']['action']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
     "client.changes": lambda args: _cmd_client_changes(
@@ -141,5 +165,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.order": lambda args: _cmd_client_order(
         args.order, json_output=getattr(args, "json", False)),
     "client.run": lambda args: _cmd_client_run(
+        args.job, json_output=getattr(args, "json", False)),
+    "client.story": lambda args: _cmd_client_story(
         args.job, json_output=getattr(args, "json", False)),
 }

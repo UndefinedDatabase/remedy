@@ -41,6 +41,13 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from apps.cli.client_interface_story import (
+    CLIENT_STORY_ANSWER_KEYS,
+    CLIENT_STORY_KEY_TREE,
+    STORY_WORDS_KEY_TREE,
+    render_story_words_lines,
+)
+
 #: The document's own version. Its major number changes only when a name is removed or changes
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
 #: to `1.2` for `client.changes`, F253 S4b (DECISION F253 D11) to `1.3` for `job decline`'s
@@ -54,8 +61,9 @@ from typing import Any
 #: (DECISION F199 D3) to `1.11` for `doctor.health`, and
 #: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`, and F306 (R-1235) to `1.13` for the
 #: claude-cli configuration a job's execution configuration records, and operator amendment
-#: amend1014-luna-mission-fixes (B.3) to `1.14` for the job-id refusals of `doctor.logs`.
-CLIENT_INTERFACE_VERSION = "1.14"
+#: amend1014-luna-mission-fixes (B.3) to `1.14` for the job-id refusals of `doctor.logs`, and
+#: amend1015-face-migration (DECISION amend1015f D14) to `1.15` for `client.story` and `story`.
+CLIENT_INTERFACE_VERSION = "1.15"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -82,6 +90,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "client.changes",
     "client.order",
     "client.run",
+    "client.story",
     "doctor.health",
     "doctor.logs",
 )
@@ -145,6 +154,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
+    "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "doctor.health": ("health_failed",),
     "doctor.logs": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
 }
@@ -219,7 +229,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.interface": (
         "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
         "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
-        "mission_statuses", "operations",
+        "mission_statuses", "operations", "story",
     ),
     "client.changes": (
         "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
@@ -232,6 +242,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
         "state",
     ),
+    "client.story": CLIENT_STORY_ANSWER_KEYS,
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
 }
@@ -727,6 +738,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "digest": {"*": KEY_TREE_REPEAT_MARK},
         "answers": {"*": {}},
         "answer_trees": {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}},
+        "story": STORY_WORDS_KEY_TREE,
     },
     "client.changes": {
         # F253 S3a (DECISION F253 D4 (3)): `jobs` and `decisions` are the digest's own trees,
@@ -743,6 +755,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
     # the run is not `running`; no tree is declared under it.
     "client.run": {},
+    "client.story": CLIENT_STORY_KEY_TREE,
     "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},
     "doctor.logs": {
         "entries": {
@@ -806,6 +819,7 @@ def build_client_interface() -> dict[str, Any]:
     from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
     from packages.core.models import JobBudgets, RunState
     from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
+    from packages.orchestration.client_story_words import story_words
     from packages.orchestration.contract_templates import list_contract_templates
     from packages.orchestration.mission_state import MISSION_STATUSES
 
@@ -830,6 +844,7 @@ def build_client_interface() -> dict[str, Any]:
         "digest": copy.deepcopy(DIGEST_KEY_TREE),
         "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
         "answer_trees": copy.deepcopy(ANSWER_KEY_TREES),
+        "story": story_words(),
     }
 
 
@@ -920,6 +935,7 @@ def render_client_interface_markdown(interface: dict[str, Any]) -> str:
         f"Budget kinds: {_listed(interface['budget_kinds'])}.",
         f"Approval recommendations: {_listed(interface['approval_recommendations'])}.",
         f"Approval risks: {_listed(interface['approval_risks'])}.",
+        *render_story_words_lines(interface["story"]),
         "",
         "### Operations",
     ]

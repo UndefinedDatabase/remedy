@@ -277,7 +277,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.14`.
+Interface version: `1.15`.
 
 ### Envelope
 
@@ -303,6 +303,40 @@ Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
 Approval recommendations: `apply`, `review`, `hold`.
 Approval risks: `low`, `medium`, `high`.
+
+### Story words
+
+The closed words of `remedy client story` and `GET /api/v1/jobs/{job}/story`. A phrase or a reason is `{key, args}`; its arguments are numbers, paths relative to the repository, and `provider`, a provider's id word.
+
+Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`.
+Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
+Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
+Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
+Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
+Story phrase `found_files`: `n`, `first`.
+Story phrase `planned_tasks`: `n`.
+Story phrase `working_on_file`: `file`, `round`.
+Story phrase `changed_file_in_rounds`: `file`, `rounds`.
+Story phrase `changed_files`: `n`.
+Story phrase `no_file_changed`: none.
+Story phrase `no_test_command`: none.
+Story phrase `tests_not_run`: none.
+Story phrase `tests_passed`: `n`.
+Story phrase `tests_failed`: `n`.
+Story phrase `provider_unavailable`: `provider`.
+Story phrase `review_not_passed`: `rounds`.
+Story phrase `waiting_for_apply`: `n`.
+Story phrase `applied`: `n`.
+Story phrase `declined`: none.
+Story reason `provider_unavailable`: `provider`.
+Story reason `tests_failed`: `n`.
+Story reason `review_not_passed`: `rounds`.
+Story reason `target_changed`: none.
+Story reason `budget_exhausted`: none.
+Story reason `declined`: none.
+Story reason `cancelled`: none.
+Story reason `paused`: none.
+Story reason `unknown`: none.
 
 ### Operations
 
@@ -741,7 +775,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `story`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -753,6 +787,9 @@ Keys under the answer keys: see below.
 - `exit_codes`: `code`, `meaning`, `name`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
+- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`
+  - `phrases`: `*`
+  - `reasons`: `*`
 
 #### `remedy client changes`
 
@@ -811,6 +848,34 @@ Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `run_not_found`.
 Answer keys: `answer`, `ended_at`, `err_log`, `exit_code`, `job_id`, `out_log`, `pid`, `started_at`, `state`.
 Keys under the answer keys: none.
+
+#### `remedy client story`
+
+Command id: `client.story`.
+Description: Read one Job's run story in closed words a client translates: its state, the one next step and the HTTP route that takes it, the five steps with the Job's tasks, the changed files and its numbers (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose tasks' run story is read |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`.
+Keys under the answer keys: see below.
+
+- `changes`: `added`, `path`, `removed`
+- `next`: `action`, `route`
+  - `route`: `method`, `path`
+- `numbers`: `calls`, `duration_s`, `rounds`, `tokens_in`, `tokens_out`
+- `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
+  - `reason`: `args`, `key`
+    - `args`: `*`
+- `steps`: `id`, `phrase`, `status`, `tasks`, `tokens`
+  - `phrase`: `args`, `key`
+    - `args`: `*`
+  - `tasks`: `files`, `rounds`, `status`, `title`
+  - `tokens`: `in`, `out`
 
 #### `remedy doctor health`
 

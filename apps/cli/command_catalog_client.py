@@ -82,4 +82,19 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # `not_ready` meaning covers.
         exit_codes=(0, 1, 2, 3),
     ),
+    CommandEntry(
+        command_id="client.story",
+        group_id="client",
+        subcommand="story",
+        # amend1015-face-migration Phase 1.1 (DECISION amend1015f D14): the story a client renders in
+        # its own words; every word of it is in `remedy client interface`'s `story` key.
+        description="Read one Job's run story in closed words a client translates: its state, the one next step and the HTTP route that takes it, the five steps with the Job's tasks, the changed files and its numbers (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("job", "The id of the job, or a prefix of it, whose tasks' run story is read"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "client.run"),
+    ),
 )

@@ -233,6 +233,21 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/jobs/{job}/story",
+        twin="client.story",
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
+        description=(
+            "One job's run story in closed words a client translates, as `remedy client story "
+            "<job> --json` prints it: `order`, `state` and `state_detail`, `next` with the one "
+            "next step and the route that takes it, the five `steps` with the job's tasks under "
+            "`building`, `changes`, `numbers` (null where not measured) and `note_open`. Every "
+            "word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, "
+            "and a client token reads only a job of one of its projects (403 "
+            "`api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/jobs/{job}/run",
         twin="client.run",
         refusals=(("run_not_found", 404),),

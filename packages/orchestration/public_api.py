@@ -40,6 +40,10 @@ provider and no other option of `remedy job run` is offered. `GET /api/v1/jobs/{
 once the run is not `running`, `answer`, and the 202 answer holds the same keys: the two share
 `run_record_payload` in `packages.orchestration.serve_runs`.
 
+`GET /api/v1/jobs/{job}/story` (DECISION amend1015f D14) answers one job's run story as `remedy
+client story <job> --json` does: the two share `job_client_story` in
+`packages.orchestration.client_story`, and a client token reads only a job of its projects.
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
@@ -71,8 +75,10 @@ from packages.orchestration.public_api_writes import (
 PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
-#: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.14"
+#: refusal token is added; the major number changes only under a new path prefix. Operator
+#: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
+#: `GET /api/v1/jobs/{job}/story`.
+PUBLIC_API_VERSION = "1.15"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -292,6 +298,20 @@ def _doctor_logs_answer(*, job: str, run: str | None = None) -> dict[str, Any]:
     )
 
 
+def _client_story_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/story` sends: what `remedy client story <job> --json`
+    prints (DECISION amend1015f D14). The job is resolved as its twin resolves it, and the two
+    share `job_client_story`."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.client_story import job_client_story
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    job_id, plan = resolved
+    return build_ok(**job_client_story(job_id, plan))
+
+
 def _client_read_refusal(client: Any, job: str) -> str | None:
     """One sentence when a client token may not read JOB, which is not a job of one of its
     projects, else None; a value that names no one job is left to the route's own refusal."""
@@ -364,13 +384,15 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "doctor.logs": _doctor_logs_answer,
     "client.order": _order_answer,
     "client.run": _run_answer,
+    "client.story": _client_story_answer,
 }
 
 
 #: The read routes a client token may use only for a job of one of its projects; the server's
-#: token reads every job (operator amendment amend1014-luna-mission-fixes B.3). The other read
-#: routes stay unscoped reads of one record, as DECISION F253 D16 designed them.
-_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs"})
+#: token reads every job (operator amendment amend1014-luna-mission-fixes B.3), and so does the
+#: story (DECISION amend1015f D14). The other read routes stay unscoped reads of one record, as
+#: DECISION F253 D16 designed them.
+_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story"})
 
 
 def answer_public_api_get(

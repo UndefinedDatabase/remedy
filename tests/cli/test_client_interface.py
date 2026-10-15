@@ -68,6 +68,7 @@ from apps.cli.client_interface import (
     render_client_interface_markdown,
     write_client_interface_page,
 )
+from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.exit_codes import CLI_EXIT_CODES
@@ -93,7 +94,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.14"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.15"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -483,7 +484,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({
             "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
             "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
-            "job_states", "mission_statuses", "operations",
+            "job_states", "mission_statuses", "operations", "story",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -533,6 +534,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
         "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
         "F253 D14 (4))",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
+        frozenset({
+            "changes", "ended_at", "job_id", "next", "note_open", "numbers", "order",
+            "started_at", "state", "state_detail", "steps", "updated_at",
+        }),
+        "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
+        "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_run:**payload": (
         frozenset({
@@ -671,6 +680,8 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         _returned_dict_keys("packages/orchestration/job_evidence.py", "export_job_evidence"))
     assert sites["apps.cli.commands.patch:_cmd_approve_hunks:**result.exported"] == (
         set(hunk_decision_record._RECORD_KEYS))
+    assert sites["apps.cli.commands.client_cmd:_cmd_client_story:**story"] == (
+        _returned_dict_keys("packages/orchestration/client_story.py", "build_client_story"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_interface:**interface"] == (
         _returned_dict_keys("apps/cli/client_interface.py", "build_client_interface"))
     assert sites["apps.cli.commands.job:_cmd_job_resume:**preview"] == (
@@ -1312,6 +1323,11 @@ def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
     assert trees["answer_trees"] == {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}}
     assert ast.unparse(values["answer_trees"]) == "copy.deepcopy(ANSWER_KEY_TREES)"
     assert trees["answers"] == {"*": {}}
+    # The story's words (DECISION amend1015f D14): lists of words, and under `phrases` and
+    # `reasons` each word maps to the names of its arguments.
+    assert ast.unparse(values["story"]) == "story_words()"
+    assert set(trees["story"]) == _returned_dict_keys(
+        "packages/orchestration/client_story_words.py", "story_words")
     # `ast.unparse` writes a comprehension's tuple target in brackets on Python 3.10 and without
     # them on 3.12, so the expected source is unparsed by the running interpreter too (R-1182).
     assert ast.unparse(values["answers"]) == ast.unparse(ast.parse(
@@ -1393,6 +1409,11 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # The operations log holds the run's own lines for this job (DECISION F203 D5).
     logged = answer("doctor.logs", ["doctor", "logs", job_id], 0)
     assert any(entry["job_id"] == job_id for entry in logged["entries"]), logged
+    # The applied job's run story (DECISION amend1015f D14).
+    story = answer("client.story", ["client", "story", job_id[:8]], 0)
+    assert story["state"] == "done_applied", story
+    assert {("next", "action"), ("steps", "tasks", "rounds"), ("steps", "phrase", "key"),
+            ("changes", "path"), ("numbers", "rounds")} <= _key_paths(_key_tree(story))
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
@@ -1497,7 +1518,8 @@ def _read_tree(bullets: list[str]) -> dict:
 def _read_page_section(section: str) -> dict:
     """The interface read back from its rendered section, line by line."""
     read: dict = {"envelope": {}, "exit_codes": [], "operations": [], "answers": {},
-                  "answer_trees": {}}
+                  "answer_trees": {}, "story": {"phrases": {}, "reasons": {}}}
+    story_labels = {label: key for key, label in STORY_WORD_LABELS}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
               "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
               "Approval recommendations": "approval_recommendations",
@@ -1526,6 +1548,11 @@ def _read_page_section(section: str) -> dict:
             read["envelope"][key] = _listed_words(line, label)
         elif label in labels:
             read[labels[label]] = _listed_words(line, label)
+        elif label in story_labels:
+            read["story"][story_labels[label]] = _listed_words(line, label)
+        elif label.startswith(("Story phrase `", "Story reason `")):
+            kind = "phrases" if label.startswith("Story phrase") else "reasons"
+            read["story"][kind][label.split("`")[1]] = _listed_words(line, label)
         elif label == "Command id":
             operation["command_id"] = _listed_words(line, label)[0]
         elif label == "Description":
