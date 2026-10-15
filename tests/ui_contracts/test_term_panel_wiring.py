@@ -46,7 +46,8 @@ def test_the_shell_mounts_the_first_run_tour_once_outside_main():
     code = strip_ts_comments(SHELL.read_text())
     assert code.count("<FirstRunTourMount ") == 1
     assert code.index("<FirstRunTourMount ") > code.index("</main>")
-    assert "<FirstRunTourMount relaunch={tourRelaunch} />" in code
+    # amend1015 P4.5: the tour waits over a finished job or a shown digest card.
+    assert "<FirstRunTourMount relaunch={tourRelaunch} blocked={jobFinishedOf(dashboard.live.stage) || visibility.show} />" in code
     assert code.count("window.localStorage") == 1
 
 

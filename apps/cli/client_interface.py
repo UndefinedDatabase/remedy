@@ -498,6 +498,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "job_ids": {},
             "mirror_failed_job_ids": {},
             "mirror_errors": {"*": {}},
+            "show_cost_usd": {},
         },
         "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}},
         "steps": {"name": {}, "status": {}, "detail": {}},

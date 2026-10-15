@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  BRAIN_BACKOFF_CAP_MS, BRAIN_RECENT_LIMIT, brainBackoffDelayMs, degradeBrainStream,
+  BRAIN_BACKOFF_CAP_MS, BRAIN_STREAM_FALLBACK_ATTEMPTS, BRAIN_RECENT_LIMIT, brainBackoffDelayMs, degradeBrainStream,
   failBrainStream, initialBrainStreamState, openBrainStream, receiveBrainFrame,
   repairBrainGap, resumeEventId,
 } from "./brainStream";
@@ -213,5 +213,17 @@ describe("the budget tick on the stream state", () => {
     const ticked = receiveBrainFrame(initialBrainStreamState(), tickFrame(1, budget), 10);
     const s = receiveBrainFrame(ticked, tickFrame(2, "1.50"), 20);
     expect(s.budget).toBe(budget);
+  });
+});
+
+describe("three closed attempts fall back to delayed (amend1015 P2.2)", () => {
+  it("failBrainStream says reconnecting twice and delayed on the third", () => {
+    let state = initialBrainStreamState();
+    state = failBrainStream(state);
+    state = failBrainStream(state);
+    expect(state.status).toBe("reconnecting");
+    state = failBrainStream(state);
+    expect(state.status).toBe("delayed");
+    expect(BRAIN_STREAM_FALLBACK_ATTEMPTS).toBe(3);
   });
 });

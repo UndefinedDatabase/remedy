@@ -97,3 +97,15 @@ describe("whether the tour opens by itself", () => {
     expect(FIRST_RUN_TOUR_SEEN).toBe("seen");
   });
 });
+
+describe("the tour never opens over a finished job or the digest card (amend1015 P4.5)", () => {
+  const fresh = { getItem: () => null, setItem: () => {} };
+
+  it("is due on a fresh browser when nothing blocks it", () => {
+    expect(firstRunTourDue(fresh, false)).toBe(true);
+  });
+
+  it("is not due while something blocks it, and stays unrecorded so it opens next time", () => {
+    expect(firstRunTourDue(fresh, true)).toBe(false);
+  });
+});

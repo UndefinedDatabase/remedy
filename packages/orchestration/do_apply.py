@@ -19,6 +19,7 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
+from packages.orchestration.job_apply_pending import job_apply_command
 
 
 def do_job_repo(ctx: DoContext, job_id: str) -> str:
@@ -62,8 +63,7 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
     refuses it before anything is applied (D4 (6)).
     """
     if not ctx.apply:
-        commands = [f"remedy job apply {job_id} --repo {shlex.quote(do_job_repo(ctx, job_id))} "
-                    f"--approve" for job_id in ctx.run_job_ids]
+        commands = [job_apply_command(job_id, do_job_repo(ctx, job_id)) for job_id in ctx.run_job_ids]
         ctx.next_lines.extend(commands)
         ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
         untouched = ", ".join(dict.fromkeys(do_job_repo(ctx, job_id) for job_id in ctx.run_job_ids))

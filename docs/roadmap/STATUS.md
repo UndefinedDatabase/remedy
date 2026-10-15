@@ -271,6 +271,13 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 3 — Luna gate C: controlled autonomy (operator ruling amend1006-luna-control-plane)
 
 - [x] F055 — Rehearsal (dry check) (T001–T003 complete; R-1316, R-1317, R-1318 and R-1320 resolved; accepted 2026-10-14 · live review PASS — ACCEPTED · Evidence job f055r5e1001 · package remedy-review-20261014-200011-READY_FOR_REVIEW.zip · SHA-256 7be134c461b533e26dab8ca02d1f28de90a750c6a18197a9fd549f87529611aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c3c6ae7bf958d712b77656e60a6ee9e9c33efe2a)
+
+## Tier 5 — Cockpit v2 (operator amendment amend1015-cockpit-truth)
+
+- [ ] F309 — Cockpit v2: one design, chosen by the operator (blocked until decodeux's design brief is in docs/ui/cockpit-v2-brief.md)
+
+## Tier 3 — Luna gate C: controlled autonomy, continued (operator ruling amend1006-luna-control-plane)
+
 - [ ] F078 — Autonomy levels
 
 ## Tier 7 — Luna gate C: permissions (operator ruling amend1006-luna-control-plane)

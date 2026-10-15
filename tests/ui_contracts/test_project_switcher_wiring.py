@@ -79,4 +79,6 @@ def test_the_switcher_is_a_native_select_in_the_rails_kicker():
     assert "<select" in switcher and "aria-label={PROJECT_SWITCHER_LABEL}" in switcher
     assert "@mui" not in switcher
     rail = _code(RAIL)
-    assert "<ProjectSwitcher fallback={<div className={styles.concept}>CONCEPT 01 OF 10</div>} />" in rail
+    # amend1015 P4.2: the fallback names the job, no longer a design mock's "CONCEPT 01 OF 10".
+    assert "<ProjectSwitcher fallback={<div className={styles.concept}>{RAIL_JOB_KICKER}</div>} />" in rail
+    assert "CONCEPT 01" not in rail

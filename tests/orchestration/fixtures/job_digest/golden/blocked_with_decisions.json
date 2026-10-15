@@ -7,6 +7,17 @@
     "value": "not-measured",
     "basis": "absent"
   },
+  "tokens": {
+    "roles": [],
+    "harness_invocations": 0,
+    "model_turns": null,
+    "tokens_in": null,
+    "tokens_out": null,
+    "cache_read": null,
+    "cost_usd": null,
+    "line": "",
+    "show_cost_usd": false
+  },
   "ownership": [],
   "decisions": {
     "open_count": 2,

@@ -680,7 +680,7 @@ class TestStoppedByOperatorRule:
     def test_the_rule_table_order_is_the_documented_priority(self):
         ids = [rule_id for rule_id, _condition in NEXT_ACTION_RULES]
         assert ids == ["open-decision", "stopped-by-operator", "blocked-failed",
-                       "all-green", "indeterminate"]
+                       "apply-pending", "all-green", "indeterminate"]
 
     def test_the_new_rule_is_documented_like_every_other(self):
         assert NEXT_ACTION_CONDITIONS["stopped-by-operator"] == (
@@ -1211,3 +1211,52 @@ def _section(report: str, heading: str) -> str:
             break
         body.append(line)
     return "\n".join(body)
+
+
+class TestApplyPendingRule:
+    """amend1015 P1.3: a finished do-run whose result waits in the job workspace names `job apply`."""
+
+    @staticmethod
+    def _do_run(**overrides) -> ReportSources:
+        fields = dict(job_id="94357b52d079416e", state="completed", repo_path="/tmp/tiny repo",
+                      tasks=(TaskOutcome("t1", "Deliver README.md", "applied_to_job_workspace"),),
+                      result_applied=False, open_decision_count=0)
+        fields.update(overrides)
+        return ReportSources(**fields)
+
+    def test_an_unapplied_do_run_recommends_the_apply_command(self):
+        action = recommended_next_action(self._do_run())
+        assert action.rule_id == "apply-pending"
+        assert action.action == ("Apply the reviewed result: "
+                                 "`remedy job apply 94357b52d079416e --repo '/tmp/tiny repo' --approve`")
+
+    def test_after_apply_the_run_is_all_green(self):
+        assert recommended_next_action(self._do_run(result_applied=True)).rule_id == "all-green"
+
+    def test_passed_and_applied_tasks_are_green_without_an_apply_record(self):
+        sources = self._do_run(result_applied=None, tasks=(
+            TaskOutcome("t1", "a", "passed"), TaskOutcome("t2", "b", "applied_to_job_workspace")))
+        assert recommended_next_action(sources).rule_id == "all-green"
+
+    def test_a_planned_task_is_not_green(self):
+        sources = self._do_run(tasks=(TaskOutcome("t1", "a", "pending"),))
+        assert recommended_next_action(sources).rule_id == "indeterminate"
+
+    def test_the_rule_is_documented(self):
+        assert NEXT_ACTION_CONDITIONS["apply-pending"] == (
+            "every task finished and its result waits in the job workspace")
+
+    def test_build_report_sources_reads_the_apply_record(self, tmp_path, monkeypatch):
+        import json
+
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = JobPlan(job_title="t", repo_path="/tmp/r",
+                      tasks=[TaskEntry(title="a", status="applied_to_job_workspace")])
+        sources = build_report_sources(job)
+        assert (sources.repo_path, sources.result_applied) == ("/tmp/r", False)
+        record = tmp_path / "job_apply_records" / str(job.job_id) / "x.json"
+        record.parent.mkdir(parents=True)
+        record.write_text(json.dumps({"status": "applied"}))
+        assert build_report_sources(job).result_applied is True

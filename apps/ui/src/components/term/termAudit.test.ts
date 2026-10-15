@@ -117,6 +117,7 @@ function renderSurfaces(): string {
   return [
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: false })),
+    renderToStaticMarkup(createElement(LiveStatusPill, { live: false, stage: "completed" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "delayed" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "reconnecting" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, replay: true })),
@@ -165,6 +166,7 @@ describe("the term audit over the shipped surfaces", () => {
       "phase.review",
       "phase.test",
       "status.delayed",
+      "status.finished",
       "status.idle",
       "status.live",
       "status.reconnecting",
@@ -207,7 +209,8 @@ describe("the terms of the right panel and the metrics bar", () => {
   it("puts every task row's state word in its term, taking no focus inside the row's button", () => {
     const rows = renderPanel().match(/<button [^>]*class="[^"]*taskRow[^"]*"[^>]*>.*?<\/button>/gs) ?? [];
     const words = rows.map((row) => {
-      const found = row.match(/<span [^>]*data-term="([^"]+)"[^>]*>([^<]+)<\/span><\/span><\/button>$/);
+      // amend1015 P3.2: the row's chevron follows the state chip, hidden from a screen reader.
+      const found = row.match(/<span [^>]*data-term="([^"]+)"[^>]*>([^<]+)<\/span><\/span><span [^>]*aria-hidden="true">›<\/span><\/button>$/);
       return found === null ? null : [found[1], found[2]];
     });
     expect(words).toEqual([

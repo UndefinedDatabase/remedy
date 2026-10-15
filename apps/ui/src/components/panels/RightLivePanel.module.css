@@ -103,7 +103,8 @@
   background: var(--remedy-blue);
   color: var(--remedy-ink-strong);
 }
-.activityItem { display: flex; gap: 12px; }
+.activityItem { display: flex; gap: 12px; min-width: 0; }
+.activityItem > div { min-width: 0; flex: 1 1 auto; }
 /* A feed row that can jump is a button, so it needs the button chrome
    removed before it can look like the article beside it. No custom property
    is used here on purpose: an unresolved one renders nothing and no suite in
@@ -152,7 +153,9 @@
   color: var(--remedy-ink-strong);
   font: 700 13px/1 var(--remedy-font-ui);
 }
-.activityMeta { display: flex; align-items: baseline; gap: 8px; }
+/* amend1015 P6: the row's name, time and tag wrap inside the card instead of running past its
+   right edge (a long ledger timestamp pushed the page 45 px sideways on a phone). */
+.activityMeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; overflow-wrap: anywhere; }
 .activityMeta strong { font-size: 13px; color: var(--remedy-ink-strong); }
 .activityMeta span { font-size: 11px; color: var(--remedy-faint); }
 .activityItem p { margin: 2px 0 0; font-size: 13px; color: var(--remedy-muted); line-height: 1.45; }
@@ -238,7 +241,23 @@
   flex: none;
 }
 
-.taskState { flex: none; font-size: 12px; color: var(--remedy-muted); }
+/* amend1015 P3.2 (DECISION amend1015 D11): the whole row is the button, and it looks like one
+   — a touch-sized row with a hover tile and a chevron — while the state word is a status chip,
+   not a dotted link of its own inside it. */
+.taskRow { min-height: 40px; cursor: pointer; }
+.taskState {
+  flex: none;
+  font-size: 11px;
+  color: var(--remedy-muted);
+  padding: 2px 8px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+}
+.taskState [data-term] { text-decoration: none; }
+.taskChevron { flex: none; color: var(--remedy-faint); font-size: 16px; line-height: 1; }
+.taskRow:hover .taskChevron { color: var(--remedy-blue-strong); }
+.addTaskHint { margin: 4px 2px 0; font-size: 12px; color: var(--remedy-muted); }
 .taskRow.current .taskState { color: var(--remedy-blue-strong); font-weight: 600; }
 .taskRow.current .taskState::before { content: "• "; }
 .taskRow.done .taskState { color: var(--remedy-muted); }
@@ -295,7 +314,19 @@
 .pauseOutcomeWarn { color: var(--remedy-orange-400); }
 .pauseOutcomeError { color: var(--remedy-red-500); }
 
-.advancedToggle { font-size: 12px; color: var(--remedy-faint); align-self: center; padding: 4px 8px; }
+/* amend1015 P4.3: legible chips (13 px, normal contrast) in one labelled row. */
+.moreGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px; }
+.moreLabel { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--remedy-muted); margin-right: 2px; }
+.advancedToggle {
+  font-size: 13px;
+  color: var(--remedy-ink);
+  padding: 6px 12px;
+  min-height: 32px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+}
+.advancedToggle:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-blue-strong); }
 .advancedSection { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--remedy-muted); padding: 0 6px 8px; }
 .advancedItem strong { color: var(--remedy-ink); }
 .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }

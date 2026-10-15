@@ -16,7 +16,10 @@ import { DigestHeroCard } from "../digest/DigestHeroCard";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
 import { HunkDecisionPanel } from "../diff/HunkDecisionPanel";
+import { JOB_SELECTION_ID } from "../graph/brainView";
+import { jobFinishedOf } from "../../api/cockpitTruth";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
+import type { RailActions } from "../rail/railItems";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
 import { ChatSheet } from "../command/ChatSheet";
@@ -70,22 +73,25 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
   // job, where RemedyApp would have to open a stream against an empty id on
   // every URL that carries none (DECISION F008 D3).
   const stream = useBrainStream(dashboard.jobId, (jobId) =>
-    createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window)));
+    createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window, serverToken)));
   // The graph's ledger reader shares the same real environment and the same
   // path builder the stream above uses, built once so the callback handed to
   // the stage stays referentially stable across a render the stream itself
   // did not cause (DECISION F019 D5).
-  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window), []);
+  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window, serverToken), [serverToken]);
   const readEventsPage = useCallback(
-    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
-    [brainStreamEnv, dashboard.jobId],
+    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor, serverToken)),
+    [brainStreamEnv, dashboard.jobId, serverToken],
   );
   // ONE ledger per job, read here so the graph and the timeline fold the same
   // complete, contiguous prefix (DECISIONS F019 D5 and F024 D4), and the
   // timeline's scrubber, whose position the graph draws while it is scrubbed.
-  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage);
+  // amend1015 P2.3: the dashboard poll's newest event and job state ask the ledger again, and
+  // its derived phases draw the stepper while no event has been read.
+  const ledgerRefreshKey = `${dashboard.live.stage}|${dashboard.activity[dashboard.activity.length - 1]?.id ?? ""}`;
+  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage, ledgerRefreshKey);
   const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
-  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows);
+  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows, dashboard.phases);
   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
   // such a selection to its owning task node so the popover (and its Prompt
@@ -202,6 +208,13 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
   // file's only `Date.now()` call outside `writeLastSeen`'s own argument
   // above. A separate read from that one on purpose: one clock read per
   // concern, never a value reused for both.
+  // amend1015 P4.4: a click on the job orb selects the job itself; the answer is the job's own
+  // digest card, shown again, and the selection is cleared so no task popover opens.
+  useEffect(() => {
+    if (selectedNodeId !== JOB_SELECTION_ID) return;
+    setDismissedAtMs(null);
+    onSelectNode(null);
+  }, [selectedNodeId, onSelectNode]);
   const visibility = digestVisibility({
     digest,
     lastSeenMs,
@@ -241,6 +254,20 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
 
   // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed.
   const [termsOpen, setTermsOpen] = useState(false);
+  // THE SYSTEM DETAILS (amend1015 P4.1): owned here so the rail's Settings button and the right
+  // panel's own toggle open the same section.
+  const [systemOpen, setSystemOpen] = useState(false);
+  // THE RAIL (amend1015 P4.1): every icon opens a panel this shell already owns; Activity
+  // scrolls its card into view, which on a phone is the stacked page's own scroll.
+  const railActions: RailActions = {
+    onChecks: () => setPlanOpen(true),
+    onActivity: () => document.querySelector<HTMLElement>('[data-ui="activity-feed-card"]')?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    onFiles: () => setResultsOpen(true),
+    onHistory: () => setStoryOpen(true),
+    onDocs: () => setTermsOpen(true),
+    onSettings: () => setSystemOpen((open) => !open),
+    active: planOpen ? "Checks" : resultsOpen ? "Files" : storyOpen ? "History" : termsOpen ? "Docs" : systemOpen ? "Settings" : null,
+  };
   // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
   // tour" raises, the only fact the tour's own mount needs from this shell.
   const [tourRelaunch, setTourRelaunch] = useState(0);
@@ -385,10 +412,11 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
           visibility={visibility}
           port={digestPort}
           onDismissed={() => setDismissedAtMs(digestPort.readDismissal(dashboard.jobId))}
+          onPrimaryAction={(_ruleId, command) => { void navigator.clipboard?.writeText(command).catch(() => undefined); }}
         />
       )}
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
-        <LeftBrandRail dashboard={dashboard} />
+        <LeftBrandRail dashboard={dashboard} actions={railActions} />
         <main className={styles.main} data-testid="main-column">
           {/* The live tick composes the tile while the job runs; the terminal
               reconciliation WRAPS that output and replaces the tile with the
@@ -421,7 +449,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenMissions={() => setMissionsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenMissions={() => setMissionsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} systemOpen={systemOpen} onToggleSystem={() => setSystemOpen((open) => !open)} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -510,7 +538,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
       {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} onStartTour={() => { setTermsOpen(false); setTourRelaunch((count) => count + 1); }} />)}
       {/* THE FIRST-RUN TOUR (F043 T003, DECISION F043 D4), a sibling directly after the '?'
           panel for the reason every overlay above is a sibling outside <main>. */}
-      <FirstRunTourMount relaunch={tourRelaunch} />
+      <FirstRunTourMount relaunch={tourRelaunch} blocked={jobFinishedOf(dashboard.live.stage) || visibility.show} />
     </div>
   );
 }

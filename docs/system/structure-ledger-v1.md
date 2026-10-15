@@ -288,7 +288,7 @@ with the code that calls it.
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
-| 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
+| 317 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
 | 317 | `scripts/build_review_zip.py` | `main` |
 | 312 | `packages/orchestration/test_execution_service.py` | `execute_test_run` |
 | 300 | `packages/orchestration/repository_snapshot.py` | `revert_repository_apply` |
@@ -316,7 +316,7 @@ with the code that calls it.
 | 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
-| 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
+| 186 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
 | 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
@@ -443,7 +443,7 @@ with the code that calls it.
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 5349 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
-| 4807 | `packages/orchestration/ui_server.py` |
+| 4768 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2412 | `apps/cli/command_catalog.py` |
@@ -461,7 +461,7 @@ with the code that calls it.
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1225 | `apps/ui/src/api/remedyApi.ts` |
+| 1216 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1018 | `apps/cli/commands/do_cmd.py` |
@@ -469,10 +469,10 @@ with the code that calls it.
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
 | 1138 | `packages/orchestration/test_execution_service.py` |
-| 1133 | `packages/orchestration/run_report.py` |
+| 1111 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
-| 1077 | `packages/orchestration/ui_view_model.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
+| 1070 | `packages/orchestration/ui_view_model.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |
 | 1039 | `packages/orchestration/result_tour.py` |

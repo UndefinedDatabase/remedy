@@ -179,3 +179,22 @@ describe("the readout's elapsed time", () => {
     expect(elapsedLabel("2026-09-24T16:57:03+00:00", "2026-09-24T16:57:01+00:00")).toBeNull();
   });
 });
+
+describe("a finished job with no events streamed (amend1015 P2.3)", () => {
+  const empty = readPhases(BRAIN_DEMO_JOB_ID, [], []);
+  const baseline = [
+    { id: "job", state: "done" }, { id: "planning", state: "done" }, { id: "build", state: "done" },
+    { id: "test", state: "pending" }, { id: "review", state: "pending" }, { id: "finalized", state: "done" },
+  ];
+
+  it("shows the dashboard's reached phases and never reads No events yet", () => {
+    const view = buildTimelineView({ whole: empty, at: empty, glyphs: [], position: -1, elapsed: null, baseline });
+    expect(view.segments.map((s) => s.state)).toEqual(["done", "done", "done", "future", "future", "done"]);
+    expect(view.segments.find((s) => s.phase === "build")!.fill).toBe(1);
+    expect(view.readout).not.toBe("No events yet");
+  });
+
+  it("an empty ledger without a baseline still reads No events yet", () => {
+    expect(buildTimelineView({ whole: empty, at: empty, glyphs: [], position: -1, elapsed: null }).readout).toBe("No events yet");
+  });
+});

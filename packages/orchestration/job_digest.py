@@ -173,6 +173,21 @@ def _cost_section(counters: Any | None) -> dict[str, str]:
         counters.measured_cost_usd, counters.unpriced_call_count)}
 
 
+def _tokens_section(job: Any) -> dict[str, Any]:
+    """amend1015 Part 5: the job's tokens, and whether the project asked to see its money.
+
+    ``job_tokens.job_token_summary`` — the reader ``remedy do`` prints its ``Tokens`` lines
+    from — plus ``show_cost_usd``: true only when ``[cockpit] show_cost_usd = true`` in the
+    job's ``.remedy/config.toml``. ``cost`` above stays the money figure DECISION F040 D4
+    defines; the hero card shows this section's ``line`` unless ``show_cost_usd`` is true.
+    Additive, so no version bump (DECISION F040 D3, amend1015 D5).
+    """
+    from packages.orchestration.job_tokens import cockpit_show_cost_usd, job_token_summary
+
+    return {**job_token_summary(job),
+            "show_cost_usd": cockpit_show_cost_usd(str(getattr(job, "repo_path", "") or ""))}
+
+
 # DECISION F040 D4's exactness rule for one job's cost; the job digest and the client digest share it.
 def cost_exactness_basis(measured_cost_usd: float | None, unpriced_call_count: int) -> str:
     """``absent`` when no cost was measured, ``lower_bound`` when a provider call
@@ -242,7 +257,7 @@ def build_job_digest(
 
     TOTAL by construction: no input makes this raise.  A job with no plan, no
     actuals, no tasks and no decisions produces a COMPLETE envelope whose values
-    say exactly that — the eight keys are always present, because a key that
+    say exactly that — the nine keys are always present, because a key that
     appears only sometimes forces every reader to branch.
     """
     sources = _report_sources(job)
@@ -257,6 +272,7 @@ def build_job_digest(
         "state": (sources.state or "").strip() or NOT_RECORDED,
         "headline": _headline(sources),
         "cost": _cost_section(_cost_counters(job)),
+        "tokens": _tokens_section(job),
         # DECISION F035 D3: the ownership ledger's own sentences, worded through the
         # one catalog `ownership_phrases.py` owns, in ledger order — the same sentences
         # the job report's Ownership section renders, so the two cannot disagree.
@@ -270,3 +286,16 @@ def build_job_digest(
         },
         "primary_action": {"label": action.action, "rule_id": action.rule_id},
     }
+
+
+# amend1015: the cockpit's command bar names the SAME next command the digest card does.
+def primary_action_command(job: Any) -> str:
+    """The command the job's one recommendation ends with, in backticks, or "" without one.
+
+    ``recommended_next_action`` over the report's own sources — the digest's primary action —
+    so the dashboard's ``next_action`` and the hero card cannot name two different commands.
+    """
+    label = recommended_next_action(_report_sources(job)).action
+    if label.endswith("`") and label.count("`") >= 2:
+        return label[label.rindex("`", 0, len(label) - 1) + 1:-1].strip()
+    return ""

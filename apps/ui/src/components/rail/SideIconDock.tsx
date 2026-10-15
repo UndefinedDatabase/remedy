@@ -1,11 +1,13 @@
 import type { SVGProps } from "react";
 import { SparkGlyph, TaskDoneGlyph, ChartGlyph, GearGlyph } from "../icons/RemedyGlyphs";
 import { useProjectContext } from "../shell/ProjectProvider";
+import { railItemsOf } from "./railItems";
+import type { RailActions, RailKey } from "./railItems";
 import styles from "./SideIconDock.module.css";
 
 // DECISION F042 D5 (3): the dock's first slot, Overview, opens the home grid through the
-// provider's `goHome` and says "All projects" in its tooltip.
-export const OVERVIEW_TITLE = "All projects";
+// provider's `goHome` and says "All projects" in its tooltip; railItems.ts holds the words.
+export { OVERVIEW_TITLE } from "./railItems";
 
 type G = SVGProps<SVGSVGElement>;
 
@@ -37,30 +39,36 @@ function DocsGlyph(p: G) {
   );
 }
 
-const items: [string, typeof SparkGlyph][] = [
-  ["Overview", SparkGlyph],
-  ["Checks", TaskDoneGlyph],
-  ["Activity", ChartGlyph],
-  ["Files", FolderGlyph],
-  ["History", HistoryGlyph],
-  ["Docs", DocsGlyph],
-  ["Settings", GearGlyph],
-];
+const ICONS: Record<RailKey, typeof SparkGlyph> = {
+  Overview: SparkGlyph,
+  Checks: TaskDoneGlyph,
+  Activity: ChartGlyph,
+  Files: FolderGlyph,
+  History: HistoryGlyph,
+  Docs: DocsGlyph,
+  Settings: GearGlyph,
+};
 
-export function SideIconDock({ className }: { className?: string }) {
+export function SideIconDock({ className, actions }: { className?: string; actions?: RailActions }) {
   const { goHome } = useProjectContext();
   return (
     <nav className={`${styles.dock} ${className || ""}`} aria-label="Remedy sections">
-      {items.map(([label, Icon], i) => (
-        <button
-          key={label}
-          className={i === 0 ? styles.active : styles.button}
-          aria-label={label}
-          {...(i === 0 ? { title: OVERVIEW_TITLE, onClick: goHome } : {})}
-        >
-          <Icon style={{ width: 18, height: 18 }} />
-        </button>
-      ))}
+      {railItemsOf(goHome, actions).map((item) => {
+        const Icon = ICONS[item.key];
+        return (
+          <button
+            key={item.key}
+            type="button"
+            className={item.active ? styles.active : styles.button}
+            aria-label={item.key}
+            aria-pressed={item.active}
+            title={item.title}
+            onClick={item.onClick}
+          >
+            <Icon style={{ width: 18, height: 18 }} />
+          </button>
+        );
+      })}
     </nav>
   );
 }

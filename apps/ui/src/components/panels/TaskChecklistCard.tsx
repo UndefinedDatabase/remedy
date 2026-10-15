@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RemedyTaskItem } from "../../api/types";
 import { selectChecklistRows } from "../../cockpitLogic";
+import { ADD_TASK_FINISHED_HINT } from "../../api/cockpitTruth";
 import { ORIGIN_CHIP_TITLE, taskOriginChip } from "../../api/injectView";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import { AddTaskSheet } from "./AddTaskSheet";
@@ -47,15 +48,18 @@ function outcomeHint(task: RemedyTaskItem): string | null {
   return null;
 }
 
-export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
+export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode, finished = false }: {
   tasks: RemedyTaskItem[];
   jobId: string;
   serverToken: string;
   onSelectNode: (nodeId: string | null) => void;
+  /** amend1015 P3.3: the job has ended, so a new task would only be refused with 409. */
+  finished?: boolean;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { rows: realRows, completed, total } = selectChecklistRows(tasks);
-  const addTaskDisabled = serverToken === "";
+  const addTaskDisabled = serverToken === "" || finished;
+  const addTaskTitle = finished ? ADD_TASK_FINISHED_HINT : serverToken === "" ? ADD_TASK_DISABLED_TITLE : ADD_TASK_ENABLED_TITLE;
 
   if (realRows.length === 0) {
     return (
@@ -91,6 +95,7 @@ export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
               </span>
               {chip && <span className={styles.originChip} title={ORIGIN_CHIP_TITLE}>{chip}</span>}
               <span className={styles.taskState}><Term term={stateTerm(row)} insideControl>{stateText(row)}</Term></span>
+              <span className={styles.taskChevron} aria-hidden="true">›</span>
             </button>
           );
         })}
@@ -99,11 +104,12 @@ export function TaskChecklistCard({ tasks, jobId, serverToken, onSelectNode }: {
         type="button"
         className={styles.addTaskRow}
         disabled={addTaskDisabled}
-        title={addTaskDisabled ? ADD_TASK_DISABLED_TITLE : ADD_TASK_ENABLED_TITLE}
+        title={addTaskTitle}
         onClick={() => setSheetOpen(true)}
       >
         + Add Task
       </button>
+      {finished && <p className={styles.addTaskHint}>{ADD_TASK_FINISHED_HINT}</p>}
       {sheetOpen && (
         <AddTaskSheet target={{ jobId, serverToken }} tasks={tasks} onClose={() => setSheetOpen(false)} />
       )}

@@ -69,9 +69,17 @@ export function openBrainStream(state: BrainStreamState): BrainStreamState {
   return { ...state, status: "live", attempt: 0 };
 }
 
-/** A dropped connection counts an attempt; the badge stops claiming live. */
+/** How many consecutive failed attempts the badge says RECONNECTING for before the client
+ *  falls back to polling and says so (amend1015 P2.2): a stream that cannot open — a server
+ *  that refuses it, a proxy that drops it — must not read RECONNECTING for as long as the
+ *  page is open. */
+export const BRAIN_STREAM_FALLBACK_ATTEMPTS = 3;
+
+/** A dropped connection counts an attempt; the badge stops claiming live, and the third
+ *  attempt in a row engages the polling fallback. */
 export function failBrainStream(state: BrainStreamState): BrainStreamState {
-  return { ...state, status: "reconnecting", attempt: state.attempt + 1 };
+  const attempt = state.attempt + 1;
+  return { ...state, status: attempt >= BRAIN_STREAM_FALLBACK_ATTEMPTS ? "delayed" : "reconnecting", attempt };
 }
 
 /** The fallback transport is honest about being slower than the stream. */

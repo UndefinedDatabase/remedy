@@ -163,3 +163,11 @@ export function brainLedgerLive(load: BrainLedgerLoad, rows: readonly BrainEvent
   if (ledger === load.ledger) return load;
   return { ledger, stalled: null };
 }
+
+/** The dashboard poll reported a change — a newer event or another job state (amend1015
+ *  P2.3). A stall only ever lifted on a LIVE frame, so a cockpit whose stream could not open
+ *  read the ledger once and never again; this clears the stall and forgets the known length,
+ *  so the next request reads from the start and learns the ledger's new length. */
+export function brainLedgerRefresh(load: BrainLedgerLoad): BrainLedgerLoad {
+  return { ledger: { ...load.ledger, known: null }, stalled: null };
+}

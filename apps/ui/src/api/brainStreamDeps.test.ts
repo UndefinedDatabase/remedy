@@ -180,3 +180,24 @@ describe("the browser environment", () => {
     expect(browserBrainStreamEnv(globals()).now()).toBe(777);
   });
 });
+
+describe("every stream request carries the server token (amend1015 P2.1)", () => {
+  it("the stream URL and both events-since reads append token=", async () => {
+    const r = recorder({ payload: { cursor: "1", events: [] } });
+    const deps = createBrainStreamHostDeps("job 1", { ...r.env, token: "t/k n" });
+    deps.openSource(null);
+    await deps.readSnapshotSeq();
+    await deps.readTail(null);
+    expect(r.urls).toEqual(["/api/jobs/job%201/events/stream?cursor=0&token=t%2Fk%20n"]);
+    expect(r.paths.every((p) => p.endsWith("&token=t%2Fk%20n"))).toBe(true);
+  });
+
+  it("eventsSincePath appends the token it is given", () => {
+    expect(eventsSincePath("j", 3, "abc")).toBe("/api/jobs/j/events-since?cursor=3&token=abc");
+  });
+
+  it("the browser env carries the token it was built with", () => {
+    const globals = { fetch: () => Promise.reject(new Error("unused")), setTimeout: () => 0, clearTimeout: () => {}, Date };
+    expect(browserBrainStreamEnv(globals as unknown as BrainStreamGlobals, "abc").token).toBe("abc");
+  });
+});

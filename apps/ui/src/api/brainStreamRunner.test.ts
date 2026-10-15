@@ -3,6 +3,7 @@ import { createBrainStreamRunner } from "./brainStreamRunner";
 import { BRAIN_RECENT_LIMIT } from "./brainStream";
 import type { BrainStreamHost, BrainStreamRunner } from "./brainStreamRunner";
 import type { BrainStreamEvent } from "./brainStreamDriver";
+import { BRAIN_POLL_INTERVAL_MS } from "./brainStreamDriver";
 
 interface ArmedTimer { ms: number; resume: () => void; spent: boolean }
 
@@ -85,7 +86,8 @@ describe("a dropped connection", () => {
     runner.dispatch({ kind: "closed" });
     runner.dispatch({ kind: "closed" });
     runner.dispatch({ kind: "closed" });
-    expect(host.waits()).toEqual([250, 500, 1000]);
+    // amend1015 P2.2: the third drop in a row engages the polling fallback's interval.
+    expect(host.waits()).toEqual([250, 500, BRAIN_POLL_INTERVAL_MS]);
   });
   it("keeps at most one timer live so the rate stays bounded", () => {
     const { host, runner } = started();

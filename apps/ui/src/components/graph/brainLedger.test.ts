@@ -4,6 +4,7 @@ import {
   brainLedgerPage,
   brainLedgerPrefix,
   brainLedgerReceived,
+  brainLedgerRefresh,
   brainLedgerRequest,
   emptyBrainLedger,
   initialBrainLedgerLoad,
@@ -206,5 +207,13 @@ describe("THE MID-LEDGER JOIN (brainDemoRecording)", () => {
     const page = { cursor: "8", events: BRAIN_DEMO_FRAMES.slice(0, 4).map((f) => f.event) };
     load = brainLedgerReceived(load, 0, page);
     expect(brainLedgerPrefix(load.ledger)).toHaveLength(8);
+  });
+});
+
+describe("brainLedgerRefresh (amend1015 P2.3)", () => {
+  it("asks again after a stalled read once the dashboard reports a change", () => {
+    const stalled = brainLedgerReceived(initialBrainLedgerLoad(), 0, null);
+    expect(brainLedgerRequest(stalled)).toBe(null);
+    expect(brainLedgerRequest(brainLedgerRefresh(stalled))).toBe(0);
   });
 });

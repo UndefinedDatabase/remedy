@@ -96,9 +96,11 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
  * keeps its one `window.localStorage` binding for the digest (`test_digest_mount.py`) and hands
  * this mount only a relaunch count.
  */
-export function FirstRunTourMount({ relaunch }: { relaunch: number }) {
-  const storage = useMemo(() => window.localStorage, []);
-  const [open, setOpen] = useState(() => firstRunTourDue(storage));
+export function FirstRunTourMount({ relaunch, blocked = false }: { relaunch: number; blocked?: boolean }) {
+  // A private window or blocked site data makes the getter itself throw; then there is no
+  // storage, and `firstRunTourDue` answers false.
+  const storage = useMemo(() => { try { return window.localStorage; } catch { return null; } }, []);
+  const [open, setOpen] = useState(() => firstRunTourDue(storage, blocked));
 
   useEffect(() => {
     if (relaunch > 0) setOpen(true);

@@ -53,9 +53,11 @@ export const FIRST_RUN_TOUR_SEEN = "seen";
 export type FirstRunTourStorage = Pick<Storage, "getItem" | "setItem">;
 
 /** Whether the tour should open on its own: `false` without a storage, `true` only when the
- *  storage holds no record of it yet, `false` when the storage throws. */
-export function firstRunTourDue(storage: FirstRunTourStorage | null): boolean {
-  if (storage === null) return false;
+ *  storage holds no record of it yet, `false` when the storage throws. `blocked` (amend1015
+ *  P4.5) is true over a finished job or while the digest card shows: the tour then waits,
+ *  unrecorded, instead of covering the rail and the card's own buttons. */
+export function firstRunTourDue(storage: FirstRunTourStorage | null, blocked = false): boolean {
+  if (storage === null || blocked) return false;
   try {
     return storage.getItem(FIRST_RUN_TOUR_KEY) === null;
   } catch {

@@ -1,4 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
+import { costMetricsOf, taskCheckedOf, tokensMetricOf } from "./cockpitTruth";
 import { decisionCardModels } from "./decisionCard";
 import { readDiffEnvelope } from "./diffViewModel";
 import type { DiffEnvelope } from "./diffViewModel";
@@ -138,7 +139,7 @@ export function normalizeDashboardPayload(
       label,
       state,
       kind,
-      checked: Boolean(t.verified ?? t.accepted ?? state === "done"),
+      checked: taskCheckedOf(t, state),
       muted: Boolean(state === "pending" || state === "suggested"),
       nodeId: String(t.related_node_id || t.id || `task-${idx}`),
       nextAction: undefined,
@@ -158,10 +159,6 @@ export function normalizeDashboardPayload(
 
   // Metrics from dashboard
   const dm = dashboard.metrics || {};
-  const tu = dashboard.token_usage || {};
-  const tokenTotal = tu.known ? (tu.total_tokens ?? 0) : 0;
-  const tokenKnown = Boolean(tu.known) && tokenTotal > 0;
-  const tokenTooltip = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
   const metrics: RemedyMetric[] = [
     { key: "open", label: "Open", value: dm.open ?? 0 },
     { key: "planned", label: "Planned", value: dm.planned ?? 0 },
@@ -169,12 +166,8 @@ export function normalizeDashboardPayload(
     { key: "progress", label: "Progress", value: dm.progress_percent ?? 0, suffix: "%" },
     metricTests(dm.tests),
     metricProof(dm.proof),
-    { key: "tokens", label: "Tokens", value: tokenKnown ? tokenTotal : "—", tooltip: tokenTooltip, unknown: !tokenKnown },
-    // The eighth tile. It is `unknown` at load because no budget tick has
-    // arrived yet, which is the honest em dash ux_spec.md §10 requires for a
-    // value that is not yet derivable — never a fake zero. `metricsWithCostTicker`
-    // fills it from the live stream in the shell (DECISION F022 D6).
-    { key: "cost", label: "Cost", value: "—", unknown: true },
+    tokensMetricOf(dashboard.token_usage),
+    ...costMetricsOf(dashboard.token_usage),
   ];
 
   // Phases from dashboard
@@ -225,7 +218,7 @@ export function normalizeDashboardPayload(
     : nextAction();
 
   // Title/description
-  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Growing Brain Overview");
+  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Remedy job");
   const description = scrubUiText(
     brainDetail?.description || "An AI agent working through a verified project plan.",
     "An AI agent working through a verified project plan.",
@@ -235,7 +228,6 @@ export function normalizeDashboardPayload(
     jobId,
     title,
     description,
-    conceptLabel: "Concept 01 of 10",
     metrics,
     // The ledger's last budget tick, carried OPAQUELY: this mapper reads no
     // figure out of it and decides nothing about it, which is what keeps
@@ -550,7 +542,6 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     jobId,
     title: "Mission Control",
     description: "",
-    conceptLabel: "",
     // Remedy deliberately does NOT give the degraded path a `cost` tile, and
     // this is where a reader would search for it: a dashboard whose endpoints
     // failed has no stream figures either, so a cost tile here would be a

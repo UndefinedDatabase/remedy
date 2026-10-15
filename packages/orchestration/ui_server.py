@@ -38,7 +38,10 @@ from urllib.parse import parse_qs, urlparse
 # DECISION F305 D2: the routes below one project live in a module of their own; every consumer
 # imports the summary's builder from there (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.cockpit_project_routes import project_route_answer
+from packages.orchestration.job_digest import primary_action_command
+from packages.orchestration.job_tokens import dashboard_token_usage
 from packages.orchestration.public_api import is_public_api_path
+from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
 from packages.orchestration.ui_server_launch import (
     _ANY_IPV4_HOST,
     _print_ui_urls,
@@ -882,9 +885,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         pass
 
     # Primary next action
-    next_action = ""
-    if guidance_cards:
-        next_action = guidance_cards[0].get("command", "")
+    next_action = primary_action_command(job) or (guidance_cards[0].get("command", "") if guidance_cards else "")
 
     # What-happened lifecycle
     lifecycle: list[dict[str, str]] = []
@@ -923,14 +924,16 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     task_items: list[dict[str, Any]] = []
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        lifecycle = task_lifecycle_or_empty(tstat)
         tid = str(t.task_id)
         task_items.append({
             "id": tid,
             "title": t.title[:80] if t.title else f"Task {idx + 1}",
             "status": tstat,
-            "verified": tstat == "completed",
+            "state": lifecycle,
+            "verified": lifecycle == "done",
             "source": "real",
-            "accepted": tstat == "completed",
+            "accepted": lifecycle == "done",
             "rank": idx,
             "related_node_id": tid,
             "short_reason": "",
@@ -978,10 +981,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
 
     # Phases — full 6-phase canonical set
     # Finalized gate: strict — only if job state says done AND no blockers remain
-    pending_task_count = sum(
-        1 for t in job.tasks
-        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
-    )
+    pending_task_count = sum(1 for t in task_items if t["state"] == "planned")
     blocked_task_count = sum(
         1 for t in job.tasks
         if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
@@ -1051,9 +1051,9 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         },
         "metrics": {
             "open": decision_count,
-            "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
-            "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
-            "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
+            "planned": sum(1 for t in task_items if t["state"] == "planned"),
+            "done": sum(1 for t in task_items if t["state"] == "done"),
+            "progress_percent": round(sum(1 for t in task_items if t["state"] == "done") / max(task_count, 1) * 100),
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
             "tests": _build_metrics_tests(events),
@@ -1067,7 +1067,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "snapshot_rollback": _build_snapshot_rollback_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
-        "token_usage": _build_token_usage(events),
+        "token_usage": dashboard_token_usage(job, events),
         "budget_final": _build_budget_final(events),
         "tasks": task_items,
         "activity": activity_items,
@@ -1486,45 +1486,6 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return None
-
-
-def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build safe token usage summary from events. Estimated only — no exact billing."""
-    by_role: dict[str, int] = {}
-    total = 0
-    sources_seen: set[str] = set()
-
-    for e in events:
-        meta = e.get("metadata", {})
-        tokens = meta.get("estimated_tokens", 0)
-        if not isinstance(tokens, (int, float)) or tokens <= 0:
-            continue
-        tokens = int(tokens)
-        total += tokens
-
-        ev = e.get("event", "")
-        if ev == "project_memory_recalled":
-            by_role["memory"] = by_role.get("memory", 0) + tokens
-            sources_seen.add("memory")
-        elif ev == "repair_context_created":
-            by_role["repair"] = by_role.get("repair", 0) + tokens
-            sources_seen.add("repair_context")
-        else:
-            by_role["other"] = by_role.get("other", 0) + tokens
-
-    known = total > 0
-    missing: list[str] = []
-    if "memory" not in sources_seen:
-        missing.append("memory")
-
-    return {
-        "total_tokens": total if known else None,
-        "known": known,
-        "estimated": True,
-        "source": "event_metadata",
-        "by_role": by_role if by_role else {},
-        "missing_sources": missing,
-    }
 
 
 #: WHY: the ledger's own last word on a job's spend — the authority DECISION F022 D7 rules for the reconciliation.

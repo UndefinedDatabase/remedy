@@ -131,6 +131,14 @@ export function digestStateLabel(state: string): string {
  *  `rule_id` was kept in the envelope for: DECISION F040 D5 keeps routing out of
  *  the wire and lets the client decide the affordance, so the card offers a
  *  button where the report offered a paste. */
+/** amend1015 P3.4: the command a call to action ends with, when it ends with one — the text
+ *  inside the trailing backticks `TRAILING_COMMAND` removes from the sentence — else null.
+ *  The card offers to copy it; the sentence itself stays `digestCtaText`'s. */
+export function digestCtaCommand(label: string): string | null {
+  const found = String(label ?? "").match(/`([^`]*)`\s*$/);
+  return found && found[1].trim() ? found[1].trim() : null;
+}
+
 export function digestCtaText(label: string): string {
   const unlinked = String(label ?? "").replace(MARKDOWN_LINK, "$1");
   const uncommanded = unlinked.replace(TRAILING_COMMAND, "");
@@ -153,6 +161,7 @@ export const DIGEST_CTA_RULE_IDS = [
   "open-decision",
   "stopped-by-operator",
   "blocked-failed",
+  "apply-pending",
   "all-green",
   "indeterminate",
 ] as const;

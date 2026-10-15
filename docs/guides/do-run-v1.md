@@ -118,6 +118,51 @@ Without `--apply` the walk ends at `apply` with the repository untouched and a
 ran is applied in run order, as `remedy job apply --approve` does, and the walk
 fails at the first job that is not applied, naming it and why.
 
+## Tokens, cost and what the cockpit shows after a run
+
+When the walk ends it prints one `Tokens <role>:` line per role, that is per kind of worker
+(the builder writes the change, the reviewer checks it). Each line gives the input tokens (text
+sent to the model), the output tokens (text the model wrote) and the cache-read tokens (input
+the provider served from its cache), all read from the project's call ledger, the record of
+every provider call. It also gives the harness invocations (how many times Remedy started the
+worker program) and the model turns (how many times the model answered inside one invocation).
+A figure no call reported says "not reported", never 0.
+
+The `Cost:` line shows no dollar figure by default. It reads `Cost: not shown — tokens only (…)`
+when a cost was measured, and `Cost: not reported by the provider` when none was. A project that
+wants dollars sets this in its `.remedy/config.toml`:
+
+```toml
+[cockpit]
+show_cost_usd = true
+```
+
+The key defaults to `false`. With it set, the `Cost:` line and the cockpit show the measured
+dollar figure. The `--json` output always carries `cost.cost_usd`, because it is for programs,
+not people (operator amendment amend1015).
+
+The cockpit, the browser page `remedy do` prints the address of, reads the same records:
+
+- **The metric tiles.** DONE counts finished tasks: a task that passed review, or whose result
+  was applied to the job's own workspace (the copy of the repository the job works in), counts
+  as done. PLANNED counts tasks not started yet, PROGRESS is the done share, and OPEN counts the
+  questions waiting for your answer. TOKENS shows tokens in plus out from the ledger. When no
+  call reported tokens it shows the number of harness invocations instead, and it shows a dash
+  only for a job that made no call. The COST tile appears only with `show_cost_usd = true`.
+- **The recommendation.** The summary card at the top (the digest) and the command bar name the
+  same one next step, chosen by the run report's rules in this order: answer an open question;
+  resume a run you stopped; repair a blocked task; apply a finished result
+  (`apply-pending`: every task is done and the result still waits in the job's workspace, so
+  the card shows `remedy job apply <job_id> --repo <repo> --approve` with a button that copies
+  it); review and merge when everything is green; otherwise no recommendation.
+- **The status pill**, the small label at the top of the right-hand column. While the job runs
+  it says LIVE (events arrive as they happen), RECONNECTING (the live connection dropped and is
+  being opened again) or DELAYED (after three failed attempts the page asks for new events at
+  intervals instead). A job that is not running says FINISHED when it has ended and IDLE
+  otherwise, whatever the connection does.
+- **On a phone** the page is one column you scroll: tiles, command bar, graph, the right-hand
+  cards, then the timeline, with the section buttons in a bar along the bottom.
+
 ## --plan-only and --step-by-step
 
 - `--plan-only` ends the walk after `shape`: `run` reports stopped, no job is

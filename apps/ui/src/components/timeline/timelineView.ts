@@ -58,15 +58,38 @@ function rangesOf(whole: PhaseReading): ([number, number] | null)[] {
   });
 }
 
+/** One phase as the dashboard derives it (`phases` of the dashboard payload). */
+export interface PhaseBaseline {
+  id: string;
+  state: string;
+}
+
+/** The readout of a bar drawn from the dashboard's phases because no event was read. */
+export const BASELINE_READOUT = "Phases from the job record";
+
+// amend1015 P2.3: with no event read, the bar shows the phases the dashboard derived from the
+// job record — a finished job read "No events yet" over six empty circles before this.
+function baselineSegments(baseline: readonly PhaseBaseline[]): SegmentView[] {
+  return TIMELINE_PHASES.map((phase): SegmentView => {
+    const reading = baseline.find((b) => b.id === phase)?.state;
+    const state: SegmentState = reading === "done" ? "done" : reading === "current" ? "current" : "future";
+    return { phase, label: PHASE_LABELS[phase], state, compact: false, fill: state === "future" ? 0 : 1 };
+  });
+}
+
 /** The bar at `position` over a ledger whose whole reading is `whole` and whose
- *  prefix reading at the handle is `at`. */
+ *  prefix reading at the handle is `at`; `baseline` draws it while no event is read. */
 export function buildTimelineView(args: {
   whole: PhaseReading;
   at: PhaseReading;
   glyphs: readonly SubGlyph[];
   position: number;
   elapsed: string | null;
+  baseline?: readonly PhaseBaseline[];
 }): TimelineView {
+  if (args.whole.lastSeq === null && args.baseline?.some((b) => b.state === "done" || b.state === "current")) {
+    return { segments: baselineSegments(args.baseline), glyphs: [], readout: BASELINE_READOUT };
+  }
   const { whole, at, position } = args;
   const ranges = rangesOf(whole);
   const current = at.lastSeq === null ? -1 : TIMELINE_PHASES.indexOf(at.current);

@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-146 of 308 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+146 of 309 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -38,7 +38,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 46 | 47 |
 | 3 | Full Token Economy & Autonomy | 11 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
-| 5 | Operator Cockpit | 38 | 38 |
+| 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 2 | 17 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |

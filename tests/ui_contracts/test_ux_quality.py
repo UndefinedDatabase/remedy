@@ -859,12 +859,13 @@ class TestTaskProgressApiSchema:
 class TestUXZoomAndLabelVisibility:
     """UX semantics verified via API contracts."""
 
-    def test_initial_view_one_node(self):
+    def test_initial_view_is_the_job_and_its_task(self):
+        # amend1015 P4.4: the default zoom shows the orb and its task dot, not the orb alone.
         from packages.orchestration.ui_view_model import build_brain_view_model
         job = _make_job_s127(tasks=[{"type": "t1", "status": "running"}])
         vm = build_brain_view_model(job, [])
-        assert vm["visible_counts_by_zoom"][0] == 1
-        assert vm["visible_node_ids_by_zoom"][0] == [str(job.job_id)]
+        assert vm["visible_counts_by_zoom"][0] == 2
+        assert vm["visible_node_ids_by_zoom"][0] == sorted([str(job.job_id), str(job.tasks[0].task_id)])
 
     def test_zoom_in_reveals_more(self):
         from packages.orchestration.ui_view_model import build_brain_view_model

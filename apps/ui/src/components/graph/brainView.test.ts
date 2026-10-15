@@ -12,7 +12,7 @@ import { readPhases } from "../timeline/phaseMapping";
 import {
   BRAIN_FILTER_STATES, DASHBOARD_STATE_STATUS, brainTaskCount, carryBrainPositions,
   dashboardBrainSeeds, filterBrainLayout, promptListEntries, selectedBrainNodeId, selectedPromptNodeId,
-  selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
+  JOB_SELECTION_ID, selectionIdOf, selectionTaskIdOf, shellSelectionIdOf, vetoFadedNodeIds, vetoHoverTexts,
 } from "./brainView";
 
 function task(id: string, state: RemedyTaskItem["state"], label = id, origin?: string, attempt?: number): RemedyTaskItem {
@@ -302,8 +302,9 @@ describe("selectionIdOf", () => {
     expect(selectionIdOf({ id: "run:t1:3", kind: "builder_run", parentId: "task:t1" })).toBe("t1");
   });
 
-  it("the core resolves to null, exactly as selectionTaskIdOf does", () => {
-    expect(selectionIdOf({ id: "job:j1", kind: "job_core" })).toBeNull();
+  it("a click on the core selects the job (amend1015 P4.4), where it used to select nothing", () => {
+    expect(selectionIdOf({ id: "job:j1", kind: "job_core" })).toBe(JOB_SELECTION_ID);
+    expect(selectionTaskIdOf({ id: "job:j1", kind: "job_core" })).toBeNull();
   });
 });
 

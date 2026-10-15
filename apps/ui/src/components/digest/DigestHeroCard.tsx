@@ -38,10 +38,11 @@
 // to action from `digestCtaText`, the exactness flag from `digestCostLine`, and
 // the estimate mark and phrase from `TopMetricsBar.tsx` — none of them
 // reimplemented, none of them retyped as a literal.
+import { useState } from "react";
 import type { JobDigest } from "../../api/jobDigest";
 import { digestCostLine } from "../../api/jobDigest";
 import type { DigestVisibility, DigestVisibilityPort } from "../../api/digestVisibility";
-import { digestStateLabel, digestCtaText } from "../../api/digestCardCopy";
+import { digestStateLabel, digestCtaCommand, digestCtaText } from "../../api/digestCardCopy";
 import { ESTIMATE_MARK, ESTIMATE_PHRASE } from "../metrics/TopMetricsBar";
 import styles from "./DigestHeroCard.module.css";
 
@@ -51,7 +52,9 @@ export interface DigestHeroCardProps {
   port: DigestVisibilityPort;
   onDismissed?: () => void;
   onOpenDecisions?: () => void;
-  onPrimaryAction?: (ruleId: string) => void;
+  /** amend1015 P3.4: called with the recommendation's rule and its command when the person
+   *  asks to copy it; the mount owns the clipboard, as it owns the dismissal port. */
+  onPrimaryAction?: (ruleId: string, command: string) => void;
 }
 
 export function DigestHeroCard({
@@ -62,6 +65,7 @@ export function DigestHeroCard({
   onOpenDecisions,
   onPrimaryAction,
 }: DigestHeroCardProps) {
+  const [copied, setCopied] = useState(false);
   // The RULE is `digestVisibility`'s and this component re-derives none of it:
   // it is handed the answer and branches on it.
   if (!visibility.show) {
@@ -71,6 +75,7 @@ export function DigestHeroCard({
   const stateLabel = digestStateLabel(digest.state);
   const cost = digestCostLine(digest.cost);
   const ctaText = digestCtaText(digest.primary_action.label);
+  const ctaCommand = digestCtaCommand(digest.primary_action.label);
   const hasOwnership = digest.ownership.length > 0;
   const hasOpenDecisions = digest.decisions.open_count > 0;
 
@@ -82,7 +87,9 @@ export function DigestHeroCard({
   };
 
   const handlePrimaryAction = () => {
-    onPrimaryAction?.(digest.primary_action.rule_id);
+    if (ctaCommand === null) return;
+    onPrimaryAction?.(digest.primary_action.rule_id, ctaCommand);
+    setCopied(true);
   };
 
   return (
@@ -117,9 +124,15 @@ export function DigestHeroCard({
       <button type="button" onClick={handleDismiss}>
         Dismiss
       </button>
-      <button type="button" className={styles.heroCta} onClick={handlePrimaryAction}>
-        {ctaText}
-      </button>
+      {/* amend1015 P3.4: the recommendation is text; only a command is something to press —
+          it is shown, and the button copies it. A recommendation without one is no button. */}
+      <p><strong>{ctaText}</strong></p>
+      {ctaCommand !== null && (
+        <>
+          <p><code>{ctaCommand}</code></p>
+          <button type="button" className={styles.heroCta} onClick={handlePrimaryAction}>{copied ? "Copied" : "Copy the command"}</button>
+        </>
+      )}
     </section>
   );
 }

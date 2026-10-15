@@ -219,7 +219,7 @@ class TestPipelineNoRawLeaks:
 class TestTokenUsage:
     def test_empty_job_unknown_tokens(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.ui_server import _build_token_usage
+        from packages.orchestration.job_tokens import event_token_usage as _build_token_usage
         t = _build_token_usage([])
         assert t["known"] is False
         assert t["total_tokens"] is None
@@ -227,7 +227,7 @@ class TestTokenUsage:
 
     def test_context_tokens_counted(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.ui_server import _build_token_usage
+        from packages.orchestration.job_tokens import event_token_usage as _build_token_usage
         events = [
             {"event": "source_context_injected", "metadata": {"estimated_tokens": 800}},
             {"event": "project_memory_recalled", "metadata": {"estimated_tokens": 200}},
@@ -244,7 +244,7 @@ class TestTokenUsage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import json
 
-        from packages.orchestration.ui_server import _build_token_usage
+        from packages.orchestration.job_tokens import event_token_usage as _build_token_usage
         events = [
             {"event": "source_context_injected", "metadata": {
                 "estimated_tokens": 500, "file_content": "SECRET_KEY=abc123",

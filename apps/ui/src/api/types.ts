@@ -20,6 +20,9 @@ export interface RemedyMetric {
   state?: "pass" | "fail" | "none";
   /** True when the value is not derivable (e.g. data root unavailable). */
   unknown?: boolean;
+  /** amend1015: false on a tokens tile whose figure was measured (the ledger), so it does not
+   *  say "estimated"; absent keeps the tile's own default. */
+  estimated?: boolean;
   /** Present only on the `cost` metric. `value`, `suffix` and `tooltip` cannot
    *  hold a limit, a basis or a threshold, so the whole cost reading arrives as
    *  one already-decided view — see DECISION F022 D4. */
@@ -361,4 +364,4 @@ export interface RemedyProjectSummary {
  *  `apps/ui/src/components/story/storyAutoplay.ts` is its one reader, and a
  *  required field here would break every test fixture that builds a
  *  dashboard without it. */
-export interface RemedyDashboard { jobId: string; title: string; description: string; conceptLabel: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; plan: RemedyPlan; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; story?: unknown; }
+export interface RemedyDashboard { jobId: string; title: string; description: string; metrics: RemedyMetric[]; budgetFinal: BudgetTickFigures | null; phases: RemedyPhase[]; tasks: RemedyTaskItem[]; activity: RemedyActivityItem[]; graph: { nodes: RemedyGraphNode[]; edges: RemedyGraphEdge[]; }; nextAction: RemedyNextAction; live: RemedyLiveState; apiHealth: RemedyApiHealth; pipeline: RemedyPipeline | null; resume: RemedyResume | null; pause: RemedyPause; taskSpecs: RemedyTaskSpecs; vetoes: RemedyVetoes; plan: RemedyPlan; projectSummary: RemedyProjectSummary | null; timelineEvents?: RemedyTimelineEvent[]; snapshot: RemedySnapshotSummary | null; continuation: RemedyContinuationSummary | null; promptTrace?: RemedyPromptTraceSummary | null; decisionInbox: DecisionCardModel[]; story?: unknown; }

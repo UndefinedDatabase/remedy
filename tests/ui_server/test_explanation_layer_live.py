@@ -7,13 +7,14 @@ process serves that build and answers the job's ``dashboard``, ``brain-view-mode
 ``decisions`` routes with the UI server's own builders over the job's real record; every other
 route answers 404, which the shell already reads as an unavailable door. Headless Chrome is driven
 over ``--remote-debugging-pipe`` with the story test's own ``ChromePipe``, in a profile that has
-never seen the cockpit, so the first-run tour opens by itself.
+never seen the cockpit; the first-run tour still waits, because the job has finished (amend1015).
 
 What it proves on the real page: every ``data-term`` the shell renders is a catalog key, and a
 term the catalog lacks is caught by the same reading (the audit's first direction, red control
 included — the second direction, dead keys, is the unit audit's, because no single state of one
-job shows every term); a term's tooltip reads its catalog entry; the tour opens once, Skip records
-it, a reload leaves it closed, and the Terms panel starts it again; "?" opens the Terms panel.
+job shows every term); a term's tooltip reads its catalog entry; the tour does not open by itself
+over the finished job, the Terms panel starts it, Skip records it, a reload leaves it closed, and
+the Terms panel starts it again; "?" opens the Terms panel.
 """
 from __future__ import annotations
 
@@ -188,8 +189,11 @@ def test_the_explanation_layer_works_on_the_real_shell(
         pipe.send("Log.enable")
         pipe.send("Page.navigate", {"url": url})
 
-        # THE TOUR opens by itself in a browser that has never seen it.
-        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: v == "Step 1 of 6", timeout=30.0) == "Step 1 of 6"
+        # THE TOUR does NOT open by itself over a finished job, even in a browser that has never
+        # seen it, and stays unrecorded so a fresh job still gets it (amend1015 P4.5, D15).
+        assert _poll(pipe, SHELL_EXPR, lambda v: v is True, timeout=30.0)
+        pipe.drain(1.5)
+        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: True) is None
         assert _poll(pipe, SEEN_EXPR, lambda v: v is None) is None
 
         # THE AUDIT's first direction on the real page: every rendered term is a catalog key, and
@@ -206,7 +210,11 @@ def test_the_explanation_layer_works_on_the_real_shell(
         assert drifted - keys == {"fixture.unlisted"}
         pipe.send("Runtime.evaluate", {"expression": "document.getElementById('drift-fixture').remove()"})
 
-        # Skip records the tour as seen, and a reload leaves it closed.
+        # The Terms panel starts the tour by hand, then Skip records it as seen, and a reload
+        # leaves it closed.
+        assert _poll(pipe, click_button('[data-ui="right-live-panel"]', "Terms"), lambda v: v is True)
+        assert _poll(pipe, click_button('[data-ui="term-panel"]', "Take the tour"), lambda v: v is True)
+        assert _poll(pipe, TOUR_LABEL_EXPR, lambda v: v == "Step 1 of 6") == "Step 1 of 6"
         assert _poll(pipe, click_button('[data-ui="first-run-tour"]', "Skip tour"), lambda v: v is True)
         assert _poll(pipe, SEEN_EXPR, lambda v: v == "seen") == "seen"
         pipe.send("Page.reload")

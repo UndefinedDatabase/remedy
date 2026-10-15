@@ -151,7 +151,7 @@ export function TopMetricsBar({ metrics }: { metrics: RemedyMetric[] }) {
                   <span style={{ width: `${Math.max(0, Math.min(m.cost.fill * 100, 100))}%` }} />
                 </div>
               )}
-              {isTokens && main !== EM_DASH && <div className={styles.estimated}>estimated</div>}
+              {isTokens && main !== EM_DASH && m.estimated !== false && <div className={styles.estimated}>estimated</div>}
               {/* Already worded by the reconciliation module, which is why this
                   renders the field and composes nothing (DECISION F022 D8). */}
               {m.costFinalNote && <div className={styles.estimated}>{m.costFinalNote}</div>}

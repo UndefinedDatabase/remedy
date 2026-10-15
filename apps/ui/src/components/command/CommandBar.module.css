@@ -9,6 +9,8 @@
   border: 1px solid var(--remedy-glass-border);
   box-shadow: var(--remedy-shadow-soft);
   backdrop-filter: blur(14px);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .spark {
@@ -62,4 +64,16 @@
   color: var(--remedy-faint);
   white-space: nowrap;
   padding-right: 4px;
+  /* amend1015 P6.1: a long next command is cut with an ellipsis inside the bar, never past
+     the page's right edge. */
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* amend1015 P6.1: on a phone the input keeps the bar; the hint gives way to it. */
+@media (max-width: 760px) {
+  .hint { display: none; }
+  .commandBar input { min-width: 0; }
 }

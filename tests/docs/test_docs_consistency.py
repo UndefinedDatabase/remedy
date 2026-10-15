@@ -153,7 +153,10 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: on 2026-10-14 by operator amendment amend1014-luna-mission-fixes from
 #: finding R-1252 and placed directly after F306, under its own Tier 2
 #: heading; see T2_F308.md.
-TOTAL_FEATURES = 308
+#: One more, F309 (Cockpit v2: one design, chosen by the operator), was registered
+#: on 2026-10-15 by operator amendment amend1015-cockpit-truth and placed directly
+#: after F055, under its own Tier 5 heading; see T5_F309.md.
+TOTAL_FEATURES = 309
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

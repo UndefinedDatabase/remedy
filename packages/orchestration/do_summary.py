@@ -92,28 +92,23 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     """
     if not ctx.cost_mirrors:
         return None
-    from packages.orchestration.token_ledger import query_cost
+    from packages.orchestration.job_tokens import cockpit_show_cost_usd, job_token_roles
 
     failed = {job_id: str(mirror.get("error") or "")
               for job_id, mirror in ctx.cost_mirrors.items()
               if not mirror.get("ledger_mirrored")}
-    from packages.orchestration.pi_turn_counts import pi_turns_for_job
-
     roles: dict[str | None, dict[str, Any]] = {}
     for job_id in ctx.cost_mirrors:
         if job_id in failed:
             continue
-        report = query_cost(project_id=_job_ledger_project(ctx, job_id), job_id=job_id, by="role")
-        turns = pi_turns_for_job(_job_run_ids(ctx, job_id))
-        for row in report.rows:
-            role = roles.setdefault(row.bucket, {
-                "role": row.bucket, "harness_invocations": 0, "model_turns": None, "tokens_in": None,
+        # amend1015: the one reader the digest and the cockpit's TOKENS tile read too.
+        for row in job_token_roles(_job_ledger_project(ctx, job_id), job_id, _job_run_ids(ctx, job_id)):
+            role = roles.setdefault(row["role"], {
+                "role": row["role"], "harness_invocations": 0, "model_turns": None, "tokens_in": None,
                 "tokens_out": None, "cache_read": None, "cost_usd": None})
-            role["harness_invocations"] += row.calls
-            if (pi := turns.get(str(row.bucket))) is not None:
-                role["model_turns"] = (role["model_turns"] or 0) + pi["model_turns"]
-            for key in ("tokens_in", "tokens_out", "cache_read", "cost_usd"):
-                role[key] = _add_measured(role[key], getattr(row, key))
+            role["harness_invocations"] += row["harness_invocations"]
+            for key in ("model_turns", "tokens_in", "tokens_out", "cache_read", "cost_usd"):
+                role[key] = _add_measured(role[key], row[key])
     cost_usd = None
     for role in roles.values():
         cost_usd = _add_measured(cost_usd, role["cost_usd"])
@@ -123,6 +118,7 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
         "job_ids": [job_id for job_id in ctx.cost_mirrors if job_id not in failed],
         "mirror_failed_job_ids": list(failed),
         "mirror_errors": failed,
+        "show_cost_usd": cockpit_show_cost_usd(str(getattr(ctx, "repo_root", "") or "")),
     }
 
 
@@ -156,8 +152,13 @@ def _turns_words(role: dict[str, Any]) -> str:
     return f"{invocations}, {turns} model turn{'' if turns == 1 else 's'}"
 
 
-def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
-    """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror."""
+def do_cost_summary_lines(summary: dict[str, Any] | None, *, show_cost_usd: bool | None = None) -> list[str]:
+    """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror.
+
+    amend1015 Part 5.2: a measured dollar figure is printed only with *show_cost_usd*, which
+    defaults to the summary's own reading of `[cockpit] show_cost_usd = true` in the project's
+    `.remedy/config.toml`.
+    """
     if summary is None:
         return []
     lines = [f"Tokens {role['role'] or '(role not named)'}: input {_measured(role['tokens_in'])}, "
@@ -165,8 +166,15 @@ def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
              f"cache read {_measured(role['cache_read'])} ({_turns_words(role)})"
              for role in summary["roles"]]
     cost = summary["cost_usd"]
-    lines.append("Cost: not reported by the provider" if cost is None
-                 else f"Cost: ${cost:.6f} (measured, from the ledger)")
+    if show_cost_usd is None:
+        show_cost_usd = bool(summary.get("show_cost_usd"))
+    if cost is None:
+        lines.append("Cost: not reported by the provider")
+    elif show_cost_usd:
+        lines.append(f"Cost: ${cost:.6f} (measured, from the ledger)")
+    else:
+        lines.append("Cost: not shown — tokens only (set show_cost_usd = true under [cockpit] "
+                     "in .remedy/config.toml to show it)")
     lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
                  for job_id, error in summary["mirror_errors"].items())
     return lines

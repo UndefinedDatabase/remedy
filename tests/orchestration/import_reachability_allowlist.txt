@@ -106,6 +106,7 @@ packages.orchestration.block_lint
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
 packages.orchestration.brain_viewer_theme
+packages.orchestration.brain_zoom_caps
 packages.orchestration.budget_decision
 packages.orchestration.budget_guard
 packages.orchestration.budget_resolution
@@ -213,12 +214,14 @@ packages.orchestration.intake
 packages.orchestration.integrity_gate
 packages.orchestration.job_apply
 packages.orchestration.job_apply_baseline
+packages.orchestration.job_apply_pending
 packages.orchestration.job_burn
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_input_definition
 packages.orchestration.job_plan
 packages.orchestration.job_runner
+packages.orchestration.job_tokens
 packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
@@ -296,6 +299,7 @@ packages.orchestration.repo_catalog_plausibility
 packages.orchestration.repo_ignore
 packages.orchestration.repo_mission
 packages.orchestration.repo_mission_reconcile
+packages.orchestration.report_task_record
 packages.orchestration.repository_snapshot
 packages.orchestration.result_tour
 packages.orchestration.review_scope
@@ -349,6 +353,7 @@ packages.orchestration.task_deliverables
 packages.orchestration.task_edit_runtime
 packages.orchestration.task_granularity
 packages.orchestration.task_injection
+packages.orchestration.task_lifecycle
 packages.orchestration.task_registry
 packages.orchestration.task_runner
 packages.orchestration.task_veto

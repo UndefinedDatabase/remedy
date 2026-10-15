@@ -177,7 +177,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
   // list below is the pre-stream fallback, not a second source of truth.
   if (live.length > 0) {
     return (
-      <section className={styles.card}>
+      <section className={styles.card} data-ui="activity-feed-card">
         <header className={styles.cardHeader}><h2><Term term="panel.activity">Activity</Term></h2></header>
         <LiveFeed recent={live} recentDropped={recentDropped ?? 0}
           tasks={tasks ?? []} onSelectNode={onSelectNode ?? (() => {})} />
@@ -187,7 +187,7 @@ export function ActivityFeedCard({ activity, recent, recentDropped, tasks, onSel
   }
 
   return (
-    <section className={styles.card}>
+    <section className={styles.card} data-ui="activity-feed-card">
       <header className={styles.cardHeader}><h2><Term term="panel.activity">Activity</Term></h2></header>
       <div className={styles.activityList}>
         {hasActivity ? activity.slice(0, 5).map(item => {
