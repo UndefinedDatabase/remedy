@@ -316,7 +316,7 @@ with the code that calls it.
 | 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
-| 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
+| 186 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
 | 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
@@ -461,7 +461,7 @@ with the code that calls it.
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1218 | `apps/ui/src/api/remedyApi.ts` |
+| 1216 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1018 | `apps/cli/commands/do_cmd.py` |
@@ -472,7 +472,7 @@ with the code that calls it.
 | 1111 | `packages/orchestration/run_report.py` |
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
-| 1077 | `packages/orchestration/ui_view_model.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
+| 1070 | `packages/orchestration/ui_view_model.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |
 | 1039 | `packages/orchestration/result_tour.py` |

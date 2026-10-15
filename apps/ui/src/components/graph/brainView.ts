@@ -137,11 +137,16 @@ export function selectionTaskIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "p
   return node.parentId ? node.parentId.slice("task:".length) : null;
 }
 
+/** amend1015 P4.4: what a click on the job orb selects. It names no task, so the shell answers
+ *  it by showing the job's own digest card instead of a task's popover. */
+export const JOB_SELECTION_ID = "job";
+
 /** DECISION F288 D5 (5) — the id a click on this node should select: a
  *  `synapse` born from the prompt trace (its own id `prompt:<item id>`)
  *  selects the PROMPT ITEM ITSELF, its bare item id; every other node still
  *  resolves through `selectionTaskIdOf` exactly as it always has. */
 export function selectionIdOf(node: Pick<BrainLayoutNode, "id" | "kind" | "parentId">): string | null {
+  if (node.kind === "job_core") return JOB_SELECTION_ID;
   if (node.kind === "synapse" && node.id.startsWith("prompt:")) {
     return node.id.slice("prompt:".length);
   }

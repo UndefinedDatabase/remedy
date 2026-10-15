@@ -51,7 +51,8 @@ def test_both_tours_render_through_the_one_frame():
         assert "<TourFrame " in source, path.name
     first_run = _source(FIRST_RUN)
     assert 'ui={{ card: "first-run-tour", backdrop: "first-run-backdrop" }}' in first_run
-    assert "useMemo(() => window.localStorage, [])" in first_run
+    # amend1015 P4.5: the one storage binding, guarded for a getter that throws.
+    assert "useMemo(() => { try { return window.localStorage; } catch { return null; } }, [])" in first_run
 
 
 def test_the_overlay_reads_only_through_the_door_and_drops_a_stale_answer():

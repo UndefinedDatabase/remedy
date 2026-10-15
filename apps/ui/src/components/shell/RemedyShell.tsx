@@ -16,7 +16,10 @@ import { DigestHeroCard } from "../digest/DigestHeroCard";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
 import { HunkDecisionPanel } from "../diff/HunkDecisionPanel";
+import { JOB_SELECTION_ID } from "../graph/brainView";
+import { jobFinishedOf } from "../../api/cockpitTruth";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
+import type { RailActions } from "../rail/railItems";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
 import { CommandBar } from "../command/CommandBar";
 import { ChatSheet } from "../command/ChatSheet";
@@ -205,6 +208,13 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
   // file's only `Date.now()` call outside `writeLastSeen`'s own argument
   // above. A separate read from that one on purpose: one clock read per
   // concern, never a value reused for both.
+  // amend1015 P4.4: a click on the job orb selects the job itself; the answer is the job's own
+  // digest card, shown again, and the selection is cleared so no task popover opens.
+  useEffect(() => {
+    if (selectedNodeId !== JOB_SELECTION_ID) return;
+    setDismissedAtMs(null);
+    onSelectNode(null);
+  }, [selectedNodeId, onSelectNode]);
   const visibility = digestVisibility({
     digest,
     lastSeenMs,
@@ -244,6 +254,20 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
 
   // THE '?' PANEL (F043 T003, DECISION F043 D3): open or closed.
   const [termsOpen, setTermsOpen] = useState(false);
+  // THE SYSTEM DETAILS (amend1015 P4.1): owned here so the rail's Settings button and the right
+  // panel's own toggle open the same section.
+  const [systemOpen, setSystemOpen] = useState(false);
+  // THE RAIL (amend1015 P4.1): every icon opens a panel this shell already owns; Activity
+  // scrolls its card into view, which on a phone is the stacked page's own scroll.
+  const railActions: RailActions = {
+    onChecks: () => setPlanOpen(true),
+    onActivity: () => document.querySelector<HTMLElement>('[data-ui="activity-feed-card"]')?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    onFiles: () => setResultsOpen(true),
+    onHistory: () => setStoryOpen(true),
+    onDocs: () => setTermsOpen(true),
+    onSettings: () => setSystemOpen((open) => !open),
+    active: planOpen ? "Checks" : resultsOpen ? "Files" : storyOpen ? "History" : termsOpen ? "Docs" : systemOpen ? "Settings" : null,
+  };
   // THE FIRST-RUN TOUR'S RELAUNCH (DECISION F043 D4): the count the Terms panel's "Take the
   // tour" raises, the only fact the tour's own mount needs from this shell.
   const [tourRelaunch, setTourRelaunch] = useState(0);
@@ -392,7 +416,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
         />
       )}
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
-        <LeftBrandRail dashboard={dashboard} />
+        <LeftBrandRail dashboard={dashboard} actions={railActions} />
         <main className={styles.main} data-testid="main-column">
           {/* The live tick composes the tile while the job runs; the terminal
               reconciliation WRAPS that output and replaces the tile with the
@@ -425,7 +449,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
           <BrainGraphStage dashboard={dashboard} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} rows={ledgerRows} scrub={scrub} serverToken={serverToken} />
           <PhaseTimeline scrub={scrub} />
         </main>
-        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenMissions={() => setMissionsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} />
+        <RightLivePanel dashboard={dashboard} serverToken={serverToken} onSelectNode={onSelectNode} streamStatus={stream.status} replay={scrub.state.mode === "scrubbed"} recent={stream.recent} recentDropped={stream.recentDropped} onOpenPlan={() => setPlanOpen(true)} onOpenLessons={() => setLessonsOpen(true)} onOpenTour={() => setTourOpen(true)} onOpenStory={() => setStoryOpen(true)} onOpenResults={() => setResultsOpen(true)} onOpenMissions={() => setMissionsOpen(true)} onOpenTerms={() => setTermsOpen(true)} focusedTaskId={focusedTaskId} systemOpen={systemOpen} onToggleSystem={() => setSystemOpen((open) => !open)} />
       </div>
       {selectedNode && <DetailPopover dashboard={dashboard} selectedNode={selectedNode} selectedPromptId={selectedPromptId} onClose={() => onSelectNode(null)} onOpenDiff={setOpenDiffTaskId} serverToken={serverToken} onSelectTask={(taskId) => onSelectNode(shellSelectionIdOf(dashboard.tasks, taskId))} ownership={ownership} />}
       {/* THE DIFF PANEL. A sibling of the popover rather than a child of
@@ -514,7 +538,7 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
       {termsOpen && (<TermPanel onClose={() => setTermsOpen(false)} onStartTour={() => { setTermsOpen(false); setTourRelaunch((count) => count + 1); }} />)}
       {/* THE FIRST-RUN TOUR (F043 T003, DECISION F043 D4), a sibling directly after the '?'
           panel for the reason every overlay above is a sibling outside <main>. */}
-      <FirstRunTourMount relaunch={tourRelaunch} />
+      <FirstRunTourMount relaunch={tourRelaunch} blocked={jobFinishedOf(dashboard.live.stage) || visibility.show} />
     </div>
   );
 }

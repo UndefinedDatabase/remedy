@@ -311,7 +311,19 @@
 .pauseOutcomeWarn { color: var(--remedy-orange-400); }
 .pauseOutcomeError { color: var(--remedy-red-500); }
 
-.advancedToggle { font-size: 12px; color: var(--remedy-faint); align-self: center; padding: 4px 8px; }
+/* amend1015 P4.3: legible chips (13 px, normal contrast) in one labelled row. */
+.moreGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px; }
+.moreLabel { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--remedy-muted); margin-right: 2px; }
+.advancedToggle {
+  font-size: 13px;
+  color: var(--remedy-ink);
+  padding: 6px 12px;
+  min-height: 32px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-bg-2);
+  border: 1px solid var(--remedy-line);
+}
+.advancedToggle:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-blue-strong); }
 .advancedSection { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--remedy-muted); padding: 0 6px 8px; }
 .advancedItem strong { color: var(--remedy-ink); }
 .delayedDot { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-orange-400); box-shadow: 0 0 8px rgba(245,163,78,.6); }

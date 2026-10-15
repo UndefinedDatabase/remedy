@@ -218,7 +218,7 @@ export function normalizeDashboardPayload(
     : nextAction();
 
   // Title/description
-  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Growing Brain Overview");
+  const title = scrubUiText(dashboard.legacy?.job_name || brainDetail?.title || brainDetail?.job_title, "Remedy job");
   const description = scrubUiText(
     brainDetail?.description || "An AI agent working through a verified project plan.",
     "An AI agent working through a verified project plan.",
@@ -228,7 +228,6 @@ export function normalizeDashboardPayload(
     jobId,
     title,
     description,
-    conceptLabel: "Concept 01 of 10",
     metrics,
     // The ledger's last budget tick, carried OPAQUELY: this mapper reads no
     // figure out of it and decides nothing about it, which is what keeps
@@ -543,7 +542,6 @@ export function normalizeApiFailure(jobId: string, failedEndpoints: string[]): R
     jobId,
     title: "Mission Control",
     description: "",
-    conceptLabel: "",
     // Remedy deliberately does NOT give the degraded path a `cost` tile, and
     // this is where a reader would search for it: a dashboard whose endpoints
     // failed has no stream figures either, so a cost tile here would be a
