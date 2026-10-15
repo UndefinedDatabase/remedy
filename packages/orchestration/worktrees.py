@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.sensitive_paths import sensitive_exclude_pathspecs
+
 #: Where worktrees live, relative to the repository root.
 WORKTREE_DIRNAME = ".remedy-wt"
 
@@ -595,7 +597,7 @@ def write_tree_at(path: str | Path) -> str:
         if proc.returncode != 0:
             raise WorktreeError(f"git read-tree for tree snapshot failed: {proc.stderr[:200]}")
         proc = subprocess.run(
-            ["git", "add", "-A", "."], cwd=str(path), env=env,
+            ["git", "add", "-A", "--", ".", *sensitive_exclude_pathspecs()], cwd=str(path), env=env,
             capture_output=True, text=True, timeout=120,
         )
         if proc.returncode != 0:

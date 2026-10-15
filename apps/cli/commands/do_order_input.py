@@ -80,6 +80,10 @@ def read_do_order(goal: str, *, project: str | tuple[str, ...] | None, contract:
             "order_source_path": order_file.source_path,
             "order_source_sha256": order_file.source_sha256,
         }
+    from packages.orchestration.do_role_guards import sensitive_order_refusal
+
+    if why := sensitive_order_refusal(goal):       # amend1014c R1: before any step, by name alone
+        fail("invalid_argument", f"{why}", json_output=json_output, exit_code=2)
     return DoOrderInput(goal, project, contract, max_cost_usd, max_total_tokens,
                         max_provider_calls, max_wall_clock_minutes, order_source_kwargs)
 

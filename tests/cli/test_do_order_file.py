@@ -536,7 +536,7 @@ def test_another_order_file_is_a_further_order_of_the_same_repository_mission(re
 #: tokens and never its 1,200 cache tokens.
 REPORTED_USAGE = {"input_tokens": 10, "output_tokens": 5, "cache_read": 1000,
                   "cache_creation": 200, "total_cost_usd": None}
-REPORTING_ROLES = ("--builder-provider", "ollama", "--reviewer-provider", "ollama")
+REPORTING_ROLES = ("--builder-provider", "claude", "--reviewer-provider", "claude")
 
 
 class _UsageReportingProvider(FakeProvider):
@@ -555,13 +555,16 @@ class _UsageReportingProvider(FakeProvider):
 
 @pytest.fixture
 def usage_reporting_ollama(monkeypatch):
-    """`ollama` names the stand-in, so the run counts its calls as a real provider's; no model runs."""
+    """`claude` names the stand-in, so the run counts its calls as a real provider's; no model runs.
+
+    It was `ollama` until a raw Ollama builder was refused (amend1014b D1); any real provider name serves.
+    """
     from packages.orchestration import pingpong_loop
 
     real_create_provider = pingpong_loop.create_provider
 
     def create_provider(name, **kwargs):
-        if name == "ollama":
+        if name == "claude":
             return _UsageReportingProvider()
         return real_create_provider(name, **kwargs)
 
@@ -617,7 +620,7 @@ def test_the_digest_names_the_calls_and_tokens_by_kind_a_reporting_provider_ran(
     [job] = client["jobs"]
     ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
     budget_calls = load_job_plan(job_id).budget_actuals["provider_call_count"]
-    assert job["calls"] == ledger.calls == budget_calls == 4
+    assert job["harness_invocations"] == ledger.calls == budget_calls == 4
     assert job["tokens"] == {"input": 40, "output": 20, "cache_read": 4000, "cache_creation": 800}
 
 

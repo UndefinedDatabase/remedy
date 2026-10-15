@@ -23,7 +23,7 @@ const entry: ProjectEntry = {
 const summary: ProjectSummary = decodeProjectSummary({
   version: 1, project_id: "id-alpha", slug: "alpha", jobs: { active: 2, total: 3 },
   last_result: { job_id: "j1", title: "alpha newest", state: "blocked", headline: "The run is blocked." },
-  cost_today: { day: "2026-09-29", value_usd: 0.25, basis: "actual", calls: 1 },
+  cost_today: { day: "2026-09-29", value_usd: 0.25, basis: "actual", harness_invocations: 1 },
   decisions: { open_count: 5, peak_urgency: 3600 }, degraded: false,
 })!;
 
@@ -52,10 +52,10 @@ describe("resultToneOf", () => {
 
 describe("costTodayLine", () => {
   it("names the figure and its basis, and never an unmeasured zero", () => {
-    expect(costTodayLine({ day: "d", value_usd: 0.25, basis: "actual", calls: 1 })).toBe("Cost today: $0.25");
-    expect(costTodayLine({ day: "d", value_usd: 0.5, basis: "lower_bound", calls: 2 })).toBe("Cost today: at least $0.50");
-    expect(costTodayLine({ day: "d", value_usd: null, basis: "absent", calls: 0 })).toBe("Cost today: not measured");
-    expect(costTodayLine({ day: "d", value_usd: 0, basis: "absent", calls: 0 })).toBe("Cost today: not measured");
+    expect(costTodayLine({ day: "d", value_usd: 0.25, basis: "actual", harness_invocations: 1 })).toBe("Cost today: $0.25");
+    expect(costTodayLine({ day: "d", value_usd: 0.5, basis: "lower_bound", harness_invocations: 2 })).toBe("Cost today: at least $0.50");
+    expect(costTodayLine({ day: "d", value_usd: null, basis: "absent", harness_invocations: 0 })).toBe("Cost today: not measured");
+    expect(costTodayLine({ day: "d", value_usd: 0, basis: "absent", harness_invocations: 0 })).toBe("Cost today: not measured");
   });
 });
 

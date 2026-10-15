@@ -33,7 +33,7 @@ class TestRoleOverrideResolver:
         cfgs = _resolve_cli_role_configs()
         for role in ("builder", "reviewer", "repair"):
             assert cfgs[role] == {
-                "provider": "ollama",
+                "provider": "pi",
                 "model": resolve_model_alias("ollama-default"),
                 "effort": "medium",
             }
@@ -53,7 +53,7 @@ class TestRoleOverrideResolver:
         }
         # Partial override keeps defaults for unset fields.
         assert cfgs["reviewer"]["effort"] == "low"
-        assert cfgs["reviewer"]["provider"] == "ollama"
+        assert cfgs["reviewer"]["provider"] == "pi"
         assert cfgs["repair"]["provider"] == "fake"
         assert cfgs["repair"]["effort"] == "medium"
 
@@ -266,13 +266,13 @@ class TestJobRunProviderWiring:
     def test_provider_flags_reach_run_job_as_the_role_names(self, monkeypatch, capsys) -> None:
         calls = self._main([
             "job", "run", "job-id-123",
-            "--builder-provider", "ollama",
+            "--builder-provider", "pi",
             "--reviewer-provider", "ollama",
             "--json",
         ], monkeypatch)
         capsys.readouterr()
         assert len(calls) == 1
-        assert calls[0]["builder_name"] == "ollama"
+        assert calls[0]["builder_name"] == "pi"
         assert calls[0]["reviewer_name"] == "ollama"
 
     def test_each_provider_flag_reaches_its_own_role(self, monkeypatch, capsys) -> None:

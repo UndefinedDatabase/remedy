@@ -171,7 +171,7 @@ def test_a_full_dos_job_carries_the_calls_its_ledger_holds_and_no_token_the_fake
     [project] = client["projects"]
     [job] = client["jobs"]
     ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
-    assert job["calls"] == ledger.calls == 4
+    assert job["harness_invocations"] == ledger.calls == 4
     no_tokens = {"input": None, "output": None, "cache_read": None, "cache_creation": None}
     assert job["tokens"] == no_tokens
     assert project["cost_today"]["tokens"] == no_tokens
@@ -418,7 +418,7 @@ def test_a_completed_jobs_entry_references_its_evidence_and_the_project_its_cost
     [project] = client["projects"]
     cost_today = project["cost_today"]
     assert cost_today["day"] == client["read_at"][:10]
-    assert cost_today["calls"] >= 1
+    assert cost_today["harness_invocations"] >= 1
     assert cost_today["value_usd"] is None
     assert cost_today["basis"] == "absent"
 

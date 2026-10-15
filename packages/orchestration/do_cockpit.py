@@ -1,5 +1,5 @@
-"""F268 — the cockpit a `remedy do` walk opens for the last job that ran, detached, and the
-ui step that opens it;
+"""F268 — the cockpit a `remedy do` walk opens for the job that runs first, detached, and the
+ui step that opens it (before the run, amend1014-do-golden-path-now D5);
 moved out of `packages/orchestration/do_sequence.py` unchanged, as a step of that file's
 boundary on `docs/system/structure-ledger-v1.md` (structure rule 2, DECISION F205 D3);
 every consumer imports these names from here (operator amendment amend1014-luna-mission-fixes D.2).
@@ -96,10 +96,18 @@ def launch_do_cockpit(
 
 
 def _step_ui(ctx: DoContext) -> tuple[str, str]:
-    """Open the cockpit for the last job that ran, detached, unless `--no-ui` (DECISIONs F268 D9, D12)."""
+    """Open the cockpit for the job that runs first, detached, BEFORE the run, unless `--no-ui`.
+
+    Operator amendment amend1014-do-golden-path-now D5: the cockpit comes up after the jobs are
+    shaped and before any worker runs, so a person can watch the run and still has the cockpit when
+    the job blocks or fails. The URL is printed the moment it exists; a cockpit that does not come
+    up never stops the run, and the exact manual command is printed at once (DECISIONs F268 D9, D12).
+    """
     if ctx.no_ui:
         return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
-    job_id = ctx.run_job_ids[-1]
+    if ctx.plan_only:
+        return DO_STEP_SKIPPED, "--plan-only: no job runs, so the cockpit was not opened"
+    job_id = ctx.job_ids[0]
     command = f"remedy ui start {job_id}"
     if ctx.ui_launcher is None:
         ctx.next_lines.append(command)
@@ -108,7 +116,11 @@ def _step_ui(ctx: DoContext) -> tuple[str, str]:
         url = ctx.ui_launcher(job_id)
     except (DoCockpitLaunchError, OSError) as exc:
         ctx.next_lines.append(command)
+        if ctx.progress is not None:
+            ctx.progress.line(f"cockpit did not open ({exc}); the run goes on. Open it with: {command}")
         return DO_STEP_SKIPPED, f"the cockpit was not opened: {exc}; open it with: {command}"
+    if ctx.progress is not None:
+        ctx.progress.line(f"cockpit: {url}")
     ctx.next_lines.append(DO_COCKPIT_STOP_COMMAND)
     return DO_STEP_DONE, (
         f"the cockpit for job {job_id} is open at {url}; "

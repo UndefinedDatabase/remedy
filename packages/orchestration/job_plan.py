@@ -77,8 +77,10 @@ _PLAN_RULES_SEGMENT = """\
 - Every task produces a deliverable: a file changed or created, a test, a
   check. Never make reading, analysing or exploring a task of its own: a task
   whose title begins with analyze, analyse, inspect, review, read, explore,
-  investigate, examine, study, understand, survey or research is rejected.
-  Put that reading inside the task that produces something.
+  investigate, examine, study, understand, survey, research, verify, confirm,
+  locate, find, identify, assess or audit is rejected. Put that reading inside
+  the task that produces something, and give one file one task: reading it,
+  drafting the change and making it are the steps of that one task.
 - RESOLVE the intake's clarifications into plan choices wherever the
   intake, the repo facts, or ordinary engineering judgement settle them.
   Record each one you resolved in clarifications_resolved with your

@@ -1961,5 +1961,5 @@ def create_provider(name: str, *, model: str = "") -> PingPongProvider:
     if name == "ollama":
         return OllamaPingPongProvider(model=model)
     raise RuntimeError(
-        f"Unknown provider: {name!r}. Available: fake, claude, claude-cli, ollama"
+        f"Unknown provider: {name!r}. Available: fake, claude, claude-cli, ollama (pi is built per role by create_role_provider)"
     )

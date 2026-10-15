@@ -173,7 +173,7 @@ def project_cost_of_day(project_id: Any, moment: datetime) -> dict[str, Any]:
         "day": since,
         "value_usd": total_row.cost_usd,
         "basis": basis,
-        "calls": total_row.calls,
+        "harness_invocations": total_row.calls,
     }
 
 

@@ -516,10 +516,10 @@ class TestAutoApproval:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        shaped = _shape_order(repo, "test mission", yes=True)
+        shaped = _shape_order(repo, "test mission", run_unattended=True)
 
         data = shaped.to_json()
-        assert "approved via --yes" in data["plan_label"]
+        assert "approved via --run-unattended" in data["plan_label"]
 
         job_id = data["job_id"]
         show = subprocess.run(
@@ -543,26 +543,26 @@ class TestAutoApproval:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        shaped = _shape_order(repo, "test mission", yes=True)
+        shaped = _shape_order(repo, "test mission", run_unattended=True)
 
         data = shaped.to_json()
         fp_decisions = [
             d for d in list_decisions(JobPlan(job_title="t",
                 task_plan={"_approval": "approved",
                              "_approval_audit": {"mode": "auto_yes",
-                                                 "reason": "auto-approved via --yes"}}), [])
+                                                 "reason": "auto-approved via --run-unattended"}}), [])
             if d.type == "task_plan_approval"
         ]
         open_decisions = [d for d in fp_decisions if d.status == "open"]
         resolved_decisions = [d for d in fp_decisions if d.status == "resolved"]
         assert len(open_decisions) == 0
         assert len(resolved_decisions) == 1
-        assert "auto-approved via --yes" in resolved_decisions[0].safe_summary
+        assert "auto-approved via --run-unattended" in resolved_decisions[0].safe_summary
 
-    @pytest.mark.parametrize(("flags", "approval"), [((), "pending"), (("--yes",), "approved")])
-    def test_do_run_yes_through_the_parser_reaches_the_auto_approval(
+    @pytest.mark.parametrize(("flags", "approval"), [((), "pending"), (("--run-unattended",), "approved")])
+    def test_do_run_unattended_through_the_parser_reaches_the_auto_approval(
             self, tmp_path, monkeypatch, capsys, flags, approval):
-        """R-0922: `remedy do run --yes`, parsed from the catalog, reaches
+        """R-0922: `remedy do run --run-unattended`, parsed from the catalog, reaches
         `auto_approve_task_plan`; without the flag the plan waits. The walk runs
         `--no-llm`, and only the shape step's `plan_order_job` is re-entered on the
         mocked LLM plan, because the auto-approval lives on that branch alone."""
@@ -576,7 +576,7 @@ class TestAutoApproval:
         real_plan_order_job, seen = do_sequence.plan_order_job, []
 
         def planned_on_the_llm_branch(order, **kwargs):
-            seen.append(kwargs["yes"])
+            seen.append(kwargs["run_unattended"])
             _setup_llm_mocks(monkeypatch, plan_succeeds=True)
             return real_plan_order_job(order, **{**kwargs, "no_llm": False})
 

@@ -1,16 +1,21 @@
-# Plan — F055 Rehearsal (dry check)
+# Plan — amend1014c-review-closure-before-merge
 
 ## Goal
-`remedy do --rehearse` plans an order and stops at the approval of its plan, building no worker,
-applying nothing and writing nothing into the repository; it records what a run would cost, risk
-and write, and a real run reuses the rehearsed plan without planning again
-(docs/roadmap/features/T3_F055.md; DECISIONs F055 D1 to D4).
+Operator amendment amend1014c (2026-10-15): repair the four review findings of the old pull request (R1 secret
+persistence, R2 Pi timeout floor, R3 call accounting, R4 a 643-insertion commit) and carry them on a clean-history
+replacement branch. Not a merge.
 
 ## Current Step
-Session 1, round 9 on `feature/f055-rehearsal`, the closing round: book round 8, resolve R-1320,
-the Built State, then the ledger rotation, F055's STATUS line with the README sync and SU-064's
-`consumed_by`, and the pull request, left unmerged.
+Done: R1 to R3 repaired and tested, acceptance A to E passed against the real Pi, the old pull request closed, the
+branch `feature/do-golden-path-review-closure` replayed from `main` (tree equal to the old tip), the handoff written.
 
 ## Next Steps
-1. The next session: the Open PR Gate merges F055's pull request, books round 9's verdict in the
-   next feature's first commit, and Rule A5 picks the next unchecked STATUS line.
+1. Operator: review the replacement pull request; do not merge automatically.
+2. After a merge decision, F078 resumes on `feature/f078-autonomy-levels`.
+
+## Review Strategy
+The old pull request had no review comments on any channel (checked 2026-10-15).
+
+## Risks
+- `.agent/STOP` untracked and untouched; the F078 branch untouched.
+- Ordinary unrelated dirty content is still hashed by the F263 snapshot (see the handoff); one operator decision.

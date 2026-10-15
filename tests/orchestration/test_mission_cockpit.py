@@ -126,15 +126,15 @@ def test_an_orders_usage_sums_the_calls_and_tokens_of_its_own_projects_jobs(worl
     _ledger_call(alpha.id, "c2", str(jobs["a2"].job_id), tokens_in=50, tokens_out=5)
     _ledger_call(beta.id, "c3", str(jobs["b1"].job_id), tokens_in=999, tokens_out=999)
     [order] = _orders(world, "alpha")["orders"]
-    assert order["usage"] == {"calls": 2, "tokens": {
+    assert order["usage"] == {"harness_invocations": 2, "model_turns": None, "tokens": {
         "input": 150, "output": 25, "cache_read": 7, "cache_creation": None}}
     [beta_order] = _orders(world, "beta")["orders"]
-    assert beta_order["usage"]["calls"] == 1
+    assert beta_order["usage"]["harness_invocations"] == 1
 
 
 def test_an_order_whose_jobs_made_no_recorded_call_reads_zero_calls(world):
     [order] = _orders(world, "alpha")["orders"]
-    assert order["usage"] == {"calls": 0, "tokens": NO_TOKENS}
+    assert order["usage"] == {"harness_invocations": 0, "model_turns": None, "tokens": NO_TOKENS}
 
 
 def test_an_unreadable_ledger_nulls_the_usage_and_marks_the_answer_degraded(world):
@@ -145,7 +145,7 @@ def test_an_unreadable_ledger_nulls_the_usage_and_marks_the_answer_degraded(worl
     ledger.write_bytes(b"this is not an SQLite database, and it is long enough to be read")
     body = _orders(world, "alpha")
     assert body["degraded"] is True
-    assert body["orders"][0]["usage"] == {"calls": None, "tokens": NO_TOKENS}
+    assert body["orders"][0]["usage"] == {"harness_invocations": None, "model_turns": None, "tokens": NO_TOKENS}
 
 
 @pytest.mark.parametrize("mission_id", ["no-such-mission", "../escape", ""])

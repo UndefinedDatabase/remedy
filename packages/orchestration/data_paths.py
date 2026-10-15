@@ -113,6 +113,8 @@ EPHEMERAL_CLASSES: tuple[DataRootClass, ...] = (
 )
 
 DURABLE_CLASSES: tuple[DataRootClass, ...] = (
+    DataRootClass("pi_agent", "packages.orchestration.pi_provider",
+                  "never; Pi's private agent directory, one regenerated models.json (amend1014b)"),
     DataRootClass("jobs", "packages.orchestration.pingpong_job", "never; the job record and evidence"),
     # The three DECISION F276 D3 moves, in the order the comment above states them.
     DataRootClass("workspaces", "packages.orchestration.workspace",

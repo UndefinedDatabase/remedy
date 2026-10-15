@@ -4,6 +4,20 @@ Start here. These are the main commands for working with Remedy.
 
 ## Quick start
 
+The ordinary command is one line; it needs Pi and Ollama with `muse-glimmer:latest`, and no provider flag:
+
+```bash
+remedy do "Add one concise project-description paragraph below the existing heading in README.md. Change no other files." --apply
+```
+
+It runs the work in an isolated workspace, applies only the reviewed change to your files and
+commits nothing. Run another order straight after it, with `--commit-auto` to commit only the
+files the job changed. Your uncommitted work does not have to be committed or stashed first:
+Remedy captures the working tree you see and builds on it, and it stops if something changes your
+files while it works (`target_changed_during_run`).
+
+Step by step, the same job from the start:
+
 ```bash
 # 1. Create and start a job
 remedy do run "Fix the login bug" --repo /path/to/project
@@ -26,8 +40,14 @@ remedy decision list <job_id> --json
 remedy do run "<goal>" --repo <path>
 ```
 
-Creates a new job from your goal and starts the first safe actions.
-This is the normal entry point for Remedy.
+Creates a new job from your goal and starts the first safe actions. Its builder and reviewer are
+the Pi harness driving the local Ollama model `muse-glimmer:latest`; `--builder-provider claude-cli`
+selects Claude instead.
+This is the normal entry point for Remedy. A small request, such as one change to one
+file, needs nothing else: Remedy runs it at once in its own isolated workspace, opens the
+cockpit before the work starts, says what it is doing, and stops before it touches your
+repository; you apply the proposed change with `--apply` or `remedy job apply`. For a broad
+plan that Remedy generates, run it without being asked by adding `--run-unattended`.
 
 ### Check job status
 

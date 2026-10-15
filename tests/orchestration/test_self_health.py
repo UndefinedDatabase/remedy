@@ -492,10 +492,10 @@ def test_providers_a_key_of_spaces_counts_as_unset():
 # --- the set ----------------------------------------------------------------
 
 
-def test_run_health_checks_answers_eight_checks_in_order():
+def test_run_health_checks_answers_nine_checks_in_order():
     results = run_health_checks()
     assert [r.check for r in results] == [
-        "config", "ledgers", "snapshots", "worktrees", "providers", "staging_copies", "disk",
+        "config", "ledgers", "snapshots", "worktrees", "providers", "default_chain", "staging_copies", "disk",
         "crash_reports"]
 
 

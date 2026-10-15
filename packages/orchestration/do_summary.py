@@ -97,16 +97,21 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     failed = {job_id: str(mirror.get("error") or "")
               for job_id, mirror in ctx.cost_mirrors.items()
               if not mirror.get("ledger_mirrored")}
+    from packages.orchestration.pi_turn_counts import pi_turns_for_job
+
     roles: dict[str | None, dict[str, Any]] = {}
     for job_id in ctx.cost_mirrors:
         if job_id in failed:
             continue
         report = query_cost(project_id=_job_ledger_project(ctx, job_id), job_id=job_id, by="role")
+        turns = pi_turns_for_job(_job_run_ids(ctx, job_id))
         for row in report.rows:
             role = roles.setdefault(row.bucket, {
-                "role": row.bucket, "calls": 0, "tokens_in": None, "tokens_out": None,
-                "cache_read": None, "cost_usd": None})
-            role["calls"] += row.calls
+                "role": row.bucket, "harness_invocations": 0, "model_turns": None, "tokens_in": None,
+                "tokens_out": None, "cache_read": None, "cost_usd": None})
+            role["harness_invocations"] += row.calls
+            if (pi := turns.get(str(row.bucket))) is not None:
+                role["model_turns"] = (role["model_turns"] or 0) + pi["model_turns"]
             for key in ("tokens_in", "tokens_out", "cache_read", "cost_usd"):
                 role[key] = _add_measured(role[key], getattr(row, key))
     cost_usd = None
@@ -119,6 +124,13 @@ def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
         "mirror_failed_job_ids": list(failed),
         "mirror_errors": failed,
     }
+
+
+def _job_run_ids(ctx: DoContext, job_id: str) -> list[str]:
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id)
+    return list(job.run_refs) if job is not None else []
 
 
 def _job_ledger_project(ctx: DoContext, job_id: str) -> str:
@@ -136,13 +148,21 @@ def _measured(value: float | int | None) -> str:
     return "not reported" if value is None else f"{value}"
 
 
+def _turns_words(role: dict[str, Any]) -> str:
+    n, turns = role["harness_invocations"], role["model_turns"]
+    invocations = f"{n} harness invocation{'' if n == 1 else 's'}"
+    if turns is None:
+        return f"{invocations}; model turns not reported"
+    return f"{invocations}, {turns} model turn{'' if turns == 1 else 's'}"
+
+
 def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
     """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror."""
     if summary is None:
         return []
     lines = [f"Tokens {role['role'] or '(role not named)'}: input {_measured(role['tokens_in'])}, "
              f"output {_measured(role['tokens_out'])}, "
-             f"cache read {_measured(role['cache_read'])} ({role['calls']} call(s))"
+             f"cache read {_measured(role['cache_read'])} ({_turns_words(role)})"
              for role in summary["roles"]]
     cost = summary["cost_usd"]
     lines.append("Cost: not reported by the provider" if cost is None

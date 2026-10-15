@@ -866,7 +866,7 @@ class TestBudgetStopThroughTheCommandLine:
             return capsys.readouterr()
 
         captured = run(
-            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--yes",
+            "do", "Write a CONTRIBUTING.md", "--json", "--no-ui", "--run-unattended",
             "--no-llm", *fake_roles, "--max-cost-usd", "1", "--plan-only")
         plan = _json.loads(captured.out)
         [job_id] = plan["job_ids"]

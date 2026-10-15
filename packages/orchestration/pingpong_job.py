@@ -1190,14 +1190,9 @@ def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
         job.isolation_mode = "copy"
         return _create_job_workspace_copy(job), None
 
-    wt_id = job_worktree_id(job.job_id)
-    handle = W.create(wt_id, job.repo_path)
-    job.isolation_mode = "worktree"
-    job.worktree_branch = handle.branch
-    job.worktree_path = handle.relative_path
-    job.worktree_base_commit = handle.base_commit
-    job.worktree_head = handle.head_commit
-    job.worktree_cleanup_status = "active"
+    from packages.orchestration.dirty_baseline import create_seeded_worktree
+
+    handle = create_seeded_worktree(job, job_worktree_id(job.job_id))
     job.job_initial_tree = W.write_tree(handle)
     job.job_initial_tree_ref = W.checkpoint_ref(
         job_worktree_id(job.job_id), "job-initial")
@@ -1219,13 +1214,14 @@ def _record_target_last_known(job: JobPlan) -> None:
     state = HC.capture_target_state(job.repo_path)
     ref = W.checkpoint_ref(job_worktree_id(job.job_id), HC.LAST_KNOWN_REF_NAME)
     W.set_checkpoint_ref(job.repo_path, ref, state.tree)
-    job.target_last_known = {**state.to_dict(), "ref": ref}
+    job.target_last_known = {**(job.target_last_known or {}), **state.to_dict(), "ref": ref}
 
 
 def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
     """Re-claim an existing job workspace, or create it on first run."""
     from packages.orchestration import worktrees as W
-
+    from packages.orchestration.pi_provider import bind_job_clock
+    bind_job_clock(job)         # amend1014c R2: a Pi call may not outlive the job's wall budget
     if not job.job_workspace_path:
         path, handle = _create_job_workspace(job)
         job.job_workspace_path = path
@@ -1241,14 +1237,12 @@ def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
             f"fall back to a copied workspace"
         )
     if handle.branch != job.worktree_branch:
-        from packages.orchestration import worktrees as _W
-        _W.release_lock(handle)
+        W.release_lock(handle)
         raise RuntimeError(
             f"job worktree is on branch {handle.branch!r}, not the recorded "
             f"{job.worktree_branch!r}"
         )
-    err = _verify_checkpoints(job)
-    if err:
+    if err := _verify_checkpoints(job):
         # NEVER re-snapshot a lost checkpoint: a fresh baseline would silently
         # swallow whatever the interrupted attempt had already written.
         W.retain_for_recovery(handle, err)

@@ -153,7 +153,7 @@ def test_a_failed_walk_in_text_mode_still_writes_error_init_failed_on_stderr(rep
               "--project", "no-such-project"])
     assert exc.value.code == 1
     captured = capsys.readouterr()
-    assert captured.err.startswith("Error: init failed: ")
+    assert captured.err.splitlines()[-1].startswith("Error: init failed: ")
 
 
 # ── the budget flags (DECISION F268 D16 (5)) ─────────────────────────────────
@@ -213,8 +213,8 @@ def test_builder_and_reviewer_models_are_the_jobs_cli_models_and_on_the_next_lin
 
 
 def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monkeypatch):
-    """Without `--no-llm`: every structured call the plan and shape steps build is
-    recorded, and none is served, so each step plans deterministically."""
+    """Without `--no-llm`, on an order naming two files (the full lane): every structured call the
+    plan and shape steps build is recorded, and none is served, so each step plans deterministically."""
     calls: list[tuple[str, object]] = []
 
     def recorder(model_cls, **kwargs):
@@ -224,7 +224,8 @@ def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monke
     monkeypatch.setattr("packages.orchestration.intake.make_structured_call_fn", recorder)
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", lambda *a, **kw: None)
 
-    data = _do_json(capsys, "--planner-model", "p1", "--plan-only", llm=True)
+    data = json.loads(_do(capsys, "--json", "--planner-model", "p1", "--plan-only", llm=True,
+                          order="Write CONTRIBUTING.md and CHANGELOG.md"))
 
     assert data["job_ids"]
     assert calls
@@ -245,7 +246,7 @@ def test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder(r
 
     assert data["mission_id"]
     assert isinstance(data["steps"], list)
-    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "run"]
+    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "ui"]
     assert _step(data, "run")["status"] == "done"
     [job_id] = data["job_ids"]
     config = load_job_plan(job_id).execution_config
@@ -276,7 +277,7 @@ def test_a_flag_removed_from_do_exits_2_and_runs_nothing(repo, capsys, removed):
 
 
 def test_an_unattended_do_on_an_open_pipe_finishes_without_reading_stdin(tmp_path):
-    """F295 T003: a machine client's own command line, `--json --no-ui --yes` with the
+    """F295 T003: a machine client's own command line, `--json --no-ui --run-unattended` with the
     fake providers, run as a real process whose stdin is a pipe nobody writes to and
     nobody closes. A read of stdin anywhere on the path would block until the timeout
     below; `communicate()` is never used, because it closes the pipe."""
@@ -292,7 +293,7 @@ def test_an_unattended_do_on_an_open_pipe_finishes_without_reading_stdin(tmp_pat
     out_path = tmp_path / "do.out"
     with open(out_path, "wb") as out:
         proc = subprocess.Popen(
-            [sys.executable, "-m", "apps.cli.main", "do", ORDER, "--json", "--no-ui", "--yes",
+            [sys.executable, "-m", "apps.cli.main", "do", ORDER, "--json", "--no-ui", "--run-unattended",
              "--no-llm", *FAKE_ROLES, "--max-cost-usd", "1"],
             cwd=str(target), env=env, stdin=subprocess.PIPE, stdout=out,
             stderr=subprocess.DEVNULL)

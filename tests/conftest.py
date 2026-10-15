@@ -394,6 +394,37 @@ def _no_live_ollama_reach(request):
 
 
 @pytest.fixture(autouse=True)
+def _no_live_pi_reach(request):
+    """Make the Pi chain's Ollama check fail at once, so no test ever runs the real `pi`.
+
+    The default builder and reviewer are the Pi harness (operator amendment amend1014b), and Pi is
+    installed on a developer box: a test that runs a job with no provider flag would otherwise
+    start a real agent against a real model and hang the suite. ``make_pi_provider`` checks the
+    Ollama endpoint before anything is spawned, so refusing that one lookup stops the run at
+    provider construction, as a missing Ollama does on the hosted runner. A test that wants a Pi
+    chain installs a fake ``pi`` on PATH and patches ``_ollama_models`` itself, in its body, after
+    this fixture; the ``real_ollama`` marker opts out. Hand-saved, no ``monkeypatch``, for the
+    ordering reason ``_no_live_ollama_reach`` states.
+    """
+    if request.node.get_closest_marker("real_ollama"):
+        yield
+        return
+    from packages.orchestration import pi_provider
+
+    def _refused(host):
+        raise pi_provider.PiUnavailable(
+            "live Ollama access is refused for tests without the real_ollama marker "
+            "(tests/conftest.py::_no_live_pi_reach)")
+
+    original = pi_provider._ollama_models
+    pi_provider._ollama_models = _refused
+    try:
+        yield
+    finally:
+        pi_provider._ollama_models = original
+
+
+@pytest.fixture(autouse=True)
 def _restore_cwd():
     """Undo a working-directory change that a test forgot to reverse.
 

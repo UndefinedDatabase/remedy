@@ -229,7 +229,7 @@ def _seed_project_job_and_decision(tmp_path: Path) -> None:
         "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n", encoding="utf-8")
     result = subprocess.run(
         [sys.executable, "-m", "apps.cli.main", "do", str(order_file), "--json",
-         "--no-ui", "--yes", "--no-llm", "--builder-provider", "fake",
+         "--no-ui", "--run-unattended", "--no-llm", "--builder-provider", "fake",
          "--reviewer-provider", "fake", "--deadline", _SEED_PAST_DEADLINE],
         cwd=str(repo), capture_output=True, text=True, env=env, timeout=120)
     assert result.returncode == 1, result.stdout + result.stderr
@@ -652,7 +652,8 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     assert public_api.PUBLIC_API_VERSION == "1.14"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
-                        ("check_disk_floor", "disk"), ("check_providers", "providers")):
+                        ("check_disk_floor", "disk"), ("check_providers", "providers"),
+                        ("check_default_chain", "default_chain")):
         monkeypatch.setattr(self_health, name, _fixed_health_check(check))
 
     def ask(path: str = "/api/v1/health", headers: dict[str, str] | None = None) -> list[tuple]:
@@ -666,7 +667,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
         assert body["verdict"] == "PASS"
         assert [c["check"] for c in body["checks"]] == [
             c["check"] for c in expected["checks"]]
-        assert len(body["checks"]) == 8
+        assert len(body["checks"]) == 9
         assert body == expected
 
     ledger = projects_dir() / "alpha" / LEDGER_FILENAME
@@ -676,7 +677,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
         assert status == 503, body
         assert body["ok"] is False
         assert body["error"] == "health_failed"
-        assert body["message"] == "1 of 8 health checks failed"
+        assert body["message"] == "1 of 9 health checks failed"
         ledgers = next(c for c in body["checks"] if c["check"] == "ledgers")
         assert ledgers["level"] == "FAIL"
 

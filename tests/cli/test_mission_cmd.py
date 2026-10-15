@@ -548,7 +548,7 @@ class TestDoCreatesOneMissionPerOrder:
     def test_an_auto_approved_plan_creates_no_mission(self, repo_project):
         """Unattended approval covers the plan, never the mission opt-in.
 
-        Driven through ``do_sequence.plan_order_job(yes=True)`` — the shape
+        Driven through ``do_sequence.plan_order_job(run_unattended=True)`` — the shape
         step's planning, moved there from ``_cmd_do_mission`` by F268 — because
         the auto-approval path is the one an unattended caller takes; if any
         approval path could create a mission on its own, this is where it would
@@ -561,7 +561,7 @@ class TestDoCreatesOneMissionPerOrder:
             "from packages.orchestration.project_registry import resolve_project;"
             f"plan_order_job('Keep it green from now on',"
             f"  project=resolve_project({str(repo)!r}), repo_path={str(repo)!r},"
-            "  no_llm=True, yes=True)"
+            "  no_llm=True, run_unattended=True)"
         )
         proc = subprocess.run(
             [sys.executable, "-c", script], cwd=str(REPO_ROOT),

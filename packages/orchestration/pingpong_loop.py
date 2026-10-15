@@ -32,6 +32,7 @@ from typing import Any
 from packages.orchestration import data_paths
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
 from packages.orchestration.data_paths import mint_run_id
+from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_call_record import (
@@ -609,11 +610,9 @@ _MAX_TOTAL_CONTEXT_CHARS = 100000
 
 
 def _is_secret_file(name: str) -> bool:
-    if name == ".env" or name.startswith(".env.") or name.startswith(".env-"):
-        return True
-    if name in ("credentials.json", "secrets.json", ".secrets", "api_key.txt"):
-        return True
-    return False
+    from packages.orchestration.sensitive_paths import is_secret_file_name
+
+    return is_secret_file_name(name)
 
 
 def _is_safe_repo_path(root: Path, root_resolved: Path, rel: str) -> str:
@@ -3078,10 +3077,10 @@ def run_pingpong(
     # --- Target snapshot BEFORE anything runs ---
     target_snap = {} if _job_owned else _snapshot_target(original)
 
-    # Stream evidence must land somewhere. A caller that opts in without naming a
-    # directory (``do run``) gets this run's own directory, so the flag can never
-    # be silently accepted and then dropped.
-    if stream_evidence and not stream_evidence_dir:
+    # Evidence must land somewhere. A caller that names no directory gets this run's own
+    # directory, so an opted-in stream flag is never silently dropped (``do run``) and the Pi
+    # provider's call records (amend1014b) have a home. Claude streams still need the flag.
+    if not stream_evidence_dir:     # the run's own directory; Pi records its calls there too
         stream_evidence_dir = str(data_paths.run_dir(result.run_id))
 
     # Create staging BEFORE providers (so Builder cwd can be set)
@@ -4048,9 +4047,8 @@ def run_pingpong(
             # point at, and a `fail` without a finding would block the task as the
             # REVIEWER's incoherence. The empty diff is the evidence, so it becomes the
             # finding and the repair loop gets its second try.
-            if (not result.staged_files and not reviewer_out.findings
-                    and reviewer_out.verdict in ("needs_repair", "fail")):
-                reviewer_out.findings = [empty_change_finding(reviewer_out.summary)]
+            reviewer_out = reject_verdict_on_empty_diff(
+                reviewer_out, staged_files=result.staged_files, is_fake=is_fake or not _job_owned)
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)

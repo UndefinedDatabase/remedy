@@ -53,7 +53,7 @@ export interface ProjectCostToday {
   day: string;
   value_usd: number | null;
   basis: string;
-  calls: number;
+  harness_invocations: number;
 }
 
 export interface ProjectDecisions {
@@ -158,7 +158,7 @@ function decodeProjectCostToday(raw: unknown): ProjectCostToday {
     day: stringOf(obj["day"]),
     value_usd: numberOrNull(obj["value_usd"]),
     basis: basisOf(obj["basis"]),
-    calls: countOf(obj["calls"]),
+    harness_invocations: countOf(obj["harness_invocations"]),
   };
 }
 

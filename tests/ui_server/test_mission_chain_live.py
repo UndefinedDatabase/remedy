@@ -4,7 +4,7 @@ through the cockpit in a real browser.
 Two projects are registered over two real git folders, and one order over both is accepted the
 way `remedy do` accepts an order over several repositories: one batch in each repository's own
 mission, the batches sharing a correlation id. The order holds three jobs, two in alpha and one in
-beta, and alpha's ledger holds two model calls of its jobs. The REAL UI server is started for
+beta, and alpha's ledger holds two harness invocations of its jobs. The REAL UI server is started for
 alpha's first job in this process, serving a cockpit built into this module's own temporary
 folder (never the shared `apps/ui/dist`, DECISION F039 D9), and headless Chrome is driven over
 `--remote-debugging-pipe` with the story test's `ChromePipe`.
@@ -180,7 +180,7 @@ def test_the_missions_panel_shows_an_orders_chain_and_a_chip_opens_the_other_pro
         chips = _poll(pipe, CHIPS, lambda v: isinstance(v, list) and len(v) == 3, timeout=20.0)
         assert [chip[:2] for chip in chips] == expected_chain
         assert [chip[2] for chip in chips] == ["true", None, None]
-        assert _poll(pipe, USAGE, lambda v: v is not None) == "2 model calls · 150 tokens in, 25 out"
+        assert _poll(pipe, USAGE, lambda v: v is not None) == "2 harness invocations · 150 tokens in, 25 out"
         assert len(_orders_requests(list(pipe.events))) == 1
         assert _poll(pipe, STYLES, lambda v: v is not None) == ["fixed", "wrap", True]
         shot = pipe.send("Page.captureScreenshot", {"format": "png"})
@@ -202,7 +202,7 @@ def test_the_missions_panel_shows_an_orders_chain_and_a_chip_opens_the_other_pro
         chips = _poll(pipe, CHIPS, lambda v: isinstance(v, list) and len(v) == 3, timeout=20.0)
         assert [chip[:2] for chip in chips] == expected_chain
         assert [chip[2] for chip in chips] == [None, "true", None]
-        assert _poll(pipe, USAGE, lambda v: v is not None) == "No model calls"
+        assert _poll(pipe, USAGE, lambda v: v is not None) == "No harness invocations"
 
         # BACK returns to alpha's job: the chip pushed the address rather than replacing it.
         pipe.send("Runtime.evaluate", {"expression": "window.history.back()"})

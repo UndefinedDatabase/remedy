@@ -277,7 +277,7 @@ with the code that calls it.
 | Lines | File | Function |
 |---|---|---|
 | 1448 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1318 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1317 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
@@ -285,7 +285,7 @@ with the code that calls it.
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
-| 352 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
+| 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
 | 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
@@ -299,7 +299,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 252 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 250 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
@@ -317,9 +317,9 @@ with the code that calls it.
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 195 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
-| 190 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
-| 190 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
+| 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
@@ -441,13 +441,13 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5355 | `packages/orchestration/pingpong_job.py` |
-| 5233 | `packages/orchestration/pingpong_loop.py` |
+| 5349 | `packages/orchestration/pingpong_job.py` |
+| 5231 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2412 | `apps/cli/command_catalog.py` |
-| 2544 | `packages/orchestration/job_apply.py` |
+| 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |
@@ -464,7 +464,7 @@ with the code that calls it.
 | 1225 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1024 | `apps/cli/commands/do_cmd.py` |
+| 1018 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |

@@ -16,7 +16,10 @@ flowchart TD
 ```
 
 **Local-first.** Everything runs on your machine. Providers (Claude CLI, Ollama) are
-optional plug-ins behind interfaces; the core has no cloud dependency.
+optional plug-ins behind interfaces; the core has no cloud dependency. The default local
+execution chain is the Pi harness (the `pi` command) driving Ollama with `muse-glimmer:latest`:
+install Pi and run `ollama pull muse-glimmer:latest`, then `remedy doctor health` checks the
+chain without running an agent.
 
 **Human approval.** No automatic commit, push, merge or apply. Ever. The final
 gate (`commit_execution_gate`) is `NEEDS_HUMAN_APPROVAL` by design.
@@ -135,7 +138,7 @@ flight-plan rename and the help surface were split off at the soft limit
 and belong to the follow-up feature the STATUS ledger registers directly
 after it),
 F268 remedy do, the one-command start (`remedy do "<order>"` walks one
-sequence held as data — init, study, plan, shape, run, ui, apply — so it
+sequence held as data — init, study, plan, shape, ui, run, apply — so it
 registers the repository, studies it once, plans a mission whose every task
 names the deliverable it produces, runs the first job and stops before apply
 unless `--apply`; `--plan-only` stops after planning and `--step-by-step`
@@ -389,7 +392,7 @@ an hourly token expectation when one is configured, otherwise the job's own
 earlier provider calls — and trips only when a window of calls spends more
 than a floor at more than a set multiple of that expectation, so a tiny run or
 a steadily expensive one never trips; a job approved unattended with
-`remedy do run --yes` is paused before its next provider call and gets one
+`remedy do run --run-unattended` is paused before its next provider call and gets one
 decision that shows the arithmetic and offers resume or abandon, and
 `remedy job run` continues it; a job a person started keeps running; either
 way the alarm shows in `remedy job show`, in the report of
@@ -829,7 +832,7 @@ cap, and refuses an order file that sets no cost cap; `remedy status --json` car
 program can read every minute, listing every project's missions and jobs with their cost, every open
 decision with its question and its default, and the jobs that wait for approval; every kind of
 decision can be answered with `--json`, including raising or ending the budget of a job that stopped
-at its limit; a run with `--yes --no-ui --json` never waits for typed input; and the page
+at its limit; a run with `--run-unattended --no-ui --json` never waits for typed input; and the page
 `docs/system/machine-client-contract-v1.md` names every command, flag, answer field and exit code of
 that path, which a test keeps equal to a second test that drives the whole path).
 

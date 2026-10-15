@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from packages.orchestration.do_lane import DoLaneDecision
+    from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.project_registry import RemyProject
 
 #: The two shapes (DECISION F268 D5), and where the one in force came from; an order over
@@ -22,6 +24,7 @@ DO_SHAPE_MILESTONES = "milestones"
 DO_SHAPE_REPOSITORIES = "one job per repository"
 DO_SHAPE_SOURCE_PLANNER = "planner"
 DO_SHAPE_SOURCE_PROJECTS = "the order's projects"
+DO_SHAPE_SOURCE_BOUNDED = "bounded lane"
 DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
 DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
 
@@ -80,7 +83,9 @@ class DoContext:
     #: (DECISION F269 D1 (4)).
     contract_template: str | None = None
     no_ui: bool = False
-    yes: bool = False
+    #: `--run-unattended`: run a generated plan of tasks without confirmation; every open
+    #: question takes its documented default. Never implies apply, commit or push.
+    run_unattended: bool = False
     no_llm: bool = False
     force_job: bool = False
     force_mission: bool = False
@@ -112,6 +117,15 @@ class DoContext:
     #: `DoCockpitLaunchError` when it does not come up; the CLI supplies
     #: `launch_do_cockpit`. ``None`` opens nothing and prints the command.
     ui_launcher: Callable[[str], str] | None = None
+    #: Shows a pending plan of tasks to the person and returns True when they approve it; the
+    #: CLI supplies it only on an interactive terminal. ``None`` asks nobody (amend1014 D3).
+    confirm_plan: Callable[[Any], bool] | None = None
+    #: The lane the order walks (amend1014 D1), decided once by `settle_do_lane`; ``None`` until then.
+    lane: DoLaneDecision | None = None
+    #: The repository is small enough that its study needs no provider narration.
+    tiny_repo: bool = False
+    #: Where a human-facing walk says what it is doing (amend1014 D4); ``None`` under `--json`.
+    progress: DoProgress | None = None
     #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
     halt_reason: str = ""
     repo_root: str = ""

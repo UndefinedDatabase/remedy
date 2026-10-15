@@ -86,11 +86,11 @@ says. `max-provider-calls` counts every call the builder and the reviewer make, 
 included. `max-total-tokens` counts the input and output tokens those calls report, and never
 their cache-read or cache-creation tokens; a call that reports no tokens adds none, and the last
 call before a check can carry a run past the cap. Neither cap counts a call to the fake
-provider, which spends nothing, although the digest's `calls` still counts it.
+provider, which spends nothing, although the digest's `harness_invocations` still counts it.
 
 ## The path, step by step
 
-1. **Propose.** `remedy do <order file> --json --no-ui --yes` plans the order and runs its first
+1. **Propose.** `remedy do <order file> --json --no-ui --run-unattended` plans the order and runs its first
    job with the builder and reviewer the client names, and stops before the apply. The gate test
    adds `--no-llm` and the fake providers, and a `--deadline` that has already passed, so the
    budget stops the job and raises one decision. A run that does not finish answers `ok` false
@@ -105,10 +105,12 @@ provider, which spends nothing, although the digest's `calls` still counts it.
    limit under `ended_limit` and how many ended jobs it left out under `left_out`.
    `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
    null. Beside its `cost`, each job carries
-   `calls` and `tokens`, and each project's `cost_today` carries `tokens` beside its `calls`:
-   the provider calls and the tokens by kind, `input`, `output`, `cache_read` and
+   `harness_invocations`, `model_turns` and `tokens`, and each project's `cost_today` carries
+   `tokens` beside its `harness_invocations`: the harness invocations (one ledger row each: a
+   process the provider started, not a model call) and, for a job, the `model_turns` counted from
+   the Pi harness's own event stream (null when it made no record), and the tokens by kind, `input`, `output`, `cache_read` and
    `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
-   kind no call reported is null, never 0; a job no ledger names reads 0 calls, or null calls
+   kind no call reported is null, never 0; a job no ledger names reads 0 harness invocations, or null
    when a ledger could not be read. Each completed job also carries
    `approval_card`, what an operator approves its result on, read from the job's record and its
    mission's contract alone: how many files its tasks changed and the first twenty of them by
@@ -175,7 +177,7 @@ provider, which spends nothing, although the digest's `calls` still counts it.
 |---|---|---|
 | `--json` | every command | one JSON object on standard output |
 | `--no-ui` | `remedy do` | do not open the cockpit |
-| `--yes` | `remedy do` | approve the plan of tasks unattended; every open question takes its documented default |
+| `--run-unattended` | `remedy do` | run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push |
 | `--no-llm` | `remedy do` | plan without a model call (the gate test's choice) |
 | `--builder-provider` | `remedy do` | the builder, here `fake` |
 | `--reviewer-provider` | `remedy do` | the reviewer, here `fake` |
@@ -256,7 +258,7 @@ for them, and `remedy patch approve-hunks <job> --approve-hunk <id> --reject-hun
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
 - It never starts an order file that carries no cost cap.
-- It never asks a question on stdin when `--yes` is given: the builder's and the reviewer's
+- It never asks a question on stdin when `--run-unattended` is given: the builder's and the reviewer's
   child processes read end of file, and the gate test fails on any read of stdin.
 - It never resumes a job its budget stopped until that budget decision is answered:
   `remedy job resume` refuses it with exit code 3 and `budget_decision_open`.
@@ -330,13 +332,13 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--repo` | yes | no | yes | no | Path to target repository (default: the registered repository of the project --project or the order file names, else the current directory) |
 | `--project` | yes | no | yes | no | Select a registered project by slug or id instead of the repository's own |
 | `--json` | yes | no | no | no | Output JSON |
-| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or ollama (default: the builder role config) |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake or ollama (default: the reviewer role config) |
+| `--builder-provider` | yes | no | yes | no | Builder provider for `do`: claude, claude-cli, fake or pi (default: pi, the local Pi harness with the Ollama model muse-glimmer:latest; ollama alone cannot write files) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider for `do`: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools) |
 | `--builder-model` | yes | no | yes | no | Model for the builder role on every task `do` runs (default: the builder role config) |
 | `--reviewer-model` | yes | no | yes | no | Model for the reviewer role on every task `do` runs (default: the reviewer role config) |
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the configured planner role) |
-| `--yes` | yes | no | no | no | Approve the job's plan of tasks unattended: audited, every open question takes its documented default |
+| `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
 | `--no-ui` | yes | no | no | no | Do not open the cockpit |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |
@@ -349,7 +351,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--new-mission` | yes | no | no | no | Accept an order file again although an earlier order of it still has unfinished jobs; it adds one more order to the repository's one mission and never starts a second mission; without it such an order file is refused before any step, naming that mission |
 | `--step-by-step` | yes | no | no | no | Halt after each step that did work: print what happened and what comes next; Enter continues, q stops |
 | `--plan-only` | yes | no | no | no | Stop after the shape step: nothing is executed, and the output lists every deliverable |
-| `--rehearse` | yes | no | no | no | Plan what you ask as `remedy do` does and stop before any job of the mission runs: no builder or reviewer worker is built, nothing is applied and nothing is written into the repository, and the job's plan of tasks keeps its approval open for you; refused with --yes, --apply, a commit flag or --push |
+| `--rehearse` | yes | no | no | no | Plan what you ask as `remedy do` does and stop before any job of the mission runs: no builder or reviewer worker is built, nothing is applied and nothing is written into the repository, and the job's plan of tasks keeps its approval open for you; refused with --run-unattended, --apply, a commit flag or --push |
 | `--apply` | yes | no | no | no | Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied |
 | `--contract` | yes | no | yes | no | Force this contract template as the floor of the mission's acceptance criteria, instead of the one Remedy proposes: api-service, cli-tool, python-library or website |
 | `--commit` | yes | no | yes | no | Implies --apply: apply each job as `remedy job apply --approve --commit` does, landing one commit of exactly its copied files on your current branch, as you, with this one line as its first line, followed by the job's number when the mission has several jobs; each job runs only after the one before it is committed. Refused before any step with --plan-only, another commit flag, a dirty tree or a detached HEAD |
@@ -368,7 +370,7 @@ Keys under the answer keys: see below.
     - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
 - `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`
   - `mirror_errors`: `*`
-  - `roles`: `cache_read`, `calls`, `cost_usd`, `role`, `tokens_in`, `tokens_out`
+  - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
@@ -397,7 +399,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -405,7 +407,7 @@ Keys under the answer keys: see below.
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-    - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+    - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
       - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
     - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
@@ -452,10 +454,10 @@ Description: Run pending job tasks sequentially through Builder/Reviewer/Repair.
 | `--tasks` | yes | no | yes | no | Max tasks to execute (omitted keeps persisted; 0=all) |
 | `--timeout-sec` | yes | no | yes | no | Raw per-call timeout in seconds (omitted keeps persisted/default) |
 | `--max-output-chars` | yes | no | yes | no | Max provider output chars (omitted keeps persisted/default) |
-| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or ollama (persisted on continuation) |
+| `--builder-provider` | yes | no | yes | no | Builder provider: claude, claude-cli, fake or pi (default: pi, the local Pi harness with Ollama; ollama alone cannot write files; persisted on continuation) |
 | `--builder-model` | yes | no | yes | no | Model for builder role |
 | `--builder-effort` | yes | no | yes | no | Effort level for builder role |
-| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake or ollama (persisted on continuation) |
+| `--reviewer-provider` | yes | no | yes | no | Reviewer provider: claude, claude-cli, fake, ollama or pi (default: pi, read-only tools; persisted on continuation) |
 | `--reviewer-model` | yes | no | yes | no | Model for reviewer role |
 | `--reviewer-effort` | yes | no | yes | no | Effort level for reviewer role |
 | `--repair-provider` | yes | no | yes | no | Provider for repair role |
@@ -548,8 +550,8 @@ Description: Review and apply job workspace changes to target repo, under its mi
 | `--json` | yes | no | no | no | Output as JSON |
 
 Exit codes: `0`, `1`, `2`, `3`.
-Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed`, `target_detached_head`, `target_dirty`.
-Answer keys: `approved`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `push_unchecked_criteria`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
+Refusal tokens: `apply_failed`, `blocked_paths`, `commit_refused`, `history_merge_refused`, `invalid_argument`, `job_not_found`, `job_not_ready`, `merge_conflict`, `post_test_failed`, `push_failed`, `push_no_upstream`, `push_refused`, `push_refused_by_contract`, `target_changed_during_run`, `target_detached_head`, `target_dirty`.
+Answer keys: `approved`, `baseline_files_applied`, `blocked_reason`, `blocked_reasons`, `commit_message_mode`, `commit_sha`, `commit_with_history`, `context_strategy`, `dry_run`, `execution_config`, `file_readiness`, `files_applied`, `files_blocked`, `files_planned`, `files_skipped`, `finished_at`, `history_commits`, `job_apply_id`, `job_id`, `job_status`, `job_title`, `job_workspace_path`, `merge_commit`, `merge_conflicts`, `merged_branch`, `missing_source_files`, `modes_applied`, `post_test_command_present`, `post_test_passed`, `post_test_summary`, `preserved_dirty_paths`, `push`, `push_error`, `push_open_criteria`, `push_ref`, `push_remote`, `push_unchecked_criteria`, `pushed`, `reviewed_task_files`, `skip_blocked`, `source_changed_files`, `started_at`, `status`, `target_branch`, `target_clean`, `target_guard_ok`, `target_repo`, `task_summaries`, `temporary_worktree_cleanup`, `unexpected_source_files`.
 Keys under the answer keys: see below.
 
 - `execution_config`: `builder`, `builder_effort`, `builder_effort_source`, `builder_model`, `builder_model_source`, `builder_source`, `claude_cli_all_tools`, `claude_cli_all_tools_source`, `claude_cli_customizations`, `claude_cli_customizations_source`, `claude_cli_write_mode`, `claude_cli_write_mode_source`, `context_strategy`, `max_output_chars`, `max_output_chars_source`, `max_rounds`, `max_rounds_source`, `max_tasks`, `max_tasks_source`, `repair_effort`, `repair_effort_source`, `repair_model`, `repair_model_source`, `repair_provider`, `repair_provider_source`, `repair_rounds_allowed`, `repair_rounds_source`, `reviewer`, `reviewer_effort`, `reviewer_effort_source`, `reviewer_model`, `reviewer_model_source`, `reviewer_source`, `stream_evidence`, `stream_evidence_source`, `test_command`, `test_command_present`, `test_command_source`, `timeout_profile`, `timeout_profile_source`, `timeout_sec`, `timeout_sec_source`
@@ -771,7 +773,7 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -853,7 +855,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -861,7 +863,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-  - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+  - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 - `supervisor`: `answers`

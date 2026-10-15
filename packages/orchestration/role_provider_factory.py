@@ -69,6 +69,11 @@ def create_role_provider(
             provider: PingPongProvider = ClaudeCliProvider(write_mode=write_mode, **common)
         else:
             provider = ClaudeCliProvider(**common)
+    elif name == "pi":
+        # WHY here: Pi must run in the job workspace with the role's own tool allowlist.
+        from packages.orchestration.pi_provider import make_pi_provider
+        provider = make_pi_provider(role, cwd=staging_dir, model=model,
+                                    evidence_dir=stream_evidence_dir)
     else:
         provider = make_provider(name, model=model)
 

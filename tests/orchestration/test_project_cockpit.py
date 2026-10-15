@@ -208,23 +208,23 @@ class TestProjectSummary:
 
     def test_cost_today_is_the_ledgers_utc_day_and_names_its_basis(self, world):
         alpha = project_summary(world["alpha"], now=NOW)["cost_today"]
-        assert alpha == {"day": "2026-09-01", "value_usd": 0.25, "basis": "actual", "calls": 1}
+        assert alpha == {"day": "2026-09-01", "value_usd": 0.25, "basis": "actual", "harness_invocations": 1}
         report = query_cost(project_id=world["alpha"].id, since="2026-09-01", until="2026-09-02")
-        assert (alpha["value_usd"], alpha["calls"]) == (report.total.cost_usd, report.total.calls)
+        assert (alpha["value_usd"], alpha["harness_invocations"]) == (report.total.cost_usd, report.total.calls)
 
     def test_an_unpriced_call_makes_cost_today_a_lower_bound(self, world):
         assert project_summary(world["beta"], now=NOW)["cost_today"] == {
-            "day": "2026-09-01", "value_usd": 0.5, "basis": "lower_bound", "calls": 2}
+            "day": "2026-09-01", "value_usd": 0.5, "basis": "lower_bound", "harness_invocations": 2}
 
     def test_no_ledger_is_an_absent_cost_never_a_zero(self, world, tmp_path):
         gamma = register_project_repo("gamma", _git_folder(tmp_path / "gamma"))
         assert project_summary(gamma, now=NOW)["cost_today"] == {
-            "day": "2026-09-01", "value_usd": None, "basis": "absent", "calls": 0}
+            "day": "2026-09-01", "value_usd": None, "basis": "absent", "harness_invocations": 0}
 
     def test_the_day_is_the_utc_day_of_the_moment_asked(self, world):
         late = datetime(2026, 9, 2, 0, 30, tzinfo=timezone.utc)
         assert project_summary(world["alpha"], now=late)["cost_today"] == {
-            "day": "2026-09-02", "value_usd": 2.0, "basis": "actual", "calls": 1}
+            "day": "2026-09-02", "value_usd": 2.0, "basis": "actual", "harness_invocations": 1}
 
     def test_decisions_sum_every_scoped_jobs_open_cards(self, world):
         decisions = project_summary(world["alpha"], now=NOW)["decisions"]

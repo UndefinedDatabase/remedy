@@ -1,7 +1,7 @@
 """CLI handler for ``remedy do "<order>"``: plan and run an order through the F268 sequence.
 
 Every `remedy do`, with or without the word `run`, walks
-`packages/orchestration/do_sequence.py` — init, study, plan, shape, run, ui,
+`packages/orchestration/do_sequence.py` — init, study, plan, shape, ui, run,
 apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
 The module also holds the `job.run`, `job.apply`, `job.decline` and
 `job.evidence` handlers; the `run.show` and `run.list` handlers live in
@@ -29,6 +29,7 @@ from apps.cli.commands.run_invocation import (
 # amend1014-luna-mission-fixes D.2).
 from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.do_role_guards import non_writing_provider_refusal, unrepresentable_baseline
 
 if TYPE_CHECKING:
     import argparse
@@ -42,7 +43,7 @@ _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 # builder, reviewer, and repair roles. Values are validated at the CLI layer
 # before being passed through to role_config.resolve_role_config.
 # Exactly the names create_provider (packages/orchestration/pingpong_provider.py) builds.
-_VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake"})
+_VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake", "pi"})
 _VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
 _ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
 
@@ -56,13 +57,10 @@ def _validate_role_override(role: str, field: str, value: object) -> None:
     """
     if value is None:
         return
-    if field == "provider" and value not in _VALID_ROLE_PROVIDERS:
-        fail(
-            "invalid_argument",
-            f"invalid --{role}-provider: {value!r}. "
-            f"Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}.",
-            json_output=False, exit_code=2,
-        )
+    if field == "provider" and (why := (
+            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}."
+            if value not in _VALID_ROLE_PROVIDERS else non_writing_provider_refusal(role, str(value)))):
+        fail("invalid_argument", why, json_output=False, exit_code=2)
     if field == "effort" and value not in _VALID_ROLE_EFFORTS:
         fail(
             "invalid_argument",
@@ -194,11 +192,13 @@ def _resolve_do_commit_flags(
     source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
     if key and not mode:
         print(DO_PUSH_KEY_WITHOUT_COMMIT, file=sys.stderr)
+    if top is not None and (why := unrepresentable_baseline(top)):
+        _refuse_before_any_step([why])      # amend1014b D5: a dirty tree is a baseline, not a refusal
     if not mode or top is None:
         return mode, source
     landing, what = (("the task commits", "merge into") if mode == "history"
                      else ("the commit", "commit on"))
-    refusals, _stop = checkout_refusals(top, landing=landing, what=what)
+    refusals, _stop = checkout_refusals(top, landing=landing, what=what, allow_dirty=mode != "history")
     if source:
         refusals += upstream_push_refusals(top)
     if refusals:
@@ -214,7 +214,7 @@ def _cmd_do_order(
     order_source_sha256: str = "",
     json_output: bool = False,
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
     builder_model: str | None = None,
@@ -241,38 +241,28 @@ def _cmd_do_order(
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
-    init, study, plan, shape, run, ui and apply, in that order, through
-    `packages.orchestration.do_sequence`; the walk stops before apply unless
-    `--apply`, and the ui step opens the cockpit detached through
-    `launch_do_cockpit` unless `--no-ui` (DECISION F268 D9).
-    `--force-job` / `--force-mission` override the planner's shape and exit 2
-    together (DECISION F268 D5). `--step-by-step` halts between steps and
-    reads each answer with `input`; `--plan-only` ends the walk after
-    shape (DECISION F268 D8). `--json` carries the mission's `contract` body,
-    or null when it has none (DECISION F269 D4 (6)), and
-    `unmet_blocking_criteria`, its blocking criteria not met after the walk in
-    contract order; the text output prints one `Contract:` line counting the
-    met criteria and naming each of those with its status (D6 (4)), `shape` /
-    `shape_source`, `mission_plan_path`
-    and `jobs`, every job's tasks with their deliverables. In a walk of two or
-    more jobs only the first runs and `waiting_job_ids` names the rest
-    (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
-    `do` ends with the measured tokens per role and cost read back from it,
-    under `cost` in `--json` (DECISION F268 D11). `--project` selects the
-    project the init step uses; the budget flags are resolved before the first
-    step and reach the run, as do `--builder-model` and `--reviewer-model`,
-    which every `remedy job run` Next line carries too; `--planner-model`
-    reaches every structured planner call (DECISION F268 D16 (4) to (7)), and
-    `--planner-provider` names which SERVICE makes those calls — `ollama` or
-    `claude-cli`, checked by `_cmd_do` before any step (operator amendment
-    amend0920-selfuse-real, DECISION D1).
-    `contract` is the template `--contract` forces, already checked by
-    `_cmd_do`; ``None`` lets the plan step apply the one proposed from the
-    order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
-    ``commit_with_history`` are the commit flag, already checked by `_cmd_do`,
-    and ``push_source`` says why the mission is pushed once, or "" (DECISION
-    F270 D4); `--json` carries `landed`, each commit the walk landed with its
-    job, and `push`, the mission's one push or null (D4 (7)).
+    init, study, plan, shape, ui, run and apply, in that order, through
+    `packages.orchestration.do_sequence`; the walk stops before apply unless `--apply`, and the
+    ui step opens the cockpit detached through `launch_do_cockpit` before the run unless `--no-ui`
+    (DECISION F268 D9, operator amendment amend1014-do-golden-path-now D5). Unless `--json`, the walk
+    says what it is doing on stderr as it goes (D4). `--force-job` / `--force-mission` override the
+    planner's shape and exit 2 together (DECISION F268 D5). `--step-by-step` halts between steps
+    and reads each answer with `input`; `--plan-only` ends the walk after shape (D8). `--json`
+    carries the mission's `contract` body, or null (DECISION F269 D4 (6)), and
+    `unmet_blocking_criteria`; the text output prints one `Contract:` line (D6 (4)), `shape` /
+    `shape_source`, `mission_plan_path` and `jobs`, every job's tasks with their deliverables. In a
+    walk of two or more jobs only the first runs and `waiting_job_ids` names the rest (DECISION
+    F268 D12). Every job run is mirrored into the F103 ledger, and `do` ends with the measured
+    tokens per role and cost read back from it, under `cost` in `--json` (D11). `--project`
+    selects the project the init step uses; the budget flags are resolved before the first step
+    and reach the run, as do `--builder-model` and `--reviewer-model`; `--planner-model` reaches
+    every structured planner call (D16 (4) to (7)), and `--planner-provider` names which SERVICE
+    makes those calls (amend0920-selfuse-real, DECISION D1). `contract` is the template
+    `--contract` forces, already checked by `_cmd_do`; ``None`` lets the plan step apply the one
+    proposed from the order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
+    ``commit_with_history`` are the commit flag, already checked by `_cmd_do`, and
+    ``push_source`` says why the mission is pushed once, or "" (DECISION F270 D4); `--json`
+    carries `landed` and `push` (D4 (7)).
     """
     if not order or not order.strip():
         fail("invalid_argument", "order must not be empty.",
@@ -309,7 +299,9 @@ def _cmd_do_order(
                  json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
+    from apps.cli.commands.do_plan_prompt import interactive_plan_confirmer
     from packages.orchestration.do_cockpit import launch_do_cockpit
+    from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
         do_contract_summary_line,
@@ -334,7 +326,7 @@ def _cmd_do_order(
         planner_provider=planner_provider,
         contract_template=contract,
         no_ui=no_ui,
-        yes=yes,
+        run_unattended=run_unattended,
         no_llm=no_llm,
         force_job=force_job,
         force_mission=force_mission,
@@ -349,6 +341,8 @@ def _cmd_do_order(
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
+        progress=None if json_output else DoProgress(),
+        confirm_plan=None if json_output else interactive_plan_confirmer(),
     ))
     jobs = do_job_task_listing(ctx)
     # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
@@ -415,7 +409,7 @@ def _cmd_do(
     max_cost_usd: str | None = None,
     deadline: str | None = None,
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     force_job: bool = False,
     force_mission: bool = False,
     step_by_step: bool = False,
@@ -436,7 +430,7 @@ def _cmd_do(
     exit 2 and that mission's id, unless `new_mission` asks for another (DECISION F304 D6).
     """
     from apps.cli.commands.do_rehearsal_refusals import refuse_rehearsal_conflicts
-    refuse_rehearsal_conflicts(rehearse=rehearse, yes=yes, apply=apply, commit=commit, commit_auto=commit_auto,
+    refuse_rehearsal_conflicts(rehearse=rehearse, run_unattended=run_unattended, apply=apply, commit=commit, commit_auto=commit_auto,
                                commit_with_history=commit_with_history, push=push, json_output=json_output)
     # DECISION F295 D2: an order argument naming a `.md` file is read before any
     # other step, and a file without a cap is refused before any step; DECISION F304 D14 lets the
@@ -494,7 +488,7 @@ def _cmd_do(
                  json_output=json_output, exit_code=2, mission_id=running.id)
     _cmd_do_order(goal, repo=repo, **order_source_kwargs,
                   json_output=json_output, no_llm=no_llm,
-                  yes=yes, builder_provider=builder_provider,
+                  run_unattended=run_unattended, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
                   reviewer_model=reviewer_model, planner_model=planner_model,
                   planner_provider=planner_provider,
@@ -948,7 +942,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
-        yes=getattr(args, "yes", False),
+        run_unattended=bool(getattr(args, "run_unattended", False)),
         force_job=bool(getattr(args, "force_job", False)),
         force_mission=bool(getattr(args, "force_mission", False)),
         step_by_step=bool(getattr(args, "step_by_step", False)),

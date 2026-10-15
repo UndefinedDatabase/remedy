@@ -15,11 +15,17 @@ Scope: init registers and ignores and writes no file into the repository
 mission record for the order, writes the contract template forced or proposed
 onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
-overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
-runs the first job on the chosen providers; ui opens the cockpit for the job
-that ran as a detached process unless `--no-ui`; apply stops before apply and
-prints the apply command for the job that ran, unless `--apply`, which applies
-it (DECISION F268 D9).
+overriding it, and plans the jobs, each bounded by deliverables (D5, D6); ui
+opens the cockpit for the job that runs first as a detached process unless
+`--no-ui`, BEFORE the run so it is there when the run blocks or fails
+(operator amendment amend1014-do-golden-path-now D5); run runs the first job on
+the chosen providers; apply stops before apply and prints the apply command for
+the job that ran, unless `--apply`, which applies it (DECISION F268 D9).
+
+Operator amendment amend1014-do-golden-path-now D1: a bounded one-deliverable order walks the
+bounded lane of `do_lane.py` (no planning provider call; only the builder and the reviewer
+run), anything else the full lane, and a human-facing walk says what it is doing through
+`do_progress.py` (D4).
 
 DECISION F268 D12 (amending D10): in a walk of two or more jobs only the first
 runs. Every other job waits, because a job's workspace is cut from the target's
@@ -91,6 +97,9 @@ from packages.orchestration.do_context import (
     _job_run_role_flags,
     do_stopped_walk_note,
 )
+from packages.orchestration.do_lane import settle_do_lane
+from packages.orchestration.do_plan_confirm import approve_confirmed_plan
+from packages.orchestration.do_progress import do_step_intro
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
 from packages.orchestration.do_targets import (
     _shape_job_orders,
@@ -99,7 +108,7 @@ from packages.orchestration.do_targets import (
 )
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
-DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "ui", "apply")
+DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "ui", "run", "apply")
 
 
 #: A step takes the context and returns ``(status, detail)``; the walker names it.
@@ -115,7 +124,7 @@ def walk_do_sequence(ctx: DoContext,
     """
     steps = DO_STEP_TABLE if table is None else table
     for index, name in enumerate(DO_SEQUENCE):
-        status, detail = steps[name](ctx)
+        status, detail = _announced_step(ctx, name, steps[name])
         ctx.results.append(DoStepResult(name=name, status=status, detail=detail))
         if status in DO_WALK_ENDING_STATUSES:
             break
@@ -130,6 +139,21 @@ def walk_do_sequence(ctx: DoContext,
                 detail=f"not run: {ctx.halt_reason}{note}"))
             break
     return ctx
+
+
+def _announced_step(ctx: DoContext, name: str, step: DoStep) -> tuple[str, str]:
+    """Call *step*, and when the walk has a progress sink say it started, beat while it runs, say it ended.
+
+    Operator amendment amend1014-do-golden-path-now D4: the start line is written, flushed, before
+    the step's first line of work, so a step that blocks is never silent.
+    """
+    if ctx.progress is None:
+        return step(ctx)
+    intro = do_step_intro(name, ctx)
+    with ctx.progress.step(name, intro) as end:
+        status, detail = step(ctx)
+        end(status, detail)
+    return status, detail
 
 
 #: The answer at a `--step-by-step` halt that stops the walk; end of input stops it too.
@@ -181,6 +205,9 @@ def do_step_by_step_halt(ctx: DoContext, done: str, coming: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+#: The audit reason of a task plan that `--run-unattended` approved.
+DO_UNATTENDED_REASON = "auto-approved via --run-unattended"
+
 #: The plan label of a job planned without an LLM task plan (DECISION F268 D6).
 DO_DETERMINISTIC_PLAN_LABEL = "deterministic, one task per deliverable"
 
@@ -230,6 +257,8 @@ class OrderJobPlan:
             return "intake: llm"
         if self.intake_fallback_reason == "forced":
             return "intake: heuristic (forced by --no-llm)"
+        if self.intake_fallback_reason == "bounded":
+            return "intake: heuristic (bounded lane, no provider call)"
         if self.intake_fallback_reason == "provider_unavailable":
             return "intake: heuristic fallback (provider unavailable)"
         if self.intake_fallback_reason == "provider_error":
@@ -257,26 +286,32 @@ class OrderJobPlan:
 def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
     """The plan and its job tasks, every task a deliverable; raises :class:`OrderJobPlanError` otherwise.
 
-    DECISION amend1011 D1: a plan rejected for inspection tasks is repaired once, by
-    folding each into the task that needs it; a plan still rejected afterwards fails.
+    DECISION amend1011 D1 and operator amendment amend1014-do-golden-path-now D2: a plan is
+    normalized before it may run, each inspection task folded into the task that needs it and
+    the tasks serving one file merged into one; the planner's own plan is the last candidate,
+    and a plan still rejected afterwards fails.
     """
     from packages.orchestration.job_plan import map_task_plan_to_tasks
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
+        coalesce_deliverable_tasks,
         fold_inspection_tasks,
         record_llm_task_deliverables,
         validate_deliverable_plan,
     )
 
-    for attempt in (plan, fold_inspection_tasks(plan)):
+    folded = fold_inspection_tasks(plan)
+    candidates = (coalesce_deliverable_tasks(folded or plan), folded, plan)
+    error: DeliverablePlanError | None = None
+    for attempt in candidates:
         if attempt is None:
-            break
+            continue
         tasks = map_task_plan_to_tasks(attempt)
         record_llm_task_deliverables(tasks)
         try:
             validate_deliverable_plan(tasks)
         except DeliverablePlanError as exc:
-            error = exc
+            error = error or exc
             continue
         return attempt, tasks
     raise OrderJobPlanError(f"task plan rejected: {error}") from error
@@ -315,14 +350,14 @@ def plan_order_job(
     project: RemyProject,
     repo_path: str = "",
     no_llm: bool = False,
-    yes: bool = False,
+    run_unattended: bool = False,
     deterministic_tasks: list[TaskEntry] | None = None,
     planner_model: str | None = None,
     planner_provider: str | None = None,
 ) -> OrderJobPlan:
     """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
-    ``repo_path`` is the job's target repository. ``yes`` auto-approves an LLM
+    ``repo_path`` is the job's target repository. ``run_unattended`` auto-approves an LLM
     task plan through ``job_plan.auto_approve_task_plan`` (F034). The job is
     saved and attached to ``project``. The deterministic plan is one task per
     deliverable of the order (DECISION F268 D6); ``deterministic_tasks`` names
@@ -479,24 +514,22 @@ def plan_order_job(
             write_plan_md(
                 fp_result.plan, job_evidence_export_dir(str(job.job_id)),
                 transformations=fp_result.transformations)
-            if yes:
-                # F034: --yes covers approval AND clarifications. Every open
-                # question runs on its documented default, recorded in the
-                # assumption log — unattended, but never silent. The semantics
-                # live in job_plan.auto_approve_task_plan so the
-                # orchestrator loop runs the SAME approval, not a copy of it.
+            if run_unattended:
+                # F034: --run-unattended covers approval AND clarifications: every open question
+                # runs on its documented default, in the assumption log, never silent. The semantics
+                # live in job_plan.auto_approve_task_plan, which the orchestrator loop runs too.
                 from packages.orchestration.job_plan import (
                     AUTO_APPROVAL_MODE,
                     announce_plan_approval,
                     auto_approve_task_plan,
                 )
                 fp_dict = auto_approve_task_plan(
-                    fp_dict, job_evidence_export_dir(str(job.job_id)))
+                    fp_dict, job_evidence_export_dir(str(job.job_id)), reason=DO_UNATTENDED_REASON)
                 job.task_plan = fp_dict
                 save_job_plan(job)
                 announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
                 plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (approved via --yes)"
+                    f"task plan {fp_result.plan.schema_v} (approved via --run-unattended)"
                 )
             else:
                 plan_label = (
@@ -595,7 +628,9 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
         return DO_STEP_SKIPPED, (
             f"{ctx.repo_root} has no commit holding a tracked file — nothing to study")
 
-    call_fn = None if ctx.no_llm else study_call_fn()
+    # Amend1014 D1: a tiny repository of a bounded order is studied from facts, with no narration call.
+    lane = settle_do_lane(ctx)
+    call_fn = None if ctx.no_llm or (lane.bounded and ctx.tiny_repo) else study_call_fn()
     result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
     updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
     if updated is not None:
@@ -660,7 +695,8 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.intake import resolve_planner_target
 
     planner_name, _ = resolve_planner_target(ctx.planner_provider, ctx.planner_model)
-    if not ctx.no_llm:
+    lane = settle_do_lane(ctx)
+    if not ctx.no_llm and not lane.bounded:
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.mission_plan_schema import MissionPlanDraft
 
@@ -678,12 +714,36 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+    kept_note = ""
+    if call_fn is not None:
+        outcome, kept_note = _deterministic_plan_for_invented_scope(ctx, project_id, outcome, planner_name)
     ctx.mission_plan = outcome.plan
     ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
         f"mission {ctx.mission_id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
-        f"{contract_note}")
+        f"lane: {lane.lane} ({lane.reason}){kept_note}; {contract_note}")
+
+
+def _deterministic_plan_for_invented_scope(
+        ctx: DoContext, project_id: str, outcome: Any, planner_name: str) -> tuple[Any, str]:
+    """``(outcome, note)``: the planner's plan, or the deterministic one when it names files the order did not.
+
+    Amend1014 D6: the guard is this comparison, not the prompt's wording. The plan that invented
+    scope stays on disk as the previous version; the deterministic plan names only the order's
+    own deliverables. ``note`` is "" when the planner's plan is kept.
+    """
+    from packages.orchestration.do_lane import tracked_repo_files
+    from packages.orchestration.do_scope import mission_plan_text, order_scope_violations
+    from packages.orchestration.mission_compiler import plan_mission
+
+    invented = order_scope_violations(
+        ctx.order, mission_plan_text(outcome.plan), tracked_repo_files(ctx.repo_root))
+    if not invented:
+        return outcome, ""
+    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name)
+    return kept, (f"; the planner's plan named files the order did not request ({', '.join(invented)}), "
+                  f"so the deterministic plan of the order's own deliverables was kept")
 
 
 def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
@@ -740,10 +800,11 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.repo_mission import link_order_job
 
+    lane = settle_do_lane(ctx)
     try:
         shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
                                          force_mission=ctx.force_mission,
-                                         projects=len(ctx.projects))
+                                         projects=len(ctx.projects), bounded=lane.bounded)
     except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
     ctx.shape, ctx.shape_source = shape, source
@@ -755,14 +816,16 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 order,
                 project=target.project,
                 repo_path=target.repo,
-                no_llm=ctx.no_llm,
-                yes=ctx.yes,
+                no_llm=ctx.no_llm or lane.bounded,
+                run_unattended=ctx.run_unattended,
                 deterministic_tasks=tasks,
                 planner_model=ctx.planner_model,
                 planner_provider=ctx.planner_provider,
             )
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
+        if lane.bounded and not ctx.no_llm:
+            shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
@@ -878,13 +941,16 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
             return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
 
         blocked = task_plan_blocks_execution(job)
+        if blocked == "pending" and ctx.confirm_plan is not None and ctx.confirm_plan(job):
+            approve_confirmed_plan(job)
+            blocked = task_plan_blocks_execution(job)
         if blocked is not None:
             approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
             ctx.next_lines.append(approve)
             ctx.next_lines.append(f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
             return DO_STEP_STOPPED, (
                 f"job {job_id}'s task plan is {blocked}, not approved; it was not run "
-                f"(--yes approves it unattended). Approve it with: {approve}")
+                f"(--run-unattended runs a generated plan without asking). Approve it with: {approve}")
 
         done = run_job(job_id, builder_name=ctx.builder_provider,
                        reviewer_name=ctx.reviewer_provider,

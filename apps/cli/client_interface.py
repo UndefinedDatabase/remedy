@@ -124,7 +124,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
         "invalid_argument", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
         "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
-        "target_changed", "target_detached_head", "target_dirty",
+        "target_changed_during_run", "target_detached_head", "target_dirty",
     ),
     "job.decline": (
         "ambiguous_job_id", "invalid_job_id", "job_already_applied", "job_not_declinable",
@@ -192,12 +192,13 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "warning", "worktree", "worktree_head", "worktrees", "would_run", "would_run_stage",
     ),
     "job.apply": (
-        "approved", "blocked_reason", "blocked_reasons", "commit_message_mode", "commit_sha",
+        "approved", "baseline_files_applied", "blocked_reason", "blocked_reasons", "commit_message_mode", "commit_sha",
         "commit_with_history", "context_strategy", "dry_run", "execution_config", "file_readiness",
         "files_applied", "files_blocked", "files_planned", "files_skipped", "finished_at",
         "history_commits", "job_apply_id", "job_id", "job_status", "job_title", "job_workspace_path",
         "merge_commit", "merge_conflicts", "merged_branch", "missing_source_files", "modes_applied",
-        "post_test_command_present", "post_test_passed", "post_test_summary", "push", "push_error",
+        "post_test_command_present", "post_test_passed", "post_test_summary", "preserved_dirty_paths",
+        "push", "push_error",
         "push_open_criteria", "push_ref", "push_remote", "push_unchecked_criteria", "pushed",
         "reviewed_task_files",
         "skip_blocked", "source_changed_files", "started_at", "status", "target_branch",
@@ -266,7 +267,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "upkeep_open_findings": {},
             "upkeep_deferred_step": {},
         },
-        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {},
+        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "harness_invocations": {},
                        "tokens": TOKENS_BY_KIND_KEY_TREE},
     },
     "jobs": {
@@ -278,7 +279,8 @@ DIGEST_KEY_TREE: dict[str, Any] = {
         "state": {},
         "waits_for_apply": {},
         "cost": {"value_usd": {}, "basis": {}},
-        "calls": {},
+        "harness_invocations": {},
+        "model_turns": {},
         "tokens": TOKENS_BY_KIND_KEY_TREE,
         "evidence": {
             "evidence_dir": {},
@@ -485,7 +487,8 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "cost": {
             "roles": {
                 "role": {},
-                "calls": {},
+                "harness_invocations": {},
+                "model_turns": {},
                 "tokens_in": {},
                 "tokens_out": {},
                 "cache_read": {},

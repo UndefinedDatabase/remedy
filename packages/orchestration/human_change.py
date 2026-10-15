@@ -303,7 +303,7 @@ def absorb_job(job: Any, *, detected_by: str, root: Path | None = None) -> JobAb
         ref = job.target_last_known.get("ref") or W.checkpoint_ref(
             job_worktree_id(job.job_id), LAST_KNOWN_REF_NAME)
         W.set_checkpoint_ref(job.repo_path, ref, change.after.tree)
-        job.target_last_known = {**change.after.to_dict(), "ref": ref}
+        job.target_last_known = {**job.target_last_known, **change.after.to_dict(), "ref": ref}
         save_job_plan(job, root)
 
     outcome = absorb(job.job_id, job.repo_path, last_known, detected_by=detected_by,

@@ -29,6 +29,8 @@ class TestWorkerDoctor:
     def test_ollama_on_path_reads_ready(self, monkeypatch, capsys):
         import shutil as _shutil
         monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None)
+        import packages.orchestration.pi_provider as pi_provider
+        monkeypatch.setattr(pi_provider, "default_chain_checks", lambda: [("pi_executable", True, "pi")])
         from apps.cli.commands.worker import _cmd_worker_doctor
         _cmd_worker_doctor(json_output=True)
         out = json.loads(capsys.readouterr().out)

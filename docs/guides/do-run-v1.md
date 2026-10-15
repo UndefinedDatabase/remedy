@@ -14,16 +14,98 @@ remedy do "add a hello() function" --repo . --json
 remedy do run "add a hello() function" --repo . --json
 ```
 
+## The ordinary command and the default harness
+
+```
+remedy do "<order>" --apply
+```
+
+is the ordinary use: the reviewed change is applied to your files, nothing is committed, and the
+walk reports what is now uncommitted. Add `--commit-auto` to commit.
+
+- **Pi is the default execution harness**, with the local Ollama model `muse-glimmer:latest`, for
+  the builder, the reviewer and the repair role. Pi supplies the agent loop and the file tools;
+  Ollama is the model server and by itself is not a coding harness (a raw Ollama call returns
+  text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
+  job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
+  (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
+  model call with the action to take, and never falls back to another provider.
+- **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
+  captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
+  deletions), seeds the job workspace from them and measures the proposed change from that state.
+  Pi sees only that workspace: every other dirty path (an unrelated source file, an untracked
+  `.env`, a private key) is left exactly where it is, is never copied into the workspace or onto a
+  job branch, and shows in the report only as a name the run preserved. A sensitive path is also
+  never hashed into a Git object. (An ordinary unrelated dirty file is still hashed into the
+  repository's own object database by the human-change snapshot that keeps the target's last known
+  state under a Remedy checkpoint ref; it is on no job branch and in no evidence.) A sensitive path
+  (environment files, credentials files, `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.git`) is judged by
+  its name alone, never by `.gitignore`; an order that names one as a target is refused before any
+  worktree or model call. Nothing is stashed, reset, checked out or committed in your repository. A
+  state it cannot represent exactly (unresolved merge conflicts, a submodule or nested repository,
+  a very large dirty set) stops the walk before any step and names the cause.
+- **Timeouts are ceilings.** An explicit timeout (flag, order file, persisted config) is never
+  raised for Pi. The remaining job wall-clock budget and the job deadline cap one Pi call too, and
+  the tightest ceiling wins; the call record keeps the configured value, the job ceiling and the
+  effective value under `timeout`. Only when nobody set a timeout does Pi get its longer default of
+  900 seconds, because its agent loop takes several tool turns.
+- **Harness invocations and model turns are different counts.** One Pi process (a harness
+  invocation, what the token ledger records as one call) runs several model turns. The text report
+  and `--json` print both, for example `(1 harness invocation, 8 model turns)`; the turns are
+  counted from Pi's own event stream, and a role without a Pi record says `model turns not
+  reported`. A failed Pi invocation that produced no assistant message is one invocation and zero
+  turns.
+- **Concurrent edits still block.** If a file the job changed was edited, or HEAD moved, after
+  the start state was captured, the apply stops with `target_changed_during_run`, names the paths
+  and overwrites nothing.
+- **`--commit-auto` commits only the files the job changed.** Other uncommitted files stay
+  uncommitted and byte-identical, and the report names them. If the committed file already held
+  your uncommitted edits, the report says so: the commit contains them too.
+- Nothing is applied without `--apply` or a commit flag.
+
+## Two lanes
+
+An ordinary, bounded request needs nothing but the order:
+
+```
+remedy do "Add one concise project-description paragraph below the heading in README.md. Change no other files." --repo .
+```
+
+`remedy do` reads the order and the repository and picks a lane without asking a model. A
+**bounded** order, one repository and exactly one file (named in the order, or the only file the
+repository tracks) with one plain part, walks the bounded lane: a deterministic scan of a tiny
+repository, the one-milestone plan, one job and one task for that file, and **no planning
+provider call**. Only the builder and the reviewer are called, in Remedy's isolated workspace,
+and the walk stops before apply. Anything else, several files, several projects, an order file or
+`--force-mission`, or any order whose scope is not clearly one file, walks the **full lane**,
+which plans milestones, jobs and tasks with the planner and keeps an approval boundary: on a
+terminal Remedy shows the plan and asks whether to run it; with no terminal it stops and names
+`--run-unattended`. `--run-unattended` runs a generated plan without asking and takes the
+documented default for every open question; it never applies, commits, pushes, merges or
+deploys, because the target repository only changes with `--apply` or a commit flag.
+`--force-job` also selects the bounded lane. A planner that names a file the order did not ask
+for is not believed: the walk keeps the deterministic plan of the order's own deliverables
+(operator amendment amend1014-do-golden-path-now D1, D6).
+
+## While it works
+
+Unless `--json`, `remedy do` says what it is doing on stderr as it goes: each step before it
+starts (with the provider of a step that calls one), a heartbeat at least every ten seconds
+while a step stays blocked, and each step's end with its elapsed time. The cockpit URL is printed
+the moment the cockpit is up, before the builder runs, and stays usable if the run blocks or
+fails; if the cockpit does not come up the run goes on and the exact `remedy ui start <job id>`
+is printed. `--json` keeps stdout one document and stderr silent (D4, D5).
+
 ## The steps, in order
 
 | Step | What it does |
 |------|--------------|
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
-| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
+| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. A tiny repository of a bounded order is studied from facts alone. |
 | `plan` | Finds the repository's one mission, creating it on the repository's first order, adds the order to it as a batch, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
+| `ui` | Opens the cockpit for the job that runs first as a detached process, before the run, unless `--no-ui` or `--plan-only`. |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |
-| `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
 | `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply` or a commit flag, which applies them; with a push, it then pushes the mission once. |
 
 A step that stops or fails ends the walk; the steps after it are not called.
@@ -54,7 +136,7 @@ builder or reviewer is built, nothing is applied, and the repository is not
 touched. A job whose plan of tasks waits for approval keeps waiting: its
 `Next:` lines name `remedy decision resolve <job_id> plan:approval --reason approve`
 and then `remedy job run <job_id>`. `--rehearse` is refused before any step,
-with exit 2 and the error `invalid_argument`, when it is given with `--yes`,
+with exit 2 and the error `invalid_argument`, when it is given with `--run-unattended`,
 `--apply`, `--commit`, `--commit-auto`, `--commit-with-history` or `--push`
 (DECISION F055 D1).
 
@@ -116,7 +198,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--repo` — target repository path (default `.`)
 - `--project` — select a registered project by slug or id instead of the repository's own
 - `--json` — the JSON output above
-- `--builder-provider`, `--reviewer-provider` — claude, claude-cli, fake or ollama
+- `--builder-provider` — `pi` (the default), claude, claude-cli or fake; `ollama` is refused
+- `--reviewer-provider` — `pi` (the default), claude, claude-cli, fake or ollama
 - `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
 - `--planner-model` — model for every planner call of the plan and shape steps
 - `--planner-provider` — which service makes those planner calls: `ollama`
@@ -125,7 +208,7 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   (operator amendment amend0920-selfuse-real, DECISION D1). The planner the
   walk actually used is the one its prompt traces and the mission plan
   record name.
-- `--yes` — approve the job's plan of tasks unattended
+- `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
 - `--no-ui` — do not open the cockpit
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,
   `--max-cost-usd`, `--deadline` — the job's budgets

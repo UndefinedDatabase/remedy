@@ -9,15 +9,15 @@ from apps.cli.json_envelope import fail
 
 # WHY: a rehearsal's whole point is a plan whose approval stays open for a person to answer; a
 # flag that would approve, apply, commit or push it is refused before any step, naming the clash.
-def refuse_rehearsal_conflicts(*, rehearse: bool, yes: bool, apply: bool, commit: str | None,
+def refuse_rehearsal_conflicts(*, rehearse: bool, run_unattended: bool, apply: bool, commit: str | None,
                                commit_auto: bool, commit_with_history: bool, push: bool,
                                json_output: bool) -> None:
-    """Exit 2 before any step when `--rehearse` is given with `--yes` or a commit/apply/push flag."""
+    """Exit 2 before any step when `--rehearse` is given with `--run-unattended` or a commit/apply/push flag."""
     if not rehearse:
         return
-    if yes:
+    if run_unattended:
         fail("invalid_argument",
-             "--rehearse leaves the plan's approval open for you to answer, and --yes would approve it unattended. Nothing was run.",
+             "--rehearse leaves the plan's approval open for you to answer, and --run-unattended would approve it unattended. Nothing was run.",
              json_output=json_output, exit_code=2)
     given_flags = []
     if apply:

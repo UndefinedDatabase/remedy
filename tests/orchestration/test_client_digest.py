@@ -494,7 +494,7 @@ def test_a_projects_cost_today_sums_the_ledgers_calls_of_the_utc_day_of_read_at(
     [entry] = build_client_digest(now=NOW)["projects"]
 
     assert entry["cost_today"] == {
-        "day": "2026-01-01", "value_usd": 0.25, "basis": "actual", "calls": 1,
+        "day": "2026-01-01", "value_usd": 0.25, "basis": "actual", "harness_invocations": 1,
         "tokens": {"input": 100, "output": 20, "cache_read": 5, "cache_creation": None},
     }
 
@@ -547,10 +547,10 @@ def test_each_job_carries_the_calls_and_tokens_by_kind_its_ledger_holds(root, tm
 
     jobs = {entry["title"]: entry for entry in build_client_digest(now=NOW)["jobs"]}
 
-    assert (jobs["measured"]["calls"], jobs["measured"]["tokens"]) == (
+    assert (jobs["measured"]["harness_invocations"], jobs["measured"]["tokens"]) == (
         2, {"input": 150, "output": 25, "cache_read": 8, "cache_creation": 3})
-    assert (jobs["unmeasured"]["calls"], jobs["unmeasured"]["tokens"]) == (1, NO_TOKENS)
-    assert (jobs["silent"]["calls"], jobs["silent"]["tokens"]) == (0, NO_TOKENS)
+    assert (jobs["unmeasured"]["harness_invocations"], jobs["unmeasured"]["tokens"]) == (1, NO_TOKENS)
+    assert (jobs["silent"]["harness_invocations"], jobs["silent"]["tokens"]) == (0, NO_TOKENS)
 
 
 def test_a_jobs_rows_in_two_project_ledgers_are_added(root, tmp_path):
@@ -565,7 +565,7 @@ def test_a_jobs_rows_in_two_project_ledgers_are_added(root, tmp_path):
 
     [entry] = build_client_digest(now=NOW)["jobs"]
 
-    assert (entry["calls"], entry["tokens"]) == (
+    assert (entry["harness_invocations"], entry["tokens"]) == (
         2, {"input": 15, "output": 2, "cache_read": None, "cache_creation": 4})
 
 
@@ -587,8 +587,8 @@ def test_an_unreadable_ledger_nulls_the_calls_of_a_job_no_ledger_names(root, tmp
     digest = build_client_digest(now=NOW)
 
     jobs = {entry["title"]: entry for entry in digest["jobs"]}
-    assert jobs["named"]["calls"] == 1
-    assert (jobs["unnamed"]["calls"], jobs["unnamed"]["tokens"]) == (None, NO_TOKENS)
+    assert jobs["named"]["harness_invocations"] == 1
+    assert (jobs["unnamed"]["harness_invocations"], jobs["unnamed"]["tokens"]) == (None, NO_TOKENS)
     assert digest["degraded"] is True
     assert f"calls and tokens of the jobs of project {broken.id}" in digest["skipped_files"]
 

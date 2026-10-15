@@ -51,7 +51,10 @@ export interface MissionTokens {
 }
 
 export interface MissionOrderUsage {
-  calls: number | null;
+  /** Pi (or another harness) processes started; one is many model turns. */
+  harness_invocations: number | null;
+  /** Model turns read from the harness's own event stream; null when it reported none. */
+  model_turns: number | null;
   tokens: MissionTokens;
 }
 
@@ -147,7 +150,8 @@ function decodeMissionOrderUsage(raw: unknown): MissionOrderUsage {
   const obj = objectOf(raw);
   const tokens = objectOf(obj["tokens"]);
   return {
-    calls: countOrNull(obj["calls"]),
+    harness_invocations: countOrNull(obj["harness_invocations"]),
+    model_turns: countOrNull(obj["model_turns"]),
     tokens: {
       input: countOrNull(tokens["input"]),
       output: countOrNull(tokens["output"]),
@@ -258,9 +262,11 @@ export function missionCardLine(card: MissionCardEntry): string {
 
 /** An order's calls and tokens in words; never a cost in US dollars. */
 export function orderUsageLine(usage: MissionOrderUsage): string {
-  if (usage.calls === null) return "Model calls: not readable";
-  if (usage.calls === 0) return "No model calls";
-  const calls = plural(usage.calls, "model call", "model calls");
+  if (usage.harness_invocations === null) return "Harness invocations: not readable";
+  if (usage.harness_invocations === 0) return "No harness invocations";
+  const invocations = plural(usage.harness_invocations, "harness invocation", "harness invocations");
+  const calls = usage.model_turns === null ? invocations
+    : `${invocations}, ${plural(usage.model_turns, "model turn", "model turns")}`;
   const { input, output } = usage.tokens;
   if (input === null && output === null) return `${calls} · tokens not reported`;
   return `${calls} · ${input ?? 0} tokens in, ${output ?? 0} out`;

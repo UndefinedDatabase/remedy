@@ -104,7 +104,7 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     ` (job <k> of <n>)` and `--commit-auto` asks each job's title first
     (DECISION F270 D4 (3)). What landed is added to ``ctx.landed``.
     """
-    from packages.orchestration.job_apply import apply_job
+    from packages.orchestration.job_apply import apply_job, apply_refusal
 
     flags: dict[str, Any] = {}
     if ctx.commit_mode:
@@ -120,6 +120,8 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     result = apply_job(job_id, repo, approve=True, **flags)
     if result.status != "applied":
         why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
+        if (refusal := apply_refusal(result)) and refusal[0] == "target_changed_during_run":
+            why = refusal[1]        # amend1014b D5: the token and the changed paths, not the guard's internals
         ctx.next_lines.append(f"remedy job apply {job_id} --repo "
                               f"{shlex.quote(repo)} --dry-run")
         before = (f"; applied before it: {'; '.join(ctx.applied.values())}"
@@ -133,6 +135,12 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
         ctx.landed.append({"job_id": job_id, "sha": result.commit_sha,
                            "branch": result.target_branch, "repo": repo})
         said += f" and landed {result.commit_sha[:12]} on {result.target_branch}"
+    # Amend1014b D6: say what the file held and what was left alone, never a bare "applied".
+    if result.baseline_files_applied:
+        said += (f"; {', '.join(result.baseline_files_applied)} already held your uncommitted edits, "
+                 f"so the {'commit' if result.commit_sha else 'file'} contains them too")
+    if result.preserved_dirty_paths:
+        said += f"; left uncommitted and untouched: {', '.join(result.preserved_dirty_paths)}"
     ctx.applied[job_id] = said
     return ""
 

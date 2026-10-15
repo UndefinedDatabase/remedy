@@ -97,6 +97,8 @@ DEFAULT_EFFORT = "medium"
 #: upgrade repoints one alias there instead of editing this table.
 _PROVIDER_DEFAULT_MODELS: dict[str, str] = {
     "ollama": resolve_model_alias("ollama-default"),
+    # Pi runs the same local model through Ollama: it is the harness, Ollama the model server.
+    "pi": resolve_model_alias("ollama-default"),
     "claude-cli": resolve_model_alias("claude-flagship"),
     "claude": resolve_model_alias("claude-flagship"),
     "fake": resolve_model_alias("fake"),
@@ -170,6 +172,13 @@ KNOWN_ROLES: tuple[str, ...] = (
 _ROLE_DEFAULT_PROVIDERS: dict[str, str] = {
     "planner": "ollama",
     "self_use": "claude-cli",
+    # Operator amendment amend1014b, DECISION D1: the roles that must WRITE or judge a written
+    # change run in the Pi harness. A raw Ollama text completion cannot edit a file, so it is
+    # no longer the default mutating builder; Pi inherits local agentic execution with the
+    # same local model.
+    "builder": "pi",
+    "reviewer": "pi",
+    "repair": "pi",
 }
 
 #: A role whose default MODEL is not simply its provider's default. ``self_use``

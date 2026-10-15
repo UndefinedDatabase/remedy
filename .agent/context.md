@@ -1,28 +1,21 @@
-# Context — F055 Rehearsal (dry check)
+# Context — amend1014c-review-closure-before-merge
 
 ## Active Branch
-feature/f055-rehearsal, from `main` at `eea4f5cfe` (the merge commit of pull request 337).
+feature/do-golden-path-review-closure (replayed from main; the old branch feature/do-golden-path is preserved, its pull
+request closed). Neither is merged. F078 untouched.
 
 ## Scope
-F055 (Tier 3), as `docs/roadmap/features/T3_F055.md` and DECISION F055 D1 state: the
-`--rehearse` mode of `remedy do`, its record and summary, and the reuse of a rehearsed plan.
+R1 to R3 repairs of the Pi golden path, their tests, the real acceptance A to E, docs, then the no-force
+history replacement. No new roadmap feature; no merge.
 
 ## Do not touch
-Approval semantics, the estimator's internals, and what the planner plans. A structural step
-changes no behaviour.
-
-## Active assumptions
-- A rehearsal is a walk with `--plan-only`; the rehearsed job is an ordinary planned job.
-- Every behaviour lands with a test that is red without it, proved by the reviewer's mutation; a
-  structural step is proved by the unchanged tests.
+`.agent/STOP` (untracked), the F078 branch, `no_file_changed`, apply approval, scope guards, the
+non-human content policy.
 
 ## Constraints
-- Every pytest run in a round is targeted; the closure runs the one full suite.
-- A round touching `docs/roadmap/**` also gates `tests/docs/`.
-- Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
-  larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
-- Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
-- The functions and files on `docs/system/structure-ledger-v1.md` may not grow.
+- Structure ratchet: listed functions may not grow. One test run at a time (`scripts/remedy_pytest.sh`).
+- Every commit at most 500 insertions. No rebase, reset, amend or force-push.
+- Real acceptance uses fresh fixtures and isolated data roots under `/home/decodeux/.remedy-wt-probe`.
 
 ## Steps
-The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
+The repairs, the acceptance, the full suite and the history replacement are done; the handoff holds the item table.

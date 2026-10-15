@@ -200,7 +200,7 @@ def test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply(repo, ca
     # DECISION F269 D4 (6): the mission's contract body, as its record holds it.
     assert data["contract"] == _recorded_contract(repo, data)
     assert [s["name"] for s in data["steps"]] == [
-        "init", "study", "plan", "shape", "run", "ui", "apply"]
+        "init", "study", "plan", "shape", "ui", "run", "apply"]
     assert _step(data, "apply")["status"] == "stopped"
 
 
@@ -239,7 +239,7 @@ def test_the_order_plans_one_job_of_at_most_three_tasks_by_the_planners_shape(re
     data = _do_json(capsys)
 
     [job_id] = data["job_ids"]
-    assert (data["shape"], data["shape_source"]) == ("one job", "planner")
+    assert (data["shape"], data["shape_source"]) == ("one job", "bounded lane")
     from packages.orchestration.pingpong_job import load_job_plan
     assert 1 <= len(load_job_plan(job_id).tasks) <= 3
 
@@ -311,7 +311,7 @@ def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_
 # ── T003: --step-by-step and --plan-only (DECISION F268 D8) ─────────────────
 
 PLAIN_RUN_STEPS = [("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-                   ("run", "done"), ("ui", "skipped"), ("apply", "stopped")]
+                   ("ui", "skipped"), ("run", "done"), ("apply", "stopped")]
 
 
 def _answer_every_halt(monkeypatch, answer):
@@ -396,8 +396,8 @@ def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]] == [
         ("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-        ("run", "stopped")]
-    assert _step(data, "run")["detail"].startswith("not run: stopped by 'q'")
+        ("ui", "stopped")]
+    assert _step(data, "ui")["detail"].startswith("not run: stopped by 'q'")
     assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
     requests = [stop_requested(j) for j in job_ids]
     assert all(r is not None and r.source == "do" for r in requests), requests
@@ -435,7 +435,7 @@ def test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to
     job_ids = data["job_ids"]
     if after_shape:
         assert steps == [("init", "done"), ("study", "done"), ("plan", "done"),
-                         ("shape", "done"), ("run", "stopped")]
+                         ("shape", "done"), ("ui", "stopped")]
         assert len(halts) == 4
         assert len(job_ids) >= 2
     else:
@@ -524,8 +524,8 @@ def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_ur
     assert f"http://127.0.0.1:43210/?job={job_ids[0]}&token=t" in ui["detail"]
     assert "remedy ui stop" in ui["detail"]
     assert "remedy ui stop" in data["next"]
-    assert [(s["name"], s["status"]) for s in data["steps"]][-2:] == [
-        ("ui", "done"), ("apply", "stopped")]
+    assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
+        ("ui", "done"), ("run", "done"), ("apply", "stopped")]
 
 
 def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
@@ -651,7 +651,7 @@ def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_wait
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
-        ("run", "done"), ("ui", "skipped"), ("apply", "done")]
+        ("ui", "skipped"), ("run", "done"), ("apply", "done")]
     assert f"job {job_ids[0]} applied 1 file(s)" in _step(data, "apply")["detail"]
     assert "<!-- Remedy: " in (repo / "docs" / "README.md").read_text()
     assert data["stopped_before_apply"] is False
@@ -710,7 +710,7 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     apply = _step(data, "apply")
     assert apply["status"] == "failed"
     assert apply["detail"].startswith(f"job {job_id} was not applied to {repo} (status blocked)")
-    assert "target_changed_since_job: docs/README.md" in apply["detail"]
+    assert "target_changed_during_run: docs/README.md changed in the target" in apply["detail"]
     assert data["stopped_before_apply"] is True
     assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
     assert data["ok"] is False
@@ -734,14 +734,14 @@ def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, cap
     # R-0807: one row per provider call, so the reviewer's calls are a role too.
     assert [role["role"] for role in data["cost"]["roles"]] == ["builder", "reviewer"]
     assert data["cost"]["roles"] == [
-        {"role": row.bucket, "calls": row.calls, "tokens_in": row.tokens_in,
+        {"role": row.bucket, "harness_invocations": row.calls, "model_turns": None, "tokens_in": row.tokens_in,
          "tokens_out": row.tokens_out, "cache_read": row.cache_read, "cost_usd": row.cost_usd}
         for row in sorted(report.rows, key=lambda r: str(r.bucket))]
     assert data["cost"]["cost_usd"] == report.total.cost_usd
     assert (data["cost"]["job_ids"], data["cost"]["mirror_failed_job_ids"]) == ([job_id], [])
 
     out = _do(capsys, order="Write a CHANGELOG.md")
-    assert re.search(r"^Tokens builder: input .+, output .+, cache read .+ \(\d+ call\(s\)\)$",
+    assert re.search(r"^Tokens builder: input .+, output .+, cache read .+ \(\d+ harness invocations?; model turns not reported\)$",
                      out, re.MULTILINE)
     assert re.search(r"^Cost: ", out, re.MULTILINE)
 
@@ -1001,6 +1001,10 @@ def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo,
 # ── F273 R-0977: each `do` job records the milestone its outline came from ──
 
 
+#: An order naming two files walks the full lane, where the planner's own shape decides.
+TWO_DOCS_ORDER = "Write docs/one.md and docs/two.md"
+
+
 def two_milestone_plan(monkeypatch) -> None:
     """The no-provider planner plans two milestones, M1 then M2, one outline each."""
     from packages.orchestration import mission_compiler
@@ -1030,7 +1034,7 @@ def test_a_two_milestone_do_ends_with_no_planner_criterion_open(repo, capsys, mo
 
     two_milestone_plan(monkeypatch)
 
-    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs", order=TWO_DOCS_ORDER))
 
     assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
@@ -1056,7 +1060,7 @@ def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_cr
     commit_a_passing_suite(repo)
     two_milestone_plan(monkeypatch)
 
-    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs"))
+    data = json.loads(_do(capsys, "--json", "--commit", "Add the docs", order=TWO_DOCS_ORDER))
 
     assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
     planner = [c for c in data["contract"]["criteria"] if c["origin"] == "planner"]
@@ -1176,7 +1180,7 @@ def test_a_do_jobs_run_manifest_is_written_and_named_in_the_digest(repo, capsys)
 
     from packages.orchestration.data_paths import job_record_path
 
-    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1"))
+    data = json.loads(_do(capsys, "--json", "--run-unattended", "--max-cost-usd", "1"))
 
     for job_id in data["job_ids"]:
         record = _json.loads(job_record_path(job_id).read_text(encoding="utf-8"))
@@ -1201,7 +1205,7 @@ def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
 
     from packages.orchestration.data_paths import job_record_path
 
-    data = json.loads(_do(capsys, "--json", "--yes", "--max-cost-usd", "1", "--plan-only"))
+    data = json.loads(_do(capsys, "--json", "--run-unattended", "--max-cost-usd", "1", "--plan-only"))
     [job_id] = data["job_ids"]
 
     # R-1184 (DECISION F304 D8): a run its budget stopped answers as a refusal, report beside it.
