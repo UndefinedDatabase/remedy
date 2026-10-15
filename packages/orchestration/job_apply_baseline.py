@@ -34,9 +34,11 @@ def note_start_baseline(job: Any, result: Any, applied: list[str]) -> None:
     """Say which applied files carried the person's earlier edit, and which dirty paths were kept."""
     from packages.orchestration.dirty_baseline import job_start_baseline
 
-    dirty = [e["path"] for e in job_start_baseline(job).get("entries", [])]
+    start = job_start_baseline(job)
+    dirty = [e["path"] for e in start.get("entries", [])]
+    kept = [e["path"] for e in start.get("preserved", [])]
     result.baseline_files_applied = sorted(set(applied) & set(dirty))
-    result.preserved_dirty_paths = sorted(set(dirty) - set(applied))
+    result.preserved_dirty_paths = sorted((set(dirty) - set(applied)) | set(kept))
 
 
 def baseline_drift_refusal(job: Any, target: Path) -> str:
@@ -52,7 +54,7 @@ def history_baseline_refusals(job: Any) -> list[str]:
     """The history merge cannot carry a baseline: its branch holds a commit of the person's files."""
     from packages.orchestration.dirty_baseline import job_start_baseline
 
-    if not job_start_baseline(job):
+    if not job_start_baseline(job).get("commit"):
         return []
     return ["The job started from a dirty working tree, so its branch holds a baseline commit of "
             "your uncommitted files; a merge would commit them. Use --commit-auto, which commits "

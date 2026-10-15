@@ -29,3 +29,20 @@ def unrepresentable_baseline(repo_path: str | Path) -> str:
     except DirtyBaselineUnsupported as exc:
         return str(exc)
     return ""
+
+
+def sensitive_order_refusal(order_text: str) -> str:
+    """The refusal sentence when the order names a sensitive path as a target (amend1014c R1), else "".
+
+    Decided by path name before any worktree or provider call; it never opens the path. Every
+    word of the order is judged, because a bare `.env` is no path token to the deliverable
+    extractor. An order that merely mentions such a path (for example to forbid touching it) is
+    refused as well: a name in prose cannot be told from a target.
+    """
+    import re
+
+    from packages.orchestration.dirty_baseline import sensitive_target_refusal
+    from packages.orchestration.task_deliverables import explicit_order_paths
+
+    words = [w.lstrip("'\"`([").rstrip(".,;:!?)]'\"`") for w in re.split(r"\s+", order_text)]
+    return sensitive_target_refusal([*explicit_order_paths(order_text), *(w for w in words if w)])
