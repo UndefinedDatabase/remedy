@@ -368,7 +368,7 @@ Keys under the answer keys: see below.
   - `amendments`: `acknowledged_in`, `applies_from`, `criteria`, `id`, `received_at`, `text`, `understood`
   - `criteria`: `blocking`, `check`, `evidence_ref`, `id`, `milestones`, `origin`, `status`, `text`
     - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
-- `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`
+- `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`, `show_cost_usd`
   - `mirror_errors`: `*`
   - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`

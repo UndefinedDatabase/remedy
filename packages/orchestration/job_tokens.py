@@ -25,6 +25,7 @@ Public API::
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,8 @@ def job_token_summary(job: Any) -> dict[str, Any]:
     if project_id and job_id:
         try:
             roles = job_token_roles(project_id, job_id, [str(r) for r in getattr(job, "run_refs", ()) or ()])
-        except Exception:  # noqa: BLE001 — a token account is never a gate on the page that shows it
+        except (OSError, ValueError, sqlite3.Error):
+            # A ledger or a turn record that cannot be read is no measurement, never a gate.
             roles = []
     totals: dict[str, Any] = {"harness_invocations": sum(r["harness_invocations"] for r in roles),
                               "model_turns": None, **{key: None for key in TOKEN_FIELDS}}
