@@ -159,3 +159,25 @@ def test_the_docs_and_the_help_describe_pi_the_model_and_a_dirty_tree_without_th
     help_text = " ".join(arg.help for cmd in DO_COMMANDS for arg in cmd.args
                          if arg.name in ("--builder-provider", "--reviewer-provider"))
     assert "pi" in help_text and "muse-glimmer:latest" in help_text
+
+
+def test_a_target_edited_during_the_run_blocks_the_apply_with_the_token_and_survives(pi_world, capsys, monkeypatch):
+    """Acceptance E in miniature: the human edit lands after the job captured its start state."""
+    target, _log = pi_world
+    from packages.orchestration import pingpong_job
+
+    real = pingpong_job.run_job
+
+    def run_then_edit(*args, **kwargs):
+        job = real(*args, **kwargs)
+        (target / "README.md").write_text("# Test\n\nA human edit made while the job ran.\n")
+        return job
+
+    monkeypatch.setattr(pingpong_job, "run_job", run_then_edit)
+    with pytest.raises(SystemExit):
+        main(["do", INCIDENT_ORDER, "--repo", ".", "--no-ui", "--apply"])
+
+    err = capsys.readouterr().err
+    assert "target_changed_during_run: README.md changed in the target" in err
+    assert (target / "README.md").read_text() == "# Test\n\nA human edit made while the job ran.\n"
+    assert _git(target, "rev-list", "--count", "HEAD").strip() == "1"

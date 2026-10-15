@@ -104,7 +104,7 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     ` (job <k> of <n>)` and `--commit-auto` asks each job's title first
     (DECISION F270 D4 (3)). What landed is added to ``ctx.landed``.
     """
-    from packages.orchestration.job_apply import apply_job
+    from packages.orchestration.job_apply import apply_job, apply_refusal
 
     flags: dict[str, Any] = {}
     if ctx.commit_mode:
@@ -120,6 +120,8 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     result = apply_job(job_id, repo, approve=True, **flags)
     if result.status != "applied":
         why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
+        if (refusal := apply_refusal(result)) and refusal[0] == "target_changed_during_run":
+            why = refusal[1]        # amend1014b D5: the token and the changed paths, not the guard's internals
         ctx.next_lines.append(f"remedy job apply {job_id} --repo "
                               f"{shlex.quote(repo)} --dry-run")
         before = (f"; applied before it: {'; '.join(ctx.applied.values())}"
