@@ -1946,14 +1946,13 @@ class OllamaPingPongProvider:
             )
 
 
-# ---------------------------------------------------------------------------
-# Provider factory
-# ---------------------------------------------------------------------------
+# --- Provider factory -------------------------------------------------------
 
 def create_provider(name: str, *, model: str = "") -> PingPongProvider:
     """Create a provider by name. Raises RuntimeError if unavailable."""
-    if name == "fake":
-        return FakeProvider()
+    if name == "fake":  # amend1015c D6: the fake writes the file its task's deliverable names
+        from packages.orchestration.fake_deliverable import DeliverableFakeProvider
+        return DeliverableFakeProvider()
     if name == "claude":
         return ClaudeProvider(model=model) if model else ClaudeProvider()
     if name == "claude-cli":

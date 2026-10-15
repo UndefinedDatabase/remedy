@@ -514,7 +514,8 @@ def _track(repo: Path, *paths: str) -> None:
 
 
 def test_apply_applies_the_one_job_and_changes_the_targets_tracked_content(repo, capsys):
-    _track(repo, "docs/README.md")
+    # amend1015c D6: the command line's fake writes the file the order names.
+    _track(repo, "CONTRIBUTING.md")
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == ""
 
     data = json.loads(_do(capsys, "--json", "--apply"))
@@ -524,8 +525,8 @@ def test_apply_applies_the_one_job_and_changes_the_targets_tracked_content(repo,
     apply = _step(data, "apply")
     assert apply["status"] == "done"
     assert f"job {job_id} applied 1 file(s)" in apply["detail"]
-    assert _git(repo, "diff", "--name-only") == "docs/README.md\n"
-    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == " M docs/README.md\n"
+    assert _git(repo, "diff", "--name-only") == "CONTRIBUTING.md\n"
+    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == " M CONTRIBUTING.md\n"
 
 
 def test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_waiting(
@@ -573,9 +574,9 @@ def _waiting_job_has_no_run(job_id: str) -> bool:
 
 def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_waits(
         repo, capsys):
-    """R-0968 / DECISION F268 D12 (2a): the case R-0968 measured — every build writes
-    the same file — now applies job 1, runs no other job and exits 0."""
-    assert not (repo / "docs" / "README.md").exists()
+    """R-0968 / DECISION F268 D12 (2a): the case R-0968 measured — job 1's build writes
+    its file — now applies job 1, runs no other job and exits 0."""
+    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == ""
 
     data = json.loads(_do(capsys, "--json", "--apply", "--force-mission"))
 
@@ -584,7 +585,10 @@ def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_wait
     assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
         ("shape", "done"), ("run", "done"), ("apply", "done")]
     assert f"job {job_ids[0]} applied 1 file(s)" in _step(data, "apply")["detail"]
-    assert "<!-- Remedy: " in (repo / "docs" / "README.md").read_text()
+    # amend1015c D6: the command line's fake writes job 1's own deliverable, one new file.
+    [written] = _git(repo, "status", "--porcelain", "--untracked-files=all").splitlines()
+    assert written.startswith("?? ")
+    assert "<!-- Remedy: " in (repo / written[3:]).read_text()
     assert data["stopped_before_apply"] is False
     assert data["waiting_job_ids"] == job_ids[1:]
     assert [_waiting_job_has_no_run(j) for j in job_ids[1:]] == [True] * (len(job_ids) - 1)
@@ -621,11 +625,11 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     """The target changes between the run and the apply: `job_apply` refuses it."""
     from packages.orchestration import job_apply
 
-    _track(repo, "docs/README.md")
+    _track(repo, "CONTRIBUTING.md")  # amend1015c D6: the file the order names
     real_apply_job = job_apply.apply_job
 
     def apply_after_someone_edited_the_target(job_id, target_repo, **kwargs):
-        (Path(target_repo) / "docs" / "README.md").write_text("edited by hand\n")
+        (Path(target_repo) / "CONTRIBUTING.md").write_text("edited by hand\n")
         return real_apply_job(job_id, target_repo, **kwargs)
 
     monkeypatch.setattr(job_apply, "apply_job", apply_after_someone_edited_the_target)
@@ -641,9 +645,9 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     apply = _step(data, "apply")
     assert apply["status"] == "failed"
     assert apply["detail"].startswith(f"job {job_id} was not applied to {repo} (status blocked)")
-    assert "target_changed_during_run: docs/README.md changed in the target" in apply["detail"]
+    assert "target_changed_during_run: CONTRIBUTING.md changed in the target" in apply["detail"]
     assert data["stopped_before_apply"] is True
-    assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
+    assert (repo / "CONTRIBUTING.md").read_text() == "edited by hand\n"
     assert data["ok"] is False
     assert data["error"] == "step_failed"
     assert data["failed_step"] == "apply"

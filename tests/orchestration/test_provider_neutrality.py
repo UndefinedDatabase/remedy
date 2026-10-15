@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.fake_deliverable import DeliverableFakeProvider
 from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
-    FakeProvider,
     OllamaPingPongProvider,
     create_provider,
 )
 from packages.orchestration.role_config import KNOWN_ROLES, resolve_role_config
 
-_ADAPTERS = {"fake": FakeProvider, "ollama": OllamaPingPongProvider, "claude-cli": ClaudeCliProvider}
+# amend1015c D6: the name "fake" builds the fake that writes its task's deliverable file.
+_ADAPTERS = {"fake": DeliverableFakeProvider, "ollama": OllamaPingPongProvider, "claude-cli": ClaudeCliProvider}
 
 
 @pytest.mark.parametrize("role", KNOWN_ROLES)

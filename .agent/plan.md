@@ -7,7 +7,9 @@ the defects the order names, each with a failing regression test first. Branch
 orchestrator brings it into PR #342's branch. No push, no merge, no tag from this worktree.
 
 ## Current Step
-Phase A checks (A1 to A8), then the defects E2, E3, E5, E6, E7.
+Gates. Done: D1 (tomli), S1 to S3 (ledger steps), D2 (client read scope, 1.16), D3 (a failed
+story offers no retry), D5 (the diff route), D6 (the command line's fake writes its task's
+Markdown deliverable). E6 and E7 needed no change (see the handback).
 
 ## Next Steps
 1. A5/A6: a client token reads only its projects' jobs on every job route (proof, run, orders,
@@ -20,6 +22,9 @@ Phase A checks (A1 to A8), then the defects E2, E3, E5, E6, E7.
 5. E6: budgets enforced in the backend; retry cannot reset them; unknown cost stays null.
 6. E7: the story's verification words distinguish no test command / not run / passed / failed.
 7. Gates: full pytest, ruff, integrity, structure ratchet, wheel + fresh install + CLI and HTTP smoke.
+8. After this order: F078 resumes on `feature/f078-autonomy-levels`; R-1325's resolution of a plain
+   word ("die readme" in a repository of several files) stays F307's; R-1332 (a blocked job keeps
+   no finish time) stays open, `pingpong_job.py` being a listed file.
 
 ## Risks
 - `.agent/STOP` untracked and untouched (decodeux's stop of the autonomous loop).

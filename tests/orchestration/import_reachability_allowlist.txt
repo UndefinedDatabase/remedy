@@ -127,7 +127,9 @@ packages.orchestration.ci_run
 packages.orchestration.ci_stages
 packages.orchestration.claude_cli_command
 packages.orchestration.client_changes
+packages.orchestration.client_diff
 packages.orchestration.client_digest
+packages.orchestration.client_scope
 packages.orchestration.client_story
 packages.orchestration.client_story_words
 packages.orchestration.cockpit
@@ -195,6 +197,7 @@ packages.orchestration.exec_guard
 packages.orchestration.execution_config
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
+packages.orchestration.fake_deliverable
 packages.orchestration.file_provenance
 packages.orchestration.final_job_review
 packages.orchestration.final_verifier

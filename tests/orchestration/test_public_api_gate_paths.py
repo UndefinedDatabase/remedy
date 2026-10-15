@@ -386,7 +386,8 @@ def test_an_order_naming_its_project_is_applied_in_that_projects_repository_over
 
     supervisor.apply(job_id)
 
-    assert (repo / "docs" / "README.md").is_file()
+    # amend1015c D6: the command line's fake writes the README.md the order names.
+    assert "<!-- Remedy: " in (repo / "README.md").read_text(encoding="utf-8")
     assert list(elsewhere.iterdir()) == []
 
 
@@ -438,4 +439,5 @@ def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervis
     assert (job["state"], job["waits_for_apply"]) == ("completed", False), digest
     assert digest["awaiting_apply"] == [], digest
     # Nothing was applied: the repository is as the client left it.
+    assert "<!-- Remedy: " not in (repo / "README.md").read_text(encoding="utf-8")
     assert not (repo / "docs" / "README.md").exists()
