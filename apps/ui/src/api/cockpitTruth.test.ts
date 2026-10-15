@@ -17,6 +17,7 @@ describe("tokensMetricOf (amend1015 P1.5)", () => {
     expect(m.value).toBe(1500);
     expect(m.unknown).toBe(false);
     expect(m.tooltip).toEqual({ builder: 1500 });
+    expect(m.estimated).toBe(false);
   });
 
   it("falls back to the harness invocations when no call reported tokens", () => {

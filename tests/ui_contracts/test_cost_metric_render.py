@@ -267,7 +267,7 @@ class TestTheOtherSevenMetricsAreUntouched:
     def test_the_tokens_caption_still_renders_off_is_tokens(self):
         code = code_of(BAR)
         assert (
-            "{isTokens && main !== EM_DASH && <div className={styles.estimated}>estimated</div>}"
+            "{isTokens && main !== EM_DASH && m.estimated !== false && <div className={styles.estimated}>estimated</div>}"
             in code
         ), "the tokens metric's own estimated caption is unrelated to the cost marker"
 

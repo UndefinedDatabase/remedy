@@ -126,11 +126,11 @@ export function DigestHeroCard({
       </button>
       {/* amend1015 P3.4: the recommendation is text; only a command is something to press —
           it is shown, and the button copies it. A recommendation without one is no button. */}
-      <p className={styles.heroCta}>{ctaText}</p>
+      <p><strong>{ctaText}</strong></p>
       {ctaCommand !== null && (
         <>
-          <code>{ctaCommand}</code>
-          <button type="button" onClick={handlePrimaryAction}>{copied ? "Copied" : "Copy the command"}</button>
+          <p><code>{ctaCommand}</code></p>
+          <button type="button" className={styles.heroCta} onClick={handlePrimaryAction}>{copied ? "Copied" : "Copy the command"}</button>
         </>
       )}
     </section>

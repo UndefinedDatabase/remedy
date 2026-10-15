@@ -151,3 +151,12 @@
 }
 .liveToggle:disabled { border-color: var(--remedy-line); color: var(--remedy-green); cursor: default; }
 .liveToggle:focus-visible { outline: 2px solid var(--remedy-blue-strong); outline-offset: 2px; }
+
+/* amend1015 P6.1: on a phone the legend wraps, and the phase labels and the side padding
+   shrink, so the timeline fits a 390 px screen without widening the page. */
+@media (max-width: 760px) {
+  .timeline { padding: 14px 22px 10px; }
+  .phaseItem { font-size: 11px; }
+  .legend { flex-wrap: wrap; gap: 6px 12px; justify-content: flex-start; }
+  .legend::before { display: none; }
+}

@@ -309,3 +309,18 @@ class TestTaskLifecycleMetrics:
         assert (dashboard["metrics"]["planned"], dashboard["metrics"]["done"]) == (1, 1)
         assert dashboard["metrics"]["progress_percent"] == 50
         assert [t["state"] for t in dashboard["tasks"]] == ["planned", "done"]
+
+
+def test_the_next_action_is_the_digest_recommendation_command(tmp_path, monkeypatch):
+    """amend1015: the command bar and the digest card name one next command."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    from packages.core.models import RunState
+
+    job = JobPlan(job_title="t", state=RunState.COMPLETED, repo_path="/tmp/r",
+                  tasks=[TaskEntry(title="Deliver README.md", status="applied_to_job_workspace")])
+    from packages.orchestration.job_digest import build_job_digest
+
+    label = build_job_digest(job)["primary_action"]["label"]
+    command = label[label.rindex("`", 0, len(label) - 1) + 1:-1].strip()
+    assert command, label
+    assert _build_dashboard(job)["next_action"]["command"] == command

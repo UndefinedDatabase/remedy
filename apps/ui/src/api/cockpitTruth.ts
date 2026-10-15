@@ -31,10 +31,10 @@ export function tokensMetricOf(tokenUsage: unknown): RemedyMetric {
       const sum = (numberOf(r.tokens_in) ?? 0) + (numberOf(r.tokens_out) ?? 0);
       if (sum > 0) tooltip[String(r.role || "other")] = sum;
     }
-    return { ...base, value: (tokensIn ?? 0) + (tokensOut ?? 0), tooltip, unknown: false };
+    return { ...base, value: (tokensIn ?? 0) + (tokensOut ?? 0), tooltip, unknown: false, estimated: false };
   }
   const invocations = numberOf(ledger.harness_invocations) ?? 0;
-  if (invocations > 0) return { ...base, value: invocations, suffix: " invocations", unknown: false };
+  if (invocations > 0) return { ...base, value: invocations, suffix: " invocations", unknown: false, estimated: false };
   const estimate = tu.known ? numberOf(tu.total_tokens) ?? 0 : 0;
   if (estimate > 0) {
     const roles = objectOf(tu.by_role) as Record<string, number>;

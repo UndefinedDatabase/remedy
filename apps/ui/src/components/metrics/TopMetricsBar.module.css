@@ -1,9 +1,14 @@
+/* amend1015 P6.2: the tiles WRAP. A single unwrapped row needed about 1,300 px, so in a
+   narrower main column it spilled sideways under the right panel; tiles of at least 150 px
+   take as many rows as the column needs and never leave it. */
 .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
-  gap: 0;
+  gap: 8px 0;
   padding: 14px 10px;
   min-height: 92px;
+  box-sizing: border-box;
   overflow: visible; /* token tooltip must not be clipped */
 }
 
@@ -12,10 +17,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 22px;
-  flex: 1 1 0;
+  padding: 4px 16px;
+  flex: 1 1 150px;
   min-width: 0;
   outline: none;
+}
+
+/* Below 980 px the eight-or-fewer tiles are a two-column grid (amend1015 P6.1). */
+@media (max-width: 980px) {
+  .bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric + .metric { border-left: none; }
 }
 .metric + .metric { border-left: 1px solid var(--remedy-line); }
 
@@ -53,7 +64,8 @@
 .valueSuffix { font-size: 17px; font-weight: 600; color: var(--remedy-muted); margin-left: 2px; }
 
 .progressTrack {
-  width: 120px;
+  width: 100%;
+  max-width: 120px;
   height: 5px;
   margin-top: 4px;
   border-radius: 3px;

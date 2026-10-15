@@ -286,3 +286,16 @@ def build_job_digest(
         },
         "primary_action": {"label": action.action, "rule_id": action.rule_id},
     }
+
+
+# amend1015: the cockpit's command bar names the SAME next command the digest card does.
+def primary_action_command(job: Any) -> str:
+    """The command the job's one recommendation ends with, in backticks, or "" without one.
+
+    ``recommended_next_action`` over the report's own sources — the digest's primary action —
+    so the dashboard's ``next_action`` and the hero card cannot name two different commands.
+    """
+    label = recommended_next_action(_report_sources(job)).action
+    if label.endswith("`") and label.count("`") >= 2:
+        return label[label.rindex("`", 0, len(label) - 1) + 1:-1].strip()
+    return ""

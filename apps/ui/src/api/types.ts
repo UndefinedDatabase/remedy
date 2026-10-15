@@ -20,6 +20,9 @@ export interface RemedyMetric {
   state?: "pass" | "fail" | "none";
   /** True when the value is not derivable (e.g. data root unavailable). */
   unknown?: boolean;
+  /** amend1015: false on a tokens tile whose figure was measured (the ledger), so it does not
+   *  say "estimated"; absent keeps the tile's own default. */
+  estimated?: boolean;
   /** Present only on the `cost` metric. `value`, `suffix` and `tooltip` cannot
    *  hold a limit, a basis or a threshold, so the whole cost reading arrives as
    *  one already-decided view — see DECISION F022 D4. */

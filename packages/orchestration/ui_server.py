@@ -38,6 +38,7 @@ from urllib.parse import parse_qs, urlparse
 # DECISION F305 D2: the routes below one project live in a module of their own; every consumer
 # imports the summary's builder from there (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.cockpit_project_routes import project_route_answer
+from packages.orchestration.job_digest import primary_action_command
 from packages.orchestration.job_tokens import dashboard_token_usage
 from packages.orchestration.public_api import is_public_api_path
 from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
@@ -884,9 +885,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         pass
 
     # Primary next action
-    next_action = ""
-    if guidance_cards:
-        next_action = guidance_cards[0].get("command", "")
+    next_action = primary_action_command(job) or (guidance_cards[0].get("command", "") if guidance_cards else "")
 
     # What-happened lifecycle
     lifecycle: list[dict[str, str]] = []
