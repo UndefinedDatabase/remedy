@@ -15,10 +15,9 @@ Scope: init registers and ignores and writes no file into the repository
 mission record for the order, writes the contract template forced or proposed
 onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
-overriding it, and plans the jobs, each bounded by deliverables (D5, D6); ui
-opens the cockpit for the job that runs first as a detached process unless
-`--no-ui`, BEFORE the run so it is there when the run blocks or fails
-(operator amendment amend1014-do-golden-path-now D5); run runs the first job on
+overriding it, and plans the jobs, each bounded by deliverables (D5, D6); the ui
+step that opened the old cockpit is gone and `--no-ui` does nothing (operator amendment
+amend1015-face-migration, DECISIONs amend1015f D21, D22); run runs the first job on
 the chosen providers; apply stops before apply and prints the apply command for
 the job that ran, unless `--apply`, which applies it (DECISION F268 D9).
 
@@ -83,9 +82,6 @@ from packages.orchestration.do_apply import (
     _step_apply,
     do_apply_one_job,
 )
-from packages.orchestration.do_cockpit import (
-    _step_ui,
-)
 from packages.orchestration.do_context import (
     DO_STEP_DONE,
     DO_STEP_FAILED,
@@ -108,7 +104,7 @@ from packages.orchestration.do_targets import (
 )
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
-DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "ui", "run", "apply")
+DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "apply")
 
 
 #: A step takes the context and returns ``(status, detail)``; the walker names it.
@@ -962,6 +958,10 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
         from packages.orchestration.job_evidence import mirror_job_run_into_ledger
         ctx.cost_mirrors[job_id] = mirror_job_run_into_ledger(job_id)
         ctx.next_lines.append(f"remedy job show {job_id}")
+        # amend1015f D22: the face reads a job through the serve supervisor's public API.
+        if "remedy serve start" not in ctx.next_lines:
+            ctx.next_lines.append("remedy serve start")
+        ctx.next_lines.append(f"remedy client story {job_id}")
         if done.state != JOB_COMPLETED:
             reason = f": {done.error}" if done.error else ""
             return DO_STEP_FAILED, (f"job {job_id} ended {done.state.value}{reason}"
@@ -988,6 +988,5 @@ DO_STEP_TABLE: dict[str, DoStep] = {
     "plan": _step_plan,
     "shape": _step_shape,
     "run": _step_run,
-    "ui": _step_ui,
     "apply": _step_apply,
 }

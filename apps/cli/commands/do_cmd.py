@@ -1,7 +1,7 @@
 """CLI handler for ``remedy do "<order>"``: plan and run an order through the F268 sequence.
 
 Every `remedy do`, with or without the word `run`, walks
-`packages/orchestration/do_sequence.py` — init, study, plan, shape, ui, run,
+`packages/orchestration/do_sequence.py` — init, study, plan, shape, run,
 apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
 The module also holds the `job.run`, `job.apply`, `job.decline` and
 `job.evidence` handlers; the `run.show` and `run.list` handlers live in
@@ -241,10 +241,9 @@ def _cmd_do_order(
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
-    init, study, plan, shape, ui, run and apply, in that order, through
-    `packages.orchestration.do_sequence`; the walk stops before apply unless `--apply`, and the
-    ui step opens the cockpit detached through `launch_do_cockpit` before the run unless `--no-ui`
-    (DECISION F268 D9, operator amendment amend1014-do-golden-path-now D5). Unless `--json`, the walk
+    init, study, plan, shape, run and apply, in that order, through
+    `packages.orchestration.do_sequence`; the walk stops before apply unless `--apply`, and
+    `--no-ui` is accepted and does nothing (amend1015f D21). Unless `--json`, the walk
     says what it is doing on stderr as it goes (D4). `--force-job` / `--force-mission` override the
     planner's shape and exit 2 together (DECISION F268 D5). `--step-by-step` halts between steps
     and reads each answer with `input`; `--plan-only` ends the walk after shape (D8). `--json`
@@ -300,7 +299,6 @@ def _cmd_do_order(
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from apps.cli.commands.do_plan_prompt import interactive_plan_confirmer
-    from packages.orchestration.do_cockpit import launch_do_cockpit
     from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
@@ -340,7 +338,6 @@ def _cmd_do_order(
         push_source=push_source, rehearse=rehearse,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
-        ui_launcher=launch_do_cockpit,
         progress=None if json_output else DoProgress(),
         confirm_plan=None if json_output else interactive_plan_confirmer(),
     ))

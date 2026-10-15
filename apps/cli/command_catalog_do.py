@@ -33,7 +33,7 @@ DO_COMMANDS: tuple[CommandEntry, ...] = (
             ArgDef("--planner-model", "Model for every planner call of the plan and shape steps (default: the planner's configured model)", required=False, is_option=True, default=None),
             ArgDef("--planner-provider", "Which service plans: ollama or claude-cli (default: the configured planner role)", required=False, is_option=True, default=None),
             ArgDef("--run-unattended", "Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment", required=False, is_option=True, is_flag=True),
-            ArgDef("--no-ui", "Do not open the cockpit", required=False, is_option=True, default="false"),
+            ArgDef("--no-ui", "Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working", required=False, is_option=True, default="false"),
             ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),

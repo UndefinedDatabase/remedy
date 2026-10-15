@@ -82,6 +82,7 @@ class DoContext:
     #: new mission; ``None`` applies the one proposed from the order, if any
     #: (DECISION F269 D1 (4)).
     contract_template: str | None = None
+    #: `--no-ui`: accepted and inert since the old cockpit was deleted (amend1015f D21).
     no_ui: bool = False
     #: `--run-unattended`: run a generated plan of tasks without confirmation; every open
     #: question takes its documented default. Never implies apply, commit or push.
@@ -113,10 +114,6 @@ class DoContext:
     #: Reads one line at a `--step-by-step` halt, raising `EOFError` at end of
     #: input like `input`, which the CLI supplies; ``None`` reads as end of input.
     read_line: Callable[[], str] | None = None
-    #: Opens the cockpit for a job id and returns its URL, raising
-    #: `DoCockpitLaunchError` when it does not come up; the CLI supplies
-    #: `launch_do_cockpit`. ``None`` opens nothing and prints the command.
-    ui_launcher: Callable[[str], str] | None = None
     #: Shows a pending plan of tasks to the person and returns True when they approve it; the
     #: CLI supplies it only on an interactive terminal. ``None`` asks nobody (amend1014 D3).
     confirm_plan: Callable[[Any], bool] | None = None

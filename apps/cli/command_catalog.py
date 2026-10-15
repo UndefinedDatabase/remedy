@@ -195,8 +195,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="ask",
         description="Ask a job's task a grounded question, answered from its own evidence with "
                     "numbered citations, or type an action that becomes a card sent through the "
-                    "write door of the running serve supervisor once confirmed — one step in "
-                    "the job plan.",
+                    "running serve supervisor's write door once confirmed — one job plan step.",
         action_class="write_metadata",
         args=(
             ArgDef("job_id", "The job this chat turn asks or steers (its ID, or a unique prefix "

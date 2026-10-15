@@ -35,8 +35,9 @@ def _spy_table(calls: list[str], *, outcomes: dict[str, str] | None = None) -> d
     return table
 
 
-def test_the_sequence_is_exactly_the_seven_step_names_in_order():
-    assert DO_SEQUENCE == ("init", "study", "plan", "shape", "ui", "run", "apply")
+def test_the_sequence_is_exactly_the_six_step_names_in_order():
+    # amend1015f D22: the ui step left with the old cockpit.
+    assert DO_SEQUENCE == ("init", "study", "plan", "shape", "run", "apply")
 
 
 def test_the_real_table_holds_a_step_for_every_name_and_nothing_else():
@@ -58,7 +59,7 @@ def test_a_skipped_step_does_not_end_the_walk():
 
     walk_do_sequence(DoContext(order="o"),
                      _spy_table(calls, outcomes={"study": DO_STEP_SKIPPED,
-                                                 "ui": DO_STEP_SKIPPED}))
+                                                 "apply": DO_STEP_SKIPPED}))
 
     assert calls == list(DO_SEQUENCE)
 

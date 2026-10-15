@@ -91,10 +91,12 @@ for is not believed: the walk keeps the deterministic plan of the order's own de
 
 Unless `--json`, `remedy do` says what it is doing on stderr as it goes: each step before it
 starts (with the provider of a step that calls one), a heartbeat at least every ten seconds
-while a step stays blocked, and each step's end with its elapsed time. The cockpit URL is printed
-the moment the cockpit is up, before the builder runs, and stays usable if the run blocks or
-fails; if the cockpit does not come up the run goes on and the exact `remedy ui start <job id>`
-is printed. `--json` keeps stdout one document and stderr silent (D4, D5).
+while a step stays blocked, and each step's end with its elapsed time. `remedy do` opens no
+browser page: the old cockpit was deleted (operator amendment amend1015-face-migration). To
+watch or read a job, start the serve supervisor with `remedy serve start` and read the job's
+story with `remedy client story <job id>`, or through the public API at
+`GET /api/v1/jobs/{job}/story`; the walk's `Next:` lines name both. `--json` keeps stdout one
+document and stderr silent (D4, D5).
 
 ## The steps, in order
 
@@ -104,7 +106,6 @@ is printed. `--json` keeps stdout one document and stderr silent (D4, D5).
 | `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. A tiny repository of a bounded order is studied from facts alone. |
 | `plan` | Finds the repository's one mission, creating it on the repository's first order, adds the order to it as a batch, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
-| `ui` | Opens the cockpit for the job that runs first as a detached process, before the run, unless `--no-ui` or `--plan-only`. |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |
 | `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply` or a commit flag, which applies them; with a push, it then pushes the mission once. |
 
@@ -118,7 +119,7 @@ Without `--apply` the walk ends at `apply` with the repository untouched and a
 ran is applied in run order, as `remedy job apply --approve` does, and the walk
 fails at the first job that is not applied, naming it and why.
 
-## Tokens, cost and what the cockpit shows after a run
+## Tokens and cost after a run
 
 When the walk ends it prints one `Tokens <role>:` line per role, that is per kind of worker
 (the builder writes the change, the reviewer checks it). Each line gives the input tokens (text
@@ -137,31 +138,9 @@ wants dollars sets this in its `.remedy/config.toml`:
 show_cost_usd = true
 ```
 
-The key defaults to `false`. With it set, the `Cost:` line and the cockpit show the measured
+The key defaults to `false`. With it set, the `Cost:` line shows the measured
 dollar figure. The `--json` output always carries `cost.cost_usd`, because it is for programs,
 not people (operator amendment amend1015).
-
-The cockpit, the browser page `remedy do` prints the address of, reads the same records:
-
-- **The metric tiles.** DONE counts finished tasks: a task that passed review, or whose result
-  was applied to the job's own workspace (the copy of the repository the job works in), counts
-  as done. PLANNED counts tasks not started yet, PROGRESS is the done share, and OPEN counts the
-  questions waiting for your answer. TOKENS shows tokens in plus out from the ledger. When no
-  call reported tokens it shows the number of harness invocations instead, and it shows a dash
-  only for a job that made no call. The COST tile appears only with `show_cost_usd = true`.
-- **The recommendation.** The summary card at the top (the digest) and the command bar name the
-  same one next step, chosen by the run report's rules in this order: answer an open question;
-  resume a run you stopped; repair a blocked task; apply a finished result
-  (`apply-pending`: every task is done and the result still waits in the job's workspace, so
-  the card shows `remedy job apply <job_id> --repo <repo> --approve` with a button that copies
-  it); review and merge when everything is green; otherwise no recommendation.
-- **The status pill**, the small label at the top of the right-hand column. While the job runs
-  it says LIVE (events arrive as they happen), RECONNECTING (the live connection dropped and is
-  being opened again) or DELAYED (after three failed attempts the page asks for new events at
-  intervals instead). A job that is not running says FINISHED when it has ended and IDLE
-  otherwise, whatever the connection does.
-- **On a phone** the page is one column you scroll: tiles, command bar, graph, the right-hand
-  cards, then the timeline, with the section buttons in a bar along the bottom.
 
 ## --plan-only and --step-by-step
 
@@ -254,7 +233,8 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
   walk actually used is the one its prompt traces and the mission plan
   record name.
 - `--run-unattended` — run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push
-- `--no-ui` — do not open the cockpit
+- `--no-ui` — deprecated and inert: the old cockpit was deleted, so it opens nothing; still
+  accepted so existing scripts keep working
 - `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,
   `--max-cost-usd`, `--deadline` — the job's budgets
 - `--no-llm` — heuristic intake, no LLM provider call

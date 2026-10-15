@@ -176,7 +176,7 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | Flag | Command | Meaning |
 |---|---|---|
 | `--json` | every command | one JSON object on standard output |
-| `--no-ui` | `remedy do` | do not open the cockpit |
+| `--no-ui` | `remedy do` | deprecated and inert since the old cockpit was deleted; still accepted |
 | `--run-unattended` | `remedy do` | run a generated plan of tasks without interactive confirmation; every open question takes its documented default; never implies `--apply`, a commit or a push |
 | `--no-llm` | `remedy do` | plan without a model call (the gate test's choice) |
 | `--builder-provider` | `remedy do` | the builder, here `fake` |
@@ -373,7 +373,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--planner-model` | yes | no | yes | no | Model for every planner call of the plan and shape steps (default: the planner's configured model) |
 | `--planner-provider` | yes | no | yes | no | Which service plans: ollama or claude-cli (default: the configured planner role) |
 | `--run-unattended` | yes | no | no | no | Run a generated plan of tasks without interactive confirmation and use the documented default for every open planning question, audited; it never implies --apply, a commit, a push, a merge or a deployment |
-| `--no-ui` | yes | no | no | no | Do not open the cockpit |
+| `--no-ui` | yes | no | no | no | Deprecated and inert: the old cockpit was deleted, so there is nothing to open; kept so existing scripts keep working |
 | `--max-total-tokens` | yes | no | yes | no | Maximum total tokens for this job (F018 budget) |
 | `--max-provider-calls` | yes | no | yes | no | Maximum provider calls for this job (F018 budget) |
 | `--max-wall-clock-minutes` | yes | no | yes | no | Maximum wall-clock minutes for this job (F018 budget) |

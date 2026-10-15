@@ -155,8 +155,6 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
                 f"{resolve_planner_target(ctx.planner_provider, ctx.planner_model)[0]}")
     if name == "shape":
         return "shaping the jobs and their tasks"
-    if name == "ui":
-        return "opening the cockpit before the run"
     if name == "run":
         return (f"builder {_role_label('builder', ctx.builder_provider, ctx.builder_model)}, "
                 f"reviewer {_role_label('reviewer', ctx.reviewer_provider, ctx.reviewer_model)}")

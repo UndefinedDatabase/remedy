@@ -258,8 +258,8 @@ with the code that calls it.
   table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
   test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
   targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
-  Step (2), done by F205: the cockpit and the summaries,
-  `packages/orchestration/do_cockpit.py` and `packages/orchestration/do_summary.py`.
+  Step (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the
+  old face since (amend1015f D22) and `packages/orchestration/do_summary.py`.
   Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
   left the table.
 - `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `run`
@@ -318,7 +318,7 @@ with the code that calls it.
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
 | 186 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
-| 184 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 181 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
@@ -465,7 +465,7 @@ with the code that calls it.
 | 1216 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1018 | `apps/cli/commands/do_cmd.py` |
+| 1015 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |
