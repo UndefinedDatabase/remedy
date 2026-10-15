@@ -195,6 +195,7 @@ def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, s
 def _resolve_invocation_controls(
     ec: ExecutionConfig | None, *, timeout_sec: int | None, timeout_profile: str | None,
     max_output_chars: int | None, stream_evidence: bool | None, max_tasks: int | None,
+    providers: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Resolve the five invocation-level controls and their sources, keyed for the construction."""
     # F3: resolve the invocation-level controls with an OMISSION SENTINEL (None). Only a value
@@ -209,7 +210,11 @@ def _resolve_invocation_controls(
             return persisted, "persisted"
         return default, "default"
 
-    _ts, _ts_src = _resolve_inv(timeout_sec, 120, ec.timeout_sec if ec else None)
+    from packages.orchestration.provider_timeouts import PI_DEFAULT_TIMEOUT_SEC
+
+    # amend1014c R2: Pi's longer agent loop is a DEFAULT, never a floor an explicit value is raised to.
+    _ts_default = PI_DEFAULT_TIMEOUT_SEC if "pi" in providers else 120
+    _ts, _ts_src = _resolve_inv(timeout_sec, _ts_default, ec.timeout_sec if ec else None)
     _tp, _tp_src = _resolve_inv(timeout_profile, "", ec.timeout_profile if ec else None)
     _moc, _moc_src = _resolve_inv(max_output_chars, 50000,
                                   ec.max_output_chars if ec else None)
@@ -341,6 +346,6 @@ def resolve_job_execution_config(
         **_resolve_invocation_controls(
             ec, timeout_sec=timeout_sec, timeout_profile=timeout_profile,
             max_output_chars=max_output_chars, stream_evidence=stream_evidence,
-            max_tasks=max_tasks),
+            max_tasks=max_tasks, providers=(builder_name, reviewer_name, repair_provider_name or "")),
         **_resolve_claude_cli_launch_config(config),
     )

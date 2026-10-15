@@ -20,7 +20,10 @@ import os
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +42,7 @@ from packages.orchestration.pingpong_provider import (
     ReviewerOutput,
     _parse_reviewer_json,
 )
+from packages.orchestration.provider_timeouts import PI_DEFAULT_TIMEOUT_SEC
 
 PI_PROVIDER_NAME = "pi"
 #: The model server Pi talks to, and the model the whole local chain defaults to.
@@ -47,12 +51,16 @@ PI_DEFAULT_MODEL = resolve_model_alias("ollama-default")
 #: The role tool allowlists (D2). The reviewer reads; it never writes, runs a shell or edits.
 PI_BUILDER_TOOLS = "read,bash,edit,write,grep,find,ls"
 PI_REVIEWER_TOOLS = "read,grep,find,ls"
-#: An agent loop with tool turns takes minutes on a local model, so the two-minute
-#: single-completion budget the execution config carries by default is a floor, not a ceiling.
-PI_MIN_WALL_SECONDS = 900
+# Remedy deliberately keeps no minimum wall time for Pi: an explicit timeout, the job's remaining
+# wall-clock budget and its deadline are each a CEILING, and the call gets the tightest one. The
+# longer Pi-specific default lives in `provider_timeouts.PI_DEFAULT_TIMEOUT_SEC`, where the
+# timeout is resolved, and applies only when nobody set a timeout.
 #: Per stream; a Pi event stream carries one record per token delta, so 64 MiB is generous.
 PI_STDOUT_CAP_BYTES = 64 * 1024 * 1024
 PI_STDERR_TAIL_CHARS = 2000
+#: Yields ``(seconds_left, source)`` for the running job, or None when no job clock is bound.
+_JOB_TIME_LEFT: ContextVar[Callable[[], tuple[float | None, str]] | None] = ContextVar(
+    "pi_job_time_left", default=None)
 _PI_ENV_ALLOWLIST = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "SHELL",
                      "TMPDIR", "TZ", "USER", "TERM")
 #: The values the verified local model needs in Pi's `models.json` (the operator's own entry).
@@ -241,6 +249,38 @@ def _redacted_tail(raw: bytes) -> str:
     return redact_text(text[-PI_STDERR_TAIL_CHARS:])
 
 
+def bind_job_clock(job: Any) -> None:
+    """Let Pi calls made for *job* read the job's remaining wall-clock budget and deadline (R2)."""
+    from packages.core.models import JobBudgets
+    from packages.orchestration.budget_guard import job_time_remaining
+
+    def left() -> tuple[float | None, str]:
+        try:
+            budgets = job.budgets if isinstance(job.budgets, JobBudgets) else (
+                JobBudgets.model_validate(job.budgets) if job.budgets else None)
+            started = datetime.fromisoformat(job.first_running_at) if job.first_running_at else None
+        except (ValueError, TypeError):
+            return None, ""
+        return job_time_remaining(budgets, started)
+
+    _JOB_TIME_LEFT.set(left)
+
+
+def effective_pi_timeout(configured_sec: int) -> tuple[float, dict[str, Any]]:
+    """``(seconds, provenance)``: the tightest positive ceiling among the configured timeout and the job clock.
+
+    Zero or less means the job has no time left; the caller must not start Pi then.
+    """
+    clock = _JOB_TIME_LEFT.get()
+    left, source = clock() if clock else (None, "")
+    ceilings = [(float(configured_sec), "configured")] if configured_sec > 0 else []
+    if left is not None:
+        ceilings.append((left, source))
+    seconds, bound_by = min(ceilings) if ceilings else (float(PI_DEFAULT_TIMEOUT_SEC), "default")
+    return seconds, {"configured_sec": configured_sec, "job_left_sec": None if left is None else round(left, 1),
+                     "job_ceiling": source, "effective_sec": round(seconds, 1), "bound_by": bound_by}
+
+
 def pi_failure_text(summary: PiRunSummary | None, *, exit_code: int | None, term_signal: str | None,
                     tripped: str | None, stderr: bytes, stream_error: str) -> str:
     """The one provider_error sentence for a Pi call that did not complete, or "" when it did.
@@ -319,9 +359,13 @@ class PiProvider:
                                 check_endpoint=False)
         except PiUnavailable as exc:
             return PiCallOutcome(None, {"role": self._role}, f"provider_error: pi_unavailable: {exc}", 0)
+        wall, timeout_info = effective_pi_timeout(timeout_sec)
+        if wall <= 0:
+            return PiCallOutcome(None, {"role": self._role, "timeout": timeout_info},
+                                 "provider_error: pi_timeout: the job's time budget is already used up", 0)
         argv = build_pi_argv(info["pi_path"], model=self._model, tools=tools, prompt=prompt)
         policy = ExecGuardPolicy(
-            wall_timeout_seconds=float(max(timeout_sec, PI_MIN_WALL_SECONDS)),
+            wall_timeout_seconds=wall,
             cwd=self._cwd, core_file_bytes=0, output_cap_bytes=PI_STDOUT_CAP_BYTES,
             env=pi_child_env(pi_agent_dir()), env_allowlist=_PI_ENV_ALLOWLIST + (
                 "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"))
@@ -346,6 +390,7 @@ class PiProvider:
             "model_turns": summary.model_turns if summary else 0,
             "tool_calls": list(summary.tool_calls) if summary else [],
             "tool_errors": summary.tool_errors if summary else 0,
+            "timeout": timeout_info,
             "retries": summary.retries if summary else 0,
             "usage": dict(summary.usage) if summary else {},
             "settled": bool(summary and summary.settled), "error": error[:300],
@@ -383,7 +428,7 @@ class PiProvider:
                 "total_cost_usd": 0.0, "model_turns": summary.model_turns,
                 "parse_source": "pi_json_events"}
 
-    def build(self, prompt: str, *, timeout_sec: int = 120, max_output_chars: int = 50000,
+    def build(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
               resume: str | None = None) -> BuilderOutput:
         full = _BUILDER_PREAMBLE + prompt
         fingerprint = prepare_call_input(
@@ -406,7 +451,7 @@ class PiProvider:
             actual_missing_reason="" if actuals else "provider_actuals_unavailable",
             prepared_input=fingerprint)
 
-    def review(self, prompt: str, *, timeout_sec: int = 120, max_output_chars: int = 50000,
+    def review(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
                resume: str | None = None) -> ReviewerOutput:
         full = _REVIEWER_PREAMBLE + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
         fingerprint = prepare_call_input(

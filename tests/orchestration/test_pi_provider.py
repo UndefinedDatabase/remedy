@@ -34,7 +34,7 @@ _FAKE_PI = textwrap.dedent('''\
     if sys.argv[1:] == ["--version"]:
         print("9.9.9"); sys.exit(0)
     beh = json.load(open(os.path.join(here, "behavior.json")))
-    json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ)},
+    json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "pid": os.getpid()},
               open(os.path.join(here, "call.json"), "w"))
     for rel, text in beh.get("edits", {}).items():
         with open(os.path.join(os.getcwd(), rel), "a") as fh:
@@ -194,7 +194,6 @@ def test_a_failed_pi_call_is_a_provider_error_with_bounded_evidence(fake_pi, wor
 
 
 def test_a_wall_clock_trip_and_the_output_cap_and_a_signal_death(fake_pi, workspace, monkeypatch):
-    monkeypatch.setattr(PP, "PI_MIN_WALL_SECONDS", 1)
     fake_pi.behave(stdout=good_stream(), sleep=30)
     assert "pi_timeout" in PiProvider(role="builder", cwd=str(workspace)).build("x", timeout_sec=1).error
     monkeypatch.setattr(PP, "PI_STDOUT_CAP_BYTES", 64)

@@ -52,6 +52,11 @@ PROFILES: dict[str, TimeoutProfile] = {
     ),
 }
 
+#: The timeout a Pi agent loop gets when the operator set none. Pi runs several tool turns on a
+#: local model, so the 120 s single-completion default is too short for it; an explicit value
+#: (flag, order file, persisted config) is a CEILING and is never raised to this.
+PI_DEFAULT_TIMEOUT_SEC: int = 900
+
 RETRY_BACKOFFS: list[int] = [30, 120]
 MAX_RETRIES: int = len(RETRY_BACKOFFS)
 
