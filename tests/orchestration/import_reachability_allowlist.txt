@@ -254,6 +254,7 @@ packages.orchestration.pause_control
 packages.orchestration.permissions
 packages.orchestration.pi_events
 packages.orchestration.pi_provider
+packages.orchestration.pi_turn_counts
 packages.orchestration.pingpong_call_record
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job

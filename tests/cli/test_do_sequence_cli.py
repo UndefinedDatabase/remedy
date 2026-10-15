@@ -734,14 +734,14 @@ def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, cap
     # R-0807: one row per provider call, so the reviewer's calls are a role too.
     assert [role["role"] for role in data["cost"]["roles"]] == ["builder", "reviewer"]
     assert data["cost"]["roles"] == [
-        {"role": row.bucket, "calls": row.calls, "tokens_in": row.tokens_in,
+        {"role": row.bucket, "harness_invocations": row.calls, "model_turns": None, "tokens_in": row.tokens_in,
          "tokens_out": row.tokens_out, "cache_read": row.cache_read, "cost_usd": row.cost_usd}
         for row in sorted(report.rows, key=lambda r: str(r.bucket))]
     assert data["cost"]["cost_usd"] == report.total.cost_usd
     assert (data["cost"]["job_ids"], data["cost"]["mirror_failed_job_ids"]) == ([job_id], [])
 
     out = _do(capsys, order="Write a CHANGELOG.md")
-    assert re.search(r"^Tokens builder: input .+, output .+, cache read .+ \(\d+ call\(s\)\)$",
+    assert re.search(r"^Tokens builder: input .+, output .+, cache read .+ \(\d+ harness invocations?; model turns not reported\)$",
                      out, re.MULTILINE)
     assert re.search(r"^Cost: ", out, re.MULTILINE)
 
