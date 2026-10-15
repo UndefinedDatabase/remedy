@@ -25,9 +25,9 @@ from packages.orchestration.structure_measure import (
 REPO = Path(__file__).resolve().parents[1]
 LEDGER = REPO / "docs/system/structure-ledger-v1.md"
 
-#: The scope Remedy's own ledger covers: tracked files under these roots, without the one file
-#: npm writes and no person edits.
-SCOPE = ("packages", "apps", "scripts", ":(exclude)apps/ui/package-lock.json")
+#: The scope Remedy's own ledger covers: tracked files under these roots. The exclusion of the
+#: lock file npm wrote went with `apps/ui` (amend1015f D3).
+SCOPE = ("packages", "apps", "scripts")
 
 #: The row count of "Functions above 100 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
@@ -40,11 +40,11 @@ MAX_FUNCTION_LINES = 29070
 #: The row count of "Files above 1,000 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_ROWS = 35
+MAX_FILE_ROWS = 32
 #: The summed `Lines` column of "Files above 1,000 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_LINES = 69324
+MAX_FILE_LINES = 65422
 
 _FUNCTION_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \| `([^`]+)` \|$")
 _FILE_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \|$")

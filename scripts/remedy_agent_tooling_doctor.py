@@ -139,15 +139,12 @@ def _check_mcp_defaults(findings: list[Finding]) -> None:
 
 
 def _check_packages(findings: list[Finding]) -> None:
+    # The UI's package.json and lock file went with `apps/ui` (amend1015f D3).
     root_pkg = ROOT / "package.json"
-    ui_pkg = ROOT / "apps/ui/package.json"
-    ui_lock = ROOT / "apps/ui/package-lock.json"
     pyproject = ROOT / "pyproject.toml"
     findings.append(Finding("INFO", f"Root package.json exists: {root_pkg.exists()}"))
-    findings.append(Finding("INFO", f"UI package.json exists: {ui_pkg.exists()}"))
-    findings.append(Finding("INFO", f"UI package-lock.json exists: {ui_lock.exists()}"))
     findings.append(Finding("INFO", f"pyproject.toml exists: {pyproject.exists()}"))
-    if not ui_pkg.exists() or not pyproject.exists():
+    if not pyproject.exists():
         findings.append(Finding("ERROR", "Expected package metadata is missing"))
 
 

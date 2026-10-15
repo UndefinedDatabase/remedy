@@ -19,7 +19,7 @@ REASONED = re.compile(r"^ — \S")
 
 #: The number of reasoned `print` marks when T20 was turned on. Only ever falls: the commit
 #: that removes a mark lowers this number in the same commit, and it is never raised.
-MAX_EXCUSED = 11
+MAX_EXCUSED = 8
 
 
 def _marks() -> list[tuple[str, int, str]]:
@@ -54,10 +54,12 @@ def test_t20_stays_selected():
     assert select is not None and '"T20"' in select.group(1)
 
 
-def test_only_ui_server_is_excused_whole_in_packages():
+def test_no_file_in_packages_is_excused_whole():
+    """`ui_server.py` was the last, for its frontend build's output; that build was deleted
+    (amend1015f D3), so no file under packages/ prints freely any more."""
     text = (REPO / "pyproject.toml").read_text(encoding="utf-8")
     section = text.split("[tool.ruff.lint.per-file-ignores]", 1)[1].split("\n[", 1)[0]
     keys = re.findall(r'^"(packages/[^"]*)"\s*=\s*\[(.*?)\]', section, re.M)
     excused = [key for key, codes in keys if '"T20"' in codes]
-    assert excused == ["packages/orchestration/ui_server.py"], (
+    assert excused == [], (
         f"files in packages/ excused from T20 as a whole: {excused}")

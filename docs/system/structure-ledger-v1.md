@@ -13,8 +13,7 @@ this page, so a debt can shrink and can never grow, and no new one can appear.
 its last line, read from Python's own syntax tree, and every tracked text file by its lines. It
 names a function longer than 100 lines and a file longer than 1,000 lines, largest first, and
 changes nothing. The two limits are options of the command; for Remedy they are fixed at 100 and
-1,000. Remedy's ledger covers the files git tracks under `packages/`, `apps/` and `scripts/`,
-except `apps/ui/package-lock.json`, which npm writes and no person edits.
+1,000. Remedy's ledger covers the files git tracks under `packages/`, `apps/` and `scripts/`.
 
 ## The ratchet
 `tests/test_structure_ratchet.py` measures that scope and reads the two tables at the end of this
@@ -443,7 +442,7 @@ with the code that calls it.
 | 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
-| 2134 | `scripts/remedy_smoke.sh` |
+| 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |
 | 1965 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
@@ -453,8 +452,6 @@ with the code that calls it.
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
-| 1340 | `apps/ui/src/api/diffViewModel.test.ts` |
-| 1216 | `apps/ui/src/api/remedyApi.ts` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1015 | `apps/cli/commands/do_cmd.py` |
@@ -463,7 +460,6 @@ with the code that calls it.
 | 1156 | `packages/orchestration/review_subject.py` |
 | 1138 | `packages/orchestration/test_execution_service.py` |
 | 1111 | `packages/orchestration/run_report.py` |
-| 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |
