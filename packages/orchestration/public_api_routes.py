@@ -264,7 +264,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`added` and `removed` lines, its unified `patch` and `truncated`, and `truncated` "
             "when a patch or the list was cut. A result not yet applied is the job branch "
             "against its base commit, an applied one the commit its apply landed. A job that "
-            "has not ended answers 409 `diff_not_ready`, commits git no longer has 409 "
+            "has not ended or waits for an answer answers 409 `diff_not_ready`, commits git "
+            "no longer has 409 "
             "`diff_unavailable`. A job id prefix is accepted, and a client token reads only a "
             "job of one of its projects (403 `api_client_policy_refused`)."
         ),

@@ -93,7 +93,7 @@ Once the story reads `done`, the diff lists each changed file with its `change`,
 `removed` lines and its unified `patch`, read from git; `state` is `prepared` until the result is
 applied, then `applied`, or `declined`, `failed` or `conflict`. A program shows the patches before
 it offers `apply`, and says so when a file's or the answer's `truncated` is `true`. A job that has
-not ended answers 409 `diff_not_ready`. The page `docs/system/public-http-api-v1.md` ("Diffs")
+not ended, or waits for an answer, answers 409 `diff_not_ready`. The page `docs/system/public-http-api-v1.md` ("Diffs")
 names the limits.
 
 ## 5. Apply or decline

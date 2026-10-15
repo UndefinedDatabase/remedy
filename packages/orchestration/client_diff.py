@@ -15,7 +15,8 @@ The answer, beside the envelope's own keys::
                 "added": int, "removed": int, "patch": str, "truncated": bool}],
      "truncated": bool}
 
-`patch` is cut at a line boundary after `FILE_PATCH_LIMIT` bytes (the file's `truncated` is
+A job that has not ended, or that waits for an answer to a question (its story reads `waiting`),
+is refused `diff_not_ready`. `patch` is cut at a line boundary after `FILE_PATCH_LIMIT` bytes (the file's `truncated` is
 true), the patches together stop at `TOTAL_PATCH_LIMIT` bytes and the list at `FILE_LIMIT` files
 (the answer's `truncated` is true). A binary file counts 0 lines and carries git's own one-line
 patch. A path `sensitive_paths` names keeps its counts but never its patch, so a credential's
@@ -87,12 +88,25 @@ def _latest_apply_record(job_id: str) -> dict[str, Any] | None:
     return (applied or records or [None])[-1]
 
 
+def _asks_a_question(plan: Any) -> bool:
+    """Whether PLAN has an open decision, so its story reads `waiting`: a job its budget stopped
+    with a question has not ended (found by the kit's recording, which first read `failed`)."""
+    from packages.orchestration.client_story import _open_decision
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.timeline import load_run_events
+
+    return _open_decision(plan, load_run_events(resolve_data_root(), str(plan.job_id))) is not None
+
+
 def _state_and_range(plan: Any) -> tuple[str, str, str]:
     """(state, from-commit, to-commit) of PLAN's change; raises `diff_not_ready` while it runs."""
     from packages.orchestration.job_apply import job_result_decline
 
     state = str(getattr(plan.state, "value", plan.state))
     base, head = str(plan.worktree_base_commit or ""), str(plan.worktree_head or plan.worktree_branch or "")
+    if state != "completed" and _asks_a_question(plan):
+        raise ClientDiffRefusal("diff_not_ready",
+                                f"job {plan.job_id} waits for an answer; its change is shown once it ends")
     if state in _FAILED_STATES:
         return "failed", base, head
     if state != "completed":

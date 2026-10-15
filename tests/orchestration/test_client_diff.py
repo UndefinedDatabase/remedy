@@ -191,3 +191,32 @@ def test_a_sensitive_path_keeps_its_counts_but_never_its_patch(data_root, repo):
     row = client_diff._file_row(str(repo), base, head, ("added", ".env", ""), 10_000)
     assert row == {"path": ".env", "change": "added", "added": 1, "removed": 0, "patch": "",
                    "truncated": True}
+
+
+def test_a_job_stopped_at_a_question_has_not_ended(data_root, repo):
+    """The kit's recording found it: a job its budget stopped with an open question reads
+    `waiting` in its story, so its diff is not ready rather than `failed`."""
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import _persist_job
+
+    job_id = _run(repo)
+    plan = _plan(job_id)
+    plan.state, plan.stop_source = RunState.STOPPED, "budget"
+    _persist_job(plan)
+    with pytest.raises(ClientDiffRefusal) as caught:
+        job_client_diff(job_id, _plan(job_id))
+    assert caught.value.token == "diff_not_ready"
+
+
+def test_a_job_stopped_with_its_question_answered_reads_failed(data_root, repo, monkeypatch):
+    import packages.orchestration.decision_queue as decision_queue
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import _persist_job
+
+    monkeypatch.setattr(decision_queue, "list_decisions", lambda plan, events: [])
+    job_id = _run(repo)
+    plan = _plan(job_id)
+    plan.state, plan.stop_source = RunState.STOPPED, "operator"
+    _persist_job(plan)
+    answer = job_client_diff(job_id, _plan(job_id))
+    assert answer["state"] == "failed" and len(answer["files"]) == 1
