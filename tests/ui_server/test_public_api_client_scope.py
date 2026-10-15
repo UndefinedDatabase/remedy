@@ -52,10 +52,10 @@ def _two_projects(tmp_path: Path):
     return mine, theirs, own, other
 
 
-def test_the_proof_and_run_poll_routes_hold_a_client_to_its_projects(tmp_path):
+def test_the_proof_run_poll_and_diff_routes_hold_a_client_to_its_projects(tmp_path):
     mine, _theirs, own, other = _two_projects(tmp_path)
     client = _client(mine.slug)
-    for suffix in ("proof", "run"):
+    for suffix in ("proof", "run", "diff"):
         status, body, _headers = public_api.answer_public_api_get(
             f"/api/v1/jobs/{other}/{suffix}", client=client)
         assert (status, body["error"]) == (403, "api_client_policy_refused"), suffix

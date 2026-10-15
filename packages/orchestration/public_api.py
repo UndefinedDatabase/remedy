@@ -79,7 +79,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
 #: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
 #: client token's refusal `api_client_policy_refused` on the proof, run and order polls
-#: (DECISION amend1015c D2).
+#: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5).
 PUBLIC_API_VERSION = "1.16"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
@@ -316,6 +316,21 @@ def _client_story_answer(*, job: str) -> dict[str, Any]:
     return build_ok(**job_client_story(job_id, plan))
 
 
+def _client_diff_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/diff` sends: what `remedy client diff <job> --json`
+    prints (DECISION amend1015c D5); the two share `job_client_diff`."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.client_diff import ClientDiffRefusal, job_client_diff
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    try:
+        return build_ok(**job_client_diff(*resolved))
+    except ClientDiffRefusal as exc:
+        return build_error(exc.token, str(exc))
+
+
 def _client_read_refusal(client: Any, job: str) -> str | None:
     """One sentence when a client token may not read JOB, which is not a job of one of its
     projects, else None; a value that names no one job is left to the route's own refusal."""
@@ -389,6 +404,7 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.order": _order_answer,
     "client.run": _run_answer,
     "client.story": _client_story_answer,
+    "client.diff": _client_diff_answer,
 }
 
 
@@ -396,8 +412,9 @@ _TWIN_ANSWERS: dict[str, Any] = {
 #: token reads every job (operator amendment amend1014-luna-mission-fixes B.3), and so does the
 #: story (DECISION amend1015f D14). The proof and the run poll joined them (DECISION amend1015c
 #: D2), when the check of operator order amend1015-final-closure found them answering a client
-#: about another project's job.
-_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run"})
+#: about another project's job, and the diff was born among them (DECISION amend1015c D5).
+_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run",
+                                  "client.diff"})
 #: The read routes whose answer lists many projects' records: for a client token they list only
 #: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2).
 _CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes"})

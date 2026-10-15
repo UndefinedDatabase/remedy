@@ -65,6 +65,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
     ("GET", "/api/v1/jobs/{job}/story"): "test_the_story_route_answers_the_client_story_command",
+    ("GET", "/api/v1/jobs/{job}/diff"): "test_the_diff_route_answers_the_client_diff_command",
     ("GET", "/api/v1/jobs/{job}/run"):
         "test_the_run_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/jobs/{job}/run"):
@@ -2617,3 +2618,42 @@ def test_the_story_route_holds_a_client_token_to_its_projects(tmp_path):
     status, body, _headers = public_api.answer_public_api_get(
         f"/api/v1/jobs/{own}/story", client=client)
     assert status == 200 and body["job_id"] == own and body["order"] == "Client policy prompt"
+
+
+def test_the_diff_route_answers_the_client_diff_command(tcp_server, unix_server, tmp_path):
+    """Operator order amend1015-final-closure E3 (DECISION amend1015c D5): one job's change, from git."""
+    from packages.orchestration.client_diff import job_client_diff
+    from packages.orchestration.pingpong_job import parse_job_file, require_job_plan, run_job
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/diff")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.diff",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+         ("diff_not_ready", 409), ("diff_unavailable", 409)), (), ())
+    repo = tmp_path / "diff-route-repo"
+    repo.mkdir()
+    subprocess.run("git init -q && git config user.email t@t && git config user.name t "
+                   "&& echo '# demo' > README.md && git add -A && git commit -qm init",
+                   shell=True, cwd=repo, check=True)
+    job = parse_job_file("# Job: diff\n\n## Task 1\nDo a thing.\n\nAcceptance:\n- done\n", str(repo))
+    run_job(job.job_id, builder_provider=FakeProvider(), reviewer_provider=FakeProvider(),
+            repair_rounds=2)
+    expected = build_ok(**job_client_diff(job.job_id, require_job_plan(job.job_id)))
+    assert expected["state"] == "prepared" and len(expected["files"]) == 1
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff", _bearer(SERVER_TOKEN)):
+        assert (status, body) == (200, expected)
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff?x=1", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (400, "api_query_invalid")
+    for status, body, _headers in ask(f"/api/v1/jobs/{job.job_id}/diff"):
+        assert status == 401, body
+    planned = _saved_job_with_id("abc9870000000000")
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{planned}/diff")
+    assert (status, body["error"]) == (409, "diff_not_ready")
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/diff")
+    assert (status, body["error"]) == (404, "invalid_job_id")

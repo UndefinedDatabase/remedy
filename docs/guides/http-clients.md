@@ -83,6 +83,19 @@ Reading a story changes nothing, so a program may read it as often as it likes; 
 unchanged job answer the same. A job id prefix is accepted; an unknown id answers 404
 `invalid_job_id` or `job_not_found`, and a prefix of several jobs 400 `ambiguous_job_id`.
 
+## 4a. Show the change before apply
+
+```
+curl -s http://127.0.0.1:<port>/api/v1/jobs/<job>/diff -H "Authorization: Bearer <token>"
+```
+
+Once the story reads `done`, the diff lists each changed file with its `change`, its `added` and
+`removed` lines and its unified `patch`, read from git; `state` is `prepared` until the result is
+applied, then `applied`, or `declined`, `failed` or `conflict`. A program shows the patches before
+it offers `apply`, and says so when a file's or the answer's `truncated` is `true`. A job that has
+not ended answers 409 `diff_not_ready`. The page `docs/system/public-http-api-v1.md` ("Diffs")
+names the limits.
+
 ## 5. Apply or decline
 
 Apply, when the story's `next.action` is `apply` and the token has `may_apply`:

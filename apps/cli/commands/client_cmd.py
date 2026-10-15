@@ -158,6 +158,32 @@ def _cmd_client_story(job: str, *, json_output: bool = False) -> None:
     print(f"Job {job_id}: {story['state']}, next {story['next']['action']}")
 
 
+def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from packages.orchestration.client_diff import ClientDiffRefusal, job_client_diff
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+
+    job_id = resolve_job_id_or_fail(job, json_output=json_output)
+    try:
+        plan = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output)
+    try:
+        # A call, hand-verified in tests/cli/test_client_interface.py
+        # (`apps.cli.commands.client_cmd:_cmd_client_diff:**answer`).
+        answer = job_client_diff(job_id, plan)
+    except ClientDiffRefusal as exc:
+        fail(exc.token, str(exc), json_output=json_output, exit_code=3)
+    if json_output:
+        emit_ok(**answer)
+        return
+    print(f"Job {job_id}: {answer['state']}")
+    for row in answer["files"]:
+        print(f"  {row['change']:<8} +{row['added']} -{row['removed']} {row['path']}")
+    for row in answer["files"]:
+        print(row["patch"], end="")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
     "client.changes": lambda args: _cmd_client_changes(
@@ -167,5 +193,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.run": lambda args: _cmd_client_run(
         args.job, json_output=getattr(args, "json", False)),
     "client.story": lambda args: _cmd_client_story(
+        args.job, json_output=getattr(args, "json", False)),
+    "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
 }

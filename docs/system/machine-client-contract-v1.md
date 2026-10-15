@@ -877,6 +877,23 @@ Keys under the answer keys: see below.
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
 
+#### `remedy client diff`
+
+Command id: `client.diff`.
+Description: Read the change one ended Job's tasks made, as git prints it file by file with its unified patch: before apply against the commit the Job started from, after apply the commit it landed (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose tasks' change is read |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `diff_not_ready`, `diff_unavailable`, `invalid_job_id`, `job_not_found`.
+Answer keys: `files`, `job`, `matches`, `state`, `truncated`.
+Keys under the answer keys: see below.
+
+- `files`: `added`, `change`, `patch`, `path`, `removed`, `truncated`
+
 #### `remedy doctor health`
 
 Command id: `doctor.health`.

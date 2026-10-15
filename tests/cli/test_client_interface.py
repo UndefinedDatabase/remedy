@@ -294,6 +294,11 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         "forward_effect passes its caller's `error` through; on a client's path its one caller, "
         "_cmd_job_run in apps/cli/commands/do_cmd.py, passes job_not_started",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_diff:exc.token": (
+        frozenset({"diff_not_ready", "diff_unavailable"}),
+        "a ClientDiffRefusal's token; every ClientDiffRefusal(...) in "
+        "packages/orchestration/client_diff.py names one of DIFF_REFUSALS (DECISION amend1015c D5)",
+    ),
     "apps.cli.commands.patch:_cmd_approve_hunks:result.code": (
         frozenset({"duplicate_hunk", "empty_decision", "missing_reason", "no_diff_available",
                    "overlapping_sets", "unknown_hunk", "untrustworthy_view"}),
@@ -543,6 +548,11 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_diff:**answer": (
+        frozenset({"files", "job", "state", "truncated"}),
+        "the keys job_client_diff in packages/orchestration/client_diff.py returns, shared with "
+        "GET /api/v1/jobs/{job}/diff (DECISION amend1015c D5)",
+    ),
     "apps.cli.commands.client_cmd:_cmd_client_run:**payload": (
         frozenset({
             "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid",
@@ -682,6 +692,8 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         set(hunk_decision_record._RECORD_KEYS))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_story:**story"] == (
         _returned_dict_keys("packages/orchestration/client_story.py", "build_client_story"))
+    assert sites["apps.cli.commands.client_cmd:_cmd_client_diff:**answer"] == (
+        _returned_dict_keys("packages/orchestration/client_diff.py", "job_client_diff"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_interface:**interface"] == (
         _returned_dict_keys("apps/cli/client_interface.py", "build_client_interface"))
     assert sites["apps.cli.commands.job:_cmd_job_resume:**preview"] == (
@@ -1414,6 +1426,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert story["state"] == "done_applied", story
     assert {("next", "action"), ("steps", "tasks", "rounds"), ("steps", "phrase", "key"),
             ("changes", "path"), ("numbers", "rounds")} <= _key_paths(_key_tree(story))
+    # The applied job's change, the commit its apply landed (DECISION amend1015c D5).
+    diffed = answer("client.diff", ["client", "diff", job_id[:8]], 0)
+    assert diffed["state"] == "applied" and diffed["files"], diffed
+    assert {("files", "patch"), ("files", "change")} <= _key_paths(_key_tree(diffed))
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,

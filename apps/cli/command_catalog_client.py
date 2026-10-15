@@ -97,4 +97,21 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("client.interface", "client.run"),
     ),
+    CommandEntry(
+        command_id="client.diff",
+        group_id="client",
+        subcommand="diff",
+        # Operator order amend1015-final-closure E3 (DECISION amend1015c D5): the change a client
+        # shows before a person applies it, read from git.
+        description="Read the change one ended Job's tasks made, as git prints it file by file with its unified patch: before apply against the commit the Job started from, after apply the commit it landed (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("job", "The id of the job, or a prefix of it, whose tasks' change is read"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "client.story"),
+        # A job that has not ended, or whose commits git no longer has, exits 3 (`not_ready`).
+        exit_codes=(0, 1, 2, 3),
+    ),
 )

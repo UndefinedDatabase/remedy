@@ -253,6 +253,24 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/jobs/{job}/diff",
+        twin="client.diff",
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),
+                  ("diff_not_ready", 409), ("diff_unavailable", 409)),
+        description=(
+            "One ended job's change as git prints it, as `remedy client diff <job> --json` does: "
+            "`job`, `state` (`prepared`, `applied`, `declined`, `failed` or `conflict`), `files` "
+            "with each file's `path`, `change` (`added`, `modified`, `deleted` or `renamed`), "
+            "`added` and `removed` lines, its unified `patch` and `truncated`, and `truncated` "
+            "when a patch or the list was cut. A result not yet applied is the job branch "
+            "against its base commit, an applied one the commit its apply landed. A job that "
+            "has not ended answers 409 `diff_not_ready`, commits git no longer has 409 "
+            "`diff_unavailable`. A job id prefix is accepted, and a client token reads only a "
+            "job of one of its projects (403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/jobs/{job}/run",
         twin="client.run",
         refusals=(("run_not_found", 404),),
