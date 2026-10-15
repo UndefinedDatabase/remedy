@@ -29795,3 +29795,15 @@ REPLACED, NOT KEPT: raw Ollama text completion as the default mutating builder (
 DEVIATIONS, STATED PLAINLY: the history merge (`--commit-with-history`) still asks for a clean tree and refuses a dirty-start job, because its branch carries the baseline commit. One Pi invocation is one ledger "call" in the token lines; `usage_actuals.model_turns` and the Pi evidence record the real turn count. Cancellation is a signal death of the Pi process group, reported as `pi_killed`; there is no separate cancel channel in the guarded runner.
 
 HOW TO REVERSE: delete `pi_provider.py`, `pi_events.py`, `dirty_baseline.py`, the role defaults, `_seed_start_baseline` and `start_baseline`, restore `target_changed`, and delete this paragraph.
+
+## DECISION amend1014c D1 to D4 — review closure of the do golden path (2026-10-15)
+
+THE PROBLEM: the independent review of PR #339 found a credential leak into a job branch (R1), a 900-second floor over explicit timeouts (R2), a "calls" count that meant Pi processes (R3) and a 643-insertion commit (R4).
+
+CHOSEN: (D1) the baseline seeds only the job's declared deliverables (task deliverable and `files_hint`, plus path tokens in the task text) that are not sensitive by NAME; every other dirty path is recorded as a name only (`start_baseline.preserved`) and never opened; one classifier, `sensitive_paths.py`, serves apply, the context pack, the baseline and the target-state snapshot, whose `git add` now excludes sensitive names by pathspec (the snapshot was a second place a `.env` became a blob under a checkpoint ref); an order or task target that is sensitive is refused before any worktree or provider call. (D2) Pi's 900 s is a DEFAULT in `provider_timeouts` used when nobody set a timeout; explicit value, remaining job wall budget and deadline are ceilings, the minimum wins, provenance is in the call record. (D3) the ledger keys rows by provider attempt and feeds budgets, so a row per model turn was rejected; the ledger count is renamed `harness_invocations` on do, digest, cockpit, contract and UI, and `model_turns` is read from Pi's own call records. (D4) history is replaced by replay on a new branch, no force-push.
+
+ALTERNATIVES CONSIDERED: filtering the seed by `.gitignore` (REJECTED, a non-ignored `.env` is the incident); hashing unrelated dirt for the preserved report (REJECTED, a hash of a secret is content); one ledger row per turn (REJECTED above, it would spend `max_provider_calls` on turns).
+
+DEVIATIONS, STATED PLAINLY: `remedy cost` and `remedy stats` keep their ledger-level `calls` columns; they report the ledger rows, which are harness invocations, and are documented so. An order that only MENTIONS a sensitive path (to forbid it) is refused too, because a name in prose is not a target.
+
+HOW TO REVERSE: delete `sensitive_paths.py`, `pi_turn_counts.py`, restore `capture_dirty_baseline` reading every status path, restore `PI_MIN_WALL_SECONDS`, rename the keys back, and delete this paragraph.
