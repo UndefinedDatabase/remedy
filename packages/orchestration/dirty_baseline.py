@@ -1,10 +1,15 @@
 """The working tree at invocation is the baseline (operator amendment amend1014b, DECISION D5, D6).
 
 A target repository need not be clean for `remedy do`. At command start this module captures what
-the person can SEE: every path `git status` lists, with its bytes, executable bit or symlink
-target, or its absence. The job's isolated workspace is then seeded from those bytes and
+the person can SEE of the paths the job may change (its deliverables): their bytes, executable bit
+or symlink target, or absence. The job's isolated workspace is then seeded from those bytes and
 committed on the job's own branch, so the proposed result is the delta from that start state and
 not from `HEAD`, and the apply compares the target against the same bytes.
+
+Every OTHER dirty path (an unrelated source file, an untracked `.env`, a private key) is preserved
+dirt: only its name is recorded. Remedy deliberately does not open it, copy it into the workspace
+or store it in a Git object, because the workspace is exposed to the agent and the job branch
+persists; sensitive paths are decided by name alone (`sensitive_paths`), never by `.gitignore`.
 
 Remedy deliberately does NOT stash, reset, check out target paths, commit, or touch the target's
 index to build this baseline: it only reads the target, and every write lands in the job
@@ -18,9 +23,12 @@ import hashlib
 import os
 import stat
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from packages.orchestration.sensitive_paths import sensitive_path_category
 
 #: Bounds, so a repository with a huge dirty set is refused instead of copied into a workspace.
 MAX_BASELINE_PATHS = 500
@@ -61,6 +69,8 @@ class DirtyBaseline:
     branch: str
     entries: tuple[BaselineEntry, ...]
     digest: str
+    #: ``(path, category)`` of each dirty path left alone; the category is "" for ordinary paths.
+    preserved: tuple[tuple[str, str], ...] = ()
 
     @property
     def paths(self) -> list[str]:
@@ -68,7 +78,8 @@ class DirtyBaseline:
 
     def to_dict(self) -> dict[str, Any]:
         return {"head": self.head, "branch": self.branch, "digest": self.digest,
-                "entries": [e.to_dict() for e in self.entries]}
+                "entries": [e.to_dict() for e in self.entries],
+                "preserved": [{"path": p, "category": c} for p, c in self.preserved]}
 
 
 def _git(repo: str | Path, *args: str) -> bytes:
@@ -107,23 +118,32 @@ def _is_remedy_owned(repo: Path, rel: str) -> bool:
     return _classify(repo, rel) != "content"
 
 
-def _read_entry(repo: Path, rel: str) -> BaselineEntry:
-    full = repo / rel
+def _check_representable(repo: Path, rel: str) -> os.stat_result | None:
+    """lstat of *rel* (None when absent); raises when a baseline could never represent it. Opens nothing."""
     try:
-        info = os.lstat(full)
+        info = os.lstat(repo / rel)
     except FileNotFoundError:
-        return BaselineEntry(rel, "absent")
-    if stat.S_ISLNK(info.st_mode):
-        target = os.readlink(full)
-        return BaselineEntry(rel, "symlink", hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest(),
-                             content=target.encode("utf-8", "surrogateescape"))
+        return None
     if stat.S_ISDIR(info.st_mode):
         raise DirtyBaselineUnsupported(
             f"{rel} is a directory that is a nested repository or submodule; a baseline cannot "
             f"represent it, so commit or remove it first.")
-    if not stat.S_ISREG(info.st_mode):
+    if not (stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)):
         raise DirtyBaselineUnsupported(f"{rel} is a special file (not a regular file or symlink), "
                                        f"which a baseline cannot represent.")
+    return info
+
+
+def _read_entry(repo: Path, rel: str) -> BaselineEntry:
+    """Read one deliverable path's bytes; only ever called for a path that is not sensitive."""
+    info = _check_representable(repo, rel)
+    if info is None:
+        return BaselineEntry(rel, "absent")
+    full = repo / rel
+    if stat.S_ISLNK(info.st_mode):
+        target = os.readlink(full)
+        return BaselineEntry(rel, "symlink", hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest(),
+                             content=target.encode("utf-8", "surrogateescape"))
     if info.st_size > MAX_BASELINE_FILE_BYTES:
         raise DirtyBaselineUnsupported(
             f"{rel} is {info.st_size} bytes, over the {MAX_BASELINE_FILE_BYTES}-byte limit for a "
@@ -148,11 +168,16 @@ def _digest(head: str, branch: str, entries: list[BaselineEntry]) -> str:
     return h.hexdigest()
 
 
-def capture_dirty_baseline(repo_path: str | Path) -> DirtyBaseline:
-    """Capture the target's visible working tree; raises DirtyBaselineUnsupported with the reason.
+def _normal_path(path: str) -> str:
+    return os.path.normpath(path.replace("\\", "/")) if path.strip() else ""
 
-    Reads only: no stash, no reset, no checkout, no index write. A clean tree yields a baseline
-    with no entries, which the caller treats as "nothing to seed".
+
+def capture_dirty_baseline(repo_path: str | Path, deliverables: Iterable[str] = ()) -> DirtyBaseline:
+    """Capture the dirty state of the job's *deliverables*; raises DirtyBaselineUnsupported with the reason.
+
+    Reads only: no stash, no reset, no checkout, no index write. A dirty deliverable that is not
+    sensitive becomes a seeded entry (its bytes are read); every other dirty path is listed as
+    preserved by name and is never opened. No deliverables means nothing is seeded.
     """
     repo = Path(repo_path)
     head = _git(repo, "rev-parse", "HEAD").decode().strip()
@@ -172,14 +197,19 @@ def capture_dirty_baseline(repo_path: str | Path) -> DirtyBaseline:
         raise DirtyBaselineUnsupported(
             f"The target has changes in the submodule {', '.join(gitlinks[:3])}, which a baseline "
             f"cannot represent.")
-    entries = [_read_entry(repo, p) for p in paths]
+    wanted = {_normal_path(d) for d in deliverables}
+    seeded = [p for p in paths if _normal_path(p) in wanted and not sensitive_path_category(p)]
+    for rel in paths:
+        _check_representable(repo, rel)                       # lstat only: no path is opened here
+    entries = [_read_entry(repo, p) for p in seeded]
     total = sum(len(e.content) for e in entries)
     if total > MAX_BASELINE_TOTAL_BYTES:
         raise DirtyBaselineUnsupported(
             f"The target's uncommitted files hold {total} bytes, over the {MAX_BASELINE_TOTAL_BYTES} "
             f"a captured baseline can hold.")
+    preserved = tuple((p, sensitive_path_category(p)) for p in paths if p not in seeded)
     return DirtyBaseline(head=head, branch=branch, entries=tuple(entries),
-                         digest=_digest(head, branch, entries))
+                         digest=_digest(head, branch, entries), preserved=preserved)
 
 
 def _safe_destination(workspace: Path, rel: str) -> Path:
@@ -211,7 +241,15 @@ def seed_workspace_from_baseline(baseline: DirtyBaseline, workspace: str | Path)
         dest.write_bytes(e.content)
         mode = dest.stat().st_mode
         dest.chmod(mode | stat.S_IXUSR if e.executable else mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-    subprocess.run(["git", "add", "-A"], cwd=str(ws), capture_output=True, check=True, timeout=60)
+    if not baseline.entries:
+        return False
+    # Only the seeded deliverable paths are staged; a path the person deleted is un-staged by name
+    # (and a path that never existed in the workspace is not an error).
+    present = [e.path for e in baseline.entries if e.kind != "absent"]
+    gone = [e.path for e in baseline.entries if e.kind == "absent"]
+    for args, names in ((["add", "-A"], present), (["rm", "-r", "-q", "--cached", "--ignore-unmatch"], gone)):
+        if names:
+            subprocess.run(["git", *args, "--", *names], cwd=str(ws), capture_output=True, check=True, timeout=60)
     quiet = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(ws), check=False, timeout=60)
     if quiet.returncode == 0:
         return False
@@ -257,26 +295,65 @@ def job_start_baseline(job: Any) -> dict[str, Any]:
     return (getattr(job, "target_last_known", None) or {}).get("start_baseline") or {}
 
 
+def job_deliverable_paths(job: Any) -> tuple[list[str], list[str]]:
+    """``(declared, named)`` repository paths the job may change.
+
+    *declared* are the tasks' recorded deliverables and `files_hint` entries: explicit targets,
+    which a sensitive path may never be. *named* are path-like tokens in the task text; they only
+    widen what a dirty file may be seeded, and a sensitive one among them is simply skipped.
+    """
+    from packages.orchestration.task_deliverables import explicit_order_paths, task_deliverable
+
+    declared: list[str] = []
+    named: list[str] = []
+    for task in getattr(job, "tasks", None) or []:
+        plan_hints = (task.inputs.get("plan") or {}).get("files_hint") or []
+        for raw in [task_deliverable(task), *task.files_hint, *plan_hints]:
+            raw = str(raw).strip()
+            if raw:
+                declared.extend(explicit_order_paths(raw) if " " in raw else [raw])
+        named.extend(explicit_order_paths(" ".join([task.title, task.body, task.acceptance])))
+    return list(dict.fromkeys(declared)), list(dict.fromkeys(named))
+
+
+def sensitive_target_refusal(paths: Iterable[str]) -> str:
+    """The one sentence refusing a job whose declared target is a sensitive path, else "". Names the category only."""
+    for rel in paths:
+        if category := sensitive_path_category(rel):
+            return (f"The order targets {rel}, {category}. Remedy does not let a job read or "
+                    f"change such a path, so nothing was run and nothing was copied.")
+    return ""
+
+
 def seed_job_workspace(job: Any, handle: Any, baseline: DirtyBaseline) -> None:
-    """Seed the job's worktree from the captured baseline and record that on the job; no-op if clean."""
-    from packages.orchestration import worktrees as W
+    """Seed the job's worktree from the captured deliverables and record the start on the job.
 
-    if not baseline.entries:
-        return
-    seed_workspace_from_baseline(baseline, handle.path)
-    commit = W.snapshot(handle)
-    job.target_last_known = {"start_baseline": {**baseline.to_dict(), "commit": commit}}
-    job.worktree_head = commit
-
-
-def create_seeded_worktree(job: Any, worktree_id: str) -> Any:
-    """Create the job's worktree and record it on the job, seeded from the visible working tree.
-
-    The capture comes first, so a state it cannot represent leaves no worktree behind.
+    Nothing is recorded for a clean target. A target with only preserved dirt records the names
+    (no commit), so the apply report can say what it left alone.
     """
     from packages.orchestration import worktrees as W
 
-    baseline = capture_dirty_baseline(job.repo_path)
+    if not baseline.entries and not baseline.preserved:
+        return
+    commit = ""
+    if seed_workspace_from_baseline(baseline, handle.path):
+        commit = W.snapshot(handle)
+        job.worktree_head = commit
+    job.target_last_known = {"start_baseline": {**baseline.to_dict(), "commit": commit}}
+
+
+def create_seeded_worktree(job: Any, worktree_id: str) -> Any:
+    """Create the job's worktree and record it on the job, seeded from its dirty deliverables only.
+
+    The checks come first, so a sensitive target or a state the capture cannot represent leaves
+    no worktree behind.
+    """
+    from packages.orchestration import worktrees as W
+
+    declared, named = job_deliverable_paths(job)
+    if refusal := sensitive_target_refusal(declared):
+        raise DirtyBaselineUnsupported(refusal)
+    baseline = capture_dirty_baseline(job.repo_path, [*declared, *named])
     handle = W.create(worktree_id, job.repo_path)
     job.isolation_mode = "worktree"
     job.worktree_branch = handle.branch

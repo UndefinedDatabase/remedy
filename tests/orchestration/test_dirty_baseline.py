@@ -38,6 +38,9 @@ class _AppendBuilder:
     def build(self, prompt, **kw):
         ws = Path(self.holder["path"])
         self.seen["saw"] = (ws / "README.md").read_text()
+        self.seen["tree"] = sorted(str(p.relative_to(ws)) for p in ws.rglob("*")
+                                   if p.is_file() and ".git" not in p.relative_to(ws).parts)
+        self.seen["saw_notes"] = (ws / "notes.txt").read_text() if (ws / "notes.txt").exists() else None
         with open(ws / "README.md", "a") as fh:
             fh.write("The job's reviewed paragraph.\n")
         return BuilderOutput(summary="appended", files_changed=["README.md"], provider="fake")
@@ -84,7 +87,9 @@ def test_the_workspace_is_seeded_from_the_visible_bytes_and_the_diff_is_the_delt
 
     assert job.state == JOB_COMPLETED
     assert seen["saw"] == _DIRTY                                   # not the HEAD blob "# Base\n"
-    assert {e["path"] for e in job_start_baseline(job)["entries"]} == {"README.md", "notes.txt"}
+    assert {e["path"] for e in job_start_baseline(job)["entries"]} == {"README.md"}      # only the deliverable
+    assert [e["path"] for e in job_start_baseline(job)["preserved"]] == ["notes.txt"]    # named, never read
+    assert seen["saw_notes"] == "notes\n"                          # the workspace holds HEAD's notes.txt
     assert job_start_baseline(job)["commit"] and job_start_baseline(job)["head"] == head_before.strip()
     diff = job_result_diff_source(job)[0].read_text()
     added = [ln for ln in diff.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
@@ -99,7 +104,8 @@ def test_a_clean_target_records_no_baseline(repo, monkeypatch):
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "readme")
     job = _run(repo, monkeypatch, {})
-    assert job.state == JOB_COMPLETED and job_start_baseline(job) == {}
+    assert job.state == JOB_COMPLETED, job.error
+    assert job_start_baseline(job) == {}
 
 
 # --- 11. apply over an unchanged dirty baseline ---------------------------------------------
@@ -215,7 +221,8 @@ def test_modes_symlinks_deletions_and_untracked_files_are_represented_exactly(re
     (repo / "fresh.txt").write_text("untracked\n")
     (repo / "newlink").symlink_to("fresh.txt")
 
-    baseline = DB.capture_dirty_baseline(repo)
+    baseline = DB.capture_dirty_baseline(
+        repo, ["run.sh", "gone.txt", "link", "fresh.txt", "newlink"])
     kinds = {e.path: (e.kind, e.executable) for e in baseline.entries}
     assert kinds == {"run.sh": ("file", True), "gone.txt": ("absent", False),
                      "link": ("file", False), "fresh.txt": ("file", False),
