@@ -1,0 +1,253 @@
+"""amend1015 Phase 1.1 — the run story, `build_client_story`, read from real fake-provider runs.
+
+Every story here comes from a job the real runner ran with fake providers in a temporary data
+root, or from such a job's record moved to one state the runner writes; each is checked against
+the closed words of `client_story_words` by `story_problems`.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from packages.core.models import RunState
+from packages.orchestration.client_story import build_client_story
+from packages.orchestration.client_story_words import STORY_STEP_IDS, story_problems
+
+_JOB = "# Job: story\n\n## Task 1\nDo a thing.\n\nAcceptance:\n- done\n"
+_NOW = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def data_root(tmp_path, monkeypatch) -> Path:
+    root = tmp_path / "remedy_data"
+    root.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+    return root
+
+
+@pytest.fixture
+def repo(tmp_path) -> Path:
+    path = tmp_path / "repo"
+    path.mkdir()
+    subprocess.run("git init -q && git config user.email t@t && git config user.name t "
+                   "&& echo '# demo' > README.md && git add -A && git commit -qm init",
+                   shell=True, cwd=path, check=True)
+    return path
+
+
+def _fake(**kw):
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    return FakeProvider(**kw)
+
+
+def _run(repo: Path, *, builder_error: str = "") -> str:
+    from packages.orchestration.pingpong_job import parse_job_file, run_job
+
+    job = parse_job_file(_JOB, str(repo))
+    builder = _fake(builder_error=builder_error) if builder_error else _fake()
+    run_job(job.job_id, builder_provider=builder, reviewer_provider=_fake(), repair_rounds=2)
+    return job.job_id
+
+
+def _story(job_id: str, data_root: Path) -> dict:
+    from packages.orchestration.pingpong_job import load_job_plan_safe
+    from packages.orchestration.timeline import load_run_events
+
+    plan, _degraded = load_job_plan_safe(job_id)
+    story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
+    assert story_problems(story) == []
+    assert [step["id"] for step in story["steps"]] == list(STORY_STEP_IDS)
+    assert story["note_open"] is False
+    assert "$" not in json.dumps(story)
+    return story
+
+
+def _step(story: dict, step_id: str) -> dict:
+    return next(step for step in story["steps"] if step["id"] == step_id)
+
+
+def _save(job_id: str, **fields) -> None:
+    from packages.orchestration.pingpong_job import _persist_job, load_job_plan_safe
+
+    plan, _degraded = load_job_plan_safe(job_id)
+    for name, value in fields.items():
+        setattr(plan, name, value)
+    _persist_job(plan)
+
+
+def test_a_finished_run_reads_done_and_offers_its_apply(data_root, repo):
+    job_id = _run(repo)
+    story = _story(job_id, data_root)
+
+    assert story["order"] == "story"
+    assert story["state"] == "done"
+    assert story["state_detail"] == {"changed_files": 1}
+    assert story["next"] == {"action": "apply",
+                             "route": {"method": "POST", "path": f"/api/v1/jobs/{job_id}/apply"}}
+    building = _step(story, "building")
+    assert building["status"] == "done"
+    assert [task["status"] for task in building["tasks"]] == ["done"]
+    assert building["tasks"][0]["rounds"] >= 1
+    assert building["phrase"]["key"] == "changed_file_in_rounds"
+    assert _step(story, "reading")["phrase"] == {"key": "found_files",
+                                                 "args": {"n": 1, "first": "README.md"}}
+    assert _step(story, "checking")["phrase"]["key"] == "no_test_command"
+    assert _step(story, "finished")["phrase"] == {"key": "waiting_for_apply", "args": {"n": 1}}
+    assert [change["path"] for change in story["changes"]] == building["tasks"][0]["files"]
+    numbers = story["numbers"]
+    assert numbers["rounds"] >= 1
+    assert numbers["calls"] is None  # a job of no registered project has no call ledger to read
+    assert numbers["tokens_in"] is None and numbers["tokens_out"] is None  # amend1015f D4
+    assert building["tokens"] is None
+    assert story["started_at"] and story["ended_at"] and story["updated_at"]
+
+
+def test_an_applied_result_reads_done_applied_with_nothing_next(data_root, repo):
+    from packages.orchestration.job_apply import apply_job
+
+    job_id = _run(repo)
+    assert apply_job(job_id, str(repo), approve=True).status == "applied"
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "done_applied"
+    assert story["next"] == {"action": "none", "route": None}
+    assert _step(story, "finished")["phrase"]["key"] == "applied"
+
+
+def test_a_declined_result_reads_stopped_declined(data_root, repo):
+    from packages.orchestration.job_apply import decline_job_result
+    from packages.orchestration.pingpong_job import _persist_job, load_job_plan_safe
+
+    job_id = _run(repo)
+    plan, _degraded = load_job_plan_safe(job_id)
+    decline_job_result(plan, reason="not wanted", source="test", now=_NOW)
+    _persist_job(plan)
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "stopped"
+    assert story["state_detail"] == {"reason": {"key": "declined", "args": {}}}
+    assert story["next"]["action"] == "none"
+    assert _step(story, "finished") == {"id": "finished", "status": "skipped",
+                                        "phrase": {"key": "declined", "args": {}}, "tokens": None}
+    assert "not wanted" not in json.dumps(story)
+
+
+def test_a_provider_failure_reads_failed_and_offers_a_retry(data_root, repo):
+    job_id = _run(repo, builder_error="provider_unavailable: down")
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "failed"
+    assert story["state_detail"] == {"reason": {"key": "provider_unavailable",
+                                                "args": {"provider": "fake"}}}
+    assert story["next"] == {"action": "retry",
+                             "route": {"method": "POST", "path": f"/api/v1/jobs/{job_id}/run"}}
+    building = _step(story, "building")
+    assert building["status"] == "failed"
+    assert [task["status"] for task in building["tasks"]] == ["failed"]
+    assert _step(story, "finished")["status"] == "failed"
+    assert story["changes"] == []
+    assert story["ended_at"] is not None
+    assert "down" not in json.dumps(story)
+
+
+def test_a_budget_stop_asks_whether_to_extend(data_root, repo):
+    job_id = _run(repo)
+    _save(job_id, state=RunState.STOPPED, stop_source="budget")
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "waiting"
+    assert story["state_detail"]["question"] == "token_budget"
+    assert story["next"]["action"] == "answer"
+    assert story["next"]["route"]["path"].startswith(f"/api/v1/jobs/{job_id}/decisions/")
+
+
+@pytest.mark.parametrize(("state", "stop_source", "reason"), [
+    (RunState.STOPPED, "budget", "budget_exhausted"),
+    (RunState.STOPPED, "operator", "cancelled"),
+    (RunState.CANCELLED, "", "cancelled"),
+    (RunState.PAUSED, "", "paused"),
+])
+def test_a_stopped_job_names_why(data_root, repo, monkeypatch, state, stop_source, reason):
+    import packages.orchestration.decision_queue as decision_queue
+
+    monkeypatch.setattr(decision_queue, "list_decisions", lambda plan, events: [])  # answered
+    job_id = _run(repo)
+    _save(job_id, state=state, stop_source=stop_source)
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "stopped"
+    assert story["state_detail"] == {"reason": {"key": reason, "args": {}}}
+    assert story["next"] == {"action": "none", "route": None}
+
+
+def test_a_planned_job_reads_planning(data_root, repo):
+    from packages.orchestration.pingpong_job import parse_job_file
+
+    job = parse_job_file(_JOB, str(repo))
+    story = _story(job.job_id, data_root)
+
+    assert story["state"] == "planning"
+    assert _step(story, "planning")["status"] == "running"
+    assert _step(story, "building")["status"] == "waiting"
+    assert story["started_at"] is None and story["ended_at"] is None
+    assert story["numbers"] == {"duration_s": None, "tokens_in": None, "tokens_out": None,
+                                "calls": None, "rounds": None}
+
+
+def test_a_running_job_reads_reading_then_working_then_checking(data_root, repo):
+    from packages.orchestration.pingpong_job import TASK_PENDING, TASK_RUNNING, load_job_plan_safe, parse_job_file
+
+    job = parse_job_file(_JOB, str(repo))
+    plan, _degraded = load_job_plan_safe(job.job_id)
+    plan.state = RunState.RUNNING
+    plan.first_running_at = "2026-10-15T11:59:00+00:00"
+    plan.tasks[0].status = TASK_PENDING
+    task_id = plan.tasks[0].task_id
+
+    reading = build_client_story(plan, events=[], now=_NOW)
+    assert reading["state"] == "reading"
+    assert reading["numbers"]["duration_s"] == 60
+    assert reading["ended_at"] is None
+
+    plan.tasks[0].status = TASK_RUNNING
+    started = [{"event": "task_run_started", "task_id": task_id,
+                "timestamp": "2026-10-15T11:59:10+00:00"}]
+    working = build_client_story(plan, events=started, now=_NOW)
+    assert working["state"] == "working"
+    assert working["state_detail"]["round"] == 1
+    assert _step(working, "building")["phrase"]["key"] == "working_on_file"
+    assert story_problems(working) == []
+
+    one_round = started + [{"event": "task_round_completed", "task_id": task_id,
+                            "timestamp": "2026-10-15T11:59:20+00:00",
+                            "metadata": {"round_number": 1, "outcome": "needs_repair"}}]
+    assert build_client_story(plan, events=one_round, now=_NOW)["state_detail"]["round"] == 2
+
+    checking = build_client_story(plan, events=one_round + [
+        {"event": "test_run_started", "task_id": task_id, "timestamp": "2026-10-15T11:59:30+00:00"}],
+        now=_NOW)
+    assert checking["state"] == "checking"
+    assert _step(checking, "checking")["status"] == "running"
+    assert story_problems(checking) == []
+
+
+def test_an_open_decision_reads_waiting_and_names_its_answer_route(data_root, repo, monkeypatch):
+    import packages.orchestration.decision_queue as decision_queue
+
+    job_id = _run(repo)
+    monkeypatch.setattr(decision_queue, "list_decisions", lambda plan, events: [
+        SimpleNamespace(id="dec 1", type="token_budget", status="open"),
+        SimpleNamespace(id="dec 0", type="done_before", status="answered")])
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "waiting"
+    assert story["state_detail"] == {"question": "token_budget", "decision_id": "dec 1"}
+    assert story["next"] == {"action": "answer", "route": {
+        "method": "POST", "path": f"/api/v1/jobs/{job_id}/decisions/dec%201"}}
+
