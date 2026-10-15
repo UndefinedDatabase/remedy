@@ -43,9 +43,9 @@
 import { ACTUAL_BASIS } from "./costMetric";
 
 /** The envelope version this client understands. A payload carrying any other
- *  number is not decoded at all: `job_digest.py` states that the eight-key set
- *  IS the contract and that a key added to it is a version bump, so a different
- *  version is a different contract rather than a superset of this one. */
+ *  number is not decoded at all: a different version is a different contract
+ *  rather than a superset of this one. An ADDED key is not a new version
+ *  (DECISION F040 D3; the ninth, `tokens`, came that way under amend1015 D5). */
 export const JOB_DIGEST_VERSION = 1;
 
 /** The cost figure and how EXACT it is (DECISION F040 D4). `value` is the
@@ -128,6 +128,22 @@ function sentencesOf(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
+/** The text the card shows when the job's ledger names no provider call at all. */
+export const NO_CALL_RECORDED = "no provider call recorded";
+
+/** amend1015 P5.1: the card's cost line is the job's TOKENS — the server's `tokens.line`, the
+ *  reading `remedy do` prints — unless the project set `show_cost_usd = true` under `[cockpit]`
+ *  in `.remedy/config.toml`; then it is the money figure `cost` carries (DECISION F040 D4).
+ *  A token line is a count, not an estimate, so it carries ACTUAL_BASIS. An envelope from a
+ *  server that sends no `tokens` section keeps its `cost` unchanged. */
+function cardCostOf(cost: Record<string, unknown>, rawTokens: unknown): JobDigestCost {
+  const money = { value: stringOf(cost["value"]), basis: stringOf(cost["basis"]) };
+  if (typeof rawTokens !== "object" || rawTokens === null) return money;
+  const tokens = objectOf(rawTokens);
+  if (tokens["show_cost_usd"] === true) return money;
+  return { value: stringOf(tokens["line"]) || NO_CALL_RECORDED, basis: ACTUAL_BASIS };
+}
+
 /** The defensive decode: one payload of unknown provenance becomes either a
  *  complete `JobDigest` or `null`, and never a half-shape a caller must check
  *  field by field. This is the answer `normalizePipeline` and
@@ -166,10 +182,7 @@ export function decodeJobDigest(raw: unknown): JobDigest | null {
     job_id: jobId,
     state: stringOf(payload["state"]),
     headline: stringOf(payload["headline"]),
-    cost: {
-      value: stringOf(cost["value"]),
-      basis: stringOf(cost["basis"]),
-    },
+    cost: cardCostOf(cost, payload["tokens"]),
     ownership: sentencesOf(payload["ownership"]),
     decisions: {
       open_count: countOf(decisions["open_count"]),

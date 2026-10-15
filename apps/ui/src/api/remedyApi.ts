@@ -1,4 +1,5 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
+import { costMetricsOf, tokensMetricOf } from "./cockpitTruth";
 import { decisionCardModels } from "./decisionCard";
 import { readDiffEnvelope } from "./diffViewModel";
 import type { DiffEnvelope } from "./diffViewModel";
@@ -158,10 +159,6 @@ export function normalizeDashboardPayload(
 
   // Metrics from dashboard
   const dm = dashboard.metrics || {};
-  const tu = dashboard.token_usage || {};
-  const tokenTotal = tu.known ? (tu.total_tokens ?? 0) : 0;
-  const tokenKnown = Boolean(tu.known) && tokenTotal > 0;
-  const tokenTooltip = tu.by_role && Object.keys(tu.by_role).length > 0 ? tu.by_role : undefined;
   const metrics: RemedyMetric[] = [
     { key: "open", label: "Open", value: dm.open ?? 0 },
     { key: "planned", label: "Planned", value: dm.planned ?? 0 },
@@ -169,12 +166,8 @@ export function normalizeDashboardPayload(
     { key: "progress", label: "Progress", value: dm.progress_percent ?? 0, suffix: "%" },
     metricTests(dm.tests),
     metricProof(dm.proof),
-    { key: "tokens", label: "Tokens", value: tokenKnown ? tokenTotal : "—", tooltip: tokenTooltip, unknown: !tokenKnown },
-    // The eighth tile. It is `unknown` at load because no budget tick has
-    // arrived yet, which is the honest em dash ux_spec.md §10 requires for a
-    // value that is not yet derivable — never a fake zero. `metricsWithCostTicker`
-    // fills it from the live stream in the shell (DECISION F022 D6).
-    { key: "cost", label: "Cost", value: "—", unknown: true },
+    tokensMetricOf(dashboard.token_usage),
+    ...costMetricsOf(dashboard.token_usage),
   ];
 
   // Phases from dashboard

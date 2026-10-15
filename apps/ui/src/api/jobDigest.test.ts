@@ -155,3 +155,25 @@ describe("jobDigestPath", () => {
     expect(jobDigestPath(request).startsWith("/api/")).toBe(true);
   });
 });
+
+describe("the card's cost line is the job's tokens (amend1015 P5.1)", () => {
+  const tokens = (over: Record<string, unknown> = {}) => ({
+    line: "builder: 2 harness invocations, 1.2k in / 300 out", show_cost_usd: false, ...over,
+  });
+
+  it("shows the token line, exact, and no dollar figure by default", () => {
+    const digest = decodeJobDigest({ ...envelope, cost: { value: "$0.0018", basis: "actual" }, tokens: tokens() });
+    expect(digestCostLine(digest!.cost)).toEqual({ value: "builder: 2 harness invocations, 1.2k in / 300 out", estimated: false });
+  });
+
+  it("shows the dollar figure only when the project asked for it", () => {
+    const digest = decodeJobDigest({ ...envelope, cost: { value: "$0.0018", basis: "actual" }, tokens: tokens({ show_cost_usd: true }) });
+    expect(digest!.cost.value).toBe("$0.0018");
+  });
+
+  it("says no call was recorded when the ledger names none", () => {
+    const digest = decodeJobDigest({ ...envelope, cost: { value: "not-measured", basis: "absent" }, tokens: tokens({ line: "" }) });
+    expect(digest!.cost.value).toBe("no provider call recorded");
+    expect(digest!.cost.value).not.toContain("$");
+  });
+});

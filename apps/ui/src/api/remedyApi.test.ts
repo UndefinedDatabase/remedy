@@ -724,16 +724,16 @@ describe("pipeline in dashboard", () => {
 // ---------------------------------------------------------------------------
 
 describe("token usage metric", () => {
-  it("cost is the last metric, order is open/planned/done/progress/tests/proof/tokens/cost", () => {
-    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
-    expect(result.metrics).toHaveLength(8);
+  it("cost is the last metric when the project asks for dollars (amend1015 D8), absent otherwise", () => {
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload({ token_usage: { show_cost_usd: true } }));
+    expect(normalizeDashboardPayload("abc-123", makeDashboardPayload()).metrics.map(m => m.key)).not.toContain("cost");
     expect(result.metrics.map(m => m.key)).toEqual([
       "open", "planned", "done", "progress", "tests", "proof", "tokens", "cost",
     ]);
   });
 
   it("cost loads unknown with an em dash, because no tick has arrived yet", () => {
-    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload());
+    const result = normalizeDashboardPayload("abc-123", makeDashboardPayload({ token_usage: { show_cost_usd: true } }));
     const cost = result.metrics.find(m => m.key === "cost");
     expect(cost!.value).toBe("—");
     expect(cost!.unknown).toBe(true);
