@@ -131,7 +131,7 @@ def test_under_a_commit_flag_each_job_lands_in_its_own_repository_and_each_is_pu
     rows = [query_cost(project_id=str(project.id), job_id=job_id, by="role").rows
             for job_id, project in zip(data["job_ids"], (project_a, project_b))]
     assert all(rows), "a job's calls are missing from its own project's ledger"
-    assert sum(role["calls"] for role in data["cost"]["roles"]) == sum(
+    assert sum(role["harness_invocations"] for role in data["cost"]["roles"]) == sum(
         row.calls for job_rows in rows for row in job_rows)
 
 
