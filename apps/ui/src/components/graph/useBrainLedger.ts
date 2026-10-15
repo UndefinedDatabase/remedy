@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   brainLedgerLive,
   brainLedgerReceived,
+  brainLedgerRefresh,
   brainLedgerRequest,
   initialBrainLedgerLoad,
 } from "./brainLedger";
@@ -18,6 +19,7 @@ export function useBrainLedger(
   jobId: string,
   liveRows: readonly BrainEventRow[],
   readPage: (cursor: number) => Promise<unknown>,
+  refreshKey = "",
 ): BrainLedger {
   // Guards a read in flight, and dropping a response whose job has moved on.
   // Both live in a REF rather than state: a state flip would change the
@@ -48,6 +50,15 @@ export function useBrainLedger(
       return next === current.load ? current : { jobId: current.jobId, load: next };
     });
   }, [liveRows]);
+
+  // amend1015 P2.3: a change the dashboard poll saw (a newer event, another job state) is a
+  // retry signal too, so a cockpit whose stream never opened still reads the ledger again.
+  const seenRefreshKey = useRef(refreshKey);
+  useEffect(() => {
+    if (seenRefreshKey.current === refreshKey) return;
+    seenRefreshKey.current = refreshKey;
+    setHeld((current) => ({ jobId: current.jobId, load: brainLedgerRefresh(current.load) }));
+  }, [refreshKey]);
 
   const cursor = brainLedgerRequest(state.load);
   useEffect(() => {

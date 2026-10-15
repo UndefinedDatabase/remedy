@@ -33,6 +33,15 @@ export interface BrainStreamEnv {
    *  stamp. Injected for the same reason the timer is: real time is the one
    *  dependency a headless test cannot wait for. */
   now(): number;
+  /** The server token every `/api/` request carries (amend1015 P2.1). Without it the server
+   *  answers 403 to the stream and to events-since, and the cockpit sat on RECONNECTING and
+   *  "No events yet" forever. Absent or "" appends nothing. */
+  token?: string;
+}
+
+/** Append the server token as the last query parameter, the way `remedyApi.ts` does. */
+function withToken(path: string, token: string | undefined): string {
+  return token ? `${path}&token=${encodeURIComponent(token)}` : path;
 }
 
 /** The cursor arithmetic, in the ONE place that builds requests. The client
@@ -77,8 +86,8 @@ export function framesOf(payload: unknown): BrainStreamFrame[] {
  *  snapshot/tail below and the graph's ledger reader (`brainLedger.ts`, via
  *  `useBrainLedger.ts`), which RemedyShell.tsx wires to this same function
  *  rather than building the path a second time. */
-export function eventsSincePath(jobId: string, cursor: number): string {
-  return `/api/jobs/${encodeURIComponent(jobId)}/events-since?cursor=${cursor}`;
+export function eventsSincePath(jobId: string, cursor: number, token = ""): string {
+  return withToken(`/api/jobs/${encodeURIComponent(jobId)}/events-since?cursor=${cursor}`, token);
 }
 
 /** Build the four functions `createBrainStreamHost` needs, for ONE job.
@@ -88,14 +97,14 @@ export function eventsSincePath(jobId: string, cursor: number): string {
  *  answers the snapshot and the polling tail out of the same ledger. */
 export function createBrainStreamHostDeps(jobId: string, env: BrainStreamEnv): BrainStreamHostDeps {
   const job = encodeURIComponent(jobId);
-  const since = (cursor: number): string => eventsSincePath(jobId, cursor);
+  const since = (cursor: number): string => eventsSincePath(jobId, cursor, env.token);
   return {
     openSource(lastEventId: string | null): BrainStreamSource | null {
       const make = env.makeSource;
       if (make === null) return null;
       const held = lastEventId === null ? Number.NaN : Number(lastEventId);
       const from = Number.isFinite(held) ? cursorAfter(held) : 0;
-      return make(`/api/jobs/${job}/events/stream?cursor=${from}`);
+      return make(withToken(`/api/jobs/${job}/events/stream?cursor=${from}`, env.token));
     },
     readSnapshotSeq(): Promise<number | null> {
       return env.fetchJson(since(0)).then(snapshotSeqOf);
@@ -135,9 +144,10 @@ export interface BrainStreamGlobals {
  *  EventSource yields `makeSource: null`, which is exactly the `unsupported`
  *  the polling fallback engages on — the client degrades to DELAYED instead of
  *  claiming a liveness it does not have. */
-export function browserBrainStreamEnv(globals: BrainStreamGlobals): BrainStreamEnv {
+export function browserBrainStreamEnv(globals: BrainStreamGlobals, token = ""): BrainStreamEnv {
   const Source = globals.EventSource;
   return {
+    token,
     makeSource: Source === undefined ? null : (url: string): BrainStreamSource => new Source(url),
     fetchJson(path: string): Promise<unknown> {
       return globals

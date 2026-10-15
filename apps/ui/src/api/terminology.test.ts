@@ -47,6 +47,7 @@ describe("the explanation catalog's entries", () => {
       "phase.review",
       "phase.test",
       "status.delayed",
+      "status.finished",
       "status.idle",
       "status.live",
       "status.reconnecting",
@@ -158,6 +159,12 @@ describe("the whole catalog", () => {
         body: "No part of this job is running right now. The cockpit shows the job as it last stood.",
         source: "apps/ui/src/cockpitLogic.ts",
         anchor: "return dashboard.live.running === true;",
+      },
+      "status.finished": {
+        title: "Finished",
+        body: "This job has ended. The cockpit shows what it did; nothing more will arrive on its live connection.",
+        source: "apps/ui/src/api/cockpitTruth.ts",
+        anchor: "export function jobFinishedOf(stage",
       },
       "status.reconnecting": {
         title: "Reconnecting",

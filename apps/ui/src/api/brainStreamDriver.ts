@@ -85,6 +85,7 @@ export function stepBrainStream(
     case "closed": {
       if (isPolling(state)) return { state, effects: [{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }] };
       const next = failBrainStream(state);
+      if (isPolling(next)) return { state: next, effects: [{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }] };
       return { state: next, effects: [{ kind: "wait", ms: brainBackoffDelayMs(next.attempt) }] };
     }
 

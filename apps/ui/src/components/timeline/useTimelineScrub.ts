@@ -22,7 +22,7 @@ import {
 import type { ScrubState } from "./scrubState";
 import { buildTimelineIndex, indexHead, phasesAt, phaseStops } from "./timelineIndex";
 import { buildTimelineView, elapsedLabel } from "./timelineView";
-import type { TimelineView } from "./timelineView";
+import type { PhaseBaseline, TimelineView } from "./timelineView";
 
 export interface TimelineScrub {
   state: ScrubState;
@@ -49,6 +49,7 @@ export function useTimelineScrub(
   jobId: string,
   tasks: readonly RemedyTaskItem[],
   rows: readonly BrainEventRow[],
+  baseline?: readonly PhaseBaseline[],
 ): TimelineScrub {
   const reducedMotion = useReducedMotion();
   const seeds = useMemo(() => dashboardBrainSeeds(tasks), [tasks]);
@@ -118,8 +119,8 @@ export function useTimelineScrub(
     const first = rows[0];
     const shown = state.position >= 0 ? rows[Math.min(state.position, rows.length - 1)] : undefined;
     const elapsed = shown ? elapsedLabel(stampOf(first), stampOf(shown)) : null;
-    return buildTimelineView({ whole, at, glyphs, position: state.position, elapsed });
-  }, [glyphs, index, rows, state.position, whole]);
+    return buildTimelineView({ whole, at, glyphs, position: state.position, elapsed, baseline });
+  }, [baseline, glyphs, index, rows, state.position, whole]);
 
   const scrubbedModel = useMemo(
     () => (state.mode === "scrubbed" ? fed.stateAt(state.position) : null),

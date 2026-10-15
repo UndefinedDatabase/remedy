@@ -1,4 +1,5 @@
 import type { BrainStreamStatus } from "../../api/brainStream";
+import { jobFinishedOf } from "../../api/cockpitTruth";
 import { Term } from "../term/Term";
 import styles from "./RightLivePanel.module.css";
 
@@ -13,13 +14,24 @@ import styles from "./RightLivePanel.module.css";
  *  transport to give it, not because nothing supplies one: at `a8965b2d`
  *  RemedyShell began passing a real status down the one chain that reaches
  *  this pill — RemedyShell to RightLivePanel to here — and at `88c55f5d` that
- *  was still the only chain either component had. */
-export function LiveStatusPill({ live, streamStatus, replay }: { live: boolean; streamStatus?: BrainStreamStatus | null; replay?: boolean }) {
+ *  was still the only chain either component had.
+ *
+ *  amend1015 P2.2: the transport outranks the dashboard only WHILE THE JOB RUNS. A job whose
+ *  dashboard says `running: false` reads FINISHED (its `stage` ended it) or IDLE, whatever the
+ *  stream is doing — a finished job's stream has nothing left to say, and RECONNECTING on it
+ *  was the one word on the page that was never true. */
+export function LiveStatusPill({ live, stage, streamStatus, replay }: { live: boolean; stage?: string; streamStatus?: BrainStreamStatus | null; replay?: boolean }) {
   // While the timeline is scrubbed the graph shows the past, so the pill says
   // REPLAY in the scrubber's violet before anything about the transport
   // (component_spec.md, LiveStatusPill; DECISION F024 D4).
   if (replay) {
     return <div className={styles.livePill} data-state="replay"><span className={styles.replayDot} /><Term term="status.replay">REPLAY</Term></div>;
+  }
+  if (!live && jobFinishedOf(stage)) {
+    return <div className={styles.livePill} data-state="finished"><span className={styles.idleDot} /><Term term="status.finished">FINISHED</Term></div>;
+  }
+  if (!live) {
+    return <div className={styles.livePill} data-state="idle"><span className={styles.idleDot} /><Term term="status.idle">IDLE</Term></div>;
   }
   if (streamStatus === "delayed") {
     return <div className={styles.livePill} data-state="delayed"><span className={styles.delayedDot} /><Term term="status.delayed">DELAYED</Term></div>;

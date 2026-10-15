@@ -44,3 +44,12 @@ export function tokensMetricOf(tokenUsage: any): RemedyMetric {
 export function costMetricsOf(tokenUsage: any): RemedyMetric[] {
   return tokenUsage?.show_cost_usd === true ? [{ key: "cost", label: "Cost", value: EM_DASH, unknown: true }] : [];
 }
+
+/** The job states that END a job (packages/core/models.py RunState, plus the dashboard's own
+ *  `done`/`finalized`). A paused or blocked job is not finished: it waits for someone. */
+const FINISHED_JOB_STAGES = new Set(["completed", "failed", "cancelled", "stopped", "done", "finalized"]);
+
+/** True when the dashboard's `live.state` names a job that has ended (amend1015 P2.2). */
+export function jobFinishedOf(stage: string | undefined | null): boolean {
+  return FINISHED_JOB_STAGES.has(String(stage || "").toLowerCase());
+}

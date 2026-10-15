@@ -117,6 +117,7 @@ function renderSurfaces(): string {
   return [
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: false })),
+    renderToStaticMarkup(createElement(LiveStatusPill, { live: false, stage: "completed" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "delayed" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, streamStatus: "reconnecting" })),
     renderToStaticMarkup(createElement(LiveStatusPill, { live: true, replay: true })),
@@ -165,6 +166,7 @@ describe("the term audit over the shipped surfaces", () => {
       "phase.review",
       "phase.test",
       "status.delayed",
+      "status.finished",
       "status.idle",
       "status.live",
       "status.reconnecting",

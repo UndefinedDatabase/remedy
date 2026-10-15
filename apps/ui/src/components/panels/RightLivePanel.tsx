@@ -19,7 +19,7 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
 
   return (
     <aside className={styles.panel} data-ui="right-live-panel">
-      <LiveStatusPill live={liveIsActive(dashboard)} streamStatus={streamStatus} replay={replay} />
+      <LiveStatusPill live={liveIsActive(dashboard)} stage={dashboard.live.stage} streamStatus={streamStatus} replay={replay} />
       <AgentNowCard dashboard={dashboard} recent={recent} />
       <PauseControl target={{ jobId: dashboard.jobId, serverToken }} scope="job" action={jobPauseAction(dashboard)} />
       <NeedsAttentionCard dashboard={dashboard} />

@@ -33,6 +33,12 @@ export const TERM_CATALOG: Readonly<Record<string, TermEntry>> = {
     source: "apps/ui/src/cockpitLogic.ts",
     anchor: "return dashboard.live.running === true;",
   },
+  "status.finished": {
+    title: "Finished",
+    body: "This job has ended. The cockpit shows what it did; nothing more will arrive on its live connection.",
+    source: "apps/ui/src/api/cockpitTruth.ts",
+    anchor: "export function jobFinishedOf(stage",
+  },
   "status.reconnecting": {
     title: "Reconnecting",
     body: "The live connection dropped and the cockpit is opening it again. Events that arrive meanwhile are not lost: they are replayed once it is back.",

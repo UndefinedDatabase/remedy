@@ -53,7 +53,8 @@ describe("a dropped connection", () => {
   it("repeated drops lengthen the wait", () => {
     const r = runScript(initialBrainStreamState(),
       [{ kind: "closed" }, { kind: "closed" }, { kind: "closed" }]);
-    expect(r.effects.map((e) => ("ms" in e ? e.ms : null))).toEqual([250, 500, 1000]);
+    // amend1015 P2.2: the third drop in a row engages the polling fallback's interval.
+    expect(r.effects.map((e) => ("ms" in e ? e.ms : null))).toEqual([250, 500, BRAIN_POLL_INTERVAL_MS]);
   });
   it("a successful open resets the wait to the floor", () => {
     const dropped = runScript(initialBrainStreamState(), [{ kind: "closed" }, { kind: "closed" }]);
@@ -115,5 +116,15 @@ describe("the polling fallback", () => {
     expect(lastOf(r.effects)).toEqual({ kind: "snapshot" });
     const healed = stepBrainStream(r.state, { kind: "snapshot", seq: 4 });
     expect(healed.effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
+  });
+});
+
+describe("the driver polls after three closed results (amend1015 P2.2)", () => {
+  it("asks to poll, not to reconnect, on the third close", () => {
+    let state = initialBrainStreamState();
+    let effects: unknown[] = [];
+    for (let i = 0; i < 3; i++) ({ state, effects } = stepBrainStream(state, { kind: "closed" }));
+    expect(state.status).toBe("delayed");
+    expect(effects).toEqual([{ kind: "poll", ms: BRAIN_POLL_INTERVAL_MS }]);
   });
 });

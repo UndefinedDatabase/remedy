@@ -70,22 +70,25 @@ export function RemedyShell({ dashboard, serverToken, onReload, selectedNodeId, 
   // job, where RemedyApp would have to open a stream against an empty id on
   // every URL that carries none (DECISION F008 D3).
   const stream = useBrainStream(dashboard.jobId, (jobId) =>
-    createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window)));
+    createBrainStreamHostDeps(jobId, browserBrainStreamEnv(window, serverToken)));
   // The graph's ledger reader shares the same real environment and the same
   // path builder the stream above uses, built once so the callback handed to
   // the stage stays referentially stable across a render the stream itself
   // did not cause (DECISION F019 D5).
-  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window), []);
+  const brainStreamEnv = useMemo(() => browserBrainStreamEnv(window, serverToken), [serverToken]);
   const readEventsPage = useCallback(
-    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor)),
-    [brainStreamEnv, dashboard.jobId],
+    (cursor: number) => brainStreamEnv.fetchJson(eventsSincePath(dashboard.jobId, cursor, serverToken)),
+    [brainStreamEnv, dashboard.jobId, serverToken],
   );
   // ONE ledger per job, read here so the graph and the timeline fold the same
   // complete, contiguous prefix (DECISIONS F019 D5 and F024 D4), and the
   // timeline's scrubber, whose position the graph draws while it is scrubbed.
-  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage);
+  // amend1015 P2.3: the dashboard poll's newest event and job state ask the ledger again, and
+  // its derived phases draw the stepper while no event has been read.
+  const ledgerRefreshKey = `${dashboard.live.stage}|${dashboard.activity[dashboard.activity.length - 1]?.id ?? ""}`;
+  const ledger = useBrainLedger(dashboard.jobId, stream.recent, readEventsPage, ledgerRefreshKey);
   const ledgerRows = useMemo(() => brainLedgerPrefix(ledger), [ledger]);
-  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows);
+  const scrub = useTimelineScrub(dashboard.jobId, dashboard.tasks, ledgerRows, dashboard.phases);
   let selectedNode = selectedNodeId ? (dashboard.graph.nodes.find(n => n.nodeId === selectedNodeId || n.id === selectedNodeId) ?? null) : null;
   // Prompt satellite nodes carry the prompt item id as their node id. Resolve
   // such a selection to its owning task node so the popover (and its Prompt
