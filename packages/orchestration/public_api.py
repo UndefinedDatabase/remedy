@@ -77,8 +77,10 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
 #: refusal token is added; the major number changes only under a new path prefix. Operator
 #: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
-#: `GET /api/v1/jobs/{job}/story`.
-PUBLIC_API_VERSION = "1.15"
+#: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
+#: client token's refusal `api_client_policy_refused` on the proof, run and order polls
+#: (DECISION amend1015c D2).
+PUBLIC_API_VERSION = "1.16"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -171,7 +173,8 @@ def _client_interface_answer() -> dict[str, Any]:
     return build_ok(**build_client_interface())
 
 
-def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
+def _status_digest_answer(*, all_ended_jobs: bool = False,
+                          project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/digest` sends: the `client` key of `status.run`'s `--json` answer.
 
     Calls `build_client_digest` directly rather than the whole `status.run` command: the digest
@@ -181,7 +184,7 @@ def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
     from apps.cli.json_envelope import build_ok
     from packages.orchestration.client_digest import build_client_digest
 
-    return build_ok(**build_client_digest(every_ended_job=all_ended_jobs))
+    return build_ok(**build_client_digest(every_ended_job=all_ended_jobs, project_ids=project_ids))
 
 
 def _resolved_job_plan(job: str) -> tuple[tuple[str, Any] | None, dict[str, Any] | None]:
@@ -234,7 +237,8 @@ def _change_proof_answer(*, job: str) -> dict[str, Any]:
     return build_ok(**export_proof_chain_json(chain))
 
 
-def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
+def _client_changes_answer(*, since: str | None = None,
+                           project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/changes` sends: what `client changes --json` prints (DECISION
     F253 D5 (2)). Calls the same two functions its twin calls, and refuses an unreadable cursor
     with its twin's own message."""
@@ -252,7 +256,7 @@ def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
         except ValueError:
             return build_error("invalid_cursor", client_cursor_refusal_message(since))
 
-    return build_ok(**build_client_changes(parsed_since))
+    return build_ok(**build_client_changes(parsed_since, project_ids=project_ids))
 
 
 def _doctor_health_answer() -> dict[str, Any]:
@@ -390,9 +394,13 @@ _TWIN_ANSWERS: dict[str, Any] = {
 
 #: The read routes a client token may use only for a job of one of its projects; the server's
 #: token reads every job (operator amendment amend1014-luna-mission-fixes B.3), and so does the
-#: story (DECISION amend1015f D14). The other read routes stay unscoped reads of one record, as
-#: DECISION F253 D16 designed them.
-_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story"})
+#: story (DECISION amend1015f D14). The proof and the run poll joined them (DECISION amend1015c
+#: D2), when the check of operator order amend1015-final-closure found them answering a client
+#: about another project's job.
+_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run"})
+#: The read routes whose answer lists many projects' records: for a client token they list only
+#: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2).
+_CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes"})
 
 
 def answer_public_api_get(
@@ -443,7 +451,18 @@ def answer_public_api_get(
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
                 return 403, build_error("api_client_policy_refused", refusal), {}
-        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments)
+        if client is not None and route.twin == "client.order":
+            from packages.orchestration.client_scope import client_order_read_refusal
+
+            refusal = client_order_read_refusal(client, segments.get("order", ""))
+            if refusal is not None:
+                return 403, build_error("api_client_policy_refused", refusal), {}
+        scope: dict[str, Any] = {}
+        if client is not None and route.twin in _CLIENT_FILTERED_TWINS:
+            from packages.orchestration.client_scope import client_project_ids
+
+            scope["project_ids"] = client_project_ids(client)
+        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope)
         if body.get("ok"):
             status = 200
         else:

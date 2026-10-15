@@ -72,7 +72,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "The digest a program reads about once a minute: every project with its missions, "
             "the jobs that still need something and the last ended ones, every open decision and "
             "the jobs waiting for their apply, as the `client` object of `remedy status --json` "
-            "holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does."
+            "holds it; `all_ended_jobs=true` lists every ended job, as `--all-ended-jobs` does. "
+            "For a client token it holds only the client's own projects and their jobs."
         ),
     ),
     PublicApiRoute(
@@ -83,7 +84,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         description=(
             "The proof of one job: what each change rests on and where its evidence is, as "
             "`remedy change proof <job> --json` prints it; a job id prefix is accepted, as on the "
-            "command line, and the command's `--path` filter is not offered over HTTP."
+            "command line, and the command's `--path` filter is not offered over HTTP. A client "
+            "token reads only a job of one of its projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(
@@ -96,7 +98,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "What changed since a cursor: the jobs and decisions as the digest shows them, the "
             "decisions answered, the missions and the applies, with the cursor for the next "
             "read, as `remedy client changes --since <cursor> --json` prints it; without "
-            "`since` only a cursor is given."
+            "`since` only a cursor is given. For a client token it lists only what belongs to the "
+            "client's own projects."
         ),
     ),
     PublicApiRoute(
@@ -185,7 +188,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         description=(
             "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
             "<order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` "
-            "holds what `remedy do` printed once the order is not `running`."
+            "holds what `remedy do` printed once the order is not `running`. A client token "
+            "reads only an order whose order file names its projects (403 "
+            "`api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(
@@ -259,7 +264,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`lost`; `answer` is `null` while the run is `running` and afterwards holds what "
             "`remedy job run --json` printed, or `null` when it printed no envelope. A job id "
             "prefix is accepted; a value that names no one job, or a job with no run, is "
-            "refused with 404 `run_not_found`."
+            "refused with 404 `run_not_found`, and a client token reads only a job of one of its "
+            "projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(

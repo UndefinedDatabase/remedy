@@ -63,8 +63,9 @@ from apps.cli.client_interface_story import (
 #: claude-cli configuration a job's execution configuration records, and operator amendment
 #: amend1014-luna-mission-fixes (B.3) to `1.14` for the job-id refusals of `doctor.logs`, and
 #: amend1015-face-migration (DECISION amend1015f D14, D16) to `1.15` for `client.story`, `story`
-#: and the `job_already_applied` refusal of a second `job apply`.
-CLIENT_INTERFACE_VERSION = "1.15"
+#: and the `job_already_applied` refusal of a second `job apply`, and operator order
+#: amend1015-final-closure to `1.16` for a client token's read scope (DECISION amend1015c D2).
+CLIENT_INTERFACE_VERSION = "1.16"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
