@@ -52,6 +52,7 @@ from packages.orchestration.execution_config import (
     _import_execution_config,
     resolve_job_execution_config,
 )
+from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -3271,7 +3272,7 @@ def run_job(
             return job
 
         job.state = JOB_RUNNING
-        job.error = ""  # R-1059: a relaunch clears a prior run's stale error.
+        _prior_error, job.error = job.error, ""  # R-1059: a relaunch clears a prior run's stale error.
         _persist_job(job)
 
         _absorb_block = _absorb_here("episode_start")
@@ -3797,11 +3798,7 @@ def run_job(
                     return job
 
         # Determine final job status
-        all_done = all(
-            t.status in (TASK_APPLIED, TASK_SKIPPED, TASK_SPLIT, TASK_VETOED)
-            for t in job.tasks
-        )
-        has_pending = any(t.status == TASK_PENDING for t in job.tasks)
+        all_done, has_pending = job_task_ending(job.tasks)
 
         # DECISION F269 D6 (2): the job's DoD gate, in the workspace, before the
         # `finally` below finalizes it; a gate that holds blocks the job, and
@@ -3873,6 +3870,8 @@ def run_job(
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.state = JOB_PAUSED
+        elif _stuck_reason := blocked_rerun_reason(job, _prior_error):  # amend1015f D11
+            job.state, job.error = JOB_BLOCKED, _stuck_reason
 
         _persist_budget_actuals()
 

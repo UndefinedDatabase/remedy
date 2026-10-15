@@ -277,7 +277,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1448 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1446 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1317 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -442,7 +442,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5349 | `packages/orchestration/pingpong_job.py` |
+| 5348 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
 | 4768 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
