@@ -710,7 +710,7 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     apply = _step(data, "apply")
     assert apply["status"] == "failed"
     assert apply["detail"].startswith(f"job {job_id} was not applied to {repo} (status blocked)")
-    assert "target_changed_since_job: docs/README.md" in apply["detail"]
+    assert "target_changed_during_run: docs/README.md changed in the target" in apply["detail"]
     assert data["stopped_before_apply"] is True
     assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
     assert data["ok"] is False
