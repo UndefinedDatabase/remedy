@@ -1516,6 +1516,10 @@ def apply_job(
     # --- Readiness gates ---
     if job.state != JOB_COMPLETED:
         return _block(result, f"job_not_completed: status={job.state}")
+    # amend1015c D9: a decline is final; its result is never applied afterwards.
+    declined = job_result_decline(job)
+    if declined is not None:
+        return _block(result, f"job_declined: at={declined.get('declined_at', '')}")
 
     for t in job.tasks:
         if t.status != TASK_APPLIED:
@@ -2045,7 +2049,7 @@ APPLY_NOT_READY_TOKENS: tuple[str, ...] = ("job_already_applied", "job_not_found
 
 #: The reason prefixes of a job that is not ready to apply.
 _JOB_NOT_READY_REASONS = frozenset({
-    "job_not_completed", "task_not_applied", "task_missing_run_id", "reviewer_not_pass", "tests_failed",
+    "job_not_completed", "job_declined", "task_not_applied", "task_missing_run_id", "reviewer_not_pass", "tests_failed",
     "missing_apply_manifest", "apply_manifest_not_applied", "no_files_in_apply_manifests",
 })
 
