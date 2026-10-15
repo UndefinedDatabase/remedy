@@ -25,6 +25,7 @@
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
 | luna control plane | [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) | roadmap |
+| face | [face-v1.md](roadmap/design/face-v1.md) | roadmap |
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
 | claude-cli worker | [claude-cli-worker-launch-v1.md](system/claude-cli-worker-launch-v1.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
@@ -267,7 +268,7 @@ The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the fu
 plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
-Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038, and [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) for the Luna gates of amend1006).
+Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038, [luna-control-plane-v1.md](roadmap/design/luna-control-plane-v1.md) for the Luna gates of amend1006, and [face-v1.md](roadmap/design/face-v1.md) for amend1015's face migration: Remedy is a backend with a CLI and a public API, its face is the universe's edition `remedy`).
 Closure process: [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) — the only path from `[~]` to `[x]`.
 
 ## UI Reference (`docs/ui/`)

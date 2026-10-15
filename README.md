@@ -31,6 +31,9 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 146 of 309 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
+Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
+edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
+
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
