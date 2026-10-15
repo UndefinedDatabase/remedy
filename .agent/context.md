@@ -1,7 +1,7 @@
 # Context — amend1014c-review-closure-before-merge
 
 ## Active Branch
-feature/do-golden-path (PR #339 open, product-review BLOCKED, not merged). The replacement branch
+feature/do-golden-path (its pull request, number 339, is open, product-review BLOCKED, not merged). The replacement branch
 feature/do-golden-path-review-closure is created at the end, from main, by replay. F078 untouched.
 
 ## Scope
@@ -16,3 +16,7 @@ non-human content policy.
 - Structure ratchet: listed functions may not grow. One test run at a time (`scripts/remedy_pytest.sh`).
 - Every commit at most 500 insertions. No rebase, reset, amend or force-push.
 - Real acceptance uses fresh fixtures and isolated data roots under `/home/decodeux/.remedy-wt-probe`.
+
+## Steps
+R1a, R1b, R2, R3a, R3b, D1 and D2 are committed on this branch (the repairs); the acceptance, the review, the
+final full suite and the history replacement follow, as the plan lists them.
