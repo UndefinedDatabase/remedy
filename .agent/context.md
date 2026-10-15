@@ -1,8 +1,8 @@
 # Context — amend1014c-review-closure-before-merge
 
 ## Active Branch
-feature/do-golden-path (its pull request, number 339, is open, product-review BLOCKED, not merged). The replacement branch
-feature/do-golden-path-review-closure is created at the end, from main, by replay. F078 untouched.
+feature/do-golden-path-review-closure (replayed from main; the old branch feature/do-golden-path is preserved, its pull
+request closed). Neither is merged. F078 untouched.
 
 ## Scope
 R1 to R3 repairs of the Pi golden path, their tests, the real acceptance A to E, docs, then the no-force
@@ -18,5 +18,4 @@ non-human content policy.
 - Real acceptance uses fresh fixtures and isolated data roots under `/home/decodeux/.remedy-wt-probe`.
 
 ## Steps
-R1a, R1b, R2, R3a, R3b, D1 and D2 are committed on this branch (the repairs); the acceptance, the review, the
-final full suite and the history replacement follow, as the plan lists them.
+The repairs, the acceptance, the full suite and the history replacement are done; the handoff holds the item table.
