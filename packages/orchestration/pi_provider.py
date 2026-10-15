@@ -115,8 +115,8 @@ def ollama_host() -> str:
         try:
             from packages.orchestration.config import get_config
             host = str(get_config().get("ollama.host") or "")
-        except Exception:  # noqa: BLE001 — an unreadable config falls back to the local default
-            host = ""
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            host = ""    # an unreadable config falls back to the local default
     return (host or "http://localhost:11434").rstrip("/")
 
 
@@ -283,7 +283,9 @@ class PiCallOutcome:
 class PiProvider:
     """Builder/reviewer provider that runs the Pi harness in the job workspace (D1, D2)."""
 
-    def __init__(self, *, role: str = "builder", cwd: str | None = None, model: str = "") -> None:
+    def __init__(self, *, role: str = "builder", cwd: str | None = None, model: str = "",
+                 evidence_dir: str | None = None) -> None:
+        self._evidence_dir = evidence_dir
         self._role = role
         self._cwd = cwd
         self._model = model or PI_DEFAULT_MODEL
@@ -349,9 +351,26 @@ class PiProvider:
             "settled": bool(summary and summary.settled), "error": error[:300],
         }
         self.last_evidence = evidence
+        self._record_call(evidence, argv, prompt)
         if summary is not None and len(summary.final_text) > max_output_chars:
             summary.final_text = summary.final_text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
         return PiCallOutcome(summary, evidence, error, duration_ms)
+
+    def _record_call(self, evidence: dict[str, Any], argv: list[str], prompt: str) -> None:
+        """Append this call to `<run dir>/pi/<role>.jsonl`; the prompt is a hash, never the text."""
+        if not self._evidence_dir:
+            return
+        import hashlib
+
+        shown = [f"<prompt sha256:{hashlib.sha256(prompt.encode()).hexdigest()[:16]} "
+                 f"{len(prompt.encode())} bytes>" if a == prompt else a for a in argv]
+        try:
+            target = Path(self._evidence_dir) / "pi"
+            target.mkdir(parents=True, exist_ok=True)
+            with open(target / f"{self._role}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({**evidence, "argv": shown}, sort_keys=True) + "\n")
+        except OSError:
+            pass    # evidence is best effort; a full disk must not fail the call it describes
 
     def _usage_actuals(self, outcome: PiCallOutcome) -> dict[str, Any] | None:
         summary = outcome.summary
@@ -409,7 +428,8 @@ class PiProvider:
         return out
 
 
-def make_pi_provider(role: str, *, cwd: str | None, model: str = "") -> PiProvider:
+def make_pi_provider(role: str, *, cwd: str | None, model: str = "",
+                     evidence_dir: str | None = None) -> PiProvider:
     """Construct a role's Pi provider after the D4 prerequisites hold; raises PiUnavailable.
 
     The construction check is the one that runs BEFORE any model call: an absent executable, a
@@ -417,4 +437,4 @@ def make_pi_provider(role: str, *, cwd: str | None, model: str = "") -> PiProvid
     """
     chosen = model or PI_DEFAULT_MODEL
     pi_preflight(model=chosen, workspace=cwd, role=role)
-    return PiProvider(role=role, cwd=cwd, model=chosen)
+    return PiProvider(role=role, cwd=cwd, model=chosen, evidence_dir=evidence_dir)

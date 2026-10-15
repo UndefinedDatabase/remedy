@@ -1561,7 +1561,7 @@ class TestGroupedCLIJobApply:
 
         assert result.returncode == 1, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
-        assert (data["ok"], data["error"]) == (False, "target_changed")
+        assert (data["ok"], data["error"]) == (False, "target_changed_during_run")
         assert data["status"] == "blocked"
         assert "target_changed_since_job" in data["blocked_reason"]
 

@@ -128,9 +128,9 @@ def _role_label(role: str, provider: str | None, model: str | None) -> str:
     name = _role_provider(role, provider)
     if name != "pi":
         return name
-    from packages.orchestration.role_config import resolve_role_config
+    from packages.orchestration.role_config import default_model_for_provider
 
-    return f"pi (ollama/{model or resolve_role_config(role).model})"
+    return f"pi (ollama/{model or default_model_for_provider('pi')})"
 
 
 def do_step_intro(name: str, ctx: DoContext) -> str:

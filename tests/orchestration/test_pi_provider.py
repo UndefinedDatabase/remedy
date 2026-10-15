@@ -225,7 +225,7 @@ def test_a_claimed_edit_creates_no_change_and_a_real_edit_lands_only_in_the_work
 
 
 def test_a_reviewer_pass_on_an_empty_diff_is_rejected_before_completion():
-    from packages.orchestration.pingpong_loop import reject_verdict_on_empty_diff
+    from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
     from packages.orchestration.pingpong_provider import ReviewerOutput
 
     passed = ReviewerOutput(verdict="pass", summary="looks staged")
@@ -305,3 +305,13 @@ def test_the_role_factory_builds_pi_and_the_cli_refuses_a_raw_ollama_builder(fak
     with pytest.raises(SystemExit):
         from apps.cli.commands.do_cmd import _validate_role_override
         _validate_role_override("builder", "provider", "ollama")
+
+
+def test_each_call_is_recorded_in_the_run_directory_with_the_prompt_as_a_hash(fake_pi, workspace, tmp_path):
+    run_dir = tmp_path / "run"
+    provider = PiProvider(role="builder", cwd=str(workspace), evidence_dir=str(run_dir))
+    provider.build("a secret-bearing prompt text")
+    lines = (run_dir / "pi" / "builder.jsonl").read_text().splitlines()
+    record = json.loads(lines[0])
+    assert record["model_turns"] == 2 and record["inner_provider"] == "ollama"
+    assert "secret-bearing" not in lines[0] and "<prompt sha256:" in " ".join(record["argv"])

@@ -583,7 +583,7 @@ class TestStreamEvidenceDestination:
         import packages.orchestration.pingpong_loop as pp
 
         src = inspect.getsource(pp.run_pingpong)
-        assert "if stream_evidence and not stream_evidence_dir" in src, \
+        assert "if not stream_evidence_dir" in src, \
             "run_pingpong must give stream evidence a destination"
 
     def test_provider_refuses_stream_mode_without_a_destination(self, tmp_path):
