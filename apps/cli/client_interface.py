@@ -62,7 +62,8 @@ from apps.cli.client_interface_story import (
 #: F203 (DECISION F203 D5) to `1.12` for `doctor.logs`, and F306 (R-1235) to `1.13` for the
 #: claude-cli configuration a job's execution configuration records, and operator amendment
 #: amend1014-luna-mission-fixes (B.3) to `1.14` for the job-id refusals of `doctor.logs`, and
-#: amend1015-face-migration (DECISION amend1015f D14) to `1.15` for `client.story` and `story`.
+#: amend1015-face-migration (DECISION amend1015f D14, D16) to `1.15` for `client.story`, `story`
+#: and the `job_already_applied` refusal of a second `job apply`.
 CLIENT_INTERFACE_VERSION = "1.15"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
@@ -131,9 +132,9 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     ),
     "job.apply": (
         "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
-        "invalid_argument", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
-        "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
-        "target_changed_during_run", "target_detached_head", "target_dirty",
+        "invalid_argument", "job_already_applied", "job_not_found", "job_not_ready",
+        "merge_conflict", "post_test_failed", "push_failed", "push_no_upstream", "push_refused",
+        "push_refused_by_contract", "target_changed_during_run", "target_detached_head", "target_dirty",
     ),
     "job.decline": (
         "ambiguous_job_id", "invalid_job_id", "job_already_applied", "job_not_declinable",

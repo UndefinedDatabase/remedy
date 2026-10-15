@@ -302,7 +302,7 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.do_cmd:_cmd_job_apply:error": (
         frozenset({"apply_failed", "blocked_paths", "commit_refused", "history_merge_refused",
-                   "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
+                   "job_already_applied", "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed",
                    "push_failed", "push_no_upstream", "push_refused", "push_refused_by_contract",
                    "target_changed_during_run", "target_detached_head", "target_dirty"}),
         "the token apply_refusal in packages/orchestration/job_apply.py returns, one of its "
