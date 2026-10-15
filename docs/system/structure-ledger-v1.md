@@ -288,7 +288,7 @@ with the code that calls it.
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
-| 320 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
+| 319 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
 | 317 | `scripts/build_review_zip.py` | `main` |
 | 312 | `packages/orchestration/test_execution_service.py` | `execute_test_run` |
 | 300 | `packages/orchestration/repository_snapshot.py` | `revert_repository_apply` |

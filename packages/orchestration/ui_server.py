@@ -39,6 +39,7 @@ from urllib.parse import parse_qs, urlparse
 # imports the summary's builder from there (operator amendment amend1014-luna-mission-fixes D.2).
 from packages.orchestration.cockpit_project_routes import project_route_answer
 from packages.orchestration.public_api import is_public_api_path
+from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
 from packages.orchestration.ui_server_launch import (
     _ANY_IPV4_HOST,
     _print_ui_urls,
@@ -923,14 +924,16 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     task_items: list[dict[str, Any]] = []
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
+        lifecycle = task_lifecycle_or_empty(tstat)
         tid = str(t.task_id)
         task_items.append({
             "id": tid,
             "title": t.title[:80] if t.title else f"Task {idx + 1}",
             "status": tstat,
-            "verified": tstat == "completed",
+            "state": lifecycle,
+            "verified": lifecycle == "done",
             "source": "real",
-            "accepted": tstat == "completed",
+            "accepted": lifecycle == "done",
             "rank": idx,
             "related_node_id": tid,
             "short_reason": "",
@@ -978,10 +981,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
 
     # Phases — full 6-phase canonical set
     # Finalized gate: strict — only if job state says done AND no blockers remain
-    pending_task_count = sum(
-        1 for t in job.tasks
-        if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("pending", "planned")
-    )
+    pending_task_count = sum(1 for t in task_items if t["state"] == "planned")
     blocked_task_count = sum(
         1 for t in job.tasks
         if (t.status.value if hasattr(t.status, "value") else str(t.status)) in ("blocked", "failed")
@@ -1051,9 +1051,9 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         },
         "metrics": {
             "open": decision_count,
-            "planned": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "pending"),
-            "done": sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed"),
-            "progress_percent": round((sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else "") == "completed") / max(task_count, 1)) * 100),
+            "planned": sum(1 for t in task_items if t["state"] == "planned"),
+            "done": sum(1 for t in task_items if t["state"] == "done"),
+            "progress_percent": round(sum(1 for t in task_items if t["state"] == "done") / max(task_count, 1) * 100),
             "source_counts": {"tasks": task_count, "events": len(events), "artifacts": artifact_count},
             "computed_from": "job_tasks_and_events",
             "tests": _build_metrics_tests(events),

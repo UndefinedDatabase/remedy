@@ -223,19 +223,19 @@ describe("the whole catalog", () => {
         title: "Planned",
         body: "Tasks of this job that have not started yet.",
         source: "packages/orchestration/ui_server.py",
-        anchor: "\"planned\": sum(1 for t in job.tasks if",
+        anchor: "\"planned\": sum(1 for t in task_items if",
       },
       "metric.done": {
         title: "Done",
-        body: "Tasks of this job that have finished.",
+        body: "Tasks of this job that have finished: passed, or applied to the job's workspace.",
         source: "packages/orchestration/ui_server.py",
-        anchor: "\"done\": sum(1 for t in job.tasks if",
+        anchor: "\"done\": sum(1 for t in task_items if",
       },
       "metric.progress": {
         title: "Progress",
         body: "The share of this job's tasks that have finished. A job without tasks shows 0%.",
         source: "packages/orchestration/ui_server.py",
-        anchor: "\"progress_percent\": round((sum(1 for t in job.tasks",
+        anchor: "\"progress_percent\": round(sum(1 for t in task_items",
       },
       "metric.tests": {
         title: "Tests",

@@ -283,3 +283,29 @@ class TestDashboardShape:
         assert "/home/" not in payload
         assert "Traceback" not in payload
         assert "diff --git" not in payload
+
+
+class TestTaskLifecycleMetrics:
+    """amend1015 P1.2: a finished do-run task (applied_to_job_workspace) counts as done."""
+
+    def test_applied_task_is_done_and_progress_is_full(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.core.models import RunState
+
+        job = JobPlan(job_title="t", state=RunState.COMPLETED,
+                      tasks=[TaskEntry(title="Deliver README.md", status="applied_to_job_workspace")])
+        dashboard = _build_dashboard(job)
+        assert dashboard["metrics"]["done"] == 1
+        assert dashboard["metrics"]["planned"] == 0
+        assert dashboard["metrics"]["progress_percent"] == 100
+        [task] = dashboard["tasks"]
+        assert task["state"] == "done"
+
+    def test_pending_task_is_planned(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_title="t", tasks=[TaskEntry(title="a", status="pending"),
+                                            TaskEntry(title="b", status="passed")])
+        dashboard = _build_dashboard(job)
+        assert (dashboard["metrics"]["planned"], dashboard["metrics"]["done"]) == (1, 1)
+        assert dashboard["metrics"]["progress_percent"] == 50
+        assert [t["state"] for t in dashboard["tasks"]] == ["planned", "done"]
