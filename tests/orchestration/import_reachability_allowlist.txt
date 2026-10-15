@@ -49,7 +49,6 @@ apps.cli.commands.job_rerun_cmd
 apps.cli.commands.job_run_refusals
 apps.cli.commands.job_steer_cmd
 apps.cli.commands.job_stop_cmd
-apps.cli.commands.job_story_cmd
 apps.cli.commands.job_veto_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
@@ -100,7 +99,6 @@ packages.orchestration.archive_plan
 packages.orchestration.artifact_contract_gate
 packages.orchestration.artifact_index
 packages.orchestration.artifact_markdown
-packages.orchestration.artifact_preview
 packages.orchestration.artifact_summary
 packages.orchestration.autonomy_readiness
 packages.orchestration.bench_history
@@ -108,7 +106,6 @@ packages.orchestration.block_lint
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
 packages.orchestration.brain_viewer_theme
-packages.orchestration.brain_zoom_caps
 packages.orchestration.budget_decision
 packages.orchestration.budget_guard
 packages.orchestration.budget_resolution
@@ -135,7 +132,6 @@ packages.orchestration.client_digest
 packages.orchestration.client_story
 packages.orchestration.client_story_words
 packages.orchestration.cockpit
-packages.orchestration.cockpit_project_routes
 packages.orchestration.command_audit
 packages.orchestration.command_discovery
 packages.orchestration.command_nonce
@@ -172,7 +168,6 @@ packages.orchestration.diff_repair_response
 packages.orchestration.diff_view_source
 packages.orchestration.dirty_baseline
 packages.orchestration.do_apply
-packages.orchestration.do_cockpit
 packages.orchestration.do_context
 packages.orchestration.do_lane
 packages.orchestration.do_plan_confirm
@@ -206,7 +201,6 @@ packages.orchestration.final_job_review
 packages.orchestration.final_verifier
 packages.orchestration.fresh_evidence_gate
 packages.orchestration.git_status
-packages.orchestration.guidance
 packages.orchestration.handoff
 packages.orchestration.human_change
 packages.orchestration.hunk_approval
@@ -237,7 +231,6 @@ packages.orchestration.manual_attestation
 packages.orchestration.markdown_output_safety
 packages.orchestration.memory_learn
 packages.orchestration.missing_tests_gate
-packages.orchestration.mission_cockpit
 packages.orchestration.mission_compiler
 packages.orchestration.mission_contract
 packages.orchestration.mission_dossier
@@ -273,7 +266,6 @@ packages.orchestration.plan_editing
 packages.orchestration.planner_models
 packages.orchestration.preview_control
 packages.orchestration.preview_runner
-packages.orchestration.preview_worker
 packages.orchestration.product_smoke
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate
@@ -344,7 +336,6 @@ packages.orchestration.staging_workspace
 packages.orchestration.status_mirror
 packages.orchestration.steering
 packages.orchestration.stop_reasons
-packages.orchestration.story_export
 packages.orchestration.stream_evidence
 packages.orchestration.structure_measure
 packages.orchestration.structured_base
@@ -381,11 +372,7 @@ packages.orchestration.token_policy
 packages.orchestration.token_truth
 packages.orchestration.toolchain
 packages.orchestration.trust_report
-packages.orchestration.ui_app_shell
-packages.orchestration.ui_copy
 packages.orchestration.ui_server
-packages.orchestration.ui_server_launch
-packages.orchestration.ui_view_model
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles
 packages.orchestration.veto_proposal

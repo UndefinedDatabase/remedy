@@ -1,7 +1,7 @@
 """Contract tests for the public HTTP API's route registry (F253, DECISION F253 D1).
 
 Pins `GET /api/v1/interface`, the registry's shape rules and the version rule, over real HTTP
-requests to the cockpit's handler on a TCP socket and to the supervisor's handler on a unix
+requests to the bare handler on a TCP socket and to the supervisor's handler on a unix
 socket. No job, no provider, no model: the one route this round publishes answers the same
 thing regardless of which job, if any, a server was started for.
 
@@ -73,17 +73,16 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
 
 
 def _handler_class() -> type:
-    """A `_RemedyHandler` subclass bound to a known token, no job, no preview worker."""
+    """A `_RemedyHandler` subclass bound to a known token, no job and no command runner."""
     return type("_PublicApiTestHandler", (_RemedyHandler,), {
         "server_token": SERVER_TOKEN,
         "target_job_id": "",
-        "app_html": "",
     })
 
 
 @pytest.fixture
 def tcp_server():
-    """The cockpit's own handler on a real TCP socket, 127.0.0.1, port 0."""
+    """The bare handler, with no command runner, on a real TCP socket, 127.0.0.1, port 0."""
     server = ThreadingHTTPServer(("127.0.0.1", 0), _handler_class())
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

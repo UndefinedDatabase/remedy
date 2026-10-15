@@ -1,16 +1,14 @@
-"""F023 T002 — the per-round facts route behind the graph's L2 run detail.
+"""F023 T002 — the per-round facts of one task's latest run.
 
 `packages/orchestration/run_rounds_view.py` reads ONE task's latest run report and keeps
-only numbers, vocabulary words and timestamps (DECISION F023 D3); `ui_server.py` serves it
-at `/api/jobs/<job>/task-runs/<task_id>/rounds`. The builder is tested directly for its
-shape and its refusals, and the route over a REAL server on a free port, because dispatch
-is the thing a direct call cannot prove.
+only numbers, vocabulary words and timestamps (DECISION F023 D3). The builder is tested
+directly for its shape and its refusals. The cockpit route that served it and its tests were
+deleted with the old face (amend1015f D27); these builder tests moved here from
+`tests/ui_server/test_task_run_rounds.py`.
 """
 from __future__ import annotations
 
 import json
-import threading
-from http.client import HTTPConnection
 from types import SimpleNamespace
 
 import pytest
@@ -23,7 +21,6 @@ from packages.orchestration.run_rounds_view import (
     TASK_RUN_ROUNDS_VERSION,
     build_task_run_rounds,
 )
-from tests.ui_server.server_start import wait_for_server_info
 
 RUN_ID = "0123456789abcdef"
 
@@ -146,72 +143,3 @@ class TestTheBuilder:
              "finished_at": "2026-09-25T10:00:00+00:00", "duration_ms": None, "test_passed": None,
              "builder": None, "reviewer": None},
         ]
-
-
-class TestTheRoute:
-    """The route over a real server, reading a real report under a temporary data root."""
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import run_dir
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
-
-        self.job = JobPlan(job_title="rounds-route", user_prompt="p",
-                           tasks=[TaskEntry(task_id="T001", title="a", run_id=RUN_ID),
-                                  TaskEntry(task_id="T002", title="b")])
-        save_job_plan(self.job)
-        self.job_id = str(self.job.job_id)
-        report_dir = run_dir(RUN_ID)
-        report_dir.mkdir(parents=True)
-        (report_dir / "result.json").write_text(json.dumps(REPORT), encoding="utf-8")
-        self.tmp_path = tmp_path
-
-    def _start_server(self):
-        import secrets as _s
-
-        from packages.orchestration.ui_server import start_ui_server
-
-        info_file = str(self.tmp_path / "server_info.json")
-        token = _s.token_urlsafe(16)
-
-        def run():
-            try:
-                start_ui_server(self.job_id, host="127.0.0.1", port=0, token=token,
-                                open_browser=False, info_file=info_file)
-            except (SystemExit, KeyboardInterrupt):
-                pass
-
-        t = threading.Thread(target=run, daemon=True)
-        t.start()
-        info = wait_for_server_info(info_file, t)
-        return info["port"], token
-
-    @staticmethod
-    def _get(port, path):
-        conn = HTTPConnection("127.0.0.1", port, timeout=5)
-        try:
-            conn.request("GET", path)
-            resp = conn.getresponse()
-            return resp.status, json.loads(resp.read())
-        finally:
-            conn.close()
-
-    def test_the_route_serves_the_tasks_rounds(self):
-        port, token = self._start_server()
-        status, body = self._get(port, f"/api/jobs/{self.job_id}/task-runs/T001/rounds?token={token}")
-        assert status == 200, body
-        assert (body["available"], body["run_id"], body["retries_used"]) == (True, RUN_ID, 1), body
-        assert body["rounds"] == EXPECTED_ROUNDS
-
-    def test_a_task_with_no_run_and_an_unknown_task_are_data_at_200(self):
-        port, token = self._start_server()
-        status, body = self._get(port, f"/api/jobs/{self.job_id}/task-runs/T002/rounds?token={token}")
-        assert (status, body["available"], body["reason"]) == (200, False, REASON_NO_RUN), body
-        status, body = self._get(port, f"/api/jobs/{self.job_id}/task-runs/T404/rounds?token={token}")
-        assert (status, body["available"], body["reason"]) == (200, False, REASON_UNKNOWN_TASK), body
-
-    def test_the_route_refuses_a_bad_token(self):
-        port, _token = self._start_server()
-        status, body = self._get(port, f"/api/jobs/{self.job_id}/task-runs/T001/rounds?token=wrong")
-        assert (status, body["error"]) == (403, "invalid token"), body

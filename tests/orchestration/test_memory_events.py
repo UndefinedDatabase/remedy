@@ -84,11 +84,3 @@ class TestDashboardMemoryVisibility:
     def test_dashboard_source_has_emit_function(self):
         src = (REPO_ROOT / "packages" / "memory" / "context_summary.py").read_text()
         assert "emit_memory_recalled_event" in src
-
-    def test_live_state_includes_memory_used_count(self):
-        src = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text()
-        assert "memory_used_count" in src
-
-    def test_live_state_reads_from_events(self):
-        src = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text()
-        assert "project_memory_recalled" in src

@@ -289,7 +289,6 @@ with the code that calls it.
 | 346 | `packages/orchestration/job_apply.py` | `_apply_from_workspace` |
 | 334 | `scripts/build_review_manifest.py` | `build_manifest_from_snapshot` |
 | 320 | `packages/orchestration/trust_report.py` | `summarize_trust_report` |
-| 317 | `packages/orchestration/ui_server.py` | `_build_dashboard` |
 | 317 | `scripts/build_review_zip.py` | `main` |
 | 312 | `packages/orchestration/test_execution_service.py` | `execute_test_run` |
 | 300 | `packages/orchestration/repository_snapshot.py` | `revert_repository_apply` |
@@ -305,7 +304,6 @@ with the code that calls it.
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
 | 230 | `packages/orchestration/run_manifest.py` | `validate_run_manifest` |
-| 230 | `packages/orchestration/ui_server.py` | `_RemedyHandler.do_GET` |
 | 221 | `scripts/build_review_manifest.py` | `_gate_semantic_problems` |
 | 220 | `packages/orchestration/job_apply.py` | `apply_job` |
 | 220 | `scripts/build_review_manifest.py` | `validate_manual_completion` |
@@ -317,7 +315,6 @@ with the code that calls it.
 | 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
-| 186 | `packages/orchestration/ui_view_model.py` | `build_brain_view_model` |
 | 181 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
@@ -349,9 +346,8 @@ with the code that calls it.
 | 147 | `packages/orchestration/archive_plan.py` | `build_archive_plan` |
 | 146 | `packages/orchestration/project_constitution.py` | `load_project_constitution` |
 | 145 | `packages/orchestration/context_coverage.py` | `derive_context_coverage` |
-| 144 | `apps/cli/commands/dev.py` | `_dev_status` |
+| 103 | `apps/cli/commands/dev.py` | `_dev_status` |
 | 144 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
-| 144 | `packages/orchestration/ui_server.py` | `_build_pipeline_section` |
 | 143 | `packages/orchestration/pingpong_loop.py` | `_call_with_retry` |
 | 143 | `packages/orchestration/token_authority.py` | `validate_token_truth` |
 | 142 | `packages/orchestration/repository_snapshot.py` | `build_snapshot_truth` |
@@ -390,7 +386,6 @@ with the code that calls it.
 | 125 | `packages/orchestration/run_manifest.py` | `write_run_manifest` |
 | 124 | `packages/orchestration/pingpong_job.py` | `_write_run_manifest_record` |
 | 124 | `packages/orchestration/task_injection.py` | `apply_injection_to_job` |
-| 124 | `packages/orchestration/ui_server.py` | `_build_live_state_json` |
 | 123 | `packages/orchestration/pingpong_job.py` | `export_job_report` |
 | 123 | `packages/orchestration/pingpong_loop.py` | `_build_provider_evidence` |
 | 123 | `scripts/build_review_manifest.py` | `evaluate_ready_gate_matrix` |
@@ -417,7 +412,6 @@ with the code that calls it.
 | 112 | `packages/runtimes/dev_server.py` | `DevServer.start` |
 | 112 | `scripts/build_review_manifest.py` | `_verify_task_provenance_integrity` |
 | 111 | `packages/orchestration/run_manifest.py` | `_verified_episode_export` |
-| 111 | `packages/orchestration/ui_view_model.py` | `build_next_action` |
 | 110 | `apps/cli/commands/do_cmd.py` | `_cmd_do` |
 | 110 | `packages/orchestration/job_plan.py` | `render_plan_md` |
 | 110 | `packages/orchestration/run_manifest.py` | `validate_job_input_definition` |
@@ -428,14 +422,12 @@ with the code that calls it.
 | 106 | `packages/orchestration/diff_view_source.py` | `build_diff_view` |
 | 105 | `packages/orchestration/test_execution_service.py` | `finalize_test_outcome` |
 | 104 | `packages/orchestration/autonomy_loop.py` | `_decide` |
-| 104 | `packages/orchestration/ui_view_model.py` | `build_story` |
 | 103 | `apps/cli/commands/teacher_cmd.py` | `_cmd_teacher_ask` |
 | 103 | `packages/orchestration/pingpong_provider.py` | `ClaudeCliProvider._review_impl` |
 | 102 | `packages/common/secure_fs.py` | `read_verified_file_at` |
 | 102 | `packages/orchestration/continue_from_node.py` | `continue_from_node` |
 | 102 | `packages/orchestration/pingpong_job.py` | `_finalize_job_workspace` |
 | 101 | `packages/orchestration/mission_compiler.py` | `compile_mission_plan` |
-| 101 | `packages/orchestration/ui_view_model.py` | `build_checklist` |
 
 ## Files above 1,000 lines
 
@@ -444,10 +436,10 @@ with the code that calls it.
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 5348 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
-| 4768 | `packages/orchestration/ui_server.py` |
+| 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2328 | `apps/cli/command_catalog.py` |
+| 2314 | `apps/cli/command_catalog.py` |
 | 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
@@ -456,7 +448,7 @@ with the code that calls it.
 | 1965 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1764 | `packages/orchestration/config.py` |
+| 1695 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
@@ -474,6 +466,5 @@ with the code that calls it.
 | 1110 | `apps/ui/src/api/remedyApi.test.ts` |
 | 1094 | `packages/orchestration/final_verifier.py` |
 | 1071 | `packages/orchestration/command_discovery.py` |
-| 1070 | `packages/orchestration/ui_view_model.py` |
 | 1049 | `packages/orchestration/brain_viewer.py` |
 | 1039 | `packages/orchestration/result_tour.py` |

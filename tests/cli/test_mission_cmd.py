@@ -1594,34 +1594,6 @@ class TestMissionReadinessIsWiredToTheCarriedModule:
 
         assert out.startswith("Mission readiness:")
 
-    def test_the_cockpit_reads_the_carried_module_and_says_so(self):
-        from packages.orchestration.ui_server import _build_overnight_section
-
-        class _Job:
-            job_id = "11111111-2222-3333-4444-555555555555"
-
-        section = _build_overnight_section(_Job(), Path(".data"))
-
-        assert section["source"] == "mission_readiness"
-
-    def test_the_cockpit_source_names_the_carried_readiness_module(self):
-        """The cockpit imports the CARRIED module, named by its dotted path.
-
-        The token is the DOTTED MODULE PATH, never the bare word: the carried
-        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
-        D1, so a substring check would red on the very names the move preserves.
-
-        The negative half — that the deleted module is not imported here —
-        carries no assertion and needs none: `overnight_readiness.py` has not
-        existed on disk since `0f19c86a`, so an import of it raises instead of
-        passing quietly. The map ratchet this test once cited was retired by
-        DECISION F275 D15, so citing it would name a guard that is gone.
-        """
-        source = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text(
-            encoding="utf-8")
-
-        assert "from packages.orchestration.mission_readiness import" in source
-
 
 class TestMissionReportIsTheCarriedReportView:
     """F275 T001: the second carry-over, and the death of the name's old holder.

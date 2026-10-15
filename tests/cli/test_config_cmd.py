@@ -35,7 +35,7 @@ class TestConfigCli:
         keys = {e["key"] for e in entries}
         assert "ollama.host" in keys
         assert "data_dir" in keys
-        assert "ui.host" in keys
+        assert "serve.api_port" in keys
 
     def test_config_show_alias(self):
         r = subprocess.run([*_CLI, "config", "show", "--json"], capture_output=True, text=True, timeout=30)

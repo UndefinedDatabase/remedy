@@ -64,41 +64,13 @@ def _dev_status(*, json_output: bool = False) -> None:
         "version": 1,
         "cli_ok": True,
         "latest_smoke": smoke_info,
-        "ui_contract_ok": False,
-        "task_progress_ok": False,
         "worker_cleanup_ok": False,
         "autocoder_fake_e2e_ok": False,
         "repair_loop_ok": None,
         "reviewer_loop_ok": None,
-        "live_ui_ok": None,
         "remaining_blockers": [],
         "advisories": [],
     }
-
-    # Check UI contract
-    try:
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.ui_view_model import build_brain_view_model
-        job = JobPlan(job_title="status-check")
-        vm = build_brain_view_model(job, [])
-        origins = [n for n in vm["nodes"] if n["is_origin"]]
-        status["ui_contract_ok"] = (
-            vm["version"] == 4
-            and len(origins) == 1
-            and vm["visible_counts_by_zoom"][0] == 1
-        )
-    except Exception:  # noqa: BLE001 — a UI-contract check failure must not block other checks
-        pass
-
-    # Check task progress
-    try:
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.ui_view_model import build_task_progress
-        job = JobPlan(job_title="tp-check")
-        tp = build_task_progress(job, [])
-        status["task_progress_ok"] = tp["version"] == 1
-    except (ImportError, KeyError, TypeError, AttributeError):
-        pass
 
     # Check worker cleanup — availability, not functionality
     import shutil
@@ -133,13 +105,6 @@ def _dev_status(*, json_output: bool = False) -> None:
     except (ImportError, Exception):  # noqa: BLE001 — a reviewer-loop check failure must not block other checks
         status["reviewer_loop_ok"] = False
 
-    # Check live UI — server importable and build function callable
-    try:
-        from packages.orchestration.ui_server import _build_live_state_json
-        status["live_ui_ok"] = callable(_build_live_state_json)
-    except (ImportError, AttributeError):
-        status["live_ui_ok"] = False
-
     # Remaining blockers (hard failures) vs advisories (informational)
     blockers = []
     advisories: list[str] = []
@@ -147,17 +112,12 @@ def _dev_status(*, json_output: bool = False) -> None:
         blockers.append("no smoke summary found — run: source scripts/remedy_smoke.sh && remedy_smoke")
     elif smoke_info["status"] != "passed":
         blockers.append(f"smoke status: {smoke_info['status']}")
-    if not status["ui_contract_ok"]:
-        blockers.append("UI contract check failed")
-    if not status["task_progress_ok"]:
-        blockers.append("task-progress version mismatch")
     if not status["worker_cleanup_ok"]:
         advisories.append("ollama not found — worker unload unavailable")
     # New capability checks — null means untested, false means crashed
     for cap_key, cap_label in (
         ("repair_loop_ok", "repair loop"),
         ("reviewer_loop_ok", "reviewer loop"),
-        ("live_ui_ok", "live UI"),
     ):
         if status[cap_key] is False:
             blockers.append(f"{cap_label} module import failed")
@@ -175,11 +135,10 @@ def _dev_status(*, json_output: bool = False) -> None:
         print(f"  smoke: {smoke_mark}")
         if smoke_info["found"]:
             print(f"    job_id: {smoke_info['job_id']}")
-        for key in ("cli_ok", "ui_contract_ok", "task_progress_ok",
+        for key in ("cli_ok",
                      "worker_cleanup_ok", "autocoder_fake_e2e_ok",
                      "repair_loop_ok",
-                     "reviewer_loop_ok",
-                     "live_ui_ok"):
+                     "reviewer_loop_ok"):
             val = status[key]
             mark = "N/A" if val is None else "OK" if val else "FAIL"
             print(f"  {key}: {mark}")
@@ -195,9 +154,9 @@ def _dev_status(*, json_output: bool = False) -> None:
                 print(f"    - {a}")
         print()
         print("Commands:")
-        print("  remedy ui <job_id>                          — open UI")
+        print("  remedy serve start                          — the supervisor and its public API")
         print("  remedy worker unload --all                  — free VRAM")
-        print('  remedy do "goal" --no-ui --json             — plan and run a job, stop before apply')
+        print('  remedy do "goal" --json                     — plan and run a job, stop before apply')
         print("  remedy dev status --json                    — this status")
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")
 

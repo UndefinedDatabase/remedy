@@ -32,19 +32,19 @@ SCOPE = ("packages", "apps", "scripts", ":(exclude)apps/ui/package-lock.json")
 #: The row count of "Functions above 100 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FUNCTION_ROWS = 159
+MAX_FUNCTION_ROWS = 151
 #: The summed `Lines` column of "Functions above 100 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FUNCTION_LINES = 30428
+MAX_FUNCTION_LINES = 29070
 #: The row count of "Files above 1,000 lines" when the ledger was built (DECISION F300 D2).
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_ROWS = 36
+MAX_FILE_ROWS = 35
 #: The summed `Lines` column of "Files above 1,000 lines" when the ledger was built.
 #: Equals the record; only ever falls, and is raised only by the DECISION rule 5 of the
 #: structure rule requires.
-MAX_FILE_LINES = 73419
+MAX_FILE_LINES = 69324
 
 _FUNCTION_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \| `([^`]+)` \|$")
 _FILE_ROW = re.compile(r"^\| (\d+) \| `([^`]+)` \|$")

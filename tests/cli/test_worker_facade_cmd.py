@@ -231,28 +231,28 @@ class TestDoctorCoreEnvironment:
         assert [w for w in out["warnings"] if w["warning"].endswith("_env_variable")] == []
 
     def test_an_unknown_variable_is_named_with_its_closest_registered_match(self, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_UI_PROT", "8765")
+        monkeypatch.setenv("REMEDY_SERVE_API_PROT", "8765")
         out, hits = self._warnings(capsys, "unknown_env_variable")
         assert len(hits) == 1
-        assert "REMEDY_UI_PROT" in hits[0]["summary"] and "REMEDY_UI_PORT" in hits[0]["summary"]
-        assert "If you meant REMEDY_UI_PORT" in hits[0]["detail"]
+        assert "REMEDY_SERVE_API_PROT" in hits[0]["summary"] and "REMEDY_SERVE_API_PORT" in hits[0]["summary"]
+        assert "If you meant REMEDY_SERVE_API_PORT" in hits[0]["detail"]
         assert out["ready"] is True and "unknown_env_variable" not in out["blockers"]
 
     def test_a_registered_variable_that_does_not_parse_is_named_without_its_value(
             self, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_UI_PORT", "eighty-secret")
+        monkeypatch.setenv("REMEDY_SERVE_API_PORT", "eighty-secret")
         out, hits = self._warnings(capsys, "unparsable_env_variable")
         assert len(hits) == 1
-        assert "REMEDY_UI_PORT" in hits[0]["summary"] and "a whole number" in hits[0]["summary"]
+        assert "REMEDY_SERVE_API_PORT" in hits[0]["summary"] and "a whole number" in hits[0]["summary"]
         assert "eighty-secret" not in json.dumps(out)
         assert out["ready"] is True
 
     def test_text_mode_prints_the_compact_line(self, monkeypatch, capsys):
         from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
-        monkeypatch.setenv("REMEDY_UI_PROT", "8765")
+        monkeypatch.setenv("REMEDY_SERVE_API_PROT", "8765")
         _cmd_doctor_core(_ns(json=False))
         text = capsys.readouterr().out
-        assert "[WARN] unknown_env_variable: REMEDY_UI_PROT" in text
+        assert "[WARN] unknown_env_variable: REMEDY_SERVE_API_PROT" in text
         assert "Core Product Spine: READY" in text
 
 

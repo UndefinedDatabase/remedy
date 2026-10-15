@@ -8,11 +8,8 @@ withdrew the two-mode resolver CODE and kept this test).
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-import packages.orchestration.ui_server as ui_server
 from hatch_build import (
     FRONTEND_DIST_INDEX,
     BuildHookInterface,
@@ -20,42 +17,6 @@ from hatch_build import (
     assert_frontend_assets_built,
     build_target_ships_ui_assets,
 )
-
-
-def _wheel_root_layout(root: Path, *, with_index: bool) -> Path:
-    """Lay out a wheel root: apps/ is a sibling of packages/, module three deep."""
-    module = root / "packages" / "orchestration" / "ui_server.py"
-    module.parent.mkdir(parents=True, exist_ok=True)
-    module.write_text("# stand-in for the installed module\n")
-    dist = root / "apps" / "ui" / "dist"
-    dist.mkdir(parents=True, exist_ok=True)
-    if with_index:
-        (dist / "index.html").write_text("<html></html>")
-    return module
-
-
-@pytest.mark.unit
-class TestFrontendDistResolution:
-    """`_get_frontend_dist` resolves in both install modes (DECISION F086 D3)."""
-
-    def test_installed_wheel_mode_resolves_under_the_wheel_root(self, tmp_path, monkeypatch):
-        module = _wheel_root_layout(tmp_path, with_index=True)
-        monkeypatch.setattr(ui_server, "__file__", str(module))
-        assert ui_server._get_frontend_dist() == tmp_path / "apps" / "ui" / "dist"
-
-    def test_checkout_mode_resolves_under_the_repository_root(self, tmp_path, monkeypatch):
-        # A checkout has the SAME geometry as a wheel root: three parents up from
-        # the module file, apps/ is a sibling of packages/. That identity is why
-        # DECISION F086 D3 withdrew the dual-mode resolver and kept this test.
-        checkout = tmp_path / "checkout"
-        module = _wheel_root_layout(checkout, with_index=True)
-        monkeypatch.setattr(ui_server, "__file__", str(module))
-        assert ui_server._get_frontend_dist() == checkout / "apps" / "ui" / "dist"
-
-    def test_missing_index_resolves_to_none_in_either_mode(self, tmp_path, monkeypatch):
-        module = _wheel_root_layout(tmp_path, with_index=False)
-        monkeypatch.setattr(ui_server, "__file__", str(module))
-        assert ui_server._get_frontend_dist() is None
 
 
 @pytest.mark.unit

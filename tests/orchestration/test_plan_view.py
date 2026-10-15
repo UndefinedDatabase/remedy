@@ -1,15 +1,14 @@
 """F292 T001 — the plan read (DECISION F292 D1 (1)): `plan_editing.plan_view`, served by
-the dashboard's `plan` section and by `remedy job plan-show --json`, so the plan view and
-the command line read one answer — the plan's version, its approval, whether it is open for
+`remedy job plan-show --json`, so every reader of a plan reads one answer — the plan's version, its approval, whether it is open for
 editing and why not, and each planned task with its dependencies, its acceptance and the
-task entry that runs it.
+task entry that runs it. Moved here from `tests/ui_server/test_dashboard_plan.py` when the
+old cockpit's dashboard `plan` section, which wrapped this read, was deleted (amend1015f D27).
 """
 from __future__ import annotations
 
 import dataclasses
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -17,12 +16,11 @@ from packages.core.models import RunState
 from packages.orchestration.job_plan import map_task_plan_to_tasks
 from packages.orchestration.mission_record import PLAN_VERSION_KEY
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.plan_editing import plan_view
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
-from packages.orchestration.ui_server import _build_dashboard, _build_plan_section
 
-SECTION_KEYS = {"available", "version", "approval", "editable", "not_editable_because",
-                "tasks", "error"}
+SECTION_KEYS = {"version", "approval", "editable", "not_editable_because", "tasks"}
 TASK_KEYS = {"id", "title", "goal", "depends_on", "est_tokens_band", "files_hint",
              "acceptance", "job_task_id", "status", "spec_version"}
 
@@ -76,7 +74,7 @@ def _cli_json(argv: list[str], capsys) -> tuple[int, dict]:
     return code or 0, json.loads(capsys.readouterr().out)
 
 
-class TestTheSectionIsTheCommandLinesRead:
+class TestTheViewIsTheCommandLinesRead:
     """Acceptance: the plan view's version, approval and tasks equal `remedy job plan-show
     --json` for the same job."""
 
@@ -88,36 +86,28 @@ class TestTheSectionIsTheCommandLinesRead:
         assert code == 0, edited
         code, shown = _cli_json(["job", "plan-show", job_id], capsys)
         assert code == 0, shown
-        section = _build_plan_section(load_job_plan(job_id))
+        section = plan_view(load_job_plan(job_id))
         assert set(section) == SECTION_KEYS
-        assert (section["available"], section["error"]) == (True, "")
         for key in ("version", "approval", "editable", "not_editable_because", "tasks"):
             assert section[key] == shown[key], key
         assert (section["version"], section["tasks"][1]["title"]) == (2, "Parse")
-
-    def test_the_dashboard_serves_the_section_under_plan(self):
-        job = _save_job()
-        with patch("packages.orchestration.ui_server._load_events", return_value=[]):
-            dashboard = _build_dashboard(job)
-        assert dashboard["plan"] == _build_plan_section(job)
-        assert dashboard["plan"]["available"] is True
 
 
 class TestTheEditWindow:
 
     def test_a_pending_plan_of_a_planned_job_is_open_for_editing(self):
-        section = _build_plan_section(_save_job())
+        section = plan_view(_save_job())
         assert (section["version"], section["approval"]) == (1, "pending")
         assert (section["editable"], section["not_editable_because"]) == (True, None)
 
     def test_an_approved_plan_is_closed_with_the_reason(self):
-        section = _build_plan_section(_save_job(approval="approved"))
+        section = plan_view(_save_job(approval="approved"))
         assert section["editable"] is False
         assert section["not_editable_because"] == (
             "the plan is approved; a plan is edited only while its approval is open")
 
     def test_a_started_job_is_closed_with_the_reason(self):
-        section = _build_plan_section(_save_job(state=RunState.RUNNING))
+        section = plan_view(_save_job(state=RunState.RUNNING))
         assert section["editable"] is False
         assert section["not_editable_because"] == (
             "the job is running; a plan is edited only before its job starts")
@@ -127,7 +117,7 @@ class TestEachPlannedTask:
 
     def test_each_task_carries_its_fields_dependencies_acceptance_and_entry(self):
         job = _save_job()
-        tasks = _build_plan_section(job)["tasks"]
+        tasks = plan_view(job)["tasks"]
         assert [t["id"] for t in tasks] == ["T1", "T2", "T3"]
         assert all(set(t) == TASK_KEYS for t in tasks)
         t3 = tasks[2]
@@ -143,7 +133,7 @@ class TestEachPlannedTask:
         job = _save_job()
         job.tasks = [t for t in job.tasks
                      if (t.inputs.get("plan") or {}).get("planned_id") != "T2"]
-        t2 = _build_plan_section(job)["tasks"][1]
+        t2 = plan_view(job)["tasks"][1]
         assert (t2["id"], t2["job_task_id"], t2["status"], t2["spec_version"]) == (
             "T2", "", "", 1)
 
@@ -152,27 +142,18 @@ class TestEachPlannedTask:
         first = _entry_for(job, "T2")
         second = dataclasses.replace(first, task_id="later-entry", spec_version=4)
         job.tasks = [*job.tasks, second]
-        t2 = _build_plan_section(job)["tasks"][1]
+        t2 = plan_view(job)["tasks"][1]
         assert (t2["job_task_id"], t2["spec_version"]) == (first.task_id, 1)
 
 
 class TestAPlanThatCannotBeServed:
 
-    def test_a_job_with_no_stored_plan_reads_the_empty_section(self):
+    def test_a_job_with_no_stored_plan_reads_none(self):
         job = JobPlan(job_title="no plan", state=RunState.PLANNED)
-        assert _build_plan_section(job) == {
-            "available": False, "version": 0, "approval": None, "editable": False,
-            "not_editable_because": None, "tasks": [], "error": ""}
+        assert plan_view(job) is None
 
-    def test_a_malformed_version_is_reported_as_error_and_never_raised(self):
+    def test_a_malformed_version_raises_naming_the_bad_value(self):
         job = _save_job()
         job.task_plan[PLAN_VERSION_KEY] = "not a number"
-        section = _build_plan_section(job)
-        assert (section["available"], section["tasks"]) == (False, [])
-        assert "not a number" in section["error"]
-
-    def test_two_empty_sections_share_no_list(self):
-        job = JobPlan(job_title="no plan", state=RunState.PLANNED)
-        first = _build_plan_section(job)
-        first["tasks"].append("x")
-        assert _build_plan_section(job)["tasks"] == []
+        with pytest.raises((ValueError, TypeError), match="not a number"):
+            plan_view(job)

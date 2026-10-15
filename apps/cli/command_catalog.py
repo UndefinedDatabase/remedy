@@ -555,22 +555,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show", "job.veto-task", "job.steer"),
         exit_codes=(0, 1, 2, 3),
     ),
-    # ── job story (F039 T003, DECISIONS F039 D7 and D8) ───────────────────
-    CommandEntry(
-        command_id="job.story",
-        group_id="job",
-        subcommand="story",
-        description="Write the story of a job under its mission as one HTML file that "
-                    "plays in any browser from the file itself, with no network and no "
-                    "Remedy: its chapters, narration and phase bar, read from the job's own "
-                    "records (F039).",
-        action_class="read_only",
-        args=(_JOB_ID, ArgDef("--export", "The HTML file to write", required=True, is_option=True),
-              _JSON_OPT),
-        supports_json=True,
-        related=("job.show", "job.ownership"),
-        exit_codes=(0, 1, 2, 3),
-    ),
     # ── job preview-start / preview-stop (F041 T002, DECISION F041 D3) ────
     CommandEntry(
         command_id="job.preview-start",
@@ -2253,6 +2237,8 @@ RETIRED_COMMANDS: dict[str, str] = {
                  "use `remedy serve status`.",
     "ui.open": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
                "read a job with `remedy client story <job>`.",
+    "job.story": "Removed 2026-10-15 with the old cockpit's story player (amend1015f D23); "
+                 "read a job's story with `remedy client story <job>`.",
 }
 
 

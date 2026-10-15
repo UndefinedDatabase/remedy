@@ -635,47 +635,6 @@ class TestTheHunksCommandIsTheReadSide:
             (HUNK_IDS[2], "pending", ""),
         ]
 
-    def test_the_envelope_is_what_the_cockpit_reads_for_the_job_level_diff(
-        self, isolated, tmp_path, capsys,
-    ):
-        from packages.orchestration.ui_server import (
-            _build_diff_json,
-            _build_hunk_decisions_json,
-        )
-
-        job = _job()
-        _evidence(tmp_path, job)
-        CMD._cmd_approve_hunks(str(job.job_id), approve=[HUNK_IDS[2]])
-        capsys.readouterr()
-
-        body = self._hunks(capsys, str(job.job_id))
-
-        reloaded = load_job_plan(job.job_id)
-        assert body["view"] == _build_diff_json(reloaded)
-        assert body["decision"] == _build_hunk_decisions_json(reloaded)
-
-    def test_a_task_run_reads_that_runs_own_diff_as_the_cockpit_does(
-        self, isolated, tmp_path, capsys,
-    ):
-        from packages.orchestration.ui_server import (
-            _build_task_run_diff_json,
-            _build_task_run_hunk_decisions_json,
-        )
-
-        job = _job()
-        _evidence(tmp_path, job, task_run="T001")
-        CMD._cmd_approve_hunks(str(job.job_id), task_run="T001", approve=[HUNK_IDS[0]])
-        capsys.readouterr()
-
-        body = self._hunks(capsys, str(job.job_id), "--task-run", "T001")
-
-        source = f"{DIFF_TASK_RUNS_DIR_NAME}/T001/{DIFF_TASK_RUN_ARTIFACT_NAME}"
-        assert body["view"]["source"] == source
-        assert body["decision"]["attempt_key"] == f"T001:{source}"
-        reloaded = load_job_plan(job.job_id)
-        assert body["view"] == _build_task_run_diff_json(reloaded, "T001")
-        assert body["decision"] == _build_task_run_hunk_decisions_json(reloaded, "T001")
-
     def test_a_diff_that_is_not_there_is_named_and_is_not_a_refusal(
         self, isolated, tmp_path, capsys,
     ):

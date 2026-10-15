@@ -119,30 +119,6 @@ class TestReviewerPackageLoop:
 
 
 # =========================================================================
-# Step 159 — --ui boolean flag + live UI contract
-# =========================================================================
-
-class TestUiBooleanFlagParsing:
-    """The live UI contract. `--ui` left `do` with DECISION F268 D16 (2), and its three
-    parsing tests with it."""
-
-    def test_live_state_v2_schema(self):
-        from packages.orchestration.ui_server import _build_live_state_json
-        job = _make_job()
-        job.metadata = {}
-        with patch("packages.orchestration.ui_server._load_events", return_value=[]):
-            state = _build_live_state_json(job)
-        required = {
-            "version", "job_id", "cursor", "stage", "running",
-            "node_count", "edge_count", "active_task_id",
-            "latest_completed_task_id", "repair_loop_used",
-        }
-        assert required.issubset(set(state.keys()))
-        # F273 R-0992: the memory-candidate store has no writer, so no count.
-        assert "memory_candidate_count" not in state
-
-
-# =========================================================================
 # Step 160 — Smoke script structural checks
 # =========================================================================
 
@@ -202,8 +178,9 @@ class TestDevStatusExpandedCapabilities:
         with contextlib.redirect_stdout(buf):
             _dev_status(json_output=True)
         data = json.loads(buf.getvalue())
-        for key in ("repair_loop_ok", "reviewer_loop_ok", "live_ui_ok"):
+        for key in ("repair_loop_ok", "reviewer_loop_ok"):
             assert key in data
+        assert "live_ui_ok" not in data              # amend1015f D27: the cockpit check went with it
         assert "memory_candidates_ok" not in data    # F273 R-0992
 
     def test_capabilities_ok_when_importable(self):
@@ -218,7 +195,6 @@ class TestDevStatusExpandedCapabilities:
         # All modules exist, so should be True
         assert data["repair_loop_ok"] is True
         assert data["reviewer_loop_ok"] is True
-        assert data["live_ui_ok"] is True
 
     def test_missing_module_is_blocker(self):
         """If module import fails, it becomes a blocker."""

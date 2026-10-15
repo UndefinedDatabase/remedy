@@ -15,7 +15,7 @@ from apps.cli.grouped import main as grouped_main
 
 _USER_FACING_GROUPS = {
     "do", "mission", "job", "run", "decision", "status", "stats",
-    "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+    "teacher", "memory", "config", "doctor", "project", "init", "worker", "runtime",
     "absorb", "chat",
 }
 
@@ -23,6 +23,8 @@ _USER_FACING_GROUPS = {
 _INTERNAL_GROUPS = {
     "brain", "event", "patch", "test", "blocker", "change", "file",
     "snapshot", "self", "ci", "integrity", "dev", "study", "data", "serve", "client",
+    # amend1015f D22: `ui` holds only the two warning aliases of `serve` now.
+    "ui",
 }
 
 

@@ -364,14 +364,6 @@ class TestSmokeSafety:
         src = Path(_ROOT / "packages" / "orchestration" / "source_apply.py").read_text()
         assert "shell=True" not in src
 
-    def test_ui_server_external_host_preserves_loopback_url(self):
-        """External UI bind keeps a local URL and adds LAN URLs under the same token."""
-        from packages.orchestration.ui_server import _ui_bind_and_urls
-        bind_host, urls, external_urls = _ui_bind_and_urls("192.168.1.20", 8787, "job", "tok")
-        assert bind_host == ""
-        assert urls[0] == "http://127.0.0.1:8787/?job=job&token=tok"
-        assert "http://192.168.1.20:8787/?job=job&token=tok" in external_urls
-
     def test_main_py_under_120_lines(self):
         main_py = Path(_ROOT / "apps" / "cli" / "main.py")
         lines = main_py.read_text().splitlines()
@@ -515,70 +507,11 @@ class TestDevStatusCommandSchema:
             assert data["schema_version"] == 1
             assert data["ok"] is True
             required = {
-                "version", "cli_ok", "latest_smoke", "ui_contract_ok",
-                "task_progress_ok", "worker_cleanup_ok",
+                "version", "cli_ok", "latest_smoke", "worker_cleanup_ok",
                 "autocoder_fake_e2e_ok", "remaining_blockers",
             }
             missing = required - set(data.keys())
             assert not missing, f"Missing: {missing}"
-
-    def test_dev_status_ui_contract_ok(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["ui_contract_ok"] is True
-
-    def test_dev_status_task_progress_ok(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["task_progress_ok"] is True
-
-    @pytest.mark.parametrize("error", [ImportError, KeyError, TypeError, AttributeError])
-    def test_a_failed_task_progress_check_does_not_block_the_others(
-        self, error, monkeypatch, capsys
-    ):
-        """F293 SU-040 (DECISION F293 D14): each error the task-progress probe can meet reads as
-        a failed check, and the command still reports every other check."""
-        import sys
-
-        from apps.cli.main import main
-        from packages.orchestration import ui_view_model
-
-        def _failing(job, events):
-            raise error("the task-progress probe failed")
-
-        monkeypatch.setattr(ui_view_model, "build_task_progress", _failing)
-        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["ok"] is True
-        assert data["task_progress_ok"] is False
-        assert data["ui_contract_ok"] is True
-
-    def test_a_defect_in_the_task_progress_probe_is_not_swallowed(self, monkeypatch, capsys):
-        """F293 SU-040 (DECISION F293 D14): the handler no longer catches everything, so a
-        defect of another kind fails the command with its own name instead of reading as a
-        failed check."""
-        import sys
-
-        from apps.cli.main import main
-        from packages.orchestration import ui_view_model
-
-        def _broken(job, events):
-            raise RuntimeError("a defect in the task-progress probe")
-
-        monkeypatch.setattr(ui_view_model, "build_task_progress", _broken)
-        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
-        with pytest.raises(SystemExit) as stopped:
-            main()
-        data = json.loads(capsys.readouterr().out)
-        assert stopped.value.code == 1
-        assert data["ok"] is False
-        assert data["message"] == "RuntimeError: a defect in the task-progress probe"
-        assert "task_progress_ok" not in data
 
     @pytest.mark.parametrize("error", [ImportError, TypeError])
     def test_a_failed_autocoder_check_does_not_block_the_others(self, error, monkeypatch, capsys):
@@ -598,7 +531,7 @@ class TestDevStatusCommandSchema:
         data = json.loads(capsys.readouterr().out)
         assert data["ok"] is True
         assert data["autocoder_fake_e2e_ok"] is False
-        assert data["task_progress_ok"] is True
+        assert data["reviewer_loop_ok"] is True
 
     def test_a_defect_in_the_autocoder_probe_is_not_swallowed(self, monkeypatch, capsys):
         """F294 SU-041 (DECISION F294 D11): the handler no longer catches everything, so a defect
@@ -622,76 +555,12 @@ class TestDevStatusCommandSchema:
         assert data["message"] == "RuntimeError: a defect in the autocoder probe"
         assert "autocoder_fake_e2e_ok" not in data
 
-    @staticmethod
-    def _live_ui_import_raises(error, message, monkeypatch):
-        """Make the live-UI probe's import of `ui_server` run again and raise `error`.
-
-        A failing FIRST import, not a replaced attribute: `from m import n` turns an
-        AttributeError of a loaded module into ImportError, so only a module whose own
-        execution fails can show the probe an AttributeError."""
-        import importlib.abc
-        import importlib.util
-        import sys
-
-        name = "packages.orchestration.ui_server"
-
-        class _FailingLoader(importlib.abc.Loader):
-            def create_module(self, spec):
-                return None
-
-            def exec_module(self, module):
-                raise error(message)
-
-        class _FailingFinder(importlib.abc.MetaPathFinder):
-            def find_spec(self, fullname, path, target=None):
-                if fullname == name:
-                    return importlib.util.spec_from_loader(fullname, _FailingLoader())
-                return None
-
-        monkeypatch.delitem(sys.modules, name, raising=False)
-        monkeypatch.setattr(sys, "meta_path", [_FailingFinder(), *sys.meta_path])
-
-    @pytest.mark.parametrize("error", [ImportError, AttributeError])
-    def test_a_failed_live_ui_check_does_not_block_the_others(self, error, monkeypatch, capsys):
-        """F290 SU-044 (DECISION F290 D4): each error the live-UI probe can meet reads as a
-        failed check, and the command still reports every other check."""
-        import sys
-
-        from apps.cli.main import main
-
-        self._live_ui_import_raises(error, "the live-UI probe failed", monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["ok"] is True
-        assert data["live_ui_ok"] is False
-        assert data["reviewer_loop_ok"] is True
-        assert "live UI module import failed" in data["remaining_blockers"]
-
-    def test_a_defect_in_the_live_ui_probe_is_not_swallowed(self, monkeypatch, capsys):
-        """F290 SU-044 (DECISION F290 D4): the handler no longer catches everything, so a defect
-        of another kind fails the command with its own name instead of reading as a failed
-        check."""
-        import sys
-
-        from apps.cli.main import main
-
-        self._live_ui_import_raises(RuntimeError, "a defect in the live-UI probe", monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["remedy", "dev", "status", "--json"])
-        with pytest.raises(SystemExit) as stopped:
-            main()
-        data = json.loads(capsys.readouterr().out)
-        assert stopped.value.code == 1
-        assert data["ok"] is False
-        assert data["message"] == "RuntimeError: a defect in the live-UI probe"
-        assert "live_ui_ok" not in data
-
     def test_dev_status_human_output(self):
         from apps.cli.commands.dev import _dev_status
         with patch("builtins.print") as mock_print:
             _dev_status(json_output=False)
             output = "\n".join(str(c[0][0]) if c[0] else "" for c in mock_print.call_args_list)
-            assert "remedy ui" in output
+            assert "remedy serve start" in output
             assert "worker unload" in output
 
     def test_main_py_under_120_lines(self):

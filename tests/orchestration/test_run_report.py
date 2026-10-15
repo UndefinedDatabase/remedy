@@ -997,7 +997,7 @@ class TestTheApplyStateIsAttachedByTheFullTaskId:
 class TestTheReportNamesAnInjectedTasksOrigin:
     """DECISION F028 D8 — S2: the report's own half of end-to-end provenance.
 
-    `_task_origin` reads the same shape `ui_server._task_origin` reads
+    `_task_origin` reads the same shape the old cockpit's task origin read
     (DECISION F028 D6 (1)): `inputs["plan"]["origin"]` when `inputs["plan"]` is
     a dict and that value is a non-empty string, else "" — never guessed.
     """

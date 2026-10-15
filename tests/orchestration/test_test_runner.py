@@ -12,7 +12,7 @@ import shlex
 import sys
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -33,46 +33,6 @@ _BIND_TARGET_REPO = (
     "job.metadata['target_repo'] = sys.argv[2]\n"
     "save_job_plan(job)\n"
 )
-
-
-def _make_job(task_count: int = 3):
-    job = MagicMock()
-    job.job_id = uuid4()
-    job.job_title = "test-job"
-    job.state.value = "active"
-    job.tasks = []
-    job.artifacts = []
-    job.metadata = {}
-    for i in range(task_count):
-        t = MagicMock()
-        t.id = uuid4()
-        t.task_type = "test_task"
-        t.status.value = "completed" if i == 0 else "pending"
-        t.metadata = {}
-        job.tasks.append(t)
-    return job
-
-
-# ---------------------------------------------------------------------------
-# Step 101 — Smoke/UX Contract Reset
-# ---------------------------------------------------------------------------
-
-
-def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    job = JobPlan(job_title=name)
-    if tasks:
-        for t in tasks:
-            task = TaskEntry(
-                title=t.get("description", t.get("type", "task")),
-            )
-            if "status" in t:
-                task.status = RunState(t["status"])
-            if "metadata" in t:
-                task.inputs = t["metadata"]
-            job.tasks.append(task)
-    return job
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -118,8 +78,6 @@ def _make_approved_job() -> tuple[JobPlan, str]:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestPatchApplyTestLoop:
     def test_apply_structured_patch_import(self):
         from packages.orchestration.source_apply import apply_structured_patch
@@ -128,8 +86,6 @@ class TestPatchApplyTestLoop:
     def test_revert_apply_import(self):
         from packages.orchestration.source_apply import revert_apply
         assert callable(revert_apply)
-
-
 
 
 class TestHeadlessSmokeNosBrowserLaunch:
@@ -159,8 +115,6 @@ class TestHeadlessSmokeNosBrowserLaunch:
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 130 — Worker VRAM Cleanup
 # ═══════════════════════════════════════════════════════════════════════════
-
-
 
 
 class TestPermitGuidanceArgOrder:
@@ -261,8 +215,6 @@ class TestPermitGuidanceArgOrder:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestDashboardPrimaryUiTruthSource:
     def test_remedyapi_fetches_dashboard_first(self):
         """remedyApi.ts loadRemedyDashboard fetches /dashboard as primary."""
@@ -295,87 +247,8 @@ class TestDashboardPrimaryUiTruthSource:
 
 
 # ---------------------------------------------------------------------------
-# Step 263 — Dashboard Truth For Empty/Unknown State
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestDashboardEmptyJobNotDemoMode:
-    def test_empty_job_not_demo_mode(self):
-        """Empty real job returns demo_mode=false."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["demo_mode"] is False
-
-    def test_empty_job_synthetic_count_zero(self):
-        """Empty real job returns synthetic_count=0."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["synthetic_count"] == 0
-
-    def test_empty_job_has_missing_sources(self):
-        """Empty job correctly reports missing sources."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert "events" in dashboard["truth"]["missing_sources"]
-        assert "tasks" in dashboard["truth"]["missing_sources"]
-
-    @patch.dict(os.environ, {"REMEDY_UI_DEMO_MODE": "1"})
-    def test_explicit_demo_mode_flag(self):
-        """REMEDY_UI_DEMO_MODE=1 makes demo_mode=true."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["demo_mode"] is True
-
-    def test_no_fake_tasks_in_empty_job(self):
-        """Empty job has no tasks in dashboard."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert len(dashboard["tasks"]) == 0
-
-    def test_no_raw_content_leak(self):
-        """Dashboard payload doesn't leak raw content."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        job.metadata["secret_key"] = "sk-proj-ABCDEF"
-        dashboard = _build_dashboard(job)
-        payload_str = json.dumps(dashboard)
-        assert "sk-proj-" not in payload_str
-
-    def test_full_graph_requires_toggle(self):
-        """graph_summary.full_graph_requires_explicit_toggle is true."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["graph_summary"]["full_graph_requires_explicit_toggle"] is True
-
-    def test_live_state_not_demo_mode(self):
-        """Live-state endpoint empty job has demo_mode=false."""
-        from packages.orchestration.ui_server import _build_live_state_json
-
-        job = _make_job_s261()
-        live = _build_live_state_json(job)
-        assert live["demo_mode"] is False
-
-
-# ---------------------------------------------------------------------------
 # Step 264 — Real Frontend Test Foundation
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestVitestFrontendTestFoundation:
@@ -429,8 +302,6 @@ class TestVitestFrontendTestFoundation:
 # ---------------------------------------------------------------------------
 # Step 265 — source_apply Permission Boundary Non-Optional
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestSourceApplyPermissionBoundary:
@@ -574,8 +445,6 @@ class TestSourceApplyPermissionBoundary:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestTestRunnerOutputTruncation:
     def test_max_constant_at_module_level(self):
         """MAX_TEST_OUTPUT_BYTES is a module-level constant."""
@@ -683,8 +552,6 @@ class TestTestRunnerOutputTruncation:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestCommandDiscoveryRuntimeSafety:
     def test_quoted_command_parsed_correctly(self):
         """Constitution command with quotes produces correct argv."""
@@ -777,8 +644,6 @@ class TestCommandDiscoveryRuntimeSafety:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestNoBroadExceptAndDegradedSignals:
     def test_no_broad_except_exception_in_dashboard(self):
         """No broad 'except Exception' in ui_server.py touched paths."""
@@ -849,4 +714,3 @@ class TestNoBroadExceptAndDegradedSignals:
                 if f.is_file() and f.suffix in (".py", ".ts", ".tsx"):
                     content = f.read_text()
                     assert "0.0.0.0" not in content, f"0.0.0.0 in {f}"
-

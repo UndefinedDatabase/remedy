@@ -152,23 +152,23 @@ class TestTheEnvironmentAgainstTheRegistry:
     """The pure halves of `remedy doctor core`'s two environment warnings."""
 
     def test_an_unknown_name_is_named_with_its_closest_registered_match(self):
-        found = unknown_env_variables({"REMEDY_UI_PROT": "8765", "PATH": "/bin"})
-        assert found == [("REMEDY_UI_PROT", "REMEDY_UI_PORT")]
+        found = unknown_env_variables({"REMEDY_SERVE_API_PROT": "8765", "PATH": "/bin"})
+        assert found == [("REMEDY_SERVE_API_PROT", "REMEDY_SERVE_API_PORT")]
 
     def test_an_unknown_name_with_no_close_match_says_so(self):
         assert unknown_env_variables({"REMEDY_QQQQQQQQ": "1"}) == [("REMEDY_QQQQQQQQ", None)]
 
     def test_registered_names_and_other_prefixes_are_not_unknown(self):
-        assert unknown_env_variables({"REMEDY_UI_PORT": "1", "HOME": "x", "XREMEDY_A": "1"}) == []
+        assert unknown_env_variables({"REMEDY_SERVE_API_PORT": "1", "HOME": "x", "XREMEDY_A": "1"}) == []
 
     def test_a_value_that_does_not_read_as_its_type_is_named(self):
-        environ = {"REMEDY_UI_PORT": "eighty", "REMEDY_UI_DEMO_MODE": "on",
-                   "REMEDY_BUDGET_MAX_COST_USD": "one", "REMEDY_UI_HOST": "anything"}
+        environ = {"REMEDY_SERVE_API_PORT": "eighty", "REMEDY_PLANNER_FREETEXT": "on",
+                   "REMEDY_BUDGET_MAX_COST_USD": "one", "REMEDY_BIN": "anything"}
         found = [name for name, _spec in unparsable_env_variables(environ)]
-        assert found == ["REMEDY_BUDGET_MAX_COST_USD", "REMEDY_UI_DEMO_MODE", "REMEDY_UI_PORT"]
+        assert found == ["REMEDY_BUDGET_MAX_COST_USD", "REMEDY_PLANNER_FREETEXT", "REMEDY_SERVE_API_PORT"]
 
     def test_values_that_read_as_their_type_are_not_named(self):
-        environ = {"REMEDY_UI_PORT": "8765", "REMEDY_UI_DEMO_MODE": "yes",
+        environ = {"REMEDY_SERVE_API_PORT": "8765", "REMEDY_PLANNER_FREETEXT": "yes",
                    "REMEDY_BUDGET_MAX_COST_USD": "1.5", "REMEDY_CLAUDE_ENABLED": "0"}
         assert unparsable_env_variables(environ) == []
 
@@ -207,20 +207,20 @@ class TestTheRegistryReader:
 
     def test_an_unset_env_only_variable_answers_its_spec_default(self):
         assert env_value("REMEDY_CLAUDE_PLANNER_TIMEOUT", {}) == 300
-        assert env_value("REMEDY_UI_DEMO_MODE", {}) is False
+        assert env_value("REMEDY_PLANNER_FREETEXT", {}) is False
 
     def test_an_unset_variable_remedy_toml_may_carry_answers_none(self):
         assert env_value("REMEDY_OLLAMA_BUILDER_TEMPERATURE", {}) is None
-        assert env_value("REMEDY_UI_PORT", {}) is None
+        assert env_value("REMEDY_SERVE_API_PORT", {}) is None
 
     def test_a_boolean_reads_yes_only_for_the_registered_words(self):
         for word in ("1", "true", "YES"):
-            assert env_value("REMEDY_UI_DEMO_MODE", {"REMEDY_UI_DEMO_MODE": word}) is True
+            assert env_value("REMEDY_PLANNER_FREETEXT", {"REMEDY_PLANNER_FREETEXT": word}) is True
         for word in ("0", "", "no", "on"):
-            assert env_value("REMEDY_UI_DEMO_MODE", {"REMEDY_UI_DEMO_MODE": word}) is False
+            assert env_value("REMEDY_PLANNER_FREETEXT", {"REMEDY_PLANNER_FREETEXT": word}) is False
 
     def test_numbers_are_parsed(self):
-        assert env_value("REMEDY_UI_PORT", {"REMEDY_UI_PORT": "9000"}) == 9000
+        assert env_value("REMEDY_SERVE_API_PORT", {"REMEDY_SERVE_API_PORT": "9000"}) == 9000
         temperature = env_value("REMEDY_OLLAMA_BUILDER_TEMPERATURE",
                                 {"REMEDY_OLLAMA_BUILDER_TEMPERATURE": "0.25"})
         assert temperature == 0.25
@@ -237,7 +237,7 @@ class TestTheRegistryReader:
             env_value("REMEDY_NOT_A_REGISTERED_NAME", {})
 
     def test_the_live_environment_is_read_at_call_time(self, monkeypatch):
-        monkeypatch.setenv("REMEDY_UI_DEMO_MODE", "1")
-        assert env_value("REMEDY_UI_DEMO_MODE") is True
-        monkeypatch.setenv("REMEDY_UI_DEMO_MODE", "0")
-        assert env_value("REMEDY_UI_DEMO_MODE") is False
+        monkeypatch.setenv("REMEDY_PLANNER_FREETEXT", "1")
+        assert env_value("REMEDY_PLANNER_FREETEXT") is True
+        monkeypatch.setenv("REMEDY_PLANNER_FREETEXT", "0")
+        assert env_value("REMEDY_PLANNER_FREETEXT") is False

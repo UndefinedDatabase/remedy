@@ -98,7 +98,8 @@ def test_config_unknown_key_warns_naming_it(tmp_path):
 def test_config_four_wrong_values_get_the_more_tail(tmp_path):
     body = (
         '[remedy.serve]\napi_port = "a"\n'
-        '[remedy.ui]\nport = "b"\ncommand_rate_limit_per_minute = "c"\n'
+        '[remedy.ollama.builder]\nnum_predict = "b"\n'
+        '[remedy.ui]\ncommand_rate_limit_per_minute = "c"\n'
         '[remedy.tests]\npytest_timeout_seconds = "d"\n'
     )
     result = check_config_coherence(_config_from(tmp_path, body))
@@ -106,7 +107,7 @@ def test_config_four_wrong_values_get_the_more_tail(tmp_path):
     assert result.detail == (
         "4 configured values do not have their declared type: "
         "serve.api_port: expected int, got str; "
-        "ui.port: expected int, got str; "
+        "ollama.builder.num_predict: expected int, got str; "
         "ui.command_rate_limit_per_minute: expected int, got str; and 1 more")
     assert result.hint == CONFIG_HINT
 

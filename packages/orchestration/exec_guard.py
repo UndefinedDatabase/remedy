@@ -105,13 +105,12 @@ FORBIDDEN_ENV_KEYS = frozenset({
 #: WHY: the one environment a `test`-class command may inherit — locale, interpreter
 #: behaviour, the toolchain PATH and the temp dirs a test suite legitimately needs.
 #: Sorted, so a reader can see at a glance whether a key is a member.
-#: `REMEDY_UI_NO_AUTO_BUILD` is a member for carried finding R-0202: the mid-run UI
-#: rebuild class exists BECAUSE that variable stopped reaching a child, so an
-#: allowlist that dropped it would re-create the very bug this feature must close.
+#: `REMEDY_UI_NO_AUTO_BUILD` was a member for carried finding R-0202 until the UI
+#: auto-build it switched off was deleted (amend1015f D28); the list only narrowed.
 TEST_COMMAND_ENV_ALLOWLIST: tuple[str, ...] = (
     "CI", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "PWD",
     "PYTHONDONTWRITEBYTECODE", "PYTHONHASHSEED", "PYTHONPATH", "PYTHONUNBUFFERED",
-    "REMEDY_UI_NO_AUTO_BUILD", "SHELL", "TEMP", "TERM", "TMP", "TMPDIR", "TZ",
+    "SHELL", "TEMP", "TERM", "TMP", "TMPDIR", "TZ",
     "USER", "VIRTUAL_ENV",
 )
 
@@ -765,8 +764,9 @@ def dod_app_exec_policy(
 
 
 # ---------------------------------------------------------------------------
-# The `runtime-build` seam (F085 T002d) — the UI auto-build's npm commands, which
-# KEEP their wall timeout: a build runs to completion, and `runtime-server` is the
+# The `runtime-build` seam (F085 T002d) — built for the UI auto-build's npm commands,
+# which were deleted with the old face (amend1015f D28); the seam and its tests stay as the
+# guard's row for a bounded npm build. Its commands KEEP their wall timeout: a build runs to completion, and `runtime-server` is the
 # row Amendment F085 D8 rules must not hold a clock. The translation the three
 # seams share is extracted HERE, at its third use, for the reason
 # `run_guarded_dod_process_command` recorded while there were only two.

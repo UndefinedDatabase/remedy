@@ -10,19 +10,10 @@ import re
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 from uuid import uuid4
-
-import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-
-ROOT = Path(__file__).resolve().parent.parent.parent
-
-UI_SRC = ROOT / "apps" / "ui" / "src"
-
-UI_ROOT = ROOT / "apps" / "ui"
 
 
 def _make_job(**overrides) -> JobPlan:
@@ -54,27 +45,6 @@ def _make_job_s74(**overrides) -> JobPlan:
     return JobPlan(**defaults)
 
 
-def _make_job_s80(**overrides: object) -> JobPlan:
-    defaults = dict(
-        job_title="test-ui-job",
-        user_prompt="Test prompt for UI",
-        tasks=[TaskEntry(title="Write a README")],
-    )
-    defaults.update(overrides)
-    return JobPlan(**defaults)
-
-
-def _make_job_s91():
-    job = MagicMock()
-    job.job_id = uuid4()
-    job.job_title = "test-job"
-    job.state.value = "active"
-    job.tasks = []
-    job.artifacts = []
-    job.metadata = {}
-    return job
-
-
 def _get_viewer_html():
     from packages.orchestration.brain_viewer import (
         build_brain_viewer_data,
@@ -93,56 +63,9 @@ def _get_viewer_html():
         return html_path.read_text(), data, out
 
 
-# ── Step 74.1: Redaction Gate Precision ─────────────────────────────────
-
-
-def _get_app_html(job_id: str = "test-job", token: str = "test-token") -> str:
-    from packages.orchestration.ui_app_shell import build_app_shell
-    return build_app_shell(job_id, token)
-
-
-# ---------------------------------------------------------------------------
-# Step 80 — Localhost UI Server
-# ---------------------------------------------------------------------------
-
-
-def _make_permitted_job():
-    """Create a job with repo_generated_write permission granted."""
-    job = _make_job()
-    job.metadata["permissions"] = {"repo_generated_write": "allow"}
-    return job
-
-
-def _make_approved_job() -> tuple:
-    """Create a job with permission + an approved patch intent. Returns (job, intent_id)."""
-    job = _make_permitted_job()
-    # Create artifact with patch intent explanation + approval
-    artifact = MagicMock()
-    artifact.id = uuid4()
-    artifact.task_id = uuid4()
-    intent_id = f"{artifact.id.hex[:8]}-0"
-    artifact.metadata = {
-        "patch_intent_explanations": [
-            {"file": "test.py", "action": "create", "risk": "low", "reason": "test", "summary": "test"}
-        ],
-        "patch_intent_approvals": {
-            intent_id: {
-                "intent_id": intent_id,
-                "state": "approved",
-                "decided_at": "2026-01-01T00:00:00Z",
-                "decided_by": "test",
-            }
-        },
-    }
-    job.artifacts = [artifact]
-    return job, intent_id
-
-
 # ---------------------------------------------------------------------------
 # Step 91 — ELK Directional Layout
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestBrainViewerShell:
@@ -245,8 +168,6 @@ class TestBrainViewerShell:
 # ── Step 74: UX Quality Gate ────────────────────────────────────────────
 
 
-
-
 class TestInteractiveControls:
     def test_search_input_exists(self):
         html, _, _ = _get_viewer_html()
@@ -315,60 +236,7 @@ class TestInteractiveControls:
         assert "focus-visible" in html
 
 
-# ── Step 76: Spatial Layout ─────────────────────────────────────────────
-
-
-
-
-class TestGuidanceRail:
-    def test_guidance_module_exists(self):
-        from packages.orchestration.guidance import (
-            GuidanceCard,
-        )
-        assert GuidanceCard is not None
-
-    def test_build_guidance_cards(self):
-        from packages.orchestration.guidance import build_guidance_cards
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        assert len(cards) >= 1
-        for c in cards:
-            assert c.id
-            assert c.title
-            assert c.severity in ("high", "medium", "low", "info")
-            assert c.command
-
-    def test_guidance_no_raw_leaks(self):
-        from dataclasses import asdict
-
-        from packages.orchestration.guidance import build_guidance_cards
-        from packages.orchestration.redaction_patterns import find_forbidden_surface_tokens
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        text = json.dumps([asdict(c) for c in cards])
-        findings = find_forbidden_surface_tokens(text)
-        assert findings == []
-
-    def test_viewer_guidance_rail(self):
-        html, _, _ = _get_viewer_html()
-        assert "guidance-rail" in html
-        assert "guide-card" in html
-
-    def test_guidance_commands_safe(self):
-        from packages.orchestration.guidance import build_guidance_cards
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        for c in cards:
-            assert "remedy " in c.command
-            # No shell-unsafe patterns
-            assert ";" not in c.command
-            assert "|" not in c.command
-            assert ">" not in c.command
-
-
 # ── Step 79: Viewer Preview & Share ─────────────────────────────────────
-
-
 
 
 class TestViewerPreview:
@@ -491,339 +359,22 @@ class TestViewerPreview:
         assert "brain.export-viewer" in handlers
 
 
-
-
-class TestProgressiveBrainExplorer:
-    """Test the progressive brain explorer modes and disclosure."""
-
-    def test_journey_layer_default(self):
-        """Journey is default layer (replaces proof-path as default mode)."""
-        html = _get_app_html()
-        assert "journey" in html
-        assert "remedy-layer-switcher" in html
-
-    def test_diagnostics_layer_available(self):
-        """Diagnostics layer available (replaces system-map/full-graph modes)."""
-        html = _get_app_html()
-        assert "diagnostics" in html
-
-    def test_detail_card_hidden_by_default(self):
-        html = _get_app_html()
-        assert "detail-card" in html
-        # Not visible by default
-        assert "display: none" in html or "display:none" in html.replace(" ", "")
-
-    def test_node_click_shows_detail(self):
-        """Clicking a node should show detail card."""
-        html = _get_app_html()
-        assert "detail-card" in html
-        # Detail card gets .visible class on click
-        assert "visible" in html
-
-    def test_journey_graph_present(self):
-        """Journey graph area exists in shell."""
-        html = _get_app_html()
-        assert "remedy-journey-shell" in html
-        assert "remedy-node" in html
-
-    def test_checklist_in_shell(self):
-        """Checklist sidebar present (replaces cluster/expandable nodes)."""
-        html = _get_app_html()
-        assert "remedy-checklist" in html
-
-    def test_no_raw_leaks_in_explorer(self):
-        html = _get_app_html()
-        for forbidden in ("raw_output", "command_output", "Traceback", "MUST_NOT_RENDER"):
-            assert forbidden not in html
-
-
 # ---------------------------------------------------------------------------
-# Smoke script structural tests
+# No popup on load
 # ---------------------------------------------------------------------------
 
 
+class TestViewerGuidanceRail:
+    """The static viewer's own guidance rail; the cockpit's guidance cards went with the old face
+    (amend1015f D27)."""
 
-
-class TestFrontendBuild:
-    def test_dist_index_exists(self):
-        index = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "index.html"
-        assert index.is_file(), "apps/ui/index.html not found — source entry point missing"
-
-    def test_dist_has_js_bundles(self):
-        dist = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "dist" / "assets"
-        if not dist.is_dir():
-            pytest.skip("dist/assets/ not built")
-        js_files = list(dist.glob("*.js"))
-        assert len(js_files) >= 1, "No JS bundles in dist/assets/"
-
-    def test_package_json_deps(self):
-        pkg = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "package.json"
-        data = json.loads(pkg.read_text())
-        deps = data.get("dependencies", {})
-        assert "react" in deps
-        # Current graph architecture: Canvas/Force (not React Flow)
-        assert "react-force-graph-2d" in deps
-        assert "d3-force" in deps
-
-
-# ---------------------------------------------------------------------------
-# UX Anti-Regression (Quality Gate v2)
-# ---------------------------------------------------------------------------
-
-
+    def test_viewer_guidance_rail(self):
+        html, _, _ = _get_viewer_html()
+        assert "guidance-rail" in html
+        assert "guide-card" in html
 
 
 class TestLegacyViewerQuarantine:
     def test_brain_viewer_docstring_legacy(self):
         import packages.orchestration.brain_viewer as bv
         assert "Legacy" in (bv.__doc__ or ""), "brain_viewer.py not marked as legacy"
-
-    def test_ui_app_shell_docstring_legacy(self):
-        import packages.orchestration.ui_app_shell as shell
-        assert "Legacy" in (shell.__doc__ or ""), "ui_app_shell.py not marked as legacy"
-
-
-# ---------------------------------------------------------------------------
-# Server: static asset serving and new API endpoints
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestFrontendBuildV2:
-    def test_dist_exists(self):
-        index = Path(__file__).parent.parent.parent / "apps" / "ui" / "index.html"
-        assert index.is_file(), "Source index.html must exist"
-
-    def test_force_graph_in_package(self):
-        """Current graph uses react-force-graph-2d + d3-force, not @xyflow/react."""
-        pkg = Path(__file__).parent.parent.parent / "apps" / "ui" / "package.json"
-        data = json.loads(pkg.read_text())
-        deps = data.get("dependencies", {})
-        assert "react-force-graph-2d" in deps, "react-force-graph-2d must be a dependency"
-        assert "d3-force" in deps, "d3-force must be a dependency for force graph"
-
-    def test_no_dark_background(self):
-        tokens = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "styles" / "tokens.css"
-        css = tokens.read_text()
-        assert "#ecf2fb" in css, "Light background token must be present"
-        for dark in ["#0a0e14", "#0d1117", "#1a1a2e", "#000000"]:
-            assert dark not in css
-
-
-
-
-class TestShellLayoutComponents:
-    """Shell layout and top-level components exist."""
-
-    def test_shell_exists(self):
-        assert (UI_SRC / "components" / "shell" / "RemedyShell.tsx").is_file()
-
-    def test_shell_css_module(self):
-        assert (UI_SRC / "components" / "shell" / "RemedyShell.module.css").is_file()
-
-    def test_left_brand_rail(self):
-        assert (UI_SRC / "components" / "rail" / "LeftBrandRail.tsx").is_file()
-
-    def test_remedy_logo(self):
-        assert (UI_SRC / "components" / "rail" / "RemedyLogo.tsx").is_file()
-
-    def test_side_icon_dock(self):
-        assert (UI_SRC / "components" / "rail" / "SideIconDock.tsx").is_file()
-        content = (UI_SRC / "components" / "rail" / "SideIconDock.tsx").read_text(encoding="utf-8")
-        assert "aria-label" in content
-
-    def test_top_metrics_bar(self):
-        assert (UI_SRC / "components" / "metrics" / "TopMetricsBar.tsx").is_file()
-        content = (UI_SRC / "components" / "metrics" / "TopMetricsBar.tsx").read_text(encoding="utf-8")
-        assert "Open" in content or "open" in content
-        assert "Progress" in content or "progress" in content
-
-    def test_command_bar(self):
-        # New design pack: the command bar is a local jump-to filter (editable
-        # input, no chat/LLM/mutation) — see test_command_bar_no_mutation.
-        assert (UI_SRC / "components" / "command" / "CommandBar.tsx").is_file()
-        content = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text(encoding="utf-8")
-        assert "placeholder" in content
-        assert "onJump" in content
-
-    def test_command_bar_no_mutation(self):
-        content = (UI_SRC / "components" / "command" / "CommandBar.tsx").read_text(encoding="utf-8")
-        assert "POST" not in content
-        assert "PUT" not in content
-        assert "DELETE" not in content
-
-    def test_reduced_motion_provider(self):
-        assert (UI_SRC / "components" / "shell" / "ReducedMotionProvider.tsx").is_file()
-        content = (UI_SRC / "components" / "shell" / "ReducedMotionProvider.tsx").read_text(encoding="utf-8")
-        assert "prefers-reduced-motion" in content
-
-
-# ---------------------------------------------------------------------------
-# Steps 180-183 — Graph components
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestRightPanelCards:
-    """Right live panel components."""
-
-    def test_right_live_panel(self):
-        assert (UI_SRC / "components" / "panels" / "RightLivePanel.tsx").is_file()
-
-    def test_live_status_pill(self):
-        f = UI_SRC / "components" / "panels" / "LiveStatusPill.tsx"
-        assert f.is_file()
-        content = f.read_text(encoding="utf-8")
-        assert "LIVE" in content
-
-    def test_agent_now_card(self):
-        f = UI_SRC / "components" / "panels" / "AgentNowCard.tsx"
-        assert f.is_file()
-        content = f.read_text(encoding="utf-8")
-        assert "Agent" in content
-
-    def test_activity_feed_card(self):
-        f = UI_SRC / "components" / "panels" / "ActivityFeedCard.tsx"
-        assert f.is_file()
-        content = f.read_text(encoding="utf-8")
-        assert "Activity" in content
-        # No mutation
-        assert "POST" not in content
-
-    def test_task_checklist_card(self):
-        f = UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx"
-        assert f.is_file()
-        content = f.read_text(encoding="utf-8")
-        assert "Tasks" in content
-        assert "completed" in content
-
-    def test_no_add_task_button(self):
-        # DECISION F028 D7 (1): the "+ Add Task" row is real now, replacing the
-        # propose button that copied a retired CLI command — AddTaskButton.tsx
-        # itself still never existed (no UI task creation through THAT file).
-        f = UI_SRC / "components" / "panels" / "AddTaskButton.tsx"
-        assert not f.exists(), "AddTaskButton.tsx must be removed (no UI task creation)"
-        checklist = (UI_SRC / "components" / "panels" / "TaskChecklistCard.tsx").read_text(encoding="utf-8")
-        assert "remedy task propose" not in checklist
-        assert "+ Add Task" in checklist
-
-
-# ---------------------------------------------------------------------------
-# Steps 189-191 — Timeline + Detail + Layers
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestDataUiMarkerPresence:
-    """All required data-ui markers exist in source."""
-
-    MARKERS = [
-        ("top-metrics-bar", "components/metrics/TopMetricsBar.tsx"),
-        ("right-live-panel", "components/panels/RightLivePanel.tsx"),
-        ("task-checklist-card", "components/panels/TaskChecklistCard.tsx"),
-        ("remedy-visual-v2", "components/shell/RemedyShell.tsx"),
-        ("brain-graph-stage", "components/graph/BrainGraphStage.tsx"),
-        ("force-brain-graph", "components/graph/ForceBrainGraph.tsx"),
-        ("command-bar", "components/command/CommandBar.tsx"),
-        ("phase-timeline", "components/timeline/PhaseTimeline.tsx"),
-        ("left-brand-rail", "components/rail/LeftBrandRail.tsx"),
-    ]
-
-    @pytest.mark.parametrize("marker,path", MARKERS)
-    def test_marker_in_source(self, marker, path):
-        f = UI_SRC / path
-        assert f.is_file(), f"missing {path}"
-        assert marker in f.read_text(), f"marker '{marker}' not in {path}"
-
-
-# ---------------------------------------------------------------------------
-# Step 228 — Dependency swap
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestResponsiveCssGridShell:
-    """Shell uses responsive CSS grid, not fixed frame."""
-
-    def test_no_fixed_1678_frame(self):
-        css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "1678" not in css
-        assert "926" not in css
-        assert "aspect-ratio" not in css
-
-    def test_uses_css_grid_clamp(self):
-        css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "clamp(" in css
-        assert "grid-template-columns" in css
-
-    def test_has_media_queries(self):
-        css = (UI_SRC / "components" / "shell" / "RemedyShell.module.css").read_text()
-        assert "@media" in css
-
-
-# ---------------------------------------------------------------------------
-# Step 230 — Single left rail
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestSingleLeftRailNoLayerSwitcher:
-    """One left rail, no default LayerSwitcher."""
-
-    def test_no_layer_switcher_in_shell(self):
-        tsx = (UI_SRC / "components" / "shell" / "RemedyShell.tsx").read_text()
-        assert "LayerSwitcher" not in tsx
-
-    def test_left_rail_has_dock(self):
-        tsx = (UI_SRC / "components" / "rail" / "LeftBrandRail.tsx").read_text()
-        assert "SideIconDock" in tsx
-
-
-# ---------------------------------------------------------------------------
-# Steps 231-238 — Force brain graph
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestRightPanelResponsiveGrid:
-    """Right panel uses responsive grid."""
-
-    def test_panel_css_layout(self):
-        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
-        assert "flex-direction: column" in css or "grid-template-rows" in css
-
-    def test_task_list_scrolls(self):
-        css = (UI_SRC / "components" / "panels" / "RightLivePanel.module.css").read_text()
-        assert "overflow" in css
-
-
-# ---------------------------------------------------------------------------
-# Step 243 — UI start command
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestUiStartAutoBuildCommand:
-    """remedy ui start works with auto-build."""
-
-    def test_ui_server_has_auto_build(self):
-        code = (ROOT / "packages" / "orchestration" / "ui_server.py").read_text()
-        assert "_auto_build_frontend" in code
-
-    def test_cli_ui_command(self):
-        code = (ROOT / "apps" / "cli" / "commands" / "ui.py").read_text()
-        assert "ui.start" in code
-        assert "open_browser" in code
-
-
-# ---------------------------------------------------------------------------
-# No popup on load
-# ---------------------------------------------------------------------------
-

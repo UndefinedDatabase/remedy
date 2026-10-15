@@ -157,52 +157,6 @@ class TestLoopStopReasons:
         assert result.cycles_run <= 2
 
 
-class TestDashboardStopReason:
-    def test_stop_reason_in_live_state(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.builder_bridge import run_builder_bridge
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        from packages.orchestration.ui_server import _build_live_state_json
-
-        job = JobPlan(job_title="test")
-        save_job_plan(job)
-
-        output = BuilderOutput(
-            summary="Fix", proposed_changes=["Fix"],
-            structured_patch_text="I think we should modify the code.",
-        )
-        run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=2)
-
-        state = _build_live_state_json(job)
-        assert "stop_reason" in state
-        assert state["stop_reason"] == "provider_output_prose_only"
-
-    def test_stop_reason_empty_on_success(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.builder_bridge import run_builder_bridge
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        from packages.orchestration.ui_server import _build_live_state_json
-
-        job = JobPlan(job_title="test")
-        save_job_plan(job)
-
-        (tmp_path / "tests").mkdir(exist_ok=True)
-        (tmp_path / "tests" / "test_x.py").write_text(
-            "def test_ok():\n    assert True\n"
-        )
-        patch = json.dumps({
-            "file_ops": [{"path": "x.py", "action": "create", "content": "x = 1\n"}]
-        })
-        output = BuilderOutput(
-            summary="Fix", proposed_changes=["Fix"],
-            structured_patch_text=patch,
-        )
-        run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=4)
-
-        state = _build_live_state_json(job)
-        assert state["stop_reason"] == ""
-
-
 # ---------------------------------------------------------------------------
 # R-0811: the no-repo tip names the real job and a real path, never a placeholder;
 # since DECISION F269 D7 it names `job contract`, where a job's repository comes from
