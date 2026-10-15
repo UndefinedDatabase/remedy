@@ -34,8 +34,11 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
   deletions), seeds the job workspace from them and measures the proposed change from that state.
   Pi sees only that workspace: every other dirty path (an unrelated source file, an untracked
-  `.env`, a private key) is left exactly where it is, is never copied into the workspace or into
-  a Git object, and shows in the report only as a name the run preserved. A sensitive path
+  `.env`, a private key) is left exactly where it is, is never copied into the workspace or onto a
+  job branch, and shows in the report only as a name the run preserved. A sensitive path is also
+  never hashed into a Git object. (An ordinary unrelated dirty file is still hashed into the
+  repository's own object database by the human-change snapshot that keeps the target's last known
+  state under a Remedy checkpoint ref; it is on no job branch and in no evidence.) A sensitive path
   (environment files, credentials files, `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.git`) is judged by
   its name alone, never by `.gitignore`; an order that names one as a target is refused before any
   worktree or model call. Nothing is stashed, reset, checked out or committed in your repository. A

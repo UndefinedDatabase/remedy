@@ -100,3 +100,15 @@ def test_timeout_evidence_is_recorded_and_the_error_stays_bounded(fake_pi, works
     assert provider.last_evidence["timeout"] == {
         "configured_sec": 1, "job_left_sec": None, "job_ceiling": "", "effective_sec": 1.0,
         "bound_by": "configured"}
+
+
+def test_run_job_binds_the_job_clock_when_it_claims_the_workspace(monkeypatch):
+    import packages.orchestration.pingpong_job as PJ
+
+    job = PJ.JobPlan(job_workspace_path="/somewhere", isolation_mode="copy",
+                     budgets={"max_wall_clock_minutes": 1},
+                     first_running_at=datetime.now(timezone.utc).isoformat())
+    assert PP.effective_pi_timeout(900)[1]["bound_by"] == "configured"
+    PJ._acquire_job_workspace(job)                                       # the copy branch: nothing else runs
+    seconds, why = PP.effective_pi_timeout(900)
+    assert seconds <= 60 and why["bound_by"] == "max_wall_clock_minutes"
