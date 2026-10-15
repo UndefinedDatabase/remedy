@@ -32,6 +32,7 @@ DIGEST_KEYS = {
     "state",
     "headline",
     "cost",
+    "tokens",
     "ownership",
     "decisions",
     "primary_action",
@@ -123,7 +124,7 @@ class TestDigestRoute:
         assert status == 200
         data = json.loads(body)
         assert set(data) == DIGEST_KEYS
-        assert len(DIGEST_KEYS) == 8
+        assert len(DIGEST_KEYS) == 9
 
     def test_digest_version_is_the_modules_own_and_never_a_literal(self):
         # Imported, not written as 1: a version bump in job_digest.py that

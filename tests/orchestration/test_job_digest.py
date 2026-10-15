@@ -58,11 +58,11 @@ pytestmark = pytest.mark.unit
 
 FIXED_NOW = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
 
-#: The envelope's contract.  Read as a SET so a ninth key added without a
-#: version bump reddens here rather than shipping unnoticed to a client that
-#: never learns to read it.
+#: The envelope's contract.  Read as a SET so a key added reddens here rather
+#: than shipping unnoticed to a client that never learns to read it; the ninth,
+#: `tokens`, is additive under DECISION F040 D3 (amend1015 D5).
 DIGEST_KEYS = frozenset({
-    "version", "job_id", "state", "headline", "cost", "ownership",
+    "version", "job_id", "state", "headline", "cost", "tokens", "ownership",
     "decisions", "primary_action",
 })
 
@@ -836,3 +836,43 @@ def test_the_normalization_leaves_the_ctas_own_words():
     assert "Answer the open decision" in label
     assert "remedy decision resolve" in label
     assert DECISION_ID_PLACEHOLDER in label
+
+
+# ---------------------------------------------------------------------------
+# amend1015 P1.4 / P5: the cost line is the job's tokens, read as `remedy do` reads them
+# ---------------------------------------------------------------------------
+
+_LEDGER_ROLES = [
+    {"role": "builder", "harness_invocations": 2, "model_turns": 3, "tokens_in": 1200,
+     "tokens_out": 300, "cache_read": 4100, "cost_usd": 0.0018},
+    {"role": "reviewer", "harness_invocations": 2, "model_turns": None, "tokens_in": None,
+     "tokens_out": None, "cache_read": None, "cost_usd": None},
+]
+
+
+def _do_job(tmp_path):
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+    return JobPlan(job_title="t", project_id="p1", repo_path=str(tmp_path),
+                   tasks=[TaskEntry(title="a", status="applied_to_job_workspace")])
+
+
+def test_the_tokens_section_is_the_do_token_reading(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr("packages.orchestration.job_tokens.job_token_roles",
+                        lambda project_id, job_id, run_ids: [dict(r) for r in _LEDGER_ROLES])
+    digest = build_job_digest(_do_job(tmp_path))
+    tokens = digest["tokens"]
+    assert tokens["line"] == ("builder: 2 harness invocations, 1.2k in / 300 out, 4.1k cache read, "
+                              "3 model turns; reviewer: 2 harness invocations, "
+                              "tokens not reported by the provider")
+    assert "$" not in tokens["line"]
+    assert (tokens["harness_invocations"], tokens["tokens_in"]) == (4, 1200)
+    assert tokens["show_cost_usd"] is False
+
+
+def test_dollars_only_when_the_project_asks(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / ".remedy").mkdir()
+    (tmp_path / ".remedy" / "config.toml").write_text("[cockpit]\nshow_cost_usd = true\n")
+    assert build_job_digest(_do_job(tmp_path))["tokens"]["show_cost_usd"] is True
