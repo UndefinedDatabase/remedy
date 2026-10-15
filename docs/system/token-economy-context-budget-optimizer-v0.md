@@ -81,8 +81,8 @@ number is verified when it is an estimate.
 F261 round 18 deleted the `token` group (`budget-show`, `budget-set`, `estimate`,
 `economy-report`) and the `context-pack` group (`recommend`) under DECISION amend0905-vocab D4.
 `packages/orchestration/token_economy.py` stays whole and nothing below changes: the report is
-built by `token_economy_report`, which the web cockpit reads for the `token_economy` section of a
-job's payload (`remedy ui start`), and the band, cost and text estimators are read by the budget
+built by `token_economy_report`, which the web cockpit read for the `token_economy` section of a
+job's payload until the cockpit was deleted on 2026-10-15 (amend1015f D3), and the band, cost and text estimators are read by the budget
 guard, the cost preview, the mission dossier and the prompt segments. The budget profile's one
 writer is `remedy job budget <job_id> set <field> <value>` (DECISION F280 D3), which loads the
 profile through `load_token_budget_profile`, replaces one field and saves it through

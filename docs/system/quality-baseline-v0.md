@@ -83,7 +83,7 @@ All gaps are in CLI command handlers. Core orchestration modules range 72-98%.
 
 ### Known exclusions
 
-- `apps/ui/*` — frontend TypeScript, not Python
+- `apps/ui/*` — frontend TypeScript, not Python (deleted 2026-10-15, amend1015f D3)
 - `tests/*` — test code itself
 - `__pycache__/*`
 

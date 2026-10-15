@@ -595,7 +595,9 @@ class TestDocsIndexRegistersEveryPage:
 class TestRoutedDocsExist:
     """Docs that send a builder to a file must send it to one that exists."""
 
-    ASSUMPTION_LOG = "docs/ui/design_reference/assumption_log.md"
+    # The design reference was deleted with the old cockpit; its log stays in the archive
+    # because historical feature files still route to it (amend1015f D27).
+    ASSUMPTION_LOG = "docs/archive/assumption_log.md"
 
     def test_the_assumption_log_the_docs_route_to_exists_and_is_indexed(self):
         """R-0665: 77 docs at ec4e2e86 routed UI deviations to an
@@ -609,7 +611,7 @@ class TestRoutedDocsExist:
             f"{len(naming)} docs route to the assumption_log, and "
             f"{self.ASSUMPTION_LOG} does not exist")
         index = (REPO / "docs" / "README.md").read_text(encoding="utf-8")
-        assert "(ui/design_reference/assumption_log.md)" in index, (
+        assert "(archive/assumption_log.md)" in index, (
             "the assumption_log is not registered in docs/README.md")
 
     def test_no_feature_file_names_the_singular_ui_contract_directory(self):

@@ -17,8 +17,7 @@ Inspection was performed against the real working repo, not a review zip.
 | `AGENTS.md` | present | Left as source of truth. |
 | `CLAUDE.md` | present | Left as AGENTS pointer. |
 | Root `package.json` | absent | No root npm package action. |
-| `apps/ui/package.json` | present | Audited only. |
-| `apps/ui/package-lock.json` | present | Audited only. |
+| The UI's `package.json` and lock file | deleted 2026-10-15 | Went with the old cockpit (amend1015f D3). |
 
 ## Documentation verified
 - Pi local docs: project skills in `.pi/skills/`, prompts in `.pi/prompts/`, settings in `.pi/settings.json`, packages via `pi install -l`, and no built-in MCP in Pi core.
@@ -69,7 +68,7 @@ No MCP is installed or active by these files. This intentionally avoids broad fi
 - Large MCP bundles: too many tools in model context; prefer small task-specific adapters.
 
 ## Package audit
-Commands run in `apps/ui`:
+Commands run in `apps/ui` (a record of the audit; the folder was deleted on 2026-10-15):
 - `npm outdated --json`
 - `npm audit --omit=dev --json`
 - `npm view react version`

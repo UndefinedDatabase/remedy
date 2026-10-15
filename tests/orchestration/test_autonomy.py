@@ -6,11 +6,9 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 import ast
-import json
 import shlex
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -20,8 +18,6 @@ from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-
-UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 
 ORCH = REPO_ROOT / "packages" / "orchestration"
 
@@ -67,62 +63,6 @@ class TestReadinessDecisionIntegration:
         ]
         signals = _collect_signals(job, events)
         assert signals["no_open_decisions"] is False
-
-
-class TestDevStatusHonestySchema:
-    """Dev status must be honest about actual state."""
-
-    def test_status_json_schema(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            required = {
-                "version", "cli_ok", "latest_smoke", "worker_cleanup_ok",
-                "autocoder_fake_e2e_ok",
-                "remaining_blockers",
-            }
-            missing = required - set(data.keys())
-            assert not missing
-
-    def test_smoke_info_schema(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            smoke = data["latest_smoke"]
-            assert "found" in smoke
-            assert "status" in smoke
-            assert "job_id" in smoke
-
-    def test_no_smoke_reports_unknown(self):
-        from apps.cli.commands.dev import _find_latest_smoke
-        with patch("pathlib.Path.is_dir", return_value=False):
-            result = _find_latest_smoke()
-            assert result["found"] is False
-            assert result["status"] == "unknown"
-
-    def test_live_running_defaults_false(self):
-        """When liveData is empty (API failed), live.running must be false."""
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "liveData?.running ?? false" in src
-        assert "liveData?.running ?? true" not in src
-
-    def test_api_health_type_exists(self):
-        src = (UI_SRC / "api" / "types.ts").read_text()
-        assert "RemedyApiHealth" in src
-        assert "degraded" in src
-        assert "failedEndpoints" in src
-
-    def test_dashboard_type_has_api_health(self):
-        src = (UI_SRC / "api" / "types.ts").read_text()
-        assert "apiHealth: RemedyApiHealth" in src
-
-    def test_failed_endpoints_tracked(self):
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "failedEndpoints" in src
-        # Dashboard-first: tracks failed endpoints including "dashboard" and "brain-view-model"
-        assert "failedEndpoints" in src
 
 
 # ── Step 258: Generated Command Contract ────────────────────────────────────

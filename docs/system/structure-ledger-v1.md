@@ -73,13 +73,6 @@ commit with no alias left behind, and changes the tests in their import lines on
   and fail tail. Steps: (1) the shared tail becomes one method, taken by one clause at a time;
   (2) the chain becomes a table from command to its handler; the clauses with a shape of their own
   keep their status codes and audit words.
-- `_RemedyHandler.do_GET` (`packages/orchestration/ui_server.py`). Boundary: its route families —
-  the job's endpoint table, the job's routes matched by the parts of their path (the node details,
-  the task runs, the artifact file and the event stream), and the routes below a project. Steps:
-  (1) done by F305, every route below a project is one call into
-  `packages/orchestration/cockpit_project_routes.py`, where a project's routes grow; (2) the three
-  node-detail routes become one route over the detail's kind; (3) the three task-run routes become
-  one route over their builders.
 - `_cmd_decision_resolve` (`apps/cli/commands/decision.py`). Boundary: the one branch per kind of
   decision id. Steps: (1) each branch becomes a function of its own that returns the exit code;
   (2) the command keeps only the dispatch, in the present order of its tests.
@@ -201,12 +194,10 @@ with the code that calls it.
   provider, `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first
   part of the export: a call's own fields and the reader of a parked run's sessions,
   `packages/orchestration/pingpong_call_record.py`.
-- `packages/orchestration/ui_server.py`: the command channel's checks, then the event stream and
-  its summaries, each to a module of its own; the dashboard builders stay. Outside those steps,
-  F058 moved the server's launch helpers to `packages/orchestration/ui_server_launch.py`
-  (finding R-1264). Its six `print` calls of the frontend's automatic build are excused from
-  ruff's T20 by a per-file ignore in `pyproject.toml`; the step that moves that build out of
-  the file removes the ignore (F203, DECISION F203 D3).
+- `packages/orchestration/ui_server.py`: the command channel's checks, each to a module of its
+  own. The event stream, the dashboard builders, the launch helpers and the frontend's automatic
+  build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and the
+  file's rename is registered for F307 (R-1330).
 - `scripts/build_review_manifest.py`: the gate schemas and the verification-tests check, the
   evidence view, and the manual-completion check, each to a module under `packages/`.
 - `apps/cli/command_catalog.py`: the types and the argument shorthands to

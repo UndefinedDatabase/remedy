@@ -1,7 +1,9 @@
 # Assumption Log — UI Design Deviations
 
-The design reference is binding on visual matters (see the authority chain in
-[README.md](README.md)). When a feature cannot follow it for a technical reason,
+Archived on 2026-10-15: the old cockpit and its design reference were deleted (amend1015f D3); this
+log stays because historical feature files route to it.
+
+The design reference was binding on visual matters. When a feature cannot follow it for a technical reason,
 or has to assume something the reference does not settle, the deviation or
 assumption is recorded here, in the same change that ships it. This is the
 `assumption_log` every UI feature file and the agent conventions refer to.

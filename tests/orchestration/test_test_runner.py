@@ -6,7 +6,6 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 import ast
-import json
 import os
 import shlex
 import sys
@@ -89,20 +88,7 @@ class TestPatchApplyTestLoop:
 
 
 class TestHeadlessSmokeNosBrowserLaunch:
-    """Smoke uses HTTP only, no browser launch."""
-
-    def test_smoke_uses_http_not_browser(self):
-        """Smoke API checks use urlopen, not xdg-open/open."""
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        assert "urlopen" in content
-        # No xdg-open or open command in smoke validation
-        lines = content.splitlines()
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("#"):
-                continue
-            if "xdg-open" in stripped and "remedy" not in stripped:
-                pytest.fail("xdg-open in smoke validation")
+    """The door's handler logs nothing to stderr."""
 
     def test_ui_server_stderr_no_traceback(self):
         """UI server suppresses logging — no Python tracebacks in normal use."""
@@ -208,95 +194,6 @@ class TestPermitGuidanceArgOrder:
                 parts = action.split()
                 idx = parts.index("contract")
                 assert parts[idx + 1] == str(job.job_id), f"bad contract command: {action}"
-
-
-# ---------------------------------------------------------------------------
-# Step 262 — Dashboard Primary UI Truth Source
-# ---------------------------------------------------------------------------
-
-
-class TestDashboardPrimaryUiTruthSource:
-    def test_remedyapi_fetches_dashboard_first(self):
-        """remedyApi.ts loadRemedyDashboard fetches /dashboard as primary."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        assert "/dashboard?" in src
-        # Should be the first API fetch, not scattered endpoints
-        assert "normalizeApiFailure" in src
-        assert "normalizeDashboardPayload" in src
-
-    def test_normalization_functions_exported(self):
-        """normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState are exported."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        assert "export function normalizeDashboardPayload" in src
-        assert "export function normalizeApiFailure" in src
-        assert "export function normalizeLiveState" in src
-
-    def test_dashboard_failure_means_degraded(self):
-        """If dashboard fetch fails, UI must show degraded."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        # loadRemedyDashboard returns normalizeApiFailure when dashboard fails
-        assert "normalizeApiFailure" in src
-
-    def test_no_scattered_primary_truth(self):
-        """loadRemedyDashboard should NOT fetch task-progress, live-state, story as primary endpoints."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        # These scattered endpoints should not be in the main fetch
-        assert "/task-progress?" not in src
-        assert "/live-state?" not in src
-        assert "/events-since?" not in src
-
-
-# ---------------------------------------------------------------------------
-# Step 264 — Real Frontend Test Foundation
-# ---------------------------------------------------------------------------
-
-
-class TestVitestFrontendTestFoundation:
-    def test_vitest_config_exists(self):
-        assert Path("apps/ui/vitest.config.ts").is_file()
-
-    def test_test_unit_script_exists(self):
-        pkg = json.loads(Path("apps/ui/package.json").read_text())
-        assert "test:unit" in pkg["scripts"]
-
-    def test_vitest_test_file_exists(self):
-        assert Path("apps/ui/src/api/remedyApi.test.ts").is_file()
-
-    # apps/ui/node_modules is gitignored, so a fresh `git worktree` never carries
-    # it and vitest cannot resolve `vitest/config` there (R-0518). An absent
-    # install is a missing precondition, not a failing frontend: skip, naming it.
-    # R-0499: the gate reads the installed runner, not the directory, because a
-    # `node_modules` that exists but is not yet populated failed this node while
-    # `test_typescript_compiles`, which reads `.bin/tsc`, skipped.
-    @pytest.mark.skipif(
-        not (_ROOT / "apps" / "ui" / "node_modules" / ".bin" / "vitest").is_file(),
-        reason=(
-            "apps/ui/node_modules/.bin/vitest is absent (gitignored, never in a "
-            "fresh worktree); install it outside the test run to run vitest here"
-        ),
-    )
-    def test_vitest_passes(self):
-        """Run vitest and check it passes, under a MEASURED 30 s ceiling.
-
-        Measured 2026-09-19 (F273 T015 (c)), three runs of `npx vitest run` from
-        apps/ui (vitest 2.1.9, node v22.22.2, 38 files, 728 tests) with only the
-        cache moved out of the tree: 1.09 s, 1.01 s, 1.02 s wall, npx start-up
-        included, on a 24-thread Intel i9-13900 with 65574340 kB of RAM, Linux 6.17. No
-        CI-runner figure exists: the CI log times stages, not this test.
-
-        The rule is `tests/orchestration/test_ci_stages.py`'s budget rule, twice
-        the measured maximum: 2 x 1.09 s = 2.18 s, which 30 s clears. Its
-        rounding step (a whole multiple of 300 s) is sized for stage budgets and
-        would RAISE this ceiling tenfold, so it is not applied: the ceiling
-        stays at 30 s rather than rise without a runner measurement.
-        """
-        import subprocess
-        r = subprocess.run(
-            ["npx", "vitest", "run"],
-            cwd=str(Path("apps/ui").resolve()),
-            capture_output=True, timeout=30,
-        )
-        assert r.returncode == 0, f"vitest failed:\n{r.stdout.decode()}\n{r.stderr.decode()}"
 
 
 # ---------------------------------------------------------------------------

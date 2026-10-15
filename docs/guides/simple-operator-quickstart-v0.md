@@ -25,8 +25,8 @@ remedy do run "Fix the login bug" --repo /path/to/project
 # 2. Check job state and read the job report
 remedy job show <job_id> --full --json
 
-# 3. Open the UI
-remedy ui <job_id>
+# 3. Read the job's run story (needs `remedy serve start`)
+remedy client story <job_id>
 
 # 4. Review proposed follow-ups
 remedy decision list <job_id> --json

@@ -28,7 +28,7 @@
 | face | [face-v1.md](roadmap/design/face-v1.md) | roadmap |
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
 | claude-cli worker | [claude-cli-worker-launch-v1.md](system/claude-cli-worker-launch-v1.md) | system |
-| cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
+| cockpit (deleted 2026-10-15) | [operator-cockpit-v1.md](archive/operator-cockpit-v1.md) | archive |
 | context | [context-inspector.md](system/context-inspector.md) | system |
 | contract templates | [website.md](contracts/website.md), [api-service.md](contracts/api-service.md), [cli-tool.md](contracts/cli-tool.md), [python-library.md](contracts/python-library.md) | contracts |
 | cost anomaly / burn alarm | [cost-anomaly-alarm-v1.md](system/cost-anomaly-alarm-v1.md) | system |
@@ -40,7 +40,7 @@
 | environment variable | [environment.md](guides/environment.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
-| explanations / terms | [explanation-layer-user-guide-v1.md](guides/explanation-layer-user-guide-v1.md) | guide |
+| explanations / terms | [explanation-layer-user-guide-v1.md](archive/explanation-layer-user-guide-v1.md) | archive |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | HTTP clients | [http-clients.md](guides/http-clients.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
@@ -48,7 +48,7 @@
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
 | public HTTP API | [public-http-api-v1.md](system/public-http-api-v1.md) | system |
 | mission upkeep | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | system |
-| missions panel | [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | guide |
+| missions panel | [missions-panel-user-guide-v1.md](archive/missions-panel-user-guide-v1.md) | archive |
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | model failover | [model-failover-v1.md](system/model-failover-v1.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
@@ -73,7 +73,7 @@
 | session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
 | snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
 | steering | [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | guide |
-| story | [story-user-guide-v1.md](guides/story-user-guide-v1.md) | guide |
+| story | [http-clients.md](guides/http-clients.md) | guide |
 | structure ledger | [structure-ledger-v1.md](system/structure-ledger-v1.md) | system |
 | structured logging / operations log | [structured-logging-v1.md](system/structured-logging-v1.md) | system |
 | teacher lessons | [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | guide |
@@ -110,12 +110,11 @@ Specifications and design documents for the built system.
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
 | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, what Remedy never does on a machine order, and `remedy client interface`, which prints the interface as data read from the code; the page's last section is that interface, generated |
-| [public-http-api-v1.md](system/public-http-api-v1.md) | The public HTTP API: routes under `/api/v1` on the cockpit's server and the supervisor's socket, each answering what its twin command answers with `--json`, the bearer token, the version and deprecation rule, the exclusion list, and a route table generated from the registry |
+| [public-http-api-v1.md](system/public-http-api-v1.md) | The public HTTP API: routes under `/api/v1` on the supervisor's socket and its TCP port, each answering what its twin command answers with `--json`, the bearer token, the version and deprecation rule, the exclusion list, and a route table generated from the registry |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | A mission's upkeep: the project's ledger of what its jobs left open, the cadence of an upkeep job after every fifth completed job, the fixed rules of what it carries, and the one recorded way to skip it |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [model-failover-v1.md](system/model-failover-v1.md) | Model failover: a role's backup models, the hard rules every link obeys, when a call fails over, the cooldown, the session guard, and what the run record and report show |
-| [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
@@ -138,7 +137,7 @@ Specifications and design documents for the built system.
 | [self-health-v1.md](system/self-health-v1.md) | Self-health: `remedy doctor health`, its eight checks (settings, cost ledgers, snapshots, worktrees, model providers, staging copies, free disk, recent crash reports), the PASS, WARN and FAIL levels and exit codes, the local crash report, and the supervisor's health route |
 | [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
 | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | Semantic dedupe inside a resumed session: the sent-hash index, the marker hook, the kill switch, and the measured savings |
-| [serve-daemon-v1.md](system/serve-daemon-v1.md) | `remedy serve` supervisor: the `serve` data-root class, the socket answered by the cockpit's write door, client mode's four forwarded commands, run registry and restart settling, and the systemd/container artifacts |
+| [serve-daemon-v1.md](system/serve-daemon-v1.md) | `remedy serve` supervisor: the `serve` data-root class, the socket answered by the write door, client mode's four forwarded commands, run registry and restart settling, and the systemd/container artifacts |
 | [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
 | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
 | [structure-ledger-v1.md](system/structure-ledger-v1.md) | Remedy's ledger of its large functions and files: each one's measured size, the boundary and steps of the largest, and the ratchet test that lets a size fall and never rise |
@@ -161,18 +160,15 @@ User-facing guides, quickstarts, and usage documentation.
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
 | [environment.md](guides/environment.md) | Every environment variable Remedy reads, generated from the key registry |
 | [exit-codes.md](guides/exit-codes.md) | Every CLI exit code's meaning, asserted from the command catalog |
-| [explanation-layer-user-guide-v1.md](guides/explanation-layer-user-guide-v1.md) | The cockpit's explained words: the card on hover or focus, the Terms list opened with the question mark, and the welcome tour |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
-| [missions-panel-user-guide-v1.md](guides/missions-panel-user-guide-v1.md) | The cockpit's missions panel: a project's missions, their orders with calls and tokens, and the chips that open a job in another repository |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [repo-catalog-user-guide-v1.md](guides/repo-catalog-user-guide-v1.md) | The hand-written repository dependency catalog: its format, the order it gives several projects, the two commands `remedy project catalog-check` and `remedy project catalog-show`, a cycle's refusal, and the lockfile plausibility warnings |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
-| [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat` or the cockpit input, and reading what it understood |
-| [story-user-guide-v1.md](guides/story-user-guide-v1.md) | A finished job's story: playing it in the cockpit and sharing it as one HTML file with `remedy job story --export` |
-| [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | Post-task lessons from the teacher: switching them on, what they may spend, and reading them in the cockpit |
+| [steering-user-guide-v1.md](guides/steering-user-guide-v1.md) | Steering a running job with `remedy chat`, and reading what it understood |
+| [teacher-lessons-user-guide-v1.md](guides/teacher-lessons-user-guide-v1.md) | Post-task lessons from the teacher: switching them on, what they may spend, and reading them |
 | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
 
 ## Archive (`docs/archive/`)
@@ -189,6 +185,12 @@ Deprecated or future-only design documents kept for historical context.
 | [model-route-tournament-future.md](archive/model-route-tournament-future.md) | Model/route tournament future design | DEPRECATED |
 | [self-dogfood-overnight-future.md](archive/self-dogfood-overnight-future.md) | Self-dogfood overnight future direction | DEPRECATED |
 | [ui-target.md](archive/ui-target.md) | UI target direction | DEPRECATED |
+| [operator-cockpit-v1.md](archive/operator-cockpit-v1.md) | The old operator cockpit's UI spec, deleted 2026-10-15 (amend1015f D3) | DEPRECATED |
+| [explanation-layer-user-guide-v1.md](archive/explanation-layer-user-guide-v1.md) | The old cockpit's explained words and welcome tour | DEPRECATED |
+| [missions-panel-user-guide-v1.md](archive/missions-panel-user-guide-v1.md) | The old cockpit's missions panel | DEPRECATED |
+| [story-user-guide-v1.md](archive/story-user-guide-v1.md) | The old cockpit's story player and HTML export; `remedy client story` replaces it | DEPRECATED |
+| [RICHTIG_PIXEL_LOCK_SPEC.md](archive/RICHTIG_PIXEL_LOCK_SPEC.md) | The old cockpit's pixel-lock layout contract | DEPRECATED |
+| [assumption_log.md](archive/assumption_log.md) | The `assumption_log`: every visual deviation of the old cockpit from its design reference, with its technical reason | DEPRECATED |
 
 ## Agent Conventions (`docs/agents/`)
 
@@ -274,12 +276,6 @@ Closure process: [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md
 
 ## UI Reference (`docs/ui/`)
 
-Design reference material for the Remedy UI.
-
 | File | Description |
 |------|-------------|
-| [REMEDY_UI_REBUILD_SPEC.md](ui/REMEDY_UI_REBUILD_SPEC.md) | Full UI rebuild specification (layout, components, interactions) |
-| [RICHTIG_PIXEL_LOCK_SPEC.md](ui/RICHTIG_PIXEL_LOCK_SPEC.md) | Pixel-lock specification for design fidelity verification |
-| [design_reference/assumption_log.md](ui/design_reference/assumption_log.md) | The `assumption_log`: every visual deviation from the design reference, with its technical reason |
-
-Visual mockups live in `docs/ui/design_reference/`.
+| [README.md](ui/README.md) | Remedy has no page of its own since 2026-10-15: its face is the universe's edition `remedy`, and it serves the public HTTP API |

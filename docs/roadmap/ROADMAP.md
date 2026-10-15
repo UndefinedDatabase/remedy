@@ -1132,7 +1132,11 @@ optimizer with an open formula (F230), playbooks v2 with measured value
 (F231), model upgrade playbook — certify, benchmark, ADR draft, humans switch
 (F232).*
 
-### TIER 16 — COCKPIT V2 (10 features)
+### TIER 16 — FACE V2 (10 features)
+*Retitled from "Cockpit v2" and parked whole on 2026-10-15 by operator amendment
+amend1015-face-migration (amend1015f D30): Remedy ships no page of its own; its face is the
+universe's edition `remedy` (`docs/roadmap/design/face-v1.md`). The lines below are the original
+registration.*
 *Growing Brain stage 2 GPU renderer behind a measurement gate (F233), organism
 overview L-1 (F234), diff ghosting on the timeline (F235), redacted live
 output stream per node (F236), embedded read-only runtime console (F237),

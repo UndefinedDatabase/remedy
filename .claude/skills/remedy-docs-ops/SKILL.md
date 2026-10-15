@@ -17,7 +17,7 @@ docs/
     CONVENTIONS.md   — shared naming register
     features/        — T{tier}_F{nnn}.md (150 files)
   ui/
-    design_reference/ — visual mockups
+    README.md        — Remedy has no page of its own; its face is the edition `remedy`
 ```
 
 ## Categorization Rules

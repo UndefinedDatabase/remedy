@@ -52,7 +52,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
-| 16 | Cockpit v2 | 0 | 10 |
+| 16 | Face v2 (parked) | 0 | 10 |
 | 17 | Self-Improvement & Ecosystem | 0 | 8 |
 
 Accepted foundation (Tier 0, complete):

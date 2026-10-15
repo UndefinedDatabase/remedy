@@ -1,7 +1,8 @@
 # Public HTTP API v1
 
 > Status (F253, accepted 2026-10-09): built. Every route served today is listed below; F303
-> adds the shipped cockpit's migration to this API and the MCP facet (`docs/roadmap/features/T12_F303.md`).
+> names what the edition `remedy`, Remedy's face since 2026-10-15, needs from this API
+> (`docs/roadmap/features/T12_F303.md`).
 
 The public HTTP API is the interface through which a program drives Remedy over HTTP instead of
 its command line. Each route answers exactly what its twin command answers with `--json` —
@@ -10,9 +11,9 @@ reached over a socket instead of a process.
 
 ## Where it is served
 
-Two servers answer this namespace: the cockpit's own server, started by `remedy ui start`, and the
-supervisor's unix socket, which `remedy serve start` opens. Both are bound to this machine only;
-neither is reachable from another host. With `serve.api_port` set in `remedy.toml`, or
+The supervisor that `remedy serve start` starts answers this namespace on its unix socket. The
+cockpit's own server, which `remedy ui start` once started, was deleted on 2026-10-15 (amend1015f
+D3). The socket is bound to this machine only and is not reachable from another host. With `serve.api_port` set in `remedy.toml`, or
 `REMEDY_SERVE_API_PORT` in the environment, `remedy serve start` also answers this API on
 `127.0.0.1` at that port, and nothing but this API there; `0` lets the system pick a free port.
 `remedy serve status --json` names the port under `api_port`, and the token is the same
@@ -24,7 +25,7 @@ machine.
 Every route under `/api/v1` takes its token in the `Authorization` header, as
 `Authorization: Bearer <token>`, never in the query string — a token in the query is refused.
 The supervisor's token is the file `serve.token` in the `serve` folder of the data root, readable
-by its owner only. The cockpit's token is the one its start printed.
+by its owner only.
 
 A program can be given a token of its own, called a client token. The operator writes it into
 `clients.json` in the `api` folder of the data root, beside `calls.jsonl`. The file holds one
@@ -42,7 +43,7 @@ holding no client. It is read again at every call, so an edit, a new client or a
 effect at the next call. A file that is missing, that cannot be read, that is not JSON, or that
 holds anything outside this shape counts as holding no client at all, and the server's own token
 keeps working. A client token reads every route the server's token reads and is accepted under
-`/api/v1` alone: the cockpit's other routes refuse it as they refuse a wrong token.
+`/api/v1` alone: the write door refuses it as it refuses a wrong token.
 
 ## The envelope and its refusals
 
@@ -70,8 +71,8 @@ other. A `POST` is a write, and the next section says how a write is answered.
 ## Writes
 
 A write is a `POST`. Only the supervisor that `remedy serve start` starts answers writes, on its
-socket and on its port; the cockpit's own server answers every `POST` under `/api/v1` with 405 and
-`api_method_not_allowed`. The body of a write is a JSON object that holds only the keys the
+socket and on its port; a handler without the supervisor's runner answers every `POST` under
+`/api/v1` with 405 and `api_method_not_allowed`. The body of a write is a JSON object that holds only the keys the
 route's table row names under "Query or body", each of the kind the row gives: `string` is one
 string, `strings` is a list of non-empty strings, and `flag` is `true` or `false`, where `true`
 passes the command's option of that name and `false` passes nothing; no body at all is the empty
@@ -189,7 +190,7 @@ the process has finished, and answers `ended` once the end is there, `lost` othe
 job, or a job with no run, answers 404 `run_not_found`, the envelope `remedy client run <job>
 --json` answers for the same value. The supervisor
 hands the one launcher that starts runs to its socket and to its port alike, so both answer from
-one list of runs; a server that has no such launcher, the cockpit's own among them, answers the
+one list of runs; a server that has no such launcher answers the
 route 405 `api_method_not_allowed` (DECISION F253 D18).
 
 ## Stories

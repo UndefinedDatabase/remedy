@@ -52,18 +52,19 @@ bytes on macOS, 108 on Linux, including the terminating NUL) is refused at
 start with the setting to shorten, rather than silently placed somewhere a
 client would not look (`socket_path_problem`).
 
-## The socket is the cockpit's own write door
+## The socket is the write door
 
-The supervisor answers its socket with a subclass of the cockpit's own
+The supervisor answers its socket with a subclass of the write door's
 request handler (`_RemedyHandler` in `packages/orchestration/ui_server.py`),
 built by `serve_daemon.socket_handler_class`. An envelope sent over the
-socket therefore passes the exact same checks — token, CSRF header, the job,
-the payload shape, the command catalog, the nonce and the rate limit — that a
-command the cockpit's page sends passes, and no second write protocol exists.
-The one difference from the cockpit's own server is the `source` an applied
-effect is recorded with: `cli`, the word `SOCKET_EFFECT_SOURCE` names, instead
-of `ui`. A command the socket does not accept is refused exactly as the door
-refuses it.
+socket passes the door's checks — token, CSRF header, the job, the payload
+shape, the command catalog, the nonce and the rate limit — and no second
+write protocol exists. An applied effect is recorded with the source `cli`,
+the word `SOCKET_EFFECT_SOURCE` names. A command the socket does not accept
+is refused exactly as the door refuses it. The handler answers `POST
+/api/jobs/<job>/commands` and the public API under `/api/v1`; every other
+path answers 404, and the old cockpit's read routes are gone (see History).
+`remedy chat send` sends its card over this socket too (amend1015f D20).
 
 ## Client mode: four commands, everything else direct
 
@@ -78,7 +79,7 @@ it runs directly; only the write itself is sent to the supervisor as one F009
 command envelope with a fresh nonce, and the printing below that point is the
 same code in both modes (DECISION F200 D3, `apps/cli/serve_client.py`,
 `forward_effect`). A `--source` the client names travels with the envelope
-and is recorded as given; the cockpit's own handler always records `ui`.
+and is recorded as given.
 
 `job run <job>` goes through the supervisor only when it is given with at
 most `--json` and the job exists on this data root; with any other option, or
@@ -100,7 +101,7 @@ supervisor that is waiting on it.
 
 ## Running a job through the supervisor
 
-`job.run` is the one command the socket accepts beyond the cockpit door's own
+`job.run` is the one command the socket accepts beyond the write door's own
 set. The supervisor runs the job the way an operator would directly —
 `remedy job run <job>`, through its own interpreter, with `REMEDY_SERVE_DIRECT`
 set and its own data root — as a detached child process in its own session,
@@ -171,8 +172,6 @@ refusal.
   no successor (DECISIONs F261 D14 and D22) and F049 is unbuilt; the
   supervisor runs exactly the jobs it is handed, each as its own process,
   and keeps no waiting line.
-- **A cockpit thread inside the supervisor.** Serving the cockpit's page from
-  the supervisor itself is F201's remote-access work, not this feature's.
 - **The notify and audit-export workers.** Neither exists anywhere in the
   codebase today, so the supervisor hosts neither.
 - **A localhost HTTP client channel.** The unix socket, access-controlled by
@@ -181,7 +180,7 @@ refusal.
 - **A door clause for every write command.** Only `job.stop`, `job.pause`,
   `job.unpause` and `job.run` travel through the socket in client mode;
   every other write command runs directly in both modes (DECISION F200
-  D4) — both the ones the cockpit's door carries (`job.veto-task`,
+  D4) — both the ones the write door carries (`job.veto-task`,
   `job.steer`, `chat.send`, `job.edit-task` and the rest) and the ones it
   does not. Carrying the rest through the socket is the headless API's
   work (F253).
@@ -190,10 +189,24 @@ refusal.
 
 - `docs/roadmap/features/T12_F200.md` — the target spec, its Amendment
   section and DECISIONs F200 D1–D7.
-- [operator-cockpit-v1.md](operator-cockpit-v1.md) — the cockpit's own write
-  door, which the supervisor's socket answers with.
+- [public-http-api-v1.md](public-http-api-v1.md) — the routes under `/api/v1`
+  the supervisor answers on its socket and its TCP port.
 - `tests/orchestration/test_serve_daemon.py`, `test_serve_paths.py`,
   `test_serve_runs.py`, `test_serve_restart_kill.py`,
   `test_serve_artifacts.py` — the supervisor's own proof.
 - `tests/cli/test_serve_cmd.py`, `test_serve_client_parity.py` — the command
   line's client mode, run in both modes.
+
+## History
+
+- 2026-10-15, deprecated and removed: GET `/` (the app shell) and GET `/assets/...` (its static files). Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/state`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/layers`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/projects`, `/api/projects/<project>/summary`, `/api/projects/<project>/missions` and `/api/projects/<project>/missions/<mission>/orders`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/dashboard`, `/brain`, `/brain-view-model`, `/live-state`, `/task-progress`, `/decisions`, `/next-action`, `/events`, `/readiness`, `/story`, `/checklist`, `/diagnostics`, `/diff`, `/hunk-decisions`, `/digest`, `/ownership`, `/lessons`, `/tour`, `/artifacts`, `/preview` and `/project`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/events-since` and GET `/api/jobs/<job>/chat`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/events/stream`, the server-sent event stream. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/nodes/<node>/detail`, `/human-detail` and `/debug-detail`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/task-runs/<task>/diff`, `/hunk-decisions` and `/rounds`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, deprecated and removed: GET `/api/jobs/<job>/artifacts/file`. Its successor is the public API under `/api/v1` and the edition `remedy` (amend1015f D19).
+- 2026-10-15, kept: POST `/api/jobs/<job>/commands`, the write door, and every route under `/api/v1`.

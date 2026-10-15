@@ -127,22 +127,12 @@ The command has no "stop at the first red" switch either. `run_ci_stage` never
 raises on a red stage, so every selected stage always runs and the summary is
 always complete. A run in which nothing ran at all is red, not green.
 
-## The UI toolchain is a precondition (DECISION F083 D6)
+## No UI toolchain any more (DECISION F083 D6, retired)
 
-The hosted workflow runs `npm ci --prefix apps/ui` BEFORE `remedy ci run`. The UI
-toolchain is a precondition of the `standard` stage and of no other stage: two of
-the files `standard` selects need the installed toolchain, and both skip without
-it. `test_typescript_compiles` in `tests/ui_server/test_dashboard_contract.py`
-carries the `integration` marker and shells out to the TypeScript compiler; the
-Vite probes in `tests/runtimes/test_apps_ui_probe.py` carry `subprocess` and skip
-on a missing `apps/ui/node_modules/.bin/vite`. The `ui` stage needs nothing
-installed at all. Without the install those checks skip hosted, exactly as they
-skip on a local checkout that never ran it, and F083's Acceptance line would be
-met by a skip instead of by a real compile. The install is a workflow step rather
-than stage logic so the stage table stays data and keeps naming no toolchain —
-which is also why the workflow installs the toolchain unconditionally rather than
-per stage: the table is the only thing that knows which stage selects those tests,
-and the workflow deliberately reads no part of it.
+DECISION F083 D6 made the UI toolchain a precondition of the `standard` stage, installed by the
+hosted workflow before `remedy ci run`. The UI and the tests that needed its toolchain were
+deleted on 2026-10-15 (amend1015f D3), so the workflow installs no node toolchain and every stage
+needs only the Python environment. The `ui` stage still runs the static brain viewer's checks.
 
 ## What is not measured
 

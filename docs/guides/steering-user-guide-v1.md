@@ -24,14 +24,9 @@ that it arrives as one argument. The command prints the message's id, for exampl
 `sm-0001`, and says that the job reads it at its next safe point. Add `--json` to get the
 message id, the time it was received and the seal of its record as JSON instead.
 
-From the cockpit (`remedy ui start <job_id>`), type the message into the input at the
-bottom of the activity card and press Enter or the arrow button. The sentence under the
-input says what happened: the message was recorded, or it was refused and why. A refused
-message stays in the input so that you can correct it and send it again.
-
 A message must not be empty and may be at most 2000 characters long. A job that has
 already ended takes no message, because no run would ever read it: the command exits with
-code 3 and the cockpit input is shown disabled with that reason.
+code 3 and says so.
 
 ## When the job reads it
 
@@ -68,10 +63,8 @@ each one it prints one of three answers:
 
 Add `--json` for the same list as JSON.
 
-The cockpit shows the same acknowledgement as its own line in the activity feed, directly
-above the input: "Steering taken in at round 3: ..." followed by the same restatement.
-Both views read the one event the job writes when it takes a message in, so they cannot
-disagree.
+The list reads the one event the job writes when it takes a message in, so every view of it,
+the edition `remedy` included, shows the same acknowledgement.
 
 ## What is kept as evidence
 
@@ -103,16 +96,12 @@ model unless you switch on `chat.model_written`, described in
 
 A line that is not a question is read as a request: stop, pause, resume, a note to the builder,
 veto or rerun. The command prints a card naming the job, the task, the message or reason, and the
-command it would send. It sends the card to the job's running cockpit only when the card is
-complete and you confirm it, either by typing `y` at the `Send it? [y/N]` line or by adding
-`--yes`; without a terminal and without `--yes`, nothing is sent and the output says why. The
-cockpit must be running (`remedy ui start <job_id>`), because the card goes through the same
-checked entrance as a button in the browser, and its record is the cockpit's own audit line.
-
-In the cockpit, the same chat is the Chat tab of a run's evidence panel. It asks about that
-run's task, or about the whole project when you tick the box beside the input. Each sentence of
-an answer carries numbered links to the records listed under it, or a dashed "unsupported"
-mark, and a card has a Confirm button that sends it once.
+command it would send. It sends the card through the write door of the supervisor that
+`remedy serve start` started, only when the card is complete and you confirm it, either by typing
+`y` at the `Send it? [y/N]` line or by adding `--yes`; without a terminal and without `--yes`,
+nothing is sent and the output says why. The supervisor must be running, because the card goes
+through the same checked entrance as every other command, and its record is the door's own audit
+line.
 
 ## Exit codes
 
@@ -120,6 +109,6 @@ mark, and a card has a Confirm button that sends it once.
 unusable (empty, too long, or containing a NUL character), and 3 when the job has ended or
 its record cannot be read. `remedy chat show` exits 3 when the job's record cannot be read.
 `remedy chat ask` exits 0 whether or not a card was sent, 2 for a task id that names no
-task of the job, 3 when the job's record cannot be read or no cockpit for the job is running
-or answering, and 1 when the cockpit refuses the card. An unknown job id exits 1. The full
+task of the job, 3 when the job's record cannot be read or no supervisor is running or answering,
+and 1 when the supervisor's door refuses the card. An unknown job id exits 1. The full
 list is in [exit-codes.md](exit-codes.md).

@@ -17,12 +17,6 @@ from packages.memory.models import MemoryEntry
 from packages.orchestration.data_paths import mint_job_id, normalize_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-
-UI_SRC = ROOT / "apps" / "ui" / "src"
-
-UI_ROOT = ROOT / "apps" / "ui"
-
 FORBIDDEN_KEYS = (
     "stdout", "stderr", "raw_output", "command_output",
     "Traceback", "diff_preview", "approval_reason",
@@ -461,121 +455,6 @@ class TestBrainIntegration:
         )
         assert NT_DECISION_QUEUE in _NODE_TYPE_ORDER
         assert _NODE_TYPE_ORDER[NT_DECISION_QUEUE] == 25
-
-
-# ===========================================================================
-# Step 165 — Human Node Detail
-# ===========================================================================
-
-
-class TestUiRebuildSpecDocument:
-    """UI rebuild spec document present and complete."""
-
-    @pytest.fixture(autouse=True)
-    def load_spec(self):
-        self.spec_path = ROOT / "docs" / "ui" / "REMEDY_UI_REBUILD_SPEC.md"
-        assert self.spec_path.is_file(), "Spec file must exist"
-        self.content = self.spec_path.read_text(encoding="utf-8")
-
-    def test_has_component_tree(self):
-        assert "RemedyApp" in self.content
-        assert "RemedyShell" in self.content
-        assert "LeftBrandRail" in self.content
-        assert "BrainGraphStage" in self.content
-        assert "RightLivePanel" in self.content
-        assert "PhaseTimeline" in self.content
-        assert "DetailPopover" in self.content
-        assert "LayerSwitcher" in self.content
-
-    # The v2 spec (2026-07-05) stopped inlining the palette, the forbidden-word
-    # list and the zoom levels: each names ONE canonical source under
-    # docs/ui/design_reference/. These pins follow that — the delegation must be
-    # explicit and the target must exist, so a dead pointer still fails.
-    def _reference(self, name: str):
-        p = ROOT / "docs" / "ui" / "design_reference" / name
-        assert p.is_file(), f"canonical reference missing: {name}"
-        return p.read_text(encoding="utf-8")
-
-    def test_has_css_tokens(self):
-        assert "design_reference/tokens.css" in self.content
-        assert "the only palette" in self.content
-        assert "--remedy-" in self.content
-        assert "--remedy-" in self._reference("tokens.css")
-
-    def test_has_forbidden_words_section(self):
-        assert "Forbidden default UI words" in self.content
-        assert "ux_spec.md" in self.content
-        for word in ("rank", "importance", "node_type"):
-            assert word in self.content
-        assert "humanCopy.ts" in self.content
-        self._reference("ux_spec.md")
-
-    def test_has_semantic_zoom_rules(self):
-        assert "Semantic zoom" in self.content
-        assert "graph_spec.md" in self.content
-        # The one rule v2 keeps stated inline, because it is binding.
-        import re as _re
-        flat = _re.sub(r"\s+", " ", self.content.lower())
-        assert "diagnostics content never appears through zoom alone" in flat
-        self._reference("graph_spec.md")
-
-    def test_no_old_ui_as_primary(self):
-        lower = self.content.lower()
-        assert "old ui is primary" not in lower
-        assert "pixi" not in lower
-
-
-# ---------------------------------------------------------------------------
-# Step 174 — Frontend project structure
-# ---------------------------------------------------------------------------
-
-
-class TestFrontendProjectStructure:
-    """Frontend has clean modern React structure."""
-
-    def test_package_json_valid(self):
-        pkg = json.loads((UI_ROOT / "package.json").read_text(encoding="utf-8"))
-        assert pkg["name"] == "@remedy/ui"
-        assert "react" in pkg.get("dependencies", {})
-        assert "react-force-graph-2d" in pkg.get("dependencies", {})
-        assert "@mui/material" in pkg.get("dependencies", {})
-
-    def test_no_pixi_dependency(self):
-        pkg = json.loads((UI_ROOT / "package.json").read_text(encoding="utf-8"))
-        deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
-        assert "pixi.js" not in deps
-        assert "pixi-viewport" not in deps
-        assert "elkjs" not in deps
-
-    def test_tsconfig_has_jsx(self):
-        tsconfig = json.loads((UI_ROOT / "tsconfig.json").read_text(encoding="utf-8"))
-        assert tsconfig["compilerOptions"].get("jsx") == "react-jsx"
-
-    def test_vite_config_has_react_plugin(self):
-        vite = (UI_ROOT / "vite.config.ts").read_text(encoding="utf-8")
-        assert "react" in vite
-
-    def test_eslint_config_exists(self):
-        assert (UI_ROOT / "eslint.config.js").is_file()
-
-    def test_no_node_modules_committed(self):
-        # Check .gitignore or just that node_modules is not tracked
-        nm = UI_ROOT / "node_modules"
-        if nm.exists():
-            # Just verify it's not in git
-            pass  # node_modules should be gitignored
-
-    def test_main_tsx_exists(self):
-        assert (UI_SRC / "main.tsx").is_file()
-
-    def test_remedy_app_exists(self):
-        assert (UI_SRC / "RemedyApp.tsx").is_file()
-
-    def test_tokens_css_exists(self):
-        assert (UI_SRC / "styles" / "tokens.css").is_file()
-
-    def test_globals_css_exists(self):
-        assert (UI_SRC / "styles" / "globals.css").is_file()
 
 
 # ---------------------------------------------------------------------------
