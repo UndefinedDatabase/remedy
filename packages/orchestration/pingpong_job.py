@@ -1220,7 +1220,8 @@ def _record_target_last_known(job: JobPlan) -> None:
 def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
     """Re-claim an existing job workspace, or create it on first run."""
     from packages.orchestration import worktrees as W
-
+    from packages.orchestration.pi_provider import bind_job_clock
+    bind_job_clock(job)         # amend1014c R2: a Pi call may not outlive the job's wall budget
     if not job.job_workspace_path:
         path, handle = _create_job_workspace(job)
         job.job_workspace_path = path
@@ -1236,14 +1237,12 @@ def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
             f"fall back to a copied workspace"
         )
     if handle.branch != job.worktree_branch:
-        from packages.orchestration import worktrees as _W
-        _W.release_lock(handle)
+        W.release_lock(handle)
         raise RuntimeError(
             f"job worktree is on branch {handle.branch!r}, not the recorded "
             f"{job.worktree_branch!r}"
         )
-    err = _verify_checkpoints(job)
-    if err:
+    if err := _verify_checkpoints(job):
         # NEVER re-snapshot a lost checkpoint: a fresh baseline would silently
         # swallow whatever the interrupted attempt had already written.
         W.retain_for_recovery(handle, err)

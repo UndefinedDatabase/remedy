@@ -311,6 +311,26 @@ def free_disk_bytes(probe: Callable[[], int] | None = None) -> int:
     return int((probe if probe is not None else FREE_DISK_PROBE)())
 
 
+def job_time_remaining(
+    budgets: JobBudgets | None, started_at: datetime | None, now: datetime | None = None,
+) -> tuple[float | None, str]:
+    """``(seconds, source)`` the job may still run, from its wall-clock limit and deadline; ``(None, "")`` if unbounded.
+
+    The tighter of the two wins and ``source`` names it. It can be zero or negative once exhausted.
+    A provider uses it as a ceiling on one in-flight call (amend1014c R2).
+    """
+    if budgets is None:
+        return None, ""
+    now = now or datetime.now(timezone.utc)
+    left: list[tuple[float, str]] = []
+    if budgets.max_wall_clock_minutes is not None and started_at is not None:
+        left.append((budgets.max_wall_clock_minutes * 60 - (now - started_at).total_seconds(),
+                     "max_wall_clock_minutes"))
+    if budgets.deadline is not None:
+        left.append(((budgets.deadline - now).total_seconds(), "deadline"))
+    return min(left, key=lambda item: item[0]) if left else (None, "")
+
+
 def evaluate_budget(
     budgets: JobBudgets | None,
     counters: BudgetCounters,
