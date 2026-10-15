@@ -1,20 +1,18 @@
-# Context — amend1014b-pi-default-repeatable-do
+# Context — amend1014c-review-closure-before-merge
 
 ## Active Branch
-feature/do-golden-path (its pull request is open, not merged). F078 parked on feature/f078-autonomy-levels; untouched.
+feature/do-golden-path (PR #339 open, product-review BLOCKED, not merged). The replacement branch
+feature/do-golden-path-review-closure is created at the end, from main, by replay. F078 untouched.
 
 ## Scope
-Pi as default builder/reviewer/repair harness (local Ollama muse-glimmer:latest), the dirty working
-tree as the job baseline, `target_changed_during_run`, empty-diff pass rejection, health chain, docs.
-No SDK embedding, no daemon, no data-model redesign (one bounded `start_baseline` field).
+R1 to R3 repairs of the Pi golden path, their tests, the real acceptance A to E, docs, then the no-force
+history replacement. No new roadmap feature; no merge.
 
 ## Do not touch
-`.agent/STOP`, the F078 branch, `no_file_changed`, apply approval, scope guards, non-human content policy.
+`.agent/STOP` (untracked), the F078 branch, `no_file_changed`, apply approval, scope guards, the
+non-human content policy.
 
 ## Constraints
 - Structure ratchet: listed functions may not grow. One test run at a time (`scripts/remedy_pytest.sh`).
-- Real acceptance A to E use isolated fixtures and data roots under `/home/decodeux/.remedy-wt-probe`.
-
-## Steps
-Commits B1 to B6 and the repairs after them are the steps of this branch; the item-status table
-(D1 to D7, tests 1 to 18, acceptances A to E) lives in the handback, `.agent/handoff.md`.
+- Every commit at most 500 insertions. No rebase, reset, amend or force-push.
+- Real acceptance uses fresh fixtures and isolated data roots under `/home/decodeux/.remedy-wt-probe`.

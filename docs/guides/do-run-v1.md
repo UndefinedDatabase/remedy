@@ -30,11 +30,28 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
   (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
   model call with the action to take, and never falls back to another provider.
-- **A dirty working tree is the baseline.** At the start Remedy captures what `git status` shows
-  (bytes, executable bit, symlinks, deletions), seeds the job workspace from it and measures the
-  proposed change from that state. Nothing is stashed, reset, checked out or committed in your
-  repository. A state it cannot represent exactly (unresolved merge conflicts, a submodule or
-  nested repository, a very large dirty set) stops the walk before any step and names the cause.
+- **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
+  captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
+  deletions), seeds the job workspace from them and measures the proposed change from that state.
+  Pi sees only that workspace: every other dirty path (an unrelated source file, an untracked
+  `.env`, a private key) is left exactly where it is, is never copied into the workspace or into
+  a Git object, and shows in the report only as a name the run preserved. A sensitive path
+  (environment files, credentials files, `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.git`) is judged by
+  its name alone, never by `.gitignore`; an order that names one as a target is refused before any
+  worktree or model call. Nothing is stashed, reset, checked out or committed in your repository. A
+  state it cannot represent exactly (unresolved merge conflicts, a submodule or nested repository,
+  a very large dirty set) stops the walk before any step and names the cause.
+- **Timeouts are ceilings.** An explicit timeout (flag, order file, persisted config) is never
+  raised for Pi. The remaining job wall-clock budget and the job deadline cap one Pi call too, and
+  the tightest ceiling wins; the call record keeps the configured value, the job ceiling and the
+  effective value under `timeout`. Only when nobody set a timeout does Pi get its longer default of
+  900 seconds, because its agent loop takes several tool turns.
+- **Harness invocations and model turns are different counts.** One Pi process (a harness
+  invocation, what the token ledger records as one call) runs several model turns. The text report
+  and `--json` print both, for example `(1 harness invocation, 8 model turns)`; the turns are
+  counted from Pi's own event stream, and a role without a Pi record says `model turns not
+  reported`. A failed Pi invocation that produced no assistant message is one invocation and zero
+  turns.
 - **Concurrent edits still block.** If a file the job changed was edited, or HEAD moved, after
   the start state was captured, the apply stops with `target_changed_during_run`, names the paths
   and overwrites nothing.
