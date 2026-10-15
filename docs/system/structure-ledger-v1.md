@@ -118,8 +118,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   reads the loop's helpers from the loop's module, and the function left the table.
 - `build_client_digest` (`packages/orchestration/client_digest.py`). Boundary: one entry per
   kind it builds — a project, a job, a decision — and the window over the ended jobs. Steps:
-  (1) done by F205, one job's entry is `_job_entry`; (2) the reading of each project's
-  missions and ledgers becomes a function; (3) done by amend1015c, the window over the ended
+  (1) done by F205, one job's entry is `_job_entry`; (2) done by amend1015c, the reading of
+  each project's missions and ledgers is `_read_projects`; (3) done by amend1015c, the window over the ended
   jobs is `_ended_job_window`.
 - `plan_order_job` (`packages/orchestration/do_sequence.py`). Boundary: the intake call, the
   first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the
@@ -316,7 +316,7 @@ with the code that calls it.
 | 179 | `scripts/build_review_manifest.py` | `validate_evidence_candidate` |
 | 178 | `packages/orchestration/subtree_rerun.py` | `prepare_subtree_rerun` |
 | 177 | `apps/cli/commands/job.py` | `_cmd_job_resume` |
-| 166 | `packages/orchestration/client_digest.py` | `build_client_digest` |
+| 132 | `packages/orchestration/client_digest.py` | `build_client_digest` |
 | 171 | `scripts/build_observability_index.py` | `_build_task_section` |
 | 168 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_serve` |
 | 168 | `packages/orchestration/builder_bridge.py` | `run_builder_bridge` |

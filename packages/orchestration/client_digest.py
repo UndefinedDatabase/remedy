@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Collection
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -352,6 +353,62 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
     }
 
 
+@dataclass
+class _ProjectReads:
+    """What `_read_projects` read of every project, for `build_client_digest`."""
+
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    mission_by_job_id: dict[str, Mission] = field(default_factory=dict)
+    abandoned_job_ids: set[str] = field(default_factory=set)
+    usage_by_job_id: dict[str, CostRow] = field(default_factory=dict)
+    every_ledger_read: bool = True
+    degraded: bool = False
+    skipped_files: list[str] = field(default_factory=list)
+
+
+def _read_projects(projects: list[Any], day_moment: datetime) -> _ProjectReads:
+    """Each project's entry with its missions and its cost of the day, every job's mission and
+    ledger totals (DECISION F304 D13: one grouped read per project ledger), and what could not be
+    read. Step (2) of `build_client_digest`'s boundary on `docs/system/structure-ledger-v1.md`,
+    moved out unchanged."""
+    reads = _ProjectReads()
+    for project in projects:
+        project_id = str(project.id)
+        missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
+        reads.degraded = reads.degraded or mission_degraded
+        reads.skipped_files.extend(mission_skipped)
+        try:
+            cost_today: dict[str, Any] | None = {
+                **project_cost_of_day(project.id, day_moment),
+                "tokens": _day_tokens(project.id, day_moment),
+            }
+        except _LEDGER_READ_ERRORS:
+            cost_today = None
+            reads.degraded = True
+            reads.skipped_files.append(f"cost of the day of project {project_id}")
+        try:
+            for job_id, row in ledger_usage_by_job(project_id=project.id).items():
+                kept = reads.usage_by_job_id.get(job_id)
+                reads.usage_by_job_id[job_id] = row if kept is None else _merged_usage(kept, row)
+        except _LEDGER_READ_ERRORS:
+            reads.every_ledger_read = False
+            reads.degraded = True
+            reads.skipped_files.append(f"calls and tokens of the jobs of project {project_id}")
+        reads.entries.append({
+            "project_id": project_id,
+            "slug": project.slug or "",
+            "missions": [_mission_entry(m) for m in missions],
+            "cost_today": cost_today,
+        })
+        # Built once here, never one scan per job below.
+        for mission in missions:
+            for job_id in mission.job_ids():
+                reads.mission_by_job_id[job_id] = mission
+                if mission.status == MISSION_STATUS_ABANDONED:
+                    reads.abandoned_job_ids.add(job_id)
+    return reads
+
+
 def _ended_job_window(job_entries: list[dict[str, Any]],
                       ended_jobs: list[tuple[str, str, dict[str, Any]]], *, windowed: bool,
                       every_ended_job: bool) -> dict[str, Any]:
@@ -412,46 +469,12 @@ def build_client_digest(now: datetime | None = None, *,
 
     # R-1144: the read-only projection, never `list_projects`, which migrates a legacy record on read.
     projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
-    project_entries: list[dict[str, Any]] = []
-    mission_by_job_id: dict[str, Mission] = {}
-    abandoned_job_ids: set[str] = set()
-    # DECISION F304 D13: every job's ledger totals, one grouped read per project ledger.
-    usage_by_job_id: dict[str, CostRow] = {}
-    every_ledger_read = True
-    for project in projects:
-        project_id = str(project.id)
-        missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
-        degraded = degraded or mission_degraded
-        skipped_files.extend(mission_skipped)
-        try:
-            cost_today: dict[str, Any] | None = {
-                **project_cost_of_day(project.id, day_moment),
-                "tokens": _day_tokens(project.id, day_moment),
-            }
-        except _LEDGER_READ_ERRORS:
-            cost_today = None
-            degraded = True
-            skipped_files.append(f"cost of the day of project {project_id}")
-        try:
-            for job_id, row in ledger_usage_by_job(project_id=project.id).items():
-                kept = usage_by_job_id.get(job_id)
-                usage_by_job_id[job_id] = row if kept is None else _merged_usage(kept, row)
-        except _LEDGER_READ_ERRORS:
-            every_ledger_read = False
-            degraded = True
-            skipped_files.append(f"calls and tokens of the jobs of project {project_id}")
-        project_entries.append({
-            "project_id": project_id,
-            "slug": project.slug or "",
-            "missions": [_mission_entry(m) for m in missions],
-            "cost_today": cost_today,
-        })
-        # Built once here, never one scan per job below.
-        for mission in missions:
-            for job_id in mission.job_ids():
-                mission_by_job_id[job_id] = mission
-                if mission.status == MISSION_STATUS_ABANDONED:
-                    abandoned_job_ids.add(job_id)
+    reads = _read_projects(projects, day_moment)
+    degraded = degraded or reads.degraded
+    skipped_files.extend(reads.skipped_files)
+    project_entries, mission_by_job_id = reads.entries, reads.mission_by_job_id
+    abandoned_job_ids, usage_by_job_id = reads.abandoned_job_ids, reads.usage_by_job_id
+    every_ledger_read = reads.every_ledger_read
 
     if job_ids is None:
         plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
