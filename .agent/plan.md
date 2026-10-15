@@ -1,21 +1,26 @@
-# Plan — amend1014c-review-closure-before-merge
+# Plan — amend1015c (operator order amend1015-final-closure, Remedy's half)
 
 ## Goal
-Operator amendment amend1014c (2026-10-15): repair the four review findings of the old pull request (R1 secret
-persistence, R2 Pi timeout floor, R3 call accounting, R4 a 643-insertion commit) and carry them on a clean-history
-replacement branch. Not a merge.
+Close the face migration on the backend side: verify the Phase A claims with evidence, then repair
+the defects the order names, each with a failing regression test first. Branch
+`feature/amend1015-final-closure` from `feature/amend1015-face-migration` (PR #342); the
+orchestrator brings it into PR #342's branch. No push, no merge, no tag from this worktree.
 
 ## Current Step
-Done: R1 to R3 repaired and tested, acceptance A to E passed against the real Pi, the old pull request closed, the
-branch `feature/do-golden-path-review-closure` replayed from `main` (tree equal to the old tip), the handoff written.
+Phase A checks (A1 to A8), then the defects E2, E3, E5, E6, E7.
 
 ## Next Steps
-1. Operator: review the replacement pull request; do not merge automatically.
-2. After a merge decision, F078 resumes on `feature/f078-autonomy-levels`.
-
-## Review Strategy
-The old pull request had no review comments on any channel (checked 2026-10-15).
+1. A5/A6: a client token reads only its projects' jobs on every job route (proof, run, orders,
+   digest, changes, diff); tests prove it.
+2. E2: a retry of a job that ended blocked really runs again, or the story offers no retry;
+   R-1332 (a blocked job keeps a finish time) if small.
+3. E3: `GET /api/v1/jobs/{job}/diff` (interface 1.16) from git, its twin `remedy client diff`,
+   docs (public-http-api-v1, http-clients guide), tests.
+4. E5: README.md vs docs/README.md (R-1325): fixture or resolver; narrow fix.
+5. E6: budgets enforced in the backend; retry cannot reset them; unknown cost stays null.
+6. E7: the story's verification words distinguish no test command / not run / passed / failed.
+7. Gates: full pytest, ruff, integrity, structure ratchet, wheel + fresh install + CLI and HTTP smoke.
 
 ## Risks
-- `.agent/STOP` untracked and untouched; the F078 branch untouched.
-- Ordinary unrelated dirty content is still hashed by the F263 snapshot (see the handoff); one operator decision.
+- `.agent/STOP` untracked and untouched (decodeux's stop of the autonomous loop).
+- `public_api.py` and `client_story.py` are near the structure limits; new code goes in new modules.
