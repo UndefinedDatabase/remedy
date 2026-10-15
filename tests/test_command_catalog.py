@@ -325,14 +325,15 @@ class TestCatalogLookups:
 
 class TestVisibleGroupOrder:
     """DECISION amend0905-vocab D4, clarified by amend0911-feedback D1: the
-    default `remedy --help` order is these sixteen groups in this fixed order, then
+    default `remedy --help` order is these fifteen groups in this fixed order (`ui` left it with
+    the old cockpit, amend1015f D22), then
     the two reserved slots, `absorb` filled by F263 and `chat` filled by F264."""
 
     def test_visible_group_order_matches_d4(self) -> None:
         from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
         assert VISIBLE_GROUP_ORDER == (
             "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
-            "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+            "memory", "config", "doctor", "project", "init", "worker", "runtime",
             "absorb", "chat",
         )
 
@@ -363,7 +364,7 @@ class TestRequiredCommands:
         "brain.graph", "brain.node", "brain.view", "brain.context",
         "brain.trust", "brain.timeline",
         "worker.list",
-        "ui.start", "ui.latest", "ui.status", "ui.stop", "ui.open",
+        "ui.start", "ui.stop",
     )
 
     def test_all_required_commands_exist(self) -> None:
@@ -581,7 +582,7 @@ class TestDeletedFlags:
 
 
 def test_ui_stop_is_classified_as_the_local_state_change_it_makes():
-    """R-1034: `ui stop` stops every running UI server, so no sweep may run it as read-only."""
+    """R-1034: `ui stop`, now the alias of `serve stop`, stops a process, so it is never read-only."""
     from apps.cli.command_catalog import get_command
 
     entry = get_command("ui.stop")

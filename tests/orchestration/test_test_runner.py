@@ -135,22 +135,6 @@ class TestPatchApplyTestLoop:
 class TestHeadlessSmokeNosBrowserLaunch:
     """Smoke uses HTTP only, no browser launch."""
 
-    def test_no_open_does_not_call_opener(self):
-        """--no-open flag prevents browser open."""
-        from apps.cli.commands.ui import COMMAND_HANDLERS
-        # Default handler uses `not getattr(args, "no_open", False)`
-        # With no_open=True, open_browser should be False
-        class FakeArgs:
-            job_id = str(uuid4())
-            port = "0"
-            host = "127.0.0.1"
-            no_open = True
-            info_file = None
-        with patch("apps.cli.commands.ui._cmd_ui_start") as mock:
-            COMMAND_HANDLERS["ui.start"](FakeArgs())
-            _, kwargs = mock.call_args
-            assert kwargs["open_browser"] is False
-
     def test_smoke_uses_http_not_browser(self):
         """Smoke API checks use urlopen, not xdg-open/open."""
         content = Path("scripts/remedy_smoke.sh").read_text()

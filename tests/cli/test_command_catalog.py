@@ -67,18 +67,21 @@ def _make_job_s141(*, tasks=None, name="test"):
 
 
 class TestUICommands:
-    def test_new_commands_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        for cmd_id in ("ui.latest", "ui.status", "ui.stop", "ui.open"):
-            cmd = get_command(cmd_id)
-            assert cmd.group_id == "ui"
+    """amend1015f D22: `ui` keeps only `start` and `stop`, as warning aliases of `serve`."""
 
-    def test_ui_group_has_five_commands(self):
+    def test_the_ui_group_holds_only_the_two_aliases(self):
         from apps.cli.command_catalog import get_commands_for_group
         cmds = get_commands_for_group("ui")
-        assert len(cmds) == 5
-        subs = {c.subcommand for c in cmds}
-        assert subs == {"start", "latest", "status", "stop", "open"}
+        assert {c.subcommand: c.related for c in cmds} == {
+            "start": ("serve.start",), "stop": ("serve.stop",)}
+
+    def test_latest_status_and_open_are_gone_with_a_history_line(self):
+        from apps.cli.command_catalog import CATALOG, RETIRED_COMMANDS
+        ids = {c.command_id for c in CATALOG}
+        assert not ids & {"ui.latest", "ui.status", "ui.open"}
+        assert not ids & set(RETIRED_COMMANDS)
+        for cid in ("ui.latest", "ui.status", "ui.open"):
+            assert "Removed 2026-10-15" in RETIRED_COMMANDS[cid]
 
 
 # ---------------------------------------------------------------------------
@@ -89,26 +92,25 @@ class TestUICommands:
 
 
 class TestUiDirectFormCommandRewrite:
-    """remedy ui <job_id> direct form must work."""
+    """`remedy ui <job_id>` and `remedy ui start|stop` reach the serve handlers with a warning
+    (amend1015f D22); no test starts a real supervisor."""
 
-    def test_default_command_rewrite_ui(self):
-        """remedy ui <uuid> should rewrite to remedy ui start <uuid>."""
+    @pytest.fixture
+    def serve_calls(self, monkeypatch):
+        from apps.cli.commands import serve_cmd
+        calls: list[str] = []
+        for word in ("start", "stop"):
+            monkeypatch.setitem(serve_cmd.COMMAND_HANDLERS, f"serve.{word}",
+                                lambda args, _w=word: calls.append(_w))
+        return calls
+
+    def test_default_command_rewrite_ui(self, serve_calls, capsys):
+        """remedy ui <uuid> rewrites to remedy ui start <uuid>, which runs serve start."""
         from apps.cli.grouped import main as grouped_main
 
-        fake_id = str(uuid4())
-        # Should not crash with SystemExit(1) — should reach handler
-        with pytest.raises(SystemExit):
-            grouped_main(["ui", fake_id])
-        # The key test: it should have tried to load the job (meaning it
-        # correctly routed to ui.start), not show "Unknown command"
-
-    def test_default_command_rewrite_preserves_flags(self):
-        """remedy ui <uuid> --port 0 should rewrite correctly."""
-        from apps.cli.grouped import main as grouped_main
-
-        fake_id = str(uuid4())
-        with pytest.raises(SystemExit):
-            grouped_main(["ui", fake_id, "--port", "0"])
+        grouped_main(["ui", str(uuid4())])
+        assert serve_calls == ["start"]
+        assert "`remedy ui start` is deprecated" in capsys.readouterr().err
 
     def test_ui_no_args_shows_help(self, capsys):
         """remedy ui with no args shows group help."""
@@ -124,34 +126,20 @@ class TestUiDirectFormCommandRewrite:
         out = capsys.readouterr().out
         assert "ui" in out.lower()
 
-    def test_ui_start_still_works(self):
-        """remedy ui start <uuid> still works as alias."""
+    def test_ui_start_and_stop_run_serve_and_warn(self, serve_calls, capsys):
         from apps.cli.grouped import main as grouped_main
-        fake_id = str(uuid4())
-        with pytest.raises(SystemExit):
-            grouped_main(["ui", "start", fake_id])
+        grouped_main(["ui", "start", str(uuid4()), "--json"])
+        grouped_main(["ui", "stop", "--json"])
+        assert serve_calls == ["start", "stop"]
+        err = capsys.readouterr().err
+        assert "use `remedy serve start` instead" in err.lower()
+        assert "use `remedy serve stop` instead" in err.lower()
 
     def test_catalog_has_ui_start(self):
         from apps.cli.command_catalog import get_command
         cmd = get_command("ui.start")
         assert cmd.group_id == "ui"
         assert cmd.subcommand == "start"
-
-    def test_info_file_schema(self):
-        """Info file must have exact fields."""
-        required = {"version", "url", "host", "port", "token", "job_id", "pid", "started_at"}
-        # Verify the contract exists in the server
-        from packages.orchestration.ui_server import start_ui_server
-        # Just check the function signature exists
-        assert callable(start_ui_server)
-
-    def test_smoke_uses_direct_form(self):
-        """Smoke script should use remedy ui <job_id>, not remedy ui start."""
-        smoke = Path(_ROOT / "scripts" / "remedy_smoke.sh")
-        if smoke.exists():
-            content = smoke.read_text()
-            # Find the UI start line
-            assert 'remedy ui "${JOB_ID}"' in content
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -171,7 +159,7 @@ class TestCliHelpIncludesHappyPath:
             output = str(mock_print.call_args[0][0])
             # Root help shows group names (not subcommands)
             assert "do" in output
-            assert "ui" in output
+            # amend1015f D22: `ui` left the default help with the old cockpit.
             assert "job" in output
             assert "worker" in output
             assert "doctor" in output

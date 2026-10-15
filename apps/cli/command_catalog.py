@@ -71,7 +71,7 @@ GROUPS: dict[str, GroupDef] = {
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs.", feature="F260", reach="job-path"),
     "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs.", feature="F261", reach="job-path"),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects.", feature="F146", reach="golden-path"),
-    "ui": GroupDef("ui", "UI", "Open the local UI.", feature="F261", reach="cockpit"),
+    "ui": GroupDef("ui", "UI", "Deprecated aliases of `remedy serve start` and `stop`; the old cockpit was deleted.", user_facing=False, feature="F261", reach="cockpit"),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health.", feature="F254", reach="golden-path"),
     "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",), feature="F081", reach="golden-path"),
     "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher.", feature="F280", reach="golden-path"),
@@ -104,7 +104,8 @@ GROUPS: dict[str, GroupDef] = {
 }
 
 #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
-#: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+#: amend0911-feedback D1): the fifteen visible groups in this fixed order (`ui` left it with
+#: the old cockpit, amend1015f D22), then
 #: the two reserved slots, `absorb` (F263) and `chat` (F264), both shipped; neither
 #: slot was ever registered as an empty group (D1). `_print_root_help` iterates this tuple, never
 #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
@@ -113,7 +114,7 @@ GROUPS: dict[str, GroupDef] = {
 #: completeness against `GROUPS`.
 VISIBLE_GROUP_ORDER: tuple[str, ...] = (
     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
-    "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+    "memory", "config", "doctor", "project", "init", "worker", "runtime",
     "absorb", "chat",
 )
 
@@ -1550,64 +1551,32 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
-    # ── ui ───────────────────────────────────────────────────────────────
+    # ── ui: warning aliases of serve start and stop (amend1015f D22) ─────
     CommandEntry(
         command_id="ui.start",
         group_id="ui",
         subcommand="start",
-        description="Start the token-gated cockpit UI server for a job (under its mission).",
-        action_class="read_only",
+        description="Deprecated alias of `remedy serve start`: prints a warning, then starts the "
+                    "serve supervisor in the foreground. The old cockpit was deleted.",
+        action_class="local_state_change",
         args=(
-            _JOB_ID,
-            ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
-            ArgDef("--host", "Bind host; default serves 127.0.0.1 and the LAN URLs", required=False, is_option=True, default="*"),
-            ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
-            ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+            ArgDef("job_id", "Accepted and ignored; the supervisor serves the whole data root",
+                   required=False),
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("brain.view",),
-    ),
-    CommandEntry(
-        command_id="ui.latest",
-        group_id="ui",
-        subcommand="latest",
-        description="Open the most recently started UI session in a browser.",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="ui.status",
-        group_id="ui",
-        subcommand="status",
-        description="Show live UI sessions; --all also lists the last ten that ended.",
-        action_class="read_only",
-        args=(
-            ArgDef("--all", "Also show the last ten ended sessions with their end time",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
+        related=("serve.start",),
     ),
     CommandEntry(
         command_id="ui.stop",
         group_id="ui",
         subcommand="stop",
-        description="Stop all running UI sessions.",
-        # R-1034: it stops every running UI server, so it changes local state.
+        description="Deprecated alias of `remedy serve stop`: prints a warning, then stops the "
+                    "serve supervisor of this data root.",
         action_class="local_state_change",
         args=(_JSON_OPT,),
         supports_json=True,
-    ),
-    CommandEntry(
-        command_id="ui.open",
-        group_id="ui",
-        subcommand="open",
-        description="Open browser for a specific job UI session (under its mission).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
+        related=("serve.stop",),
     ),
 
     *DO_COMMANDS,
@@ -2273,6 +2242,18 @@ def _with_list_options(entry: CommandEntry) -> CommandEntry:
 
 
 CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_CATALOG)
+
+#: The catalogue's history of removed commands: each id, once in `CATALOG`, with the one
+#: deprecation sentence that says when it went, why, and what to use instead. No id here may
+#: come back into `CATALOG` under the same name with another meaning.
+RETIRED_COMMANDS: dict[str, str] = {
+    "ui.latest": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+                 "there is no browser session to open.",
+    "ui.status": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+                 "use `remedy serve status`.",
+    "ui.open": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+               "read a job with `remedy client story <job>`.",
+}
 
 
 # The whole surface of the UI write door: no other `command_id` above is

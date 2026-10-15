@@ -43,8 +43,8 @@ from apps.cli.grouped import main as grouped_main
 #: own, which is the reason this sweep excludes by name instead of trusting
 #: the class alone.
 EXCLUDED_FROM_SUCCESS_SWEEP: dict[str, str] = {
-    "ui.stop": "stops every running UI session on the machine running the "
-               "suite; read_only in the catalog but not in effect (R-1034).",
+    "ui.stop": "the alias of serve.stop since amend1015f D22; it stops this data root's "
+               "serve supervisor, and the catalog says so (R-1034).",
 }
 
 
