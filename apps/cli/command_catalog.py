@@ -195,7 +195,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="ask",
         description="Ask a job's task a grounded question, answered from its own evidence with "
                     "numbered citations, or type an action that becomes a card sent through the "
-                    "job's running cockpit once confirmed — one step in the job plan.",
+                    "write door of the running serve supervisor once confirmed — one step in "
+                    "the job plan.",
         action_class="write_metadata",
         args=(
             ArgDef("job_id", "The job this chat turn asks or steers (its ID, or a unique prefix "
@@ -212,7 +213,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("chat.send", "chat.show", "ui.start"),
+        related=("chat.send", "chat.show", "serve.start"),
         exit_codes=(0, 1, 2, 3),
     ),
 

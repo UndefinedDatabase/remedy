@@ -1,15 +1,13 @@
 """F038 T002 and DECISION F038 D7 — `send_card_through_door`'s refusals, before any
-connection opens, and its audit line when a confirmed card reaches the cockpit. Modelled on
-`TestSteerTaskDoor` in `tests/ui_server/test_steer_task_door.py`: its
-`_start_ui_server_for_job` and its job fixture are this file's own model. Every card here is
-built by `parse_chat_intent` and `build_action_card`, never by hand.
+connection opens, and its audit line when a confirmed card reaches the write door. Since
+DECISION amend1015f D20 the door is the `remedy serve start` supervisor's, so each test runs a
+real supervisor in a thread on a short data root and the card goes over its unix socket. Every
+card here is built by `parse_chat_intent` and `build_action_card`, never by hand.
 """
 
 from __future__ import annotations
 
 import json
-import threading
-from pathlib import Path
 
 import pytest
 
@@ -21,39 +19,20 @@ from packages.orchestration.chat_intent import (
 )
 from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.pause_control import pause_requested
-from tests.ui_server.server_start import wait_for_server_info
-
-
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Mirrors `test_steer_task_door.py`'s own copy exactly (finding R-0701)."""
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / "server_info.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+from packages.orchestration.serve_paths import serve_paths
+from tests.ui_server.door_host import SupervisorThread
 
 
 class TestChatDoorSend:
     """What `send_card_through_door` answers and writes through the write door."""
 
     @pytest.fixture(autouse=True)
-    def _setup_job(self, tmp_path, monkeypatch):
+    def _setup_job(self, tmp_path_factory, monkeypatch):
         from packages.core.models import RunState
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from tests.orchestration.test_dag_schedule import flight_task
 
+        tmp_path = tmp_path_factory.mktemp("cd")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = JobPlan(job_title="chat-door-job", tasks=[flight_task("T1")],
                            state=RunState.RUNNING)
@@ -61,7 +40,9 @@ class TestChatDoorSend:
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
         self.audit_path = tmp_path / "control" / "jobs" / self.job_id / AUDIT_FILENAME
-        self.port, self.token = _start_ui_server_for_job(self.job_id, tmp_path)
+        self.supervisor = SupervisorThread(tmp_path)
+        yield
+        self.supervisor.close()
 
     def _task_id(self) -> str:
         return self.job.tasks[0].task_id
@@ -72,12 +53,9 @@ class TestChatDoorSend:
     def _pause_card(self):
         return build_action_card(parse_chat_intent("pause"), job_id=self.job_id)
 
-    def _send(self, card, *, nonce, port=None, token=None, job_id=None) -> ChatDoorAnswer:
+    def _send(self, card, *, nonce, job_id=None) -> ChatDoorAnswer:
         return send_card_through_door(
-            card, job_id=self.job_id if job_id is None else job_id,
-            client_nonce=nonce,
-            port=self.port if port is None else port,
-            token=self.token if token is None else token)
+            card, job_id=self.job_id if job_id is None else job_id, client_nonce=nonce)
 
     def test_before_any_send_the_audit_file_is_absent(self):
         assert not self.audit_path.exists()
@@ -123,8 +101,10 @@ class TestChatDoorSend:
         assert answer.body["command"] == "chat.send"
 
     def test_a_wrong_token_is_403_and_not_accepted(self):
-        answer = self._send(self._pause_card(), nonce="nonce-wrong-token",
-                            token="not-the-real-token")
+        # The supervisor holds its token in memory; a token file that no longer matches it is
+        # what a client with a stale or forged token sends.
+        serve_paths(self.tmp_path).token_file.write_text("not-the-real-token", encoding="utf-8")
+        answer = self._send(self._pause_card(), nonce="nonce-wrong-token")
 
         assert answer.status == 403
         assert answer.accepted is False
@@ -142,22 +122,8 @@ class TestChatDoorSend:
             self._send(self._pause_card(), nonce="nonce-bad-job", job_id="../x")
         assert not self.audit_path.exists()
 
-    def test_a_port_of_zero_raises(self):
-        with pytest.raises(ChatIntentError, match="port"):
-            self._send(self._pause_card(), nonce="nonce-port-0", port=0)
-        assert not self.audit_path.exists()
-
-    def test_a_port_of_70000_raises(self):
-        with pytest.raises(ChatIntentError, match="port"):
-            self._send(self._pause_card(), nonce="nonce-port-big", port=70000)
-        assert not self.audit_path.exists()
-
-    def test_a_port_of_true_raises(self):
-        with pytest.raises(ChatIntentError, match="port"):
-            self._send(self._pause_card(), nonce="nonce-port-bool", port=True)
-        assert not self.audit_path.exists()
-
-    def test_an_empty_token_raises(self):
-        with pytest.raises(ChatIntentError, match="token"):
-            self._send(self._pause_card(), nonce="nonce-empty-token", token="")
+    def test_with_no_supervisor_the_send_raises_os_error_and_writes_nothing(self):
+        self.supervisor.close()
+        with pytest.raises(OSError):
+            self._send(self._pause_card(), nonce="nonce-no-supervisor")
         assert not self.audit_path.exists()
