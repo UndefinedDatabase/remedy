@@ -352,6 +352,25 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
     }
 
 
+def _ended_job_window(job_entries: list[dict[str, Any]],
+                      ended_jobs: list[tuple[str, str, dict[str, Any]]], *, windowed: bool,
+                      every_ended_job: bool) -> dict[str, Any]:
+    """Add to JOB_ENTRIES the ended jobs the window lists, sort them by job id and answer the
+    digest's `job_window` (DECISION F304 D16): every job that still needs something, and the ended
+    jobs that ended last. Step (3) of `build_client_digest`'s boundary on
+    `docs/system/structure-ledger-v1.md`, moved out unchanged."""
+    if windowed:
+        ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
+        ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
+        listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
+        job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
+        job_window = {"ended_limit": ended_limit, "left_out": len(ended_jobs) - len(listed_ended)}
+    else:
+        job_window = {"ended_limit": None, "left_out": 0}
+    job_entries.sort(key=lambda entry: entry["job_id"])
+    return job_window
+
+
 # DECISION F295 D4 (2): the one builder of the `client` key `_cmd_status` adds to its answer.
 def build_client_digest(now: datetime | None = None, *,
                         every_ended_job: bool = False,
@@ -504,16 +523,8 @@ def build_client_digest(now: datetime | None = None, *,
         else:
             job_entries.append(entry)
 
-    if job_ids is None:
-        # DECISION F304 D16: every job that still needs something, and the ended jobs that ended last.
-        ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
-        ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
-        listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
-        job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
-        job_window = {"ended_limit": ended_limit, "left_out": len(ended_jobs) - len(listed_ended)}
-    else:
-        job_window = {"ended_limit": None, "left_out": 0}
-    job_entries.sort(key=lambda entry: entry["job_id"])
+    job_window = _ended_job_window(job_entries, ended_jobs, windowed=job_ids is None,
+                                   every_ended_job=every_ended_job)
 
     return {
         "version": CLIENT_DIGEST_VERSION,
