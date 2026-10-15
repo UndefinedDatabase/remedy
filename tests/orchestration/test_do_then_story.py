@@ -217,17 +217,30 @@ def test_a_done_run_reads_done_and_its_apply_lands_once(gate: Gate) -> None:
     assert time.monotonic() - gate.started < GATE_SECONDS
 
 
-def test_a_failed_run_reads_failed_and_offers_a_retry(gate: Gate) -> None:
+def test_a_failed_run_reads_failed_and_offers_no_retry(gate: Gate) -> None:
+    """amend1015c D3 (R-1331): a run of the failed job through its run route, with a provider
+    that works, re-attempts nothing and the job reads failed again, so the story offers none."""
     story = _story(gate, gate.failed_job)
 
     assert story["state"] == "failed"
     reason = story["state_detail"]["reason"]
     assert reason["key"] in STORY_REASONS
     assert reason == {"key": "provider_unavailable", "args": {"provider": "fake"}}
-    assert story["next"] == {"action": "retry", "route": {
-        "method": "POST", "path": f"/api/v1/jobs/{gate.failed_job}/run"}}
+    assert story["next"] == {"action": "none", "route": None}
     assert story["changes"] == []
-    assert time.monotonic() - gate.started < GATE_SECONDS
+
+    path = f"/api/v1/jobs/{gate.failed_job}/run"
+    status, record = gate.api.call("POST", path, {"builder_provider": "fake",
+                                                  "reviewer_provider": "fake"})
+    assert status == 202, record
+    deadline = time.monotonic() + GATE_SECONDS
+    while record.get("state") == "running" and time.monotonic() < deadline:
+        time.sleep(0.2)
+        status, record = gate.api.call("GET", path)
+    assert record["state"] == "ended", record
+    again = _story(gate, gate.failed_job)
+    assert (again["state"], again["next"]["action"]) == ("failed", "none")
+    assert time.monotonic() - gate.started < 2 * GATE_SECONDS
 
 
 def test_an_unknown_token_may_not_read_a_story(gate: Gate) -> None:

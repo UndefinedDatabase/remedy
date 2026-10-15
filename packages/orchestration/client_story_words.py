@@ -28,7 +28,8 @@ STORY_STEP_IDS: tuple[str, ...] = ("reading", "planning", "building", "checking"
 STORY_STEP_STATUSES: tuple[str, ...] = ("waiting", "running", "done", "skipped", "failed")
 
 #: The one next step the story names; `decline` is offered beside `apply` by every client and is
-#: never the one next step on its own.
+#: never the one next step on its own. `retry` is named by no state since amend1015c D3: no route
+#: re-attempts a task that ended blocked (R-1331), and the list only grows.
 STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none")
 
 #: Every phrase key a step carries, each with the names of its arguments.

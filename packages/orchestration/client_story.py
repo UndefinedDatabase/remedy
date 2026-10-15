@@ -306,8 +306,9 @@ def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, An
     if state == "waiting":
         decision = quote(str(detail["decision_id"]), safe="")
         return {"action": "answer", "route": {"method": "POST", "path": f"{base}/decisions/{decision}"}}
-    if state == "failed":
-        return {"action": "retry", "route": {"method": "POST", "path": f"{base}/run"}}
+    # amend1015c D3 (R-1331): Remedy deliberately offers no `retry` for a failed job: a run of it
+    # re-attempts no task that ended blocked or failed and ends blocked again, and no route of the
+    # public API puts such a task back to pending yet. `retry` stays in the closed list for that route.
     return {"action": "none", "route": None}
 
 

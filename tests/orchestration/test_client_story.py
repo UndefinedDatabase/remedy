@@ -138,15 +138,16 @@ def test_a_declined_result_reads_stopped_declined(data_root, repo):
     assert "not wanted" not in json.dumps(story)
 
 
-def test_a_provider_failure_reads_failed_and_offers_a_retry(data_root, repo):
+def test_a_provider_failure_reads_failed_and_offers_no_retry(data_root, repo):
+    """amend1015c D3 (R-1331): a run of a job whose task ended blocked re-attempts nothing, so the
+    story offers no step that cannot succeed."""
     job_id = _run(repo, builder_error="provider_unavailable: down")
     story = _story(job_id, data_root)
 
     assert story["state"] == "failed"
     assert story["state_detail"] == {"reason": {"key": "provider_unavailable",
                                                 "args": {"provider": "fake"}}}
-    assert story["next"] == {"action": "retry",
-                             "route": {"method": "POST", "path": f"/api/v1/jobs/{job_id}/run"}}
+    assert story["next"] == {"action": "none", "route": None}
     building = _step(story, "building")
     assert building["status"] == "failed"
     assert [task["status"] for task in building["tasks"]] == ["failed"]

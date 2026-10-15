@@ -75,7 +75,8 @@ through `next.route`, which holds the method and the path to call:
 - `answer`: the job waits for a decision; `next.route` is
   `POST /api/v1/jobs/<job>/decisions/<decision>`, and `state_detail.question` names the kind of
   question. The decision's own text and options are in `GET /api/v1/digest`.
-- `retry`: the job failed; `next.route` is `POST /api/v1/jobs/<job>/run`.
+- `retry`: in the list, but named by no state: a failed job reads `none`, because a run of it
+  re-attempts no task that ended blocked. Give the order again instead.
 - `none`: nothing is to be done, for example once the result is applied (`done_applied`).
 
 Reading a story changes nothing, so a program may read it as often as it likes; two reads of an

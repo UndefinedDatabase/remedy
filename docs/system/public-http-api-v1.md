@@ -217,8 +217,11 @@ operation that takes it, or `null`:
 |---|---|
 | `apply` | `POST /api/v1/jobs/<job>/apply` |
 | `answer` | `POST /api/v1/jobs/<job>/decisions/<decision>` |
-| `retry` | `POST /api/v1/jobs/<job>/run` |
 | `none` | `null` |
+
+`retry` is in the closed list but no state names it since version 1.16: a run of a job whose task
+ended blocked or failed re-attempts nothing and ends `blocked` again, and no route puts such a task
+back to pending yet, so a failed job's story offers `none` rather than a step that cannot succeed.
 
 `steps` is always the five steps `reading`, `planning`, `building`, `checking` and `finished` in that
 order, each `{id, status, phrase, tokens}` with `status` one of `waiting`, `running`, `done`,
@@ -233,8 +236,7 @@ numbers, paths relative to the repository and, for `provider`, a provider's id w
 carries no sentence Remedy wrote, no path outside the repository, no command and no money figure.
 The lists, with each key's arguments, are the `story` key of `GET /api/v1/interface`, and
 `docs/system/machine-client-contract-v1.md` renders them under "Story words". They only grow inside
-`/api/v1`. A retry of a job whose task ended blocked runs nothing new and ends `blocked` again,
-so its story reads `failed` once more.
+`/api/v1`.
 
 ## A client's test
 
