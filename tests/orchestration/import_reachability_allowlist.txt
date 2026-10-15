@@ -322,6 +322,7 @@ packages.orchestration.self_health
 packages.orchestration.self_use_job
 packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner
+packages.orchestration.sensitive_paths
 packages.orchestration.serve_daemon
 packages.orchestration.serve_paths
 packages.orchestration.serve_runs

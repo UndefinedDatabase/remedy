@@ -50,6 +50,7 @@ from packages.orchestration.pingpong_evidence import (
     _redact_secrets,
     _sanitize_path,
 )
+from packages.orchestration.sensitive_paths import KEY_SUFFIXES, is_secret_file_name
 
 _BLOCKED_PREFIXES = (
     ".git/", ".git\\",
@@ -64,9 +65,7 @@ _BLOCKED_EXACT = frozenset({
     ".git", ".env", ".gitignore",
 })
 
-_UNSAFE_EXTENSIONS = frozenset({
-    ".pem", ".key", ".p12", ".pfx", ".jks",
-})
+_UNSAFE_EXTENSIONS = KEY_SUFFIXES
 
 _MAX_FILE_SIZE = 1_000_000
 _TEST_OUTPUT_CAP = 10000
@@ -86,7 +85,7 @@ def _is_blocked_path(rel_path: str) -> str:
         return f"blocked_path: {norm}"
 
     base = os.path.basename(norm)
-    if base == ".env" or base.startswith(".env.") or base.startswith(".env-"):
+    if is_secret_file_name(base):
         return "secret_file"
 
     for prefix in _BLOCKED_PREFIXES:

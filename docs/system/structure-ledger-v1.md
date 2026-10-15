@@ -442,12 +442,12 @@ with the code that calls it.
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 5350 | `packages/orchestration/pingpong_job.py` |
-| 5233 | `packages/orchestration/pingpong_loop.py` |
+| 5231 | `packages/orchestration/pingpong_loop.py` |
 | 4807 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2412 | `apps/cli/command_catalog.py` |
-| 2542 | `packages/orchestration/job_apply.py` |
+| 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 2134 | `scripts/remedy_smoke.sh` |

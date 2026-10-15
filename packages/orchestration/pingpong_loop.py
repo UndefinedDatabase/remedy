@@ -610,11 +610,9 @@ _MAX_TOTAL_CONTEXT_CHARS = 100000
 
 
 def _is_secret_file(name: str) -> bool:
-    if name == ".env" or name.startswith(".env.") or name.startswith(".env-"):
-        return True
-    if name in ("credentials.json", "secrets.json", ".secrets", "api_key.txt"):
-        return True
-    return False
+    from packages.orchestration.sensitive_paths import is_secret_file_name
+
+    return is_secret_file_name(name)
 
 
 def _is_safe_repo_path(root: Path, root_resolved: Path, rel: str) -> str:
