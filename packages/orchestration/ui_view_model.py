@@ -31,6 +31,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from packages.orchestration.brain_zoom_caps import apply_brain_zoom_caps
+
 # ---------------------------------------------------------------------------
 # Rank assignment — determines horizontal position in ELK layout
 # ---------------------------------------------------------------------------
@@ -336,17 +338,8 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         n["width"] = 28
         n["height"] = 28
 
-    # Enforce max visible nodes per zoom level
-    # Sort by importance descending, then assign visibility
-    sorted_by_importance = sorted(raw_nodes, key=lambda n: -n["importance"])
-    for level in range(7):
-        max_at_level = _MAX_NODES_PER_ZOOM[level]
-        visible_at_level = [n for n in sorted_by_importance if n["visible_from_zoom"] <= level]
-        if len(visible_at_level) > max_at_level:
-            # Push excess nodes to next zoom level
-            for excess in visible_at_level[max_at_level:]:
-                if excess["visible_from_zoom"] == level:
-                    excess["visible_from_zoom"] = min(level + 1, 6)
+    # Enforce max visible nodes per zoom level; the default zoom shows the tasks too (amend1015)
+    max_initial_nodes = apply_brain_zoom_caps(raw_nodes, _MAX_NODES_PER_ZOOM)
 
     # Build edge list with user-facing kinds
     node_map = {n["id"]: n for n in raw_nodes}
@@ -463,7 +456,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
         "total_nodes": len(raw_nodes),
         "total_edges": len(edge_list),
         "default_zoom_level": 0,
-        "max_initial_nodes": 1,
+        "max_initial_nodes": max_initial_nodes,
         "advanced_full_graph_available": True,
         "full_graph_requires_explicit_toggle": True,
         "zoom_policy": _ZOOM_POLICY,

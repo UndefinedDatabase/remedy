@@ -559,14 +559,14 @@ class TestSemanticZoomMonotonicVisibility:
         assert isinstance(vm["label_counts_by_zoom"], list)
         assert len(vm["label_counts_by_zoom"]) == 7
 
-    def test_zoom_level_0_only_origin(self):
-        """At zoom 0, only origin job node should be visible."""
+    def test_zoom_level_0_is_the_origin_and_its_tasks(self):
+        """At zoom 0, the origin job node and its task dots are visible (amend1015 P4.4)."""
         job = _make_job_s111(tasks=[{"type": "readme_draft"}])
         from packages.orchestration.ui_view_model import build_brain_view_model
         vm = build_brain_view_model(job, [])
         ids_at_0 = vm["visible_node_ids_by_zoom"][0]
-        # Should contain only the job origin
-        assert len(ids_at_0) <= 1
+        types = sorted(n["type"] for n in vm["nodes"] if n["id"] in ids_at_0)
+        assert types == ["job", "task"], types
 
     def test_non_origin_labels_hidden_at_zoom_0(self):
         """At zoom 0, label_counts should be 0 (no labels at origin-only level)."""

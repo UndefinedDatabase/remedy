@@ -608,3 +608,24 @@ class TestHumanNodeDetailSchema:
 # Step 166 — Journey Graph Layout
 # ===========================================================================
 
+
+
+class TestInitialZoomShowsTheTasks:
+    """amend1015 P4.4: the default zoom shows the job orb AND its task dots, up to 12 nodes."""
+
+    def test_a_one_task_job_shows_two_nodes_at_zoom_zero(self):
+        from packages.orchestration.ui_view_model import build_brain_view_model
+        job = _make_job_s122(tasks=[{"description": "Deliver README.md"}])
+        vm = build_brain_view_model(job, [])
+        assert vm["max_initial_nodes"] == 2
+        zoom0 = vm["visible_node_ids_by_zoom"][0]
+        assert len(zoom0) == 2, zoom0
+        types = {n["id"]: n["type"] for n in vm["nodes"]}
+        assert sorted(types[i] for i in zoom0) == ["job", "task"]
+
+    def test_the_initial_view_is_capped_at_twelve(self):
+        from packages.orchestration.ui_view_model import build_brain_view_model
+        job = _make_job_s122(tasks=[{"description": f"t{i}"} for i in range(20)])
+        vm = build_brain_view_model(job, [])
+        assert vm["max_initial_nodes"] == 12
+        assert vm["visible_counts_by_zoom"][0] == 12
