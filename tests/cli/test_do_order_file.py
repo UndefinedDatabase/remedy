@@ -620,7 +620,7 @@ def test_the_digest_names_the_calls_and_tokens_by_kind_a_reporting_provider_ran(
     [job] = client["jobs"]
     ledger = query_cost(project_id=project["project_id"], job_id=job_id).total
     budget_calls = load_job_plan(job_id).budget_actuals["provider_call_count"]
-    assert job["calls"] == ledger.calls == budget_calls == 4
+    assert job["harness_invocations"] == ledger.calls == budget_calls == 4
     assert job["tokens"] == {"input": 40, "output": 20, "cache_read": 4000, "cache_creation": 800}
 
 

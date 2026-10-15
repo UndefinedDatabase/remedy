@@ -34,7 +34,7 @@ const chip = (jobId: string, slug: string, title: string): MissionChip => ({
 const order = {
   order_id: "o-1", title: "Add a health route", created_at: "2026-10-12T09:00:00+00:00",
   kind: "build", sealed: false, correlation_id: "c-1", job_count: 2,
-  usage: { calls: 2, tokens: { input: 150, output: 25, cache_read: 7, cache_creation: null } },
+  usage: { harness_invocations: 2, model_turns: 11, tokens: { input: 150, output: 25, cache_read: 7, cache_creation: null } },
   chain: [chip("j1", "alpha", "alpha first"), chip("j2", "beta", "beta only"), chip("j3", "alpha", "alpha second")],
 };
 const ordersEnvelope = {
@@ -79,9 +79,9 @@ describe("decodeMissionOrders", () => {
     expect(decoded?.orders[0].chain.map((c) => c.job_id)).toEqual(["j9"]);
   });
   it("reads a usage it cannot read as null calls and null tokens", () => {
-    const decoded = decodeMissionOrders({ ...ordersEnvelope, orders: [{ ...order, usage: { calls: null } }] });
+    const decoded = decodeMissionOrders({ ...ordersEnvelope, orders: [{ ...order, usage: { harness_invocations: null } }] });
     expect(decoded?.orders[0].usage).toEqual({
-      calls: null, tokens: { input: null, output: null, cache_read: null, cache_creation: null },
+      harness_invocations: null, model_turns: null, tokens: { input: null, output: null, cache_read: null, cache_creation: null },
     });
   });
 });
@@ -101,13 +101,13 @@ describe("the words", () => {
     expect(missionCardLine({ ...card, order_count: 3, job_count: 1 })).toBe("3 orders · 1 job");
   });
   it("say an order's calls and tokens and never a cost", () => {
-    expect(orderUsageLine(order.usage)).toBe("2 model calls · 150 tokens in, 25 out");
-    expect(orderUsageLine({ calls: 1, tokens: { input: null, output: 4, cache_read: null, cache_creation: null } }))
-      .toBe("1 model call · 0 tokens in, 4 out");
-    expect(orderUsageLine({ calls: 3, tokens: { input: null, output: null, cache_read: 1, cache_creation: null } }))
-      .toBe("3 model calls · tokens not reported");
-    expect(orderUsageLine({ calls: 0, tokens: order.usage.tokens })).toBe("No model calls");
-    expect(orderUsageLine({ calls: null, tokens: order.usage.tokens })).toBe("Model calls: not readable");
+    expect(orderUsageLine(order.usage)).toBe("2 harness invocations, 11 model turns · 150 tokens in, 25 out");
+    expect(orderUsageLine({ harness_invocations: 1, model_turns: null, tokens: { input: null, output: 4, cache_read: null, cache_creation: null } }))
+      .toBe("1 harness invocation · 0 tokens in, 4 out");
+    expect(orderUsageLine({ harness_invocations: 3, model_turns: null, tokens: { input: null, output: null, cache_read: 1, cache_creation: null } }))
+      .toBe("3 harness invocations · tokens not reported");
+    expect(orderUsageLine({ harness_invocations: 0, model_turns: null, tokens: order.usage.tokens })).toBe("No harness invocations");
+    expect(orderUsageLine({ harness_invocations: null, model_turns: null, tokens: order.usage.tokens })).toBe("Harness invocations: not readable");
     expect(orderUsageLine(order.usage)).not.toContain("$");
   });
   it("say how far a chain reached", () => {

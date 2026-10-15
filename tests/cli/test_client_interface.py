@@ -264,7 +264,7 @@ def test_a_real_runs_digest_returns_only_keys_the_tree_names(tmp_path):
     returned = _key_paths(_key_tree(status["client"]))
     # The run raised its budget decision and filed its mission, so the reading reaches every level.
     assert {("decisions", "decision_id"), ("projects", "missions", "mission_id"),
-            ("projects", "cost_today", "calls"), ("jobs", "evidence", "run_manifest_path")} <= returned
+            ("projects", "cost_today", "harness_invocations"), ("jobs", "evidence", "run_manifest_path")} <= returned
     assert sorted(returned - _key_paths(DIGEST_KEY_TREE)) == []
 
 

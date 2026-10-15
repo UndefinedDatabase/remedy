@@ -267,7 +267,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
             "upkeep_open_findings": {},
             "upkeep_deferred_step": {},
         },
-        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "calls": {},
+        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "harness_invocations": {},
                        "tokens": TOKENS_BY_KIND_KEY_TREE},
     },
     "jobs": {
@@ -279,7 +279,8 @@ DIGEST_KEY_TREE: dict[str, Any] = {
         "state": {},
         "waits_for_apply": {},
         "cost": {"value_usd": {}, "basis": {}},
-        "calls": {},
+        "harness_invocations": {},
+        "model_turns": {},
         "tokens": TOKENS_BY_KIND_KEY_TREE,
         "evidence": {
             "evidence_dir": {},
@@ -486,7 +487,8 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "cost": {
             "roles": {
                 "role": {},
-                "calls": {},
+                "harness_invocations": {},
+                "model_turns": {},
                 "tokens_in": {},
                 "tokens_out": {},
                 "cache_read": {},
