@@ -29807,3 +29807,15 @@ ALTERNATIVES CONSIDERED: filtering the seed by `.gitignore` (REJECTED, a non-ign
 DEVIATIONS, STATED PLAINLY: `remedy cost` and `remedy stats` keep their ledger-level `calls` columns; they report the ledger rows, which are harness invocations, and are documented so. An order that only MENTIONS a sensitive path (to forbid it) is refused too, because a name in prose is not a target.
 
 HOW TO REVERSE: delete `sensitive_paths.py`, `pi_turn_counts.py`, restore `capture_dirty_baseline` reading every status path, restore `PI_MIN_WALL_SECONDS`, rename the keys back, and delete this paragraph.
+
+## DECISION amend1015 D0 to Dn — the cockpit tells the truth about one finished `remedy do` run (2026-10-15)
+
+amend1015 D0: merged the amend1014c replacement PR (#340) on local evidence (fast suite and ruff green at 8f77f191f); hosted CI is manual since amend1011-manual-hosted-ci.
+
+amend1015 D1: the OPEN tile keeps counting open decisions, not open tasks. Its glossary entry (`metric.open`) already says "Questions this job is waiting for you to answer", so changing its meaning would make the tile and its explanation disagree. Reverse: count `state == "open"` tasks in `metrics.open` and reword `metric.open`.
+
+amend1015 D2: `task_lifecycle` maps `split` to `skipped` (a split task's work is counted in its children) and keeps the older job model's `completed`/`planned`/`active` words, which the cockpit still reads for jobs written before JobPlan. The dashboard calls `task_lifecycle_or_empty`, which counts a record with an unknown status in no bucket instead of failing the whole page. Reverse: delete `packages/orchestration/task_lifecycle.py` and restore the literal comparisons.
+
+amend1015 D3: new next-action rule `apply-pending`, ranked after `blocked-failed` and before `all-green`. It fires when every task is done by `task_lifecycle`, a task left its result in the job workspace (`applied_to_job_workspace`), no apply record reads `applied` (`job_apply.job_apply_landed`, the client digest's existing reader), and the result was not declined. The command is spelled by `job_apply_pending.job_apply_command`, which `do_apply.py` now prints its `Next:` line with too. `all-green` now reads `task_lifecycle(...) == "done"` instead of the literal `completed`. Reverse: delete the row, the two `ReportSources` fields and `job_apply_pending.py`.
+
+amend1015 D4: `run_report.py` sat exactly on its 1,133-line structure pin, and ledger rows only fall. A separate move commit would have lowered the row and locked the freed lines, so the move of the three task-record readers into `report_task_record.py` (made public: `report_task_origin`, `report_task_attempt`, `report_task_model_override`) is part of the same commit as the rule that needed the room. The row went from 1133 to 1111, and `_build_dashboard` from 320 to 319. Reverse: move the three functions back.

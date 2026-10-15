@@ -44,6 +44,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.job_apply_pending import job_apply_command, job_apply_pending_fields
+from packages.orchestration.report_task_record import (
+    report_task_attempt,
+    report_task_model_override,
+    report_task_origin,
+)
+from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
+
 # ---------------------------------------------------------------------------
 # Modes
 # ---------------------------------------------------------------------------
@@ -180,6 +188,8 @@ NEXT_ACTION_RULES: tuple[tuple[str, str], ...] = (
     # operator to go read a postmortem would be a false alarm.
     ("stopped-by-operator", "the run stopped on operator request"),
     ("blocked-failed", "the run is blocked or a task failed"),
+    # amend1015 D3: `remedy do` stops before apply; its finished run names `job apply`.
+    ("apply-pending", "every task finished and its result waits in the job workspace"),
     ("all-green", "every task completed and nothing is open"),
     ("indeterminate", "no rule matched the recorded state"),
 )
@@ -351,6 +361,10 @@ class ReportSources:
     #: The gate's verdict: None when the job was never gated (no DoD).
     dod_released: bool | None = None
     notes: tuple[str, ...] = field(default_factory=tuple)
+    #: amend1015: the target repository and whether the job-workspace result was applied
+    #: there (job_apply_pending.job_apply_pending_fields); None is not recorded.
+    repo_path: str = ""
+    result_applied: bool | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -425,8 +439,10 @@ def recommended_next_action(sources: ReportSources) -> NextAction:
         target = _link("the postmortem", ref) if ref else "the postmortem"
         return NextAction("blocked-failed", f"Inspect {target} and repair the blocked task")
 
-    if sources.tasks and all(
-            t.status.strip().lower() == "completed" for t in sources.tasks):
+    if sources.tasks and all(task_lifecycle_or_empty(t.status) == "done" for t in sources.tasks):
+        if sources.result_applied is False and sources.job_id and sources.repo_path:
+            command = job_apply_command(sources.job_id, sources.repo_path)
+            return NextAction("apply-pending", f"Apply the reviewed result: `{command}`")
         return NextAction("all-green", "Review and merge the branch")
 
     return NextAction("indeterminate",
@@ -835,44 +851,6 @@ def _job_repo_root(job: Any) -> str:
     return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
 
 
-def _task_origin(t: Any) -> str:
-    """DECISION F028 D8: a task's provenance, read off its own plan inputs —
-    `inputs["plan"]["origin"]` when `inputs["plan"]` is a dict and that value
-    is a non-empty string, else "" (P6: not recorded, never guessed).  Mirrors
-    `ui_server._task_origin` (DECISION F028 D6 (1)); this module reads the
-    job's own tasks directly rather than importing the UI server, so the
-    report and the server agree by reading the same shape independently
-    rather than by sharing an import.
-    """
-    inputs = getattr(t, "inputs", None)
-    plan = inputs.get("plan") if isinstance(inputs, dict) else None
-    if not isinstance(plan, dict):
-        return ""
-    origin = plan.get("origin")
-    return origin if isinstance(origin, str) and origin else ""
-
-
-def _task_attempt(t: Any) -> int:
-    """DECISION F029 D6: a task's attempt number, off its own record's
-    `attempt` (DECISION F029 D2, `subtree_rerun.py`'s `TaskEntry.attempt`) —
-    an int, or 1 (the record's own default for a task that has never been
-    rerun) for anything else.  Read defensively, as `_task_origin` reads
-    `origin`: a malformed or absent value never raises into a render.
-    """
-    value = getattr(t, "attempt", 1)
-    return value if isinstance(value, int) and not isinstance(value, bool) else 1
-
-
-def _task_model_override(t: Any) -> str:
-    """DECISION F029 D6: the model a rerun task ran under, off its own
-    record's `model_override` (DECISION F029 D2, `TaskEntry.model_override`)
-    — a non-empty string, or "" (P6: not recorded) for anything else.  Read
-    defensively, as `_task_origin` reads `origin`.
-    """
-    value = getattr(t, "model_override", "")
-    return value if isinstance(value, str) and value else ""
-
-
 def collect_report_sources(job: Any) -> ReportSources:
     """Gather the report's sources off an in-memory job.
 
@@ -890,9 +868,9 @@ def collect_report_sources(job: Any) -> ReportSources:
             description=str(getattr(t, "title", "") or ""),
             status=getattr(getattr(t, "status", None), "value",
                            str(getattr(t, "status", "") or "")),
-            origin=_task_origin(t),
-            attempt=_task_attempt(t),
-            model_override=_task_model_override(t),
+            origin=report_task_origin(t),
+            attempt=report_task_attempt(t),
+            model_override=report_task_model_override(t),
         )
         for t in (getattr(job, "tasks", None) or ())
     )
@@ -1082,7 +1060,7 @@ def build_report_sources(job: Any) -> ReportSources:
     report and an interim snapshot of the same job describe it the same way.
     """
     base = collect_report_sources(job)
-    extra = _evidence_sources(job)
+    extra = {**job_apply_pending_fields(job), **_evidence_sources(job)}
     attached = _tasks_with_apply_state(job, base.tasks)
     if attached is not None:
         extra["tasks"] = attached
