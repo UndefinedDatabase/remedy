@@ -86,7 +86,7 @@ says. `max-provider-calls` counts every call the builder and the reviewer make, 
 included. `max-total-tokens` counts the input and output tokens those calls report, and never
 their cache-read or cache-creation tokens; a call that reports no tokens adds none, and the last
 call before a check can carry a run past the cap. Neither cap counts a call to the fake
-provider, which spends nothing, although the digest's `calls` still counts it.
+provider, which spends nothing, although the digest's `harness_invocations` still counts it.
 
 ## The path, step by step
 
@@ -105,10 +105,12 @@ provider, which spends nothing, although the digest's `calls` still counts it.
    limit under `ended_limit` and how many ended jobs it left out under `left_out`.
    `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
    null. Beside its `cost`, each job carries
-   `calls` and `tokens`, and each project's `cost_today` carries `tokens` beside its `calls`:
-   the provider calls and the tokens by kind, `input`, `output`, `cache_read` and
+   `harness_invocations`, `model_turns` and `tokens`, and each project's `cost_today` carries
+   `tokens` beside its `harness_invocations`: the harness invocations (one ledger row each: a
+   process the provider started, not a model call) and, for a job, the `model_turns` counted from
+   the Pi harness's own event stream (null when it made no record), and the tokens by kind, `input`, `output`, `cache_read` and
    `cache_creation`, that the projects' cost ledgers hold for the job and for the UTC day. A
-   kind no call reported is null, never 0; a job no ledger names reads 0 calls, or null calls
+   kind no call reported is null, never 0; a job no ledger names reads 0 harness invocations, or null
    when a ledger could not be read. Each completed job also carries
    `approval_card`, what an operator approves its result on, read from the job's record and its
    mission's contract alone: how many files its tasks changed and the first twenty of them by
@@ -368,7 +370,7 @@ Keys under the answer keys: see below.
     - `check`: `acceptance_refs`, `blocking`, `description`, `id`, `kind`, `source`, `spec` (keys not fixed)
 - `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`
   - `mirror_errors`: `*`
-  - `roles`: `cache_read`, `calls`, `cost_usd`, `role`, `tokens_in`, `tokens_out`
+  - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
@@ -397,7 +399,7 @@ Keys under the answer keys: see below.
   - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
-  - `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+  - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
     - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
       - `blocking_criteria`: `id`, `status`, `text`
       - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -405,7 +407,7 @@ Keys under the answer keys: see below.
     - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-    - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+    - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
       - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
     - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
   - `supervisor`: `answers`
@@ -771,7 +773,7 @@ Keys under the answer keys: see below.
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -853,7 +855,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
 - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
-- `jobs`: `approval_card`, `calls`, `cost`, `evidence`, `job_id`, `mission_id`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
+- `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
     - `blocking_criteria`: `id`, `status`, `text`
     - `tasks`: `repair_rounds_used`, `reviewer_verdict`, `task_id`, `test_passed`, `test_ran`, `title`
@@ -861,7 +863,7 @@ Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects
   - `evidence`: `evidence_dir`, `postmortem_path`, `result_diff_path`, `result_diff_sha256`, `run_ids`, `run_manifest_path`
   - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
 - `projects`: `cost_today`, `missions`, `project_id`, `slug`
-  - `cost_today`: `basis`, `calls`, `day`, `tokens`, `value_usd`
+  - `cost_today`: `basis`, `day`, `harness_invocations`, `tokens`, `value_usd`
     - `tokens`: `cache_creation`, `cache_read`, `input`, `output`
   - `missions`: `goal`, `job_ids`, `mission_id`, `order_source_path`, `order_source_sha256`, `project_ids`, `status`, `upkeep_deferred_step`, `upkeep_every`, `upkeep_jobs_left`, `upkeep_open_findings`
 - `supervisor`: `answers`

@@ -116,17 +116,31 @@ def _correlated_links(correlation_id: str, own: Mission) -> list[tuple[str, str,
     return found
 
 
+def _order_model_turns(job_ids: list[str]) -> int | None:
+    """The Pi model turns of an order's jobs, from Pi's own call records; null when Pi made none."""
+    from packages.orchestration.pi_turn_counts import pi_turns_for_job
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    run_ids: list[str] = []
+    for job_id in job_ids:
+        plan = load_job_plan(job_id)
+        run_ids += [str(r) for r in plan.run_refs] if plan is not None else []
+    per_role = pi_turns_for_job(run_ids)
+    return sum(figures["model_turns"] for figures in per_role.values()) if per_role else None
+
+
 def _order_usage(job_ids: list[str], usage_by_job: dict[str, CostRow] | None) -> dict[str, Any]:
     """The calls and tokens one project's ledger holds for *job_ids*, summed; null when the ledger
     could not be read, and a job the ledger does not name made no recorded call there."""
     if usage_by_job is None:
-        return {"calls": None, "tokens": _tokens_by_kind(None)}
+        return {"harness_invocations": None, "model_turns": None, "tokens": _tokens_by_kind(None)}
     total = CostRow()
     for job_id in job_ids:
         row = usage_by_job.get(job_id)
         if row is not None:
             total = _merged_usage(total, row)
-    return {"calls": total.calls, "tokens": _tokens_by_kind(total)}
+    return {"harness_invocations": total.calls, "model_turns": _order_model_turns(job_ids),
+            "tokens": _tokens_by_kind(total)}
 
 
 def _order_title(text: str) -> str:

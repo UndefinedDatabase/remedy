@@ -319,6 +319,14 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
     }
 
 
+def _pi_model_turns(run_ids: list[str]) -> int | None:
+    """The model turns Pi's own call records hold for these runs; null when Pi made no record."""
+    from packages.orchestration.pi_turn_counts import pi_turns_for_job
+
+    per_role = pi_turns_for_job(run_ids)
+    return sum(figures["model_turns"] for figures in per_role.values()) if per_role else None
+
+
 def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
                cost: dict[str, Any] | None, calls: int | None, usage: CostRow | None,
                approval_card: dict[str, Any] | None) -> dict[str, Any]:
@@ -336,7 +344,8 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
         "state": plan.state.value,
         "waits_for_apply": waits_for_apply,
         "cost": cost,
-        "calls": calls,
+        "harness_invocations": calls,
+        "model_turns": _pi_model_turns([str(r) for r in plan.run_refs]),
         "tokens": _tokens_by_kind(usage),
         "evidence": _job_evidence(plan),
         "approval_card": approval_card,

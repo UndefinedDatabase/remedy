@@ -40,7 +40,7 @@ const view = {
 const summary = {
   version: 1, project_id: alpha.id, slug: "alpha", jobs: { active: 2, total: 3 },
   last_result: { job_id: "a1b2c3d4e5f60718", title: "alpha newest", state: "blocked", headline: "The run is blocked." },
-  cost_today: { day: "2026-09-01", value_usd: 0.25, basis: "actual", calls: 1 },
+  cost_today: { day: "2026-09-01", value_usd: 0.25, basis: "actual", harness_invocations: 1 },
   decisions: { open_count: 5, peak_urgency: 3600 }, degraded: false,
 };
 
@@ -74,8 +74,8 @@ describe("decodeProjectSummary", () => {
   });
 
   it("keeps an unmeasured cost null and never turns it into a zero", () => {
-    const decoded = decodeProjectSummary({ ...summary, cost_today: { day: "2026-09-01", value_usd: null, basis: "absent", calls: 0 } });
-    expect(decoded?.cost_today).toEqual({ day: "2026-09-01", value_usd: null, basis: "absent", calls: 0 });
+    const decoded = decodeProjectSummary({ ...summary, cost_today: { day: "2026-09-01", value_usd: null, basis: "absent", harness_invocations: 0 } });
+    expect(decoded?.cost_today).toEqual({ day: "2026-09-01", value_usd: null, basis: "absent", harness_invocations: 0 });
   });
 
   it("reads a project with no jobs as no last result", () => {
