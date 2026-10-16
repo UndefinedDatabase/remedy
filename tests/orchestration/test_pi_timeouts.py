@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -25,12 +26,17 @@ def _no_leftover_job_clock():
     PP._JOB_TIME_LEFT.set(None)
 
 
-def _pid_is_gone(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    return False
+def _fake_is_gone(fake) -> bool:
+    """No host process runs the fake any more. Its recorded pid is the sandbox's own numbering
+    (DECISION amend1016sb D1), so the host is searched by the fake's path instead."""
+    needle = str(fake.dir / "pi").encode()
+    for pid in os.listdir("/proc"):
+        try:
+            if needle in Path(f"/proc/{pid}/cmdline").read_bytes():
+                return False
+        except OSError:
+            continue
+    return True
 
 
 def test_an_explicit_one_second_timeout_kills_the_child_near_one_second(fake_pi, workspace):
@@ -41,9 +47,9 @@ def test_an_explicit_one_second_timeout_kills_the_child_near_one_second(fake_pi,
     assert "pi_timeout" in out.error and elapsed < 10
     assert PP.PI_DEFAULT_TIMEOUT_SEC == 900 == PI_DEFAULT_TIMEOUT_SEC          # the shipped value
     deadline = time.monotonic() + 5
-    while not _pid_is_gone(fake_pi.call()["pid"]) and time.monotonic() < deadline:
+    while not _fake_is_gone(fake_pi) and time.monotonic() < deadline:
         time.sleep(0.1)
-    assert _pid_is_gone(fake_pi.call()["pid"])
+    assert _fake_is_gone(fake_pi)
 
 
 def test_an_omitted_timeout_gets_the_documented_pi_default(fake_pi, workspace, monkeypatch):

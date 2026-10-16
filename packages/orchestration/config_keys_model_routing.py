@@ -1,4 +1,4 @@
-"""The model routing keys of the config registry (DECISION F058 D1).
+"""The model routing keys of the config registry (DECISION F058 D1), and the Pi tool deadline.
 
 Moved unchanged out of `packages/orchestration/config.py`, whose `_CONFIG_KEY_SPECS` splices
 `MODEL_ROUTING_KEY_SPECS` in at the keys' own place, so the registry and the guide it renders keep
@@ -83,6 +83,18 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "reached, how many seconds the run sends that role's next calls to its backups first "
             "before trying the usual provider again (F058); a whole number of at least 0, where 0 "
             "never holds."
+        ),
+        value_type=int,
+        default=300,
+    ),
+    # WHY here: the provider-execution keys live in this module; `config.py` may not grow.
+    ConfigKeySpec(
+        key="pi.tool_timeout_seconds",
+        env_var="REMEDY_PI_TOOL_TIMEOUT_SECONDS",
+        description=(
+            "How many seconds one shell command of a Pi tool call may run inside the tool sandbox "
+            "before it is ended, so a hanging grep or test cannot stall the job; the Pi call's "
+            "own deadline still bounds the whole call (DECISION amend1016sb D2)."
         ),
         value_type=int,
         default=300,

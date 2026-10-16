@@ -1,7 +1,9 @@
 """The Pi provider (operator amendment amend1014b, DECISION D1 to D4), against a fake `pi` executable.
 
-The fake records its argv, working directory and environment, can edit a file in its cwd the way
-the real harness does, and prints a scripted JSONL stream. No test reaches a real Ollama or Pi.
+The fake records its argv, working directory, environment and agent files, can edit a file in its
+cwd the way the real harness does, and prints a scripted JSONL stream. It runs inside the real tool
+sandbox (DECISION amend1016sb D1), where its own directory is read-only, so it records the call
+into the workspace. No test reaches a real Ollama or Pi.
 """
 from __future__ import annotations
 
@@ -24,7 +26,6 @@ from packages.orchestration.pi_provider import (
     build_pi_argv,
     default_chain_checks,
     make_pi_provider,
-    pi_preflight,
 )
 
 _FAKE_PI = textwrap.dedent('''\
@@ -34,8 +35,11 @@ _FAKE_PI = textwrap.dedent('''\
     if sys.argv[1:] == ["--version"]:
         print("9.9.9"); sys.exit(0)
     beh = json.load(open(os.path.join(here, "behavior.json")))
-    json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "pid": os.getpid()},
-              open(os.path.join(here, "call.json"), "w"))
+    agent = os.environ.get("PI_CODING_AGENT_DIR", "")
+    files = {n: open(os.path.join(agent, n)).read() for n in ("models.json", "settings.json")
+             if agent and os.path.exists(os.path.join(agent, n))}
+    json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "pid": os.getpid(),
+               "agent_files": files}, open(os.path.join(os.getcwd(), ".fake-pi-call.json"), "w"))
     for rel, text in beh.get("edits", {}).items():
         with open(os.path.join(os.getcwd(), rel), "a") as fh:
             fh.write(text)
@@ -70,14 +74,15 @@ def good_stream(text: str = "done", *, turns: int = 2) -> list[str]:
 
 
 class FakePi:
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, workspace: Path) -> None:
         self.dir = directory
+        self.workspace = workspace
 
     def behave(self, **behavior) -> None:
         (self.dir / "behavior.json").write_text(json.dumps(behavior))
 
     def call(self) -> dict:
-        return json.loads((self.dir / "call.json").read_text())
+        return json.loads((self.workspace / ".fake-pi-call.json").read_text())
 
 
 @pytest.fixture
@@ -90,7 +95,7 @@ def fake_pi(tmp_path, monkeypatch) -> FakePi:
     monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("OPENAI_API_KEY", "must-not-reach-pi")
-    fake = FakePi(bindir)
+    fake = FakePi(bindir, tmp_path / "job-workspace")
     fake.behave(stdout=good_stream())
     return fake
 
@@ -120,19 +125,22 @@ def test_builder_argv_cwd_and_environment_follow_the_contract(fake_pi, workspace
     assert argv[-2] == "--" and "add a paragraph" in argv[-1]
     assert Path(call["cwd"]).resolve() == workspace.resolve()
     env = call["env"]
-    assert Path(env["PI_CODING_AGENT_DIR"]) == tmp_path / "data" / "pi_agent"
+    assert env["PI_CODING_AGENT_DIR"] == "/run/remedy/agent" and env["HOME"] == "/tmp/home"
     assert env["PI_OFFLINE"] == "1" and "OPENAI_API_KEY" not in env
+    assert not (tmp_path / "data").exists() or "data" not in os.listdir(tmp_path / "data")
 
 
-def test_the_agent_directory_holds_one_models_json_for_the_resolved_ollama_host(fake_pi, workspace, monkeypatch):
+def test_the_agent_directory_points_pi_at_the_relay_and_the_tool_shell(fake_pi, workspace, monkeypatch):
     monkeypatch.setenv("REMEDY_OLLAMA_HOST", "http://gpu-box:11434/")
-    pi_preflight(model=PI_DEFAULT_MODEL, workspace=str(workspace), role="builder", check_endpoint=False)
-    models = json.loads((PP.pi_agent_dir() / "models.json").read_text())
-    entry = models["providers"]["ollama"]
-    assert entry["baseUrl"] == "http://gpu-box:11434/v1" and entry["apiKey"] == "ollama"
+    assert not PiProvider(role="builder", cwd=str(workspace)).build("x").error
+    files = fake_pi.call()["agent_files"]
+    entry = json.loads(files["models.json"])["providers"]["ollama"]
+    # The sandbox never learns the real endpoint: Pi talks to the relay port inside it.
+    assert entry["baseUrl"] == "http://127.0.0.1:11434/v1" and entry["apiKey"] == "ollama"
+    assert "gpu-box" not in files["models.json"]
     assert [m["id"] for m in entry["models"]] == ["muse-glimmer:latest"]
     assert entry["models"][0]["cost"] == {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
-    assert sorted(p.name for p in PP.pi_agent_dir().iterdir()) == ["models.json"]
+    assert json.loads(files["settings.json"]) == {"shellPath": "/run/remedy/tool-shell.sh"}
 
 
 # --- 2. the reviewer is read-only -----------------------------------------------------------
