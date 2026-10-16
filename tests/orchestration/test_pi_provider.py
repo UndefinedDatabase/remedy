@@ -157,6 +157,15 @@ def test_the_reviewer_gets_only_the_read_tools_and_every_resource_switch(fake_pi
         assert flag in argv
 
 
+def test_the_reviewer_is_asked_for_the_requested_meaning_and_to_fail_extra_files(fake_pi, workspace):
+    """amend1016p D3: a change in the right file with the wrong wording, or with a report file
+    beside it, must fail review."""
+    fake_pi.behave(stdout=good_stream('{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}'))
+    PiProvider(role="reviewer", cwd=str(workspace)).review("judge this diff")
+    prompt = fake_pi.call()["argv"][-1]
+    assert "content and meaning" in prompt and "fail any file the task does not ask for" in prompt
+
+
 def test_repair_roles_use_the_tools_of_their_kind():
     assert PP.pi_role_tools("repair") == PI_BUILDER_TOOLS
     assert PP.pi_role_tools("reviewer") == PI_REVIEWER_TOOLS
