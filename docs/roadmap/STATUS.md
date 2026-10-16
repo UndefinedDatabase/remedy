@@ -272,10 +272,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F055 — Rehearsal (dry check) (T001–T003 complete; R-1316, R-1317, R-1318 and R-1320 resolved; accepted 2026-10-14 · live review PASS — ACCEPTED · Evidence job f055r5e1001 · package remedy-review-20261014-200011-READY_FOR_REVIEW.zip · SHA-256 7be134c461b533e26dab8ca02d1f28de90a750c6a18197a9fd549f87529611aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c3c6ae7bf958d712b77656e60a6ee9e9c33efe2a)
 
-## Tier 5 — Cockpit v2 (operator amendment amend1015-cockpit-truth)
-
-- [ ] F309 — Cockpit v2: one design, chosen by the operator (blocked until decodeux's design brief is in docs/ui/cockpit-v2-brief.md)
-
 ## Tier 3 — Luna gate C: controlled autonomy, continued (operator ruling amend1006-luna-control-plane)
 
 - [ ] F078 — Autonomy levels
@@ -515,6 +511,11 @@ Registered, counted and tier-assigned like every other feature — deliberately 
 - [ ] F240 — Power keyboard & vim navigation
 - [ ] F241 — Story export as video
 - [ ] F242 — Accessibility of the cockpit itself
+
+<!-- operator order amend1016-stabilization (2026-10-16, DECISION amend1016 D1): F309 is withdrawn, not built. Remedy has no page of its own and will not rebuild its cockpit; its face is the universe's edition `remedy` (docs/roadmap/design/face-v1.md). The line moved here from Package 1, where it stood directly after F055 under its own Tier 5 heading, and carries `[!]`, which Rule A5 never selects (`roadmap_index.next_feature` takes only `[ ]`); tests/docs/test_no_native_face.py pins both. Its three findings R-1321, R-1322 and R-1324 are closed as superseded. Not reversible by moving the line back: a native face needs a new operator decision and a new feature. -->
+## Tier 5 — Withdrawn: Cockpit v2 (operator order amend1016-stabilization)
+
+- [!] F309 — Cockpit v2: one design, chosen by the operator (blocked: withdrawn by DECISION amend1016 D1, never to be built — Remedy has no native frontend; its face is the universe's edition remedy; nothing of it was implemented)
 
 ## Tier 17 — Self-Improvement & Ecosystem
 
