@@ -352,35 +352,6 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=False,
         env_only=True,
     ),
-    ConfigKeySpec(
-        key="ui.allow_legacy_fallback",
-        env_var="REMEDY_UI_ALLOW_LEGACY_FALLBACK",
-        description=(
-            "Serve the legacy app shell when the built UI is missing, with a warning "
-            "(env-only flag)"
-        ),
-        value_type=bool,
-        default=False,
-        env_only=True,
-    ),
-    ConfigKeySpec(
-        key="ui.demo_mode",
-        env_var="REMEDY_UI_DEMO_MODE",
-        description=(
-            "Label the cockpit's synthetic placeholder data as demo data (env-only flag)"
-        ),
-        value_type=bool,
-        default=False,
-        env_only=True,
-    ),
-    ConfigKeySpec(
-        key="ui.no_auto_build",
-        env_var="REMEDY_UI_NO_AUTO_BUILD",
-        description="Skip the UI server's automatic npm build of apps/ui (env-only flag)",
-        value_type=bool,
-        default=False,
-        env_only=True,
-    ),
     # F279 T001 (DECISION F279 D3): the names the shell scripts under scripts/ read, and the two
     # opt-ins an operator sets to run the real-Ollama tests, so `remedy doctor core` never calls a
     # variable Remedy itself reads unknown.
@@ -883,46 +854,6 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=bool,
         default=False,
-    ),
-    ConfigKeySpec(
-        key="story.step_ms",
-        env_var="REMEDY_STORY_STEP_MS",
-        description=(
-            "The story's autoplay (F039) step, in milliseconds: the browser keeps "
-            "a value from 50 to 10000 and its default otherwise."
-        ),
-        value_type=int,
-        default=420,
-    ),
-    ConfigKeySpec(
-        key="story.chapter_pause_ms",
-        env_var="REMEDY_STORY_CHAPTER_PAUSE_MS",
-        description=(
-            "The story's autoplay (F039) chapter pause, in milliseconds: the "
-            "browser keeps a value from 50 to 10000 and its default otherwise."
-        ),
-        value_type=int,
-        default=1600,
-    ),
-    ConfigKeySpec(
-        key="story.export_max_bytes",
-        env_var="REMEDY_STORY_EXPORT_MAX_BYTES",
-        description=(
-            "The largest story file `remedy job story --export` writes (F039): a larger "
-            "story is refused whole, never cut."
-        ),
-        value_type=int,
-        default=5_000_000,
-    ),
-    ConfigKeySpec(
-        key="preview.idle_ttl_seconds",
-        env_var="REMEDY_PREVIEW_IDLE_TTL_SECONDS",
-        description=(
-            "How long a live preview of a job's project (F041) keeps running while nobody "
-            "views it before the cockpit's server stops it; zero or less never stops it."
-        ),
-        value_type=int,
-        default=900,
     ),
     ConfigKeySpec(
         key="data.reclaim_warn_gb",

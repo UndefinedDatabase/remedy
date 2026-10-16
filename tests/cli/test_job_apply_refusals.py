@@ -197,6 +197,9 @@ _CAUSES = [
     ("apply_failed", {"blocked_reason": "no_files_to_apply"}),
     ("target_changed_during_run", {"blocked_reason": "baseline_check_failed: ['a.txt: target_changed_since_job']"}),
     ("target_changed_during_run", {"blocked_reason": "baseline_check_before_apply_failed: ['a.txt']"}),
+    # amend1015f D16: the target changed because an earlier apply of the same job landed.
+    ("job_already_applied", {"job_id": "landed0000000000",
+                             "blocked_reason": "baseline_check_failed: ['a.txt: target_changed_since_job']"}),
     ("target_dirty", {"blocked_reason": f"{COMMIT_REFUSED}: {DIRTY_TREE_OPENING} in a.txt; "
                                         f"commit or stash them and re-run."}),
     ("target_detached_head", {"blocked_reason": f"{HISTORY_REFUSED}: {DETACHED_HEAD_OPENING}; "
@@ -227,7 +230,10 @@ _CAUSES = [
 
 
 @pytest.mark.parametrize(("token", "fields"), _CAUSES)
-def test_each_cause_reads_as_its_token(token, fields):
+def test_each_cause_reads_as_its_token(token, fields, monkeypatch):
+    import packages.orchestration.job_apply as job_apply
+
+    monkeypatch.setattr(job_apply, "job_apply_landed", lambda job_id: job_id == "landed0000000000")
     result = JobApplyResult(approved=True, **{"status": "blocked", **fields})
 
     error, message = apply_refusal(result)

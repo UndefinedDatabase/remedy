@@ -6,9 +6,10 @@ Modelled on `test_pause_door_live.py`'s `TestJobScopeLiveDoor`, owning its own c
 file's helpers — each live test file owns its own copy, the established convention there. A
 three-task job runs under `run_job`, in ITS OWN PROCESS, with a `SlowProvider` whose SECOND
 build call — task 2's first — writes a `building` file under `tmp_path` and then waits for a
-`go` file before it proceeds, so the stop posted through the chat card can never race the job's
-end. A real UI server runs IN this test process, in a background thread, over the SAME
-REMEDY_DATA_DIR the subprocess runner writes into.
+`go` file before it proceeds, so the stop sent through the chat card can never race the job's
+end. Since DECISION amend1015f D20 both chat turns are the real `remedy chat ask --json`, run in
+this test process, and the confirmed card goes through a real `remedy serve start` supervisor
+running in a background thread over the SAME (short) REMEDY_DATA_DIR the runner writes into.
 """
 from __future__ import annotations
 
@@ -18,18 +19,15 @@ import os
 import subprocess
 import sys
 import textwrap
-import threading
 import time
-from http.client import HTTPConnection
 from pathlib import Path
-from urllib.parse import urlencode
 
 import psutil
 import pytest
 
+from apps.cli.grouped import main as grouped_main
 from packages.orchestration.data_paths import job_record_path
-
-CSRF_HEADER = "X-Remedy-CSRF"
+from tests.ui_server.door_host import SupervisorThread
 
 _THREE_TASK_JOB = """\
 # Job: Chat E2E Test
@@ -122,58 +120,15 @@ def _test_owned_children(baseline_pids: set[int], tmp_path: Path) -> list[psutil
     return owned
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`. Mirrors
-    `test_pause_door_live.py`'s helper of the same name and purpose."""
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
-
-
-def _get_chat(port: int, token: str, job_id: str, *, text: str, task: str) -> tuple[int, dict]:
-    query = urlencode({"token": token, "text": text, "task": task})
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
+def _chat_ask(capsys, job_id: str, *argv: str) -> tuple[int, dict]:
+    """Run `remedy chat ask JOB_ID ARGV... --json` in this process; (exit code, its JSON)."""
+    capsys.readouterr()
     try:
-        conn.request("GET", f"/api/jobs/{job_id}/chat?{query}")
-        resp = conn.getresponse()
-        return resp.status, json.loads(resp.read())
-    finally:
-        conn.close()
-
-
-def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
-         args: dict | None = None) -> tuple[int, dict]:
-    """Mirrors `test_pause_door_live.py`'s own `_post` helper exactly."""
-    payload: dict = {"command": command, "client_nonce": nonce}
-    if args is not None:
-        payload["args"] = args
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("POST", f"/api/jobs/{job_id}/commands",
-                     body=json.dumps(payload),
-                     headers={"Authorization": f"Bearer {token}",
-                              CSRF_HEADER: token,
-                              "Content-Type": "application/json"})
-        resp = conn.getresponse()
-        return resp.status, json.loads(resp.read())
-    finally:
-        conn.close()
+        grouped_main(["chat", "ask", job_id, *argv, "--json"])
+        code = 0
+    except SystemExit as exc:
+        code = int(exc.code or 0)
+    return code, json.loads(capsys.readouterr().out)
 
 
 def _audit_lines(control_root: Path, job_id: str) -> list[dict]:
@@ -203,13 +158,13 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
 
 @pytest.mark.subprocess
 class TestChatE2ELiveDoor:
-    def test_an_answer_with_citations_a_stop_card_and_one_accepted_audit_line(self, tmp_path):
+    def test_an_answer_with_citations_a_stop_card_and_one_accepted_audit_line(
+            self, tmp_path, tmp_path_factory, capsys):
         repo_root = Path(__file__).resolve().parents[2]
         target = tmp_path / "repo"
         target.mkdir()
         (target / "README.md").write_text("# demo\n")
-        data_dir = tmp_path / "remedy_data"
-        data_dir.mkdir()
+        data_dir = tmp_path_factory.mktemp("ce")
 
         job_file = tmp_path / "job.md"
         job_file.write_text(_THREE_TASK_JOB)
@@ -252,13 +207,10 @@ class TestChatE2ELiveDoor:
                 pytest.fail("task 2's build call never began within 60s")
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
+            supervisor = SupervisorThread(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
-
-                status, body = _get_chat(port, token, job_id,
-                                         text="Did the tests pass?", task=task1_id)
-                assert status == 200, body
-                assert body["available"] is True, body
+                code, body = _chat_ask(capsys, job_id, "Did the tests pass?", "--task", task1_id)
+                assert code == 0, body
                 assert body["kind"] == "answer", body
                 assert body["scope"] == "node", body
                 assert body["subject"] == task1_id, body
@@ -271,22 +223,19 @@ class TestChatE2ELiveDoor:
                         assert sentence["citations"], sentence
                         assert all(1 <= c <= item_count for c in sentence["citations"]), sentence
 
-                status, card = _get_chat(port, token, job_id,
-                                         text="stop that task", task=task2_id)
-                assert status == 200, card
-                assert card["available"] is True, card
-                assert card["kind"] == "card", card
-                assert card["verb"] == "job.stop", card
-                assert card["confirmable"] is True, card
-
                 control_root = data_dir / "control"
                 assert _audit_lines(control_root, job_id) == []
 
-                status, result = _post(port, token, card["verb"], job_id=job_id,
-                                       nonce="chat-e2e-stop", args=card["args"])
-                assert status == 200, result
-                assert result["outcome"] == "accepted", result
+                code, card = _chat_ask(capsys, job_id, "stop that task", "--task", task2_id,
+                                       "--yes")
+                assert code == 0, card
+                assert card["kind"] == "card", card
+                assert card["verb"] == "job.stop", card
+                assert card["confirmable"] is True, card
+                assert card["sent"] is True, card
+                assert card["door"]["outcome"] == "accepted", card
             finally:
+                supervisor.close()
                 os.environ.pop("REMEDY_DATA_DIR", None)
 
             go_file.write_text("go")
@@ -309,7 +258,7 @@ class TestChatE2ELiveDoor:
         assert len(audit) == 1, audit
         assert audit[0]["command"] == "job.stop", audit
         assert audit[0]["outcome"] == "accepted", audit
-        assert audit[0]["nonce"] == "chat-e2e-stop", audit
+        assert audit[0]["nonce"].startswith("chat-"), audit
 
         assert not psutil.pid_exists(proc.pid) or \
             psutil.Process(proc.pid).status() == psutil.STATUS_ZOMBIE

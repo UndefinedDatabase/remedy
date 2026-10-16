@@ -361,8 +361,8 @@ PLAN_VIEW_TASK_FIELDS = ("id", "title", "goal", "depends_on", "est_tokens_band",
 
 
 def plan_view(job: Any) -> dict[str, Any] | None:
-    """The plan read (T5_F292 T001, DECISION F292 D1 (1)): *job*'s stored plan as the
-    cockpit and ``remedy job plan-show --json`` both serve it, or None when the job has no
+    """The plan read (T5_F292 T001, DECISION F292 D1 (1)): *job*'s stored plan as
+    ``remedy job plan-show --json`` serves it, or None when the job has no
     stored plan with tasks.
 
     The answer carries the plan's version, its approval as stored, whether it is open for

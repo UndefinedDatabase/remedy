@@ -50,12 +50,12 @@ def test_hosted_workflow_selects_no_tests_of_its_own():
     assert "pytest" not in text
 
 
-def test_hosted_workflow_installs_the_ui_toolchain_before_the_run():
-    """DECISION F083 D6 makes the toolchain a precondition, so its step comes first."""
+def test_hosted_workflow_runs_remedy_ci_once_and_installs_no_ui_toolchain():
+    """The UI toolchain DECISION F083 D6 made a precondition went with the UI (amend1015f D3)."""
     text = workflow_text()
-    assert text.count("npm ci --prefix apps/ui") == 1
     assert text.count("remedy ci run") == 1
-    assert text.index("npm ci --prefix apps/ui") < text.index("remedy ci run")
+    assert "npm" not in text
+    assert "apps/ui" not in text
 
 
 def test_hosted_workflow_never_auto_retries():

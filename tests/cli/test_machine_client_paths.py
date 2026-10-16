@@ -158,7 +158,8 @@ def test_an_order_naming_its_project_runs_in_that_projects_repository_wherever_t
     code, applied = _remedy(["job", "apply", job_id, "--repo", registered["repo_path"],
                              "--approve"], elsewhere, env)
     assert (code, applied["status"]) == (0, "applied"), applied
-    assert (repo / "docs" / "README.md").is_file()
+    # amend1015c D6: the command line's fake writes the README.md the order names.
+    assert "<!-- Remedy: " in (repo / "README.md").read_text(encoding="utf-8")
     assert list(elsewhere.iterdir()) == []
 
 
@@ -181,4 +182,5 @@ def test_a_client_declines_a_completed_result_and_it_waits_for_nothing(tmp_path)
     assert [(entry["action"], entry["text"]) for entry in ownership["entries"]] == [
         ("result_declined", "not wanted")]
     # Nothing was applied: the repository is as the client left it.
+    assert "<!-- Remedy: " not in (repo / "README.md").read_text(encoding="utf-8")
     assert not (repo / "docs" / "README.md").exists()

@@ -24,7 +24,8 @@ from packages.orchestration.toolchain import (
 )
 
 # R-1045: `uv`, the generator `constraints.txt` names, is part of the `dev` extra and so of the report.
-DECLARED = ["pydantic", "psutil", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage", "uv"]
+# amend1015c D1: `tomli` is a runtime dependency below Python 3.11.
+DECLARED = ["pydantic", "psutil", "tomli", "pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage", "uv"]
 
 
 def test_the_report_covers_the_runtime_dependencies_and_the_dev_extra():

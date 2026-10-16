@@ -62,8 +62,8 @@ class TestConfigKeySpec:
         assert "ollama.host" in keys
         assert "ollama.builder.model" in keys
         assert "ollama.planner.model" in keys
-        assert "ui.host" in keys
-        assert "ui.port" in keys
+        assert "serve.api_port" in keys
+        assert "ui.command_rate_limit_per_minute" in keys
         assert "tests.pytest_timeout_seconds" in keys
         assert "quality.coverage_fail_under" in keys
         assert "logging.level" in keys

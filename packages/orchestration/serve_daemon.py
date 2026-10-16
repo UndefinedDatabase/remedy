@@ -104,7 +104,7 @@ class UnixHTTPConnection(HTTPConnection):
 def socket_handler_class(token: str, launcher: RunLauncher | None = None,
                          runner: CommandRunner | None = None,
                          orders: OrderLauncher | None = None) -> type:
-    """The cockpit's request handler, bound for the supervisor's socket.
+    """The write door's request handler, bound for the supervisor's socket.
 
     With a LAUNCHER it also accepts `job.run` and starts the job's run through it;
     every other command takes the cockpit door's own path. With a RUNNER it also
@@ -120,8 +120,6 @@ def socket_handler_class(token: str, launcher: RunLauncher | None = None,
     class _SocketHandler(_RemedyHandler):
         server_token = token
         target_job_id = ""
-        app_html = ""
-        preview_worker = None
         effect_source = SOCKET_EFFECT_SOURCE
         client_names_source = True
         run_launcher = launcher

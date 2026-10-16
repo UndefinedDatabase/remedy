@@ -290,7 +290,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
 
-- [ ] F303 — The cockpit on the public API
+- [ ] F303 — The face on the public API: what the remedy edition needs
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
@@ -433,16 +433,6 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [ ] F208 — Monorepo workspaces
 
-## Tier 16 — Cockpit v2
-
-- [ ] F233 — Growing Brain stage 2 (GPU renderer)
-- [ ] F235 — Diff ghosting on the timeline
-- [ ] F236 — Live output stream in the node
-- [ ] F237 — Embedded runtime console
-- [ ] F240 — Power keyboard & vim navigation
-- [ ] F241 — Story export as video
-- [ ] F242 — Accessibility of the cockpit itself
-
 ## Tier 17 — Self-Improvement & Ecosystem
 
 - [ ] F244 — Security self-audit routine
@@ -512,11 +502,19 @@ Registered, counted and tier-assigned like every other feature — deliberately 
 - [ ] F221 — Release quality gate & channels
 - [ ] F222 — Customer cost calculator
 
-## Tier 16 — Cockpit v2
+<!-- operator amendment amend1015-face-migration (2026-10-15, amend1015f D30): Tier 16 "Cockpit v2" is retitled "Face v2" and parked whole; the seven lines that stood in Package 1 moved here. Remedy ships no page of its own any more; its face is the universe's edition `remedy` (docs/roadmap/design/face-v1.md). -->
+## Tier 16 — Face v2
 
+- [ ] F233 — Growing Brain stage 2 (GPU renderer)
 - [ ] F234 — Organism overview (L-1)
+- [ ] F235 — Diff ghosting on the timeline
+- [ ] F236 — Live output stream in the node
+- [ ] F237 — Embedded runtime console
 - [ ] F238 — Cockpit plugin API
 - [ ] F239 — Theming & white-label
+- [ ] F240 — Power keyboard & vim navigation
+- [ ] F241 — Story export as video
+- [ ] F242 — Accessibility of the cockpit itself
 
 ## Tier 17 — Self-Improvement & Ecosystem
 

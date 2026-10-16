@@ -1,14 +1,13 @@
 """F029 T003 — the subtree rerun end to end through the real CLI, a live write
 door and the command line, both attempts to a middle task and its dependent
-read back from the job record, git, the run log, the dashboard, the run
-records and the final report (DECISIONS F029 D1, D2, D3, D4, D5 and D6).
+read back from the job record, git, the run log, the run records and the
+final report (DECISIONS F029 D1, D2, D3, D4, D5 and D6).
 
 Structured like `test_task_injection_e2e_live.py`'s own live class —
-`@pytest.mark.subprocess`, a real UI server started in a thread, real POSTs
+`@pytest.mark.subprocess`, the write door served in a thread, real POSTs
 through `HTTPConnection`, and real `python -m apps.cli.main` subprocesses —
-and this file keeps its OWN copies of that file's `_start_ui_server_for_job`,
-`_post`, `_job_data`, `_get_json`, `_by_planned`, `_all_events_since` and
-`_report_markdown` helpers, per that file's own header rule, rather than
+and this file keeps its OWN copies of that file's `_start_door_for_job`,
+`_post`, `_job_data`, `_by_planned` and `_report_markdown` helpers, per that file's own header rule, rather than
 importing them.
 
 An approved three-task plan A; B depending on A; C depending on B, saved
@@ -29,10 +28,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import secrets
 import subprocess
 import sys
-import threading
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -53,6 +50,7 @@ from packages.orchestration.job_plan import (
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.task_deliverables import record_llm_task_deliverables
+from tests.ui_server.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -118,25 +116,10 @@ def _save_approved_three_task_job(root: Path, repo_path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`."""
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -161,44 +144,11 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
     return json.loads(job_record_path(job_id, data_dir).read_text())
 
 
-def _get_json(port: int, token: str, job_id: str, endpoint: str) -> dict:
-    conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        conn.request("GET", f"/api/jobs/{job_id}/{endpoint}?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        return json.loads(resp.read())
-    finally:
-        conn.close()
-
-
 def _by_planned(job_data: dict, planned_id: str) -> dict:
     for t in job_data["tasks"]:
         if (t.get("inputs", {}).get("plan") or {}).get("planned_id") == planned_id:
             return t
     raise AssertionError(f"no task for planned id {planned_id!r}")
-
-
-def _all_events_since(port: int, token: str, job_id: str) -> list[dict]:
-    """Every event `events-since` will hand back, paged from cursor 0 — mirrors
-    `test_task_injection_e2e_live.py`'s own helper exactly."""
-    events: list[dict] = []
-    cursor = "0"
-    while True:
-        conn = HTTPConnection("127.0.0.1", port, timeout=10)
-        try:
-            conn.request("GET", f"/api/jobs/{job_id}/events-since?token={token}&cursor={cursor}")
-            resp = conn.getresponse()
-            assert resp.status == 200
-            body = json.loads(resp.read())
-        finally:
-            conn.close()
-        events.extend(body["events"])
-        next_cursor = body["cursor"]
-        if next_cursor == cursor or not body["events"]:
-            break
-        cursor = next_cursor
-    return events
 
 
 def _report_markdown(repo_root: Path, env: dict, job_id: str) -> str:
@@ -300,7 +250,7 @@ class TestSubtreeRerunE2ELive:
         # first POST whatever the subtree's real estimate turns out to be.
         monkeypatch.setenv("REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD", "0.000001")
 
-        port, token = _start_ui_server_for_job(job_id, tmp_path)
+        port, token = _start_door_for_job(job_id, tmp_path)
 
         status, body = _post(port, token, "job.rerun-subtree", job_id=job_id,
                              nonce="n-rerun-1",
@@ -370,20 +320,20 @@ class TestSubtreeRerunE2ELive:
         assert moved.read_text() == "stream marker"
         assert not stream_dir.exists()
 
-        # --- the run log, the dashboard and the events stream -----------------
+        # --- the run log and the task records (the cockpit's dashboard and stream
+        # read these before they went, DECISION amend1015f D27) ---------------
         events = _run_log_subtree_rerun_prepared_events(data_dir, job_id)
         assert len(events) == 1, events
         assert events[0]["task_id"] == b_id
         assert events[0]["metadata"]["exact"] is True
         assert events[0]["metadata"]["model_override"] == MODEL_M
 
-        dashboard = _get_json(port, token, job_id, "dashboard")
-        by_id = {t["id"]: t for t in dashboard["tasks"]}
+        by_id = {t["task_id"]: t for t in _job_data(data_dir, job_id)["tasks"]}
         assert by_id[b_id]["attempt"] == 2 and len(by_id[b_id]["attempts"]) == 1
         assert by_id[c_id]["attempt"] == 2 and len(by_id[c_id]["attempts"]) == 1
         assert by_id[a_id]["attempt"] == 1
 
-        frames = _all_events_since(port, token, job_id)
+        frames = run_log_frames(job_id, data_dir)
         prepared_frames = [e for e in frames if e.get("event") == "subtree_rerun_prepared"]
         assert len(prepared_frames) == 1, frames
 

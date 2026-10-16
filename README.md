@@ -31,6 +31,9 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 146 of 309 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
+Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
+edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
+
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
@@ -49,7 +52,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
-| 16 | Cockpit v2 | 0 | 10 |
+| 16 | Face v2 (parked) | 0 | 10 |
 | 17 | Self-Improvement & Ecosystem | 0 | 8 |
 
 Accepted foundation (Tier 0, complete):
@@ -733,12 +736,9 @@ F039 story mode (a finished job can now be told as a short story: its chapters a
 went through, such as the plan, the build, the review and the finish, and small cards say what
 happened at the moments that mattered, a decision, a failed test or a repair, with the reviewer's
 verdict, who acted and the cost so far, every word taken from Remedy's own fixed wording and never
-from a model; the Story button in the cockpit opens it over the graph, where Play walks the
-timeline one event at a time with a pause before each chapter; the command
-`remedy job story <job id> --export <file>` saves it as one HTML file that plays in any browser
-straight from your disk, with no network and no Remedy, and refuses a story larger than the
-`story.export_max_bytes` setting rather than cutting it; a test opens such a file in headless
-Chrome and passes only when the page makes no request but the file itself).
+from a model; the cockpit's Story button and the command that exported the story as one HTML
+file were removed on 2026-10-15 with the old cockpit, and `remedy client story <job id>` reads a
+job's story now).
 
 F041 artifact preview (a job's results can now be seen in the cockpit without leaving it: the
 Results button opens a panel with the job's README, shown as formatted text that Remedy cleans on

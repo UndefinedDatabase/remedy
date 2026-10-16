@@ -40,6 +40,10 @@ provider and no other option of `remedy job run` is offered. `GET /api/v1/jobs/{
 once the run is not `running`, `answer`, and the 202 answer holds the same keys: the two share
 `run_record_payload` in `packages.orchestration.serve_runs`.
 
+`GET /api/v1/jobs/{job}/story` (DECISION amend1015f D14) answers one job's run story as `remedy
+client story <job> --json` does: the two share `job_client_story` in
+`packages.orchestration.client_story`, and a client token reads only a job of its projects.
+
 `render_public_api_markdown` renders the generated section of `docs/system/public-http-api-v1.md`,
 and `write_public_api_page` writes it there; a test holds that section equal to the rendering.
 """
@@ -71,8 +75,12 @@ from packages.orchestration.public_api_writes import (
 PUBLIC_API_PREFIX = "/api/v1"
 
 #: This registry's own version. The minor number rises whenever a route, an answer key or a
-#: refusal token is added; the major number changes only under a new path prefix.
-PUBLIC_API_VERSION = "1.14"
+#: refusal token is added; the major number changes only under a new path prefix. Operator
+#: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
+#: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
+#: client token's refusal `api_client_policy_refused` on the proof, run and order polls
+#: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5).
+PUBLIC_API_VERSION = "1.16"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -165,7 +173,8 @@ def _client_interface_answer() -> dict[str, Any]:
     return build_ok(**build_client_interface())
 
 
-def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
+def _status_digest_answer(*, all_ended_jobs: bool = False,
+                          project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/digest` sends: the `client` key of `status.run`'s `--json` answer.
 
     Calls `build_client_digest` directly rather than the whole `status.run` command: the digest
@@ -175,7 +184,7 @@ def _status_digest_answer(*, all_ended_jobs: bool = False) -> dict[str, Any]:
     from apps.cli.json_envelope import build_ok
     from packages.orchestration.client_digest import build_client_digest
 
-    return build_ok(**build_client_digest(every_ended_job=all_ended_jobs))
+    return build_ok(**build_client_digest(every_ended_job=all_ended_jobs, project_ids=project_ids))
 
 
 def _resolved_job_plan(job: str) -> tuple[tuple[str, Any] | None, dict[str, Any] | None]:
@@ -228,7 +237,8 @@ def _change_proof_answer(*, job: str) -> dict[str, Any]:
     return build_ok(**export_proof_chain_json(chain))
 
 
-def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
+def _client_changes_answer(*, since: str | None = None,
+                           project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/changes` sends: what `client changes --json` prints (DECISION
     F253 D5 (2)). Calls the same two functions its twin calls, and refuses an unreadable cursor
     with its twin's own message."""
@@ -246,7 +256,7 @@ def _client_changes_answer(*, since: str | None = None) -> dict[str, Any]:
         except ValueError:
             return build_error("invalid_cursor", client_cursor_refusal_message(since))
 
-    return build_ok(**build_client_changes(parsed_since))
+    return build_ok(**build_client_changes(parsed_since, project_ids=project_ids))
 
 
 def _doctor_health_answer() -> dict[str, Any]:
@@ -290,6 +300,35 @@ def _doctor_logs_answer(*, job: str, run: str | None = None) -> dict[str, Any]:
         unreadable=result.unreadable,
         files=list(result.files),
     )
+
+
+def _client_story_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/story` sends: what `remedy client story <job> --json`
+    prints (DECISION amend1015f D14). The job is resolved as its twin resolves it, and the two
+    share `job_client_story`."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.client_story import job_client_story
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    job_id, plan = resolved
+    return build_ok(**job_client_story(job_id, plan))
+
+
+def _client_diff_answer(*, job: str) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/diff` sends: what `remedy client diff <job> --json`
+    prints (DECISION amend1015c D5); the two share `job_client_diff`."""
+    from apps.cli.json_envelope import build_error, build_ok
+    from packages.orchestration.client_diff import ClientDiffRefusal, job_client_diff
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    try:
+        return build_ok(**job_client_diff(*resolved))
+    except ClientDiffRefusal as exc:
+        return build_error(exc.token, str(exc))
 
 
 def _client_read_refusal(client: Any, job: str) -> str | None:
@@ -364,13 +403,21 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "doctor.logs": _doctor_logs_answer,
     "client.order": _order_answer,
     "client.run": _run_answer,
+    "client.story": _client_story_answer,
+    "client.diff": _client_diff_answer,
 }
 
 
 #: The read routes a client token may use only for a job of one of its projects; the server's
-#: token reads every job (operator amendment amend1014-luna-mission-fixes B.3). The other read
-#: routes stay unscoped reads of one record, as DECISION F253 D16 designed them.
-_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs"})
+#: token reads every job (operator amendment amend1014-luna-mission-fixes B.3), and so does the
+#: story (DECISION amend1015f D14). The proof and the run poll joined them (DECISION amend1015c
+#: D2), when the check of operator order amend1015-final-closure found them answering a client
+#: about another project's job, and the diff was born among them (DECISION amend1015c D5).
+_CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run",
+                                  "client.diff"})
+#: The read routes whose answer lists many projects' records: for a client token they list only
+#: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2).
+_CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes"})
 
 
 def answer_public_api_get(
@@ -421,7 +468,18 @@ def answer_public_api_get(
             refusal = _client_read_refusal(client, segments.get("job", ""))
             if refusal is not None:
                 return 403, build_error("api_client_policy_refused", refusal), {}
-        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments)
+        if client is not None and route.twin == "client.order":
+            from packages.orchestration.client_scope import client_order_read_refusal
+
+            refusal = client_order_read_refusal(client, segments.get("order", ""))
+            if refusal is not None:
+                return 403, build_error("api_client_policy_refused", refusal), {}
+        scope: dict[str, Any] = {}
+        if client is not None and route.twin in _CLIENT_FILTERED_TWINS:
+            from packages.orchestration.client_scope import client_project_ids
+
+            scope["project_ids"] = client_project_ids(client)
+        body = _TWIN_ANSWERS[route.twin](**flags, **values_kw, **segments, **scope)
         if body.get("ok"):
             status = 200
         else:

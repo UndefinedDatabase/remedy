@@ -65,7 +65,6 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy job veto-task` | 3 |
 | `remedy job steer` | 3 |
 | `remedy job ownership` | 3 |
-| `remedy job story` | 3 |
 | `remedy job preview-start` | 3 |
 | `remedy job preview-stop` | 3 |
 | `remedy job rerun-subtree` | 3 |
@@ -98,6 +97,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy chat show` | 3 |
 | `remedy chat ask` | 3 |
 | `remedy client order` | 3 |
+| `remedy client diff` | 3 |
 | `remedy client run` | 3 |
 | `remedy runtime serve` | 3, 4, 5 |
 | `remedy runtime probe` | 3, 4, 5 |

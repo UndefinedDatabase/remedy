@@ -27,7 +27,6 @@ import os
 import subprocess
 import sys
 import textwrap
-import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
@@ -37,6 +36,7 @@ import psutil
 import pytest
 
 from packages.orchestration.data_paths import job_record_path
+from tests.ui_server.door_host import start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -160,31 +160,10 @@ def _test_owned_children(baseline_pids: set[int], tmp_path: Path) -> list[psutil
     return owned
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`.
-
-    Mirrors `test_pause_door_live.py`'s helper of the same name and purpose —
-    each live test file owns its own copy, the established convention here.
-    """
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -473,7 +452,7 @@ class TestJobScopeE2ELive:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 status, body = _post(port, token, "job.pause", job_id=job_id,
                                      nonce="n-pause")
                 assert status == 200, body
@@ -498,7 +477,7 @@ class TestJobScopeE2ELive:
 
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.unpause", job_id=job_id,
                                  nonce="n-unpause")
             assert status == 200, body
@@ -578,7 +557,7 @@ class TestTaskScopeE2ELive:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 # Named WHILE task 1 runs — "before it starts": the third task
                 # is never dispatched at all.
                 status, body = _post(port, token, "job.pause", job_id=job_id,
@@ -604,7 +583,7 @@ class TestTaskScopeE2ELive:
 
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             status, body = _post(port, token, "job.unpause", job_id=job_id,
                                  nonce="n-unpause-task", args={"task": third_task_id})
             assert status == 200, body

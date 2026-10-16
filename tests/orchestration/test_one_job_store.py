@@ -121,4 +121,4 @@ class TestNoWhichStoreBranchSurvives:
         assert [name for name in ADAPTERS if hasattr(ui_server, name)] == []
         for name in ADAPTERS:
             assert _files_containing(name, "packages", "apps", "tests", "scripts") == [], name
-        assert hasattr(ui_server, "_build_dashboard")
+        assert hasattr(ui_server, "_RemedyHandler")

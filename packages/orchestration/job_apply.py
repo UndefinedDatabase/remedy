@@ -33,6 +33,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.exec_guard import run_guarded_test_command
+from packages.orchestration.job_apply_again import already_applied_refusal, job_not_ready_reason
 from packages.orchestration.job_apply_baseline import (
     TARGET_CHANGED_DURING_RUN,
     apply_base_commit,
@@ -1513,8 +1514,8 @@ def apply_job(
         ))
 
     # --- Readiness gates ---
-    if job.state != JOB_COMPLETED:
-        return _block(result, f"job_not_completed: status={job.state}")
+    if (not_ready := job_not_ready_reason(job, JOB_COMPLETED)) is not None:  # amend1015c D9
+        return _block(result, not_ready)
 
     for t in job.tasks:
         if t.status != TASK_APPLIED:
@@ -2033,20 +2034,19 @@ def _apply_from_workspace(
 #: Every `error` token `apply_refusal` answers with, sorted. A client branches on the token and a
 #: person reads the sentence beside it (DECISION F304 D4).
 APPLY_REFUSAL_TOKENS: tuple[str, ...] = (
-    "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused", "job_not_found",
-    "job_not_ready", "merge_conflict", "post_test_failed", "push_failed", "push_no_upstream",
-    "push_refused", "push_refused_by_contract", "target_changed_during_run", "target_detached_head",
-    "target_dirty",
+    "apply_failed", "blocked_paths", "commit_refused", "history_merge_refused", "job_already_applied",
+    "job_not_found", "job_not_ready", "merge_conflict", "post_test_failed", "push_failed",
+    "push_no_upstream", "push_refused", "push_refused_by_contract", "target_changed_during_run",
+    "target_detached_head", "target_dirty",
 )
 
-#: The tokens of a job that is absent or not ready to apply; they exit 3 and the rest exit 1.
-APPLY_NOT_READY_TOKENS: tuple[str, ...] = ("job_not_found", "job_not_ready")
+#: The tokens of a job that is absent, not ready or already applied; they exit 3, the rest exit 1.
+APPLY_NOT_READY_TOKENS: tuple[str, ...] = ("job_already_applied", "job_not_found", "job_not_ready")
 
 #: The reason prefixes of a job that is not ready to apply.
 _JOB_NOT_READY_REASONS = frozenset({
-    "job_not_completed", "task_not_applied", "task_missing_run_id", "reviewer_not_pass",
-    "tests_failed", "missing_apply_manifest", "apply_manifest_not_applied",
-    "no_files_in_apply_manifests",
+    "job_not_completed", "job_declined", "task_not_applied", "task_missing_run_id", "reviewer_not_pass", "tests_failed",
+    "missing_apply_manifest", "apply_manifest_not_applied", "no_files_in_apply_manifests",
 })
 
 #: The reason prefixes of a target that changed since the job's baseline.
@@ -2074,9 +2074,9 @@ def apply_refusal(result: JobApplyResult) -> tuple[str, str] | None:
     """``(token, sentence)`` for an approved apply that did not land, or None.
 
     None for a preview, ``--dry-run`` included, and for an apply whose status is ``applied``.
-    Otherwise the token is one of :data:`APPLY_REFUSAL_TOKENS` and names the first cause the
-    apply met, read from the result's status, its ``merge_conflicts``, and the reason prefixes
-    and sentence openings this module writes; the sentence is the reason a person reads.
+    Otherwise the token is one of :data:`APPLY_REFUSAL_TOKENS` and names the first cause the apply
+    met, read from the result's status, its ``merge_conflicts``, the reason prefixes and sentence
+    openings this module writes, and an earlier apply that landed; the sentence is a person's.
     """
     if not result.approved or result.dry_run or result.status == "applied":
         return None
@@ -2101,9 +2101,9 @@ def apply_refusal(result: JobApplyResult) -> tuple[str, str] | None:
         return "job_not_ready", sentence
     if cause == "blocked_paths" or (cause == "no_files_to_apply" and result.files_blocked):
         return "blocked_paths", sentence
-    if cause in _TARGET_CHANGED_REASONS or cause == TARGET_CHANGED_DURING_RUN:
-        return TARGET_CHANGED_DURING_RUN, (sentence if cause == TARGET_CHANGED_DURING_RUN
-                                           else target_changed_sentence(reason))
+    if cause in _TARGET_CHANGED_REASONS or cause == TARGET_CHANGED_DURING_RUN:  # amend1015f D16
+        return already_applied_refusal(result) or (TARGET_CHANGED_DURING_RUN, (
+            sentence if cause == TARGET_CHANGED_DURING_RUN else target_changed_sentence(reason)))
     return "apply_failed", sentence
 
 

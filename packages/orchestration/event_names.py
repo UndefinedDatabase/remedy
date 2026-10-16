@@ -180,11 +180,10 @@ RETIRED_EVENT_NAMES: frozenset[str] = frozenset(
         # event and not this one under another spelling (DECISION F277 D5).
         "patch_intent_reverted",
         # Retired by DECISION F031 D2 and D9, which retired the blocker addend
-        # and the scan that read this name; `ui_server.py` carries that reading
-        # in a comment of its own above `_count_open_decisions`.  The readers
-        # `project_summary.py`, `ui_view_model.py` and `ui_server.py` render
-        # stop reasons from run logs already on disk, and five test files plant
-        # the event to exercise them.
+        # and the scan that read this name.  The reader `project_summary.py`
+        # renders stop reasons from run logs already on disk, and test files
+        # plant the event to exercise it (the cockpit's readers went with the
+        # old face, amend1015f D19).
         "stop_reason_recorded",
     }
 )

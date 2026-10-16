@@ -6,13 +6,12 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 import ast
-import json
 import os
 import shlex
 import sys
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -33,46 +32,6 @@ _BIND_TARGET_REPO = (
     "job.metadata['target_repo'] = sys.argv[2]\n"
     "save_job_plan(job)\n"
 )
-
-
-def _make_job(task_count: int = 3):
-    job = MagicMock()
-    job.job_id = uuid4()
-    job.job_title = "test-job"
-    job.state.value = "active"
-    job.tasks = []
-    job.artifacts = []
-    job.metadata = {}
-    for i in range(task_count):
-        t = MagicMock()
-        t.id = uuid4()
-        t.task_type = "test_task"
-        t.status.value = "completed" if i == 0 else "pending"
-        t.metadata = {}
-        job.tasks.append(t)
-    return job
-
-
-# ---------------------------------------------------------------------------
-# Step 101 — Smoke/UX Contract Reset
-# ---------------------------------------------------------------------------
-
-
-def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    job = JobPlan(job_title=name)
-    if tasks:
-        for t in tasks:
-            task = TaskEntry(
-                title=t.get("description", t.get("type", "task")),
-            )
-            if "status" in t:
-                task.status = RunState(t["status"])
-            if "metadata" in t:
-                task.inputs = t["metadata"]
-            job.tasks.append(task)
-    return job
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -118,8 +77,6 @@ def _make_approved_job() -> tuple[JobPlan, str]:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestPatchApplyTestLoop:
     def test_apply_structured_patch_import(self):
         from packages.orchestration.source_apply import apply_structured_patch
@@ -130,39 +87,8 @@ class TestPatchApplyTestLoop:
         assert callable(revert_apply)
 
 
-
-
 class TestHeadlessSmokeNosBrowserLaunch:
-    """Smoke uses HTTP only, no browser launch."""
-
-    def test_no_open_does_not_call_opener(self):
-        """--no-open flag prevents browser open."""
-        from apps.cli.commands.ui import COMMAND_HANDLERS
-        # Default handler uses `not getattr(args, "no_open", False)`
-        # With no_open=True, open_browser should be False
-        class FakeArgs:
-            job_id = str(uuid4())
-            port = "0"
-            host = "127.0.0.1"
-            no_open = True
-            info_file = None
-        with patch("apps.cli.commands.ui._cmd_ui_start") as mock:
-            COMMAND_HANDLERS["ui.start"](FakeArgs())
-            _, kwargs = mock.call_args
-            assert kwargs["open_browser"] is False
-
-    def test_smoke_uses_http_not_browser(self):
-        """Smoke API checks use urlopen, not xdg-open/open."""
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        assert "urlopen" in content
-        # No xdg-open or open command in smoke validation
-        lines = content.splitlines()
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("#"):
-                continue
-            if "xdg-open" in stripped and "remedy" not in stripped:
-                pytest.fail("xdg-open in smoke validation")
+    """The door's handler logs nothing to stderr."""
 
     def test_ui_server_stderr_no_traceback(self):
         """UI server suppresses logging — no Python tracebacks in normal use."""
@@ -175,8 +101,6 @@ class TestHeadlessSmokeNosBrowserLaunch:
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 130 — Worker VRAM Cleanup
 # ═══════════════════════════════════════════════════════════════════════════
-
-
 
 
 class TestPermitGuidanceArgOrder:
@@ -273,180 +197,8 @@ class TestPermitGuidanceArgOrder:
 
 
 # ---------------------------------------------------------------------------
-# Step 262 — Dashboard Primary UI Truth Source
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestDashboardPrimaryUiTruthSource:
-    def test_remedyapi_fetches_dashboard_first(self):
-        """remedyApi.ts loadRemedyDashboard fetches /dashboard as primary."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        assert "/dashboard?" in src
-        # Should be the first API fetch, not scattered endpoints
-        assert "normalizeApiFailure" in src
-        assert "normalizeDashboardPayload" in src
-
-    def test_normalization_functions_exported(self):
-        """normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState are exported."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        assert "export function normalizeDashboardPayload" in src
-        assert "export function normalizeApiFailure" in src
-        assert "export function normalizeLiveState" in src
-
-    def test_dashboard_failure_means_degraded(self):
-        """If dashboard fetch fails, UI must show degraded."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        # loadRemedyDashboard returns normalizeApiFailure when dashboard fails
-        assert "normalizeApiFailure" in src
-
-    def test_no_scattered_primary_truth(self):
-        """loadRemedyDashboard should NOT fetch task-progress, live-state, story as primary endpoints."""
-        src = Path("apps/ui/src/api/remedyApi.ts").read_text()
-        # These scattered endpoints should not be in the main fetch
-        assert "/task-progress?" not in src
-        assert "/live-state?" not in src
-        assert "/events-since?" not in src
-
-
-# ---------------------------------------------------------------------------
-# Step 263 — Dashboard Truth For Empty/Unknown State
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestDashboardEmptyJobNotDemoMode:
-    def test_empty_job_not_demo_mode(self):
-        """Empty real job returns demo_mode=false."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["demo_mode"] is False
-
-    def test_empty_job_synthetic_count_zero(self):
-        """Empty real job returns synthetic_count=0."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["synthetic_count"] == 0
-
-    def test_empty_job_has_missing_sources(self):
-        """Empty job correctly reports missing sources."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert "events" in dashboard["truth"]["missing_sources"]
-        assert "tasks" in dashboard["truth"]["missing_sources"]
-
-    @patch.dict(os.environ, {"REMEDY_UI_DEMO_MODE": "1"})
-    def test_explicit_demo_mode_flag(self):
-        """REMEDY_UI_DEMO_MODE=1 makes demo_mode=true."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["truth"]["demo_mode"] is True
-
-    def test_no_fake_tasks_in_empty_job(self):
-        """Empty job has no tasks in dashboard."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert len(dashboard["tasks"]) == 0
-
-    def test_no_raw_content_leak(self):
-        """Dashboard payload doesn't leak raw content."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        job.metadata["secret_key"] = "sk-proj-ABCDEF"
-        dashboard = _build_dashboard(job)
-        payload_str = json.dumps(dashboard)
-        assert "sk-proj-" not in payload_str
-
-    def test_full_graph_requires_toggle(self):
-        """graph_summary.full_graph_requires_explicit_toggle is true."""
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = _make_job_s261()
-        dashboard = _build_dashboard(job)
-        assert dashboard["graph_summary"]["full_graph_requires_explicit_toggle"] is True
-
-    def test_live_state_not_demo_mode(self):
-        """Live-state endpoint empty job has demo_mode=false."""
-        from packages.orchestration.ui_server import _build_live_state_json
-
-        job = _make_job_s261()
-        live = _build_live_state_json(job)
-        assert live["demo_mode"] is False
-
-
-# ---------------------------------------------------------------------------
-# Step 264 — Real Frontend Test Foundation
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestVitestFrontendTestFoundation:
-    def test_vitest_config_exists(self):
-        assert Path("apps/ui/vitest.config.ts").is_file()
-
-    def test_test_unit_script_exists(self):
-        pkg = json.loads(Path("apps/ui/package.json").read_text())
-        assert "test:unit" in pkg["scripts"]
-
-    def test_vitest_test_file_exists(self):
-        assert Path("apps/ui/src/api/remedyApi.test.ts").is_file()
-
-    # apps/ui/node_modules is gitignored, so a fresh `git worktree` never carries
-    # it and vitest cannot resolve `vitest/config` there (R-0518). An absent
-    # install is a missing precondition, not a failing frontend: skip, naming it.
-    # R-0499: the gate reads the installed runner, not the directory, because a
-    # `node_modules` that exists but is not yet populated failed this node while
-    # `test_typescript_compiles`, which reads `.bin/tsc`, skipped.
-    @pytest.mark.skipif(
-        not (_ROOT / "apps" / "ui" / "node_modules" / ".bin" / "vitest").is_file(),
-        reason=(
-            "apps/ui/node_modules/.bin/vitest is absent (gitignored, never in a "
-            "fresh worktree); install it outside the test run to run vitest here"
-        ),
-    )
-    def test_vitest_passes(self):
-        """Run vitest and check it passes, under a MEASURED 30 s ceiling.
-
-        Measured 2026-09-19 (F273 T015 (c)), three runs of `npx vitest run` from
-        apps/ui (vitest 2.1.9, node v22.22.2, 38 files, 728 tests) with only the
-        cache moved out of the tree: 1.09 s, 1.01 s, 1.02 s wall, npx start-up
-        included, on a 24-thread Intel i9-13900 with 65574340 kB of RAM, Linux 6.17. No
-        CI-runner figure exists: the CI log times stages, not this test.
-
-        The rule is `tests/orchestration/test_ci_stages.py`'s budget rule, twice
-        the measured maximum: 2 x 1.09 s = 2.18 s, which 30 s clears. Its
-        rounding step (a whole multiple of 300 s) is sized for stage budgets and
-        would RAISE this ceiling tenfold, so it is not applied: the ceiling
-        stays at 30 s rather than rise without a runner measurement.
-        """
-        import subprocess
-        r = subprocess.run(
-            ["npx", "vitest", "run"],
-            cwd=str(Path("apps/ui").resolve()),
-            capture_output=True, timeout=30,
-        )
-        assert r.returncode == 0, f"vitest failed:\n{r.stdout.decode()}\n{r.stderr.decode()}"
-
-
-# ---------------------------------------------------------------------------
 # Step 265 — source_apply Permission Boundary Non-Optional
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestSourceApplyPermissionBoundary:
@@ -590,8 +342,6 @@ class TestSourceApplyPermissionBoundary:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestTestRunnerOutputTruncation:
     def test_max_constant_at_module_level(self):
         """MAX_TEST_OUTPUT_BYTES is a module-level constant."""
@@ -699,8 +449,6 @@ class TestTestRunnerOutputTruncation:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestCommandDiscoveryRuntimeSafety:
     def test_quoted_command_parsed_correctly(self):
         """Constitution command with quotes produces correct argv."""
@@ -793,8 +541,6 @@ class TestCommandDiscoveryRuntimeSafety:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestNoBroadExceptAndDegradedSignals:
     def test_no_broad_except_exception_in_dashboard(self):
         """No broad 'except Exception' in ui_server.py touched paths."""
@@ -865,4 +611,3 @@ class TestNoBroadExceptAndDegradedSignals:
                 if f.is_file() and f.suffix in (".py", ".ts", ".tsx"):
                     content = f.read_text()
                     assert "0.0.0.0" not in content, f"0.0.0.0 in {f}"
-

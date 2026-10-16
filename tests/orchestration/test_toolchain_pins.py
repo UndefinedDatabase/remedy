@@ -122,3 +122,18 @@ def test_the_header_records_the_ruled_generator_command():
     extras = {command[i + 1] for i, token in enumerate(command) if token == "--extra"}
     assert extras == set(EXTRAS_CI_INSTALLS)
     assert command[-2:] == ["-o", "constraints.txt"]
+
+
+def test_the_toml_backport_is_a_runtime_dependency_below_python_311():
+    """amend1015c D1: modules of `packages/` fall back to `tomli` where `tomllib` is missing, so
+    a wheel installed on the 3.10 floor without it crashed `remedy do` at its shape step."""
+    importers = [path for root in ("packages", "apps")
+                 for path in (REPO_ROOT / root).rglob("*.py")
+                 if re.search(r"^\s*import tomli\b", path.read_text(encoding="utf-8"), re.M)]
+    assert importers, "no runtime module imports the backport any more; drop this test"
+    runtime = [Requirement(text) for text in project_table()["dependencies"]]
+    [backport] = [req for req in runtime if canonicalize_name(req.name) == "tomli"]
+    assert backport.marker is not None
+    assert backport.marker.evaluate({"python_version": "3.10"})
+    assert not backport.marker.evaluate({"python_version": "3.11"})
+    assert any(spec.operator == "<" for spec in backport.specifier), backport

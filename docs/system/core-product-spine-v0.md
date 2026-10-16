@@ -29,7 +29,7 @@ operator approval.
 ```
 1. Create a job                         →  remedy do run "<goal>" --repo <path>
 2. Check job state and read the report  →  remedy job show <job_id> --full --json
-3. Open the UI                          →  remedy ui <job_id>
+3. Read the run story (serve running)   →  remedy client story <job_id>
 4. Review proposed follow-ups           →  remedy decision list <job_id> --json
 5. Approve if needed                    →  remedy patch approve <job_id> <patch_intent_id>
 ```

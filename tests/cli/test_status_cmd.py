@@ -132,9 +132,10 @@ def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo
     record = load_job_plan(job_id)
     card = job["approval_card"]
     assert set(card) == set(DIGEST_KEY_TREE["jobs"]["approval_card"])
-    # The fake builder writes one file; the job's result diff, a record of its own, names the same.
+    # The fake builder writes one file, the one the order names (amend1015c D6); the job's
+    # result diff, a record of its own, names the same.
     diff = Path(job["evidence"]["result_diff_path"]).read_text(encoding="utf-8")
-    assert card["changed_files"] == ["docs/README.md"]
+    assert card["changed_files"] == ["CONTRIBUTING.md"]
     assert [line[len("+++ b/"):] for line in diff.splitlines()
             if line.startswith("+++ b/")] == card["changed_files"]
     assert card["changed_file_count"] == 1

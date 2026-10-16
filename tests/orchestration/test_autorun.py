@@ -5,7 +5,6 @@ Migrated from step-numbered test files.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -185,15 +184,6 @@ class TestFixtureBuilderStructuredPatch:
         )
         issues = validate_structured_patch(patch)
         assert not issues
-
-    def test_no_raw_content_in_view_model(self):
-        """View model should not leak raw code content."""
-        job = _make_job_s111(tasks=[{"type": "readme_draft", "status": "completed"}])
-        from packages.orchestration.ui_view_model import build_brain_view_model
-        vm = build_brain_view_model(job, [])
-        full = json.dumps(vm)
-        for bad in ("raw_output", "command_output", "diff_preview", "approval_reason"):
-            assert bad not in full
 
 
 # ═══════════════════════════════════════════════════════════════════════════

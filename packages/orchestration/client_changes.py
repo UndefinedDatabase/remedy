@@ -13,6 +13,7 @@ and never writes.
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -215,7 +216,8 @@ def _changed_missions(cutoff: datetime) -> tuple[list[dict[str, Any]], bool, lis
 
 
 # DECISION F253 D4 (2): the one builder `remedy client changes` and its HTTP twin both call.
-def build_client_changes(since: datetime | None, now: datetime | None = None) -> dict[str, Any]:
+def build_client_changes(since: datetime | None, now: datetime | None = None, *,
+                         project_ids: Collection[str] | None = None) -> dict[str, Any]:
     """What changed since *since*, less the overlap; reads only, never writes.
 
     Without *since* every list is empty and `cursor` is the time of this read. With it, `jobs`
@@ -225,6 +227,10 @@ def build_client_changes(since: datetime | None, now: datetime | None = None) ->
     `closed_decisions` names each decision of a changed job resolved at or after that time;
     `missions` lists each mission whose record changed; `applies` lists each apply record that
     changed. An item may be listed on two reads in a row, kept by a client by its id.
+
+    With *project_ids* (a client token's read, DECISION amend1015c D2) every list keeps only what
+    belongs to those projects: the missions of them, the jobs whose `project_id` is one of them,
+    and the closed decisions and applies of those jobs.
     """
     when = _as_utc(now) if now is not None else datetime.now(timezone.utc)
     read_at = when.isoformat()
@@ -257,10 +263,15 @@ def build_client_changes(since: datetime | None, now: datetime | None = None) ->
     missions, missions_degraded, missions_skipped = _changed_missions(cutoff)
     degraded = degraded or missions_degraded
     skipped_files.extend(missions_skipped)
+    if project_ids is not None:
+        missions = [mission for mission in missions if mission["project_id"] in project_ids]
     for mission in missions:
         changed_job_ids.update(mission["job_ids"])
 
-    digest = build_client_digest(now=when, job_ids=sorted(changed_job_ids))
+    digest = build_client_digest(now=when, job_ids=sorted(changed_job_ids), project_ids=project_ids)
+    if project_ids is not None:
+        changed_job_ids = {job["job_id"] for job in digest["jobs"]}
+        applies = [apply for apply in applies if apply["job_id"] in changed_job_ids]
     degraded = degraded or digest["degraded"]
     skipped_files.extend(digest["skipped_files"])
 

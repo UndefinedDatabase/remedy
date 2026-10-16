@@ -45,7 +45,7 @@ ENTRY_POINTS = (
     "apps.cli.commands.mission_cmd",     # the mission path
     "packages.orchestration.self_use_runner",  # the self-use runner
     "apps.cli.commands.teacher_cmd",     # the teacher
-    "packages.orchestration.ui_server",  # the cockpit read endpoints
+    "packages.orchestration.ui_server",  # the write door and the public API handler
 )
 
 # A dotted name is first-party when its first segment is one of these.

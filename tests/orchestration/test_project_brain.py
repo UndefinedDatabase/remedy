@@ -17,12 +17,6 @@ from packages.memory.models import MemoryEntry
 from packages.orchestration.data_paths import mint_job_id, normalize_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-
-UI_SRC = ROOT / "apps" / "ui" / "src"
-
-UI_ROOT = ROOT / "apps" / "ui"
-
 FORBIDDEN_KEYS = (
     "stdout", "stderr", "raw_output", "command_output",
     "Traceback", "diff_preview", "approval_reason",
@@ -74,12 +68,6 @@ def _make_job_s68(**overrides) -> JobPlan:
     return JobPlan(**defaults)
 
 
-def _make_job_s163(name: str = "Test goal") -> JobPlan:
-    job = JobPlan(job_title=name)
-    job.metadata = job.metadata or {}
-    return job
-
-
 def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
@@ -125,19 +113,6 @@ def _make_events() -> list[dict]:
         {"event": "patch_intent_created", "run_id": "r1", "job_id": "j1",
          "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
          "metadata": {"intent_id": "pi1", "target_path": "foo.py", "action": "create"}},
-    ]
-
-
-# ── Step 68.1: Event Schema Registry ────────────────────────────────────
-
-
-def _make_events_s163() -> list[dict]:
-    return [
-        {"event": "autorun_started", "timestamp": "2026-01-01T00:00:00Z", "metadata": {}},
-        {"event": "structured_patch_intent_created", "timestamp": "2026-01-01T00:01:00Z", "metadata": {"intent_kind": "file_ops"}},
-        {"event": "source_patch_applied", "timestamp": "2026-01-01T00:02:00Z", "metadata": {}},
-        {"event": "test_run_completed", "timestamp": "2026-01-01T00:03:00Z", "metadata": {"exit_code": 0, "passed": True}},
-        {"event": "proof_collected", "timestamp": "2026-01-01T00:04:00Z", "metadata": {"content_hash": "abc123"}},
     ]
 
 
@@ -192,8 +167,6 @@ FORBIDDEN_KEYS = (
 # ===========================================================================
 # Multi-proof causal edge correctness
 # ===========================================================================
-
-
 
 
 class TestBrainGraphStructure:
@@ -300,8 +273,6 @@ class TestBrainGraphStructure:
 # ===========================================================================
 
 
-
-
 class TestBrainReliabilityHygiene:
     """Shared symbols, structured degradation, no bare except Exception."""
 
@@ -353,8 +324,6 @@ class TestBrainReliabilityHygiene:
 # ===========================================================================
 # Step 59: Causal Accuracy + Continue Tests
 # ===========================================================================
-
-
 
 
 class TestCausalAccuracy:
@@ -454,11 +423,7 @@ class TestCausalAccuracy:
             assert edge.target  # non-empty target
 
 
-
-
 # ── Brain Integration ───────────────────────────────────────────────────
-
-
 
 
 class TestBrainIntegration:
@@ -492,197 +457,9 @@ class TestBrainIntegration:
         assert _NODE_TYPE_ORDER[NT_DECISION_QUEUE] == 25
 
 
-# ── Brain Detail ────────────────────────────────────────────────────────
-
-
-
-
-# ===========================================================================
-# Step 164 — Human Story ViewModel
-# ===========================================================================
-
-
-
-
-class TestStoryViewModelSchema:
-    """Story ViewModel."""
-
-    def test_story_schema(self):
-        from packages.orchestration.ui_view_model import build_story
-
-        job = _make_job_s163("Build a README")
-        events = _make_events_s163()
-        story = build_story(job, events)
-
-        assert story["version"] == 1
-        assert story["job_id"] == str(job.job_id)
-        assert story["headline"]
-        assert story["plain_status"]
-        assert "progress" in story
-        for key in ("completed", "active", "pending", "blocked", "needs_review"):
-            assert key in story["progress"]
-        assert "journey" in story
-
-    def test_journey_has_items(self):
-        from packages.orchestration.ui_view_model import build_story
-
-        job = _make_job_s163()
-        events = _make_events_s163()
-        story = build_story(job, events)
-        assert len(story["journey"]) > 0
-
-    def test_journey_items_human_readable(self):
-        from packages.orchestration.ui_view_model import build_story
-
-        job = _make_job_s163()
-        events = _make_events_s163()
-        story = build_story(job, events)
-
-        for j in story["journey"]:
-            assert j.get("title"), f"missing title: {j}"
-            assert j.get("kind"), f"missing kind: {j}"
-            assert j.get("state") in ("done", "current", "pending", "blocked", "suggested")
-
-    def test_forbidden_debug_words_absent(self):
-        from packages.orchestration.ui_copy import FORBIDDEN_DEFAULT_WORDS
-        from packages.orchestration.ui_view_model import build_story
-
-        job = _make_job_s163()
-        events = _make_events_s163()
-        story = build_story(job, events)
-        s = json.dumps(story).lower()
-
-        for word in FORBIDDEN_DEFAULT_WORDS:
-            # Allow "rank" as part of internal data but not in titles/subtitles
-            for j in story["journey"]:
-                assert word not in j["title"].lower(), f"forbidden '{word}' in title: {j['title']}"
-                assert word not in (j.get("subtitle") or "").lower(), f"forbidden '{word}' in subtitle"
-
-
-# ===========================================================================
-# Step 165 — Human Node Detail
-# ===========================================================================
-
-
-
-
-class TestUiRebuildSpecDocument:
-    """UI rebuild spec document present and complete."""
-
-    @pytest.fixture(autouse=True)
-    def load_spec(self):
-        self.spec_path = ROOT / "docs" / "ui" / "REMEDY_UI_REBUILD_SPEC.md"
-        assert self.spec_path.is_file(), "Spec file must exist"
-        self.content = self.spec_path.read_text(encoding="utf-8")
-
-    def test_has_component_tree(self):
-        assert "RemedyApp" in self.content
-        assert "RemedyShell" in self.content
-        assert "LeftBrandRail" in self.content
-        assert "BrainGraphStage" in self.content
-        assert "RightLivePanel" in self.content
-        assert "PhaseTimeline" in self.content
-        assert "DetailPopover" in self.content
-        assert "LayerSwitcher" in self.content
-
-    # The v2 spec (2026-07-05) stopped inlining the palette, the forbidden-word
-    # list and the zoom levels: each names ONE canonical source under
-    # docs/ui/design_reference/. These pins follow that — the delegation must be
-    # explicit and the target must exist, so a dead pointer still fails.
-    def _reference(self, name: str):
-        p = ROOT / "docs" / "ui" / "design_reference" / name
-        assert p.is_file(), f"canonical reference missing: {name}"
-        return p.read_text(encoding="utf-8")
-
-    def test_has_css_tokens(self):
-        assert "design_reference/tokens.css" in self.content
-        assert "the only palette" in self.content
-        assert "--remedy-" in self.content
-        assert "--remedy-" in self._reference("tokens.css")
-
-    def test_has_forbidden_words_section(self):
-        assert "Forbidden default UI words" in self.content
-        assert "ux_spec.md" in self.content
-        for word in ("rank", "importance", "node_type"):
-            assert word in self.content
-        assert "humanCopy.ts" in self.content
-        self._reference("ux_spec.md")
-
-    def test_has_semantic_zoom_rules(self):
-        assert "Semantic zoom" in self.content
-        assert "graph_spec.md" in self.content
-        # The one rule v2 keeps stated inline, because it is binding.
-        import re as _re
-        flat = _re.sub(r"\s+", " ", self.content.lower())
-        assert "diagnostics content never appears through zoom alone" in flat
-        self._reference("graph_spec.md")
-
-    def test_no_old_ui_as_primary(self):
-        lower = self.content.lower()
-        assert "old ui is primary" not in lower
-        assert "pixi" not in lower
-
-
-# ---------------------------------------------------------------------------
-# Step 174 — Frontend project structure
-# ---------------------------------------------------------------------------
-
-
-
-
-class TestFrontendProjectStructure:
-    """Frontend has clean modern React structure."""
-
-    def test_package_json_valid(self):
-        pkg = json.loads((UI_ROOT / "package.json").read_text(encoding="utf-8"))
-        assert pkg["name"] == "@remedy/ui"
-        assert "react" in pkg.get("dependencies", {})
-        assert "react-force-graph-2d" in pkg.get("dependencies", {})
-        assert "@mui/material" in pkg.get("dependencies", {})
-
-    def test_no_pixi_dependency(self):
-        pkg = json.loads((UI_ROOT / "package.json").read_text(encoding="utf-8"))
-        deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
-        assert "pixi.js" not in deps
-        assert "pixi-viewport" not in deps
-        assert "elkjs" not in deps
-
-    def test_tsconfig_has_jsx(self):
-        tsconfig = json.loads((UI_ROOT / "tsconfig.json").read_text(encoding="utf-8"))
-        assert tsconfig["compilerOptions"].get("jsx") == "react-jsx"
-
-    def test_vite_config_has_react_plugin(self):
-        vite = (UI_ROOT / "vite.config.ts").read_text(encoding="utf-8")
-        assert "react" in vite
-
-    def test_eslint_config_exists(self):
-        assert (UI_ROOT / "eslint.config.js").is_file()
-
-    def test_no_node_modules_committed(self):
-        # Check .gitignore or just that node_modules is not tracked
-        nm = UI_ROOT / "node_modules"
-        if nm.exists():
-            # Just verify it's not in git
-            pass  # node_modules should be gitignored
-
-    def test_main_tsx_exists(self):
-        assert (UI_SRC / "main.tsx").is_file()
-
-    def test_remedy_app_exists(self):
-        assert (UI_SRC / "RemedyApp.tsx").is_file()
-
-    def test_tokens_css_exists(self):
-        assert (UI_SRC / "styles" / "tokens.css").is_file()
-
-    def test_globals_css_exists(self):
-        assert (UI_SRC / "styles" / "globals.css").is_file()
-
-
 # ---------------------------------------------------------------------------
 # Step 175 — API data adapter
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestMultiProofCausalEdges:
@@ -771,8 +548,6 @@ class TestMultiProofCausalEdges:
 # ===========================================================================
 # File provenance (file why) chain correctness
 # ===========================================================================
-
-
 
 
 class TestFileProvenanceChain:
@@ -935,8 +710,6 @@ class TestFileProvenanceChain:
 # ===========================================================================
 
 
-
-
 class TestContinueRoundtripAggregate:
     """Parent → child continue-from-node, aggregate includes both."""
 
@@ -1032,8 +805,6 @@ class TestContinueRoundtripAggregate:
 # ===========================================================================
 
 
-
-
 class TestSharedSymbols:
     def test_symbols_module_has_section(self):
         from packages.orchestration._symbols import section
@@ -1051,8 +822,6 @@ class TestSharedSymbols:
         from packages.orchestration._symbols import section
         result = section("Hello", width=64)
         assert result.count("\u2500") >= 58
-
-
 
 
 class TestBrainDetailRegistry:
@@ -1104,8 +873,6 @@ class TestBrainDetailRegistry:
             assert detail.node_type == node.type
 
 
-
-
 class TestMemoryCardModel:
     def test_new_fields_exist(self):
         e = MemoryEntry(key="k", value="v")
@@ -1139,8 +906,6 @@ class TestMemoryCardModel:
         assert e.summary == ""
         assert e.validity == "active"
         assert e.evidence_refs == []
-
-
 
 
 class TestCardManagement:
@@ -1226,8 +991,6 @@ class TestCardManagement:
         assert card is None
 
 
-
-
 class TestLearnEvidence:
     def test_learn_creates_entries(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1247,8 +1010,6 @@ class TestLearnEvidence:
         ]
         result = learn_from_job(job, events, approved=True)
         assert result.learned_count > 0
-
-
 
 
 class TestBrainMemoryNodeSafe:
@@ -1279,8 +1040,6 @@ class TestBrainMemoryNodeSafe:
         # No raw leaks
         for forbidden in ("stdout", "stderr", "raw_output", "value"):
             assert forbidden not in meta
-
-
 
 
 class TestGitStatusBrainNode:
@@ -1343,8 +1102,6 @@ class TestGitStatusBrainNode:
         assert git_nodes[0].status == "unavailable"
 
 
-
-
 class TestStopReasonBrainNode:
     def test_stop_reason_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1362,4 +1119,3 @@ class TestStopReasonBrainNode:
         assert len(sr_nodes) >= 1
         codes = [n.metadata.get("reason_code") for n in sr_nodes]
         assert "no_target_repo" in codes
-

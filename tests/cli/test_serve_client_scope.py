@@ -33,10 +33,14 @@ EXPECTED_COMMANDS = frozenset({"job.stop", "job.pause", "job.unpause", "job.run"
 #: `job_stop_cmd.py`, `job.pause`/`job.unpause` -> `job_pause_cmd.py`,
 #: `job.run` -> `do_cmd.py`. `apps/cli/serve_client.py` only DEFINES
 #: `forward_effect` and `supervisor_answers`; it calls neither itself.
+#: `chat_cmd.py` asks `supervisor_answers` only, before it sends a confirmed card
+#: over the supervisor's socket (amend1015f D20); it forwards no effect, so the
+#: four literals of test (a) stay four.
 EXPECTED_MODULES = frozenset({
     "apps/cli/commands/job_stop_cmd.py",
     "apps/cli/commands/job_pause_cmd.py",
     "apps/cli/commands/do_cmd.py",
+    "apps/cli/commands/chat_cmd.py",
 })
 
 _BRIDGE_NAMES = frozenset({"forward_effect", "supervisor_answers"})

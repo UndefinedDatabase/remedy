@@ -3,8 +3,9 @@
 The incident: a committed repository holding only `README.md` ("# Test\\n") and the order "Add one
 concise project-description paragraph below the existing heading in README.md. Change no other
 files." run as a bare `remedy do`, with no `--force-job`, no approval flag and no `--no-llm`.
-It must plan with ZERO provider calls, open the cockpit before the builder runs, say what it is
-doing as it goes, and leave the target untouched.
+It must plan with ZERO provider calls, say what it is doing as it goes, and leave the target
+untouched. (The cockpit it once opened before the builder ran was deleted with the old face,
+operator amendment amend1015-face-migration, DECISION amend1015f D22.)
 
 In-process through `apps.cli.grouped.main`, the data root under `tmp_path`, the fake builder and
 reviewer. Every model-call factory is a counter that fails the test when reached, which is the
@@ -25,7 +26,6 @@ INCIDENT_ORDER = (
     "Add one concise project-description paragraph below the existing heading in README.md. "
     "Change no other files.")
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
-COCKPIT_URL = "http://127.0.0.1:43210/?job={job_id}&token=t"
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -78,9 +78,9 @@ def planning_calls(monkeypatch) -> list[str]:
 
 @pytest.fixture
 def events(monkeypatch) -> list[str]:
-    """The walk's ordered events: ``cockpit``, ``builder``, ``reviewer`` and ``progress: <line>``."""
+    """The walk's ordered events: ``builder``, ``reviewer`` and ``progress: <line>``."""
     log: list[str] = []
-    from packages.orchestration import do_cockpit, do_progress
+    from packages.orchestration import do_progress
     from packages.orchestration.pingpong_provider import FakeProvider
 
     for method, name in (("build", "builder"), ("review", "reviewer")):
@@ -92,11 +92,6 @@ def events(monkeypatch) -> list[str]:
 
         monkeypatch.setattr(FakeProvider, method, counted)
 
-    def launcher(job_id: str) -> str:
-        log.append("cockpit")
-        return COCKPIT_URL.format(job_id=job_id)
-
-    monkeypatch.setattr(do_cockpit, "launch_do_cockpit", launcher)
     real_progress = do_progress.DoProgress
     monkeypatch.setattr(
         do_progress, "DoProgress",
@@ -131,7 +126,7 @@ def test_the_incident_order_is_one_job_one_task_with_no_flag_and_no_planning_cal
 
     assert planning_calls == []
     assert [s["name"] for s in data["steps"]] == [
-        "init", "study", "plan", "shape", "ui", "run", "apply"]
+        "init", "study", "plan", "shape", "run", "apply"]
     assert (data["shape"], data["shape_source"]) == ("one job", "bounded lane")
     assert "lane: bounded" in _step(data, "plan")["detail"]
     assert "deterministic" in _step(data, "plan")["detail"]
@@ -144,18 +139,21 @@ def test_the_incident_order_is_one_job_one_task_with_no_flag_and_no_planning_cal
     # Only the worker roles ran. The stock fake reviewer asks for one repair on its first round,
     # so its sequence is builder, reviewer, builder, reviewer; a real run with no repair is one
     # of each. Either way every builder call is answered by a reviewer call and nothing else ran.
-    assert set(events) == {"cockpit", "builder", "reviewer"}, events
+    assert set(events) == {"builder", "reviewer"}, events
     assert events.count("builder") == events.count("reviewer") >= 1, events
     assert _snapshot(repo) == before
     assert data["stopped_before_apply"] is True
     assert _step(data, "apply")["status"] == "stopped"
 
 
-def test_the_cockpit_is_launched_before_the_builder_runs(repo, capsys, planning_calls, events):
+def test_the_next_lines_name_the_serve_supervisor_and_the_jobs_story(
+        repo, capsys, planning_calls, events):
+    """amend1015f D22: where the cockpit's URL stood, the walk names the public API's reader."""
     data = json.loads(_do(capsys, "--json"))
 
-    assert events.index("cockpit") < events.index("builder")
-    assert COCKPIT_URL.format(job_id=data["job_ids"][0]) in _step(data, "ui")["detail"]
+    [job_id] = data["job_ids"]
+    assert data["next"].count("remedy serve start") == 1
+    assert f"remedy client story {job_id}" in data["next"]
 
 
 def test_the_study_of_a_tiny_repository_is_facts_without_narration(
@@ -169,7 +167,7 @@ def test_the_study_of_a_tiny_repository_is_facts_without_narration(
 # ── test 4: visible progress ─────────────────────────────────────────────────
 
 
-def test_the_human_walk_speaks_first_names_its_providers_and_prints_the_cockpit_url(
+def test_the_human_walk_speaks_first_and_names_its_providers(
         repo, capsys, planning_calls, events):
     out = _do(capsys)
 
@@ -178,14 +176,13 @@ def test_the_human_walk_speaks_first_names_its_providers_and_prints_the_cockpit_
     assert events.index(progress[0]) < events.index("builder")
     started = [line for line in progress if " started — " in line]
     assert [line.split()[2] for line in started] == [
-        "init", "study", "plan", "shape", "ui", "run", "apply"]
+        "init", "study", "plan", "shape", "run", "apply"]
     assert any("run started — builder fake, reviewer fake" in line for line in progress)
     assert any("study started — deterministic scan, no provider call" in line for line in progress)
     assert any("bounded one-deliverable lane" in line for line in progress)
-    url_line = next(e for e in events if e.startswith("progress: [remedy] cockpit: http://"))
-    assert events.index(url_line) < events.index("builder")
     assert re.search(r"\[remedy\] run done — [\d.]+s", "\n".join(progress))
     assert "[done] plan:" in out
+    assert "Next: remedy serve start" in out
 
 
 # ── test 5: machine output preservation ──────────────────────────────────────
@@ -201,56 +198,15 @@ def test_json_output_is_one_clean_document_and_stderr_stays_silent(
     assert not [e for e in events if e.startswith("progress: ")]
 
 
-# ── test 6: the cockpit survives a blocked run, and a cockpit failure never stops the run ──
+# ── test 6: --no-ui is accepted and does nothing (amend1015f D21) ──────────
 
 
-def test_a_blocked_run_leaves_the_cockpit_already_started(
-        repo, capsys, planning_calls, events, monkeypatch):
-    from packages.core.models import RunState
-    from packages.orchestration import pingpong_job
-
-    real_run_job = pingpong_job.run_job
-
-    def blocked_run(job_id, **kwargs):
-        job = real_run_job(job_id, **kwargs)
-        job.state = RunState.BLOCKED
-        job.error = "no_file_changed"
-        return job
-
-    monkeypatch.setattr(pingpong_job, "run_job", blocked_run)
-
-    with pytest.raises(SystemExit) as exc:
-        _do(capsys, "--json")
-
-    assert exc.value.code == 1
-    assert events.count("cockpit") == 1
-    assert events.index("cockpit") < events.index("builder")
-
-
-def test_a_cockpit_that_does_not_come_up_prints_the_manual_command_and_the_run_goes_on(
-        repo, capsys, planning_calls, events, monkeypatch):
-    from packages.orchestration import do_cockpit
-    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
-
-    def failing_launcher(job_id: str) -> str:
-        raise do_cockpit.DoCockpitLaunchError("the cockpit did not come up within 15s; its log: x")
-
-    monkeypatch.setattr(do_cockpit, "launch_do_cockpit", failing_launcher)
-
-    out = _do(capsys)
-
-    line = next(e for e in events if "cockpit did not open" in e)
-    [job_id] = re.findall(r"remedy ui start ([0-9a-f]{16})", line)
-    assert load_job_plan(job_id).state == JOB_COMPLETED
-    assert events.index(line) < events.index("builder")
-    assert f"Next: remedy ui start {job_id}" in out
-
-
-def test_no_ui_still_skips_the_cockpit(repo, capsys, planning_calls, events):
+def test_no_ui_is_still_accepted_and_changes_nothing(repo, capsys, planning_calls, events):
     data = json.loads(_do(capsys, "--json", "--no-ui"))
 
-    assert "cockpit" not in events
-    assert _step(data, "ui")["status"] == "skipped"
+    assert [s["name"] for s in data["steps"]] == [
+        "init", "study", "plan", "shape", "run", "apply"]
+    assert _step(data, "run")["status"] == "done"
 
 
 # ── test 7: scaling up still works ───────────────────────────────────────────

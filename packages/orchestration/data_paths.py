@@ -136,7 +136,6 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("job_apply_records", "packages.orchestration.job_apply", "never; apply audit records"),
     DataRootClass("memory", "packages.memory.local_gateway", "never; memory cards"),
     DataRootClass("viewers", "apps.cli.commands.brain", "never; exported brain viewers"),
-    DataRootClass("ui", "apps.cli.commands.ui", "never; UI session registry and do logs"),
     DataRootClass("roadmap", "packages.orchestration.roadmap_index", "never; roadmap index and drafts"),
     DataRootClass("self_dogfood", "packages.orchestration.self_dogfood_execution", "never; self-dogfood attempts"),
     DataRootClass("smoke", "scripts/remedy_smoke.sh", "never; smoke summaries `remedy dev` reads"),

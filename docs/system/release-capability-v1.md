@@ -25,55 +25,30 @@ that could drift away from it.
 `[project.scripts]` maps `remedy` to `apps.cli.grouped:main`, so installing the
 wheel puts the CLI on PATH. The wheel target packages `packages` and `apps`.
 
-The built UI is carried explicitly by `artifacts = ["apps/ui/dist/**"]`, and it
-has to be named: `apps/ui/dist` is build output, untracked, and matched by the
-generic `dist/` entry in `.gitignore`, so a VCS-aware backend omits it otherwise.
-DECISION F086 D3 chose that mechanism by measurement at `72e07381`, from a probe
-worktree outside the repository — `pyproject.toml` as committed produced 414
-members and no files under `apps/ui/dist/`; `artifacts` produced 417 members,
-2155470 bytes and 3 UI files; a `force-include` table produced 417 members,
-2155479 bytes and the same 3. `artifacts` won because it needs no
-source-to-target path mapping and is the smaller of the two.
-
-The carry is NOT a guard. Measured at that same commit, a build with `artifacts`
-applied and no `apps/ui/dist` present exits 0 and ships the same 414-member wheel
-with no UI in it at all. That is what the build hook exists for.
+The wheel carries no UI. Until 2026-10-15 it carried the built `apps/ui/dist` through
+`artifacts = ["apps/ui/dist/**"]` (DECISION F086 D3), and the build hook refused a build with no
+built frontend (DECISION F086 D1 part (b)). The UI was deleted with the old cockpit, and
+amend1015f D3 reverses F086 D1: the carry and the guard are gone, and the wheel holds only
+`packages` and `apps`.
 
 ## The build hook
 
 `hatch_build.py` declares ONE hook class, `RemedyBuildHook`, because hatchling's
-`load_plugin_from_script` refuses a script defining two. Its `initialize` does two
-things. It calls `assert_frontend_assets_built`, which raises `ValueError` naming
-`apps/ui/dist/index.html` and telling the caller to build the frontend first — so
-DECISION F086 D1 part (b), never ship an empty UI silently, is enforced at build
-time instead of discovered by a user. And it merges `build_revision_metadata`
-into the build's `extra_metadata`.
+`load_plugin_from_script` refuses a script defining two. Its `initialize` merges
+`build_revision_metadata` into the build's `extra_metadata`, so `remedy --version` names the
+revision the wheel was built from.
 
-Both rules live in plain module-level functions, so the test suite exercises them
+The rule lives in plain module-level functions, so the test suite exercises them
 without the build backend installed. The revision is written to a temporary
 staging directory and never into the source tree: a generated file there would
 survive the build and report a revision nobody built.
 
-Neither rule binds the EDITABLE target. `build_target_ships_ui_assets` answers
-that question and `initialize` returns before both rules when the answer is no.
-`pip install -e` writes a path hook into the checkout and copies no asset
-anywhere, so refusing it protects nothing while breaking the dev install every
-fresh clone starts with — including this repository's own first CI step, which is
+The rule does not bind the EDITABLE target. `build_target_embeds_revision` answers
+that question and `initialize` returns before the rule when the answer is no.
+`pip install -e` writes a path hook into the checkout and builds nothing, so the
+embedding has nothing to write there; a checkout reports the build `dev`. A failing hook
+there once broke the dev install every fresh clone starts with — including this repository's own first CI step, which is
 how R-0598 was found, on run 32402941541.
-
-## Asset resolution has one mode, deliberately
-
-Remedy deliberately does NOT carry a two-mode asset resolver. DECISION F086 D3
-withdrew the one that was planned, after measurement: three `.parent` hops from
-`packages/orchestration/ui_server.py` land on the wheel ROOT, and `apps/` is a
-sibling of `packages/` at that root — the identical geometry a checkout has, so a
-single expression already satisfies both modes. A second resolution path would
-have been untested surface added to satisfy a premise that turned out false.
-
-The property is still pinned per mode, because a regression would otherwise stay
-invisible until a user's first serve: `TestFrontendDistResolution` in
-`tests/test_packaging_smoke.py` asserts wheel-root mode, checkout mode, and that a
-layout with no `index.html` resolves to `None`.
 
 ## Version and build info
 
@@ -115,7 +90,7 @@ A missing section and an empty one are distinguished on purpose: a caller refuse
 on both but must be able to say which. The budget is 8 MiB, measured rather than
 guessed — a wheel carrying a stand-in `index.html` was 2040197 B at F086 R12 and
 one carrying the built `apps/ui/dist` was 2155470 B at F086 R7 — so it is roughly
-four times the real artifact. It admits a UI bundle's growth while still refusing
+four times the real artifact; the wheel without the UI is smaller still. It keeps refusing
 what it exists to catch: a wheel that swallowed `node_modules`, `.git` or the test
 corpus.
 

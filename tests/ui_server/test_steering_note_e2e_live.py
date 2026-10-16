@@ -6,16 +6,16 @@ round it arrived in is never taken in, never reaches another task, and is listed
 report and by `remedy chat show` (SCENARIO B, NOT TAKEN IN). DECISION F030 D1 (the address),
 D2 (the write door) and D3 (the stream's `note` field) are all exercised through their real
 production paths — the write door's `job.steer`, the ping-pong loop's own consumption at the
-top of a round, and `events-since`, the same route the cockpit's stream uses.
+top of a round, and the run log the cockpit's stream was read from (its `events-since` route
+went with the cockpit, DECISION amend1015f D27).
 
 Structured like `test_pause_e2e_live.py`'s own classes — `@pytest.mark.subprocess`, a real
-job run in a subprocess, a real UI server started in a thread, and a real POST through
+job run in a subprocess, the write door served in a thread, and a real POST through
 `HTTPConnection` — and this file keeps its OWN copies of that file's `_RUNNER` shape,
-`_start_ui_server_for_job` and `_post`, per that file's own header rule ("each live test file
+`_start_door_for_job` and `_post`, per that file's own header rule ("each live test file
 owns its own copies of that file's helpers... the established convention here"), rather than
-importing them. `_all_events_since` is new to this file (the model reads its run log directly;
-this file reads the same events through the live write door's own `events-since` route,
-because DECISION F030 D3's `note` field is a property of THAT envelope, not of the run log).
+importing them. `_all_events_since` is new to this file; it reads the job's run log, where the
+fields DECISION F030 D3's `note` envelope carried come from.
 
 The one change to the model's runner: the provider is `HandshakeFakeProvider(FakeProvider)`,
 built with the pass round each scenario names. `create_provider` builds a FRESH provider for
@@ -31,7 +31,6 @@ import os
 import subprocess
 import sys
 import textwrap
-import threading
 import time
 from http.client import HTTPConnection
 from pathlib import Path
@@ -40,6 +39,7 @@ import pytest
 
 from packages.orchestration.data_paths import job_record_path, run_dir
 from packages.orchestration.prompt_segments import SegmentStabilityRank
+from tests.ui_server.door_host import run_log_frames, start_door_for_job
 
 CSRF_HEADER = "X-Remedy-CSRF"
 
@@ -117,31 +117,10 @@ print("FINAL:" + final.state, flush=True)
 # ---------------------------------------------------------------------------
 
 
-def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a thread and return `(port, token)`.
-
-    Mirrors `test_pause_e2e_live.py`'s helper of the same name and purpose — each live
-    test file owns its own copy, the established convention here.
-    """
-    import secrets
-
-    from packages.orchestration.ui_server import start_ui_server
-
-    info_file = str(tmp_path / f"server_info_{secrets.token_hex(4)}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    from tests.ui_server.server_start import wait_for_server_info
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return wait_for_server_info(info_file, t)["port"], token
+def _start_door_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Serve the write door for `job_id` and return `(port, token)`: the supervisor socket's
+    own handler on a loopback port (`tests/ui_server/door_host.py`, DECISION amend1015f D27)."""
+    return start_door_for_job(job_id, tmp_path)
 
 
 def _post(port: int, token: str, command: str, *, job_id: str, nonce: str,
@@ -167,31 +146,16 @@ def _job_data(data_dir: Path, job_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Helpers new to THIS file — the live write door's own events-since route
+# Helpers new to THIS file — the run log the events-since route read
 # ---------------------------------------------------------------------------
 
 
 def _all_events_since(port: int, token: str, job_id: str) -> list[dict]:
-    """Every event `events-since` will hand back, paged from cursor 0 — mirrors
-    `test_task_veto_e2e_live.py`'s own helper exactly. This is the same route the
-    cockpit's stream uses, and the one DECISION F030 D3's `note` field belongs to."""
-    events: list[dict] = []
-    cursor = "0"
-    while True:
-        conn = HTTPConnection("127.0.0.1", port, timeout=10)
-        try:
-            conn.request("GET", f"/api/jobs/{job_id}/events-since?token={token}&cursor={cursor}")
-            resp = conn.getresponse()
-            assert resp.status == 200
-            body = json.loads(resp.read())
-        finally:
-            conn.close()
-        events.extend(body["events"])
-        next_cursor = body["cursor"]
-        if next_cursor == cursor or not body["events"]:
-            break
-        cursor = next_cursor
-    return events
+    """Every event of the job's run log, from position 0 — where this test read the
+    cockpit's `events-since` route before it went (DECISION amend1015f D27). PORT and TOKEN
+    stay in the signature so every call site reads as it did."""
+    del port, token
+    return run_log_frames(job_id, Path(os.environ["REMEDY_DATA_DIR"]))
 
 
 def _prompt_trace(data_dir: Path, run_id: str) -> list[dict]:
@@ -264,7 +228,7 @@ class TestSteeringNoteTakenInLive:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 status, body = _post(port, token, "job.steer", job_id=job_id,
                                      nonce="n-steer-a", args={"task_id": t1, "message": note})
             finally:
@@ -335,10 +299,10 @@ class TestSteeringNoteTakenInLive:
         assert marker["task_id"] == t1
         assert marker["round_number"] == 2
 
-        # --- the stream, through the real events-since route ---
+        # --- the run log the stream was read from ---
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            port, token = _start_ui_server_for_job(job_id, tmp_path)
+            port, token = _start_door_for_job(job_id, tmp_path)
             events = _all_events_since(port, token, job_id)
         finally:
             os.environ.pop("REMEDY_DATA_DIR", None)
@@ -348,10 +312,12 @@ class TestSteeringNoteTakenInLive:
         consumed = [e for e in events if e["event"] == "steering_message_consumed"]
         assert len(received) == 1, received
         assert len(consumed) == 1, consumed
-        assert received[0]["note"] == {
-            "message_id": message_id, "text": note, "channel": "cockpit", "task_id": t1,
+        received_meta = received[0]["metadata"]
+        assert {key: received_meta.get(key) for key in ("message_id", "text", "channel")} == {
+            "message_id": message_id, "text": note, "channel": "cockpit",
         }
-        assert consumed[0]["steering"]["round_number"] == 2
+        assert received[0]["task_id"] == t1
+        assert consumed[0]["metadata"]["round_number"] == 2
         recv_seq = received[0]["seq"]
         cons_seq = consumed[0]["seq"]
         assert recv_seq < cons_seq
@@ -388,7 +354,7 @@ class TestSteeringNoteNotTakenInLive:
 
             os.environ["REMEDY_DATA_DIR"] = str(data_dir)
             try:
-                port, token = _start_ui_server_for_job(job_id, tmp_path)
+                port, token = _start_door_for_job(job_id, tmp_path)
                 status, body = _post(port, token, "job.steer", job_id=job_id,
                                      nonce="n-steer-b", args={"task_id": t1, "message": note})
             finally:

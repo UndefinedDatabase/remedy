@@ -13,10 +13,10 @@ stream carries, and says plainly when a message is still waiting or was never ta
 `remedy chat ask <job_id> "<text>" [--task <task id>] [--yes] [--json]` (F038 T003, DECISION
 F038 D10) is one line of the chat: `text` runs through `run_chat_turn`, and a question answers
 with its scope, its checked answer and its numbered evidence, while an action prints a card and
-sends it through the job's running cockpit only once it is confirmable and confirmed, by `--yes`
-or a `y` typed at a terminal prompt. Nothing is sent otherwise, and the exit code stays 0 either
-way; only a task id naming no task of the job, an absent or unreachable cockpit, or a cockpit
-that refuses the card answer above the floor.
+sends it through the `remedy serve start` supervisor's write door only once it is confirmable and
+confirmed, by `--yes` or a `y` typed at a terminal prompt (DECISION amend1015f D20). Nothing is
+sent otherwise, and the exit code stays 0 either way; only a task id naming no task of the job,
+an absent or unreachable supervisor, or a door that refuses the card answer above the floor.
 """
 from __future__ import annotations
 
@@ -159,8 +159,8 @@ def _render_chat_answer_turn(job_id: str, turn: object, *, json_output: bool) ->
 
 
 def _send_chat_card(job: object, turn: object, *, yes: bool, json_output: bool) -> None:
-    """Print a CARD turn's title and lines (S6), and send it through the job's running
-    cockpit only once it is confirmable and confirmed by `--yes` or a typed `y`. Receives the
+    """Print a CARD turn's title and lines (S6), and send it through the serve supervisor's
+    write door only once it is confirmable and confirmed by `--yes` or a typed `y`. Receives the
     whole turn, not just its card, so `--json` can emit `chat_turn_view(turn)` — the one wire
     shape the cockpit's read route gives too (DECISION F038 D11)."""
     import secrets
@@ -193,31 +193,31 @@ def _send_chat_card(job: object, turn: object, *, yes: bool, json_output: bool) 
         if not confirmed:
             not_sent_reason = "not confirmed"
         else:
-            from apps.cli.commands.ui import live_ui_session_for_job
+            from apps.cli.serve_client import supervisor_answers
             from packages.orchestration.chat_door import send_card_through_door
 
-            session = live_ui_session_for_job(job.job_id)
-            if session is None:
+            # DECISION amend1015f D20: the one write door is the serve supervisor's.
+            if not supervisor_answers():
                 fail(
-                    "cockpit_not_running",
-                    f"No cockpit is running for job {job.job_id}. Start one with: "
-                    f"remedy ui start {job.job_id}.",
+                    "serve_not_running",
+                    "No serve supervisor answers for this data root, so the card was not "
+                    "sent. Start one with: remedy serve start.",
                     json_output=json_output, exit_code=3, job_id=job.job_id,
                 )
             try:
                 door_answer = send_card_through_door(
                     card, job_id=job.job_id, client_nonce="chat-" + secrets.token_hex(8),
-                    port=int(session["port"]), token=str(session["token"]),
                 )
             except OSError as exc:
                 fail(
-                    "cockpit_unreachable", f"The cockpit could not be reached: {exc}.",
+                    "serve_unreachable",
+                    f"The serve supervisor could not be reached: {exc}.",
                     json_output=json_output, exit_code=3, job_id=job.job_id,
                 )
             if not door_answer.accepted:
                 fail(
                     "door_refused",
-                    f"The cockpit refused the card (status {door_answer.status}): "
+                    f"The serve supervisor refused the card (status {door_answer.status}): "
                     f"{door_answer.body.get('error', '')}.",
                     json_output=json_output, exit_code=1, job_id=job.job_id,
                 )
@@ -232,7 +232,7 @@ def _send_chat_card(job: object, turn: object, *, yes: bool, json_output: bool) 
         )
         return
     if sent:
-        print(f"Sent: {card.verb}. The cockpit answered: {outcome}.")
+        print(f"Sent: {card.verb}. The serve supervisor answered: {outcome}.")
     else:
         print(f"Not sent: {not_sent_reason}.")
 
@@ -241,7 +241,8 @@ def _cmd_chat_ask(
     job_id: str, text: str, *, task_id: str = "", yes: bool = False, json_output: bool = False,
 ) -> None:
     """Run one chat turn for `job_id`: a question is answered from its evidence, an action
-    becomes a card sent through the job's running cockpit once confirmed (DECISION F038 D10).
+    becomes a card sent through the serve supervisor's write door once confirmed (DECISION
+    F038 D10, DECISION amend1015f D20).
 
     Resolves the job exactly as `_cmd_chat_send` does — an unreadable record exits
     `EXIT_NOT_READY` — then runs `run_chat_turn`; a `task_id` naming no task of the job raises

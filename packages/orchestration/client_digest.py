@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Collection
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -352,10 +353,112 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
     }
 
 
+@dataclass
+class _ProjectReads:
+    """What `_read_projects` read of every project, for `build_client_digest`."""
+
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    mission_by_job_id: dict[str, Mission] = field(default_factory=dict)
+    abandoned_job_ids: set[str] = field(default_factory=set)
+    usage_by_job_id: dict[str, CostRow] = field(default_factory=dict)
+    every_ledger_read: bool = True
+    degraded: bool = False
+    skipped_files: list[str] = field(default_factory=list)
+
+
+def _read_projects(projects: list[Any], day_moment: datetime,
+                   project_ids: Collection[str] | None = None) -> _ProjectReads:
+    """Each project's entry with its missions and its cost of the day, every job's mission and
+    ledger totals (DECISION F304 D13: one grouped read per project ledger), and what could not be
+    read. Step (2) of `build_client_digest`'s boundary on `docs/system/structure-ledger-v1.md`,
+    moved out unchanged. With PROJECT_IDS only those projects are read (DECISION amend1015c D2)."""
+    reads = _ProjectReads()
+    for project in projects:
+        project_id = str(project.id)
+        if project_ids is not None and project_id not in project_ids:
+            continue
+        missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
+        reads.degraded = reads.degraded or mission_degraded
+        reads.skipped_files.extend(mission_skipped)
+        try:
+            cost_today: dict[str, Any] | None = {
+                **project_cost_of_day(project.id, day_moment),
+                "tokens": _day_tokens(project.id, day_moment),
+            }
+        except _LEDGER_READ_ERRORS:
+            cost_today = None
+            reads.degraded = True
+            reads.skipped_files.append(f"cost of the day of project {project_id}")
+        try:
+            for job_id, row in ledger_usage_by_job(project_id=project.id).items():
+                kept = reads.usage_by_job_id.get(job_id)
+                reads.usage_by_job_id[job_id] = row if kept is None else _merged_usage(kept, row)
+        except _LEDGER_READ_ERRORS:
+            reads.every_ledger_read = False
+            reads.degraded = True
+            reads.skipped_files.append(f"calls and tokens of the jobs of project {project_id}")
+        reads.entries.append({
+            "project_id": project_id,
+            "slug": project.slug or "",
+            "missions": [_mission_entry(m) for m in missions],
+            "cost_today": cost_today,
+        })
+        # Built once here, never one scan per job below.
+        for mission in missions:
+            for job_id in mission.job_ids():
+                reads.mission_by_job_id[job_id] = mission
+                if mission.status == MISSION_STATUS_ABANDONED:
+                    reads.abandoned_job_ids.add(job_id)
+    return reads
+
+
+def _listed_plans(job_ids: Collection[str] | None, project_ids: Collection[str] | None = None,
+                  ) -> tuple[list[JobPlan], bool, list[str]]:
+    """(the plans the digest reads, degraded, the skipped files): every job's, or with JOB_IDS
+    only those, an id with no record left out and an unreadable one named (DECISION F253 D4 (1)).
+    With PROJECT_IDS only the jobs whose `project_id` is one of them, so a client token's digest
+    holds its own projects' jobs alone, before the window (DECISION amend1015c D2); the digest
+    keeps only those projects too."""
+    if job_ids is None:
+        plans, degraded, skipped_files = list_job_plans_safe()
+    else:
+        plans, degraded, skipped_files = [], False, []
+        for job_id in sorted(set(job_ids)):
+            plan, plan_degraded = load_job_plan_safe(job_id)
+            if plan is None:
+                if plan_degraded:
+                    degraded = True
+                    skipped_files.append(job_id)
+                continue
+            plans.append(plan)
+    if project_ids is not None:
+        plans = [plan for plan in plans if str(plan.project_id or "") in project_ids]
+    return plans, degraded, skipped_files
+
+
+def _ended_job_window(job_entries: list[dict[str, Any]],
+                      ended_jobs: list[tuple[str, str, dict[str, Any]]], *, windowed: bool,
+                      every_ended_job: bool) -> dict[str, Any]:
+    """Add to JOB_ENTRIES the ended jobs the window lists, sort them by job id and answer the
+    digest's `job_window` (DECISION F304 D16): every job that still needs something, and the ended
+    jobs that ended last. Step (3) of `build_client_digest`'s boundary on
+    `docs/system/structure-ledger-v1.md`, moved out unchanged."""
+    if windowed:
+        ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
+        ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
+        listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
+        job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
+        job_window = {"ended_limit": ended_limit, "left_out": len(ended_jobs) - len(listed_ended)}
+    else:
+        job_window = {"ended_limit": None, "left_out": 0}
+    job_entries.sort(key=lambda entry: entry["job_id"])
+    return job_window
+
+
 # DECISION F295 D4 (2): the one builder of the `client` key `_cmd_status` adds to its answer.
-def build_client_digest(now: datetime | None = None, *,
-                        every_ended_job: bool = False,
-                        job_ids: Collection[str] | None = None) -> dict[str, Any]:
+def build_client_digest(now: datetime | None = None, *, every_ended_job: bool = False,
+                        job_ids: Collection[str] | None = None,
+                        project_ids: Collection[str] | None = None) -> dict[str, Any]:
     """The `client` object's version-1 frame (DECISION F295 D4 (2), (3); D5; D7); reads only, never writes.
 
     Projects sorted by slug, each with its missions newest first
@@ -382,7 +485,7 @@ def build_client_digest(now: datetime | None = None, *,
     with ``load_job_plan_safe``, an id with no record left out and an
     unreadable one named in ``skipped_files``; ``jobs`` lists every one of
     them, ``decisions`` and ``awaiting_apply`` only theirs, and ``job_window``
-    reads ``ended_limit`` null and ``left_out`` 0 (DECISION F253 D4 (1)).
+    reads ``ended_limit`` null and ``left_out`` 0 (DECISION F253 D4 (1)); see ``_listed_plans``.
     """
     when = now if now is not None else datetime.now(timezone.utc)
     day_moment = (when if when.tzinfo is not None
@@ -393,61 +496,16 @@ def build_client_digest(now: datetime | None = None, *,
 
     # R-1144: the read-only projection, never `list_projects`, which migrates a legacy record on read.
     projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
-    project_entries: list[dict[str, Any]] = []
-    mission_by_job_id: dict[str, Mission] = {}
-    abandoned_job_ids: set[str] = set()
-    # DECISION F304 D13: every job's ledger totals, one grouped read per project ledger.
-    usage_by_job_id: dict[str, CostRow] = {}
-    every_ledger_read = True
-    for project in projects:
-        project_id = str(project.id)
-        missions, mission_degraded, mission_skipped = list_missions_safe(project_id)
-        degraded = degraded or mission_degraded
-        skipped_files.extend(mission_skipped)
-        try:
-            cost_today: dict[str, Any] | None = {
-                **project_cost_of_day(project.id, day_moment),
-                "tokens": _day_tokens(project.id, day_moment),
-            }
-        except _LEDGER_READ_ERRORS:
-            cost_today = None
-            degraded = True
-            skipped_files.append(f"cost of the day of project {project_id}")
-        try:
-            for job_id, row in ledger_usage_by_job(project_id=project.id).items():
-                kept = usage_by_job_id.get(job_id)
-                usage_by_job_id[job_id] = row if kept is None else _merged_usage(kept, row)
-        except _LEDGER_READ_ERRORS:
-            every_ledger_read = False
-            degraded = True
-            skipped_files.append(f"calls and tokens of the jobs of project {project_id}")
-        project_entries.append({
-            "project_id": project_id,
-            "slug": project.slug or "",
-            "missions": [_mission_entry(m) for m in missions],
-            "cost_today": cost_today,
-        })
-        # Built once here, never one scan per job below.
-        for mission in missions:
-            for job_id in mission.job_ids():
-                mission_by_job_id[job_id] = mission
-                if mission.status == MISSION_STATUS_ABANDONED:
-                    abandoned_job_ids.add(job_id)
+    reads = _read_projects(projects, day_moment, project_ids)
+    degraded = degraded or reads.degraded
+    skipped_files.extend(reads.skipped_files)
+    project_entries, mission_by_job_id = reads.entries, reads.mission_by_job_id
+    abandoned_job_ids, usage_by_job_id = reads.abandoned_job_ids, reads.usage_by_job_id
+    every_ledger_read = reads.every_ledger_read
 
-    if job_ids is None:
-        plans, jobs_degraded, jobs_skipped = list_job_plans_safe()
-        degraded = degraded or jobs_degraded
-        skipped_files.extend(jobs_skipped)
-    else:
-        plans = []
-        for job_id in sorted(set(job_ids)):
-            plan, plan_degraded = load_job_plan_safe(job_id)
-            if plan is None:
-                if plan_degraded:
-                    degraded = True
-                    skipped_files.append(job_id)
-                continue
-            plans.append(plan)
+    plans, jobs_degraded, jobs_skipped = _listed_plans(job_ids, project_ids)
+    degraded = degraded or jobs_degraded
+    skipped_files.extend(jobs_skipped)
 
     job_entries: list[dict[str, Any]] = []
     ended_jobs: list[tuple[str, str, dict[str, Any]]] = []
@@ -504,16 +562,8 @@ def build_client_digest(now: datetime | None = None, *,
         else:
             job_entries.append(entry)
 
-    if job_ids is None:
-        # DECISION F304 D16: every job that still needs something, and the ended jobs that ended last.
-        ended_jobs.sort(key=lambda ended: (ended[0], ended[1]), reverse=True)
-        ended_limit = None if every_ended_job else CLIENT_DIGEST_ENDED_JOB_LIMIT
-        listed_ended = ended_jobs if ended_limit is None else ended_jobs[:ended_limit]
-        job_entries.extend(entry for _ended, _job_id, entry in listed_ended)
-        job_window = {"ended_limit": ended_limit, "left_out": len(ended_jobs) - len(listed_ended)}
-    else:
-        job_window = {"ended_limit": None, "left_out": 0}
-    job_entries.sort(key=lambda entry: entry["job_id"])
+    job_window = _ended_job_window(job_entries, ended_jobs, windowed=job_ids is None,
+                                   every_ended_job=every_ended_job)
 
     return {
         "version": CLIENT_DIGEST_VERSION,

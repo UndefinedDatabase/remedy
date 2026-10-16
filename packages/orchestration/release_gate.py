@@ -18,11 +18,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-#: Measured, not guessed: a wheel built at F086 R12 carrying a stand-in
-#: `index.html` is 2040197 B, one carrying the built `apps/ui/dist` was 2155470 B
-#: at F086 R7. The budget is 8 MiB, about four times that: it admits a real UI
-#: bundle's growth while still refusing what it exists to catch — a wheel that
-#: swallowed `node_modules`, `.git` or the test corpus.
+#: Measured, not guessed: a wheel built at F086 R12 was 2040197 B, and one that
+#: still carried the old cockpit's built UI was 2155470 B at F086 R7; the wheel
+#: carries no UI since amend1015f D3. The budget is 8 MiB, about four times that,
+#: and still refuses what it exists to catch — a wheel that swallowed
+#: `node_modules`, `.git` or the test corpus.
 WHEEL_SIZE_BUDGET_BYTES = 8 * 1024 * 1024
 
 

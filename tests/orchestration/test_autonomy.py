@@ -6,11 +6,9 @@ Migrated from step-numbered test files.
 from __future__ import annotations
 
 import ast
-import json
 import shlex
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -19,11 +17,7 @@ from packages.core.models import RunState
 from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
-_ROOT = Path(__file__).resolve().parent.parent.parent
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-
-UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 
 ORCH = REPO_ROOT / "packages" / "orchestration"
 
@@ -43,64 +37,7 @@ def _make_job(**overrides) -> JobPlan:
     return JobPlan(**defaults)
 
 
-def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    job = JobPlan(job_title=name)
-    if tasks:
-        for t in tasks:
-            task_type = t.get("type", "readme_draft")
-            inputs = dict(t.get("metadata", {}))
-            inputs.setdefault("task_type", task_type)
-            task = TaskEntry(
-                title=t.get("description", task_type),
-                inputs=inputs,
-            )
-            if "status" in t:
-                task.status = RunState(t["status"])
-            job.tasks.append(task)
-    return job
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 135 — `remedy do "<goal>"` Direct Contract
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    job = JobPlan(job_title=name)
-    if tasks:
-        for t in tasks:
-            task_type = t.get("type", "readme_draft")
-            inputs = dict(t.get("metadata", {}))
-            inputs.setdefault("task_type", task_type)
-            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
-            if "status" in t:
-                task.status = RunState(t["status"])
-            job.tasks.append(task)
-    return job
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 141 — Commit-Readiness Task Summary Bugfix
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def _make_events() -> list[dict]:
-    return [
-        {"event": "job_created", "run_id": "r1", "job_id": "j1",
-         "timestamp": "2026-01-01T00:00:00", "outcome": "ok", "metadata": {}},
-        {"event": "patch_intent_created", "run_id": "r1", "job_id": "j1",
-         "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
-         "metadata": {"intent_id": "pi1", "target_path": "foo.py", "action": "create"}},
-    ]
-
-
 # ── Step 68.1: Event Schema Registry ────────────────────────────────────
-
-
 
 
 class TestReadinessDecisionIntegration:
@@ -128,293 +65,7 @@ class TestReadinessDecisionIntegration:
         assert signals["no_open_decisions"] is False
 
 
-
-
-class TestDevStatusHonestySchema:
-    """Dev status must be honest about actual state."""
-
-    def test_status_json_schema(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            required = {
-                "version", "cli_ok", "latest_smoke", "ui_contract_ok",
-                "task_progress_ok", "worker_cleanup_ok",
-                "autocoder_fake_e2e_ok",
-                "remaining_blockers",
-            }
-            missing = required - set(data.keys())
-            assert not missing
-
-    def test_smoke_info_schema(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            smoke = data["latest_smoke"]
-            assert "found" in smoke
-            assert "status" in smoke
-            assert "job_id" in smoke
-
-    def test_no_smoke_reports_unknown(self):
-        from apps.cli.commands.dev import _find_latest_smoke
-        with patch("pathlib.Path.is_dir", return_value=False):
-            result = _find_latest_smoke()
-            assert result["found"] is False
-            assert result["status"] == "unknown"
-
-    def test_ui_contract_ok(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["ui_contract_ok"] is True
-            assert data["task_progress_ok"] is True
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 139 — Next Action Surface
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-class TestNextActionGroundedInJobState:
-    """Next action must be grounded in job state."""
-
-    def test_completed_job_no_action(self):
-        from packages.core.models import RunState
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135(tasks=[{"type": "t1", "status": "completed"}])
-        job.state = RunState.COMPLETED
-        na = build_next_action(job, [])
-        assert na["version"] == 1
-        assert na["primary_action"]["label"] == "No action needed"
-
-    def test_active_job_suggests_ui(self):
-        from packages.core.models import RunState
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135(tasks=[{"type": "t1", "status": "running"}])
-        job.state = RunState.RUNNING
-        na = build_next_action(job, [])
-        assert "ui" in na["primary_action"]["command"].lower()
-
-    def test_failed_test_suggests_inspect(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135(tasks=[{"type": "t1", "status": "running"}])
-        events = [{"event": "test_run_completed", "metadata": {"exit_code": 1}}]
-        na = build_next_action(job, events)
-        assert "test" in na["primary_action"]["label"].lower()
-
-    def test_blocker_suggests_resolve(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135()
-        events = [{"event": "stop_reason_recorded", "outcome": "pending"}]
-        na = build_next_action(job, events)
-        assert "blocker" in na["primary_action"]["label"].lower()
-
-    def test_reviewer_suggestion(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135(tasks=[{
-            "type": "review", "status": "pending",
-            "metadata": {"source": "reviewer"},
-        }])
-        na = build_next_action(job, [])
-        assert na["primary_action"]["requires_human"] is True
-
-    def test_next_action_schema(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135()
-        na = build_next_action(job, [])
-        required = {"version", "job_id", "stage", "primary_action", "secondary_actions"}
-        assert not (required - set(na.keys()))
-        pa = na["primary_action"]
-        assert "label" in pa
-        assert "command" in pa
-        assert "risk" in pa
-        assert "requires_human" in pa
-
-    def test_secondary_actions_include_vram(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135()
-        na = build_next_action(job, [])
-        cmds = [a["command"] for a in na["secondary_actions"]]
-        assert any("worker unload" in c for c in cmds)
-
-    def test_no_raw_leaks_in_next_action(self):
-        from packages.orchestration.ui_view_model import build_next_action
-        job = _make_job_s135()
-        na = build_next_action(job, [])
-        na_str = json.dumps(na)
-        for bad in ("raw_output", "command_output", "Traceback", "diff_preview"):
-            assert bad not in na_str
-
-    def test_next_action_endpoint_registered(self):
-        """next-action endpoint exists in UI server routes."""
-        content = Path("packages/orchestration/ui_server.py").read_text()
-        assert "next-action" in content
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 140 — Commit-Readiness Preview
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 144 — Smoke Closure
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 146 — Docs / CLI Help Polish
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-class TestLiveRunningDefaultsFalseOnFailure:
-    def test_live_running_defaults_false(self):
-        """When liveData is empty (API failed), live.running must be false."""
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "liveData?.running ?? false" in src
-        assert "liveData?.running ?? true" not in src
-
-    def test_api_health_type_exists(self):
-        src = (UI_SRC / "api" / "types.ts").read_text()
-        assert "RemedyApiHealth" in src
-        assert "degraded" in src
-        assert "failedEndpoints" in src
-
-    def test_dashboard_type_has_api_health(self):
-        src = (UI_SRC / "api" / "types.ts").read_text()
-        assert "apiHealth: RemedyApiHealth" in src
-
-    def test_failed_endpoints_tracked(self):
-        src = (UI_SRC / "api" / "remedyApi.ts").read_text()
-        assert "failedEndpoints" in src
-        # Dashboard-first: tracks failed endpoints including "dashboard" and "brain-view-model"
-        assert "failedEndpoints" in src
-
-
-# ── Step 257: Exact Dashboard Truth Contract v2 ─────────────────────────────
-
-
-
-
-class TestDashboardV3RuntimeContract:
-    def test_dashboard_v3_runtime(self):
-        """Runtime test: _build_dashboard returns exact v2 contract shape."""
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = JobPlan(job_title="truth-test", user_prompt="test contract")
-        result = _build_dashboard(job)
-
-        # Exact top-level fields
-        assert result["version"] == 3
-        assert "job_id" in result
-        assert "generated_at" in result
-        assert "source" in result
-        assert result["source"] == "server"
-
-        # Live block
-        live = result["live"]
-        assert "running" in live
-        assert "state" in live
-        assert "current_actor" in live
-        assert "last_event_at" in live
-        assert "stale" in live
-        assert "confidence" in live
-
-        # Metrics
-        metrics = result["metrics"]
-        assert "open" in metrics
-        assert "planned" in metrics
-        assert "done" in metrics
-        assert "progress_percent" in metrics
-        assert "source_counts" in metrics
-        assert "computed_from" in metrics
-
-        # Tasks list
-        assert isinstance(result["tasks"], list)
-
-        # Activity
-        assert isinstance(result["activity"], list)
-
-        # Phases
-        assert isinstance(result["phases"], list)
-
-        # Graph summary
-        gs = result["graph_summary"]
-        assert "node_count" in gs
-        assert "edge_count" in gs
-        assert "source" in gs
-        assert "mode" in gs
-
-        # Next action
-        na = result["next_action"]
-        assert "kind" in na
-        assert "label" in na
-        assert "requires_user" in na
-
-        # Truth
-        truth = result["truth"]
-        assert "synthetic_count" in truth
-        assert "demo_mode" in truth
-        assert "missing_sources" in truth
-        assert "computed_from" in truth
-
-        # Redaction
-        redaction = result["redaction"]
-        assert redaction["raw_content_exposed"] is False
-        assert "policy" in redaction
-
-    def test_dashboard_with_tasks(self):
-        """Dashboard with real tasks shows them correctly."""
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = JobPlan(
-            job_title="has-tasks",
-            user_prompt="test",
-            tasks=[TaskEntry(title="First task"), TaskEntry(title="Second task")],
-        )
-        result = _build_dashboard(job)
-        assert len(result["tasks"]) == 2
-        assert result["tasks"][0]["title"] == "First task"
-        assert result["tasks"][0]["source"] == "real"
-        assert result["truth"]["demo_mode"] is False  # No events ≠ demo (Step 263 fix)
-        assert result["truth"]["synthetic_count"] == 0
-
-    def test_dashboard_no_fake_task_names(self):
-        """Tasks must not have generic fake names."""
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = JobPlan(job_title="real", user_prompt="test", tasks=[TaskEntry(title="Parse the config file")])
-        result = _build_dashboard(job)
-        assert result["tasks"][0]["title"] == "Parse the config file"
-
-    def test_dashboard_no_raw_content(self):
-        """Dashboard must not expose raw content."""
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.ui_server import _build_dashboard
-
-        job = JobPlan(job_title="test", user_prompt="secret prompt with API_KEY=abc123")
-        result = _build_dashboard(job)
-        payload = json.dumps(result)
-        assert "API_KEY" not in payload
-        assert "abc123" not in payload
-
-
 # ── Step 258: Generated Command Contract ────────────────────────────────────
-
-
 
 
 class TestGeneratedCommandCatalogConsistency:
@@ -447,8 +98,6 @@ class TestGeneratedCommandCatalogConsistency:
 
 
 # ── Step 259: Autonomy Level Single Source Of Truth ─────────────────────────
-
-
 
 
 class TestAutonomyLevelSingleSourceOfTruth:
@@ -492,8 +141,6 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
 
 # ── Step 260: Mutation + Execution Safety Quick Wins ────────────────────────
-
-
 
 
 class TestMutationExecutionSafetyInvariants:
@@ -587,12 +234,6 @@ class TestMutationExecutionSafetyInvariants:
             src = f.read_text()
             assert "0.0.0.0" not in src, f"{f.name} binds 0.0.0.0"
 
-    def test_localhost_only(self):
-        src = (ORCH / "ui_server.py").read_text()
-        assert "127.0.0.1" in src
-
-
-
 
 class TestGitStatusReader:
     def test_read_current_repo(self):
@@ -654,8 +295,6 @@ class TestGitStatusReader:
             if isinstance(node, ast.keyword) and node.arg == "shell":
                 if isinstance(node.value, ast.Constant) and node.value.value is True:
                     pytest.fail("shell=True found in git_status.py")
-
-
 
 
 class TestStopReasonsCRUD:
@@ -723,8 +362,6 @@ class TestStopReasonsCRUD:
         assert loaded.status == "resolved"
 
 
-
-
 class TestStopReasonsDerive:
     def test_derive_no_repo(self):
         from packages.orchestration.stop_reasons import derive_stop_reasons
@@ -765,8 +402,6 @@ class TestStopReasonExport:
         assert data["reason_code"] == "test_failed"
         assert data["status"] == "active"
         assert isinstance(data["next_actions"], list)
-
-
 
 
 class TestAutonomyLoopBasic:
@@ -833,8 +468,6 @@ class TestAutonomyLoopBasic:
         assert len(result.stop_reasons) >= 1
 
 
-
-
 class TestAutonomyLoopExport:
     def test_export_json(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -874,7 +507,6 @@ class TestAutonomyLoopExport:
         text = summarize_loop_result(result)
         assert "Autonomy Loop" in text
         assert "Level: 0" in text
-
 
 
 class TestTheLevelFiveGateReadsDurableSnapshotTruth:

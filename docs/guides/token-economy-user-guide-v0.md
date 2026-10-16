@@ -12,8 +12,9 @@ enough to run locally, or expensive enough that you want to look first. Estimate
 (roughly four characters per token) — they are clearly labeled `estimated`, never `verified`.
 
 These estimates have no command of their own since F261 round 18 deleted the `token` group
-(DECISION amend0905-vocab D4). They are the `token_economy` section of a job's payload in the web
-cockpit, opened with `remedy ui start`.
+(DECISION amend0905-vocab D4). The web cockpit that showed them as the `token_economy` section of a
+job's payload was deleted on 2026-10-15 (amend1015f D3); the report is still built by
+`token_economy_report`, and `remedy job budget` sets the budget below.
 
 ## Setting a budget
 

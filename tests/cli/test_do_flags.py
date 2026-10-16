@@ -246,7 +246,7 @@ def test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder(r
 
     assert data["mission_id"]
     assert isinstance(data["steps"], list)
-    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "ui"]
+    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "run"]
     assert _step(data, "run")["status"] == "done"
     [job_id] = data["job_ids"]
     config = load_job_plan(job_id).execution_config

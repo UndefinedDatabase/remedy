@@ -20,7 +20,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from tests.ui_server.server_start import wait_for_server_info
+from tests.ui_server.door_host import start_door_for_job
 
 # The wire spelling is pinned here on purpose: a test that imports the constant
 # it is checking cannot catch a rename of the header the browser has to send.
@@ -64,7 +64,7 @@ def command_rate_limit(monkeypatch):
 
 
 class TestCommandChannelDoor:
-    """Integration tests that start a real server on a free port."""
+    """Integration tests that serve the write door on a free port."""
 
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
@@ -75,34 +75,10 @@ class TestCommandChannelDoor:
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
-    def _start_server(self, **kwargs):
-        """Start the server in a background thread, return (port, token)."""
-        import secrets as _s
-
-        from packages.orchestration.ui_server import start_ui_server
-
-        info_file = str(self.tmp_path / "server_info.json")
-        token = _s.token_urlsafe(16)
-
-        def run():
-            try:
-                start_ui_server(
-                    self.job_id,
-                    host="127.0.0.1",
-                    port=0,
-                    token=token,
-                    open_browser=False,
-                    info_file=info_file,
-                    **kwargs,
-                )
-            except (SystemExit, KeyboardInterrupt):
-                pass
-
-        t = threading.Thread(target=run, daemon=True)
-        t.start()
-
-        info = wait_for_server_info(info_file, t)
-        return info["port"], token
+    def _start_server(self):
+        """Serve the write door in a background thread, return (port, token): the
+        supervisor socket's own handler on a loopback port (DECISION amend1015f D27)."""
+        return start_door_for_job(self.job_id, self.tmp_path)
 
     # -- request helpers ---------------------------------------------------
 
@@ -257,15 +233,17 @@ class TestCommandChannelDoor:
         assert status == 404
         assert body["error"] == "job not found"
 
-    def test_unresolvable_job_id_matches_the_get_door(self):
+    def test_unresolvable_job_id_answers_the_job_loaders_own_refusal(self):
+        # The GET door this once matched was deleted with the old cockpit (amend1015f D19);
+        # the answer it shared with the POST door was always the job loader's, read here.
+        from packages.orchestration.ui_server import _load_job
+
         port, token = self._start_server()
         missing = str(uuid4())
         post_status, post_body = self._request(
             port, "POST", self._commands_path(job_id=missing),
             body=self._valid_body(), headers=self._auth_headers(token))
-        get_status, get_body = self._request(
-            port, "GET", f"/api/jobs/{missing}/dashboard?token={token}")
-        assert (post_status, post_body) == (get_status, get_body)
+        assert (post_status, post_body) == _load_job(missing)[1] == (404, {"error": "job not found"})
 
     def test_job_id_is_checked_after_the_credentials(self):
         port, token = self._start_server()
@@ -1286,20 +1264,15 @@ class TestCommandChannelDoor:
         return [e for e in self._run_events()
                 if e.get("event") == COMMAND_ACCEPTED_EVENT]
 
-    def test_an_accepted_command_reaches_the_sse_frame_it_announces(self):
-        """The ledger event AND the frame the stream builds out of it.
+    def test_an_accepted_command_reaches_the_ledger_with_its_outcome(self):
+        """The ledger event an accepted command announces.
 
-        `_safe_event_summary` is the one writer both event transports share, so
-        a field it drops never reaches a client however faithfully the ledger
-        recorded it. `outcome` survives only because `RunLogWriter.log` takes it
-        as a NAMED parameter: the same value passed as plain metadata would sit
-        one level down and arrive on the wire as the empty string.
+        `outcome` survives only because `RunLogWriter.log` takes it as a NAMED
+        parameter: the same value passed as plain metadata would sit one level down.
+        The half of this test that read the old cockpit's event stream went with that
+        stream (amend1015f D19).
         """
-        from packages.orchestration.ui_server import (
-            COMMAND_ACCEPTED_EVENT,
-            _safe_event_summary,
-            sse_event_frame,
-        )
+        from packages.orchestration.ui_server import COMMAND_ACCEPTED_EVENT
 
         port, token = self._start_server()
         status, body = self._request(
@@ -1315,15 +1288,6 @@ class TestCommandChannelDoor:
         seq, event = matches[0]
         assert event["outcome"] == "accepted", event
         assert event["metadata"]["command"] == "job.stop", event
-
-        frame = sse_event_frame(seq, _safe_event_summary(seq, event))
-        payload = json.loads(frame.decode().split("data: ", 1)[1])
-        assert payload["event"] == COMMAND_ACCEPTED_EVENT, payload
-        assert payload["outcome"] == "accepted", payload
-        assert payload["seq"] == seq, payload
-        # The args never reach the stream: the safe summary is a fixed envelope,
-        # and D6 keeps this door's own attribution in the audit file.
-        assert "command" not in payload, payload
 
     def test_a_refused_command_announces_nothing(self):
         """The discriminator. A `decision.resolve` with no args is D21's 409.
@@ -1388,7 +1352,9 @@ class TestCommandChannelDoor:
     # -- F: the route walk, F009's 405 discipline ---------------------------
 
     #: Routes `do_GET` dispatches with a bare `path ==` comparison.
-    LITERAL_GET_ROUTES = frozenset({"/", "/api/state", "/api/layers", "/api/projects"})
+    #: amend1015f D19: the old cockpit's read routes were deleted, so `do_GET` dispatches no
+    #: route of its own any more; only the public HTTP API's registry is walked below.
+    LITERAL_GET_ROUTES = frozenset()
 
     @staticmethod
     def _do_get_route_facts():
@@ -1400,10 +1366,9 @@ class TestCommandChannelDoor:
 
         The known limit, written where a reader will search for it: a route
         matched STRUCTURALLY — by splitting `path` and comparing parts, as
-        `events-since`, `events/stream` and the three `nodes/…detail` routes are
-        — has no literal to extract, so it is spelled out in `_walkable_paths`
-        and a NEW one of that kind is the one case neither half of the drift
-        test can see.
+        the old cockpit's `events-since` and `nodes/…detail` routes were — has no
+        literal to extract, and a NEW one of that kind is the one case neither half
+        of the drift test can see.
         """
         import ast
         from pathlib import Path
@@ -1438,8 +1403,7 @@ class TestCommandChannelDoor:
     def _walkable_paths(self):
         """Every concrete GET path this job exposes, ready to be POSTed at.
 
-        The structural routes are spelled out here for the reason the docstring
-        above gives: there is no literal to derive them from. The public HTTP API's
+        The public HTTP API's
         routes come from its own registry, `PUBLIC_API_ROUTES`, rather than from a
         literal or an endpoint dict here, so a route added there is walked for free;
         a route's own `{name}` path segments are written with this job's id, so the
@@ -1448,24 +1412,9 @@ class TestCommandChannelDoor:
         from packages.orchestration.public_api import PUBLIC_API_ROUTES
 
         _, endpoints = self._do_get_route_facts()
-        paths = ["/", "/api/state", "/api/layers", "/api/projects", "/assets/index.js"]
+        # Three paths the deleted cockpit once served, which the door must still refuse.
+        paths = ["/", "/api/state", f"/api/jobs/{self.job_id}/dashboard"]
         paths += [f"/api/jobs/{self.job_id}/{name}" for name in sorted(endpoints)]
-        paths += [
-            f"/api/jobs/{self.job_id}/events-since",
-            f"/api/jobs/{self.job_id}/chat",
-            f"/api/jobs/{self.job_id}/events/stream",
-            f"/api/jobs/{self.job_id}/nodes/node-1/detail",
-            f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
-            f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
-            f"/api/jobs/{self.job_id}/task-runs/T001/diff",
-            f"/api/jobs/{self.job_id}/task-runs/T001/hunk-decisions",
-            f"/api/jobs/{self.job_id}/task-runs/T001/rounds",
-            f"/api/jobs/{self.job_id}/artifacts/file",
-            "/api/projects/any-project/summary",
-            # Every path below a project goes to `cockpit_project_routes` (DECISION F305 D2).
-            "/api/projects/any-project/missions",
-            "/api/projects/any-project/missions/any-mission/orders",
-        ]
         for route in PUBLIC_API_ROUTES:
             concrete = "/".join(
                 self.job_id if segment.startswith("{") and segment.endswith("}") else segment
@@ -1490,7 +1439,9 @@ class TestCommandChannelDoor:
         missing = sorted(name for name in endpoints
                          if f"/api/jobs/{self.job_id}/{name}" not in walked)
         assert missing == [], missing
-        assert endpoints, "the endpoint dict came back empty, so the walk is vacuous"
+        # Non-vacuity now that `do_GET` has no route dict: the walk still carries the
+        # public HTTP API's registry, so it is not an empty loop.
+        assert len(walked) > len(self.LITERAL_GET_ROUTES) + 3, sorted(walked)
 
     def test_every_route_the_server_serves_refuses_post_put_and_delete(self):
         """The walk itself: one real request per route per mutating method.
@@ -1555,12 +1506,13 @@ class TestCommandChannelDoor:
 
     # -- B: the GET door still behaves as it did ----------------------------
 
-    def test_get_door_still_answers_200_for_the_correct_token(self):
+    def test_a_deleted_read_route_answers_404_for_the_correct_token(self):
+        # amend1015f D19: the cockpit's read routes are gone; the token still gates the answer.
         port, token = self._start_server()
         status, body = self._request(
             port, "GET", f"/api/jobs/{self.job_id}/dashboard?token={token}")
-        assert status == 200
-        assert body["job_id"] == self.job_id
+        assert status == 404
+        assert body["error"] == "not found"
 
     def test_get_door_still_answers_403_for_a_wrong_token(self):
         port, token = self._start_server()

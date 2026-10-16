@@ -1,7 +1,7 @@
 """F038 T003 — `remedy chat ask <job_id> "<text>" [--task <task id>] [--yes] [--json]` runs one
 chat turn: a question prints its scope, its checked answer and its numbered evidence; a card
-prints its title and lines and is sent through the job's running cockpit only when confirmable
-and confirmed (DECISION F038 D10).
+prints its title and lines and is sent through the serve supervisor's write door only when
+confirmable and confirmed (DECISION F038 D10, DECISION amend1015f D20).
 
 Temporary data roots only. No provider call is ever made: `chat.model_written` stays off, so
 every question here is answered mechanically.
@@ -9,12 +9,7 @@ every question here is answered mechanically.
 from __future__ import annotations
 
 import json
-import os
 import re
-import secrets
-import subprocess
-import sys
-import threading
 from pathlib import Path
 
 import pytest
@@ -25,13 +20,24 @@ from packages.orchestration import steering as ST
 from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
-from packages.orchestration.ui_server import start_ui_server
-from tests.ui_server.server_start import wait_for_server_info
+from packages.orchestration.serve_paths import serve_paths
+from tests.ui_server.door_host import SupervisorThread
 
 
 @pytest.fixture(autouse=True)
-def isolate_data_root(tmp_path, monkeypatch):
-    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "remedy_data"))
+def isolate_data_root(tmp_path_factory, monkeypatch):
+    """A short data root, so a supervisor's socket path stays below its length limit."""
+    root = tmp_path_factory.mktemp("ca")
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+    return root
+
+
+@pytest.fixture
+def supervisor(isolate_data_root):
+    """A real `remedy serve start` supervisor for the test's data root (amend1015f D20)."""
+    running = SupervisorThread(isolate_data_root)
+    yield running
+    running.close()
 
 
 def _run(argv: list[str]) -> int:
@@ -62,46 +68,6 @@ def _audit_lines(job_id: str) -> list[dict]:
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_bytes().splitlines()]
-
-
-def _sessions_dir() -> Path:
-    d = Path(resolve_data_root()) / "ui" / "sessions"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def _start_live_cockpit(job_id: str, capsys) -> tuple[int, str]:
-    """Start a real UI server for `job_id` in a background thread, publishing its info
-    file directly INTO the UI session registry — as `remedy ui start` does — so
-    `live_ui_session_for_job` finds it and its `pid` is this test process (mirrors
-    `tests/orchestration/test_chat_door.py`'s own `_start_ui_server_for_job`).
-
-    The server thread shares this process's stdout with `capsys`, so its own startup
-    line is drained here — before the caller's own command runs — rather than leaking
-    into the caller's captured output.
-    """
-    info_file = str(_sessions_dir() / f"{job_id}.json")
-    token = secrets.token_urlsafe(16)
-
-    def run():
-        try:
-            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
-                            open_browser=False, info_file=info_file, json_output=True)
-        except (SystemExit, KeyboardInterrupt):
-            pass
-
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    info = wait_for_server_info(info_file, t)
-    capsys.readouterr()
-    return info["port"], token
-
-
-def _dead_pid() -> int:
-    """A PID that has already exited: a child process spawned and reaped."""
-    proc = subprocess.Popen([sys.executable, "-c", "pass"])
-    proc.wait()
-    return proc.pid
 
 
 # ---------------------------------------------------------------------------
@@ -183,14 +149,16 @@ class TestChatAskCard:
         assert "--yes" in out["not_sent_reason"]
         assert _audit_lines(job.job_id) == []
 
-    def test_yes_with_no_cockpit_exits_3_and_writes_no_audit(self, capsys):
+    def test_yes_with_no_supervisor_exits_3_and_writes_no_audit(self, capsys):
         job, _task_id = _job()
-        assert _run(["chat", "ask", job.job_id, "pause", "--yes"]) == 3
+        assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 3
+        out = json.loads(capsys.readouterr().out)
+        assert out["error"] == "serve_not_running"
+        assert "remedy serve start" in out["message"]
         assert _audit_lines(job.job_id) == []
 
-    def test_yes_with_a_live_cockpit_sends_and_audits(self, capsys):
+    def test_yes_with_a_running_supervisor_sends_and_audits(self, capsys, supervisor):
         job, _task_id = _job()
-        _start_live_cockpit(job.job_id, capsys)
         assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 0
         out = json.loads(capsys.readouterr().out)
         assert out["sent"] is True
@@ -210,11 +178,10 @@ class TestChatAskCard:
         assert "Not sent: not confirmed." in text
         assert _audit_lines(job.job_id) == []
 
-    def test_a_terminal_prompt_answered_y_sends(self, capsys, monkeypatch):
+    def test_a_terminal_prompt_answered_y_sends(self, capsys, monkeypatch, supervisor):
         import apps.cli.commands.chat_cmd as chat_cmd_mod
 
         job, _task_id = _job()
-        _start_live_cockpit(job.job_id, capsys)
         monkeypatch.setattr(chat_cmd_mod, "_chat_stdin_is_a_tty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda *_a, **_k: "y")
         assert _run(["chat", "ask", job.job_id, "pause"]) == 0
@@ -222,35 +189,14 @@ class TestChatAskCard:
         assert "Sent: job.pause." in text
         assert len(_audit_lines(job.job_id)) == 1
 
-    def test_a_live_session_for_another_job_is_not_used(self, capsys):
-        job_a, _ = _job()
-        job_b, _ = _job()
-        _start_live_cockpit(job_a.job_id, capsys)
-        assert _run(["chat", "ask", job_b.job_id, "pause", "--yes", "--json"]) == 3
-        out = json.loads(capsys.readouterr().out)
-        assert out["error"] == "cockpit_not_running"
-        assert _audit_lines(job_b.job_id) == []
-
-    def test_a_dead_pid_registration_is_not_used(self, capsys):
+    def test_a_wrong_token_exits_1(self, capsys, supervisor, isolate_data_root):
         job, _task_id = _job()
-        info = {
-            "version": 1, "url": "http://127.0.0.1:1/?job=x&token=y", "host": "127.0.0.1",
-            "port": 1, "token": "irrelevant", "job_id": job.job_id, "pid": _dead_pid(),
-            "started_at": "2020-01-01T00:00:00Z",
-        }
-        (_sessions_dir() / f"{job.job_id}.json").write_text(json.dumps(info))
-        assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 3
+        serve_paths(isolate_data_root).token_file.write_text("not-the-real-token",
+                                                             encoding="utf-8")
+        assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 1
         out = json.loads(capsys.readouterr().out)
-        assert out["error"] == "cockpit_not_running"
-
-    def test_a_wrong_token_exits_1(self, capsys):
-        job, _task_id = _job()
-        _port, _token = _start_live_cockpit(job.job_id, capsys)
-        session_file = _sessions_dir() / f"{job.job_id}.json"
-        info = json.loads(session_file.read_text())
-        info["token"] = "not-the-real-token"
-        session_file.write_text(json.dumps(info))
-        assert _run(["chat", "ask", job.job_id, "pause", "--yes"]) == 1
+        assert out["error"] == "door_refused"
+        assert _audit_lines(job.job_id) == []
 
     def test_an_unrecognized_action_is_not_confirmable(self, capsys):
         job, _task_id = _job()
@@ -261,35 +207,15 @@ class TestChatAskCard:
 
 
 # ---------------------------------------------------------------------------
-# R-1094: the newest of several live sessions is used, and repeated confirmed
-# cards to one running cockpit are each their own audited outcome.
+# R-1094: repeated confirmed cards to one running supervisor are each their own
+# audited outcome.
 # ---------------------------------------------------------------------------
 
 
-class TestChatAskLiveSessionAndRepeatSend:
-    def test_the_newest_of_two_live_sessions_for_one_job_is_returned(self):
-        from apps.cli.commands.ui import live_ui_session_for_job
-
+class TestChatAskRepeatSend:
+    def test_two_cards_confirmed_to_one_supervisor_are_both_audited_accepted(
+            self, capsys, supervisor):
         job, _task_id = _job()
-        pid = os.getpid()
-        older = {
-            "version": 1, "url": "http://127.0.0.1:1/", "host": "127.0.0.1", "port": 1,
-            "token": "older-token", "job_id": job.job_id, "pid": pid,
-            "started_at": "2020-01-01T00:00:00Z",
-        }
-        newer = {
-            "version": 1, "url": "http://127.0.0.1:2/", "host": "127.0.0.1", "port": 2,
-            "token": "newer-token", "job_id": job.job_id, "pid": pid,
-            "started_at": "2020-01-02T00:00:00Z",
-        }
-        (_sessions_dir() / f"{job.job_id}-a.json").write_text(json.dumps(older))
-        (_sessions_dir() / f"{job.job_id}-b.json").write_text(json.dumps(newer))
-        session = live_ui_session_for_job(job.job_id)
-        assert session["token"] == "newer-token"
-
-    def test_two_cards_confirmed_to_one_cockpit_are_both_audited_accepted(self, capsys):
-        job, _task_id = _job()
-        _start_live_cockpit(job.job_id, capsys)
         assert _run(["chat", "ask", job.job_id, "pause", "--yes", "--json"]) == 0
         first = json.loads(capsys.readouterr().out)
         assert _run(["chat", "ask", job.job_id, "resume", "--yes", "--json"]) == 0

@@ -98,9 +98,8 @@ def test_the_do_summary_json_and_text_carry_both_counts_and_never_a_bare_call_co
     json.dumps(summary)                                                   # machine-readable as is
 
 
-def test_the_digest_and_the_mission_cockpit_read_the_same_turn_records(fake_pi, workspace, tmp_path, monkeypatch):
+def test_the_digest_reads_the_turn_records(fake_pi, workspace, tmp_path, monkeypatch):
     import packages.orchestration.client_digest as CD
-    import packages.orchestration.mission_cockpit as MC
     import packages.orchestration.pingpong_job as PJ
 
     _run(fake_pi, workspace, tmp_path, _stream([(1, 1), (1, 1)]), "run-d")
@@ -108,7 +107,3 @@ def test_the_digest_and_the_mission_cockpit_read_the_same_turn_records(fake_pi, 
 
     assert CD._pi_model_turns(["run-d"]) == 2
     assert CD._pi_model_turns(["run-with-no-pi-record"]) is None
-    assert MC._order_model_turns(["job-1"]) == 2
-    assert MC._order_usage([], None) == {
-        "harness_invocations": None, "model_turns": None,
-        "tokens": {"input": None, "output": None, "cache_read": None, "cache_creation": None}}

@@ -63,14 +63,6 @@ scripts/remedy_pytest.sh tests/ui_server -q --cache-clear
 # Full Python suite — run exactly once
 scripts/remedy_pytest.sh tests/ -q --cache-clear
 
-# Frontend tests
-cd apps/ui && npm run test:unit -- --run
-
-# TypeScript check
-cd apps/ui && npx tsc --noEmit
-
-# Build check
-cd apps/ui && npm run build
 ```
 
 ### Never

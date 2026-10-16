@@ -133,3 +133,18 @@ def test_a_decline_keeps_the_door_its_source_names(repo, monkeypatch, capsys):
     [declined] = [e for e in _answer(capsys, "job", "ownership", job.job_id)["entries"]
                   if e["action"] == "result_declined"]
     assert (declined["actor"]["door"], declined["actor"]["recorded_as"]) == ("", "api")
+
+
+def test_a_declined_job_is_never_applied_afterwards(repo, monkeypatch, capsys):
+    """amend1015c D9: a decline is final. An apply after it is refused as not ready (409 over
+    HTTP) and the target repository keeps its head; before D9 the apply landed the declined change."""
+    job = _completed(repo, monkeypatch)
+    head = _git(repo, "rev-parse", "HEAD").strip()
+    _answer(capsys, "job", "decline", job.job_id, "--reason", "not this change")
+
+    result = apply_job(job.job_id, str(repo), approve=True)
+
+    assert result.status == "blocked" and result.blocked_reason.startswith("job_declined"), (
+        result.status, result.blocked_reason)
+    assert _git(repo, "rev-parse", "HEAD").strip() == head
+    assert not (repo / "one.txt").exists()

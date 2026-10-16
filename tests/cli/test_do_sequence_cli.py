@@ -200,7 +200,7 @@ def test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply(repo, ca
     # DECISION F269 D4 (6): the mission's contract body, as its record holds it.
     assert data["contract"] == _recorded_contract(repo, data)
     assert [s["name"] for s in data["steps"]] == [
-        "init", "study", "plan", "shape", "ui", "run", "apply"]
+        "init", "study", "plan", "shape", "run", "apply"]
     assert _step(data, "apply")["status"] == "stopped"
 
 
@@ -226,7 +226,9 @@ def test_next_lines_carry_real_ids_and_paths_never_placeholders(repo, capsys):
     [job_id] = re.findall(r"one job ([0-9a-f]{16}) linked", out)
     next_lines = [line for line in out.splitlines() if line.startswith("Next: ")]
     assert next_lines
-    assert all(job_id in line for line in next_lines)
+    # amend1015f D22: `remedy serve start` names no job; every other line names the real one.
+    assert "Next: remedy serve start" in next_lines
+    assert all(job_id in line for line in next_lines if line != "Next: remedy serve start")
     assert f"Next: remedy job apply {job_id} --repo {repo} --approve" in next_lines
 
 
@@ -311,7 +313,7 @@ def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_
 # ── T003: --step-by-step and --plan-only (DECISION F268 D8) ─────────────────
 
 PLAIN_RUN_STEPS = [("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-                   ("ui", "skipped"), ("run", "done"), ("apply", "stopped")]
+                   ("run", "done"), ("apply", "stopped")]
 
 
 def _answer_every_halt(monkeypatch, answer):
@@ -396,8 +398,8 @@ def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]] == [
         ("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
-        ("ui", "stopped")]
-    assert _step(data, "ui")["detail"].startswith("not run: stopped by 'q'")
+        ("run", "stopped")]
+    assert _step(data, "run")["detail"].startswith("not run: stopped by 'q'")
     assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
     requests = [stop_requested(j) for j in job_ids]
     assert all(r is not None and r.source == "do" for r in requests), requests
@@ -435,7 +437,7 @@ def test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to
     job_ids = data["job_ids"]
     if after_shape:
         assert steps == [("init", "done"), ("study", "done"), ("plan", "done"),
-                         ("shape", "done"), ("ui", "stopped")]
+                         ("shape", "done"), ("run", "stopped")]
         assert len(halts) == 4
         assert len(job_ids) >= 2
     else:
@@ -488,89 +490,18 @@ def test_text_output_lists_each_tasks_deliverable(repo, capsys):
                     f" — deliverable: {deliverable}") in out.splitlines()
 
 
-# ── T004: the cockpit, --apply and the commit flags' refusals (DECISIONs F268 D9, F270 D4) ──
+# ── T004: --no-ui, --apply and the commit flags' refusals (DECISIONs F268 D9, F270 D4) ──
 
 
-def _do_with_ui(capsys, *extra: str, order: str = ORDER) -> str:
-    """`_do` without `--no-ui`: the ui step reaches the launcher the test stands in."""
-    main(["do", order, "--no-llm",
-          "--builder-provider", "fake", "--reviewer-provider", "fake", *extra])
-    return capsys.readouterr().out
-
-
-def _stand_in_for_the_cockpit(monkeypatch, launcher) -> None:
-    """Replace the CLI's default launcher: no test starts a UI server or a browser."""
-    monkeypatch.setattr("packages.orchestration.do_cockpit.launch_do_cockpit", launcher)
-
-
-def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_url(
-        repo, capsys, monkeypatch):
-    """DECISION F268 D12: in a walk of two jobs the cockpit opens for job 1, the one that ran."""
-    launched: list[str] = []
-
-    def launcher(job_id: str) -> str:
-        launched.append(job_id)
-        return f"http://127.0.0.1:43210/?job={job_id}&token=t"
-
-    _stand_in_for_the_cockpit(monkeypatch, launcher)
-
-    data = json.loads(_do_with_ui(capsys, "--json", "--force-mission"))
-
-    job_ids = data["job_ids"]
-    assert len(job_ids) >= 2
-    assert launched == [job_ids[0]]
-    ui = _step(data, "ui")
-    assert ui["status"] == "done"
-    assert f"http://127.0.0.1:43210/?job={job_ids[0]}&token=t" in ui["detail"]
-    assert "remedy ui stop" in ui["detail"]
-    assert "remedy ui stop" in data["next"]
-    assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
-        ("ui", "done"), ("run", "done"), ("apply", "stopped")]
-
-
-def test_a_cockpit_that_does_not_come_up_is_skipped_and_the_walk_ends_at_apply(
-        repo, capsys, monkeypatch):
-    from packages.orchestration.do_cockpit import DoCockpitLaunchError
-
-    def launcher(job_id: str) -> str:
-        raise DoCockpitLaunchError("the cockpit did not come up within 15s; its log: x.log")
-
-    _stand_in_for_the_cockpit(monkeypatch, launcher)
-
-    data = json.loads(_do_with_ui(capsys, "--json"))
-
-    [job_id] = data["job_ids"]
-    ui = _step(data, "ui")
-    assert ui["status"] == "skipped"
-    assert "did not come up within 15s" in ui["detail"]
-    assert f"remedy ui start {job_id}" in ui["detail"]
-    assert f"remedy ui start {job_id}" in data["next"]
-    assert (data["steps"][-1]["name"], data["steps"][-1]["status"]) == ("apply", "stopped")
-    assert data["stopped_before_apply"] is True
-
-
-def test_with_no_ui_the_cockpit_launcher_is_never_called_and_the_ui_step_says_so(
-        repo, capsys, monkeypatch):
-    """R-1154: `--no-ui` opens no cockpit, which a machine client relies on (F295).
-
-    A cockpit that does not come up is a skipped ui step too, so the step's status alone cannot
-    tell `--no-ui` from a launch that was tried; the stand-in launcher must never be called.
-    """
-    launched: list[str] = []
-
-    def launcher(job_id: str) -> str:
-        launched.append(job_id)
-        return f"http://127.0.0.1:43210/?job={job_id}&token=t"
-
-    _stand_in_for_the_cockpit(monkeypatch, launcher)
-
-    data = _do_json(capsys)
-
-    assert launched == []
-    ui = _step(data, "ui")
-    assert (ui["status"], ui["detail"]) == (
-        "skipped", "--no-ui given; the cockpit was not opened")
-    assert [line for line in data["next"] if line.startswith("remedy ui ")] == []
+def test_no_ui_is_accepted_inert_and_the_next_lines_name_serve_and_the_story(repo, capsys):
+    """amend1015f D21, D22: the cockpit and its ui step are gone; `--no-ui` changes nothing, and
+    the walk names `remedy serve start` and `remedy client story <job>` instead of a URL."""
+    with_flag = _do_json(capsys)
+    [job_id] = with_flag["job_ids"]
+    assert "ui" not in [s["name"] for s in with_flag["steps"]]
+    assert "remedy serve start" in with_flag["next"]
+    assert f"remedy client story {job_id}" in with_flag["next"]
+    assert [line for line in with_flag["next"] if line.startswith("remedy ui ")] == []
 
 
 def _track(repo: Path, *paths: str) -> None:
@@ -583,7 +514,8 @@ def _track(repo: Path, *paths: str) -> None:
 
 
 def test_apply_applies_the_one_job_and_changes_the_targets_tracked_content(repo, capsys):
-    _track(repo, "docs/README.md")
+    # amend1015c D6: the command line's fake writes the file the order names.
+    _track(repo, "CONTRIBUTING.md")
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == ""
 
     data = json.loads(_do(capsys, "--json", "--apply"))
@@ -593,8 +525,8 @@ def test_apply_applies_the_one_job_and_changes_the_targets_tracked_content(repo,
     apply = _step(data, "apply")
     assert apply["status"] == "done"
     assert f"job {job_id} applied 1 file(s)" in apply["detail"]
-    assert _git(repo, "diff", "--name-only") == "docs/README.md\n"
-    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == " M docs/README.md\n"
+    assert _git(repo, "diff", "--name-only") == "CONTRIBUTING.md\n"
+    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == " M CONTRIBUTING.md\n"
 
 
 def test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_waiting(
@@ -642,18 +574,21 @@ def _waiting_job_has_no_run(job_id: str) -> bool:
 
 def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_waits(
         repo, capsys):
-    """R-0968 / DECISION F268 D12 (2a): the case R-0968 measured — every build writes
-    the same file — now applies job 1, runs no other job and exits 0."""
-    assert not (repo / "docs" / "README.md").exists()
+    """R-0968 / DECISION F268 D12 (2a): the case R-0968 measured — job 1's build writes
+    its file — now applies job 1, runs no other job and exits 0."""
+    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == ""
 
     data = json.loads(_do(capsys, "--json", "--apply", "--force-mission"))
 
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
     assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
-        ("ui", "skipped"), ("run", "done"), ("apply", "done")]
+        ("shape", "done"), ("run", "done"), ("apply", "done")]
     assert f"job {job_ids[0]} applied 1 file(s)" in _step(data, "apply")["detail"]
-    assert "<!-- Remedy: " in (repo / "docs" / "README.md").read_text()
+    # amend1015c D6: the command line's fake writes job 1's own deliverable, one new file.
+    [written] = _git(repo, "status", "--porcelain", "--untracked-files=all").splitlines()
+    assert written.startswith("?? ")
+    assert "<!-- Remedy: " in (repo / written[3:]).read_text()
     assert data["stopped_before_apply"] is False
     assert data["waiting_job_ids"] == job_ids[1:]
     assert [_waiting_job_has_no_run(j) for j in job_ids[1:]] == [True] * (len(job_ids) - 1)
@@ -690,11 +625,11 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     """The target changes between the run and the apply: `job_apply` refuses it."""
     from packages.orchestration import job_apply
 
-    _track(repo, "docs/README.md")
+    _track(repo, "CONTRIBUTING.md")  # amend1015c D6: the file the order names
     real_apply_job = job_apply.apply_job
 
     def apply_after_someone_edited_the_target(job_id, target_repo, **kwargs):
-        (Path(target_repo) / "docs" / "README.md").write_text("edited by hand\n")
+        (Path(target_repo) / "CONTRIBUTING.md").write_text("edited by hand\n")
         return real_apply_job(job_id, target_repo, **kwargs)
 
     monkeypatch.setattr(job_apply, "apply_job", apply_after_someone_edited_the_target)
@@ -710,9 +645,9 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     apply = _step(data, "apply")
     assert apply["status"] == "failed"
     assert apply["detail"].startswith(f"job {job_id} was not applied to {repo} (status blocked)")
-    assert "target_changed_during_run: docs/README.md changed in the target" in apply["detail"]
+    assert "target_changed_during_run: CONTRIBUTING.md changed in the target" in apply["detail"]
     assert data["stopped_before_apply"] is True
-    assert (repo / "docs" / "README.md").read_text() == "edited by hand\n"
+    assert (repo / "CONTRIBUTING.md").read_text() == "edited by hand\n"
     assert data["ok"] is False
     assert data["error"] == "step_failed"
     assert data["failed_step"] == "apply"
@@ -1082,57 +1017,6 @@ def test_the_old_name_with_history_is_never_created(repo, capsys):
 
     assert exc.value.code == 2
     assert "--with-history" in capsys.readouterr().err
-
-
-def test_the_default_launcher_starts_ui_start_detached_and_reads_its_url(tmp_path, monkeypatch):
-    """The argv and the spawn's keywords, measured through a stand-in: nothing is spawned."""
-    import sys
-
-    from packages.orchestration.do_cockpit import (
-        DoCockpitLaunchError,
-        do_cockpit_argv,
-        do_cockpit_paths,
-        launch_do_cockpit,
-    )
-
-    data_root = tmp_path / "cockpit-data"
-    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
-    info_file, log_file = do_cockpit_paths("abc123")
-
-    assert do_cockpit_argv("abc123", info_file) == [
-        sys.executable, "-m", "apps.cli.grouped", "ui", "start", "abc123",
-        "--port", "0", "--info-file", str(info_file)]
-    assert info_file.parent == data_root / "ui" / "sessions"
-    assert log_file.is_relative_to(data_root)
-
-    class Child:
-        terminated = False
-
-        def poll(self):
-            return None
-
-        def terminate(self):
-            self.terminated = True
-
-    spawned: list[tuple[list[str], dict]] = []
-    url = "http://127.0.0.1:43210/?job=abc123&token=t"
-
-    def comes_up(argv, **kwargs):
-        spawned.append((argv, kwargs))
-        info_file.write_text(json.dumps({"url": url}))
-        return Child()
-
-    assert launch_do_cockpit("abc123", spawn=comes_up, sleep=lambda _s: None) == url
-    [(argv, kwargs)] = spawned
-    assert argv == do_cockpit_argv("abc123", info_file)
-    assert kwargs["start_new_session"] is True
-    assert kwargs["stdout"].name == str(log_file)
-
-    silent = Child()
-    with pytest.raises(DoCockpitLaunchError, match="did not come up within 0s"):
-        launch_do_cockpit("abc123", wait_seconds=0, spawn=lambda argv, **kw: silent,
-                          sleep=lambda _s: None)
-    assert silent.terminated is True
 
 
 # ── F269 round 8: a budget stop with blockers raises the remainder (DECISION F269 D9) ──

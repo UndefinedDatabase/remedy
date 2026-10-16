@@ -25,9 +25,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-# DECISIONs F301 D2, F302 D1, F206 D4 and F199 D1: the types, the shorthands, the mission, stats,
-# project and doctor groups live in modules of their own; this module imports the names it uses,
-# and every other consumer imports each name from its own module (operator amendment amend1014-luna-mission-fixes D.2).
+# DECISIONs F301 D2, F302 D1, F206 D4, F199 D1 and amend1015f D10: the types, the shorthands, the
+# mission, stats, project, doctor and client groups live in modules of their own; this module imports
+# the names it uses, and every other consumer imports each name from its own module (operator
+# amendment amend1014-luna-mission-fixes D.2).
+from apps.cli.command_catalog_client import CLIENT_COMMANDS
 from apps.cli.command_catalog_do import DO_COMMANDS
 from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
 from apps.cli.command_catalog_mission import MISSION_COMMANDS
@@ -69,7 +71,7 @@ GROUPS: dict[str, GroupDef] = {
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs.", feature="F260", reach="job-path"),
     "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs.", feature="F261", reach="job-path"),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects.", feature="F146", reach="golden-path"),
-    "ui": GroupDef("ui", "UI", "Open the local UI.", feature="F261", reach="cockpit"),
+    "ui": GroupDef("ui", "UI", "Deprecated aliases of `remedy serve start` and `stop`; the old cockpit was deleted.", user_facing=False, feature="F261", reach="cockpit"),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health.", feature="F254", reach="golden-path"),
     "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",), feature="F081", reach="golden-path"),
     "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher.", feature="F280", reach="golden-path"),
@@ -102,7 +104,8 @@ GROUPS: dict[str, GroupDef] = {
 }
 
 #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
-#: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+#: amend0911-feedback D1): the fifteen visible groups in this fixed order (`ui` left it with
+#: the old cockpit, amend1015f D22), then
 #: the two reserved slots, `absorb` (F263) and `chat` (F264), both shipped; neither
 #: slot was ever registered as an empty group (D1). `_print_root_help` iterates this tuple, never
 #: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
@@ -111,7 +114,7 @@ GROUPS: dict[str, GroupDef] = {
 #: completeness against `GROUPS`.
 VISIBLE_GROUP_ORDER: tuple[str, ...] = (
     "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
-    "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+    "memory", "config", "doctor", "project", "init", "worker", "runtime",
     "absorb", "chat",
 )
 
@@ -193,7 +196,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="ask",
         description="Ask a job's task a grounded question, answered from its own evidence with "
                     "numbered citations, or type an action that becomes a card sent through the "
-                    "job's running cockpit once confirmed — one step in the job plan.",
+                    "running serve supervisor's write door once confirmed — one job plan step.",
         action_class="write_metadata",
         args=(
             ArgDef("job_id", "The job this chat turn asks or steers (its ID, or a unique prefix "
@@ -210,7 +213,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("chat.send", "chat.show", "ui.start"),
+        related=("chat.send", "chat.show", "serve.start"),
         exit_codes=(0, 1, 2, 3),
     ),
 
@@ -550,22 +553,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("job.show", "job.veto-task", "job.steer"),
-        exit_codes=(0, 1, 2, 3),
-    ),
-    # ── job story (F039 T003, DECISIONS F039 D7 and D8) ───────────────────
-    CommandEntry(
-        command_id="job.story",
-        group_id="job",
-        subcommand="story",
-        description="Write the story of a job under its mission as one HTML file that "
-                    "plays in any browser from the file itself, with no network and no "
-                    "Remedy: its chapters, narration and phase bar, read from the job's own "
-                    "records (F039).",
-        action_class="read_only",
-        args=(_JOB_ID, ArgDef("--export", "The HTML file to write", required=True, is_option=True),
-              _JSON_OPT),
-        supports_json=True,
-        related=("job.show", "job.ownership"),
         exit_codes=(0, 1, 2, 3),
     ),
     # ── job preview-start / preview-stop (F041 T002, DECISION F041 D3) ────
@@ -1548,64 +1535,32 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
-    # ── ui ───────────────────────────────────────────────────────────────
+    # ── ui: warning aliases of serve start and stop (amend1015f D22) ─────
     CommandEntry(
         command_id="ui.start",
         group_id="ui",
         subcommand="start",
-        description="Start the token-gated cockpit UI server for a job (under its mission).",
-        action_class="read_only",
+        description="Deprecated alias of `remedy serve start`: prints a warning, then starts the "
+                    "serve supervisor in the foreground. The old cockpit was deleted.",
+        action_class="local_state_change",
         args=(
-            _JOB_ID,
-            ArgDef("--port", "Port number (0 = auto, default: 8787)", required=False, is_option=True, default="8787"),
-            ArgDef("--host", "Bind host; default serves 127.0.0.1 and the LAN URLs", required=False, is_option=True, default="*"),
-            ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
-            ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
+            ArgDef("job_id", "Accepted and ignored; the supervisor serves the whole data root",
+                   required=False),
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("brain.view",),
-    ),
-    CommandEntry(
-        command_id="ui.latest",
-        group_id="ui",
-        subcommand="latest",
-        description="Open the most recently started UI session in a browser.",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="ui.status",
-        group_id="ui",
-        subcommand="status",
-        description="Show live UI sessions; --all also lists the last ten that ended.",
-        action_class="read_only",
-        args=(
-            ArgDef("--all", "Also show the last ten ended sessions with their end time",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
+        related=("serve.start",),
     ),
     CommandEntry(
         command_id="ui.stop",
         group_id="ui",
         subcommand="stop",
-        description="Stop all running UI sessions.",
-        # R-1034: it stops every running UI server, so it changes local state.
+        description="Deprecated alias of `remedy serve stop`: prints a warning, then stops the "
+                    "serve supervisor of this data root.",
         action_class="local_state_change",
         args=(_JSON_OPT,),
         supports_json=True,
-    ),
-    CommandEntry(
-        command_id="ui.open",
-        group_id="ui",
-        subcommand="open",
-        description="Open browser for a specific job UI session (under its mission).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
+        related=("serve.stop",),
     ),
 
     *DO_COMMANDS,
@@ -2130,74 +2085,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("serve.start",),
     ),
 
-    # ── client (F298: the machine client interface as data, DECISION F298 D2) ──
-    CommandEntry(
-        command_id="client.interface",
-        group_id="client",
-        subcommand="interface",
-        description="Show what a program that drives Remedy can rely on: its commands, arguments, exit codes, state words, templates and budget kinds (read-only).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("status.run", "do.run"),
-    ),
-    # F253 S3a (DECISION F253 D4 (3)): what changed since a cursor the client holds.
-    CommandEntry(
-        command_id="client.changes",
-        group_id="client",
-        subcommand="changes",
-        description="List what changed since a cursor: jobs, open and resolved decisions, missions and applies, with a cursor for the next read (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef(
-                "--since",
-                "The cursor of the last read: a time with its offset, such as the digest's "
-                "read_at or the cursor the last read answered",
-                required=False, is_option=True,
-            ),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("client.interface", "status.run"),
-    ),
-    # F253 S5a (DECISION F253 D13): read an order the supervisor started as a record of its own.
-    CommandEntry(
-        command_id="client.order",
-        group_id="client",
-        subcommand="order",
-        description="Read an order (an order file or text) the supervisor started, as a record of its own: its state, its exit code and the answer remedy do printed (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("order", "The order id the supervisor answered when it started your order "
-                  "file or text"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("client.interface", "client.changes"),
-        # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
-        exit_codes=(0, 1, 2, 3),
-    ),
-    # F253 (DECISION F253 D20): read the run the supervisor started for a job, as `client.order`
-    # reads an order.
-    CommandEntry(
-        command_id="client.run",
-        group_id="client",
-        subcommand="run",
-        # Both texts carry a word of tests/docs/test_vocabulary.py's meaning table ("task" is a
-        # fragment of Job and of Run), because they use the binding words Job and Run.
-        description="Read the run the supervisor started for a job, as a record of its own: its state, its exit code and the answer remedy job run printed once its tasks ended (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("job", "The id of the job, or a prefix of it, whose task run the supervisor "
-                  "started"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("client.interface", "client.order"),
-        # A value that names no job, or a job with no run record, is absent, which exit 3's
-        # `not_ready` meaning covers.
-        exit_codes=(0, 1, 2, 3),
-    ),
+    *CLIENT_COMMANDS,
 
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
@@ -2338,6 +2226,20 @@ def _with_list_options(entry: CommandEntry) -> CommandEntry:
 
 
 CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_CATALOG)
+
+#: The catalogue's history of removed commands: each id, once in `CATALOG`, with the one
+#: deprecation sentence that says when it went, why, and what to use instead. No id here may
+#: come back into `CATALOG` under the same name with another meaning.
+RETIRED_COMMANDS: dict[str, str] = {
+    "ui.latest": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+                 "there is no browser session to open.",
+    "ui.status": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+                 "use `remedy serve status`.",
+    "ui.open": "Removed 2026-10-15 with the old cockpit (amend1015f D22); "
+               "read a job with `remedy client story <job>`.",
+    "job.story": "Removed 2026-10-15 with the old cockpit's story player (amend1015f D23); "
+                 "read a job's story with `remedy client story <job>`.",
+}
 
 
 # The whole surface of the UI write door: no other `command_id` above is

@@ -366,19 +366,20 @@ def test_a_secret_like_variable_never_reaches_the_child_even_when_allowlisted():
 
 
 @pytest.mark.subprocess
-def test_the_ui_no_auto_build_variable_survives_an_allowlist_that_names_it():
-    """R-0202: the variable a spawn path once dropped is allowlistable and arrives."""
+def test_a_variable_survives_an_allowlist_that_names_it():
+    """R-0202: a variable an allowlist names is handed on and arrives. The variable this
+    once carried, `REMEDY_UI_NO_AUTO_BUILD`, went with the UI auto-build (amend1015f D28)."""
     result = run_guarded(
         _child(_ENV_DUMP),
         ExecGuardPolicy(
             wall_timeout_seconds=10.0,
-            env={"PATH": "/usr/bin", "REMEDY_UI_NO_AUTO_BUILD": "1"},
-            env_allowlist=("PATH", "REMEDY_UI_NO_AUTO_BUILD"),
+            env={"PATH": "/usr/bin", "REMEDY_PROBE_FLAG": "1"},
+            env_allowlist=("PATH", "REMEDY_PROBE_FLAG"),
         ),
     )
 
     assert result.returncode == 0
-    assert _dumped(result)["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+    assert _dumped(result)["REMEDY_PROBE_FLAG"] == "1"
 
 
 def test_scrub_child_env_drops_a_key_the_source_never_defined():
@@ -453,9 +454,10 @@ def test_plan_child_spawn_preexec_really_lowers_the_core_limit_in_the_child():
 # ---------------------------------------------------------------------------
 
 
-def test_the_ui_no_auto_build_variable_is_a_member_of_the_test_allowlist():
-    """R-0202, pinned as a membership: dropping this key re-creates the bug."""
-    assert "REMEDY_UI_NO_AUTO_BUILD" in TEST_COMMAND_ENV_ALLOWLIST
+def test_the_ui_no_auto_build_variable_left_the_test_allowlist_with_the_auto_build():
+    """amend1015f D28: R-0202's mid-run UI rebuild cannot happen once the auto-build is
+    deleted, so the key it needed left the allowlist, which only narrowed."""
+    assert "REMEDY_UI_NO_AUTO_BUILD" not in TEST_COMMAND_ENV_ALLOWLIST
 
 
 def test_the_test_policy_sets_only_the_limits_it_can_defend():
@@ -484,13 +486,13 @@ def test_the_seam_hands_a_child_the_allowlist_and_neither_secret(monkeypatch):
     """
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-never-appear")
     monkeypatch.setenv("MY_PROJECT_SECRET", "should-never-appear-either")
-    monkeypatch.setenv("REMEDY_UI_NO_AUTO_BUILD", "1")
+    monkeypatch.setenv("TZ", "UTC")
 
     result = run_guarded_test_command(_child(_ENV_DUMP), timeout_sec=30, cwd=None)
     dumped = _dumped(result)
 
     assert result.returncode == 0
-    assert dumped["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+    assert dumped["TZ"] == "UTC"
     assert "PATH" in dumped
     assert "ANTHROPIC_API_KEY" not in dumped
     assert "MY_PROJECT_SECRET" not in dumped
@@ -611,7 +613,7 @@ def test_extra_env_cannot_smuggle_a_forbidden_key_past_the_floor():
 
 def test_extra_env_adds_to_the_allowlisted_environment_rather_than_replacing_it(monkeypatch):
     """The overlay ADDS; what the allowlist already carries still reaches the child."""
-    monkeypatch.setenv("REMEDY_UI_NO_AUTO_BUILD", "1")
+    monkeypatch.setenv("TZ", "UTC")
 
     policy = exec_guard.test_command_exec_policy(
         60, None, extra_env={"REMEDY_PROBE_BUDGET": "7"}
@@ -619,7 +621,7 @@ def test_extra_env_adds_to_the_allowlisted_environment_rather_than_replacing_it(
     child_env = exec_guard.plan_child_spawn(policy).env
 
     assert child_env["REMEDY_PROBE_BUDGET"] == "7"
-    assert child_env["REMEDY_UI_NO_AUTO_BUILD"] == "1"
+    assert child_env["TZ"] == "UTC"
     assert "PATH" in child_env
 
 
