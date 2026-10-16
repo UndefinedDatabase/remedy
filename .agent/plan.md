@@ -1,17 +1,15 @@
-# Plan — amend1016sb (operator order remedy-security-hardening, the tool sandbox)
+# Plan — amend1016p (operator order remedy-simple-orders, simple orders stay simple)
 
 ## Goal
-Model-controlled tools and untrusted project commands run inside one Bubblewrap boundary: the
-workspace is the one writable tree, host files, credentials and networks are invisible, one
-shell command and one Pi call have deadlines, a job stop ends a running call, and a missing or
-broken sandbox refuses the work. Branch feature/pi-tool-sandbox. Finding R-1335, DECISION
-amend1016sb D1 to D7. Priority registration; Rule A5's queue (F078) untouched, `.agent/STOP` kept.
+A bounded order gets one job, one task and no planner call whatever door it came through; the full
+lane keeps no constraint-only milestone and no checking-only task; the reviewer judges meaning.
+Branch feature/simple-orders-fast-lane. Finding R-1336, DECISION amend1016p D1 to D3. Priority
+registration; Rule A5's queue (F078) untouched, `.agent/STOP` kept.
 
 ## Current Step
-Done: `tool_sandbox.py`, `sandbox_relay.py`, the `exec_guard` hook (sandbox, cancel), Pi in the
-sandbox with relay, tool shell and stop, `test`/`dod-process` sandboxed, the doctor self-test,
-the OS-level tests, docs/system/tool-sandbox-v1.md, the records.
+Done: `order_scope.py`, the lane rule, the two plan filters, the reviewer preamble, the tests (the
+HTTP path with the app's order among them), the do guide and the sandbox page.
 
 ## Next Steps
-- Full suite green, the Fake-provider end-to-end run, a fresh wheel in a clean environment.
-- Pull request; merge only on decodeux's word. The real Ollama smoke test waits for his approval.
+- Pull request; merge only on decodeux's word, since a merge changes what the next order runs.
+- After the merge: the README lab order sent again as a fresh order.
