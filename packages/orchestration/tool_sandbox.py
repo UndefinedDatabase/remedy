@@ -110,9 +110,10 @@ def workspace_root_for(cwd: str) -> str:
 def _git_metadata_dirs(workspace: str) -> list[str]:
     """The git directories a worktree at *workspace* reads, from Remedy's own `.git` link.
 
-    The link is written by `git worktree add` and is read-only inside every sandbox, so no
-    sandboxed process ever chose these paths. A link that does not lead to a real git
-    directory exposes nothing.
+    A model can write a `.git` file into a copied workspace, so the link alone proves nothing.
+    Only a worktree whose git directory points BACK to this workspace (`<gitdir>/gitdir`, which
+    `git worktree add` writes inside the repository, where no sandbox can write) is trusted;
+    anything else exposes nothing.
     """
     link = Path(workspace) / ".git"
     if link.is_symlink() or not link.is_file():
@@ -121,6 +122,9 @@ def _git_metadata_dirs(workspace: str) -> list[str]:
     if not text.startswith("gitdir:"):
         return []
     gitdir = (Path(workspace) / text[len("gitdir:"):].strip()).resolve()
+    back = gitdir / "gitdir"
+    if not back.is_file() or Path(back.read_text(encoding="utf-8").strip()).resolve() != link.resolve():
+        return []
     common = gitdir
     if (gitdir / "commondir").is_file():
         common = (gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
@@ -140,7 +144,9 @@ def _toolchain_dirs(path_value: str, workspace: str) -> list[str]:
     found: list[str] = []
     prefix = os.path.realpath(sys.base_prefix)
     for entry in [*path_value.split(os.pathsep), os.path.join(prefix, "bin")]:
-        if not entry or not os.path.isabs(entry):
+        # Judged BEFORE symlinks resolve: a path in the workspace is already there, and a symlink
+        # in it must never lead a bind out of it.
+        if not entry or not os.path.isabs(entry) or _under(os.path.normpath(entry), workspace):
             continue
         real = os.path.realpath(entry)
         candidates = [real] + ([os.path.join(os.path.dirname(real), "lib")]
@@ -152,6 +158,18 @@ def _toolchain_dirs(path_value: str, workspace: str) -> list[str]:
                 continue
             found.append(path)
     return found
+
+
+def _virtualenv_dir(value: str, workspace: str) -> str:
+    """A project's virtual environment outside the workspace, or "": one with `pyvenv.cfg`, never
+    a path inside the workspace (judged before symlinks resolve) and never the home or above."""
+    if not value or not os.path.isabs(value) or _under(os.path.normpath(value), workspace):
+        return ""
+    real = os.path.realpath(value)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if _under(home, real) or not os.path.isfile(os.path.join(real, "pyvenv.cfg")):
+        return ""
+    return real
 
 
 def _inside_git_tree(path: str) -> bool:
@@ -197,6 +215,10 @@ class SandboxSpec:
         """The `bwrap` argument vector that runs *argv* inside this sandbox."""
         bwrap = require_sandbox()
         workspace = os.path.realpath(self.workspace)
+        home = os.path.realpath(os.path.expanduser("~"))
+        if workspace == "/" or _under(home, workspace) or any(_under(workspace, d) for d in _SYSTEM_DIRS):
+            raise SandboxUnavailable(SANDBOX_FAILED, f"{workspace} is not a job workspace",
+                                     "a sandboxed command needs the job's own working copy")
         source = env if env is not None else os.environ
         path_value = source.get("PATH", "/usr/bin:/bin")
         if not self._program_exists(argv[0], path_value, cwd or workspace):
@@ -204,7 +226,7 @@ class SandboxSpec:
             raise FileNotFoundError(2, "No such file or directory", argv[0])
         # A project's own virtual environment (F299 hands it over as VIRTUAL_ENV) may live in the
         # target checkout outside the worktree; it is the one such tree exposed, read-only.
-        venv = os.path.realpath(source["VIRTUAL_ENV"]) if source.get("VIRTUAL_ENV") else ""
+        venv = _virtualenv_dir(source.get("VIRTUAL_ENV", ""), workspace)
         args = [bwrap, "--unshare-all", "--die-with-parent", "--new-session",
                 "--hostname", "remedy-sandbox", "--proc", "/proc", "--dev", "/dev",
                 "--tmpfs", "/tmp", "--dir", SANDBOX_HOME, "--dir", SANDBOX_RUN_DIR]
@@ -216,7 +238,7 @@ class SandboxSpec:
         for entry in _ETC_ENTRIES:
             args += ["--ro-bind-try", f"/etc/{entry}", f"/etc/{entry}"]
         toolchain = _toolchain_dirs(path_value, workspace)
-        extra = [venv] if venv and os.path.isdir(venv) and venv != "/" else []
+        extra = [venv] if venv else []
         for path in (*toolchain, *extra, *_remedy_code_dirs(), *_git_metadata_dirs(workspace)):
             if not _under(path, workspace):
                 args += ["--ro-bind", path, path]

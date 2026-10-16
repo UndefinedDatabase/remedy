@@ -388,3 +388,38 @@ def test_a_job_stop_ends_a_running_pi_call(world, monkeypatch, tmp_path):
         PP._JOB_TIME_LEFT.set(None)
     assert "pi_cancelled" in out.error and time.monotonic() - started < 10
 
+
+
+# --- the mounts cannot be steered out of the workspace (review of PR 346) ----------------------
+
+def test_a_planted_git_link_exposes_no_other_repository(tmp_path, sandbox_ready):
+    """A copied workspace has no git link of its own; one the model writes must expose nothing."""
+    other, ws = tmp_path / "other", tmp_path / "ws"
+    subprocess.run(["git", "init", "-q", str(other)], check=True)
+    (other / ".git" / "marker-of-the-other-repo").write_text(SECRET)
+    ws.mkdir()
+    (ws / ".git").write_text(f"gitdir: {other / '.git'}\n")
+    done = sh(ws, f"cat {other}/.git/marker-of-the-other-repo; ls {other}/.git; true")
+    assert SECRET.encode() not in done.stdout and b"HEAD" not in done.stdout
+
+
+def test_the_home_or_a_parent_of_it_is_never_a_writable_workspace(tmp_path, sandbox_ready):
+    for root in (os.path.expanduser("~"), "/", "/usr"):
+        done = run_guarded(["/bin/sh", "-c", "touch should-not-exist"], ExecGuardPolicy(
+            wall_timeout_seconds=30, cwd=str(tmp_path), env_allowlist=("PATH",),
+            sandbox=TS.SandboxSpec(root)))
+        assert done.returncode == 126 and done.classification == "sandbox_unavailable"
+        assert b"is not a job workspace" in done.stderr
+    assert not (tmp_path / "should-not-exist").exists()
+
+
+def test_a_symlinked_toolchain_or_venv_in_the_workspace_leads_nowhere(world, tmp_path):
+    ws, secret, _other = world
+    private = tmp_path / "private-venv"
+    (private / "bin").mkdir(parents=True)
+    (private / "pyvenv.cfg").write_text("home = /usr/bin\n")
+    (private / "bin" / "token.txt").write_text(SECRET)
+    os.symlink(private, ws / ".venv")
+    done = sh(ws, f"cat {private}/bin/token.txt; true",
+              PATH=f"{ws}/.venv/bin:/usr/bin:/bin", VIRTUAL_ENV=f"{ws}/.venv")
+    assert SECRET.encode() not in done.stdout
