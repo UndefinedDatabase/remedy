@@ -1,15 +1,15 @@
-# Plan — amend1016s (operator order remedy-lab-prep, a stop of a job that never started)
+# Plan — amend1016s D2 (operator order remedy-lab-prep, nothing under .data is tracked)
 
 ## Goal
-`remedy job stop` and the supervisor's forwarded `job.stop` end a job that never started
-(`planned`, no first run time, no episode) at once as a first-class stop, and finalize a request
-left pending on such a job. A started job keeps the request path. Branch
-feature/stop-unstarted-job. Finding R-1333, DECISION amend1016s D1.
+Remove the 902 force-added files under `.data/evidence_exports/` from git, keep the history
+documents truthful with a dated line, and stop it from happening again (pre-commit hook, guard
+test, closure protocol). Branch feature/untrack-runtime-data. Finding R-1334, DECISION
+amend1016s D2.
 
 ## Current Step
-Done: `packages/orchestration/job_stop_now.py`, both callers, the `remedy do` walk's guard, the
-docs paragraph in serve-daemon-v1.md, the tests, R-1333 and the decision.
+Done: `git rm -r .data`, `.githooks/pre-commit`, the guard test in
+tests/test_data_root_isolation.py, the closure protocol paragraph, T2_F280's dated line, R-1334
+and the decision.
 
 ## Next Steps
-- None in this branch. The next operator order of the session removes the tracked `.data/`
-  files on its own branch.
+- None in this branch. Rule A5's next proposal is still F078, which only the operator starts.

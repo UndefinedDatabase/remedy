@@ -26,6 +26,15 @@ REPO_DEFAULT_ROOT = Path(data_paths.__file__).resolve().parents[2] / ".data"
 ENVIRONMENT_AT_IMPORT = dict(os.environ)
 
 
+def test_the_default_data_root_holds_no_tracked_file():
+    """DECISION amend1016s D2: `.data/` is runtime data and is ignored; 902 closure-evidence
+    files force-added under `.data/evidence_exports/` in July 2026 were removed from git, and
+    `.githooks/pre-commit` refuses a staged path under it."""
+    tracked = subprocess.run(["git", "ls-files", "--", ".data"], cwd=REPO_ROOT,
+                             capture_output=True, text=True, check=True).stdout.split()
+    assert tracked == []
+
+
 def test_the_resolved_root_is_under_the_pytest_temp_base(tmp_path_factory):
     root = data_paths.resolve_data_root().resolve()
     assert root != REPO_DEFAULT_ROOT
