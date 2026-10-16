@@ -317,6 +317,7 @@ packages.orchestration.run_rounds_view
 packages.orchestration.run_task_list
 packages.orchestration.runtime_integration_gate
 packages.orchestration.safe_points
+packages.orchestration.sandbox_relay
 packages.orchestration.schemas
 packages.orchestration.schemas.models
 packages.orchestration.schemas.validation
@@ -373,6 +374,7 @@ packages.orchestration.token_ledger
 packages.orchestration.token_measurement
 packages.orchestration.token_policy
 packages.orchestration.token_truth
+packages.orchestration.tool_sandbox
 packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.ui_server
