@@ -1,6 +1,0 @@
-{
- "full_job_history_in_prompt": false,
- "full_repo_in_prompt": false,
- "previous_task_summary_limit": 5,
- "strategy": "task_bounded_sequential_job"
-}

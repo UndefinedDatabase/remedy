@@ -1,8 +1,0 @@
-{
- "changed_files": [
-  "tests/test_no_interactive_guard.py"
- ],
- "schema_version": "1.0.0",
- "task_id": "T004",
- "task_title": "Task T004"
-}

@@ -1,7 +1,0 @@
-{
- "actual_config_available": false,
- "builder_model": "operator",
- "builder_model_source": "operator_attestation",
- "reviewer_model": "operator",
- "reviewer_model_source": "operator_attestation"
-}
