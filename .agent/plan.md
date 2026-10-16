@@ -1,31 +1,25 @@
 # Plan — amend1015c (operator order amend1015-final-closure, Remedy's half)
 
 ## Goal
-Close the face migration on the backend side: verify the Phase A claims with evidence, then repair
-the defects the order names, each with a failing regression test first. Branch
-`feature/amend1015-final-closure` from `feature/amend1015-face-migration` (PR #342); the
-orchestrator brings it into PR #342's branch. No push, no merge, no tag from this worktree.
+Close the face migration on the backend side: Phase A verified with evidence, the defects the
+order names repaired with a failing regression test first. Branch feature/amend1015-final-closure,
+brought into PR #342's branch feature/amend1015-face-migration by the orchestrator.
 
 ## Current Step
-Gates. Done: D1 (tomli), S1 to S3 (ledger steps), D2 (client read scope, 1.16), D3 (a failed
-story offers no retry), D5 (the diff route), D6 (the command line's fake writes its task's
-Markdown deliverable). E6 and E7 needed no change (see the handback).
+Done. D1 (tomli below 3.11), S1 to S3 (ledger steps), D2 (client read scope, interface 1.16), D3
+(a failed story offers no retry), D5 (the diff route), D6 (the fake writes its task's deliverable),
+D8 (a job at an open question has no diff yet), D9 (a declined job is never applied). E6 and E7
+needed no change in Remedy (the story's checking step already says no_test_command).
+
+## Gates (commit 45d80dbfd)
+scripts/remedy_test_full.sh (REMEDY_PYTEST_TIMEOUT_SEC=6000): 21299 passed, 11 skipped, 0 failed;
+remedy_lint.sh ruff clean; integrity check 6/6; wheel without UI files, fresh venv, remedy
+--version prints the commit, HTTP smoke (interface 1.16, 401 without token, 404 unknown job).
 
 ## Next Steps
-1. A5/A6: a client token reads only its projects' jobs on every job route (proof, run, orders,
-   digest, changes, diff); tests prove it.
-2. E2: a retry of a job that ended blocked really runs again, or the story offers no retry;
-   R-1332 (a blocked job keeps a finish time) if small.
-3. E3: `GET /api/v1/jobs/{job}/diff` (interface 1.16) from git, its twin `remedy client diff`,
-   docs (public-http-api-v1, http-clients guide), tests.
-4. E5: README.md vs docs/README.md (R-1325): fixture or resolver; narrow fix.
-5. E6: budgets enforced in the backend; retry cannot reset them; unknown cost stays null.
-6. E7: the story's verification words distinguish no test command / not run / passed / failed.
-7. Gates: full pytest, ruff, integrity, structure ratchet, wheel + fresh install + CLI and HTTP smoke.
-8. After this order: F078 resumes on `feature/f078-autonomy-levels`; R-1325's resolution of a plain
-   word ("die readme" in a repository of several files) stays F307's; R-1332 (a blocked job keeps
-   no finish time) stays open, `pingpong_job.py` being a listed file.
+1. After this order: F078 resumes on feature/f078-autonomy-levels.
+2. R-1325's resolution of a plain word stays F307's; R-1332 (a blocked job keeps no finish time)
+   stays open, pingpong_job.py being a listed file.
 
 ## Risks
-- `.agent/STOP` untracked and untouched (decodeux's stop of the autonomous loop).
-- `public_api.py` and `client_story.py` are near the structure limits; new code goes in new modules.
+- .agent/STOP untracked and untouched (decodeux's stop of the autonomous loop).
