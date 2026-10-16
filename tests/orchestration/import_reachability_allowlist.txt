@@ -250,6 +250,7 @@ packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_file
+packages.orchestration.order_scope
 packages.orchestration.ownership
 packages.orchestration.ownership_phrases
 packages.orchestration.patch_apply

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import RunState
+from packages.orchestration.order_scope import work_task_ids
 from packages.orchestration.pingpong_job import TaskEntry
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
@@ -441,6 +442,19 @@ def granularity_config() -> GranularityConfig:
     )
 
 
+def _without_checking_tasks(plan: TaskPlan, intake: dict[str, Any]) -> TaskPlan:
+    """amend1016p D2: the plan without tasks that only make a checking artifact the job's request
+    never asked for (a manifest, a checksum, a snapshot, a report), before normalization can fold
+    one into a real task. A dependency on a dropped task is dropped with it."""
+    requested = " ".join([str(intake.get("goal") or ""), *map(str, intake.get("constraints") or [])])
+    keep = work_task_ids(list(plan.tasks), requested)
+    if len(keep) == len(plan.tasks):
+        return plan
+    tasks = [t.model_copy(update={"depends_on": [d for d in t.depends_on if d in keep]})
+             for t in plan.tasks if t.id in keep]
+    return plan.model_copy(update={"tasks": tasks})
+
+
 def plan_job_llm(
     intake: dict[str, Any],
     call_fn: Callable[[str, int], str],
@@ -490,7 +504,7 @@ def plan_job_llm(
         )
 
     assert isinstance(outcome.value, TaskPlan)
-    plan = outcome.value
+    plan = _without_checking_tasks(outcome.value, intake)
     transformations: list[dict[str, Any]] = []
     try:
         normalized = normalize_plan(plan, granularity or granularity_config())
