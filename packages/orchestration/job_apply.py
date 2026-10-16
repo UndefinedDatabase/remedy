@@ -33,7 +33,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.exec_guard import run_guarded_test_command
-from packages.orchestration.job_apply_again import already_applied_refusal
+from packages.orchestration.job_apply_again import already_applied_refusal, job_not_ready_reason
 from packages.orchestration.job_apply_baseline import (
     TARGET_CHANGED_DURING_RUN,
     apply_base_commit,
@@ -1514,12 +1514,8 @@ def apply_job(
         ))
 
     # --- Readiness gates ---
-    if job.state != JOB_COMPLETED:
-        return _block(result, f"job_not_completed: status={job.state}")
-    # amend1015c D9: a decline is final; its result is never applied afterwards.
-    declined = job_result_decline(job)
-    if declined is not None:
-        return _block(result, f"job_declined: at={declined.get('declined_at', '')}")
+    if (not_ready := job_not_ready_reason(job, JOB_COMPLETED)) is not None:  # amend1015c D9
+        return _block(result, not_ready)
 
     for t in job.tasks:
         if t.status != TASK_APPLIED:
