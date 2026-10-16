@@ -6,18 +6,21 @@ job's isolated workspace, and reads the JSONL event stream it prints. A raw text
 not a coding harness: Pi reads, edits and tests inside the workspace, and the workspace diff is
 the only proof of a change. Assistant prose and claimed file lists never create one.
 
-Remedy deliberately does NOT embed Pi's SDK, start a Pi daemon, or claim an operating-system
-sandbox here: Pi itself says its tools run with the invoking user's permissions, so the isolation
-that holds is Remedy's own (the job worktree, the target hash guard, the scope guard and the
-stop before apply). Remedy also does not copy the operator's Pi settings, credentials,
-extensions, MCP servers, skills, prompt templates or themes into a worker: the runtime agent
-directory below holds one `models.json` and nothing else Remedy wrote.
+Pi's tools run inside the Pi process with its rights, so since DECISION amend1016sb D1 the WHOLE
+Pi process runs inside the tool sandbox (`tool_sandbox`): the workspace is its one writable tree,
+its network is private, and its model endpoint is reached through the trusted relay. Every bash
+command of the model goes through Remedy's tool shell, which ends it at `pi.tool_timeout_seconds`
+(D2); a job stop ends a running call within about a second (D6). There is no unsandboxed path: a
+sandbox that cannot run makes `pi_preflight` raise `PiUnavailable`. Remedy also does not copy the
+operator's Pi settings, credentials, extensions, MCP servers, skills, prompt templates or themes
+into a worker: the per-call agent directory holds Remedy's `models.json` and `settings.json` only.
 """
 from __future__ import annotations
 
 import json
 import os
 import shutil
+import signal
 import subprocess
 import time
 from collections.abc import Callable
@@ -43,6 +46,13 @@ from packages.orchestration.pingpong_provider import (
     _parse_reviewer_json,
 )
 from packages.orchestration.provider_timeouts import PI_DEFAULT_TIMEOUT_SEC
+from packages.orchestration.tool_sandbox import (
+    SANDBOX_PROVIDER_PORT,
+    SANDBOX_RUN_DIR,
+    SandboxUnavailable,
+    provider_sandbox,
+    require_sandbox,
+)
 
 PI_PROVIDER_NAME = "pi"
 #: The model server Pi talks to, and the model the whole local chain defaults to.
@@ -61,6 +71,27 @@ PI_STDERR_TAIL_CHARS = 2000
 #: Yields ``(seconds_left, source)`` for the running job, or None when no job clock is bound.
 _JOB_TIME_LEFT: ContextVar[Callable[[], tuple[float | None, str]] | None] = ContextVar(
     "pi_job_time_left", default=None)
+#: True once the running job has a stop request; a Pi call then ends within about a second (D6).
+_JOB_STOP_REQUESTED: ContextVar[Callable[[], bool] | None] = ContextVar(
+    "pi_job_stop_requested", default=None)
+#: The default of `pi.tool_timeout_seconds`, used when the config cannot be read.
+PI_TOOL_TIMEOUT_DEFAULT_SEC = 300
+#: The agent directory inside the sandbox, part of the read-only per-call run directory.
+_PI_AGENT_DIR_INSIDE = f"{SANDBOX_RUN_DIR}/agent"
+#: Remedy's tool shell (D2). Pi runs every bash command as `<shellPath> -c <command>` in a process
+#: group of its own; `timeout` ends the command at its deadline, says so, and sweeps the group.
+_TOOL_SHELL = """#!/bin/sh
+shell=/bin/bash
+[ -x "$shell" ] || shell=/bin/sh
+timeout --foreground -k 5 {limit} "$shell" "$@"
+code=$?
+if [ "$code" -eq 124 ]; then
+    echo "remedy: this command was ended at its tool deadline of {limit} seconds" >&2
+    trap '' TERM
+    kill -TERM 0 2>/dev/null
+fi
+exit "$code"
+"""
 _PI_ENV_ALLOWLIST = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "SHELL",
                      "TMPDIR", "TZ", "USER", "TERM")
 #: The values the verified local model needs in Pi's `models.json` (the operator's own entry).
@@ -109,13 +140,6 @@ def build_pi_argv(pi_path: str, *, model: str, tools: str, prompt: str) -> list[
     ]
 
 
-def pi_agent_dir() -> Path:
-    """Remedy's private Pi agent directory, under the run data root, never `~/.pi`."""
-    from packages.orchestration.data_paths import resolve_data_root
-
-    return resolve_data_root() / "pi_agent"
-
-
 def ollama_host() -> str:
     """Where Ollama lives: the existing `ollama.host` key, then the environment, then the default."""
     host = os.environ.get("REMEDY_OLLAMA_HOST", "")
@@ -128,11 +152,10 @@ def ollama_host() -> str:
     return (host or "http://localhost:11434").rstrip("/")
 
 
-def write_pi_models_json(agent_dir: Path, *, host: str, model: str) -> Path:
-    """The one file Remedy writes into the runtime agent directory: the model connection."""
-    agent_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+def pi_models_json(*, model: str) -> str:
+    """Pi's model connection: the relay port inside the sandbox, never the real endpoint."""
     models = {"providers": {PI_INNER_PROVIDER: {
-        "baseUrl": f"{host.rstrip('/')}/v1",
+        "baseUrl": f"http://127.0.0.1:{SANDBOX_PROVIDER_PORT}/v1",
         "api": "openai-completions",
         "apiKey": "ollama",
         "compat": {"supportsDeveloperRole": False, "supportsReasoningEffort": False},
@@ -143,17 +166,23 @@ def write_pi_models_json(agent_dir: Path, *, host: str, model: str) -> Path:
             "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
         }],
     }}}
-    path = agent_dir / "models.json"
-    text = json.dumps(models, indent=2, sort_keys=True) + "\n"
-    if not path.exists() or path.read_text(encoding="utf-8") != text:
-        path.write_text(text, encoding="utf-8")
-    return path
+    return json.dumps(models, indent=2, sort_keys=True) + "\n"
 
 
-def pi_child_env(agent_dir: Path) -> dict[str, str]:
+def pi_tool_timeout_sec() -> int:
+    """`pi.tool_timeout_seconds`: one shell command's deadline inside the sandbox (D2)."""
+    try:
+        from packages.orchestration.config import get_config
+        value = int(get_config().get("pi.tool_timeout_seconds") or PI_TOOL_TIMEOUT_DEFAULT_SEC)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        value = PI_TOOL_TIMEOUT_DEFAULT_SEC    # an unreadable config keeps the documented default
+    return max(value, 1)
+
+
+def pi_child_env() -> dict[str, str]:
     """The environment a Pi child gets: a short allowlist plus Pi's own switches."""
     env = {key: os.environ[key] for key in _PI_ENV_ALLOWLIST if key in os.environ}
-    env.update({"PI_CODING_AGENT_DIR": str(agent_dir), "PI_OFFLINE": "1",
+    env.update({"PI_CODING_AGENT_DIR": _PI_AGENT_DIR_INSIDE, "PI_OFFLINE": "1",
                 "PI_SKIP_VERSION_CHECK": "1", "PI_TELEMETRY": "0"})
     return env
 
@@ -206,8 +235,15 @@ def pi_preflight(*, model: str, workspace: str | None, role: str,
         raise PiUnavailable(f"The job workspace {workspace} does not exist, so Pi has no place to work.")
     if not pi_role_tools(role):
         raise PiUnavailable(f"No Pi tool policy exists for the role {role!r}.")
+    try:
+        require_sandbox()
+    except SandboxUnavailable as exc:
+        raise PiUnavailable(f"Pi's tools run only inside the tool sandbox, which is not ready "
+                            f"({exc.state}): {exc}") from exc
     host = ollama_host()
-    write_pi_models_json(pi_agent_dir(), host=host, model=model)
+    if not host.startswith("http://"):
+        raise PiUnavailable(f"The model endpoint {host} is not an http:// address; the tool sandbox "
+                            "relays plain http to the configured Ollama endpoint only.")
     if check_endpoint:
         names = _ollama_models(host)
         if model not in names and f"{model}:latest" not in names:
@@ -228,6 +264,11 @@ def default_chain_checks() -> list[tuple[str, bool, str]]:
         ("pi_executable", found is not None,
          f"pi at {found} ({pi_version(found) or 'version unreadable'})" if found
          else "pi not found on PATH; install Pi or select an explicit builder provider")]
+    from packages.orchestration.tool_sandbox import SANDBOX_READY, sandbox_self_test
+
+    state, detail, hint = sandbox_self_test()
+    checks.append(("tool_sandbox", state == SANDBOX_READY,
+                   f"{state}: {detail}" + (f"; {hint}" if hint else "")))
     host = ollama_host()
     try:
         names = _ollama_models(host)
@@ -242,6 +283,13 @@ def default_chain_checks() -> list[tuple[str, bool, str]]:
          else f"{PI_DEFAULT_MODEL} is not installed in Ollama; run `ollama pull {PI_DEFAULT_MODEL}`")]
 
 
+def _signal_name(number: int) -> str:
+    try:
+        return signal.Signals(number).name
+    except ValueError:
+        return f"SIG{number}"
+
+
 def _redacted_tail(raw: bytes) -> str:
     from packages.orchestration.stream_evidence import redact_text
 
@@ -250,9 +298,10 @@ def _redacted_tail(raw: bytes) -> str:
 
 
 def bind_job_clock(job: Any) -> None:
-    """Let Pi calls made for *job* read the job's remaining wall-clock budget and deadline (R2)."""
+    """Let Pi calls made for *job* read its remaining wall-clock budget and deadline (R2), and its stop (D6)."""
     from packages.core.models import JobBudgets
     from packages.orchestration.budget_guard import job_time_remaining
+    from packages.orchestration.safe_points import stop_requested
 
     def left() -> tuple[float | None, str]:
         try:
@@ -264,6 +313,8 @@ def bind_job_clock(job: Any) -> None:
         return job_time_remaining(budgets, started)
 
     _JOB_TIME_LEFT.set(left)
+    job_id = getattr(job, "job_id", None)
+    _JOB_STOP_REQUESTED.set((lambda: stop_requested(job_id) is not None) if job_id else None)
 
 
 def effective_pi_timeout(configured_sec: int) -> tuple[float, dict[str, Any]]:
@@ -289,8 +340,15 @@ def pi_failure_text(summary: PiRunSummary | None, *, exit_code: int | None, term
     `blocked` as a reviewer reject unless a transport failure carries it.
     """
     tail = _redacted_tail(stderr)
+    if exit_code is not None and 128 < exit_code < 160 and not term_signal:
+        # Inside the sandbox Pi is not the direct child: its signal death arrives as 128 + N.
+        term_signal = _signal_name(exit_code - 128)
     if tripped == "wall_timeout":
         return "provider_error: pi_timeout: the Pi call hit its wall-clock deadline"
+    if tripped == "cancelled":
+        return "provider_error: pi_cancelled: the job was stopped while Pi ran, and its sandbox was ended"
+    if exit_code == 126 and b"tool sandbox" in stderr:
+        return f"provider_error: pi_sandbox_unavailable: {_redacted_tail(stderr).strip()[-300:]}"
     if tripped == "output_bytes":
         return "provider_error: pi_output_limit: the Pi event stream passed its size cap"
     if term_signal:
@@ -363,13 +421,22 @@ class PiProvider:
         if wall <= 0:
             return PiCallOutcome(None, {"role": self._role, "timeout": timeout_info},
                                  "provider_error: pi_timeout: the job's time budget is already used up", 0)
+        if not self._cwd:
+            return PiCallOutcome(None, {"role": self._role},
+                                 "provider_error: pi_unavailable: a Pi call needs its job workspace", 0)
         argv = build_pi_argv(info["pi_path"], model=self._model, tools=tools, prompt=prompt)
-        policy = ExecGuardPolicy(
-            wall_timeout_seconds=wall,
-            cwd=self._cwd, core_file_bytes=0, output_cap_bytes=PI_STDOUT_CAP_BYTES,
-            env=pi_child_env(pi_agent_dir()), env_allowlist=_PI_ENV_ALLOWLIST + (
-                "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"))
-        guarded = run_guarded(argv, policy)
+        tool_limit = min(pi_tool_timeout_sec(), max(int(wall), 1))
+        files = {"agent/models.json": pi_models_json(model=self._model),
+                 "agent/settings.json": json.dumps({"shellPath": f"{SANDBOX_RUN_DIR}/tool-shell.sh"}),
+                 "tool-shell.sh": _TOOL_SHELL.format(limit=tool_limit)}
+        with provider_sandbox(self._cwd, info["host"], files=files, writable=("agent",)) as (
+                sandbox, relay_argv):
+            guarded = run_guarded([*relay_argv, *argv], ExecGuardPolicy(
+                wall_timeout_seconds=wall, cwd=self._cwd, core_file_bytes=0,
+                output_cap_bytes=PI_STDOUT_CAP_BYTES, env=pi_child_env(),
+                env_allowlist=_PI_ENV_ALLOWLIST + (
+                    "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"),
+                sandbox=sandbox, cancel_check=_JOB_STOP_REQUESTED.get()))
         stream_error, summary = "", None
         try:
             summary = summarize_pi_events(parse_pi_events(guarded.stdout))
@@ -384,13 +451,13 @@ class PiProvider:
         evidence = {
             "role": self._role, "provider": PI_PROVIDER_NAME, "inner_provider": PI_INNER_PROVIDER,
             "model": self._model, "pi_path": info["pi_path"], "pi_version": info["pi_version"],
-            "tools": tools, "cwd": self._cwd or "", "exit_code": guarded.returncode,
+            "tools": tools, "cwd": self._cwd or "", "sandbox": "bwrap", "exit_code": guarded.returncode,
             "term_signal": guarded.term_signal, "duration_ms": duration_ms,
             "stop_reason": summary.stop_reason if summary else "",
             "model_turns": summary.model_turns if summary else 0,
             "tool_calls": list(summary.tool_calls) if summary else [],
             "tool_errors": summary.tool_errors if summary else 0,
-            "timeout": timeout_info,
+            "timeout": timeout_info, "tool_timeout_sec": tool_limit,
             "retries": summary.retries if summary else 0,
             "usage": dict(summary.usage) if summary else {},
             "settled": bool(summary and summary.settled), "error": error[:300],

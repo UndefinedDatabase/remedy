@@ -924,6 +924,10 @@ cd remedy
 pip install -e ".[dev]"          # add ,ollama for the local planner provider
 ```
 
+On Linux, also install Bubblewrap (`sudo apt install bubblewrap`, or your distribution's
+package): Remedy runs model-controlled tools only inside it and refuses them without it.
+`remedy doctor health` checks it ([tool sandbox](docs/system/tool-sandbox-v1.md)).
+
 CI installs an exact, hash-checked toolchain instead. To reproduce it, install the
 pinned set first and then Remedy without resolving anything:
 
@@ -959,6 +963,7 @@ remedy job list                                     # the jobs it planned and ra
 | remedy.toml config | [`docs/guides/remedy-toml-user-guide.md`](docs/guides/remedy-toml-user-guide.md) |
 | Step history (archive) | [`docs/archive/remedy-step-history-v0.md`](docs/archive/remedy-step-history-v0.md) |
 | Execution guard limits (F085) | [`docs/system/exec-guard-limitations-v0.md`](docs/system/exec-guard-limitations-v0.md) |
+| Tool sandbox (Bubblewrap) | [`docs/system/tool-sandbox-v1.md`](docs/system/tool-sandbox-v1.md) |
 
 ## Development
 

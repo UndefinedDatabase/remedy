@@ -25,11 +25,13 @@ not exist:
   T001 test relies on. Callers CHOOSE the allowlist per command class — the
   builder policy pins one, the CLI-provider policy deliberately does not — so what
   a child inherits is that caller's decision, never this module's default.
-- No filesystem fence; it is T003's remaining half. The network posture EXISTS since T003 for
-  the classes whose policy sets `deny_network`, and it is a PROXY posture and never a kernel
-  one: it points a child's proxy variables at a closed loopback port, so a toolchain that
-  HONOURS those variables cannot reach the network while a binary that ignores them still can.
-  Stage 2 closes that gap; stage 1 raises the bar and declines to call it containment.
+- The filesystem, process and network fence is `tool_sandbox`, not this module: a policy whose
+  `sandbox` is set runs its argv inside Bubblewrap (DECISION amend1016sb D1), and a sandbox that
+  cannot run REFUSES the command (exit 126, classification `sandbox_unavailable`) instead of
+  running it unconfined. The `test` and `dod-process` classes and the Pi provider set it. The
+  `deny_network` posture below is a PROXY posture and never a kernel one: a toolchain that
+  honours the proxy variables cannot reach the network while a binary that ignores them still
+  can, which is why the sandboxed classes ALSO get the kernel's private network namespace.
 
 Why `address_space_bytes` is ENFORCED and deliberately NOT classified: a child
 that exceeds RLIMIT_AS has its mapping refused, raises `MemoryError` and exits 1
@@ -73,8 +75,13 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
+from packages.orchestration.tool_sandbox import SandboxSpec, SandboxUnavailable, workspace_root_for
+
 #: How often the supervisor re-checks a still-running child against its deadline.
 _SUPERVISION_POLL_SECONDS = 0.01
+
+#: How often a policy's `cancel_check` is asked; it reads a file, so not on every poll.
+_CANCEL_POLL_SECONDS = 1.0
 
 #: Read size of one stream-pump iteration.
 _READ_CHUNK_BYTES = 65536
@@ -197,6 +204,10 @@ class ExecGuardPolicy:
     #: and `plan_child_spawn` is the only place that sees the environment after it. True
     #: overlays `DENIED_NETWORK_ENV`; the D1 policy table's network column decides it per class.
     deny_network: bool = False
+    #: The OS boundary the argv runs in (DECISION amend1016sb D1); None runs it on the host.
+    sandbox: SandboxSpec | None = None
+    #: Asked about once a second while the child runs; True ends it as `cancelled` (a job stop).
+    cancel_check: Callable[[], bool] | None = None
 
 
 # WHY: the CHILD-side half of a policy — everything a `Popen` must pass to obey it — so a supervisor that owns its own PARENT half can still be limited.
@@ -409,6 +420,36 @@ def _signal_name(signum: int) -> str:
         return f"SIG{signum}"
 
 
+def _await_exit(proc: subprocess.Popen, deadline: float | None,
+                cancel_check: Callable[[], bool] | None) -> str | None:
+    """Poll until the child exits: None, or the reason the guard must end it (`wall_timeout`, `cancelled`)."""
+    next_cancel_check = 0.0
+    while True:
+        # WNOWAIT observes the exit WITHOUT reaping, so the zombie keeps the pgid
+        # allocated and the group kill in `run_guarded` can never reach a recycled pid.
+        if os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG) is not None:
+            return None
+        now = time.monotonic()
+        if deadline is not None and now >= deadline:
+            return "wall_timeout"
+        if cancel_check is not None and now >= next_cancel_check:
+            next_cancel_check = now + _CANCEL_POLL_SECONDS
+            if cancel_check():
+                return "cancelled"
+        time.sleep(_SUPERVISION_POLL_SECONDS)
+
+
+def _sandbox_refusal(reason: str, plan: ChildSpawnPlan) -> ExecGuardResult:
+    """What a sandboxed command returns when the sandbox cannot run: exit 126, nothing spawned."""
+    message = f"remedy: refused to run without the tool sandbox: {reason}\n".encode()
+    return ExecGuardResult(
+        returncode=126, term_signal=None, stdout=b"", stderr=message, stdout_truncated=False,
+        stderr_truncated=False, stdout_bytes_seen=0, stderr_bytes_seen=len(message),
+        streams_complete=True, wall_seconds=0.0, cpu_seconds_used=0.0,
+        classification="sandbox_unavailable", tripped_limit=None, limits_enforced=(),
+        limits_unsupported=plan.limits_unsupported)
+
+
 def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     """Run `cmd` under `policy` and classify how it ended.
 
@@ -429,12 +470,17 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         raise ValueError("run_guarded requires a non-empty argv list")
 
     plan = plan_child_spawn(policy)
+    if policy.sandbox is not None:
+        try:
+            argv = policy.sandbox.wrap(argv, plan.env, plan.cwd)
+        except SandboxUnavailable as exc:
+            return _sandbox_refusal(str(exc), plan)
     # The parent half is this guard's own, so it appends its own limit names.
     enforced = list(plan.limits_enforced)
-    if policy.wall_timeout_seconds is not None:
-        enforced.append("wall_timeout")
-    if policy.output_cap_bytes is not None:
-        enforced.append("output_bytes")
+    for name, on in (("wall_timeout", policy.wall_timeout_seconds is not None),
+                     ("output_bytes", policy.output_cap_bytes is not None),
+                     ("cancelled", policy.cancel_check is not None)):
+        enforced += [name] if on else []
 
     started = time.monotonic()
     proc = subprocess.Popen(
@@ -459,18 +505,9 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     deadline = None
     if policy.wall_timeout_seconds is not None:
         deadline = started + policy.wall_timeout_seconds
-    deadline_fired = False
+    ended_by: str | None = None
     try:
-        while True:
-            # WNOWAIT observes the exit WITHOUT reaping, so the zombie keeps the pgid
-            # allocated and the group kill below can never reach a recycled pid.
-            exited = os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
-            if exited is not None:
-                break
-            if deadline is not None and time.monotonic() >= deadline:
-                deadline_fired = True
-                break
-            time.sleep(_SUPERVISION_POLL_SECONDS)
+        ended_by = _await_exit(proc, deadline, policy.cancel_check)
     finally:
         # Both exits run this: on a deadline it IS the kill, and on a normal exit it
         # sweeps any descendant the child left behind.
@@ -506,8 +543,9 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
         term_signal = None
         returncode = os.WEXITSTATUS(status)
 
-    if deadline_fired:
-        classification, tripped_limit = "resource_limit", "wall_timeout"
+    if ended_by is not None:
+        classification = "cancelled" if ended_by == "cancelled" else "resource_limit"
+        tripped_limit = ended_by
     elif term_signal == "SIGXCPU":
         classification, tripped_limit = "resource_limit", "cpu_seconds"
     elif stdout_truncated or stderr_truncated:
@@ -549,8 +587,14 @@ def test_command_exec_policy(
     output_cap_bytes: int = TEST_COMMAND_OUTPUT_CAP_BYTES,
     extra_env_keys: Sequence[str] = (),
     extra_env: Mapping[str, str] | None = None,
+    sandboxed: bool = True,
 ) -> ExecGuardPolicy:
     """The stage-1 policy every `test`-class command runs under.
+
+    `sandboxed` (DECISION amend1016sb D4): a test command runs code the job's model may have
+    written, so it runs inside the tool sandbox, with the git worktree around `cwd` as its one
+    writable tree. Only Remedy's own gates over the operator's Remedy checkout (`ci_run`,
+    `integrity_gate`) pass False.
 
     `cpu_seconds`, `address_space_bytes` and `open_files` are deliberately None.
     THIS IS THE ONE STATEMENT OF THAT REASON in this module; the other policy
@@ -589,6 +633,7 @@ def test_command_exec_policy(
             TEST_COMMAND_ENV_ALLOWLIST + tuple(extra_env_keys) + tuple(sorted(overlay))
         ),
         deny_network=True,
+        sandbox=SandboxSpec(workspace_root_for(cwd or os.getcwd())) if sandboxed else None,
     )
 
 
@@ -599,6 +644,7 @@ def run_guarded_test_command(
     cwd: str | None,
     extra_env_keys: Sequence[str] = (),
     extra_env: Mapping[str, str] | None = None,
+    sandboxed: bool = True,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one `test`-class command under the guard, shaped like `subprocess.run`.
 
@@ -621,7 +667,7 @@ def run_guarded_test_command(
     exist rather than that a run misbehaved, and every caller already handles it.
     """
     guarded = run_guarded(cmd, test_command_exec_policy(
-        timeout_sec, cwd, extra_env_keys=extra_env_keys, extra_env=extra_env))
+        timeout_sec, cwd, extra_env_keys=extra_env_keys, extra_env=extra_env, sandboxed=sandboxed))
     return _completed_process_from_guarded(cmd, timeout_sec, guarded)
 
 
@@ -675,6 +721,9 @@ def dod_process_exec_policy(
     It still passes through the allowlist above, so only an allowlisted key such
     as `PATH` or `VIRTUAL_ENV` reaches the child, and it is applied BEFORE the
     bytecode key so an overlay can never unset that key.
+
+    A DoD check runs the project's own command over the job's worktree, so it always runs
+    inside the tool sandbox (DECISION amend1016sb D4), as `test_command_exec_policy` states.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
@@ -684,6 +733,7 @@ def dod_process_exec_policy(
         env={**os.environ, **(env_overlay or {}), "PYTHONDONTWRITEBYTECODE": "1"},
         env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
         deny_network=True,
+        sandbox=SandboxSpec(workspace_root_for(cwd or os.getcwd())),
     )
 
 

@@ -2,7 +2,9 @@
 
 `remedy do ... --apply` then `remedy do ... --commit-auto`, with no provider flag, no commit,
 stash or reset between them. The fake `pi` executable edits the README in its working directory
-the way the real harness does (the builder) or prints a passing verdict (the reviewer).
+the way the real harness does (the builder) or prints a passing verdict (the reviewer). It runs
+inside the real tool sandbox (DECISION amend1016sb D1), where nothing outside the workspace is
+writable, so each call is recorded from the trusted side, off the argv and policy Remedy builds.
 """
 from __future__ import annotations
 
@@ -29,9 +31,6 @@ _FAKE_PI = textwrap.dedent('''\
         print("9.9.9"); sys.exit(0)
     argv = sys.argv[1:]
     tools = argv[argv.index("--tools") + 1]
-    here = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(here, "calls.log"), "a") as log:
-        log.write(json.dumps({"tools": tools, "cwd": os.getcwd()}) + "\\n")
     def emit(event):
         sys.stdout.write(json.dumps(event) + "\\n"); sys.stdout.flush()
     emit({"type": "agent_start"})
@@ -64,13 +63,21 @@ def pi_world(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setattr(PP, "_ollama_models", lambda host: ["muse-glimmer:latest"])
+    calls: list[dict] = []
+    real = PP.run_guarded
+
+    def recording(argv, policy):
+        calls.append({"tools": argv[argv.index("--tools") + 1], "cwd": policy.cwd})
+        return real(argv, policy)
+
+    monkeypatch.setattr(PP, "run_guarded", recording)
     target = _commit_repo(tmp_path / "test", {"README.md": "# Test\n"})
     monkeypatch.chdir(target)
-    return target, bindir / "calls.log"
+    return target, calls
 
 
-def _calls(log: Path) -> list[dict]:
-    return [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+def _calls(log: list[dict]) -> list[dict]:
+    return list(log)
 
 
 def test_json_stays_one_envelope_progress_names_the_chain_and_the_target_is_untouched(pi_world, capsys):

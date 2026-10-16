@@ -39,6 +39,7 @@
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | environment variable | [environment.md](guides/environment.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
+| sandbox / Bubblewrap / Pi isolation | [tool-sandbox-v1.md](system/tool-sandbox-v1.md) | system |
 | exit code | [exit-codes.md](guides/exit-codes.md) | guide |
 | explanations / terms | [explanation-layer-user-guide-v1.md](archive/explanation-layer-user-guide-v1.md) | archive |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
@@ -106,6 +107,7 @@ Specifications and design documents for the built system.
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
+| [tool-sandbox-v1.md](system/tool-sandbox-v1.md) | The Bubblewrap boundary around Pi and untrusted project commands: what is inside, the model relay, deadlines, fail-closed states, platforms, install and rollback |
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone — command deleted by F280 round 3 |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |

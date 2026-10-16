@@ -371,7 +371,7 @@ with the code that calls it.
 | 127 | `packages/orchestration/stream_evidence.py` | `capture_stream_evidence` |
 | 123 | `packages/orchestration/watchdog.py` | `act_on_trips` |
 | 126 | `packages/orchestration/artifact_contract_gate.py` | `build_artifact_contract_gate` |
-| 125 | `packages/orchestration/exec_guard.py` | `run_guarded` |
+| 122 | `packages/orchestration/exec_guard.py` | `run_guarded` |
 | 125 | `packages/orchestration/gauntlet_runner.py` | `run_order` |
 | 125 | `packages/orchestration/pingpong_loop.py` | `_build_token_accounting` |
 | 125 | `packages/orchestration/run_manifest.py` | `write_run_manifest` |
