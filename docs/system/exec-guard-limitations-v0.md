@@ -1,5 +1,10 @@
 # Execution Guard — what stage 1 does NOT prevent
 
+> **Status (2026-10-16):** the `test` and `dod-process` classes and the Pi provider now also run
+> inside the kernel-enforced tool sandbox (DECISION amend1016sb D1, D4), which closes the
+> filesystem, process and network gaps below for them: [tool-sandbox-v1.md](tool-sandbox-v1.md).
+> This page still describes the stage-1 guard itself and the classes outside the sandbox.
+
 ## Overview
 
 F085 stage 1 gives builder-spawned commands POSIX resource limits, a wall timeout, output
