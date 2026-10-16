@@ -15,7 +15,7 @@ FEATURES = REPO / "docs" / "roadmap" / "features"
 STATUS = REPO / "docs" / "roadmap" / "STATUS.md"
 
 FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
-STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
+STATUS_LINE_RE = re.compile(r"^- \[[ ~x!]\] F(\d{3}) — ")
 TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 
 #: 250 roadmap features (F001-F250) plus eight registered additions: F251,
@@ -156,6 +156,8 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: One more, F309 (Cockpit v2: one design, chosen by the operator), was registered
 #: on 2026-10-15 by operator amendment amend1015-cockpit-truth and placed directly
 #: after F055, under its own Tier 5 heading; see T5_F309.md.
+#: Operator order amend1016-stabilization withdrew F309 (DECISION amend1016 D1): its line
+#: is `[!]` in Package 2, so the pattern above accepts all four states of ROADMAP Part C.
 TOTAL_FEATURES = 309
 
 #: Documents that must never contain a stale claim.
