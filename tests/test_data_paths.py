@@ -400,7 +400,9 @@ class TestRoutedHandler:
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.safe_points import stop_requested
         uid = uuid4()
-        save_job_plan(JobPlan(job_id=str(uid), job_title="stop-by-hex"))
+        # A started job, so its stop stays a pending request (amend1016s D1 ends a planned one).
+        save_job_plan(JobPlan(job_id=str(uid), job_title="stop-by-hex", state="running",
+                              first_running_at="2026-10-16T10:00:00+00:00"))
         _cmd_job_stop(uid.hex)
         assert stop_requested(str(uid)) is not None
         assert stop_requested(uid.hex) is None

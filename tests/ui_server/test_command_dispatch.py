@@ -52,8 +52,11 @@ class TestJobStopDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JOB_RUNNING, save_job_plan
         self.job = _make_job()
+        # A started job: its stop waits for its safe point (a job that never started is
+        # stopped at once, `test_a_job_that_never_started_is_stopped_through_the_door`).
+        self.job.state, self.job.first_running_at = JOB_RUNNING, "2026-10-16T10:00:00+00:00"
         save_job_plan(self.job)
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
@@ -97,6 +100,27 @@ class TestJobStopDispatchEffects:
         assert signal["source"] == "cli", signal
         assert signal["reason"] == "operator asked", signal
 
+    def test_a_job_that_never_started_is_stopped_through_the_door(self):
+        """amend1016s D1: the forwarded `job.stop` of a `planned` job ends it at once, and
+        the request the body names is the consumed one."""
+        from packages.orchestration import safe_points
+        from packages.orchestration.client_story import job_client_story
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        self.job.state, self.job.first_running_at = "planned", ""
+        save_job_plan(self.job)
+        port, token = _start_door_for_job(self.job_id, self.tmp_path)
+        status, body = self._post(port, token, "nonce-unstarted",
+                                  args={"reason": "mission abandoned"})
+
+        assert status == 200, body
+        job = load_job_plan(self.job_id)
+        assert job.state == "stopped" and job.stop_request_id == body["request_id"]
+        assert job.stop_reason == "mission abandoned" and job.stop_source == "cli"
+        assert not safe_points.stop_request_path(self.job_id, control_root_path=self.control).exists()
+        assert safe_points.is_archived(self.job_id, body["request_id"], control_root_path=self.control)
+        assert job_client_story(self.job_id, job)["state"] == "stopped"
+
     def test_the_nonce_record_holds_the_body_the_client_received(self):
         """D8's replay is byte-exact only if the store holds what was sent."""
         from packages.orchestration.command_nonce import lookup_nonce_result
@@ -125,8 +149,10 @@ class TestJobStopDispatchEffects:
         def explode(*_args, **_kwargs):
             raise safe_points.StopControlError("containment could not be guaranteed")
 
+        from packages.orchestration import job_stop_now
+
         port, token = _start_door_for_job(self.job_id, self.tmp_path)
-        monkeypatch.setattr(safe_points, "request_stop", explode)
+        monkeypatch.setattr(job_stop_now, "request_stop", explode)
         status, body = self._post(port, token, "nonce-raises")
 
         assert status == 500, body
@@ -337,8 +363,11 @@ class TestApproveHunksDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_job_with_a_diff(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JOB_RUNNING, save_job_plan
         self.job = _make_job()
+        # A started job: its stop waits for its safe point (a job that never started is
+        # stopped at once, `test_a_job_that_never_started_is_stopped_through_the_door`).
+        self.job.state, self.job.first_running_at = JOB_RUNNING, "2026-10-16T10:00:00+00:00"
         save_job_plan(self.job)
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
@@ -492,8 +521,11 @@ class TestChatSendDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JOB_RUNNING, save_job_plan
         self.job = _make_job()
+        # A started job: its stop waits for its safe point (a job that never started is
+        # stopped at once, `test_a_job_that_never_started_is_stopped_through_the_door`).
+        self.job.state, self.job.first_running_at = JOB_RUNNING, "2026-10-16T10:00:00+00:00"
         save_job_plan(self.job)
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path

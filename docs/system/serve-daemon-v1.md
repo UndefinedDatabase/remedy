@@ -81,6 +81,17 @@ same code in both modes (DECISION F200 D3, `apps/cli/serve_client.py`,
 `forward_effect`). A `--source` the client names travels with the envelope
 and is recorded as given.
 
+A stop of a job that never started — state `planned`, with no first run time
+and no run episode — ends it at once in both modes, because no runner will ever
+reach a safe point for it (DECISION amend1016s D1,
+`packages/orchestration/job_stop_now.py`): the request is archived, the job is
+saved `stopped` with its `stop_request_id`, `stop_reason`, `stop_source` and
+`stopped_at` taken from the request, the request is acknowledged, and the
+job's story reads `stopped`. A request left pending on such a job is finalized
+the same way by the next `job stop`. The answer keeps its shape; its
+`job_status` is the job's state after the stop. A started job (running,
+blocked, paused) only gets the request, as before.
+
 `job run <job>` goes through the supervisor only when it is given with at
 most `--json` and the job exists on this data root; with any other option, or
 a job the data root does not hold, it runs directly, printing exactly what it
