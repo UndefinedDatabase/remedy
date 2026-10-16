@@ -345,6 +345,18 @@ evidence files into the base..HEAD review subject and the package
 builds BLOCKED_EVIDENCE ("evidence is not authoritative") — F147
 attempt-2 lesson.
 
+**The data root is never committed (DECISION amend1016s D2,
+2026-10-16):** `.data/` is runtime data and `.gitignore` ignores it.
+The closures of F014 to F053 (2026-07-26 to 2026-07-31) nevertheless
+force-added their evidence exports under `.data/evidence_exports/`
+("commit closure evidence (after READY zip)"), 902 files in all; on
+2026-10-16 they were removed from git, because `.data` is runtime data,
+and `.githooks/pre-commit` now refuses a staged path under `.data/`.
+No step of this protocol commits evidence: the STATUS line's package
+name, SHA-256 and evidence job id are the durable pointer, the package
+itself lives outside the repository, and the evidence export stays in
+the data root that produced it. Never `git add -f` a path under `.data/`.
+
 ## Failure honesty
 If any precondition fails, the feature does NOT close. In order: another
 repair round; `[!] <Fxxx> — <name> (blocked: <reason>)` authored by the

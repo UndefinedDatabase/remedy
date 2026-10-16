@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Refuses a commit that stages a path under `.data/`, the runtime data root, which `.gitignore`
+# ignores and which `git add -f` once pushed into history (DECISION amend1016s D2, 2026-10-16).
+# A deletion is allowed, so the data root's old files can leave git. Installed per checkout with:
+# git config core.hooksPath .githooks
+staged=$(git diff --cached --name-only --diff-filter=d -- .data)
+if [ -n "$staged" ]; then
+    echo "refused: .data/ is runtime data and is never committed (DECISION amend1016s D2):" >&2
+    echo "$staged" | head -5 >&2
+    exit 1
+fi
