@@ -1024,6 +1024,21 @@ def test_the_refusal_a_denied_child_sees_names_the_closed_proxy_port():
     assert exec_guard.test_command_exec_policy(30, None).deny_network is True
 
 
+#: Starts its own HTTP server on loopback and fetches from it, the way the runtime, smoke and CLI
+#: suites judge readiness; prints what it was served.
+_SERVE_AND_FETCH = (
+    "import http.server, sys, threading, urllib.request\n"
+    "class H(http.server.BaseHTTPRequestHandler):\n"
+    "    def do_GET(self):\n"
+    "        self.send_response(200); self.end_headers(); self.wfile.write(b'SERVED-INSIDE')\n"
+    "    def log_message(self, *a): pass\n"
+    "s = http.server.HTTPServer(('127.0.0.1', 0), H)\n"
+    "threading.Thread(target=s.serve_forever, daemon=True).start()\n"
+    "url = 'http://127.0.0.1:%d/' % s.server_address[1]\n"
+    "sys.stdout.write(urllib.request.urlopen(url, timeout=5).read().decode())\n"
+)
+
+
 @pytest.mark.subprocess
 def test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names():
     """The other half of amend0820-gate-autonomy: the exemption is real, not declared.
@@ -1033,15 +1048,25 @@ def test_a_guarded_test_command_still_reaches_the_loopback_the_exemption_names()
     empty `NO_PROXY` every one of them was refused through the closed proxy. This
     measures that path through the seam itself, so a posture that stopped exempting
     127.0.0.1 fails HERE — one named test — instead of failing dozens of suites that
-    say nothing about the network.
+    say nothing about the network. Since DECISION amend1016sb D4 the command runs in
+    the tool sandbox, whose loopback is its own: the server it starts is reachable,
+    a server on the HOST's loopback is not (the test after this one).
     """
-    with _really_listening() as url:
-        reached = run_guarded_test_command(
-            _child(_FETCH_URL) + [url], timeout_sec=30, cwd=None,
-        )
+    reached = run_guarded_test_command(_child(_SERVE_AND_FETCH), timeout_sec=30, cwd=None)
 
     assert reached.returncode == 0, reached.stderr
-    assert _SERVED_BODY in reached.stdout
+    assert reached.stdout == b"SERVED-INSIDE"
+
+
+@pytest.mark.subprocess
+def test_a_guarded_test_command_cannot_reach_a_server_on_the_hosts_loopback():
+    """The kernel half of the deny (amend1016sb D4): a host service answering on 127.0.0.1
+    does not exist for a sandboxed test command, whatever proxy variables it honours."""
+    with _really_listening() as url:
+        denied = run_guarded_test_command(_child(_FETCH_URL) + [url], timeout_sec=30, cwd=None)
+
+    assert denied.returncode != 0 and _SERVED_BODY not in denied.stdout
+    assert b"Connection refused" in denied.stderr
 
 
 # ── R-1145: a guarded child never reads the caller's stdin ───────────────────

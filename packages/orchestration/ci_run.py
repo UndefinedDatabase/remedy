@@ -113,6 +113,7 @@ def _run_via_subprocess(
             timeout_sec=timeout_sec + wall_grace_sec,
             cwd=str(cwd),
             extra_env={PYTEST_TIMEOUT_ENV_VAR: str(timeout_sec)},
+            sandboxed=False,    # Remedy's own CI over the operator's checkout (amend1016sb D4)
         )
     except subprocess.TimeoutExpired as expired:
         _reemit(expired.stdout, expired.stderr)

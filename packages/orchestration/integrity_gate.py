@@ -349,6 +349,7 @@ def _check_collect_only() -> IntegrityCheck:
             ["bash", "scripts/remedy_pytest.sh", "tests/", "--collect-only", "-q"],
             timeout_sec=120,
             cwd=None,
+            sandboxed=False,    # Remedy's own gate over the operator's checkout (amend1016sb D4)
         )
         if result.returncode == 0:
             return IntegrityCheck("collect_only", IntegrityStatus.PASS, "pytest collection passed")

@@ -321,8 +321,8 @@ def test_collect_only_runs_on_the_guarded_seam(monkeypatch):
 
     seen: dict[str, object] = {}
 
-    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=()):
-        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
+    def _fake_guarded(cmd, *, timeout_sec, cwd, extra_env_keys=(), sandboxed=True):
+        seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd, sandboxed=sandboxed)
         return subprocess.CompletedProcess(list(cmd), 1, b"", b"boom-\xff-undecodable\n")
 
     monkeypatch.setattr(integrity_gate, "run_guarded_test_command", _fake_guarded)
@@ -332,6 +332,7 @@ def test_collect_only_runs_on_the_guarded_seam(monkeypatch):
         "cmd": ["bash", "scripts/remedy_pytest.sh", "tests/", "--collect-only", "-q"],
         "timeout_sec": 120,
         "cwd": None,
+        "sandboxed": False,     # Remedy's own gate over the operator's checkout (amend1016sb D4)
     }
     assert check.status is integrity_gate.IntegrityStatus.FAIL
     assert "boom-" in check.message

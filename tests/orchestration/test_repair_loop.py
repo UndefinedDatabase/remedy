@@ -1312,6 +1312,18 @@ class TestTestFailureDominanceUnit:
 class TestTestFailureDominanceE2E:
     """E2E tests proving test-failure dominance (Step 4796)."""
 
+    @pytest.fixture(autouse=True)
+    def _test_scripts_outside_the_workspace(self, monkeypatch):
+        """These scripts live in `tmp_path` and keep their toggle marker there, outside the
+        workspace, which the tool sandbox hides by design (DECISION amend1016sb D4). The class
+        judges the repair decision, not isolation, so its test command runs unsandboxed here."""
+        import functools
+
+        from packages.orchestration import exec_guard, pingpong_loop
+
+        monkeypatch.setattr(pingpong_loop, "run_guarded_test_command",
+                            functools.partial(exec_guard.run_guarded_test_command, sandboxed=False))
+
     def test_tests_failed_reviewer_pass_repair_disabled(self, demo_repo: Path, tmp_path: Path):
         """1-3. Tests failed + Reviewer pass + repair_rounds=0 => not pass, no repair, no apply."""
         test_script = tmp_path / "fail.sh"
