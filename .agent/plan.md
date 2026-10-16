@@ -16,3 +16,7 @@ accepts `[!]`) and D2 (F303 narrowed to the public API).
 - [x] S2 — The decision amend1016 D1 and D2, and the three findings closed by deletion.
 - [x] S3 — The guard test, failing on the old STATUS and passing now; the docs suite counts `[!]`.
 - [x] S4 — Gates: targeted tests, `remedy roadmap next` (F078), integrity, ruff, the full lane.
+
+## Next Steps
+- None in this branch. The order starts no feature: the next line Rule A5 proposes is F078, and
+  only the operator starts it. F307 owns the open findings, including R-1331 and R-1332.
