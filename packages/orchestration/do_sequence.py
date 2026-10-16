@@ -907,7 +907,7 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
 
 def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.job_plan import task_plan_blocks_execution
-    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED, load_job_plan, run_job
 
     if ctx.plan_only:
         if ctx.rehearse:
@@ -935,6 +935,9 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
             # Without a target a run would fall back to copying the process's
             # working directory, which is never the repository `do` was asked about.
             return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
+        if job.state == JOB_STOPPED:
+            # amend1016s D1: a stop ends a job that never started at once; the walk never resumes it.
+            return DO_STEP_STOPPED, f"job {job_id} was stopped before it ran; ran before it: {done_so_far}"
 
         blocked = task_plan_blocks_execution(job)
         if blocked == "pending" and ctx.confirm_plan is not None and ctx.confirm_plan(job):

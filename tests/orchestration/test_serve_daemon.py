@@ -23,7 +23,14 @@ import pytest
 from packages.orchestration import safe_points
 from packages.orchestration import serve_daemon as SD
 from packages.orchestration import serve_runs as SR
-from packages.orchestration.pingpong_job import JOB_COMPLETED, JobPlan, TaskEntry, save_job_plan
+from packages.orchestration.pingpong_job import (
+    JOB_COMPLETED,
+    JOB_RUNNING,
+    JobPlan,
+    TaskEntry,
+    load_job_plan,
+    save_job_plan,
+)
 from packages.orchestration.serve_paths import serve_paths
 
 REPO = Path(__file__).resolve().parents[2]
@@ -154,6 +161,9 @@ def test_its_directory_socket_and_token_are_readable_by_their_owner_only(root, r
 
 def test_a_stop_envelope_on_the_socket_is_recorded_with_the_command_lines_source(root, running):
     job_id = _job()
+    job = load_job_plan(job_id)
+    job.state = JOB_RUNNING       # a started job's stop stays a request (amend1016s D1)
+    save_job_plan(job)
     status, body = SD.post_command(root, job_id, {
         "command": "job.stop", "client_nonce": "serve-stop-1", "args": {"reason": "via serve"}})
     assert status == 200, body

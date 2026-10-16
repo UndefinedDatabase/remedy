@@ -18,8 +18,10 @@ from apps.cli.commands import collect_all_handlers
 from apps.cli.commands import job_stop_cmd as CMD
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
+    JOB_RUNNING,
     JOB_STOPPED,
     _persist_job,
+    load_job_plan,
     parse_job_file,
 )
 from packages.orchestration.safe_points import (
@@ -55,8 +57,17 @@ def job(data_root, tmp_path):
     return parse_job_file(_JOB, str(repo))
 
 
+@pytest.fixture
+def started_job(job):
+    """A job a run has started: its stop waits for the runner's next safe point."""
+    job.state, job.first_running_at = JOB_RUNNING, "2026-10-16T10:00:00+00:00"
+    _persist_job(job)
+    return job
+
+
 class TestTheHappyPath:
-    def test_it_requests_a_stop_and_says_what_will_happen(self, job, capsys):
+    def test_it_requests_a_stop_and_says_what_will_happen(self, started_job, capsys):
+        job = started_job
         CMD._cmd_job_stop(job.job_id, reason="operator requested stop")
 
         out = capsys.readouterr().out
@@ -111,7 +122,8 @@ class TestTheHappyPath:
         assert "already stopped" in out and "no new stop was requested" in out
         assert stop_requested(job.job_id) is None
 
-    def test_it_kills_no_process_and_touches_no_repository(self, job, monkeypatch):
+    def test_it_kills_no_process_and_touches_no_repository(self, started_job, monkeypatch):
+        job = started_job
         import subprocess
 
         def _no(*a, **k):
@@ -123,6 +135,57 @@ class TestTheHappyPath:
 
         CMD._cmd_job_stop(job.job_id, reason="x")
         assert stop_requested(job.job_id) is not None
+
+
+class TestAJobThatNeverStarted:
+    """amend1016s D1: a `planned` job has no runner that will reach a safe point, so its
+    stop ends it at once as a first-class stop; a started job keeps the request path."""
+
+    def test_a_planned_job_is_stopped_at_once_and_its_story_says_stopped(self, job, capsys):
+        from packages.orchestration.client_story import job_client_story
+        from packages.orchestration.safe_points import is_archived
+
+        CMD._cmd_job_stop(job.job_id, reason="mission abandoned", json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        stopped = load_job_plan(job.job_id)
+        assert payload["job_status"] == "stopped"
+        assert stopped.state == JOB_STOPPED
+        assert stopped.stop_request_id == payload["stop"]["request_id"]
+        assert (stopped.stop_reason, stopped.stop_source) == ("mission abandoned", "cli")
+        assert stopped.stopped_at and stopped.finished_at
+        assert stop_requested(job.job_id) is None                 # consumed ...
+        assert is_archived(job.job_id, stopped.stop_request_id)   # ... and archived
+        story = job_client_story(job.job_id, stopped)
+        assert story["state"] == "stopped"
+        assert story["state_detail"]["reason"]
+
+    def test_the_human_answer_says_it_ended_at_once(self, job, capsys):
+        CMD._cmd_job_stop(job.job_id, reason="x")
+        assert "the job had not started, so it ended at once" in capsys.readouterr().out
+
+    def test_a_running_job_only_gets_a_request(self, started_job, capsys):
+        CMD._cmd_job_stop(started_job.job_id, reason="x", json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["job_status"] == "running"
+        assert load_job_plan(started_job.job_id).state == JOB_RUNNING
+        assert stop_requested(started_job.job_id).request_id == payload["stop"]["request_id"]
+
+    def test_a_request_left_pending_on_a_planned_job_is_finalized_by_a_second_stop(
+            self, job, capsys):
+        """The real case: a request written before this rule, on a job nothing will run."""
+        old = request_stop(job.job_id, reason="mission abandoned", source="serve")
+        assert load_job_plan(job.job_id).state != JOB_STOPPED
+
+        CMD._cmd_job_stop(job.job_id, reason="again", json_output=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        stopped = load_job_plan(job.job_id)
+        assert stopped.state == JOB_STOPPED and payload["job_status"] == "stopped"
+        assert payload["stop"]["request_id"] == old.request_id == stopped.stop_request_id
+        assert (stopped.stop_reason, stopped.stop_source) == ("mission abandoned", "serve")
+        assert stop_requested(job.job_id) is None
 
 
 class TestJSONThroughTheDispatcher:

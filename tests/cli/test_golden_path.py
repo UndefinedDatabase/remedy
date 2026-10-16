@@ -616,6 +616,12 @@ class TestStatus:
         _init_project(repo, env)
 
         job_id = _planned_job_id(tmp_path, monkeypatch, repo)
+        # A started job: a planned one is stopped at once and leaves nothing pending
+        # (amend1016s D1).
+        from packages.orchestration.pingpong_job import JOB_RUNNING, load_job_plan, save_job_plan
+        job = load_job_plan(job_id)
+        job.state = JOB_RUNNING
+        save_job_plan(job)
 
         stop = subprocess.run(
             [*_CLI, "job", "stop", job_id],

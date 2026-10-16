@@ -5,6 +5,10 @@ runner picks it up at its next safe point, lets the provider call in flight fini
 nothing new, and persists a resumable STOPPED job. That is the whole point: an operator
 should be able to stop a job without wondering what was half-written when they did.
 
+A job that never started has no runner to reach a safe point, so it is stopped at once
+(`job_stop_now.request_job_stop`, DECISION amend1016s D1), and a request left pending on such
+a job is finalized by the next `remedy job stop`.
+
 `--status` answers the only other question worth asking: is a stop pending, was one already
 consumed, and is this job actually stopped?
 """
@@ -88,7 +92,8 @@ def _stop_signal(job_id: str, request_id: str):
 
 def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
                   status: bool = False, json_output: bool = False) -> None:
-    from packages.orchestration.safe_points import StopControlError, request_stop
+    from packages.orchestration.job_stop_now import request_job_stop
+    from packages.orchestration.safe_points import StopControlError
 
     job_id = (job_id or "").strip()
 
@@ -171,18 +176,26 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
                  json_output=json_output, job_id=job_id)
     else:
         try:
-            signal = request_stop(job_id, reason=reason, source=source or "cli")
+            signal, _ = request_job_stop(job_id, reason=reason, source=source or "cli")
         except StopControlError as exc:
             # An unwritable control area is never a silent no-op: the operator must know
             # that NOTHING asked this job to stop.
             fail("stop_not_requested", f"no stop was requested — {exc}",
                  json_output=json_output, detail=str(exc), job_id=job_id)
 
+    _print_stop_answer(job_id, job.state, signal, json_output=json_output)
+
+
+def _print_stop_answer(job_id: str, before: str, signal, *, json_output: bool) -> None:
+    """Answer one stop: requested, or, for a job that never started, already done."""
+    state = getattr(_load_job(job_id), "state", before)     # amend1016s D1: it may end now
     if json_output:
-        emit_ok(job_id=job_id, job_status=job.state, stop=signal.to_json())
-    else:
-        print("Stop requested — it will take effect at the next safe point.")
-        print(f"  job: {job_id} · request: {signal.request_id} · reason: {signal.reason}")
+        emit_ok(job_id=job_id, job_status=state, stop=signal.to_json())
+        return
+    print("Stopped — the job had not started, so it ended at once."
+          if state == "stopped" != before else
+          "Stop requested — it will take effect at the next safe point.")
+    print(f"  job: {job_id} · request: {signal.request_id} · reason: {signal.reason}")
 
 
 COMMAND_HANDLERS = {

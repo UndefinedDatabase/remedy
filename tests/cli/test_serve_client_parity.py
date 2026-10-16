@@ -27,6 +27,7 @@ from packages.orchestration.command_audit import AUDIT_FILENAME
 from packages.orchestration.command_nonce import NONCE_DIRNAME
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
+    JOB_RUNNING,
     ExecutionConfig,
     _persist_job,
     parse_job_file,
@@ -155,7 +156,10 @@ ACCEPTED = {"stop": 1, "stop-json": 1, "stop-source": 1, "stop-twice": 2, "pause
 @pytest.mark.parametrize("name", sorted(SCENARIOS))
 def test_a_forwarded_command_prints_exits_and_writes_as_it_does_direct(
         name, tmp_path_factory, monkeypatch, capsys):
-    direct, client = _both(SCENARIOS[name], tmp_path_factory, monkeypatch, capsys)
+    # A stop scenario runs on a started job, whose stop stays a request; a job that never
+    # started is stopped at once (amend1016s D1), `test_a_job_that_never_started_...` below.
+    state = JOB_RUNNING if name.startswith("stop") else None
+    direct, client = _both(SCENARIOS[name], tmp_path_factory, monkeypatch, capsys, state=state)
     _same(direct, client)
     assert direct.exit_code == 0
     assert client.audit == ["accepted"] * ACCEPTED[name]
@@ -163,9 +167,22 @@ def test_a_forwarded_command_prints_exits_and_writes_as_it_does_direct(
 
 def test_the_source_the_command_names_is_the_one_recorded_in_both_modes(
         tmp_path_factory, monkeypatch, capsys):
-    direct, client = _both(SCENARIOS["stop-source"], tmp_path_factory, monkeypatch, capsys)
+    direct, client = _both(SCENARIOS["stop-source"], tmp_path_factory, monkeypatch, capsys,
+                           state=JOB_RUNNING)
     for run in (direct, client):
         assert json.loads(run.effects["stop.json"])["source"] == "scheduler"
+
+
+def test_a_job_that_never_started_is_stopped_at_once_the_same_way_in_both_modes(
+        tmp_path_factory, monkeypatch, capsys):
+    """amend1016s D1: the first stop of a `planned` job ends it, in the direct path and
+    through the supervisor's door alike; the second answers already stopped, door-free."""
+    direct, client = _both(SCENARIOS["stop-twice"], tmp_path_factory, monkeypatch, capsys)
+    _same(direct, client)
+    assert client.audit == ["accepted"]
+    assert "stop.json" not in direct.effects
+    assert [k for k in direct.effects if k.startswith("archive/")] == ["archive/<ID>.json"]
+    assert "ended at once" in direct.out[0] and "already stopped" in direct.out[1]
 
 
 @pytest.mark.parametrize("argv", [
@@ -232,6 +249,8 @@ def test_the_direct_variable_keeps_a_command_direct_while_a_supervisor_answers(
     root = tmp_path_factory.mktemp("pv")
     monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
     job = parse_job_file(_JOB, str(tmp_path_factory.mktemp("repo")))
+    job.state = JOB_RUNNING       # a started job's stop stays a request (amend1016s D1)
+    _persist_job(job)
     supervisor = _Running(root)
     try:
         monkeypatch.setenv(DIRECT_ENV, "1")

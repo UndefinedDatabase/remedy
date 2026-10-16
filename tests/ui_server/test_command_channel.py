@@ -1631,7 +1631,7 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_APPROVED"),  # F033 D4
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_PENDING"),   # F033 D4
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_REJECTED"),  # F033 D4
-        ("packages.orchestration.safe_points", "request_stop"),            # D5
+        ("packages.orchestration.job_stop_now", "request_job_stop"),    # D5, amend1016s D1
         ("packages.orchestration.steering", "SteeringError"),        # F264 D2
         ("packages.orchestration.steering", "SteeringWriteError"),   # F264 D2
         ("packages.orchestration.steering",

@@ -147,3 +147,25 @@ def test_a_postmortem_that_cannot_be_written_is_one_warning_record_and_raises_no
     assert len(records) == 1
     assert records[0].name == "packages.orchestration.do_sequence"
     assert records[0].getMessage() == "Warning: postmortem write failed: disk full"
+
+
+def test_the_run_step_never_resumes_a_job_stopped_before_it_ran(tmp_path, monkeypatch):
+    """amend1016s D1: `remedy job stop` ends a job that never started at once, and a stopped
+    job resumes when it is run, so the walk must not run it when it reaches it."""
+    import packages.orchestration.pingpong_job as pingpong_job
+    from packages.orchestration.job_stop_now import request_job_stop
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("the walk ran a job its operator had stopped")
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(pingpong_job, "run_job", refuse)
+    job = pingpong_job.JobPlan(job_title="stopped before it ran", repo_path=str(tmp_path))
+    pingpong_job.save_job_plan(job)
+    _, stopped_now = request_job_stop(job.job_id, reason="mission abandoned")
+    assert stopped_now
+
+    status, detail = DO_STEP_TABLE["run"](DoContext(order="o", job_ids=[job.job_id]))
+
+    assert status == DO_STEP_STOPPED
+    assert f"job {job.job_id} was stopped before it ran" in detail

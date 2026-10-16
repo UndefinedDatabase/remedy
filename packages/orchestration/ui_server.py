@@ -518,7 +518,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._audit_attempt(str(job.job_id), "rejected_rate", create=True, payload=payload)
             self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
-        # D5 maps `job.stop` to `safe_points.request_stop`; D18 fixes the order of
+        # D5 maps `job.stop` to `job_stop_now.request_job_stop`; D18 fixes the order of
         # the three writes an ACCEPTED command performs: the effect FIRST, since
         # the body is unknown until it returns; then the `accepted` audit line,
         # since the record of what this door did must not depend on a store whose
@@ -926,10 +926,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         this door, and a non-string `reason` degrades to "" rather than raising,
         because D14 types `args` as an object but never types what is inside it.
         """
-        from packages.orchestration.safe_points import request_stop
+        from packages.orchestration.job_stop_now import request_job_stop
         args = payload.get("args")
         reason = args.get("reason") if isinstance(args, dict) else ""
-        signal = request_stop(
+        signal, _ = request_job_stop(   # amend1016s D1: a job that never started ends now
             job_id, reason=reason if isinstance(reason, str) else "",
             source=self._effect_source_from(args))
         return {"command": payload["command"], "outcome": "accepted",
