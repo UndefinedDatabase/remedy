@@ -71,13 +71,24 @@ An ordinary, bounded request needs nothing but the order:
 remedy do "Add one concise project-description paragraph below the heading in README.md. Change no other files." --repo .
 ```
 
-`remedy do` reads the order and the repository and picks a lane without asking a model. A
-**bounded** order, one repository and exactly one file (named in the order, or the only file the
-repository tracks) with one plain part, walks the bounded lane: a deterministic scan of a tiny
+`remedy do` reads the order and the repository and picks a lane without asking a model. It
+first sorts the order's sentences into **deliverables** (the change asked for) and
+**constraints**: "change only README.md", "change no other files", "run npm test", "the tests
+must pass", "apply nothing automatically", "review the diff", "report the result", in English or
+German, and every header `constraint:` line. Remedy enforces each constraint itself (the scope
+guard, the DoD's project tests, the stop before apply, the reviewer), so a constraint never makes
+an order complex and never becomes a milestone, job or task (operator amendment amend1016p D1).
+An order made only of such sentences ("run npm test and report the result") asks for exactly
+that work. A **bounded** order, one repository and exactly one file (named in the order, or the
+only file the repository tracks) whose deliverables are one plain part (no list or heading, at
+most two sentences and two actions), walks the bounded lane: a deterministic scan of a tiny
 repository, the one-milestone plan, one job and one task for that file, and **no planning
 provider call**. Only the builder and the reviewer are called, in Remedy's isolated workspace,
-and the walk stops before apply. Anything else, several files, several projects, an order file or
-`--force-mission`, or any order whose scope is not clearly one file, walks the **full lane**,
+the DoD still runs the project's tests, and the walk stops before apply. Where the order came
+from plays no part: the same words typed, read from an order file or posted to the HTTP API get
+the same lane. Anything else, several files, several projects, one file with several
+requirements, `--force-mission`, or any order whose scope is not clearly one file, walks the
+**full lane**,
 which plans milestones, jobs and tasks with the planner and keeps an approval boundary: on a
 terminal Remedy shows the plan and asks whether to run it; with no terminal it stops and names
 `--run-unattended`. `--run-unattended` runs a generated plan without asking and takes the
@@ -85,7 +96,11 @@ documented default for every open question; it never applies, commits, pushes, m
 deploys, because the target repository only changes with `--apply` or a commit flag.
 `--force-job` also selects the bounded lane. A planner that names a file the order did not ask
 for is not believed: the walk keeps the deterministic plan of the order's own deliverables
-(operator amendment amend1014-do-golden-path-now D1, D6).
+(operator amendment amend1014-do-golden-path-now D1, D6). In the full lane a milestone or outline that
+only restates a constraint ("npm test has been run") is left out of the planner's plan, and a task
+that only makes a checking artifact the job never asked for (a checksum manifest, a snapshot, a
+comparison copy, a modification report) is left out of its task plan before normalization, unless
+the order itself is such a test run or report (amend1016p D2).
 
 ## While it works
 

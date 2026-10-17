@@ -53,6 +53,7 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlanDraft,
 )
 from packages.orchestration.mission_record import PLAN_VERSION_KEY, PLAN_VERSIONS_KEY
+from packages.orchestration.order_scope import work_milestones
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -432,8 +433,8 @@ def compile_mission_plan(
             # dod_ref stays empty here: the DoD hand-off is a separate step,
             # and a plan that claimed a reference it does not have would be a
             # lie the persistence layer would then carry forever.
-            milestones=[Milestone(**draft.model_dump())
-                        for draft in outcome.value.milestones],
+            milestones=[Milestone(**draft)   # amend1016p D2: no constraint-only milestone
+                        for draft in work_milestones(outcome.value.milestones, goal)],
             risks=list(outcome.value.risks),
             assumptions=list(outcome.value.assumptions),
             compiled=True,

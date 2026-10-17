@@ -441,3 +441,45 @@ def test_a_completed_result_is_declined_over_http_and_waits_for_nothing(supervis
     # Nothing was applied: the repository is as the client left it.
     assert "<!-- Remedy: " not in (repo / "README.md").read_text(encoding="utf-8")
     assert not (repo / "docs" / "README.md").exists()
+
+
+#: The order of 2026-10-16 that became two jobs and six tasks over seven planner calls, word for
+#: word as the Orb sent it (DECISION amend1016p D1).
+APP_INCIDENT_ORDER = (
+    "Ändere ausschließlich README.md im Projekt remedy-lab. Ergänze am Ende einen Abschnitt "
+    "„Testbetrieb“ mit zwei kurzen deutschen Sätzen, die erklären, dass dieses Repository zum Testen "
+    "von Codeänderungen dient. Verändere keine anderen Dateien. Führe npm test aus. Übernimm keine "
+    "Änderungen automatisch.")
+
+
+@pytest.fixture
+def no_model(monkeypatch):
+    """A planner call would fail at once: the model endpoint is a closed port (before `supervisor`)."""
+    monkeypatch.setenv("REMEDY_OLLAMA_HOST", "http://127.0.0.1:9")
+
+
+def test_the_apps_incident_order_is_one_job_of_one_task_with_no_planner_call_over_http(
+        no_model, supervisor, tmp_path):
+    repo = _repository(tmp_path)
+    readme = (repo / "README.md").read_text(encoding="utf-8")
+    registered, _elsewhere = supervisor.register(repo)
+    # Sent as the Orb sends it: the whole order file's text, no `no_llm`, the fake providers.
+    status, created = supervisor.post("/api/v1/orders", {
+        "order": _order_text(registered["slug"], APP_INCIDENT_ORDER),
+        "builder_provider": "fake", "reviewer_provider": "fake"})
+    assert status == 202, created
+    done = supervisor.ended_order(created)["answer"]
+
+    assert len(done["job_ids"]) == 1, done
+    assert [len(job["tasks"]) for job in done["jobs"]] == [1], done
+    assert done["jobs"][0]["tasks"][0]["deliverable"] == "README.md", done
+    steps = {step["name"]: step for step in done["steps"]}
+    assert "deterministic" in steps["plan"]["detail"], steps["plan"]
+    assert "no provider call" in steps["shape"]["detail"], steps["shape"]
+    data_root = Path(supervisor.env["REMEDY_DATA_DIR"])
+    assert not list((data_root / "missions").rglob("prompt_trace.jsonl")), "a planner was called"
+    # The tests stay part of the verification, and nothing lands without his approval.
+    assert any(c["check"]["kind"] == "project_tests" for c in done["contract"]["criteria"]), done
+    assert done["stopped_before_apply"] is True, done
+    assert (repo / "README.md").read_text(encoding="utf-8") == readme
+    assert _git(repo, "status", "--porcelain").strip() == ""

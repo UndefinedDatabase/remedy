@@ -1,20 +1,17 @@
-# Context — amend1016sb (the tool sandbox)
+# Context — amend1016p (simple orders stay simple)
 
 ## Active Branch
-feature/pi-tool-sandbox, in the worktree .remedy-wt/pi-tool-sandbox; the supervisor keeps running
-main from the main checkout until decodeux merges and restarts it.
+feature/simple-orders-fast-lane, in the worktree .remedy-wt/simple-orders. The supervisor runs main
+from the main checkout, and each new order starts `python -m apps.cli.main` from it, so a merge
+changes what the next order runs: merged only on decodeux's word.
 
 ## Scope
-The Bubblewrap boundary around Pi and the `test`/`dod-process` classes, the provider relay, the
-tool and call deadlines, the stop reaching a running call, the doctor self-test, tests and docs.
-No frontend, no planner/builder/reviewer redesign, no unrelated refactor.
+The lane decision on deliverables, the full lane's constraint-only milestones and checking-only
+tasks, the Pi reviewer's meaning check, tests and docs. No planner redesign, no provider default.
 
 ## Do not touch
-`.agent/STOP` (untracked), F078 and the autonomous queue, Remedy's data root, the running
-supervisor, the public API contract.
+`.agent/STOP` (untracked), F078 and the autonomous queue, the sandbox, the public API contract.
 
 ## Constraints
-- Resource safety: one pytest run at a time, only through `scripts/remedy_pytest.sh`; after the
-  one full run, decodeux's order: rerun only the failed tests.
-- Structure ratchet: no listed function or file grows; `exec_guard.py` stays under 1,000 lines.
-- Every commit at most 500 insertions. No real model call without decodeux's approval.
+- Resource safety: one pytest run at a time through `scripts/remedy_pytest.sh`; no full-suite rerun.
+- Structure ratchet: `compile_mission_plan` (101 lines) may not grow. Commits at most 500 insertions.

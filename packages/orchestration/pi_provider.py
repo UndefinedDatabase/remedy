@@ -107,9 +107,14 @@ _BUILDER_PREAMBLE = (
     "(for example with `git diff`), and report truthfully. A change you describe but did not "
     "write to a file does not exist. Change no file the task does not name.\n\n"
 )
+# amend1016p D3: the reviewer judges what the change SAYS against what the task asks, not only
+# that a file changed, and fails a file the task does not ask for.
 _REVIEWER_PREAMBLE = (
     "You are the reviewer. You have read-only tools; you cannot edit. Judge the staged diff "
-    "below against the task. Answer in the JSON shape the end of this message requires.\n\n"
+    "below against the task: does the changed text say what the task asks for, in its content "
+    "and meaning, not merely in the right file? Fail a change whose wording misses the request, "
+    "and fail any file the task does not ask for (a report, a copy, a manifest). Answer in the "
+    "JSON shape the end of this message requires.\n\n"
 )
 
 

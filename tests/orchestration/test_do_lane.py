@@ -1,15 +1,28 @@
-"""Operator amendment amend1014-do-golden-path-now D1 — the lane classifier of `remedy do`, as a table."""
+"""Operator amendment amend1014-do-golden-path-now D1 — the lane classifier of `remedy do`, as a table.
+
+DECISION amend1016p D1: the transport never decides (an order file and a typed order get the same
+lane), the constraints never count as parts, and a named file alone is not enough."""
 from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_lane import (
     DO_LANE_BOUNDED,
     DO_LANE_FULL,
     DO_TINY_REPO_MAX_FILES,
     is_tiny_repo,
     select_do_lane,
+    settle_do_lane,
 )
+
+#: The order of 2026-10-16 that became two jobs and six tasks, as the Orb sent it.
+APP_INCIDENT_ORDER = (
+    "Ändere ausschließlich README.md im Projekt remedy-lab. Ergänze am Ende einen Abschnitt "
+    "„Testbetrieb“ mit zwei kurzen deutschen Sätzen, die erklären, dass dieses Repository zum Testen "
+    "von Codeänderungen dient. Verändere keine anderen Dateien. Führe npm test aus. Übernimm keine "
+    "Änderungen automatisch.")
+LAB = ["README.md", "package.json", "src/calc.js", "src/format.js", "test/baseline.test.js", ".gitignore"]
 
 INCIDENT_ORDER = (
     "Add one concise project-description paragraph below the existing heading in README.md. "
@@ -32,7 +45,21 @@ LANE_TABLE = [
     ("a semicolon list in a one-file repo", "Add a paragraph; fix the title", ["README.md"],
      {}, DO_LANE_FULL),
     ("several projects", INCIDENT_ORDER, ["README.md"], {"projects": 2}, DO_LANE_FULL),
-    ("an order file", INCIDENT_ORDER, ["README.md"], {"from_order_file": True}, DO_LANE_FULL),
+    ("the app's incident order", APP_INCIDENT_ORDER, LAB, {}, DO_LANE_BOUNDED),
+    ("one file with test and approval constraints",
+     "Add a usage section to README.md. Change only README.md. Run npm test. Do not apply it "
+     "automatically.", LAB, {}, DO_LANE_BOUNDED),
+    ("one file with complex requirements",
+     "In src/calc.js add input validation, add a subtract function, migrate the exports to ESM and "
+     "write tests for all of it.", LAB, {}, DO_LANE_FULL),
+    ("several independent deliverables in one file's name",
+     "Add a section to README.md. Write a changelog entry. Add a CI workflow.", LAB, {}, DO_LANE_FULL),
+    ("a test-only order", "Run npm test and report the result.", LAB, {}, DO_LANE_FULL),
+    ("a reporting deliverable", "Write a report of the npm test results to TEST_REPORT.md.", LAB, {},
+     DO_LANE_BOUNDED),
+    ("an ambiguous target", "Fix the bug.", LAB, {}, DO_LANE_FULL),
+    ("the app's order with --force-mission", APP_INCIDENT_ORDER, LAB, {"force_mission": True},
+     DO_LANE_FULL),
     ("--force-mission", INCIDENT_ORDER, ["README.md"], {"force_mission": True}, DO_LANE_FULL),
     ("--force-job on a vague order", "Improve things", ["a.py", "b.py"], {"force_job": True},
      DO_LANE_BOUNDED),
@@ -66,3 +93,23 @@ def test_a_repository_is_tiny_up_to_the_threshold_and_an_empty_one_is_not():
     assert is_tiny_repo(["f"] * DO_TINY_REPO_MAX_FILES)
     assert not is_tiny_repo(["f"] * (DO_TINY_REPO_MAX_FILES + 1))
     assert not is_tiny_repo([])
+
+
+def test_an_order_file_and_a_typed_order_walk_the_same_lane(tmp_path):
+    """The order the HTTP API wrote to an order file and the same words typed on the command line."""
+    import subprocess
+
+    repo = tmp_path / "lab"
+    repo.mkdir()
+    for name in LAB:
+        (repo / name).parent.mkdir(parents=True, exist_ok=True)
+        (repo / name).write_text("x\n")
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@example.com", "-c", "user.name=t",
+                    "commit", "-qm", "lab"], check=True)
+    typed = DoContext(order=APP_INCIDENT_ORDER, repo_root=str(repo))
+    filed = DoContext(order=APP_INCIDENT_ORDER, repo_root=str(repo),
+                      order_source_path=str(tmp_path / "order.md"))
+    assert settle_do_lane(typed) == settle_do_lane(filed)
+    assert settle_do_lane(filed).bounded and settle_do_lane(filed).deliverable == "README.md"

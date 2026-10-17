@@ -126,8 +126,10 @@ Ubuntu 23.10 and later, only when the doctor says `unsupported_configuration`: s
 - Inside the sandbox the model may create nested user namespaces (bwrap 0.6 has no
   `--disable-userns`); they cannot reach any path the sandbox does not contain.
 - `/tmp` and `HOME` inside are memory-backed with the kernel's default tmpfs size.
-- Pi's own `grep` and `find` tools need `rg` and `fd` on the system `PATH`; offline Pi does not
-  download them.
+- Pi's own `grep` and `find` tools need ripgrep (`rg`) and fd on the system `PATH`; offline Pi
+  does not download them, and a shell function or alias named `rg` does not exist inside the
+  sandbox. Optional: `sudo apt install ripgrep fd-find` (Debian and Ubuntu install fd as
+  `fdfind`, which Pi finds by that name too); without them the model searches through `bash`.
 - Outside this boundary: the explicit `claude-cli` provider (Claude Code's own permission
   model), and the `runtime-server`, `runtime-build` and `dod-app` classes, which serve or build
   an app the operator opens from the host. The limits of those classes are in
