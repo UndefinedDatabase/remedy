@@ -62,3 +62,14 @@ def render_story_words_lines(story: dict[str, Any]) -> list[str]:
     lines += [f"Story phrase `{key}`: {_listed(args)}." for key, args in story["phrases"].items()]
     lines += [f"Story reason `{key}`: {_listed(args)}." for key, args in story["reasons"].items()]
     return lines
+
+
+#: The key tree of `order_budget` in a `remedy do` answer: the order's ledger (scale audit 2026-10-17).
+ORDER_BUDGET_KEY_TREE: dict = {
+    "caps": {"*": {}}, "planner_calls": {}, "planner_calls_by_reason": {"*": {}},
+    "refused_calls": {}, "estimated_planning_tokens": {}, "unmeasured_jobs": {},
+    "used": dict.fromkeys(("calls", "tokens", "cost_usd", "elapsed_minutes"), {}),
+    "jobs": {"*": dict.fromkeys(("calls", "tokens", "cost_usd", "measured"), {})},
+    "calls": dict.fromkeys(("role", "reason", "attempt", "seconds", "prompt_chars", "response_chars",
+                            "outcome", "estimated_tokens", "tokens_estimated"), {}),
+}

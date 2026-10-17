@@ -3410,10 +3410,6 @@ def run_pingpong(
                 findings=findings if is_repair else None,
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
                 safe_diff=repair_diff,
-                # Scale audit 2026-10-17: every round, not only the first. A repair round that saw only
-                # "Goal: Deliver README.md" and the reviewer's findings could satisfy the findings and
-                # still miss what the order asked for. A resumed session is not sent it twice: the
-                # F109 dedupe drops a segment the session provably already received.
                 task_body=task_input.body if task_input else "",
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,

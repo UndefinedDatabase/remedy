@@ -351,7 +351,9 @@ def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone_over_h
     repo = _repository(tmp_path)
     registered, _elsewhere = supervisor.register(repo)
 
-    ended = supervisor.ended_order(supervisor.send_order(registered["slug"], force_mission=True))
+    ended = supervisor.ended_order(supervisor.send_order(
+        registered["slug"], "Add a line saying hello to README.md and a line saying bye to NOTES.md",
+        force_mission=True))
     assert ended["exit_code"] == 0, ended
     first, second = ended["answer"]["job_ids"]
     assert ended["answer"]["waiting_job_ids"] == [second], ended

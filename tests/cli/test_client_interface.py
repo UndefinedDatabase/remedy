@@ -438,6 +438,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset(),
         "passes its caller's keywords through; every call on these operations' paths passes none",
     ),
+    "apps.cli.commands.do_cmd:_cmd_do_order:**document": (
+        frozenset({
+            "contract", "cost", "job_ids", "jobs", "landed", "mission_id", "mission_plan_path",
+            "next", "order_budget", "order_id", "push", "shape", "shape_source", "steps",
+            "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
+        }),
+        "the keys do_json_document in packages/orchestration/do_summary.py returns",
+    ),
     "apps.cli.commands.do_cmd:_cmd_job_run:**report": (
         frozenset({
             "context_strategy", "cost_mirror", "created_at", "execution_config", "finished_at",

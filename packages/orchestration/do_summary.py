@@ -182,7 +182,7 @@ def do_cost_summary_lines(summary: dict[str, Any] | None, *, show_cost_usd: bool
 
 def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[str, Any] | None,
                      contract: dict[str, Any] | None) -> dict[str, Any]:
-    """The object `remedy do --json` answers: the walk's ids, shape, jobs, steps, cost and order budget.
+    """The object the JSON answer of `remedy do` carries: the walk's ids, shape, jobs, steps, cost and order budget.
 
     `order_budget` is the order's one ledger (scale audit P1-4): the caps, every planner call with
     its reason and outcome, the jobs' spend and what the planning calls cost in estimated tokens.

@@ -3389,7 +3389,7 @@ def run_job(
                 byte_count=len(task_prompt.encode()),
                 char_count=len(task_prompt),
                 tokens_estimated=len(task_prompt) // 4,
-                excerpt=_review_excerpt(task),
+                excerpt=("\n".join(p for p in (task.body, task.acceptance) if p.strip()) or task.title)[:1500],
             )
 
             compiled_context_paths: list[str] | None = None
@@ -4000,18 +4000,6 @@ def _manifest_block_reason(manifest: ApplyManifest) -> str:
 # ---------------------------------------------------------------------------
 # Task prompt builder (Step 4840 — token context policy)
 # ---------------------------------------------------------------------------
-
-#: The most of a task's own words the reviewer is shown (scale audit 2026-10-17).
-_REVIEW_EXCERPT_CHARS = 1500
-
-
-def _review_excerpt(task: TaskEntry) -> str:
-    """What the task asks for, in its own words, for the reviewer: its body (the order's text) and
-    acceptance. Before this the excerpt was the first 200 characters of the whole task prompt, a job
-    header, so a reviewer told to judge meaning never saw what the meaning was supposed to be."""
-    asked = "\n".join(part for part in (task.body, task.acceptance) if part and part.strip())
-    return (asked or task.title)[:_REVIEW_EXCERPT_CHARS]
-
 
 def _build_task_prompt(
     job: JobPlan,

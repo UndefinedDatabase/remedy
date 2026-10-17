@@ -3,21 +3,19 @@
 ## Goal
 Minimal correct work for small orders, reliable work for medium ones, controlled decomposition for
 risky or multi-repo ones. A focused change of the lane decision, plan normalization and the
-verification/cost policy; no new orchestrator. Branch feature/scale-correctness-routing.
+cost policy; no new orchestrator. Branch feature/scale-correctness-routing; roadmap queue F078 untouched.
 `.agent/STOP` kept; no unattended loop, no real model call, no merge, no install.
 
 ## Current Step
-Phase 1/2 code is in: exact path resolution (root vs docs README), test files as a requested
-deliverable, layout-independent order parts, artifact-filter bypass closed, check-only second job
-deleted, risk and hold routing, study staleness. Open: aggregate order budget (Phase 3), the call-count
-baseline and the scale matrix with disposable repositories (Phase 0/4), docs, closing gates.
+Code, tests, docs and DECISION scale-1017 D1 to D11 are committed. The first full local run found 9
+reds (structure ratchet, client interface, import allowlist, context/plan files, one HTTP test);
+being repaired, then one full run again.
 
 ## Next Steps
-- Aggregate order budget across the jobs of a walk + planning calls counted; tests incl. resume.
-- Fake-provider call-count harness; baseline vs new table; scale matrix (fixtures versioned).
-- docs/ (do guide), decisions.md, handoff, PR (no merge).
-- One full local gate run at the end; propose the real Pi/Ollama calibration (needs approval).
+- Repair the reds; rerun the full local gate once; record SHA, tree, commands, result.
+- Scale matrix table (before/after), live_review entry, handoff.
+- Push, open the PR (no merge); propose the real Pi/Ollama calibration (needs approval).
 
 ## Risks
-- Existing tests that assumed the check-only second job were rewritten to name two deliverables.
-- Risk words are a small fixed vocabulary (EN/DE); a documentation target is exempt by design.
+- Verification scope by changed language/package is not built (project_tests runs one command).
+- A waiting job keeps the leftover cap, not a joint one.
