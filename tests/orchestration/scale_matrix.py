@@ -103,7 +103,7 @@ CASES: list[dict[str, Any]] = [
      "expect": {"lane": "bounded", "deliverable": "TEST_REPORT.md", "jobs": 1, "tasks": 1}},
     {"id": "failure-planner-timeout", "klass": "failure", "files": {**PY_PROJECT, **README},
      "order": "Improve error handling everywhere in the project.", "planner_error": "TimeoutError",
-     "expect": {"lane": "full", "honest_failure": True}},
+     "expect": {"lane": "full", "honest_failure": True, "max_planner_calls": 2}},
 ]
 
 _LANE = re.compile(r"lane: (\w+)")

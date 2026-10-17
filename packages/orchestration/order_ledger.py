@@ -40,8 +40,13 @@ _BOUND: contextvars.ContextVar[OrderCallLedger | None] = contextvars.ContextVar(
     "remedy_order_call_ledger", default=None)
 
 
-class OrderBudgetExhaustedError(RuntimeError):
-    """A planning call was refused because the order's own caps are spent."""
+#: This many planner calls failing one after the other end planner use for the order: a provider that
+#: is down or hung is not asked a third time by the next step, and the step falls back or fails.
+PLANNER_FAILURE_LIMIT = 2
+
+
+class OrderCallRefusedError(RuntimeError):
+    """A planning call was refused: the order's own caps are spent, or the planner keeps failing."""
 
 
 @dataclass
@@ -54,6 +59,8 @@ class OrderCallLedger:
     entries: list[dict[str, Any]] = field(default_factory=list)
     #: job id -> what that job's persisted actuals say it used.
     jobs: dict[str, dict[str, Any]] = field(default_factory=dict)
+    #: Planner calls that raised since the last one that answered.
+    failures_in_a_row: int = 0
 
     def __post_init__(self) -> None:
         self.started = self.clock()
@@ -87,23 +94,29 @@ class OrderCallLedger:
         self.jobs[str(job.job_id)] = used
 
     def wrap(self, reason: str, call_fn: Callable[[str, int], str]) -> Callable[[str, int], str]:
-        """*call_fn* recorded here, and refused with `OrderBudgetExhaustedError` once the caps are spent."""
+        """*call_fn* recorded here, and refused with `OrderCallRefusedError` once the caps are spent."""
         def recorded(prompt: str, attempt: int) -> str:
             # The study's narration passes its token limit in the attempt slot; it has no retries.
             attempt = 0 if reason == "study_narration" else attempt
-            if refusal := self.exhausted():
+            refusal = self.exhausted()
+            if not refusal and self.failures_in_a_row >= PLANNER_FAILURE_LIMIT:
+                refusal = (f"the planner failed {self.failures_in_a_row} calls in a row; it is not "
+                           "asked again for this order")
+            if refusal:
                 self.record_planner_call(reason, attempt=attempt, seconds=0.0,
                                          prompt_chars=len(prompt), response_chars=0,
                                          outcome=f"refused: {refusal}")
-                raise OrderBudgetExhaustedError(refusal)
+                raise OrderCallRefusedError(refusal)
             began = self.clock()
             try:
                 text = call_fn(prompt, attempt)
             except Exception as exc:
+                self.failures_in_a_row += 1
                 self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
                                          prompt_chars=len(prompt), response_chars=0,
                                          outcome=f"error: {type(exc).__name__}")
                 raise
+            self.failures_in_a_row = 0
             self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
                                      prompt_chars=len(prompt), response_chars=len(text or ""),
                                      outcome="ok")

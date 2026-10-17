@@ -102,12 +102,14 @@ def test_a_provider_failure_is_recorded_per_attempt_and_stops_honestly_without_u
 
     data = _do(capsys, BROAD_ORDER, "--plan-only")
 
-    assert failing.count() > 0
     ledger = data["order_budget"]
-    assert all(e["outcome"] == "error: TimeoutError" for e in ledger["calls"])
-    assert ledger["planner_calls"] == failing.count() <= 12
+    # two failures in a row end planner use: the study asks twice, nothing after it is asked at all
+    assert failing.count() == ledger["planner_calls"] == 2
+    assert [e["outcome"] for e in ledger["calls"][:2]] == ["error: TimeoutError"] * 2
+    assert all(e["outcome"].startswith("refused: the planner failed 2 calls in a row")
+               for e in ledger["calls"][2:])
     shape = _step(data, "shape")      # a failed task plan is a failed shape, never a silent substitute
-    assert shape["status"] == "failed" and "planner timed out" in shape["detail"]
+    assert shape["status"] == "failed" and "failed 2 calls in a row" in shape["detail"]
 
 
 def test_without_a_cap_the_ledger_records_and_limits_nothing(repo, planner, capsys):

@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 
 from packages.orchestration.order_ledger import (
-    OrderBudgetExhaustedError,
     OrderCallLedger,
+    OrderCallRefusedError,
     bind_order_ledger,
     bound_order_ledger,
     reason_for,
@@ -49,7 +49,7 @@ def test_planning_calls_count_against_the_call_cap_and_the_next_one_is_refused()
     wrapped = ledger.wrap("task_plan", _ok)
     wrapped("p", 0)
     wrapped("p", 1)
-    with pytest.raises(OrderBudgetExhaustedError, match="cap of 2 provider calls"):
+    with pytest.raises(OrderCallRefusedError, match="cap of 2 provider calls"):
         wrapped("p", 0)
     assert ledger.planner_calls == 2 and ledger.summary()["refused_calls"] == 1
     assert ledger.entries[-1]["outcome"].startswith("refused")
@@ -113,3 +113,24 @@ def test_the_bound_ledger_is_visible_only_inside_its_block_and_reasons_name_the_
         pass
 
     assert reason_for(TaskPlan) == "task_plan"
+
+
+def test_two_failures_in_a_row_end_planner_use_and_an_answer_resets_the_count():
+    ledger = OrderCallLedger(caps=None)
+    answers = iter(["fail", "ok", "fail", "fail", "never"])
+
+    def flaky(prompt: str, attempt: int) -> str:
+        if next(answers) == "ok":
+            return "{}"
+        raise TimeoutError("slow")
+
+    wrapped = ledger.wrap("task_plan", flaky)
+    for expected_error in (TimeoutError, None, TimeoutError, TimeoutError):
+        if expected_error is None:
+            wrapped("p", 0)
+        else:
+            with pytest.raises(expected_error):
+                wrapped("p", 0)
+    with pytest.raises(OrderCallRefusedError, match="failed 2 calls in a row"):
+        wrapped("p", 0)
+    assert ledger.planner_calls == 4 and ledger.summary()["refused_calls"] == 1
