@@ -83,7 +83,11 @@ def test_a_runaway_pi_call_is_ended_early_and_keeps_its_work_and_its_usage(fake_
     out = provider.build("x") if role == "builder" else provider.review("x")
 
     assert time.monotonic() - began < 30                  # not the fake's 60 s sleep
-    assert out.error.startswith("provider_error: pi_loop_limit: the agent loop used its 2 model turns")
+    if role == "builder":
+        # Lab order of 2026-10-17: a capped builder's edits go to review instead of being dropped.
+        assert out.error == "" and "Remedy ended this builder loop at its cap" in out.raw_text
+    else:
+        assert out.error.startswith("provider_error: pi_loop_limit: the agent loop used its 2 model turns")
     assert out.usage_actuals["model_turns"] == 6 and out.usage_actuals["input_tokens"] == 6000
     assert (workspace / "README.md").read_text().endswith("appended\n")      # the work is kept
     evidence = provider.last_evidence
@@ -106,3 +110,9 @@ def test_a_pi_calls_usage_reaches_the_call_statistics_as_measured(fake_pi, works
 
     evidence = _attempt_usage_evidence(out.usage_actuals)
     assert _tokens(evidence["usage"]) == {"input": 200, "output": 20, "cache_creation": 0, "cache_read": 0}
+
+
+def test_the_builder_is_told_remedy_runs_the_tests_and_to_stop_after_the_edit():
+    from packages.orchestration.pi_provider import _BUILDER_PREAMBLE
+    assert "Do NOT run the project's tests" in _BUILDER_PREAMBLE
+    assert "then stop" in _BUILDER_PREAMBLE
