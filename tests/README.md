@@ -36,11 +36,12 @@ Markers are auto-assigned via `tests/conftest.py` based on file patterns.
 
 ## Recommended Commands
 
-### Daily development (fast, ~30-60s)
+### Daily development (fast, change-aware)
 ```bash
 scripts/remedy_test_fast.sh
 ```
-Excludes subprocess, real_ollama, ui_contract, smoke, slow.
+The owner tests of what changed since `origin/main` plus the core spine; a change to the test
+machinery exits 3 and asks for the full lane (docs/system/test-lanes-v0.md).
 
 ### Before merge (integration, ~2-3 min)
 ```bash

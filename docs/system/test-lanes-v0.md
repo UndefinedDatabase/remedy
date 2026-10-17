@@ -2,23 +2,41 @@
 
 ## Fast lane
 
-**Script**: `scripts/remedy_test_fast.sh`
-**Expected runtime**: under 10 seconds (depends on environment)
-**Tests**: ~535
+**Script**: `scripts/remedy_test_fast.sh` (selection: `scripts/select_changed_tests.py`)
+**Base**: changes since the merge base with `origin/main` (a revision given as the script's one argument overrides it), plus
+staged, unstaged and untracked files
 
-Pure in-process tests only. No subprocess calls. Proves the core product spine is
-healthy without risk of environment-specific hangs.
+Runs the owner tests of the change plus the core product spine. The selection, read from a
+static AST index of `tests/` (no test is imported to build it):
 
-| Suite | Type | What it proves |
-|-------|------|----------------|
-| `test_worker_facade_cmd.py` | unit | Worker add/doctor/disable, alias registry, catalog wiring |
-| `test_development_artifact_boundary.py` | guard | Dev artifact vs product truth boundary enforcement |
-| `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
+| Changed | Selected |
+|---------|----------|
+| a module under `packages/` or `apps/` | every test file that imports it, in any import form |
+| a module under `apps/cli/` | also the tests importing the dispatch (`apps.cli.grouped`, `apps.cli.commands.do_cmd`) |
+| a file under `docs/` | every test file under `tests/docs/` |
+| a test file | that file |
+| any file | every test file naming its whole repository path, or its quoted file name when no other tracked file has that name |
 
-**Does NOT prove**: CLI subprocess integration, UI rendering, overnight planning,
-provider trust gate, tournament scoring, full event replay chain.
+Always run, the spine: `test_worker_facade_cmd.py`, `test_development_artifact_boundary.py`,
+`test_product_spine.py` (128 tests, about 5 s). Selected owner tests may spawn subprocesses: the
+lane proves the changed subsystem, not only its in-process part.
 
-**When to use**: During development, before committing, quick health check.
+A change to the test machinery (`tests/conftest.py`, `tests/load_governor.py`, `pyproject.toml`,
+`constraints.txt`, the pytest runner) has no owner selection: the lane exits 3 and names it, and
+the full lane answers instead.
+
+Measured on 2026-10-17 (selection takes about 2.5 s; CPU from the test load record): a change to
+`pi_provider.py` selects 7 files (about 6 CPU s), `model_routing.py` 7 (21 s), `public_api.py`
+4 (12 s), `final_verifier.py` 14 (19 s); the hub `pingpong_job.py` selects 325 files (590 CPU s,
+over half of the suite) and a CLI handler about 110. Deliberately NOT followed: production
+importers of the changed module. One such hop from almost any orchestration module reaches the
+`pingpong_job` hub and selects 424 to 469 of 775 files, so the neighbours of a change are the full
+suite, which stays the gate before a merge and at release.
+
+**Does NOT prove**: anything outside the selection; a handler reached only through a CLI
+subprocess by a test that imports neither it nor the dispatch.
+
+**When to use**: during development and before committing. Not instead of the full lane.
 
 ## Runtime lane
 

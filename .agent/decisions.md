@@ -30057,3 +30057,23 @@ exec-1017 D14 (the lane rests on the files an order names, 2026-10-17): every la
 exec-1017 D15 (lab orders b9552640a35ee4f9, 80b8c871b656e5f0, 4a60a44bc4cd7433, 2026-10-17): with the bounded lane working, three jobs ended `blocked: dod_blocking_red:ctr-C001` although `npm test` passed on their results (4/4 and 5/5): the contract check was `python -m pytest test/format.test.js` (and `test/calc.test.js.`, with the sentence's period), because `dod_compiler._selector_for` made any `test/…` path a pytest selector. Only a Python test path (no suffix or `.py`, with or without `::node`) is a pytest selector now, trailing punctuation is stripped, and any other named test keeps the default selector, which `mission_contract` turns into `project_tests` (the project's own test command). Reverse: revert this commit.
 
 exec-1017 D16 (lab calc order 017e789640f1e898, 2026-10-17): the builder delivered fix and test in one call (7 turns, 31,821 input tokens) and the review passed, then the post-task safe point stopped the job over `max_total_tokens` (87,604 of 85,000) and raised a budget decision although no task was left: the gate after the last task runs the project's tests locally. (1) `safe_points.moot_budget_stop` drops a BUDGET stop at the post-task safe point when no task remains; an operator stop, a pause and any stop before the last task are kept (`run_job` stays line-neutral). (2) The reviewer had spent 12 turns and 51,469 tokens on ls/read/grep: it now gets `builder_workspace_context` (file list and the touched files) and a preamble saying the diff is complete, not to list or search, to read a file at most once and not to run the tests. Reverse: revert this commit.
+
+## 2026-10-17: test audit (operator order) — D1 keepers per scenario, D2 no runtime claim for batch 1
+D1. Where several tests ran the same `run_job` scenario and each asserted a slice of it, the
+batch folds them into ONE keeper per scenario that carries every distinct assertion, and deletes
+only byte-identical or strictly subsumed tests. It does not merge tests whose INPUTS differ (a
+tracked file rewritten vs a file added; four different corruptions of one result), and it does
+not touch the continuation-config family, whose overlaps are partial (ledger, batch 2). Each
+keeper is shown red by one mutation of `pingpong_job.py`, restored byte for byte.
+Tradeoff: one failing keeper names the scenario, not the slice; the assertion line names the
+slice. D2. The batch saves lines, not seconds (36.5 s → 36.3 s serial): the expensive part of the
+file is the continuation family and the git work inside a successful fake run. The order's
+runtime goal is met by the change-aware fast lane, not by deleting cheap tests.
+Evidence: `.agent/test_audit_1017_ledger.md`.
+D3. The fast lane selects by the test files' own imports (plus the CLI dispatch, the docs checks,
+named paths and quoted unique file names), and deliberately follows no production importer:
+measured, one hop from almost any orchestration module reaches the `pingpong_job` hub and selects
+424 to 469 of 775 test files. A change to the test machinery exits 3 instead of guessing. The
+three guards asserting that the fast script names no subprocess file are deleted with the
+invariant they pinned (replacing is deleting); `tests/test_select_changed_tests.py` proves the
+selection instead.

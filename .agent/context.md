@@ -1,26 +1,30 @@
-# Context — execution quality (operator order 2026-10-17, after PR 348)
+# Context — test audit and suite optimization (operator order 2026-10-17)
 
 ## Active Branch
-feature/execution-quality, cut from main `1f18396c0`, checked out in the worktree
-`.remedy-wt/exec-quality`. The main checkout stays on main: the running `remedy serve start`
-(editable install) executes the main checkout's code, so a branch switch there would deploy.
+feature/test-audit, cut from main `2039a6ae7` (PR 349 merged), checked out in the worktree
+`.remedy-wt/test-audit`. Another session runs in parallel; the main checkout and the running
+`remedy serve start` are not touched.
 
-## Incident evidence (read through Remedy's own readers; `.data/**` is not read raw)
-- Order a6a87e65809f6bd6 (HTTP, 12:54:08–13:00:49 UTC 2026-10-17), lab repo ~/Repos/remedy-lab.
-- Job 84b0cc4272164bb2, runs c86f7e59702042c5 (test_command.txt) and e7e95d91a2274109 (README).
+## Reference
+OpenClaw test-audit skill (SKILL.md, CAMPAIGN.md, references/audit.md), adapted to pytest:
+judge a test by its assertions, one owner per contract, keep independent security/API/
+persistence/packaging contracts, a mutation shows a keeper goes red.
 
 ## Scope
-Order scope and lane routing, planner repo facts, order test requirement → job test command,
-job verification reading, Pi per-call limits and evidence, review reports + review ZIP, the
-interface's execution key and HTTP provider refusal, tests and docs.
+Phase 1 audit + Phase 2 ledger over four owners (routing/planning, Pi execution and guards,
+verification and job lifecycle, review evidence and public API); one test-only batch; the fast
+lane script and its guards.
 
 ## Do not touch
-The roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, Universe (handoff text only), the sandbox's policy, provider defaults.
+Production behavior, the roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, runtime data, CI stage
+budgets.
 
 ## Steps
-Phases 0 to 7 of the order; the current one is in plan.md.
+Steps 1 to 5 of the order (audit, ledger, batch, fast lane, measurement); the current one
+is in plan.md.
 
 ## Constraints
-- No real model call; fake providers and recorded fixtures only.
-- One pytest process tree at a time; one full local gate at the end.
-- Commits at most 500 insertions; structure ratchet: listed functions/files do not grow.
+- Operator, this session: collection only, no suite runs; single owner files may run to prove a
+  batch (fake providers only, never concurrent with a real Ollama acceptance run).
+- Test load records go to the session scratchpad (`REMEDY_TEST_LOAD_LOG`), not the shared record.
+- Commits at most 500 insertions.

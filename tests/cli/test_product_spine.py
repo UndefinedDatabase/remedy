@@ -148,29 +148,9 @@ class TestFastLaneSelfTest:
             assert forbidden not in text.lower(), \
                 f"Fast lane must not invoke UI build: {forbidden}"
 
-    def test_fast_lane_no_heavy_runtime_smoke(self):
-        p = _ROOT / "scripts" / "remedy_test_fast.sh"
-        text = p.read_text(encoding="utf-8")
-        heavy = [
-            "test_worker_cli_runtime.py",
-            "test_self_dogfood_execution_cli.py",
-            "test_smoke_scripts.py",
-        ]
-        for name in heavy:
-            assert name not in text, \
-                f"Fast lane must not include heavy runtime file: {name}"
-
-    def test_fast_lane_no_subprocess_files(self):
-        p = _ROOT / "scripts" / "remedy_test_fast.sh"
-        text = p.read_text(encoding="utf-8")
-        subprocess_files = [
-            "test_command_catalog.py",
-            "test_contract_runtime.py",
-            "test_config_cmd.py",
-        ]
-        for name in subprocess_files:
-            assert name not in text, \
-                f"Fast lane must not include subprocess file: {name}"
+    # Remedy deliberately no longer forbids subprocess or runtime test files in the fast lane:
+    # since 2026-10-17 it runs the owner tests of the change (tests/test_select_changed_tests.py),
+    # and the owner tests of a CLI module spawn processes.
 
     def test_runtime_lane_script_exists(self):
         p = _ROOT / "scripts" / "remedy_test_runtime.sh"
