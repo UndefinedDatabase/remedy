@@ -1,24 +1,22 @@
-# Context — execution excellence (operator order 2026-10-17, after PR 359)
+# Context — reliability campaign (operator order 2026-10-17, after PR 360)
 
 ## Active Branch
-feature/execution-excellence from main `6933bb0` in `.remedy-wt/exec-excellence`. The main checkout
-stays on main: `remedy serve start` (editable install) runs its code, so nothing is switched there.
+feature/order-cancel from PR 360's head `9b172a16c` in `.remedy-wt/order-cancel`. It depends on PR
+360 (feature/execution-excellence): merge 360 first. The main checkout stays on main: `remedy serve
+start` (editable install) runs its code, so nothing is switched or pulled there.
 
 ## Evidence (read through Remedy's own readers; `.data/**` not read raw)
-- Lab jobs ba1336a4c287455d (README), 9123bcef446e42b5 (normalizeName), 9cac3d5c2bd246eb (add()) in
-  ~/Repos/remedy-lab; their Pi calls through `review_reports._job_report`.
-- Corpus before/after: `tests.orchestration.scale_matrix` v3 run against main `6933bb0` and the branch.
+- `remedy status --json` and `remedy client story 537d7c3612864597 --json` on the operator's data
+  root, read-only, from outside the checkout.
+- `select_do_lane` probed against this branch's code with `PYTHONPATH` set to the worktree.
 
 ## Scope
-Lane over a few named files, verification readings and package-scoped tests, Pi failed-call usage
-and builder context in large repositories, an order's jobs and a stop route over HTTP, job titles.
-
-## Steps
-The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+Order and job cancellation over CLI and HTTP, terminal state of abandoned work, story words for
+waiting and stopped work, lane honesty findings of the PR 360 review.
 
 ## Do not touch
 The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
-provider defaults, `pi.*` caps.
+provider defaults, `pi.*` caps, Universe's repositories.
 
 ## Constraints
 - No real model call (no authorized Pi budget); fake providers only.
