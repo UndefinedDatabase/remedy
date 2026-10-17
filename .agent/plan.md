@@ -6,13 +6,12 @@ readable and controllable through the public API. Worktree `.remedy-wt/exec-exce
 `feature/execution-excellence` from main `6933bb0` (PR 352 merged). `.agent/STOP` stays; no deploy.
 
 ## Current Step
-Commits 1–5 of the branch: verification readings, Pi call accounting and context, the bounded lane
-over a few named files, the order's jobs over the public API (`jobs`, `POST /api/v1/jobs/{job}/stop`,
-semantic titles, waits), scale matrix v3. Then docs, decisions and one full local gate.
+Done on the branch: verification readings, Pi call accounting and context, the bounded lane over a
+few named files, the order's jobs over the public API, review report fields, the digest's ended
+stop, scale matrix v3, docs, decisions exec-1017b D1–D5. Now: one full local gate, then the PR.
 
 ## Next Steps
-- Docs: do-lane/verification/API pages; decisions exec-1017b D1..Dn.
-- One full local gate on the final tree; PR (not merged: operator decides and deploys).
+- PR (not merged: the operator decides and deploys).
 - Operator: optional bounded real Pi run of corpus `lab-*` and `small-multi-file-*` in remedy-lab.
 
 ## Risks
