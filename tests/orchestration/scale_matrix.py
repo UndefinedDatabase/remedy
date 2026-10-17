@@ -31,7 +31,7 @@ from tests.orchestration.scale_harness import (
     filler_files,
 )
 
-MATRIX_VERSION = 3
+MATRIX_VERSION = 4
 
 README = {"README.md": "# Project\n\nA project.\n"}
 PY_PROJECT = {"src/add.py": "def add(a, b):\n    return a - b\n",
@@ -109,6 +109,7 @@ CASES: list[dict[str, Any]] = [
               "extend tests/test_api.py.",
      # Version 3: an endpoint, its registration and its test are ONE small change over two named
      # files, so one bounded job (version 2 sent it to the planner, which split it).
+     "builder_files": ["src/api/routes.py", "src/api/app.py", "tests/test_api.py"],
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "with_tests": True,
                 "task_files": ["src/api/routes.py", "src/api/app.py"]}},
     {"id": "medium-feature-planned", "klass": "medium",
@@ -186,11 +187,19 @@ CASES: list[dict[str, Any]] = [
                 "with_tests": True, "verification": "passed"}},
     {"id": "small-multi-file-rename", "klass": "multi-file", "files": SMALL_JS,
      "order": "Rename normalizeName to normalizePersonName in src/format.js and src/index.js.",
+     "builder_files": ["src/format.js", "src/index.js"],
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1,
-                "task_files": ["src/format.js", "src/index.js"]}},
+                "task_files": ["src/format.js", "src/index.js"], "run_step": "done"}},
+    # Version 4 (exec-1017c, R-1342): a builder that skips a named file of the one change ends the
+    # job blocked, whatever its reviewer said; before, the job completed with the file untouched.
+    {"id": "small-multi-file-skipped-file", "klass": "multi-file", "files": SMALL_JS,
+     "order": "Rename normalizeName to normalizePersonName in src/format.js and src/index.js.",
+     "builder_files": ["src/format.js"],
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "run_step": "failed"}},
     {"id": "small-multi-file-fix-with-test-german", "klass": "multi-file", "files": SMALL_JS,
      "order": "Die Rundung in src/price.js und src/cart.js ist falsch. Korrigiere beide und ergänze einen "
               "Regressionstest in test/cart.test.js. Führe die Projekttests aus.", "project_tests_exit": 0,
+     "builder_files": ["src/price.js", "src/cart.js", "test/cart.test.js"],
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "with_tests": True,
                 "task_files": ["src/price.js", "src/cart.js"], "verification": "passed"}},
     {"id": "polyglot-package-tests", "klass": "polyglot", "files": POLYGLOT_TESTED,
@@ -229,6 +238,8 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
 
             def counted(self, *args, _original=original, _name=name, **kwargs):
                 builds[_name] += 1
+                if _name == "builder" and case.get("builder_files"):
+                    self._builder_files = list(case["builder_files"])    # the files this builder writes
                 return _original(self, *args, **kwargs)
             patch.setattr(FakeProvider, method, counted)
         if case.get("reviewer_fails"):
