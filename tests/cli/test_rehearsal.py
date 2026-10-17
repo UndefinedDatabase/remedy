@@ -25,8 +25,9 @@ from tests.run_side_effect_counters import (
 )
 
 ORDER = "Write a CONTRIBUTING.md"
-#: An order naming two files walks the full lane, where a generated plan keeps its approval open.
-TWO_FILE_ORDER = "Write CONTRIBUTING.md and CHANGELOG.md"
+#: An order naming more files than one bounded job changes walks the full lane, where a generated
+#: plan keeps its approval open (two named files are one bounded job since the 2026-10-17 order).
+FULL_LANE_ORDER = "Write CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md and SUPPORT.md"
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 
 
@@ -172,7 +173,7 @@ def test_rehearsal_of_a_pending_task_plan_names_the_approval_before_the_run_line
     applicator_calls = count_applicator_calls(monkeypatch)
     worktrees_created = count_worktree_creations(monkeypatch)
 
-    data = _do_json(capsys, "--rehearse", order=TWO_FILE_ORDER)
+    data = _do_json(capsys, "--rehearse", order=FULL_LANE_ORDER)
 
     [job_id] = data["job_ids"]
     task_plan = load_job_plan(job_id).task_plan
@@ -348,7 +349,7 @@ def test_a_moved_repository_warns_at_approval_and_run_an_unmoved_one_does_not(
     _plan_with_mocked_llm(monkeypatch)
 
     # Job A: rehearsed, then the repository moves — both the approval and the run warn.
-    data_a = _do_json(capsys, "--rehearse", order="Write oa.md and oa2.md")
+    data_a = _do_json(capsys, "--rehearse", order="Write oa.md, oa2.md, oa3.md and oa4.md")
     [job_a] = data_a["job_ids"]
     (repo / "extra.txt").write_text("more\n")
     _git(repo, "add", "-A")
@@ -361,7 +362,7 @@ def test_a_moved_repository_warns_at_approval_and_run_an_unmoved_one_does_not(
     assert "the plan may be stale" in capsys.readouterr().err
 
     # Job B: rehearsed AFTER the move, with no further commit — neither warns.
-    data_b = _do_json(capsys, "--rehearse", order="Write ob.md and ob2.md")
+    data_b = _do_json(capsys, "--rehearse", order="Write ob.md, ob2.md, ob3.md and ob4.md")
     [job_b] = data_b["job_ids"]
 
     main(["decision", "resolve", job_b, "plan:approval", "--reason", "approve"])
@@ -465,6 +466,6 @@ def test_planning_counter_counts_a_real_planning_call(repo, capsys, monkeypatch)
         do_sequence, "plan_order_job",
         lambda order, **kwargs: real_plan_order_job(order, **{**kwargs, "no_llm": False}))
 
-    _do_json(capsys, "--rehearse", order="Write r1318.md and r1318b.md")
+    _do_json(capsys, "--rehearse", order="Write r1318.md, r1318b.md, r1318c.md and r1318d.md")
 
     assert counts["plan_job_llm"] > 0

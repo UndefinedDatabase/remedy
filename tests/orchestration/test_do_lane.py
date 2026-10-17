@@ -10,6 +10,7 @@ from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_lane import (
     DO_LANE_BOUNDED,
     DO_LANE_FULL,
+    DO_LANE_HOLD,
     DO_TINY_REPO_MAX_FILES,
     is_tiny_repo,
     select_do_lane,
@@ -37,7 +38,10 @@ LANE_TABLE = [
      {}, DO_LANE_BOUNDED),
     ("a plain order in a big repo", "Add a short project description",
      ["README.md", "a.py", "b.py"], {}, DO_LANE_FULL),
-    ("two named files", "Write CONTRIBUTING.md and CHANGELOG.md", ["README.md"], {}, DO_LANE_FULL),
+    # A few named files of one small change are one bounded job (2026-10-17 order "Execution
+    # Excellence": several files are no reason for several jobs or for a planner).
+    ("two named files", "Write CONTRIBUTING.md and CHANGELOG.md", ["README.md"], {}, DO_LANE_BOUNDED),
+    ("four named files", "Write alpha.md, beta.md, gamma.md and delta.md", ["README.md"], {}, DO_LANE_FULL),
     ("a list order in a one-file repo", "Do these:\n- add a license\n- add CI", ["README.md"],
      {}, DO_LANE_FULL),
     ("three sentences in a one-file repo", "Add a paragraph. Fix the title. Add a badge.",
@@ -84,10 +88,35 @@ def test_the_bounded_lane_names_the_one_file_it_serves():
 
 
 def test_a_word_count_alone_never_picks_the_lane():
-    """A long order naming one file is bounded, a short one naming two is not."""
+    """A long order naming one file is bounded, a short one naming more files than one bounded job
+    changes is not."""
     long_one = "Please " + "carefully " * 60 + "update README.md"
     assert select_do_lane(long_one, tracked_files=["a", "b", "README.md"]).bounded
-    assert not select_do_lane("Edit alpha.md beta.md", tracked_files=["alpha.md"]).bounded
+    many = ["a.md", "b.md", "c.md", "d.md"]
+    assert not select_do_lane("Edit a.md b.md c.md d.md", tracked_files=many).bounded
+
+
+def test_a_small_change_over_named_files_is_one_bounded_job_with_every_file_and_its_test():
+    tracked = ["src/format.js", "src/index.js", "test/format.test.js", "package.json"]
+    decision = select_do_lane("Rename formatName to normalizeName in src/format.js and src/index.js "
+                              "and add a regression test in test/format.test.js.", tracked_files=tracked)
+
+    assert (decision.lane, decision.deliverable, decision.also) == (DO_LANE_BOUNDED, "src/format.js",
+                                                                   ("src/index.js",))
+    assert decision.with_tests and "2 files" in decision.reason
+
+
+@pytest.mark.parametrize(("order", "tracked", "expected"), [
+    # one unknown file among several is the same question as for one
+    ("Fix src/a.js and src/b.js.", ["src/a.js", "x.md"], DO_LANE_HOLD),
+    # a risky path among several takes the whole change off the bounded lane
+    ("Update src/a.js and src/auth/session.js.", ["src/a.js", "src/auth/session.js"], DO_LANE_FULL),
+    # several files with many actions still get a plan
+    ("Add a route to src/a.js, update src/b.js to call it and document it in README.md.",
+     ["src/a.js", "src/b.js", "README.md"], DO_LANE_FULL),
+])
+def test_several_named_files_keep_every_guard_of_one(order, tracked, expected):
+    assert select_do_lane(order, tracked_files=tracked).lane == expected
 
 
 def test_a_repository_is_tiny_up_to_the_threshold_and_an_empty_one_is_not():

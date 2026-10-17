@@ -118,7 +118,8 @@ def test_fences_and_test_runs_of_any_wording_keep_a_one_file_order_bounded(order
 
 
 def test_every_planner_prompt_of_a_full_lane_order_describes_the_repository(tmp_path, monkeypatch):
-    order = "Fix add in src/calc.js and normalizeName in src/format.js."
+    order = ("Fix add in src/calc.js, fix normalizeName in src/format.js, document both in README.md "
+             "and note them in CHANGELOG.md.")       # more files than one bounded job: the full lane
     _answer, _jobs, planner = _walk_order_file(tmp_path, monkeypatch, order, LAB_FILES)
 
     facts = [prompt for prompt in planner.prompts if "Top-level files:" in prompt]

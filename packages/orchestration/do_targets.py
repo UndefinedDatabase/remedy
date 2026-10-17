@@ -232,8 +232,8 @@ def _shape_job_orders(
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:
         if ctx.lane is not None and ctx.lane.bounded and ctx.lane.deliverable:
-            return [(order, [deliverable_task(ctx.lane.deliverable, order,
-                                              with_tests=ctx.lane.with_tests)], sole, own)]
+            return [(order, [deliverable_task(ctx.lane.deliverable, order, with_tests=ctx.lane.with_tests,
+                                              also=ctx.lane.also)], sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]
