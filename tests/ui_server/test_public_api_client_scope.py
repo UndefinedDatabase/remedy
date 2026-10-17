@@ -129,3 +129,26 @@ def test_a_client_of_no_registered_project_sees_no_job(tmp_path):
     client = _client(str(uuid4()))
     status, body, _headers = public_api.answer_public_api_get("/api/v1/digest", client=client)
     assert status == 200 and body["jobs"] == [] and body["projects"] == []
+
+
+def test_the_cancel_routes_hold_a_client_to_its_projects(tmp_path):
+    """exec-1017c: a client cancels only its own projects' jobs and orders; nothing runs otherwise."""
+    mine, theirs, own, other = _two_projects(tmp_path)
+    _order("aaaa000000000001", mine.slug)
+    _order("aaaa000000000002", theirs.slug)
+    client = _client(str(mine.id))
+    calls: list[tuple[str, list[str]]] = []
+
+    def run(lock: str, argv: list[str]) -> dict:
+        calls.append((lock, argv))
+        return {"ok": True}
+
+    for path in (f"/api/v1/jobs/{other}/cancel", "/api/v1/orders/aaaa000000000002/cancel"):
+        status, body, _headers = public_api.answer_public_api_post(path, b"{}", run, client=client)
+        assert (status, body["error"]) == (403, "api_client_policy_refused"), path
+        assert body["message"].endswith("nothing was run")
+    assert calls == []
+    for path in (f"/api/v1/jobs/{own}/cancel", "/api/v1/orders/aaaa000000000001/cancel"):
+        status, body, _headers = public_api.answer_public_api_post(path, b"{}", run, client=client)
+        assert status == 200, (path, body)
+    assert [lock for lock, _argv in calls] == [own, "order:aaaa000000000001"]
