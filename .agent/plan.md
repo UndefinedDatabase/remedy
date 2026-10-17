@@ -4,7 +4,7 @@
 The 2026-10-17 README order (job 84b0cc4272164bb2, order a6a87e65809f6bd6) runs as one bounded job and
 one task, runs the requested tests or says it could not, reports actual Pi usage, and can leave a review
 report the review ZIP packages automatically. No new orchestrator; `.agent/STOP` kept; no real model call,
-no supervisor restart, no deploy. Work happens in worktree .remedy-wt/exec-quality (the supervisor runs
+no supervisor restart, no deploy; outside the roadmap queue (F078 untouched). Work happens in worktree .remedy-wt/exec-quality (the supervisor runs
 the main checkout's code).
 
 ## Current Step

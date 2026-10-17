@@ -15,7 +15,10 @@ job verification reading, Pi per-call limits and evidence, review reports + revi
 interface's execution key and HTTP provider refusal, tests and docs.
 
 ## Do not touch
-`.agent/STOP`, the supervisor, Universe (handoff text only), the sandbox's policy, provider defaults.
+The roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, Universe (handoff text only), the sandbox's policy, provider defaults.
+
+## Steps
+Phases 0 to 7 of the order; the current one is in plan.md.
 
 ## Constraints
 - No real model call; fake providers and recorded fixtures only.
