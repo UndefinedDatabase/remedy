@@ -722,3 +722,18 @@ def should_stop(
             )
 
     return ShouldStopResult(should_stop=False)
+
+
+# WHY: lab calc order of 2026-10-17 17:48 — the job's only task was built, reviewed and passed, then the
+# post-task safe point stopped the job over its token cap (87,604 of 85,000) and asked the operator
+# for a budget decision, although nothing was left to spend: the gate after the last task runs the
+# project's tests locally and calls no model.
+def moot_budget_stop(signal: Any, remaining_tasks: Any) -> Any:
+    """*signal*, or None when it is a BUDGET stop and no task is left to dispatch.
+
+    A budget stop exists to keep the next task from spending; with none left it only throws away
+    finished work. An operator stop, a pause and any stop before the last task are kept as they are.
+    """
+    if signal is None or list(remaining_tasks or ()):
+        return signal
+    return None if getattr(signal, "source", "") == "budget" else signal
