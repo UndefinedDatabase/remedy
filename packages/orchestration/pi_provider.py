@@ -39,6 +39,7 @@ from packages.orchestration.pi_events import (
     parse_pi_events,
     summarize_pi_events,
 )
+from packages.orchestration.pi_loop_limits import PI_LOOP_LIMIT_MARK, PiLoopWatch, bind_job_token_budget, pi_loop_limits
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
     BuilderOutput,
@@ -320,6 +321,7 @@ def bind_job_clock(job: Any) -> None:
     _JOB_TIME_LEFT.set(left)
     job_id = getattr(job, "job_id", None)
     _JOB_STOP_REQUESTED.set((lambda: stop_requested(job_id) is not None) if job_id else None)
+    bind_job_token_budget(job)    # exec-1017 D4: the job's tokens left cap a call's agent loop too
 
 
 def effective_pi_timeout(configured_sec: int) -> tuple[float, dict[str, Any]]:
@@ -434,6 +436,7 @@ class PiProvider:
         files = {"agent/models.json": pi_models_json(model=self._model),
                  "agent/settings.json": json.dumps({"shellPath": f"{SANDBOX_RUN_DIR}/tool-shell.sh"}),
                  "tool-shell.sh": _TOOL_SHELL.format(limit=tool_limit)}
+        watch = PiLoopWatch(pi_loop_limits())
         with provider_sandbox(self._cwd, info["host"], files=files, writable=("agent",)) as (
                 sandbox, relay_argv):
             guarded = run_guarded([*relay_argv, *argv], ExecGuardPolicy(
@@ -441,7 +444,8 @@ class PiProvider:
                 output_cap_bytes=PI_STDOUT_CAP_BYTES, env=pi_child_env(),
                 env_allowlist=_PI_ENV_ALLOWLIST + (
                     "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"),
-                sandbox=sandbox, cancel_check=_JOB_STOP_REQUESTED.get()))
+                sandbox=sandbox, cancel_check=watch.cancel_check(_JOB_STOP_REQUESTED.get()),
+                stdout_observer=watch.feed))
         stream_error, summary = "", None
         try:
             summary = summarize_pi_events(parse_pi_events(guarded.stdout))
@@ -452,6 +456,10 @@ class PiProvider:
         error = pi_failure_text(
             summary, exit_code=guarded.returncode, term_signal=guarded.term_signal,
             tripped=guarded.tripped_limit, stderr=guarded.stderr, stream_error=stream_error)
+        if watch.tripped:
+            # exec-1017 D4: the loop was ended at its cap, not by a stop; what it used is still real.
+            summary = summary if summary is not None else watch.summary()
+            error = f"provider_error: {PI_LOOP_LIMIT_MARK}: {watch.tripped}"
         duration_ms = int((time.monotonic() - started) * 1000)
         evidence = {
             "role": self._role, "provider": PI_PROVIDER_NAME, "inner_provider": PI_INNER_PROVIDER,
@@ -466,6 +474,7 @@ class PiProvider:
             "retries": summary.retries if summary else 0,
             "usage": dict(summary.usage) if summary else {},
             "settled": bool(summary and summary.settled), "error": error[:300],
+            "loop_limits": watch.limits.to_json(), "loop_limit_tripped": watch.tripped,
         }
         self.last_evidence = evidence
         self._record_call(evidence, argv, prompt)
@@ -497,6 +506,9 @@ class PiProvider:
                 "total_tokens": summary.usage["totalTokens"],
                 "cache_read_input_tokens": summary.usage["cacheRead"],
                 "cache_creation_input_tokens": summary.usage["cacheWrite"],
+                # exec-1017 D3: the attempt record's own counter names; without them every Pi call
+                # read "unmeasured" in `remedy stats calls` although Pi measured all four figures.
+                "cache_read": summary.usage["cacheRead"], "cache_creation": summary.usage["cacheWrite"],
                 "total_cost_usd": 0.0, "model_turns": summary.model_turns,
                 "parse_source": "pi_json_events"}
 
@@ -508,9 +520,11 @@ class PiProvider:
             options={"tools": pi_role_tools(self._role), "inner_provider": PI_INNER_PROVIDER})
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         if outcome.error:
+            capped = self._usage_actuals(outcome) if PI_LOOP_LIMIT_MARK in outcome.error else None
             return BuilderOutput(error=outcome.error, provider=PI_PROVIDER_NAME,
-                                 duration_ms=outcome.duration_ms,
-                                 actual_missing_reason="provider_error", prepared_input=fingerprint)
+                                 duration_ms=outcome.duration_ms, usage_actuals=capped,
+                                 actual_missing_reason="" if capped else "provider_error",
+                                 prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None  # an empty error means the stream parsed
         actuals = self._usage_actuals(outcome)
@@ -531,9 +545,11 @@ class PiProvider:
             options={"tools": pi_role_tools("reviewer"), "inner_provider": PI_INNER_PROVIDER})
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         if outcome.error:
+            capped = self._usage_actuals(outcome) if PI_LOOP_LIMIT_MARK in outcome.error else None
             return ReviewerOutput(error=outcome.error, error_class="provider_error",
-                                  provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms,
-                                  actual_missing_reason="provider_error", prepared_input=fingerprint)
+                                  provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms, usage_actuals=capped,
+                                  actual_missing_reason="" if capped else "provider_error",
+                                  prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None
         out = _parse_reviewer_json(summary.final_text, outcome.duration_ms,

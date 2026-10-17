@@ -70,12 +70,22 @@ command can reach the model endpoint too, for the two admitted requests only.
 | One shell command of a Pi tool call | 300 s | `pi.tool_timeout_seconds` (`REMEDY_PI_TOOL_TIMEOUT_SECONDS`) |
 | One Pi call | 900 s, never longer than the job's remaining wall budget | the existing role timeout |
 | A job stop reaching a running Pi call | about 1 s | none |
+| Model turns of one Pi call's agent loop | 40 | `pi.max_turns_per_call` (`REMEDY_PI_MAX_TURNS_PER_CALL`) |
+| Input tokens of one Pi call, summed over its turns | 400,000, never more than the job's remaining `max_total_tokens` | `pi.max_input_tokens_per_call` (`REMEDY_PI_MAX_INPUT_TOKENS_PER_CALL`) |
 
 Remedy's tool shell (`/run/remedy/tool-shell.sh`, read-only, named in Pi's `settings.json`)
 runs every bash command under `timeout`. When the command hits its deadline, the shell says
 so, Pi gets exit 124 and goes on, and the command's process group is swept. A `remedy job stop`
 is now also seen while a Pi call runs: the guard ends the sandbox (`pi_cancelled`) and the job
 stops at its next safe point as before.
+
+Pi has no turn or token limit of its own, so Remedy reads the event stream as it arrives and ends
+the sandbox once the agent loop has used its turns or input tokens and asks for one more tool; a
+final answer is never cut off. The call fails `pi_loop_limit` (never retried), the workspace keeps
+what the loop wrote, the task ends `budget_exhausted`, and the turns, tool calls and tokens it used
+are recorded in the run's `pi/<role>.jsonl` with the limits that applied (`loop_limits`). The limit
+is checked about once a second, so a tool the model starts in that second may still run
+(exec-1017 D4).
 
 ## Fail closed
 

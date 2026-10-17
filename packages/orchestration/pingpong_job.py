@@ -1851,7 +1851,7 @@ def final_status_detail_of(result: Any) -> str:
     it names the child's exit code and the redacted tail of its stderr, and for
     ``provider_timeout`` the limit the call ran into. Every other outcome records "".
     """
-    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout"):
+    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted"):
         return ""
     return str(getattr(result, "error", "") or "")
 

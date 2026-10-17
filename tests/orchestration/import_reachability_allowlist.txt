@@ -262,6 +262,7 @@ packages.orchestration.path_utils
 packages.orchestration.pause_control
 packages.orchestration.permissions
 packages.orchestration.pi_events
+packages.orchestration.pi_loop_limits
 packages.orchestration.pi_provider
 packages.orchestration.pi_turn_counts
 packages.orchestration.pingpong_call_record

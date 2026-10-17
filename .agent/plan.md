@@ -8,18 +8,12 @@ no supervisor restart, no deploy. Work happens in worktree .remedy-wt/exec-quali
 the main checkout's code).
 
 ## Current Step
-1. Routing (Phase 0/1): planner repo facts come from the target repository, not the order folder;
-   `order_scope` reads "Testbefehl"/"test command", "sonst nichts"/"nothing else" and a colon-introduced
-   literal block as one part; incident regression case.
+4. Review reports (Phase 4): `--capture-review` / `capture_review` / order header `capture-review: true`;
+   reports under `<data root>/review_reports/`; `make_review_zip.sh` packages the latest 10 with an index.
+
+Done: 1 routing (97128b81a), 2 verification (1bcff59dc, f7e0f4749), 3 Pi loop limits and measured usage.
 
 ## Next Steps
-2. Verification (Phase 2): an order that asks to run tests gets the project's own test command on its job
-   (or an explicit unavailable state); one `job_verification` reading (task runs + DoD) feeds the story,
-   the `do` answer and the API; a task-text estimate is never shown as usage.
-3. Pi limits (Phase 3): per-call turn and input-token caps read from the live event stream, the job's
-   remaining token budget as a ceiling, a truthful `pi_loop_limit` error; turns and tool calls reported.
-4. Review reports (Phase 4): `--capture-review` / `capture_review` / order header; reports under
-   `<data root>/review_reports/`; `make_review_zip.sh` packages the latest 10 with an index.
 5. Execution API (Phase 5): `execution` key of `/api/v1/interface`; HTTP refuses providers that run
    outside the tool sandbox (claude-cli, claude); effective config in the `do` answer.
 6. Experience audit (Phase 6): measure what earlier evidence reaches a new job; no memory rewrite.

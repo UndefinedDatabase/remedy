@@ -176,8 +176,8 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
         return _word("review_not_passed", rounds=max(rounds.get(str(t.task_id), 0) for t in stuck))
     if "target_mutation_blocked" in finals:
         return _word("target_changed")
-    if getattr(plan, "stop_source", "") == "budget":
-        return _word("budget_exhausted")
+    if getattr(plan, "stop_source", "") == "budget" or "budget_exhausted" in finals:
+        return _word("budget_exhausted")      # a job budget, or a Pi loop ended at its cap (exec-1017 D4)
     return _word("unknown")
 
 

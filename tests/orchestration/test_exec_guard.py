@@ -1106,3 +1106,17 @@ def test_a_guarded_child_reads_end_of_file_while_the_callers_stdin_is_an_open_pi
 
     assert caller.returncode == 0, out_path.read_text()
     assert out_path.read_text().strip() == "None 0"
+
+
+def test_the_stdout_observer_sees_the_live_stream_and_can_end_the_child_through_cancel_check():
+    """exec-1017 D4: the Pi loop limit watches the stream as it arrives, not after the call ends."""
+    seen: list[bytes] = []
+    program = "import sys, time; print('turn 1', flush=True); time.sleep(30)"
+    began = time.monotonic()
+    result = run_guarded(_child(program), ExecGuardPolicy(
+        wall_timeout_seconds=60, stdout_observer=seen.append,
+        cancel_check=lambda: b"turn 1" in b"".join(seen)))
+    assert time.monotonic() - began < 10
+    assert (result.classification, result.tripped_limit) == ("cancelled", "cancelled")
+    assert result.stdout.startswith(b"turn 1")
+    assert _survivors() == []
