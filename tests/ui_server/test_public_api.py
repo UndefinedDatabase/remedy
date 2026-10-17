@@ -60,6 +60,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_decline_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/apply"):
         "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/stop"):
+        "test_the_stop_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/orders/{order}"):
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
@@ -651,7 +653,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.17"
+    assert public_api.PUBLIC_API_VERSION == "1.18"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -923,7 +925,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.17"
+    assert public_api.PUBLIC_API_VERSION == "1.18"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1106,6 +1108,31 @@ def test_a_decline_post_refuses_a_key_the_route_does_not_take():
     assert calls == []
 
 
+def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017b: a client stops a running job, or ends one that waits, without the command line."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/stop")
+    assert (route.method, route.twin, route.body) == ("POST", "job.stop", (("reason", "string"),))
+    assert (route.refusal_default, route.refusals) == (
+        409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
+    assert "`api`" in route.description and "job_not_stoppable" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.18"
+
+
+@pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
+def test_a_stop_post_runs_the_command_with_its_reason_and_the_api_door(body, reason):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/stop", body, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "stop", f"--reason={reason}", "--source=api", "--json", "--", "j1"])]
+
+
+def test_a_stop_of_a_completed_job_answers_409_with_the_commands_own_refusal():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "job_not_stoppable", "message": "job j1 is already completed"}
+    status, answer, _headers = _post("/api/v1/jobs/j1/stop", {"reason": "x"}, run)
+    assert (status, answer["error"]) == (409, "job_not_stoppable")
+
+
 def test_every_route_declares_only_refusals_its_twin_answers():
     """A route's `refusals` are tokens its twin command really refuses with, as the machine
     client interface lists them (DECISION F298 D4), so no status is declared for a token that
@@ -1219,7 +1246,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.17"
+    assert public_api.PUBLIC_API_VERSION == "1.18"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1406,6 +1433,7 @@ def test_an_order_create_post_answers_202_with_the_starters_record(
         "started_at": record.started_at, "ended_at": record.ended_at,
         "exit_code": record.exit_code, "order_file": record.order_file,
         "answer": {"ok": True, "mission_id": "m-fixture"},
+        "jobs": [],          # no mission batch records this order file: no job is invented
     }
     assert calls == [(text, [])]
 
@@ -2312,7 +2340,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.17"
+    assert public_api.PUBLIC_API_VERSION == "1.18"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2587,7 +2615,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.17"
+    assert public_api.PUBLIC_API_VERSION == "1.18"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "planning" and story_problems(expected) == []

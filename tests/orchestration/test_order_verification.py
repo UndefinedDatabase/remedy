@@ -116,3 +116,88 @@ def test_a_project_without_a_test_command_says_so_when_tests_were_asked_for(data
     found = OV.job_verification(job)
 
     assert (found["status"], found["reason"], found["runs"]) == ("not_run", NO_CHECK_RAN_WORDS, [])
+
+
+@pytest.mark.parametrize(("reason", "exit_code", "expected"), [
+    ("executable_not_allowed", None, "not_run"),     # refused before exec: nothing ran
+    ("test_command_changed", None, "not_run"),
+    ("tool_unavailable", None, "not_run"),
+    ("nonzero_exit", 1, "failed"),                   # it ran and was red
+    ("timeout", None, "failed"),                     # it ran out of time: a run, and not green
+])
+def test_a_check_refused_before_it_ran_is_not_run_never_failed_or_passed(data_root, reason, exit_code, expected):
+    job = _job("blocked")
+    job.metadata[OV.ORDER_TEST_REQUEST_KEY] = "Run the tests."
+    _gate(job, {"check_id": "order-tests", "kind": "project_tests", "status": "failed",
+                "reason": reason, "exit_code": exit_code, "command": "cargo test"})
+
+    found = OV.job_verification(job)
+
+    assert found["status"] == expected
+    if expected == "not_run":
+        assert (found["runs"], found["required"]) == ([], True)
+        assert reason in found["reason"]
+
+
+def _polyglot(tmp_path):
+    repo = tmp_path / "repo"
+    for rel, text in {"web/package.json": '{"scripts": {"test": "node --test"}}',
+                      "web/src/index.js": "export const f = () => 1;\n",
+                      "py/pkg/app.py": "x = 1\n", "py/tests/test_app.py": "def test_x():\n    pass\n",
+                      "go/calc.go": "package calc\n", "README.md": "# r\n"}.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(text)
+    return repo
+
+
+@pytest.mark.parametrize(("files", "packages"), [
+    (["web/src/index.js"], ["web"]),                      # the nearest package.json with a test script
+    (["py/pkg/app.py"], ["py"]),                          # the nearest folder with a tests folder
+    (["web/src/index.js", "py/pkg/app.py"], ["web", "py"]),
+    (["go/calc.go"], []),                                 # no command Remedy knows: honestly none
+    (["README.md"], []),
+])
+def test_a_polyglot_repository_tests_the_package_that_owns_the_jobs_files(data_root, tmp_path, files, packages):
+    repo = _polyglot(tmp_path)
+    job = JobPlan(job_title="t", mission="m", repo_path=str(repo),
+                  tasks=[TaskEntry(title=f"Deliver {f}", inputs={"deliverable": f}) for f in files])
+
+    assert OV.owning_test_packages(job) == packages
+
+
+def test_a_root_test_command_keeps_the_check_at_the_root(data_root, tmp_path):
+    repo = _polyglot(tmp_path)
+    (repo / "package.json").write_text('{"scripts": {"test": "npm run test --workspaces"}}')
+    job = JobPlan(job_title="t", mission="m", repo_path=str(repo),
+                  tasks=[TaskEntry(title="x", inputs={"deliverable": "web/src/index.js"})])
+
+    assert OV.owning_test_packages(job) == []
+
+
+def test_a_requested_run_in_a_polyglot_repository_runs_in_each_owning_package(data_root, tmp_path):
+    repo = _polyglot(tmp_path)
+    job = JobPlan(job_title="t", mission="m", repo_path=str(repo),
+                  tasks=[TaskEntry(title="x", inputs={"deliverable": "web/src/index.js"},
+                                   files_hint=["web/src/index.js", "py/pkg/app.py"])])
+    save_job_plan(job)
+    store_dod(str(job.job_id), DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic", checks=[
+        DoDCheck(id="ctr-C001", kind="project_tests", source="plan_acceptance", blocking=False)]))
+
+    OV.require_order_tests(str(job.job_id), "Fix web/src/index.js and py/pkg/app.py. Run the tests.")
+
+    checks = load_dod(str(job.job_id)).checks
+    assert [(c.id, c.spec.get("cwd"), c.blocking) for c in checks] == [
+        ("ctr-C001", "web", True), ("ctr-C001-2", "py", True)]
+
+
+def test_a_high_risk_change_requires_the_tests_though_the_order_does_not_ask(data_root, tmp_path):
+    job = JobPlan(job_title="t", mission="m", repo_path=str(tmp_path),
+                  tasks=[TaskEntry(title="x", inputs={"deliverable": "src/auth/session.py"})])
+    save_job_plan(job)
+
+    request = OV.require_order_tests(str(job.job_id), "Change the session expiry in src/auth/session.py.")
+
+    assert "high-risk" in request
+    [check] = load_dod(str(job.job_id)).checks
+    assert (check.kind, check.blocking) == ("project_tests", True)
+    assert load_job_plan(str(job.job_id)).metadata[OV.ORDER_TEST_REQUEST_KEY] == request

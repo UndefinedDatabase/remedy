@@ -225,7 +225,7 @@ def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monke
     monkeypatch.setattr("packages.orchestration.study.study_call_fn", lambda *a, **kw: None)
 
     data = json.loads(_do(capsys, "--json", "--planner-model", "p1", "--plan-only", llm=True,
-                          order="Write CONTRIBUTING.md and CHANGELOG.md"))
+                          order="Write CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md and SUPPORT.md"))
 
     assert data["job_ids"]
     assert calls

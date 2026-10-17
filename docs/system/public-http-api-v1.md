@@ -126,6 +126,33 @@ and no end in its record reads the record again for up to two seconds, because t
 an end only after the process has finished, and answers `ended` once the end is there, `lost`
 otherwise.
 
+**An order's jobs (version 1.18).** Both answers carry `jobs`, while the order runs and after it
+ended: every job this run of the order file planned, in planned order and over every repository
+it touched, read from the repositories' missions (a batch records the order file it came from and
+each job link names its batch), so a client needs no job id to see what is happening. Each entry
+holds `job_id`, `title` (the order's first line; sibling jobs of one order add their repository
+or files), `state` (the job's own word), `phase`, `executable`, `tasks` (`total`, `done` and the
+`current` task's title), `waits_for` and `waiting_reason`, `verification` (the job's verification
+status) and `story` (the route of the job's story). `phase` is one of the closed words the
+interface lists under `order_job_phases`: `running`; `waiting`, when the job runs only after the
+job it names under `waits_for` is applied and committed, because its workspace is cut from the
+repository's HEAD; `ready`, the one job that may run now (`executable`); `needs_plan_approval`;
+`awaiting_apply`, a finished result nothing applied or declined yet; `applied`; `declined`;
+`blocked`; `stopped`; `failed`. A job whose record cannot be read is listed with state `missing`,
+never left out, and an order that planned nothing yet lists none. The view is read when polled:
+it is no live stream, and a client that wants to know sooner polls again.
+
+**Stopping and abandoning work.** `POST /api/v1/jobs/{job}/stop` stops one job, as `remedy job stop`
+does: a running job finishes the provider call in flight, starts nothing new and stays resumable;
+a job that never started (a waiting or a ready one) ends at once; a stopped job answers the stop it
+already had; a completed job is refused with 409 `job_not_stoppable`, because its result waits for
+an apply or a decline (`POST /api/v1/jobs/{job}/decline`). To abandon what is left of an order, a
+client stops each of its jobs whose `phase` is `running`, `waiting` or `ready`, and declines each
+`awaiting_apply` result it does not want. A job stopped before it ever ran and a declined result
+leave the digest's list of jobs that still need something (they are listed among the ended jobs);
+a job stopped while it ran stays there, because it holds work that can be resumed. Records,
+evidence and worktrees stay as the retention rules keep them: a stop is never a deletion.
+
 `POST /api/v1/orders` starts an order through the supervisor's own `OrderLauncher`, the way
 `remedy do run <options> --no-ui --run-unattended -- order.md` would inside its own folder under the data
 root, and answers 202 with its record read exactly as the route above reads it. Its body's `order`
@@ -326,7 +353,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.17`.
+API version: `1.18`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
@@ -338,6 +365,7 @@ API version: `1.17`.
 | `GET` | `/api/v1/health` | — | `remedy doctor health --json` | `health_failed` 503 | no | Remedy's own health, as `remedy doctor health --json` prints it: each check PASS, WARN or FAIL with its detail and hint; when a check is FAIL the route answers 503 with the same body, so a monitor can read the status alone. |
 | `POST` | `/api/v1/jobs/{job}/decisions/{decision}` | `reason` (string), `answer` (strings) | `remedy decision resolve --json` | `invalid_job_id` 404, `job_not_found` 404, `decision_not_found` 404, `stop_reason_not_found` 404, `proposed_task_not_found` 404, `ambiguous_job_id` 400, `invalid_argument` 400, `missing_argument` 400, `option_not_applicable` 400, `answer_parse_error` 400, `invalid_budget` 400, `decision_not_resolvable` 400, any other 409 | no | Answers one decision of a job, as `remedy decision resolve <job> <decision> --json` does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id prefix is accepted, as on the command line, and `--as-mission` is not offered over HTTP. |
 | `POST` | `/api/v1/jobs/{job}/decline` | `reason` (string) | `remedy job decline --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, `missing_argument` 400, any other 409 | no | Declines a completed job's result, as `remedy job decline <job> --reason <reason> --json` does: nothing is applied and the decline is kept on the job, recorded as coming through `api`; a job that is not completed, or whose result already landed, is refused with 409. |
+| `POST` | `/api/v1/jobs/{job}/stop` | `reason` (string) | `remedy job stop --json` | `invalid_job_id` 404, `job_not_found` 404, `ambiguous_job_id` 400, any other 409 | no | Stops a job, as `remedy job stop <job> --reason <reason> --json` does, recorded as coming through `api`: a running job stops at its next safe point (the provider call in flight finishes, nothing new starts) and stays resumable, a job that never started, such as one waiting for its predecessor, ends at once, and a job already stopped answers the stop it had with `already_stopped`; a completed job is refused with 409 `job_not_stoppable`, because its result waits for an apply or a decline. A job id prefix is accepted, and a client token stops only a job of one of its projects (403 `api_client_policy_refused`). |
 | `POST` | `/api/v1/jobs/{job}/apply` | `commit` (string), `commit_auto` (flag), `commit_with_history` (flag), `push` (flag), `skip_blocked` (flag) | `remedy job apply --json` | `job_not_found` 404, `invalid_argument` 400, any other 409 | no | Approves a completed job's result and applies it to the repository the job's own record names, as `remedy job apply <job> --repo <that repository> --approve --json` does: `commit` is given as `--commit`, and each of `commit_auto`, `commit_with_history`, `push` and `skip_blocked` set to `true` as its option; a job id prefix is accepted; `--repo`, `--test-command` and `--dry-run` are not offered over HTTP, and a job whose record names no repository is refused with 409 `api_job_repository_unknown` before any command runs. |
 | `GET` | `/api/v1/orders/{order}` | — | `remedy client order --json` | `order_not_found` 404 | no | Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order <order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` holds what `remedy do` printed once the order is not `running`. A client token reads only an order whose order file names its projects (403 `api_client_policy_refused`). |
 | `POST` | `/api/v1/orders` | `order` (string), `no_llm` (flag), `new_mission` (flag), `force_job` (flag), `force_mission` (flag), `builder_provider` (string), `reviewer_provider` (string), `deadline` (string), `order_key` (string), `capture_review` (flag) | `remedy client order --json` | — | no | Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do run <options> --no-ui --run-unattended -- order.md` would inside its own folder under the data root, and answers 202 with its record read exactly as the route above reads it. `order` is the order file's whole text, header included, and required; `no_llm`, `new_mission`, `force_job`, `force_mission` and `capture_review` each pass their `remedy do` flag when `true` (`capture_review` leaves the walk's review report under the data root's `review_reports`, its id in the answer's `review_report`); `builder_provider`, `reviewer_provider` and `deadline` each pass their option with their value, and a provider HTTP does not offer (`claude-cli`, or one that is no provider of its role; see `GET /api/v1/execution`) is refused before anything starts with 400 `api_provider_not_offered`. An order whose header names no project, or one that names a project `select_project` cannot resolve to exactly one, is refused before anything starts with 409 `api_order_project_unknown`, and one whose header sets none of `max-cost-usd`, `max-total-tokens`, `max-provider-calls` and `max-wall-clock-minutes` with 400 `order_file_no_cost_cap`; every other refusal is `remedy do`'s own, read back only once the order is polled. `order_key` names the order with a key the client chooses, one to 64 letters, digits, `.`, `_` or `-`, beginning with a letter or a digit, any other value answering 400 `api_body_invalid`; an order with a key whose order file an earlier order of a mission that has not ended still has unfinished jobs for is refused before anything starts with 409 `order_already_running`, the mission's id under `mission_id`, unless `new_mission` is `true`, which adds it as one more order to the repository's one mission, and the record's `order_file` then names the key's file. |

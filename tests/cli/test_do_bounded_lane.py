@@ -22,6 +22,9 @@ import pytest
 
 from apps.cli.grouped import main
 
+#: An order naming more files than one bounded job changes (`do_lane.MAX_BOUNDED_FILES`): a full plan.
+FULL_LANE_FILES_ORDER = "Write CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md and SUPPORT.md"
+
 INCIDENT_ORDER = (
     "Add one concise project-description paragraph below the existing heading in README.md. "
     "Change no other files.")
@@ -212,14 +215,29 @@ def test_no_ui_is_still_accepted_and_changes_nothing(repo, capsys, planning_call
 # ── test 7: scaling up still works ───────────────────────────────────────────
 
 
-def test_an_order_naming_two_files_keeps_the_full_lane_and_two_tasks(repo, capsys, events):
+def test_an_order_naming_two_files_is_one_bounded_job_and_one_task_over_both(repo, capsys, events):
+    """2026-10-17 order "Execution Excellence": several files are no reason for a planner, several
+    tasks or several jobs; a small change over a few named files is one task that names them all."""
+    from packages.orchestration.pingpong_job import load_job_plan
+
     data = json.loads(_do(capsys, "--json", "--no-llm", "--plan-only",
                           order="Write CONTRIBUTING.md and CHANGELOG.md"))
+
+    assert "lane: bounded" in _step(data, "plan")["detail"]
+    [job_id] = data["job_ids"]
+    [task] = load_job_plan(job_id).tasks
+    assert (task.inputs["deliverable"], task.files_hint) == ("CONTRIBUTING.md", ["CONTRIBUTING.md", "CHANGELOG.md"])
+    assert task.title == "Deliver CONTRIBUTING.md and CHANGELOG.md"
+
+
+def test_an_order_naming_more_files_than_one_bounded_job_keeps_the_full_lane(repo, capsys, events):
+    data = json.loads(_do(capsys, "--json", "--no-llm", "--plan-only", order=FULL_LANE_FILES_ORDER))
 
     assert "lane: full" in _step(data, "plan")["detail"]
     assert data["shape_source"] == "planner"
     [job_listing] = data["jobs"]
-    assert [t["deliverable"] for t in job_listing["tasks"]] == ["CONTRIBUTING.md", "CHANGELOG.md"]
+    assert [t["deliverable"] for t in job_listing["tasks"]] == [
+        "CONTRIBUTING.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md", "SUPPORT.md"]
 
 
 def test_force_mission_on_the_incident_order_still_scales_up(repo, capsys, events):
@@ -349,7 +367,6 @@ def test_no_document_or_caller_pairs_remedy_do_with_yes():
 
 # ── D3: the plan boundary of a full plan ─────────────────────────────────────
 
-TWO_FILE_ORDER = "Write CONTRIBUTING.md and CHANGELOG.md"
 
 
 def _plan_with_mocked_llm(monkeypatch) -> None:
@@ -369,7 +386,7 @@ def test_a_full_plan_without_a_terminal_or_the_flag_stops_and_names_the_flag(
         repo, capsys, monkeypatch):
     _plan_with_mocked_llm(monkeypatch)
 
-    data = json.loads(_do(capsys, "--json", "--no-llm", "--no-ui", order=TWO_FILE_ORDER))
+    data = json.loads(_do(capsys, "--json", "--no-llm", "--no-ui", order=FULL_LANE_FILES_ORDER))
 
     assert _step(data, "run")["status"] == "stopped"
     assert "--run-unattended runs a generated plan without asking" in _step(data, "run")["detail"]
@@ -380,7 +397,7 @@ def test_a_full_plan_runs_when_the_flag_approves_it(repo, capsys, monkeypatch):
     _plan_with_mocked_llm(monkeypatch)
 
     data = json.loads(_do(capsys, "--json", "--no-llm", "--no-ui", "--run-unattended",
-                          order=TWO_FILE_ORDER))
+                          order=FULL_LANE_FILES_ORDER))
 
     assert _step(data, "run")["status"] == "done"
     assert _snapshot(repo)[0] == ""
@@ -399,7 +416,7 @@ def test_an_interactive_terminal_shows_the_plan_and_asks_before_a_full_plan_runs
         lambda: do_plan_confirm.make_plan_confirmer(
             ask=lambda question: asked.append(question) or answer, write=lambda line: None))
 
-    out = _do(capsys, "--no-llm", "--no-ui", order=TWO_FILE_ORDER)
+    out = _do(capsys, "--no-llm", "--no-ui", order=FULL_LANE_FILES_ORDER)
 
     assert len(asked) == 1
     assert f"[{'done' if ran else 'stopped'}] run:" in out

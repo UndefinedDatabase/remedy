@@ -177,6 +177,28 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="POST",
+        path="/api/v1/jobs/{job}/stop",
+        twin="job.stop",
+        body=(("reason", "string"),),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("ambiguous_job_id", 400),
+        ),
+        description=(
+            "Stops a job, as `remedy job stop <job> --reason <reason> --json` does, recorded as "
+            "coming through `api`: a running job stops at its next safe point (the provider call "
+            "in flight finishes, nothing new starts) and stays resumable, a job that never "
+            "started, such as one waiting for its predecessor, ends at once, and a job already "
+            "stopped answers the stop it had with `already_stopped`; a completed job is refused "
+            "with 409 `job_not_stoppable`, because its result waits for an apply or a decline. "
+            "A job id prefix is accepted, and a client token stops only a job of one of its "
+            "projects (403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
         path="/api/v1/jobs/{job}/apply",
         twin="job.apply",
         body=(("commit", "string"), ("commit_auto", "flag"), ("commit_with_history", "flag"),
