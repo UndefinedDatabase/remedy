@@ -1,6 +1,6 @@
 """Review reports: one file per `remedy do` walk that asked for it, written without anyone naming a job.
 
-`remedy do --capture-review` (and `capture_review: true` on `POST /api/v1/orders`, which passes
+`remedy do run --capture-review` (and `capture_review: true` on `POST /api/v1/orders`, which passes
 that flag) makes the walk leave `<data root>/review_reports/<report id>.json`: the effective order
 and configuration, the lane and why, the planning calls, every job and task with its runs, their
 phase times, the providers' measured usage, each Pi call's model turns and tool calls, the

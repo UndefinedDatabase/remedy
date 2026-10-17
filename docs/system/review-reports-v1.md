@@ -14,7 +14,7 @@ with Universe's Improve tasks or Luna's reports.
 
 | Where | How |
 |---|---|
-| Command line | `remedy do "<order>" --capture-review` (also with an order file) |
+| Command line | `remedy do run "<order>" --capture-review` (also with an order file) |
 | HTTP | `POST /api/v1/orders` with `"capture_review": true`; it passes `--capture-review` to the walk the supervisor starts |
 
 The `do` answer's `review_report` names it: `{report_id, status, file}`, `file` relative to the
