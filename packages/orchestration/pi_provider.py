@@ -101,12 +101,18 @@ _PI_MODEL_MAX_TOKENS = 16384
 _PI_CALL_MODE = "pi-json"
 _PI_VERSION_TIMEOUT_SEC = 20
 
+# Lab order of 2026-10-17 16:2x: a correct three-line README append took 12 turns and 53,730 input
+# tokens (5 reads, 3 shell calls, the edit, then more checking), because nothing told the builder
+# that Remedy itself runs the project's tests and has a reviewer read the diff afterwards.
 _BUILDER_PREAMBLE = (
     "You are the builder in an isolated working copy. Your current directory IS that copy; "
-    "work only inside it. Inspect the files the task names, make the edit directly with your "
-    "file tools, run only checks relevant to the task, inspect the actual change you made "
-    "(for example with `git diff`), and report truthfully. A change you describe but did not "
-    "write to a file does not exist. Change no file the task does not name.\n\n"
+    "work only inside it. Read the files the task names (each once), make the edit directly with "
+    "your file tools, look at the actual change once (for example with `git diff`), then stop and "
+    "answer in one or two sentences. Do NOT run the project's tests or build: Remedy runs them "
+    "itself after you finish, and a reviewer reads your diff; a sentence in the task asking for "
+    "the tests to run is Remedy's job, not yours. Every extra step resends the whole conversation, "
+    "so take as few steps as the edit needs. A change you describe but did not write to a file "
+    "does not exist. Change no file the task does not name.\n\n"
 )
 # amend1016p D3: the reviewer judges what the change SAYS against what the task asks, not only
 # that a file changed, and fails a file the task does not ask for.
@@ -519,19 +525,27 @@ class PiProvider:
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools(self._role), "inner_provider": PI_INNER_PROVIDER})
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
-        if outcome.error:
-            capped = self._usage_actuals(outcome) if PI_LOOP_LIMIT_MARK in outcome.error else None
+        capped = PI_LOOP_LIMIT_MARK in outcome.error and outcome.summary is not None
+        if outcome.error and not capped:
             return BuilderOutput(error=outcome.error, provider=PI_PROVIDER_NAME,
-                                 duration_ms=outcome.duration_ms, usage_actuals=capped,
-                                 actual_missing_reason="" if capped else "provider_error",
-                                 prepared_input=fingerprint)
+                                 duration_ms=outcome.duration_ms,
+                                 actual_missing_reason="provider_error", prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None  # an empty error means the stream parsed
         actuals = self._usage_actuals(outcome)
+        final_text = summary.final_text
+        if capped:
+            # Lab order of 2026-10-17: the loop cap cut a builder that had ALREADY written the
+            # correct edit, and the task ended budget_exhausted with no review. The cap still
+            # ends the loop; what the builder wrote goes to the reviewer, who judges the diff
+            # (an unchanged workspace fails there as before). The evidence keeps the trip.
+            final_text = (f"{final_text}\n\nRemedy ended this builder loop at its cap "
+                          f"({outcome.error.split(PI_LOOP_LIMIT_MARK + ': ', 1)[-1]}); "
+                          "the edits it wrote are kept for review.").strip()
         # `files_changed` stays empty on purpose: the workspace diff is the authority, never
         # a list the assistant claimed.
         return BuilderOutput(
-            summary=summary.final_text[:500], files_changed=[], raw_text=summary.final_text,
+            summary=final_text[:500], files_changed=[], raw_text=final_text,
             provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms,
             tokens_used=summary.usage["totalTokens"], usage_actuals=actuals,
             actual_missing_reason="" if actuals else "provider_actuals_unavailable",
