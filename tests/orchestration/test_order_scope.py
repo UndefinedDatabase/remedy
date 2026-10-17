@@ -9,7 +9,7 @@ import pytest
 
 from packages.orchestration.job_plan import plan_job_llm
 from packages.orchestration.mission_compiler import compile_mission_plan
-from packages.orchestration.order_scope import split_order_scope
+from packages.orchestration.order_scope import order_test_request, split_order_scope
 
 #: The incident order exactly as the Orb sent it (its body, after the order file's header).
 INCIDENT_ORDER = (
@@ -198,3 +198,33 @@ def test_layout_never_changes_the_parts_of_an_order():
     assert [len(s.deliverables) for s in (prose, semicolon, bullet)] == [1, 1, 1]
     quoted = split_order_scope('Change the heading to "Hello; world". Fix README.md.')
     assert len(quoted.deliverables) == 2
+
+
+# Lab orders of 2026-10-17 16:00 (orders 9369388e2dcec4b3 and e8669f3dcd60fd57), both sent to the
+# full lane: a "diesen Abschnitt:" payload opening with a Markdown heading counted as three more
+# parts, "Projekttest" was no test run and "füge keine Abhängigkeiten hinzu" was work.
+LAB_README_ORDER = (
+    "Ergänze ausschließlich in README.md am Ende diesen Abschnitt:\n\n## Testbetrieb\n\n"
+    "Dieses Repository dient ausschließlich dazu, Codeänderungen sicher zu testen.\n"
+    "Alle Änderungen werden vor der Übernahme geprüft.\n\n"
+    "Führe den vorhandenen Projekttest aus. Verändere sonst nichts. "
+    "Übernimm die Änderungen nicht automatisch.\n")
+LAB_CALC_ORDER = (
+    "Die Funktion add(a, b) in src/calc.js rechnet falsch.\n\n"
+    "Repariere sie und ergänze einen Regressionstest in test/calc.test.js. "
+    "Zeige durch den Test, dass der bisherige Fehler behoben wurde.\n\n"
+    "Führe die Projekttests aus. Ändere keine anderen Dateien und füge keine Abhängigkeiten hinzu. "
+    "Übernimm nichts automatisch.\n")
+
+
+def test_a_section_payload_with_a_heading_is_one_part_and_the_project_test_a_run():
+    scope = split_order_scope(LAB_README_ORDER)
+    assert scope.single and len(scope.deliverables) == 1
+    assert order_test_request(LAB_README_ORDER) == "Führe den vorhandenen Projekttest aus."
+
+
+def test_no_dependencies_and_project_tests_bind_the_calc_order():
+    scope = split_order_scope(LAB_CALC_ORDER)
+    assert "Ändere keine anderen Dateien und füge keine Abhängigkeiten hinzu." in scope.constraints
+    assert order_test_request(LAB_CALC_ORDER) == "Führe die Projekttests aus."
+    assert all("Abhängigkeiten" not in part for part in scope.deliverables)
