@@ -116,3 +116,20 @@ def test_the_builder_is_told_remedy_runs_the_tests_and_to_stop_after_the_edit():
     from packages.orchestration.pi_provider import _BUILDER_PREAMBLE
     assert "Do NOT run the project's tests" in _BUILDER_PREAMBLE
     assert "then stop" in _BUILDER_PREAMBLE
+
+
+def test_a_budget_stop_after_the_last_task_is_moot_and_any_other_stop_is_kept():
+    """Lab calc order of 2026-10-17: a built, reviewed and passed task was stopped over the token cap."""
+    from packages.orchestration.safe_points import moot_budget_stop
+
+    budget = SimpleNamespace(source="budget", reason="budget_exhausted:max_total_tokens")
+    operator = SimpleNamespace(source="operator", reason="operator_stop: x")
+    assert moot_budget_stop(budget, []) is None
+    assert moot_budget_stop(budget, ["next task"]) is budget
+    assert moot_budget_stop(operator, []) is operator
+    assert moot_budget_stop(None, []) is None
+
+
+def test_the_reviewer_is_told_the_diff_is_complete_and_not_to_search():
+    from packages.orchestration.pi_provider import _REVIEWER_PREAMBLE
+    assert "do not list or search" in _REVIEWER_PREAMBLE and "do not run" in _REVIEWER_PREAMBLE

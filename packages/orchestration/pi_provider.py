@@ -171,8 +171,11 @@ _REVIEWER_PREAMBLE = (
     "You are the reviewer. You have read-only tools; you cannot edit. Judge the staged diff "
     "below against the task: does the changed text say what the task asks for, in its content "
     "and meaning, not merely in the right file? Fail a change whose wording misses the request, "
-    "and fail any file the task does not ask for (a report, a copy, a manifest). Answer in the "
-    "JSON shape the end of this message requires.\n\n"
+    "and fail any file the task does not ask for (a report, a copy, a manifest). The diff below "
+    "is the complete change and the files it touches are shown to you: do not list or search the "
+    "repository, read a file at most once and only if the diff leaves a real doubt, and do not run "
+    "the tests (Remedy runs them). Every extra step resends the whole conversation, so decide in as "
+    "few steps as you can. Answer in the JSON shape the end of this message requires.\n\n"
 )
 
 
@@ -604,7 +607,8 @@ class PiProvider:
 
     def review(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
                resume: str | None = None) -> ReviewerOutput:
-        full = _REVIEWER_PREAMBLE + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        # Lab calc order of 2026-10-17: the reviewer spent 12 turns and 51,469 tokens on ls, read and grep.
+        full = _REVIEWER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools("reviewer"), "inner_provider": PI_INNER_PROVIDER})
