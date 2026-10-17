@@ -109,7 +109,7 @@ CASES: list[dict[str, Any]] = [
               "extend tests/test_api.py.",
      # Version 3: an endpoint, its registration and its test are ONE small change over two named
      # files, so one bounded job (version 2 sent it to the planner, which split it).
-     "builder_files": ["src/api/routes.py", "src/api/app.py", "tests/test_api.py"],
+     "builder_files": ["src/api/routes.py", "src/api/app.py"],    # the fake's marker would break a .py test
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "with_tests": True,
                 "task_files": ["src/api/routes.py", "src/api/app.py"]}},
     {"id": "medium-feature-planned", "klass": "medium",
