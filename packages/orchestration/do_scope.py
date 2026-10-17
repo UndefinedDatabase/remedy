@@ -21,6 +21,7 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
+from packages.orchestration.order_scope import is_test_path, requests_test_files
 from packages.orchestration.task_deliverables import explicit_order_paths
 
 #: Words that fence an order to the files it names. A fence turns every other file into scope creep.
@@ -43,19 +44,40 @@ def order_scope_files(order: str, tracked_files: list[str]) -> list[str]:
     """The files the order puts in scope: the ones it names, then the tracked ones it names as words."""
     named = explicit_order_paths(order)
     lowered = order.lower()
+    # An order that spells a file name out ("README.md") has settled which README it means.
+    spelled = {PurePosixPath(path).name for path in named}
     for path in tracked_files:
         stem = PurePosixPath(path).stem.lower().lstrip(".")
-        if (path not in named and len(stem) >= _MIN_STEM_CHARS
+        if (path not in named and PurePosixPath(path).name not in spelled and len(stem) >= _MIN_STEM_CHARS
                 and re.search(rf"(?<![\w-]){re.escape(stem)}(?![\w-])", lowered)):
             named.append(path)
     return named
 
 
-def _same_file(produced: str, scoped: str) -> bool:
-    """The same file: equal paths, or the same name when one of them gives no directory."""
+def resolve_order_path(path: str, tracked_files: list[str]) -> str | None:
+    """The tracked file *path* names, or None when the repository does not prove one.
+
+    A path that is tracked as written is that file (root `README.md` wins over `docs/README.md`);
+    a bare name resolves only when exactly one tracked file bears it. A name two nested files
+    share, or one nothing tracks, is not resolved: it is never guessed.
+    """
+    if path in tracked_files:
+        return path
+    if "/" in path:
+        return None
+    same_name = [tracked for tracked in tracked_files if PurePosixPath(tracked).name == path]
+    return same_name[0] if len(same_name) == 1 else None
+
+
+def _same_file(produced: str, scoped: str, tracked_files: list[str]) -> bool:
+    """The same file: equal paths, or two names the repository resolves to one tracked file.
+
+    Basenames are never equated on their own: root `README.md` and `docs/README.md` are two files.
+    """
     if produced == scoped:
         return True
-    return ("/" not in produced or "/" not in scoped) and PurePosixPath(produced).name == PurePosixPath(scoped).name
+    resolved = resolve_order_path(produced, tracked_files)
+    return resolved is not None and resolved == (resolve_order_path(scoped, tracked_files) or scoped)
 
 
 def mission_plan_text(plan: Any) -> str:
@@ -77,5 +99,7 @@ def order_scope_violations(order: str, produced_text: str, tracked_files: list[s
     scope = order_scope_files(order, tracked_files)
     if not scope and not order_has_scope_fence(order):
         return []
+    tests_requested = requests_test_files(order)
     return [path for path in explicit_order_paths(produced_text)
-            if not any(_same_file(path, scoped) for scoped in scope)]
+            if not (tests_requested and is_test_path(path))
+            and not any(_same_file(path, scoped, tracked_files) for scoped in scope)]

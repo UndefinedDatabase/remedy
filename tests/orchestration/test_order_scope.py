@@ -35,7 +35,8 @@ SCOPE_TABLE = [
     ("a test-only order", "Run npm test and report the result.", 1, 0, True),
     ("a reporting deliverable",
      "Write a report of the npm test results to TEST_REPORT.md. Change no other files.", 1, 1, True),
-    ("a list", "Do these:\n- add a license\n- add CI", 1, 0, False),
+    ("a list", "Do these:\n- add a license\n- add CI", 2, 0, True),
+    ("a list of three", "Do these:\n- add a license\n- add CI\n- add a badge", 3, 0, False),
 ]
 
 
@@ -114,3 +115,86 @@ def test_checking_artifact_tasks_are_left_out_unless_the_job_asks_for_them():
     audit = {"goal": "Write a modification report of the repository with checksums", "constraints": []}
     kept = plan_job_llm(audit, lambda p, a: answer)
     assert len(kept.plan.tasks) >= 2 and any("report" in t.title.lower() for t in kept.plan.tasks)
+
+
+# --- 2026-10-17 audit P1-3/P1-4: a file name is not a request; layout is not a part ---------------
+
+from packages.orchestration.order_scope import (  # noqa: E402
+    is_binding_plan_item,
+    is_test_path,
+    requests_test_files,
+    work_milestones,
+)
+
+TYPO_ORDER = "Fix the typo in README.md. Change no other files."
+
+
+@pytest.mark.parametrize("item", [
+    "Create checksums.json with the hashes of all tracked files",
+    "Write change_report.md describing the changes",
+    "Save a comparison copy as README.before.md and a modification report",
+    "Erstelle pruefsummen.json mit den Prüfsummen aller Dateien",
+])
+def test_an_unrequested_checking_artifact_binds_even_when_it_names_a_file(item):
+    assert is_binding_plan_item(item, order=TYPO_ORDER)
+
+
+def test_a_requested_report_file_is_work_and_the_fix_itself_is_never_binding():
+    assert not is_binding_plan_item("Write TEST_REPORT.md", order="Write a report of the test "
+                                    "results to TEST_REPORT.md.")
+    assert not is_binding_plan_item("Fix the typo in README.md", order=TYPO_ORDER)
+
+
+class _Draft:
+    def __init__(self, ident: str, goal: str, outlines: list[dict] | None = None):
+        self._d = {"id": ident, "goal": goal, "depends_on": [], "rationale": "",
+                   "jobs_draft": outlines or []}
+
+    def model_dump(self) -> dict:
+        return {**self._d, "jobs_draft": list(self._d["jobs_draft"])}
+
+
+def test_a_plan_of_only_checking_artifacts_is_not_kept_as_the_original():
+    drafts = [_Draft("M001", "Create checksums.json for all files"),
+              _Draft("M002", "Write change_report.md")]
+    assert work_milestones(drafts, TYPO_ORDER) == []
+
+
+def test_an_outline_that_only_makes_a_checking_artifact_is_dropped_without_a_fallback():
+    outlines = [{"title": "Write change_report.md", "goal": "Report on the change", "est_band": "S"}]
+    [kept] = work_milestones([_Draft("M001", "README.md has no typo", outlines)], TYPO_ORDER)
+    assert kept["jobs_draft"] == []
+
+
+@pytest.mark.parametrize("order", [
+    "Fix a bug in src/add.py and add a regression test.",
+    "Add tests for the parser in parse.py.",
+    "Ergänze einen Regressionstest für add.py.",
+])
+def test_writing_a_test_is_a_requested_deliverable(order):
+    assert requests_test_files(order)
+
+
+@pytest.mark.parametrize("order", [
+    "Fix a bug in src/add.py. Run the tests.",
+    "Add a section to README.md describing how to run tests.",
+    "Make sure the tests pass.",
+])
+def test_running_tests_is_a_constraint_not_a_deliverable(order):
+    assert not requests_test_files(order)
+
+
+def test_test_paths_are_recognised_across_languages():
+    for path in ("tests/test_add.py", "src/add.test.ts", "pkg/add_test.go", "spec/add_spec.rb",
+                 "test/baseline.test.js", "src/__tests__/a.ts"):
+        assert is_test_path(path), path
+    assert not is_test_path("src/add.py") and not is_test_path("docs/latest.md")
+
+
+def test_layout_never_changes_the_parts_of_an_order():
+    prose = split_order_scope("Fix the typo in README.md and run npm test")
+    semicolon = split_order_scope("Fix the typo in README.md; run npm test")
+    bullet = split_order_scope("- Fix the typo in README.md\n- run npm test")
+    assert [len(s.deliverables) for s in (prose, semicolon, bullet)] == [1, 1, 1]
+    quoted = split_order_scope('Change the heading to "Hello; world". Fix README.md.')
+    assert len(quoted.deliverables) == 2
