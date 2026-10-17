@@ -118,9 +118,15 @@ Return ONLY a JSON object matching the task_plan_v1 schema.
 # The segment BYTES are unchanged from the pre-migration template — only their
 # ORDER differs, which is the "modulo ordering" content-equality F105 requires.
 def compose_task_plan_prompt(
-    intake_dict: dict[str, Any], *, project_facts: str = "",
+    intake_dict: dict[str, Any], *, project_facts: str = "", repo_root: str = "",
 ) -> ComposedPrompt:
-    """Compose the task-plan prompt from registered segments, with its manifest."""
+    """Compose the task-plan prompt from registered segments, with its manifest.
+
+    The repo facts describe *repo_root*, the job's target repository. Without it they describe the
+    working directory, which for an HTTP order is the order's own folder (order.md, order.json,
+    out.log, err.log): the 2026-10-17 planner then believed README.md and package.json were absent
+    and planned a task to record a test command it could not see.
+    """
     registry = PromptSegmentRegistry()
     registry.register(
         "plan_system", SegmentStabilityRank.SYSTEM, _PLAN_SYSTEM_SEGMENT
@@ -134,7 +140,7 @@ def compose_task_plan_prompt(
         "plan_repo_facts",
         SegmentStabilityRank.DOSSIER,
         _PLAN_REPO_FACTS_TEMPLATE.format(
-            repo_facts=project_facts or repo_facts_block()),
+            repo_facts=project_facts or repo_facts_block(repo_root or None)),
     )
     registry.register(
         "plan_rules", SegmentStabilityRank.CONVENTIONS, _PLAN_RULES_SEGMENT

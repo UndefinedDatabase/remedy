@@ -479,7 +479,7 @@ def plan_order_job(
         # the provider receives and the manifest the trace records come from the
         # same composition — `prompt_chars` and `segment_manifest_chars` can no
         # longer describe two different prompts (R-0256).
-        plan_composed = compose_task_plan_prompt(plan_intake_dict)
+        plan_composed = compose_task_plan_prompt(plan_intake_dict, repo_root=target_repo_path)
         fp_result = plan_job_llm(
             plan_intake_dict,
             plan_call_fn,
@@ -675,7 +675,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         # that decides it, so the record cannot say "ollama" of a Claude CLI
         # run (amend0920-selfuse-real, DECISION D1). Without a provider the
         # compiler plans deterministically.
-        outcome = plan_mission(project_id, ctx.mission_id, call_fn,
+        outcome = plan_mission(project_id, ctx.mission_id, call_fn, repo_root=ctx.repo_root,
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
@@ -706,7 +706,8 @@ def _deterministic_plan_for_invented_scope(
         ctx.order, mission_plan_text(outcome.plan), tracked_repo_files(ctx.repo_root))
     if not invented:
         return outcome, ""
-    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name)
+    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name,
+                        repo_root=ctx.repo_root)
     return kept, (f"; the planner's plan named files the order did not request ({', '.join(invented)}), "
                   f"so the deterministic plan of the order's own deliverables was kept")
 

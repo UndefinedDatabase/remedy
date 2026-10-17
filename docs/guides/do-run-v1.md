@@ -78,9 +78,16 @@ must pass", "apply nothing automatically", "review the diff", "report the result
 German, and every header `constraint:` line. Remedy enforces each constraint itself (the scope
 guard, the DoD's project tests, the stop before apply, the reviewer), so a constraint never makes
 an order complex and never becomes a milestone, job or task (operator amendment amend1016p D1).
+"Change nothing else" / "Verändere sonst nichts" is a fence, and "run the existing test command" /
+"Führe den vorhandenen Testbefehl aus" a test run, like "run npm test".
 An order made only of such sentences ("run npm test and report the result") asks for exactly
 that work. The layout of the order never counts: a bullet, a numbered line, a semicolon, a
 heading or a blank line holds the same parts as the same words in prose, in English or German.
+Text the order asks to insert is part of the sentence that announces it: the lines after "… with
+exactly these two sentences:" / "… mit genau diesen zwei Sätzen:" (up to the next blank line),
+inline code and fenced blocks are that part's payload, never parts of their own, and reach the
+builder verbatim. The planner's repository facts always describe the target repository, also for
+an order the HTTP API runs from its own order folder (execution-quality order 2026-10-17, D1).
 
 The lane is decided from the order and the repository's tracked files, with no model call:
 
