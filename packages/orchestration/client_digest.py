@@ -36,7 +36,6 @@ from packages.orchestration.mission_contract import (
 from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
-    JOB_STOPPED,
     JobPlan,
     TaskEntry,
     _reviewed_task_files,
@@ -81,10 +80,9 @@ CLIENT_DIGEST_ENDED_JOB_LIMIT = 20
 def _job_ended(plan: JobPlan, waits_for_apply: bool, open_decision_count: int) -> bool:
     """True when nothing is left to do about the job: its state is terminal, it does not wait for
     its apply and no decision of it is open. Every other job still needs something (DECISION F304
-    D16). A job stopped before it ever ran (a waiting job of an order the person abandoned) holds
-    no work to resume, so it has ended too (exec-1017b); one stopped while it ran stays, resumable."""
-    never_ran = plan.state == JOB_STOPPED and not plan.first_running_at
-    return (job_is_terminal(plan.state) or never_ran) and not waits_for_apply and open_decision_count == 0
+    D16). A stopped job, run or not, can still be resumed, so it stays; work the person abandons is
+    cancelled (`job_cancel.py`, exec-1017c), which is terminal and asks no decision."""
+    return job_is_terminal(plan.state) and not waits_for_apply and open_decision_count == 0
 
 
 def _ended_at(plan: JobPlan) -> str:
