@@ -96,7 +96,8 @@ _ACTION_VERBS = frozenset({
     "update", "change", "migrate", "move", "replace", "extend", "build", "document", "introduce",
     "convert", "split", "merge", "ergänze", "füge", "erstelle", "schreibe", "implementiere",
     "behebe", "entferne", "lösche", "benenne", "aktualisiere", "ändere", "migriere", "verschiebe",
-    "ersetze", "erweitere", "baue", "dokumentiere", "führe", "teile",
+    "ersetze", "erweitere", "baue", "dokumentiere", "führe", "teile", "repariere", "korrigiere",
+    "repair", "correct",
 })
 #: An order whose deliverables hold more actions than this asks for several things.
 MAX_SIMPLE_ACTIONS = 2
@@ -114,17 +115,19 @@ class OrderScope:
     @property
     def actions(self) -> int:
         """How many separate actions the deliverables ask for, by their leading verbs."""
-        count = 0
-        for sentence in self.deliverables:
-            for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
-                words = clause.strip().lower().split()
-                count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
-        return count
+        return sum(_sentence_actions(sentence) for sentence in self.deliverables)
 
     @property
     def simple(self) -> bool:
-        """Few parts, few actions: the same words in a list, with semicolons or in prose count the same."""
-        return 0 < len(self.deliverables) <= MAX_SIMPLE_SENTENCES and self.actions <= MAX_SIMPLE_ACTIONS
+        """Few parts, few actions: the same words in a list, with semicolons or in prose count the same.
+
+        A sentence that asks for no action only describes ("add(a, b) in src/calc.js rechnet falsch",
+        "Zeige durch den Test, dass …"): it is no part of its own while another sentence asks for the
+        work (lab calc order of 2026-10-17, which those two sentences sent to the full lane).
+        """
+        working = [s for s in self.deliverables if _sentence_actions(s)]
+        parts = working or self.deliverables
+        return 0 < len(parts) <= MAX_SIMPLE_SENTENCES and self.actions <= MAX_SIMPLE_ACTIONS
 
     @property
     def single(self) -> bool:
@@ -140,6 +143,15 @@ def order_unit_head(unit: str) -> str:
     "Ergänze … mit genau diesen zwei Sätzen: Dieses Repository …" asks "Ergänze … Sätzen:"."""
     head = _PAYLOAD_HEAD_RE.search(unit)
     return unit[:head.end()] if head else unit
+
+
+def _sentence_actions(sentence: str) -> int:
+    """How many clauses of *sentence* start with an action verb."""
+    count = 0
+    for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
+        words = clause.strip().lower().split()
+        count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
+    return count
 
 
 def _binds(clause: str) -> bool:

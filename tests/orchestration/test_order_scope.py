@@ -228,3 +228,16 @@ def test_no_dependencies_and_project_tests_bind_the_calc_order():
     assert "Ändere keine anderen Dateien und füge keine Abhängigkeiten hinzu." in scope.constraints
     assert order_test_request(LAB_CALC_ORDER) == "Führe die Projekttests aus."
     assert all("Abhängigkeiten" not in part for part in scope.deliverables)
+
+
+def test_describing_sentences_are_no_parts_so_a_fix_with_its_test_is_simple():
+    # Lab calc order of 2026-10-17 16:47: "… rechnet falsch." and "Zeige durch den Test, dass …"
+    # counted as parts, the order walked the full lane, and the planner split fix and test into two
+    # jobs, the second waiting for the first to be applied.
+    from packages.orchestration.do_lane import select_do_lane
+
+    scope = split_order_scope(LAB_CALC_ORDER)
+    assert scope.simple
+    lane = select_do_lane(LAB_CALC_ORDER, tracked_files=["src/calc.js", "test/baseline.test.js", "package.json"])
+    assert (lane.lane, lane.deliverable, lane.with_tests) == ("bounded", "src/calc.js", True)
+    assert not split_order_scope("Fix a.py. Fix b.py. Fix c.py.").simple
