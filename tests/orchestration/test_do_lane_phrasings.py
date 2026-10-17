@@ -60,3 +60,31 @@ def test_two_named_source_files_are_one_bounded_job_and_four_go_to_the_planner()
     assert (lane.lane, lane.deliverable, lane.also) == ("bounded", "src/calc.js", ("src/format.js",))
     many = select_do_lane("Fix src/calc.js, src/format.js, README.md and package.json.", tracked_files=FILES)
     assert many.lane == "full"
+
+
+# exec-1017c (R-1341): an order that names a file and reaches past it is no bounded job over that file.
+@pytest.mark.parametrize("order", [
+    "Replace var with let in src/calc.js and everywhere else in the project.",
+    "Rename add to sum in src/calc.js and across the codebase.",
+    "Ersetze var durch let in src/calc.js und überall sonst.",
+    "Fix the logging in src/format.js and in all other files.",
+])
+def test_an_order_reaching_past_its_named_file_gets_a_plan(order):
+    lane = select_do_lane(order, tracked_files=FILES)
+    assert lane.lane == "full" and "reaches beyond it" in lane.reason
+
+
+@pytest.mark.parametrize("order", [
+    "Replace all occurrences of a - b with a + b in src/calc.js.",
+    "Fix the typo in README.md and change nothing elsewhere.",
+    "Korrigiere src/calc.js. Ändere keine anderen Dateien.",
+])
+def test_a_limit_or_an_in_file_phrase_keeps_the_bounded_job(order):
+    assert select_do_lane(order, tracked_files=FILES).lane == "bounded"
+
+
+def test_several_named_files_never_read_as_asking_for_one_thing():
+    lane = select_do_lane("Fix the typo in README.md, add a license header to src/calc.js and bump the "
+                          "version in package.json.", tracked_files=FILES)
+    assert lane.bounded and lane.also == ("src/calc.js", "package.json")
+    assert "one thing" not in lane.reason and "each of which must change" in lane.reason

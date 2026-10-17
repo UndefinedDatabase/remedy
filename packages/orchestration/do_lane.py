@@ -70,6 +70,15 @@ _RISKY_WORDS = re.compile(
     r"rewrite|re-?architect\w*|overhaul|from\s+scratch|neu\s+schreiben|komplett\s+neu)\b"
     r"|\b(?:migrat\w*|migrier\w*)\b.{0,60}\b(?:all|every|entire|whole|alle\w*|sämtliche\w*|gesamte\w*)\b",
     re.IGNORECASE)
+#: Wording that reaches past the files an order names (exec-1017c, R-1341): "in src/a.js and everywhere
+#: else" names one file and asks for the project. A floor like the risk words, never a classifier; no
+#: negation ("keine anderen Dateien", "nothing elsewhere") and no in-file phrase ("all occurrences").
+_WIDER_SCOPE = re.compile(
+    r"\b(?:everywhere|throughout\s+the\s+(?:code\s*base|project|repo\w*)|"
+    r"across\s+the\s+(?:code\s*base|project|repo\w*)|in\s+(?:all|every)\s+(?:other\s+)?files?|"
+    r"(?:the\s+)?(?:whole|entire)\s+(?:code\s*base|project|repo\w*)|überall|"
+    r"in\s+allen\s+(?:anderen\s+)?dateien|im\s+(?:ganzen|gesamten)\s+(?:projekt|repo\w*|code))\b",
+    re.IGNORECASE)
 #: Wording that asks for a new file; without it a named file the repository does not track is a question.
 _CREATES = re.compile(r"\b(?:create|add|write|generate|new|introduce|erstell\w*|schreib\w*|"
                       r"neu\w*|ergänz\w*|füg\w*|lege)\b", re.IGNORECASE)
@@ -205,11 +214,18 @@ def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: boo
     # A few named files of one small change are the same one job. Only many explicit actions ("add a
     # section, write a changelog entry, add a CI workflow") still go to the planner: they likely
     # need files the order does not name.
+    if wider := _WIDER_SCOPE.search(order):
+        return DoLaneDecision(DO_LANE_FULL, f"the order names {named}, but reaches beyond {'them' if also else 'it'} "
+                              f"({wider.group(0)!r})", with_tests=with_tests)
     if scope.actions > MAX_SIMPLE_ACTIONS:
         return DoLaneDecision(DO_LANE_FULL, f"the order names {named}, but asks for "
                               f"{scope.actions} separate actions")
-    return DoLaneDecision(DO_LANE_BOUNDED, f"the order names {named}, and asks for one "
-                          "thing" + (" and a test for it" if with_tests else ""),
+    # exec-1017c (R-1341): several named files are one bounded job by their count, not because the
+    # order asks for one thing; the reason says which, and every named file must change (R-1342).
+    asks = ("asks for one thing" if not also else
+            f"they are one bounded job of at most {MAX_BOUNDED_FILES} files, each of which must change")
+    return DoLaneDecision(DO_LANE_BOUNDED, f"the order names {named}, and {asks}"
+                          + (" and a test for it" if with_tests else ""),
                           deliverable, with_tests=with_tests, also=also)
 
 
