@@ -1,22 +1,21 @@
-# Plan — evidence-based test audit and suite optimization (operator order 2026-10-17)
+# Plan — execution excellence (operator order 2026-10-17, after PR 359 and PR 352)
 
-## Goal
-Less redundant test work with equally strong protection of real behavior. PR 352, worktree
-`.remedy-wt/test-audit`; outside the roadmap queue (F078 stays next); `.agent/STOP` and the
-supervisor untouched.
+Goal: trivial orders stay trivial, a small change over a few files is one job, verification is
+truthful across packages, every model call counts against the budget, and an order's jobs are
+readable and controllable through the public API. Worktree `.remedy-wt/exec-excellence`, branch
+`feature/execution-excellence` from main `6933bb0` (PR 352 merged). `.agent/STOP` stays; no deploy.
 
 ## Current Step
-6. Merge gate: main (through PR 359) merged into the branch without force-push; the combined
-tree gets the full local suite once, then PR 352 is merged if green (order 2026-10-17
-"Execution Excellence", section 11).
-
-Done: 1 audit, 2 ledger (`.agent/test_audit_1017_ledger.md`), 3 batch 1 (test_job_task_runner,
-217 to 191 tests, coverage and mutations held; one shadowed duplicate), 4 change-aware fast lane,
-5 targeted measurements (ledger sections 6 and 7).
+Commits 1–5 of the branch: verification readings, Pi call accounting and context, the bounded lane
+over a few named files, the order's jobs over the public API (`jobs`, `POST /api/v1/jobs/{job}/stop`,
+semantic titles, waits), scale matrix v3. Then docs, decisions and one full local gate.
 
 ## Next Steps
-- Batch 2 candidate (separate PR): the continuation-config family (ledger section 5, lane 3).
+- Docs: do-lane/verification/API pages; decisions exec-1017b D1..Dn.
+- One full local gate on the final tree; PR (not merged: operator decides and deploys).
+- Operator: optional bounded real Pi run of corpus `lab-*` and `small-multi-file-*` in remedy-lab.
 
 ## Risks
-- Consolidated keepers trade per-test failure names for one test per scenario; each keeper names
-  its contract and a mutation shows it goes red.
+- One task over up to three files leans on the local builder doing all of them; the reviewer and
+  the handoff coverage gate still fail a missing file.
+- Pre-existing, not this branch: `test_claude_cli_no_changes` is red when run alone (green in the suite).

@@ -1,30 +1,23 @@
-# Context — test audit and suite optimization (operator order 2026-10-17)
+# Context — execution excellence (operator order 2026-10-17, after PR 359)
 
 ## Active Branch
-feature/test-audit, cut from main `2039a6ae7` (PR 349 merged), checked out in the worktree
-`.remedy-wt/test-audit`. Another session runs in parallel; the main checkout and the running
-`remedy serve start` are not touched.
+feature/execution-excellence from main `6933bb0` in `.remedy-wt/exec-excellence`. The main checkout
+stays on main: `remedy serve start` (editable install) runs its code, so nothing is switched there.
 
-## Reference
-OpenClaw test-audit skill (SKILL.md, CAMPAIGN.md, references/audit.md), adapted to pytest:
-judge a test by its assertions, one owner per contract, keep independent security/API/
-persistence/packaging contracts, a mutation shows a keeper goes red.
+## Evidence (read through Remedy's own readers; `.data/**` not read raw)
+- Lab jobs ba1336a4c287455d (README), 9123bcef446e42b5 (normalizeName), 9cac3d5c2bd246eb (add()) in
+  ~/Repos/remedy-lab; their Pi calls through `review_reports._job_report`.
+- Corpus before/after: `tests.orchestration.scale_matrix` v3 run against main `6933bb0` and the branch.
 
 ## Scope
-Phase 1 audit + Phase 2 ledger over four owners (routing/planning, Pi execution and guards,
-verification and job lifecycle, review evidence and public API); one test-only batch; the fast
-lane script and its guards.
+Lane over a few named files, verification readings and package-scoped tests, Pi failed-call usage
+and builder context in large repositories, an order's jobs and a stop route over HTTP, job titles.
 
 ## Do not touch
-Production behavior, the roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, runtime data, CI stage
-budgets.
-
-## Steps
-Steps 1 to 5 of the order (audit, ledger, batch, fast lane, measurement); the current one
-is in plan.md.
+The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
+provider defaults, `pi.*` caps.
 
 ## Constraints
-- Operator, this session: collection only, no suite runs; single owner files may run to prove a
-  batch (fake providers only, never concurrent with a real Ollama acceptance run).
-- Test load records go to the session scratchpad (`REMEDY_TEST_LOAD_LOG`), not the shared record.
-- Commits at most 500 insertions.
+- No real model call (no authorized Pi budget); fake providers only.
+- One pytest process tree at a time; one full local gate at the end.
+- Commits at most 500 insertions; structure ratchet: listed files and functions do not grow.
