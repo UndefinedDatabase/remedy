@@ -1820,9 +1820,10 @@ class TestTheCallSiteInventoryIsChecked:
         # clean bill for the five it never looked at. (Now eleven call sites and six
         # literal roles: F266 T001 added the study role,
         # amend0920-selfuse-real D1 added intake.py's `planner`, and F036 T002
-        # added result_tour.py's `summary`, and F038 added chat_answer.py's `summary`.)
+        # added result_tour.py's `summary`, and F038 added chat_answer.py's `summary`; exec-1017 D6
+        # added execution_options.py, which asks each role in turn: twelve sites.)
         literal = [role for _, role in ROLE_CONFIG_CALL_SITES if role != DYNAMIC_ROLE_MARKER]
-        assert len(ROLE_CONFIG_CALL_SITES) == 11
+        assert len(ROLE_CONFIG_CALL_SITES) == 12
         assert len(literal) == 6
         assert len(literal) < len(ROLE_CONFIG_CALL_SITES), (
             "the measurement only holds while some site passes a computed role"

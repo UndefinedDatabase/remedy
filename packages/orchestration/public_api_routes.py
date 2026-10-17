@@ -64,6 +64,22 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/execution",
+        twin="client.execution",
+        description=(
+            "What this server offers an execution, read now from its own configuration, as `remedy "
+            "client execution --json` prints it: under `roles` each of `planner`, `builder`, "
+            "`reviewer` and `repair` with its `default_provider` and `default_model`, whether HTTP "
+            "chooses it (`selectable_over_http`), and its `providers`, each with `id`, `available` "
+            "(measured: an executable found, the Ollama endpoint answering, an API key set), "
+            "`offered_over_http`, `isolation`, `not_offered_reason` and the installed `models`; then "
+            "`lanes`, `order_flags`, `budgets`, `verification`, `review_report`, `phases` and "
+            "`observability`. It names no secret and no host path. A provider not offered is "
+            "refused by the routes that start work with 400 `api_provider_not_offered`."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/digest",
         twin="status.run",
         twin_key="client",
@@ -199,16 +215,21 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         twin="client.order",
         body=(("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
               ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
-              ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string")),
+              ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
+              ("capture_review", "flag")),
         starts_order=True,
         description=(
             "Starts an order through the supervisor's own `OrderLauncher`, the way `remedy do "
             "run <options> --no-ui --run-unattended -- order.md` would inside its own folder under the "
             "data root, and answers 202 with its record read exactly as the route above reads "
             "it. `order` is the order file's whole text, header included, and required; "
-            "`no_llm`, `new_mission`, `force_job` and `force_mission` each pass their `remedy "
-            "do` flag when `true`; `builder_provider`, `reviewer_provider` and `deadline` each "
-            "pass their option with their value. An order whose header names no project, or "
+            "`no_llm`, `new_mission`, `force_job`, `force_mission` and `capture_review` each pass their "
+            "`remedy do` flag when `true` (`capture_review` leaves the walk's review report under the "
+            "data root's `review_reports`, its id in the answer's `review_report`); `builder_provider`, "
+            "`reviewer_provider` and `deadline` each pass their option with their value, and a provider "
+            "HTTP does not offer (`claude-cli`, or one that is no provider of its role; see `GET "
+            "/api/v1/execution`) is refused before anything starts with 400 `api_provider_not_offered`. "
+            "An order whose header names no project, or "
             "one that names a project `select_project` cannot resolve to exactly one, is "
             "refused before anything starts with 409 `api_order_project_unknown`, and one whose "
             "header sets none of `max-cost-usd`, `max-total-tokens`, `max-provider-calls` and "
@@ -299,7 +320,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "`pid`, `started_at`, `out_log`, `err_log`, `exit_code` and `ended_at`, the last two "
             "`null` until the run ends, and `state` and `answer` as the route above reads them. "
             "`builder_provider` and `reviewer_provider` each pass "
-            "`--builder-provider=<value>` and `--reviewer-provider=<value>`; no other option of "
+            "`--builder-provider=<value>` and `--reviewer-provider=<value>`, a provider HTTP does not "
+            "offer refused with 400 `api_provider_not_offered`; no other option of "
             "`remedy job run` is offered over HTTP. A job id prefix is accepted. A client waits "
             "for the run's end by polling the route above until `state` is not `running`. "
             "Refusals: `invalid_job_id` 404, `job_not_found` 404 (also for a "

@@ -174,6 +174,14 @@ def _client_interface_answer() -> dict[str, Any]:
     return build_ok(**build_client_interface())
 
 
+def _client_execution_answer() -> dict[str, Any]:
+    """The answer `GET /api/v1/execution` sends: `remedy client execution --json` (exec-1017 D6)."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.execution_options import execution_capabilities
+
+    return build_ok(**execution_capabilities())
+
+
 def _status_digest_answer(*, all_ended_jobs: bool = False,
                           project_ids: frozenset[str] | None = None) -> dict[str, Any]:
     """The answer `GET /api/v1/digest` sends: the `client` key of `status.run`'s `--json` answer.
@@ -397,6 +405,7 @@ def _run_answer(*, job: str) -> dict[str, Any]:
 #: monkeypatches `PUBLIC_API_ROUTES` sees the real handler behind whichever routes it leaves.
 _TWIN_ANSWERS: dict[str, Any] = {
     "client.interface": _client_interface_answer,
+    "client.execution": _client_execution_answer,
     "status.run": _status_digest_answer,
     "change.proof": _change_proof_answer,
     "client.changes": _client_changes_answer,
@@ -539,6 +548,10 @@ def _start_run_answer(
     if plan is None:
         return 404, build_error(
             "job_not_found", f"job {job_id} has no record that can be read; nothing was run"), {}
+    from packages.orchestration.execution_options import API_PROVIDER_NOT_OFFERED, remote_provider_refusal
+
+    if why := remote_provider_refusal(body):
+        return 400, build_error(API_PROVIDER_NOT_OFFERED, why), {}
     options = [f"--{key.replace('_', '-')}={body[key]}" for key in _RUN_PROVIDER_KEYS
                if key in body]
     try:

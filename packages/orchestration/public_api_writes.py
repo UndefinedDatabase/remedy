@@ -87,7 +87,7 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
 
 #: The flags of the order-create route's body, each passed as its `remedy do` option when
 #: `true` (DECISION F253 D14 (1)).
-_ORDER_CREATE_FLAGS: tuple[str, ...] = ("no_llm", "new_mission", "force_job", "force_mission")
+_ORDER_CREATE_FLAGS: tuple[str, ...] = ("no_llm", "new_mission", "force_job", "force_mission", "capture_review")
 
 #: The strings of the order-create route's body, each passed as its `remedy do` option with its
 #: value (DECISION F253 D14 (1)).
@@ -112,6 +112,7 @@ def _order_text_and_options(body: dict[str, Any],
     (R-1244, DECISION F205 D6).
     """
     from packages.orchestration.api_clients import client_order_refusal
+    from packages.orchestration.execution_options import API_PROVIDER_NOT_OFFERED, remote_provider_refusal
     from packages.orchestration.order_file import (
         OrderFileError,
         order_no_cap_message,
@@ -126,6 +127,8 @@ def _order_text_and_options(body: dict[str, Any],
 
     if "order" not in body:
         raise PublicApiWriteRefusal(400, "api_body_invalid", "'order' is required")
+    if why := remote_provider_refusal(body):
+        raise PublicApiWriteRefusal(400, API_PROVIDER_NOT_OFFERED, why)
     order_text = body["order"]
     try:
         order_file = parse_order_file_text(order_text, "order.md")

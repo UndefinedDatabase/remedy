@@ -68,6 +68,7 @@ from apps.cli.client_interface import (
     render_client_interface_markdown,
     write_client_interface_page,
 )
+from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
@@ -438,10 +439,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset(),
         "passes its caller's keywords through; every call on these operations' paths passes none",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_execution:**capabilities": (
+        frozenset(CLIENT_EXECUTION_ANSWER_KEYS),
+        "the keys execution_capabilities in packages/orchestration/execution_options.py returns",
+    ),
     "apps.cli.commands.do_cmd:_cmd_do_order:**document": (
         frozenset({
             "contract", "cost", "job_ids", "jobs", "landed", "mission_id", "mission_plan_path",
-            "next", "order_budget", "order_id", "push", "shape", "shape_source", "steps",
+            "next", "order_budget", "order_id", "push", "review_report", "shape", "shape_source", "steps",
             "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
         }),
         "the keys do_json_document in packages/orchestration/do_summary.py returns",
@@ -1439,6 +1444,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     diffed = answer("client.diff", ["client", "diff", job_id[:8]], 0)
     assert diffed["state"] == "applied" and diffed["files"], diffed
     assert {("files", "patch"), ("files", "change")} <= _key_paths(_key_tree(diffed))
+    # The server's execution offer (exec-1017 D6), its Ollama pointed at a closed local port.
+    env["REMEDY_OLLAMA_HOST"] = "http://127.0.0.1:9"
+    offered = answer("client.execution", ["client", "execution"], 0)
+    assert {("roles", "builder", "providers", "offered_over_http")} <= _key_paths(_key_tree(offered))
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,

@@ -41,6 +41,7 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS, CLIENT_EXECUTION_KEY_TREE
 from apps.cli.client_interface_story import (
     CLIENT_STORY_ANSWER_KEYS,
     CLIENT_STORY_KEY_TREE,
@@ -91,11 +92,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "patch.approve",
     "patch.reject",
     "mission.abandon",
-    "client.interface",
-    "client.changes",
-    "client.order",
-    "client.run",
-    "client.story",
+    "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
     "client.diff",
     "doctor.health",
     "doctor.logs",
@@ -156,7 +153,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "patch.approve": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
     "patch.reject": ("ambiguous_job_id", "invalid_job_id", "job_not_found", "patch_intent_not_found"),
     "mission.abandon": ("mission_error", "mission_not_found", "no_project"),
-    "client.interface": (),
+    "client.interface": (), "client.execution": (),
     "client.changes": ("invalid_cursor",),
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
@@ -174,8 +171,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "project.register": ("created", "project_id", "repo_path", "slug"),
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
-        "mission_plan_path", "next", "order_budget", "order_id", "push", "shape", "shape_source", "steps", "stopped_before_apply",
-        "unmet_blocking_criteria", "waiting_job_ids",
+        "mission_plan_path", "next", "order_budget", "order_id", "push", "review_report", "shape", "shape_source", "steps",
+        "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
     ),
     "status.run": (
         "client", "decisions_open", "degraded", "jobs", "project", "runtime", "runtime_warning",
@@ -250,7 +247,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
         "state",
     ),
-    "client.story": CLIENT_STORY_ANSWER_KEYS,
+    "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
@@ -518,7 +515,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "mirror_errors": {"*": {}}, "show_cost_usd": {},
         },
         "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}, "verification": JOB_VERIFICATION_KEY_TREE},
-        "order_budget": ORDER_BUDGET_KEY_TREE,
+        "order_budget": ORDER_BUDGET_KEY_TREE, "review_report": {"report_id": {}, "status": {}, "file": {}},
         "steps": {"name": {}, "status": {}, "detail": {}},
         "landed": {"job_id": {}, "sha": {}, "branch": {}, "repo": {}},
         "push": {
@@ -762,7 +759,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
     # the run is not `running`; no tree is declared under it.
     "client.run": {},
-    "client.story": CLIENT_STORY_KEY_TREE,
+    "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,
     "client.diff": {"files": {key: {} for key in (
         "path", "change", "added", "removed", "patch", "truncated")}},
     "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},

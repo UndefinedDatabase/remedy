@@ -25,6 +25,17 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("status.run", "do.run"),
     ),
+    # Operator order exec-1017 (D6): what this server offers an execution, read from its own configuration.
+    CommandEntry(
+        command_id="client.execution",
+        group_id="client",
+        subcommand="execution",
+        description="Show what this server offers an execution: each role's providers with their defaults, availability, isolation and installed models, which of them a client may choose over HTTP, the lanes, request flags, budget caps, verification statuses, review reports, phases and the routes that show progress (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("client.interface", "do.run"),
+    ),
     # F253 S3a (DECISION F253 D4 (3)): what changed since a cursor the client holds.
     CommandEntry(
         command_id="client.changes",

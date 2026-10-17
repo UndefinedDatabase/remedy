@@ -57,6 +57,23 @@ def _cmd_client_interface(*, json_output: bool = False) -> None:
     print("A program reads the whole interface with: remedy client interface --json")
 
 
+def _cmd_client_execution(*, json_output: bool = False) -> None:
+    """`remedy client execution`: `execution_options.execution_capabilities`, the answer of
+    `GET /api/v1/execution` (operator order exec-1017, D6)."""
+    from packages.orchestration.execution_options import execution_capabilities
+
+    capabilities = execution_capabilities()
+    if json_output:
+        emit_ok(**capabilities)
+        return
+    for role, offer in capabilities["roles"].items():
+        shown = ", ".join(f"{p['id']}{'' if p['available'] else ' (not available)'}"
+                          f"{'' if p['offered_over_http'] else ' (command line only)'}" for p in offer["providers"])
+        print(f"{role}: default {offer['default_provider']} {offer['default_model']}".rstrip() + f"; {shown}")
+    print(f"Lanes: {', '.join(capabilities['lanes'])}; order flags: {', '.join(capabilities['order_flags'])}")
+    print("A program reads all of it with: remedy client execution --json")
+
+
 def _cmd_client_changes(*, since: str | None, json_output: bool = False) -> None:
     from packages.orchestration.client_changes import (
         build_client_changes,
@@ -186,6 +203,7 @@ def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "client.interface": lambda args: _cmd_client_interface(json_output=getattr(args, "json", False)),
+    "client.execution": lambda args: _cmd_client_execution(json_output=getattr(args, "json", False)),
     "client.changes": lambda args: _cmd_client_changes(
         since=getattr(args, "since", None), json_output=getattr(args, "json", False)),
     "client.order": lambda args: _cmd_client_order(

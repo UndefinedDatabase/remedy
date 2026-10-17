@@ -1430,6 +1430,7 @@ ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/artifact_summary.py", "summary"),
     ("packages/orchestration/chat_answer.py", "summary"),
     ("packages/orchestration/execution_config.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/execution_options.py", DYNAMIC_ROLE_MARKER),   # exec-1017 D6: the offer's defaults
     # amend0920-selfuse-real D1: make_structured_call_fn asks the `planner` role
     # which planning SERVICE to build, when no --planner-provider named one.
     ("packages/orchestration/intake.py", "planner"),
@@ -1437,6 +1438,5 @@ ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/role_config.py", "orchestrator"),
     ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/study.py", "study"),
-    ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
-    ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER), ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
 )
