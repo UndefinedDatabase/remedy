@@ -30,6 +30,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Any
 
 from packages.orchestration.dod_schema import (
@@ -230,9 +231,20 @@ def _unique_id(base: str, taken: set[str]) -> str:
 
 
 def _selector_for(text: str, default_selector: str) -> str:
-    """The test path an acceptance line names, else the default selector."""
+    """The Python test path an acceptance line names, else the default selector.
+
+    Lab orders of 2026-10-17: "Regressionstest in test/format.test.js" became `python -m pytest
+    test/format.test.js` (and "test/calc.test.js." with the sentence's period), which can only fail
+    in a Node project and held correct work `blocked`. A named test that is no Python file keeps
+    the default, which a contract check runs as the project's own test command (`project_tests`).
+    """
     match = _TEST_PATH_PATTERN.search(text)
-    return match.group() if match else default_selector
+    if not match:
+        return default_selector
+    selector = match.group().rstrip(".,;:!?")
+    path = selector.split("::", 1)[0]
+    suffix = PurePosixPath(path).suffix
+    return selector if suffix in ("", ".py") else default_selector
 
 
 def _describe(text: str) -> str:
