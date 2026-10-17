@@ -130,3 +130,31 @@ def test_the_http_order_flag_reaches_remedy_do_and_cli_only_providers_are_refuse
     assert "outside Remedy's tool sandbox" in refused.value.message
     with pytest.raises(PublicApiWriteRefusal):
         _order_text_and_options({"order": order, "builder_provider": "ollama"})   # ollama cannot write
+
+
+def test_a_reports_job_names_its_title_what_it_waits_for_its_files_and_where_its_checks_ran(tmp_path, monkeypatch):
+    """exec-1017b: a report refers to the jobs of one order without ambiguity, and says in which
+    package a polyglot repository's tests ran."""
+    import json
+
+    from packages.orchestration.dod_gate import result_path
+    from packages.orchestration.order_jobs import ORDER_JOB_WAITS_KEY
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+    from packages.orchestration.review_reports import _job_report
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    job = JobPlan(job_title="Fix the totals — src/cart.js", mission="m", tasks=[
+        TaskEntry(title="Deliver src/price.js and src/cart.js", inputs={"deliverable": "src/price.js"},
+                  files_hint=["src/price.js", "src/cart.js"])])
+    job.metadata[ORDER_JOB_WAITS_KEY] = "0123456789abcdef"
+    save_job_plan(job)
+    path = result_path(str(job.job_id))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"checks": [{"check_id": "ctr-C001", "kind": "project_tests", "status": "passed",
+                                            "exit_code": 0, "cwd": "web"}]}))
+
+    report = _job_report(str(job.job_id))
+
+    assert (report["title"], report["waits_for"]) == ("Fix the totals — src/cart.js", "0123456789abcdef")
+    assert report["tasks"][0]["files"] == ["src/price.js", "src/cart.js"]
+    assert report["dod_checks"][0]["cwd"] == "web"
