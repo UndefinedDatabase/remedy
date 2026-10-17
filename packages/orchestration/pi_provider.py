@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -114,6 +115,56 @@ _BUILDER_PREAMBLE = (
     "so take as few steps as the edit needs. A change you describe but did not write to a file "
     "does not exist. Change no file the task does not name.\n\n"
 )
+#: How much of the workspace the builder is handed up front (lab order of 2026-10-17: a one-line
+#: fix spent 8 of its 12 turns on ls, find, grep and reads before the first edit).
+_CONTEXT_MAX_LISTED = 80
+_CONTEXT_MAX_FILES = 4
+_CONTEXT_MAX_FILE_CHARS = 6000
+_CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pycache__", ".remedy-wt",
+                                "dist", "build", ".next", ".cache"})
+
+
+def builder_workspace_context(cwd: str, prompt: str) -> str:
+    """The workspace's file list and the text of the files *prompt* names, for the builder's prompt.
+
+    A named file that does not exist yet (a new test) brings one existing file of its folder as
+    the style to follow. Read with a plain bounded walk: no symlink is followed and no `git` runs
+    in the target repository, whose own configuration could run commands. "" without a workspace.
+    """
+    if not cwd or not os.path.isdir(cwd):
+        return ""
+    root = Path(cwd)
+    listed: list[str] = []
+    for folder, dirs, files in os.walk(cwd):
+        dirs[:] = sorted(d for d in dirs if d not in _CONTEXT_SKIP_DIRS and not os.path.islink(os.path.join(folder, d)))
+        for name in sorted(files):
+            path = Path(folder) / name
+            if not path.is_symlink():
+                listed.append(path.relative_to(root).as_posix())
+        if len(listed) > _CONTEXT_MAX_LISTED:
+            break
+    listed = listed[:_CONTEXT_MAX_LISTED]
+    shown: list[str] = [p for p in listed if p in prompt]
+    for named in sorted(set(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt)) - set(listed)):
+        sibling = next((p for p in listed if "/" in named and p.rsplit("/", 1)[0] == named.rsplit("/", 1)[0]), "")
+        if sibling and sibling not in shown:
+            shown.append(sibling)
+    blocks = []
+    for rel in shown[:_CONTEXT_MAX_FILES]:
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if len(text) <= _CONTEXT_MAX_FILE_CHARS:
+            blocks.append(f"--- {rel} ---\n{text.rstrip()}\n")
+    out = ("Files in your working copy (the complete list; do not list or search it again):\n"
+           + "".join(f"- {p}\n" for p in listed))
+    if blocks:
+        out += ("\nCurrent content of the files the task names (already read for you; do not read "
+                "them again before editing):\n\n" + "\n".join(blocks))
+    return out + "\n"
+
+
 # amend1016p D3: the reviewer judges what the change SAYS against what the task asks, not only
 # that a file changed, and fails a file the task does not ask for.
 _REVIEWER_PREAMBLE = (
@@ -520,7 +571,7 @@ class PiProvider:
 
     def build(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
               resume: str | None = None) -> BuilderOutput:
-        full = _BUILDER_PREAMBLE + prompt
+        full = _BUILDER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools(self._role), "inner_provider": PI_INNER_PROVIDER})

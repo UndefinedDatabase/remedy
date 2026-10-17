@@ -2761,12 +2761,11 @@ def run_job(
             # R-0987: `usage_actuals` is a DICT (`_usage_actuals_dict`), so an
             # attribute read was always 0. The total is `_aggregate_usage_actuals`'
             # own: input plus output, cache tokens excluded, read the same way.
-            _accumulated_tokens += (
-                int(ua.get("input_tokens", 0) or 0) +
-                int(ua.get("output_tokens", 0) or 0)
-            )
+            _accumulated_tokens += int(ua.get("input_tokens", 0) or 0) + int(ua.get("output_tokens", 0) or 0)
         else:
             _accumulated_unmeasured += 1
+        # Lab 2026-10-17: the next Pi call's cap reads tokens left from job.budget_actuals (D10).
+        _persist_budget_actuals()
 
     def _money_kwargs(*, always=False):
         """The cost-side triple, as ``collect_counters_from_actuals`` kwargs.

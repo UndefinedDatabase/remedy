@@ -40,6 +40,9 @@ INSPECTION_VERBS: tuple[str, ...] = (
     "analyze", "analyse", "inspect", "review", "read", "explore",
     "investigate", "examine", "study", "understand", "survey", "research",
     "verify", "confirm", "locate", "find", "identify", "assess", "audit",
+    # German planners (lab order of 2026-10-17: "Prüfe Änderungsumfang und Abhängigkeiten").
+    "prüfe", "überprüfe", "verifiziere", "kontrolliere", "bestätige", "analysiere",
+    "untersuche", "inspiziere", "lies", "finde", "identifiziere", "ermittle",
 )
 
 #: The `inputs` key a task's deliverable is recorded under.
@@ -143,7 +146,8 @@ def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:
 
 
 def _first_word(title: str) -> str:
-    words = re.findall(r"[A-Za-z]+", title)
+    # Letters of any script: `[A-Za-z]` read "Prüfe" as "pr" (lab order of 2026-10-17).
+    words = re.findall(r"[^\W\d_]+", title)
     return words[0].lower() if words else ""
 
 
