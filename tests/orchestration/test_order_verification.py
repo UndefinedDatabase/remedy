@@ -122,6 +122,7 @@ def test_a_project_without_a_test_command_says_so_when_tests_were_asked_for(data
     ("executable_not_allowed", None, "not_run"),     # refused before exec: nothing ran
     ("test_command_changed", None, "not_run"),
     ("tool_unavailable", None, "not_run"),
+    ("sandbox_unavailable", None, "not_run"),        # exec-1017c: the guard spawned nothing
     ("nonzero_exit", 1, "failed"),                   # it ran and was red
     ("timeout", None, "failed"),                     # it ran out of time: a run, and not green
 ])
