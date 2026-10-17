@@ -13,10 +13,10 @@ from tests.orchestration.scale_matrix import CASES, MATRIX_VERSION, check_expect
 
 
 def test_the_matrix_is_versioned_and_covers_every_class_of_the_audit():
-    assert MATRIX_VERSION == 1
+    assert MATRIX_VERSION == 2
     classes = {case["klass"] for case in CASES}
     assert classes >= {"tiny", "small", "medium", "large", "polyglot", "monorepo", "ambiguous",
-                       "wrong-path", "deliverable", "failure"}
+                       "wrong-path", "deliverable", "failure", "incident", "verification"}
     assert len({case["id"] for case in CASES}) == len(CASES)
 
 

@@ -8,16 +8,14 @@ no supervisor restart, no deploy; outside the roadmap queue (F078 untouched). Wo
 the main checkout's code).
 
 ## Current Step
-4. Review reports (Phase 4): `--capture-review` / `capture_review` / order header `capture-review: true`;
-   reports under `<data root>/review_reports/`; `make_review_zip.sh` packages the latest 10 with an index.
+7. One full local gate on the final commit; PR; German handback with the Universe API handoff.
 
-Done: 1 routing (97128b81a), 2 verification (1bcff59dc, f7e0f4749), 3 Pi loop limits and measured usage.
+Done: 1 routing, 2 verification, 3 Pi loop limits, 4 review reports + ZIP, 5 execution API and
+HTTP provider rule, 6 experience audit (no code), 7 acceptance matrix (scale matrix v2).
 
 ## Next Steps
-5. Execution API (Phase 5): `execution` key of `/api/v1/interface`; HTTP refuses providers that run
-   outside the tool sandbox (claude-cli, claude); effective config in the `do` answer.
-6. Experience audit (Phase 6): measure what earlier evidence reaches a new job; no memory rewrite.
-7. Acceptance matrix, docs, one full local gate, PR; German handback with the Universe API handoff.
+- Operator: approve or skip one real Pi/Ollama run of the incident order with capture_review.
+- Merge only on the operator's word (the supervisor runs main).
 
 ## Risks
 - `order_scope` is a pattern floor: new vocabulary can still send an order to the full lane (no classifier).
