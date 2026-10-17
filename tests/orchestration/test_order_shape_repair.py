@@ -129,3 +129,11 @@ def test_a_failed_shape_step_leaves_no_planned_job_and_lists_none(tmp_path, monk
     assert str(job.job_id) in note
     # R-1247: the stopped job leaves the mission's chain, so it is never the mission's latest link.
     assert load_mission(str(project.id), mission.id).job_ids() == ()
+
+
+def test_a_german_check_task_is_inspection_and_folds_into_the_work():
+    plan = _plan(_task("T001", "Repariere add-Funktion in src/calc.js", hint=["src/calc.js"]),
+                 _task("T002", "Prüfe Änderungsumfang und Abhängigkeiten", deps=["T001"]))
+    folded = fold_inspection_tasks(plan)
+    assert [t.id for t in folded.tasks] == ["T001"]
+    assert "Prüfe Änderungsumfang" in folded.tasks[0].goal

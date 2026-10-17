@@ -21,6 +21,10 @@ Declared content change (operator amendment amend1014-do-golden-path-now D2, 202
 bullet names seven more inspection verbs (verify, confirm, locate, find, identify, assess, audit)
 and says one file is one task; the constant below carries it.
 
+Declared content change (lab order of 2026-10-17, decision exec-1017 D10): the bullet names the
+German inspection verbs the validator now rejects too ("Prüfe Änderungsumfang …" was a task of
+its own); the constant below carries it.
+
 It must NEVER be edited to make a failing test pass. An intentional change to
 the prompt's CONTENT is precisely the event this file exists to fail on: if a
 future change is meant to alter the words, that change updates this constant in
@@ -60,7 +64,9 @@ and token band estimates.
   check. Never make reading, analysing or exploring a task of its own: a task
   whose title begins with analyze, analyse, inspect, review, read, explore,
   investigate, examine, study, understand, survey, research, verify, confirm,
-  locate, find, identify, assess or audit is rejected. Put that reading inside
+  locate, find, identify, assess or audit (in German: prüfe, überprüfe,
+  verifiziere, kontrolliere, bestätige, analysiere, untersuche, inspiziere,
+  lies, finde, identifiziere or ermittle) is rejected. Put that reading inside
   the task that produces something, and give one file one task: reading it,
   drafting the change and making it are the steps of that one task.
 - RESOLVE the intake's clarifications into plan choices wherever the
