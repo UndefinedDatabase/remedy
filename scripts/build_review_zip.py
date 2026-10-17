@@ -300,6 +300,12 @@ def _expected_model(snapshot, gen_hashes: dict) -> list:
     return sorted(rows, key=lambda r: r["archive_path"])
 
 
+def _staged_review_reports(plan) -> set:
+    """exec-1017 D5: the review reports the packager stages under review_reports/ are generated beside
+    the snapshot, never part of the job's evidence its inventory accounts for."""
+    return {m.archive_path for m in plan.evidence_members if m.archive_path.startswith("review_reports/")}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--final-template", required=True,
@@ -412,7 +418,7 @@ def main() -> int:
             if inv is not None:
                 inventory_problems = validate_snapshot_inventory(
                     inv, finalized, prefix=args.current_prefix,
-                    generated_outside_boundary={obs_index_arc, inventory_arc})
+                    generated_outside_boundary={obs_index_arc, inventory_arc} | _staged_review_reports(finalized))
             elif finalized.evidence_members:
                 inventory_problems = ["evidence_snapshot_inventory.json is missing"]
             status_blockers = list(gate_matrix["blocking_reasons"]) + inventory_problems

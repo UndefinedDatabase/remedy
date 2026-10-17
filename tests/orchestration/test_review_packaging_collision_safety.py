@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
     shutil.which("git") is None or shutil.which("bash") is None,
     reason="git and bash required")
 
-_HELPERS = ("select_review_evidence.py", "stage_review_evidence.py",
+_HELPERS = ("select_review_evidence.py", "stage_review_evidence.py", "stage_review_reports.py",
             "build_observability_index.py", "build_review_manifest.py", "build_review_zip.py",
             "rotate_live_review.py")
 
