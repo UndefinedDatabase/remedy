@@ -776,6 +776,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         merge_contract_slice_into_dod,
         record_job_milestone,
     )
+    from packages.orchestration.order_verification import require_order_tests
     from packages.orchestration.repo_mission import link_order_job
 
     lane = settle_do_lane(ctx)
@@ -811,6 +812,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if milestone_id is not None and str(target.project.id) == str(ctx.project.id):
             record_job_milestone(job_id, milestone_id)
         merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
+        require_order_tests(job_id, ctx.order)     # exec-1017 D2: a test run the order asks for blocks
         grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)
@@ -829,7 +831,11 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
 
 
 def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
-    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}]}``."""
+    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}], verification}``.
+
+    ``verification`` is `order_verification.job_verification` (exec-1017 D2), None for a job not found.
+    """
+    from packages.orchestration.order_verification import job_verification
     from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.task_deliverables import task_deliverable
 
@@ -839,7 +845,8 @@ def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
         tasks = [] if job is None else [
             {"title": task.title, "deliverable": task_deliverable(task)}
             for task in job.tasks]
-        listing.append({"job_id": job_id, "tasks": tasks})
+        listing.append({"job_id": job_id, "tasks": tasks,
+                        "verification": None if job is None else job_verification(job)})
     return listing
 
 

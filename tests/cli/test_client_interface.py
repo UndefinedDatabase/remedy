@@ -94,7 +94,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.16"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.17"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -551,7 +551,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "ended_at", "job_id", "next", "note_open", "numbers", "order",
-            "started_at", "state", "state_detail", "steps", "updated_at",
+            "started_at", "state", "state_detail", "steps", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
@@ -817,8 +817,9 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     assert set(contract["criteria"]["check"]) == set(DoDCheck.model_fields)
     assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_summary,
                                                             "do_cost_summary")
-    assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
-                                                            "do_job_task_listing")
+    assert _tree_names(trees["jobs"]) == (
+        _dict_literal_keys(_REPO_ROOT / do_sequence, "do_job_task_listing")
+        | _dict_literal_keys(_REPO_ROOT / "packages/orchestration/order_verification.py", "job_verification"))
     assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
     assert set(trees["landed"]) == _expression_keys(do_apply, "ctx.landed")
     assert set(trees["push"]) == (_returned_dict_keys(do_apply, "_do_push_record")

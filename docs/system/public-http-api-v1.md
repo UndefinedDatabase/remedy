@@ -227,8 +227,16 @@ back to pending yet, so a failed job's story offers `none` rather than a step th
 order, each `{id, status, phrase, tokens}` with `status` one of `waiting`, `running`, `done`,
 `skipped` and `failed`; `building` adds `tasks`, each `{title, status, rounds, files}`. `changes`
 lists the job's result as `{path, added, removed}`. `numbers` holds `duration_s`, `tokens_in`,
-`tokens_out`, `calls` and `rounds`, each `null` where nothing was measured, never 0 for "unknown":
-the fake providers report no tokens, so a fake run's tokens read `null`. `note_open` is always
+`tokens_out`, `calls`, `model_turns` and `rounds`, each `null` where nothing was measured, never 0
+for "unknown": the fake providers report no tokens, so a fake run's tokens read `null`. `tokens_in`
+and `tokens_out` are the provider's measured totals over every model turn of every call; `calls`
+counts harness invocations and `model_turns` the model responses inside them (a Pi call runs an agent
+loop of many turns). A task's `proof_summary.tokens_estimated` in a job report is the size of the
+task's TEXT, never usage. `verification` (since 1.17) is `{status, required}`: `status` is `passed`
+or `failed` when the job's tests ran (the tasks' own test runs and the job's DoD test checks),
+`not_run` when the order asked for its tests and none ran, `not_required` when the order asked for
+none and none ran, and `pending` while the job runs; `required` says the order asked for the
+tests to run. An unexecuted test is never `passed`. `note_open` is always
 `false`, because no route of this API takes a steering note.
 
 A `phrase` and a `reason` are `{key, args}`. Their keys are closed lists, and their arguments are
@@ -304,7 +312,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.16`.
+API version: `1.17`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|

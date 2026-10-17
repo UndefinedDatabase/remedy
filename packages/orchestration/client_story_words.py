@@ -42,6 +42,7 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
     "no_file_changed": (),
     "no_test_command": (),
     "tests_not_run": (),
+    "tests_not_requested": (),
     "tests_passed": ("n",),
     "tests_failed": ("n",),
     "provider_unavailable": ("provider",),
@@ -64,6 +65,10 @@ STORY_REASONS: dict[str, tuple[str, ...]] = {
     "unknown": (),
 }
 
+#: The job's verification status, `verification.status` (exec-1017 D2): its tests ran and passed or
+#: failed, were asked for and did not run, were not asked for and did not run, or the job runs still.
+STORY_VERIFICATION_STATUSES: tuple[str, ...] = ("passed", "failed", "not_run", "not_required", "pending")
+
 #: The kinds of question a waiting job asks, `state_detail.question`: the type of its open
 #: decision as `packages/orchestration/decision_queue.py` writes it, and `other` for a type this
 #: list does not name yet. The question's own text stays in the decision route.
@@ -83,6 +88,7 @@ def story_words() -> dict[str, object]:
         "phrases": {key: list(args) for key, args in STORY_PHRASES.items()},
         "reasons": {key: list(args) for key, args in STORY_REASONS.items()},
         "questions": list(STORY_QUESTIONS),
+        "verification_statuses": list(STORY_VERIFICATION_STATUSES),
     }
 
 
@@ -125,6 +131,9 @@ def story_problems(story: dict[str, object]) -> list[str]:
         problems += _word_problems(detail.get("reason"), STORY_REASONS, "state_detail.reason")
         if "question" in detail and detail["question"] not in STORY_QUESTIONS:
             problems.append(f"question {detail['question']!r} is not in the closed list")
+    verification = story.get("verification")
+    if isinstance(verification, dict) and verification.get("status") not in STORY_VERIFICATION_STATUSES:
+        problems.append(f"verification status {verification.get('status')!r} is not in the closed list")
     nxt = story.get("next") or {}
     if not isinstance(nxt, dict) or nxt.get("action") not in STORY_NEXT_ACTIONS:
         problems.append("next.action is not in the closed list")

@@ -253,6 +253,7 @@ packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_file
 packages.orchestration.order_ledger
 packages.orchestration.order_scope
+packages.orchestration.order_verification
 packages.orchestration.ownership
 packages.orchestration.ownership_phrases
 packages.orchestration.patch_apply

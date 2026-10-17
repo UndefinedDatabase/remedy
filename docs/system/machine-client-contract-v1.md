@@ -277,7 +277,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.16`.
+Interface version: `1.17`.
 
 ### Envelope
 
@@ -313,6 +313,7 @@ Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
 Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
+Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
 Story phrase `planned_tasks`: `n`.
 Story phrase `working_on_file`: `file`, `round`.
@@ -321,6 +322,7 @@ Story phrase `changed_files`: `n`.
 Story phrase `no_file_changed`: none.
 Story phrase `no_test_command`: none.
 Story phrase `tests_not_run`: none.
+Story phrase `tests_not_requested`: none.
 Story phrase `tests_passed`: `n`.
 Story phrase `tests_failed`: `n`.
 Story phrase `provider_unavailable`: `provider`.
@@ -405,8 +407,10 @@ Keys under the answer keys: see below.
 - `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`, `show_cost_usd`
   - `mirror_errors`: `*`
   - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
-- `jobs`: `job_id`, `tasks`
+- `jobs`: `job_id`, `tasks`, `verification`
   - `tasks`: `deliverable`, `title`
+  - `verification`: `reason`, `request`, `required`, `runs`, `status`
+    - `runs`: `blocking`, `check_id`, `command`, `source`, `status`, `task_id`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
 - `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
   - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
@@ -795,7 +799,7 @@ Keys under the answer keys: see below.
 - `exit_codes`: `code`, `meaning`, `name`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
-- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`
+- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
   - `phrases`: `*`
   - `reasons`: `*`
 
@@ -869,13 +873,13 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`.
+Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
 - `next`: `action`, `route`
   - `route`: `method`, `path`
-- `numbers`: `calls`, `duration_s`, `rounds`, `tokens_in`, `tokens_out`
+- `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
     - `args`: `*`
@@ -884,6 +888,7 @@ Keys under the answer keys: see below.
     - `args`: `*`
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
+- `verification`: `required`, `status`
 
 #### `remedy client diff`
 

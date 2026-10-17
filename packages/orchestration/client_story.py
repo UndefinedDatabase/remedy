@@ -31,6 +31,7 @@ from typing import Any
 from urllib.parse import quote
 
 from packages.orchestration.client_story_words import STORY_QUESTIONS
+from packages.orchestration.order_verification import job_verification
 from packages.orchestration.task_lifecycle import task_lifecycle_or_empty
 
 #: The run-log events that end one task's run.
@@ -167,9 +168,9 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
         config = getattr(plan, "execution_config", None)
         name = str(getattr(config, "builder", "") or "")
         return _word("provider_unavailable", provider=name if _PROVIDER_ID.fullmatch(name) else "unknown")
-    failed_tests = [t for t in tasks if t.test_passed is False or t.final_status == "test_failed"]
-    if failed_tests:
-        return _word("tests_failed", n=len(failed_tests))
+    failed_tests = [r for r in job_verification(plan)["runs"] if r["status"] == "failed"]
+    if failed_tests or any(t.final_status == "test_failed" for t in tasks):
+        return _word("tests_failed", n=max(len(failed_tests), 1))
     stuck = [t for t in tasks if t.final_status in _REVIEW_NOT_PASSED]
     if stuck:
         return _word("review_not_passed", rounds=max(rounds.get(str(t.task_id), 0) for t in stuck))
@@ -243,14 +244,20 @@ def _building(tasks: list[dict[str, Any]], state: str, detail: dict[str, Any],
 
 
 def _checking(plan: Any, state: str, building: str) -> tuple[str, Any]:
-    """(the checking step's status, its phrase): the tasks' own test runs."""
-    ran = [t.test_passed for t in plan.tasks if t.test_passed is not None]
-    config = getattr(plan, "execution_config", None)
-    if ran and not all(ran):
-        phrase: Any = _word("tests_failed", n=sum(1 for passed in ran if not passed))
-    elif ran:
-        phrase = _word("tests_passed", n=len(ran))
-    elif config is not None and not getattr(config, "test_command", ""):
+    """(the checking step's status, its phrase): the tasks' own test runs and the job's DoD test checks.
+
+    exec-1017 D2: read through `job_verification`, so a DoD that ran the tests is never "no test
+    command", and tests the order asked for that did not run are never "not requested".
+    """
+    found = job_verification(plan)
+    failed = sum(1 for run in found["runs"] if run["status"] == "failed")
+    if failed:
+        phrase: Any = _word("tests_failed", n=failed)
+    elif found["runs"]:
+        phrase = _word("tests_passed", n=len(found["runs"]))
+    elif found["status"] == "not_required":
+        phrase = _word("tests_not_requested")
+    elif found["reason"].startswith("no check ran"):
         phrase = _word("no_test_command")
     else:
         phrase = _word("tests_not_run")
@@ -379,11 +386,14 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "steps": _steps(plan, state, detail, changes, rounds,
                         {"in": summary["tokens_in"], "out": summary["tokens_out"]} if measured else None),
         "changes": changes,
+        "verification": {key: value for key, value in job_verification(plan).items()
+                         if key in ("status", "required")},
         "numbers": {
             "duration_s": duration,
             "tokens_in": summary["tokens_in"],
             "tokens_out": summary["tokens_out"],
             "calls": summary["harness_invocations"] if summary["roles"] else None,
+            "model_turns": summary["model_turns"],
             "rounds": sum(rounds.values()) if rounds else None,
         },
         "note_open": False,

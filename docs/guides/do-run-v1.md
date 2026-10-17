@@ -89,6 +89,21 @@ inline code and fenced blocks are that part's payload, never parts of their own,
 builder verbatim. The planner's repository facts always describe the target repository, also for
 an order the HTTP API runs from its own order folder (execution-quality order 2026-10-17, D1).
 
+**Tests the order asks to run.** A sentence such as "run npm test", "run the existing test
+command" or "Führe den vorhandenen Testbefehl aus" is a constraint, and it is honoured: the job's
+DoD check `project_tests`, which runs the project's own test command (its `.remedy/config.toml`
+`[tests]` command, else its `package.json` `test` script, else pytest over `tests/`) inside the
+tool sandbox, becomes BLOCKING for that job, and is added when the job's DoD has none. A red run
+holds the job `blocked` (`dod_blocking_red:<check>`) instead of completing it; a project that
+names no test command leaves the check not run, and the job says so. Every walk ends with one
+`Verification of job <id>:` line, and the JSON answer's `jobs[].verification` holds `status`
+(`passed`, `failed`, `not_run`, `not_required` or `pending`), `required`, the order's `request`,
+the `runs` (each task's own test run and each DoD test check, with its command and whether it
+blocked) and the `reason` nothing ran. A test that did not run is never reported passed. Over
+HTTP no client can name a test command: it is always the project's own. In a fenced order ("change
+nothing else"), a planned task whose deliverable the order did not ask for is left out, and a plan
+of nothing else fails (exec-1017 D2).
+
 The lane is decided from the order and the repository's tracked files, with no model call:
 
 | Lane | When | What happens |

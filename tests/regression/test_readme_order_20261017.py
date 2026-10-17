@@ -126,3 +126,61 @@ def test_every_planner_prompt_of_a_full_lane_order_describes_the_repository(tmp_
     for prompt in facts:
         assert "README.md, package.json" in prompt
         assert not any(name in prompt for name in ORDER_FOLDER_FILES)
+
+
+def _stub_project_tests(monkeypatch, exit_code: int) -> list[list[str]]:
+    """The DoD's project test run, answered with *exit_code* instead of spawning npm."""
+    import subprocess
+
+    from packages.orchestration import dod_runners
+
+    ran: list[list[str]] = []
+
+    def _run(cmd, *, timeout_sec, cwd, env_overlay=None):
+        ran.append(list(cmd))
+        return subprocess.CompletedProcess(list(cmd), exit_code, b"# tests 2\n", b"")
+
+    monkeypatch.setattr(dod_runners, "run_guarded_dod_process_command", _run)
+    return ran
+
+
+def test_the_requested_test_command_runs_and_its_pass_is_reported(tmp_path, monkeypatch):
+    from packages.orchestration.client_story import job_client_story
+
+    ran = _stub_project_tests(monkeypatch, 0)
+    answer, [job], _planner = _walk_order_file(tmp_path, monkeypatch, INCIDENT_ORDER, LAB_FILES)
+
+    assert ran == [["npm", "test"]]
+    [listed] = answer["jobs"]
+    verification = listed["verification"]
+    assert (verification["status"], verification["required"]) == ("passed", True)
+    assert verification["request"] == "Führe den vorhandenen Testbefehl aus."
+    assert [(run["command"], run["status"], run["blocking"]) for run in verification["runs"]] == [
+        ("npm test", "passed", True)]
+    story = job_client_story(str(job.job_id), job)
+    checking = next(step for step in story["steps"] if step["id"] == "checking")
+    assert checking["phrase"] == {"key": "tests_passed", "args": {"n": 1}}
+    assert story["verification"] == {"status": "passed", "required": True}
+
+
+def test_a_failing_requested_test_holds_the_job_instead_of_completing_it(tmp_path, monkeypatch):
+    _stub_project_tests(monkeypatch, 1)
+    answer, [job], _planner = _walk_order_file(tmp_path, monkeypatch, INCIDENT_ORDER, LAB_FILES)
+
+    assert job.state.value == "blocked"
+    assert answer["jobs"][0]["verification"]["status"] == "failed"
+    steps = {step["name"]: step for step in answer["steps"]}
+    assert steps["run"]["status"] == "failed" and "dod_blocking_red" in steps["run"]["detail"]
+
+
+def test_a_requested_test_the_project_cannot_run_is_an_explicit_unmet_verification(tmp_path, monkeypatch):
+    from packages.orchestration.project_tests import NO_CHECK_RAN_WORDS
+
+    ran = _stub_project_tests(monkeypatch, 0)
+    files = {name: text for name, text in LAB_FILES.items() if name not in ("package.json", "test/baseline.test.js")}
+    answer, [job], _planner = _walk_order_file(tmp_path, monkeypatch, INCIDENT_ORDER, files)
+
+    assert ran == []
+    assert job.state.value == "completed"            # nothing the builder could fix, so not held
+    verification = answer["jobs"][0]["verification"]
+    assert (verification["status"], verification["reason"]) == ("not_run", NO_CHECK_RAN_WORDS)

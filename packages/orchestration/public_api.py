@@ -79,8 +79,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: amendment amend1015-face-migration (DECISION amend1015f D14) raises it to `1.15` for
 #: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
 #: client token's refusal `api_client_policy_refused` on the proof, run and order polls
-#: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5).
-PUBLIC_API_VERSION = "1.16"
+#: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and
+#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`.
+PUBLIC_API_VERSION = "1.17"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

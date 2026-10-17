@@ -44,6 +44,7 @@ from typing import Any
 from apps.cli.client_interface_story import (
     CLIENT_STORY_ANSWER_KEYS,
     CLIENT_STORY_KEY_TREE,
+    JOB_VERIFICATION_KEY_TREE,
     ORDER_BUDGET_KEY_TREE,
     STORY_WORDS_KEY_TREE,
     render_story_words_lines,
@@ -66,8 +67,8 @@ from apps.cli.client_interface_story import (
 #: amend1015-face-migration (DECISION amend1015f D14, D16) to `1.15` for `client.story`, `story`
 #: and the `job_already_applied` refusal of a second `job apply`, and operator order
 #: amend1015-final-closure to `1.16` for a client token's read scope (DECISION amend1015c D2) and
-#: `client.diff` (DECISION amend1015c D5).
-CLIENT_INTERFACE_VERSION = "1.16"
+#: `client.diff` (DECISION amend1015c D5), and order exec-1017 to `1.17` for job verification and turns.
+CLIENT_INTERFACE_VERSION = "1.17"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -513,13 +514,11 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
                 "cache_read": {},
                 "cost_usd": {},
             },
-            "cost_usd": {},
-            "job_ids": {},
-            "mirror_failed_job_ids": {},
-            "mirror_errors": {"*": {}},
-            "show_cost_usd": {},
+            "cost_usd": {}, "job_ids": {}, "mirror_failed_job_ids": {},
+            "mirror_errors": {"*": {}}, "show_cost_usd": {},
         },
-        "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}}, "order_budget": ORDER_BUDGET_KEY_TREE,
+        "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}, "verification": JOB_VERIFICATION_KEY_TREE},
+        "order_budget": ORDER_BUDGET_KEY_TREE,
         "steps": {"name": {}, "status": {}, "detail": {}},
         "landed": {"job_id": {}, "sha": {}, "branch": {}, "repo": {}},
         "push": {

@@ -215,6 +215,16 @@ _TEST_PATH = re.compile(
     r"|_test\.go$", re.IGNORECASE)
 
 
+def order_test_request(order: str) -> str:
+    """The sentence of *order* that asks for the project's tests to RUN or pass, or "" when none does.
+
+    A constraint, a header `constraint:` line or a deliverable ("make sure the tests pass") counts;
+    a test the order asks to WRITE is a deliverable (`requests_test_files`), not a run.
+    """
+    scope = split_order_scope(order)
+    return next((s for s in (*scope.constraints, *scope.deliverables) if _TESTS.search(order_unit_head(s))), "")
+
+
 def requests_test_files(order: str) -> bool:
     """True when the order's DELIVERABLES ask for a test to be written (running tests does not count)."""
     return any(_TEST_REQUEST.search(s) for s in split_order_scope(order).deliverables)

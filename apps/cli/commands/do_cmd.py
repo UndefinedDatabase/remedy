@@ -302,11 +302,10 @@ def _cmd_do_order(
     from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
-        do_contract_summary_line,
         do_cost_summary,
-        do_cost_summary_lines,
         do_json_document,
         do_mission_contract,
+        do_summary_lines,
     )
 
     ctx = walk_do_sequence(DoContext(
@@ -361,10 +360,7 @@ def _cmd_do_order(
                 for number, task in enumerate(job["tasks"], start=1):
                     print(f"  job {job['job_id']} task {number}: {task['title']}"
                           f" — deliverable: {task['deliverable'] or '(none)'}")
-    contract_line = do_contract_summary_line(contract)
-    if contract_line is not None:
-        print(contract_line)
-    for line in do_cost_summary_lines(cost):
+    for line in do_summary_lines(contract, jobs, cost):
         print(line)
     for line in ctx.next_lines:
         print(f"Next: {line}")

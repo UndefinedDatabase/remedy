@@ -307,7 +307,7 @@ with the code that calls it.
 | 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
-| 165 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 161 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |

@@ -140,6 +140,31 @@ def _job_ledger_project(ctx: DoContext, job_id: str) -> str:
     return str(job.project_id) if job is not None and job.project_id else str(ctx.project.id)
 
 
+def do_verification_lines(jobs: list[dict[str, Any]]) -> list[str]:
+    """One text line per job naming its verification honestly (exec-1017 D2): what ran and how it
+    ended, or that the order asked for tests and none ran, or that none were asked for."""
+    lines = []
+    for job in jobs:
+        found = job.get("verification")
+        if not found:
+            continue
+        ran = ", ".join(f"{run.get('command') or run['source']} {run['status']}" for run in found["runs"])
+        asked = f" — the order asks: {found['request']}" if found["required"] else ""
+        detail = {"passed": ran, "failed": ran, "pending": "the job has not ended",
+                  "not_run": f"NO test ran: {found['reason']}",
+                  "not_required": f"no tests ran ({found['reason'] or 'the order asks for none'})"}[found["status"]]
+        lines.append(f"Verification of job {job['job_id']}: {found['status']} — {detail}{asked}")
+    return lines
+
+
+def do_summary_lines(contract: dict[str, Any] | None, jobs: list[dict[str, Any]],
+                     cost: dict[str, Any] | None) -> list[str]:
+    """The text lines a walk ends with: the contract's state, each job's verification, the cost."""
+    contract_line = do_contract_summary_line(contract)
+    return ([contract_line] if contract_line is not None else []) + do_verification_lines(jobs) + \
+        do_cost_summary_lines(cost)
+
+
 def _measured(value: float | int | None) -> str:
     return "not reported" if value is None else f"{value}"
 

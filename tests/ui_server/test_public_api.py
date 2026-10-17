@@ -650,7 +650,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -922,7 +922,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1218,7 +1218,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -2299,7 +2299,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2574,7 +2574,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "planning" and story_problems(expected) == []
