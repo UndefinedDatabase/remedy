@@ -148,3 +148,28 @@ def test_equivalent_orders_make_the_same_plan(make_repo, capsys, planning_calls,
     assert (data["shape"], data["shape_source"]) == ("one job", "bounded lane")
     assert [(len(j["tasks"]), j["tasks"][0]["deliverable"]) for j in data["jobs"]] == [(1, "README.md")]
     assert planning_calls == []
+
+
+def test_the_builder_and_the_reviewer_are_given_the_orders_own_words_not_a_summary(
+        make_repo, capsys, monkeypatch):
+    """The semantics of an order reach both roles: the reviewer can only fail wrong content, even in
+    the right file, if it is shown what the order meant (amend1016p D3 asks it to)."""
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    seen: dict[str, list[str]] = {"build": [], "review": []}
+    for method in ("build", "review"):
+        original = getattr(FakeProvider, method)
+
+        def spy(self, prompt, *args, _original=original, _method=method, **kwargs):
+            seen[_method].append(prompt)
+            return _original(self, prompt, *args, **kwargs)
+        monkeypatch.setattr(FakeProvider, method, spy)
+    make_repo({"README.md": "# T\n", "src/a.py": "x = 1\n"})
+    phrase = "two short German sentences about the Testbetrieb"
+
+    _do(capsys, "--json", order=f"Append a section to README.md with {phrase}. Change no other files.")
+
+    assert seen["build"] and seen["review"]
+    missing = {role: [i for i, prompt in enumerate(prompts) if phrase not in prompt]
+               for role, prompts in seen.items()}
+    assert all(phrase in prompt for prompt in seen["build"] + seen["review"])
