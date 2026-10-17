@@ -100,8 +100,9 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
    that wait for their apply. Read it as often as once a minute. By default `jobs` lists every
    job that still needs something and the 20 ended jobs that ended last, by the time each
    finished, or was created when its record holds no finish. A job has ended when its state is
-   `completed`, `failed` or `cancelled`, it does not wait for its apply and none of its
-   decisions is open; a job whose decisions could not be read has not. `job_window` names the
+   `completed`, `failed` or `cancelled`, or it was `stopped` before it ever ran, it does not wait
+   for its apply and none of its decisions is open; a job whose decisions could not be read has
+   not, and one stopped while it ran has not either, because it can be resumed. `job_window` names the
    limit under `ended_limit` and how many ended jobs it left out under `left_out`.
    `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
    null. Beside its `cost`, each job carries

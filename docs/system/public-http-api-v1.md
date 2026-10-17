@@ -126,6 +126,33 @@ and no end in its record reads the record again for up to two seconds, because t
 an end only after the process has finished, and answers `ended` once the end is there, `lost`
 otherwise.
 
+**An order's jobs (version 1.18).** Both answers carry `jobs`, while the order runs and after it
+ended: every job this run of the order file planned, in planned order and over every repository
+it touched, read from the repositories' missions (a batch records the order file it came from and
+each job link names its batch), so a client needs no job id to see what is happening. Each entry
+holds `job_id`, `title` (the order's first line; sibling jobs of one order add their repository
+or files), `state` (the job's own word), `phase`, `executable`, `tasks` (`total`, `done` and the
+`current` task's title), `waits_for` and `waiting_reason`, `verification` (the job's verification
+status) and `story` (the route of the job's story). `phase` is one of the closed words the
+interface lists under `order_job_phases`: `running`; `waiting`, when the job runs only after the
+job it names under `waits_for` is applied and committed, because its workspace is cut from the
+repository's HEAD; `ready`, the one job that may run now (`executable`); `needs_plan_approval`;
+`awaiting_apply`, a finished result nothing applied or declined yet; `applied`; `declined`;
+`blocked`; `stopped`; `failed`. A job whose record cannot be read is listed with state `missing`,
+never left out, and an order that planned nothing yet lists none. The view is read when polled:
+it is no live stream, and a client that wants to know sooner polls again.
+
+**Stopping and abandoning work.** `POST /api/v1/jobs/{job}/stop` stops one job, as `remedy job stop`
+does: a running job finishes the provider call in flight, starts nothing new and stays resumable;
+a job that never started (a waiting or a ready one) ends at once; a stopped job answers the stop it
+already had; a completed job is refused with 409 `job_not_stoppable`, because its result waits for
+an apply or a decline (`POST /api/v1/jobs/{job}/decline`). To abandon what is left of an order, a
+client stops each of its jobs whose `phase` is `running`, `waiting` or `ready`, and declines each
+`awaiting_apply` result it does not want. A job stopped before it ever ran and a declined result
+leave the digest's list of jobs that still need something (they are listed among the ended jobs);
+a job stopped while it ran stays there, because it holds work that can be resumed. Records,
+evidence and worktrees stay as the retention rules keep them: a stop is never a deletion.
+
 `POST /api/v1/orders` starts an order through the supervisor's own `OrderLauncher`, the way
 `remedy do run <options> --no-ui --run-unattended -- order.md` would inside its own folder under the data
 root, and answers 202 with its record read exactly as the route above reads it. Its body's `order`
