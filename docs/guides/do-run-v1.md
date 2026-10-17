@@ -29,7 +29,10 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
   job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
   (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
-  model call with the action to take, and never falls back to another provider.
+  model call with the action to take, and never falls back to another provider. Pi loads no
+  `AGENTS.md` or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's
+  root agent file whole when it is at most 2,000 characters, and otherwise only its name, to read
+  when the task needs its conventions.
 - **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
   captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
   deletions), seeds the job workspace from them and measures the proposed change from that state.
