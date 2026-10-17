@@ -69,7 +69,8 @@ ORDER_BUDGET_KEY_TREE: dict = {
     "caps": {"*": {}}, "planner_calls": {}, "planner_calls_by_reason": {"*": {}},
     "refused_calls": {}, "estimated_planning_tokens": {}, "unmeasured_jobs": {},
     "used": dict.fromkeys(("calls", "tokens", "cost_usd", "elapsed_minutes"), {}),
-    "jobs": {"*": dict.fromkeys(("calls", "tokens", "cost_usd", "measured"), {})},
+    "jobs": {"*": dict.fromkeys(("calls", "tokens", "cost_usd", "measured", "unpriced_calls"), {})},
+    "cost": dict.fromkeys(("cap_usd", "measured_usd", "unpriced_calls", "enforced"), {}),
     "calls": dict.fromkeys(("role", "reason", "attempt", "seconds", "prompt_chars", "response_chars",
                             "outcome", "estimated_tokens", "tokens_estimated"), {}),
 }

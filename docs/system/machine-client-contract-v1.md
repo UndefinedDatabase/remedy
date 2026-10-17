@@ -408,11 +408,12 @@ Keys under the answer keys: see below.
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
-- `order_budget`: `calls`, `caps`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
+- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
   - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
   - `caps`: `*`
+  - `cost`: `cap_usd`, `enforced`, `measured_usd`, `unpriced_calls`
   - `jobs`: `*`
-    - `*`: `calls`, `cost_usd`, `measured`, `tokens`
+    - `*`: `calls`, `cost_usd`, `measured`, `tokens`, `unpriced_calls`
   - `planner_calls_by_reason`: `*`
   - `used`: `calls`, `cost_usd`, `elapsed_minutes`, `tokens`
 - `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `repositories`, `sha`, `source`, `unchecked_blocking_criteria`

@@ -85,7 +85,8 @@ def test_the_second_job_of_a_chain_gets_what_the_first_left_not_the_whole_cap(
 
     # The fake builder and reviewer report no provider calls; give the first job a measured spend.
     monkeypatch.setattr(OrderCallLedger, "record_job", lambda self, job: self.jobs.__setitem__(
-        str(job.job_id), {"calls": 7, "tokens": 0, "cost_usd": None, "measured": True}))
+        str(job.job_id), {"calls": 7, "tokens": 0, "cost_usd": None, "measured": True,
+        "unpriced_calls": 0}))
 
     data = _do(capsys, "Write docs/alpha.md and docs/beta.md", "--no-llm", "--force-mission",
                "--commit-auto", "--max-provider-calls", "40")
@@ -132,3 +133,49 @@ def test_a_job_the_walk_leaves_waiting_keeps_the_orders_leftover_for_its_later_r
     first, second = data["job_ids"]
     assert data["waiting_job_ids"] == [second]
     assert load_job_plan(second).budgets["max_provider_calls"] == 40
+
+
+def test_jobs_left_waiting_share_the_orders_leftover_and_do_not_each_get_all_of_it(
+        repo, planner, capsys):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    data = _do(capsys, "Write docs/alpha.md, docs/beta.md and docs/gamma.md", "--no-llm",
+               "--force-mission", "--max-provider-calls", "40")
+
+    waiting = data["waiting_job_ids"]
+    assert len(waiting) == 2
+    shares = [load_job_plan(j).budgets["max_provider_calls"] for j in waiting]
+    assert shares == [20, 20] and sum(shares) <= 40
+
+
+def test_a_force_job_over_an_unresolved_file_still_asks_instead_of_running(repo, planner, capsys):
+    (repo / "docs").mkdir()
+    (repo / "docs" / "README.md").write_text("# d\n")
+    (repo / "web").mkdir()
+    (repo / "web" / "README.md").write_text("# w\n")
+    import subprocess
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "r"],
+                   cwd=repo, check=True)
+    # the root README is gone from HEAD's tracked set: only nested ones remain
+    subprocess.run(["git", "rm", "-q", "README.md"], cwd=repo, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "r2"],
+                   cwd=repo, check=True)
+
+    data = _do(capsys, "Fix the typo in README.md", "--force-job", "--plan-only")
+
+    assert data["job_ids"] == [] and planner.count() == 0
+    assert _step(data, "study")["status"] == "stopped"
+
+
+def test_a_waiting_job_the_cap_cannot_fund_stops_before_any_provider_call(repo, planner, capsys):
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
+
+    data = _do(capsys, "Write docs/alpha.md, docs/beta.md and docs/gamma.md", "--no-llm",
+               "--force-mission", "--max-provider-calls", "1")
+
+    unfunded = data["waiting_job_ids"][-1]
+    assert "deadline" in load_job_plan(unfunded).budgets
+    done = run_job(unfunded, builder_name="fake", reviewer_name="fake")
+    assert done.state != JOB_COMPLETED
+    assert (done.budget_actuals or {}).get("provider_call_count", 0) == 0

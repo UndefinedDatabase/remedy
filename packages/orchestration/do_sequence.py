@@ -953,7 +953,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
                 return DO_STEP_FAILED, f"{failure}; ran before it: {'; '.join(ran)}"
             ran.append(f"{ctx.applied[job_id]} before the next job ran")
     if ctx.waiting_job_ids:
-        reserve_waiting_budgets(ctx.waiting_job_ids, ledger.remaining())
+        reserve_waiting_budgets(ctx.waiting_job_ids, ledger.remaining(), ledger.exhausted())
         ran.append(
             f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
             f"before it is applied and committed, because a job's workspace is cut from "

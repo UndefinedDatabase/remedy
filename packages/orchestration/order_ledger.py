@@ -82,15 +82,21 @@ class OrderCallLedger:
             decode_persisted_budget_actuals,
         )
         raw = getattr(job, "budget_actuals", None)
-        used: dict[str, Any] = {"calls": 0, "tokens": 0, "cost_usd": None, "measured": False}
+        used: dict[str, Any] = {"calls": 0, "tokens": 0, "cost_usd": None, "measured": False,
+                                "unpriced_calls": 0}
         if raw:
             try:
                 actuals = decode_persisted_budget_actuals(raw)
             except BudgetCounterError:
                 actuals = None
             if actuals is not None:
-                used = {"calls": actuals["provider_call_count"], "tokens": actuals["total_tokens"],
-                        "cost_usd": actuals.get("measured_cost_usd"), "measured": True}
+                calls, cost = actuals["provider_call_count"], actuals.get("measured_cost_usd")
+                # a job that made calls and reported no price is unpriced, not free
+                unpriced = actuals.get("unpriced_call_count", 0) or (calls if cost is None else 0)
+                used = {"calls": calls, "tokens": actuals["total_tokens"], "cost_usd": cost,
+                        "measured": True, "unpriced_calls": unpriced}
+        if not used["measured"]:
+            used["unpriced_calls"] = 1      # nothing says what it spent, so it is not known to be free
         self.jobs[str(job.job_id)] = used
 
     def wrap(self, reason: str, call_fn: Callable[[str, int], str]) -> Callable[[str, int], str]:
@@ -144,9 +150,26 @@ class OrderCallLedger:
             "elapsed_minutes": (self.clock() - self.started) / 60.0,
         }
 
+    def unpriced_calls(self) -> int:
+        """Calls whose money is unknown: every planner call (the planner reports text, not a price)
+        and the calls of a job that reported none."""
+        return self.planner_calls + sum(j["unpriced_calls"] for j in self.jobs.values())
+
+    def cost_summary(self) -> dict[str, Any]:
+        """What the order can say about its money: the measured floor and whether the cap held."""
+        cap = (self.caps or {}).get("max_cost_usd")
+        unpriced = self.unpriced_calls()
+        return {"cap_usd": cap, "measured_usd": self.used()["cost_usd"], "unpriced_calls": unpriced,
+                "enforced": cap is not None and unpriced == 0}
+
     def exhausted(self) -> str:
         """Why the order has nothing left to spend on another call, or "" while it has."""
         caps = self.caps or {}
+        if (cap := caps.get("max_cost_usd")) is not None and (unpriced := self.unpriced_calls()):
+            # Unknown spend is not zero spend: a money cap that cannot be checked is not a cap
+            # that holds, so nothing more starts under it (token, call and time caps still work).
+            return (f"the order's cap of {cap} USD cannot be enforced: {unpriced} call(s) so far "
+                    "carry no price, so the spend is unknown")
         used = self.used()
         for cap_key, used_key, unit in (("max_provider_calls", "calls", "provider calls"),
                                         ("max_total_tokens", "tokens", "tokens"),
@@ -189,30 +212,52 @@ class OrderCallLedger:
             "refused_calls": len(self.entries) - self.planner_calls,
             "estimated_planning_tokens": sum(e["estimated_tokens"] for e in self.entries),
             "used": {**used, "elapsed_minutes": round(used["elapsed_minutes"], 3)},
+            "cost": self.cost_summary(),
             "jobs": dict(self.jobs),
             "unmeasured_jobs": [job_id for job_id, job in self.jobs.items() if not job["measured"]],
             "calls": list(self.entries),
         }
 
 
-def reserve_waiting_budgets(job_ids: list[str], budgets: dict[str, Any] | None) -> list[str]:
-    """Give each job the walk leaves waiting the caps that were left when the walk ended.
+def reserve_waiting_budgets(job_ids: list[str], budgets: dict[str, Any] | None,
+                            spent: str = "") -> list[str]:
+    """Split what the walk leaves of the order's caps among the jobs it leaves waiting.
 
-    A waiting job runs later, in another process, by `remedy job run`. Without this it would run
-    with no order cap at all. Each waiting job holds the same leftover: the leftover bounds every
-    one of them, but a manual run of the first does not shrink the second's; that limit is stated
-    in docs/system/do-guide, not hidden. Returns the ids that were given a cap.
+    A waiting job runs later, in another process, by `remedy job run`, and nothing makes those runs
+    wait for one another. So the leftover is divided, not repeated: each job's share is the leftover
+    over the number of jobs (calls, tokens, minutes and money; a deadline is shared as it is), and
+    the shares add up to no more than the leftover however the jobs are run. When a whole-number cap
+    cannot give every job one unit, the jobs after the first that can be funded get an already-passed
+    deadline: they stop before their first call and wait for an operator's budget decision, the
+    existing way to extend a cap; so do all of them when *spent* says the order has nothing left.
+    Jobs that already carry budgets keep them. Returns the funded ids.
     """
+    from datetime import datetime, timezone
+
     from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
+    jobs = [job for job_id in job_ids if (job := load_job_plan(job_id)) is not None
+            and job.budgets is None]
+    if budgets is None or not jobs:
+        return []
+    slots = 0 if spent else len(jobs)
+    for key in ("max_provider_calls", "max_total_tokens", "max_wall_clock_minutes"):
+        if budgets.get(key) is not None:
+            slots = min(slots, budgets[key])
+    share = dict(budgets)
+    for key in ("max_provider_calls", "max_total_tokens", "max_wall_clock_minutes"):
+        if share.get(key) is not None:
+            share[key] = share[key] // max(slots, 1)
+    if share.get("max_cost_usd") is not None:
+        share["max_cost_usd"] = share["max_cost_usd"] / max(slots, 1)
     given: list[str] = []
-    for job_id in job_ids:
-        job = load_job_plan(job_id)
-        if budgets is None or job is None or job.budgets is not None:
-            continue
-        job.budgets = dict(budgets)
+    for position, job in enumerate(jobs):
+        job.budgets = dict(share)
+        if position >= slots:
+            job.budgets["deadline"] = datetime.now(timezone.utc).isoformat()
         save_job_plan(job)
-        given.append(job_id)
+        if position < slots:
+            given.append(str(job.job_id))
     return given
 
 

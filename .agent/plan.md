@@ -7,15 +7,13 @@ cost policy; no new orchestrator. Branch feature/scale-correctness-routing; road
 `.agent/STOP` kept; no unattended loop, no real model call, no merge, no install.
 
 ## Current Step
-Code, tests, docs and DECISION scale-1017 D1 to D11 are committed. The first full local run found 9
-reds (structure ratchet, client interface, import allowlist, context/plan files, one HTTP test);
-being repaired, then one full run again.
+PR 348 closure review (DECISION scale-1017 D12): force-job keeps a hold, waiting jobs share the
+leftover, an unpriced money cap fails safe. Focused tests green; one full local run, then merge.
 
 ## Next Steps
-- Repair the reds; rerun the full local gate once; record SHA, tree, commands, result.
-- Scale matrix table (before/after), live_review entry, handoff.
-- Push, open the PR (no merge); propose the real Pi/Ollama calibration (needs approval).
+- Full local gate once on the final commit; record SHA, tree, commands, result.
+- Merge PR 348 by the normal workflow, sync main; no deploy, no restart, no real model.
 
 ## Risks
 - Verification scope by changed language/package is not built (project_tests runs one command).
-- A waiting job keeps the leftover cap, not a joint one.
+- A money cap stops a walk after its planning (planner calls are unpriced); use call/token caps with local models.

@@ -134,3 +134,73 @@ def test_two_failures_in_a_row_end_planner_use_and_an_answer_resets_the_count():
     with pytest.raises(OrderCallRefusedError, match="failed 2 calls in a row"):
         wrapped("p", 0)
     assert ledger.planner_calls == 4 and ledger.summary()["refused_calls"] == 1
+
+
+def test_a_money_cap_is_not_called_enforced_while_a_call_has_no_price():
+    ledger = OrderCallLedger(caps={"max_cost_usd": 2.0})
+    assert ledger.cost_summary()["enforced"] is True and ledger.exhausted() == ""
+    ledger.wrap("intake", _ok)("p", 0)                      # a planner call reports no price
+    cost = ledger.cost_summary()
+    assert cost == {"cap_usd": 2.0, "measured_usd": None, "unpriced_calls": 1, "enforced": False}
+    assert "cannot be enforced" in ledger.exhausted()
+    with pytest.raises(OrderCallRefusedError, match="cannot be enforced"):
+        ledger.wrap("task_plan", _ok)("p", 0)
+
+
+def test_a_priced_job_keeps_a_money_cap_enforced_and_an_unpriced_job_ends_it():
+    ledger = OrderCallLedger(caps={"max_cost_usd": 2.0})
+    ledger.record_job(_Job("j1", calls=3, tokens=10, cost=0.5))
+    assert ledger.cost_summary()["enforced"] is True and ledger.exhausted() == ""
+    ledger.record_job(_Job("j2", calls=2, tokens=10, cost=None))
+    assert ledger.cost_summary()["enforced"] is False and "cannot be enforced" in ledger.exhausted()
+    assert OrderCallLedger(caps={"max_provider_calls": 5}).cost_summary()["enforced"] is False
+
+
+def test_a_job_that_made_no_call_is_not_unpriced():
+    ledger = OrderCallLedger(caps={"max_cost_usd": 2.0})
+    ledger.record_job(_Job("j1", calls=0, tokens=0, cost=None))
+    assert ledger.unpriced_calls() == 0 and ledger.exhausted() == ""
+
+
+@pytest.fixture
+def waiting_jobs(tmp_path, monkeypatch):
+    from packages.orchestration import pingpong_job
+
+    plans: dict[str, object] = {}
+
+    class _Plan:
+        def __init__(self, job_id): self.job_id, self.budgets = job_id, None
+
+    for n in ("a", "b", "c"):
+        plans[n] = _Plan(n)
+    monkeypatch.setattr(pingpong_job, "load_job_plan", lambda job_id: plans.get(job_id))
+    monkeypatch.setattr(pingpong_job, "save_job_plan", lambda job: None)
+    return plans
+
+
+def test_waiting_jobs_split_the_leftover_and_the_shares_never_exceed_it(waiting_jobs):
+    from packages.orchestration.order_ledger import reserve_waiting_budgets
+
+    left = {"max_provider_calls": 10, "max_total_tokens": 9000, "max_wall_clock_minutes": 30,
+            "max_cost_usd": 3.0}
+    assert reserve_waiting_budgets(["a", "b", "c"], left) == ["a", "b", "c"]
+    for plan in waiting_jobs.values():
+        assert plan.budgets == {"max_provider_calls": 3, "max_total_tokens": 3000,
+                                "max_wall_clock_minutes": 10, "max_cost_usd": 1.0}
+
+
+def test_waiting_jobs_a_cap_cannot_fund_get_a_passed_deadline_not_a_free_unit(waiting_jobs):
+    from packages.orchestration.order_ledger import reserve_waiting_budgets
+
+    funded = reserve_waiting_budgets(["a", "b", "c"], {"max_provider_calls": 2})
+    assert funded == ["a", "b"]
+    assert [waiting_jobs[n].budgets["max_provider_calls"] for n in "abc"] == [1, 1, 1]
+    assert "deadline" not in waiting_jobs["a"].budgets and "deadline" in waiting_jobs["c"].budgets
+
+
+def test_a_spent_order_funds_no_waiting_job_and_an_uncapped_one_leaves_them_alone(waiting_jobs):
+    from packages.orchestration.order_ledger import reserve_waiting_budgets
+
+    assert reserve_waiting_budgets(["a", "b"], {"max_provider_calls": 1}, spent="all spent") == []
+    assert all("deadline" in waiting_jobs[n].budgets for n in "ab")
+    assert reserve_waiting_budgets(["c"], None) == [] and waiting_jobs["c"].budgets is None

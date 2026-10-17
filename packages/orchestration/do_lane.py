@@ -143,7 +143,8 @@ def select_do_lane(
     the order says to create) and no fact marks the change risky. A bare file name two nested files
     share, or a named file nothing tracks that the order does not create, is a question (hold),
     never a guess. A test the order asks for beside the file is part of the one job. `--force-job`
-    selects the bounded lane for a single-repository order and says what routing alone chose.
+    selects the bounded lane for a single-repository order and says what routing alone chose, except
+    over a hold: which file is meant stays a question that no flag answers.
     Where the order came from plays no part.
     """
     if projects > 1:
@@ -151,7 +152,7 @@ def select_do_lane(
     if force_mission:
         return DoLaneDecision(DO_LANE_FULL, "--force-mission was given")
     auto = _routed_lane(order, tracked_files, infer_single_file=not force_job)
-    if force_job and not auto.bounded:
+    if force_job and not auto.bounded and not auto.hold:   # an override never settles a question
         return DoLaneDecision(DO_LANE_BOUNDED, f"--force-job was given (routing alone chose the "
                               f"{auto.lane} lane: {auto.reason})", auto.deliverable, auto.risk,
                               auto.with_tests)

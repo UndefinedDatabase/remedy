@@ -123,8 +123,14 @@ the walk (study narration, mission plan, intake, task plan) is recorded in `orde
 (characters divided by four), never claimed as measured. A planning call that would pass the
 remaining call or token cap is refused and the plan or shape step fails with that sentence. Each
 job runs with the caps less the planning calls and the jobs before it, and no job starts once a
-cap is spent. A job the walk leaves waiting keeps what was left when the walk ended; those waiting
-jobs are each bounded by that leftover, not jointly, because they run later in other processes.
+cap is spent. A job the walk leaves waiting gets an equal share of what was left when the walk ended
+(calls, tokens, minutes and money divided by the number of waiting jobs), so the shares together
+never pass the leftover however the jobs are run. A job a whole-number cap cannot fund, or any
+waiting job of a spent order, is stored with an already-passed deadline: it stops before its
+first call and waits for a budget decision. A money cap (`--max-cost-usd`) is enforced only while
+every call so far has a price: planner calls carry none, so once one is made, or a job reports
+calls without a price, no further job or planner call starts, and `order_budget.cost` says
+`enforced: false` with the unpriced count. Token, call and time caps are unaffected.
 A recorded study is reused until a dependency, build or workspace file changed since it, twenty
 paths changed, or its head is gone; a bounded order never pays for the study's narration.
 

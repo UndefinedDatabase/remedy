@@ -134,6 +134,17 @@ def test_a_force_job_override_says_what_routing_alone_chose():
     assert decision.deliverable == ""
 
 
+@pytest.mark.parametrize("order, tracked", [
+    ("Fix the typo in README.md", ONLY_NESTED_READMES),       # which of two nested files?
+    ("Fix the typo in docs/missing.md", CODE),                 # a named file nothing tracks
+])
+def test_force_job_never_answers_an_unresolved_file_question(order, tracked):
+    decision = select_do_lane(order, tracked_files=tracked, force_job=True)
+    assert decision.hold and decision.lane == H and not decision.bounded
+    assert decision.deliverable == ""
+    assert decision.reason == select_do_lane(order, tracked_files=tracked).reason
+
+
 def test_several_projects_and_force_mission_stay_in_the_full_lane():
     assert select_do_lane("Fix README.md", tracked_files=CODE, projects=2).lane == F
     assert select_do_lane("Fix README.md", tracked_files=CODE, force_mission=True).lane == F
