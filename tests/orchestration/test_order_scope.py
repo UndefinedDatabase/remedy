@@ -241,3 +241,18 @@ def test_describing_sentences_are_no_parts_so_a_fix_with_its_test_is_simple():
     lane = select_do_lane(LAB_CALC_ORDER, tracked_files=["src/calc.js", "test/baseline.test.js", "package.json"])
     assert (lane.lane, lane.deliverable, lane.with_tests) == ("bounded", "src/calc.js", True)
     assert not split_order_scope("Fix a.py. Fix b.py. Fix c.py.").simple
+
+
+def test_a_filler_between_the_verb_and_the_test_still_asks_for_a_test():
+    # Lab format order of 2026-10-17 17:24: "Schreibe dazu einen Regressionstest" was no test request,
+    # so the test file was a second target (full lane) and then out of the order's fence.
+    from packages.orchestration.do_lane import select_do_lane
+
+    order = ('Die Funktion normalizeName(input) in src/format.js soll bei leerem Text "Unbekannt" '
+             "zurückgeben.\n\nNormale Namen sollen weiterhin korrekt verarbeitet werden.\n\n"
+             "Schreibe dazu einen Regressionstest in test/format.test.js und korrigiere die Funktion "
+             "mit möglichst wenig Code.\n\nFühre die Projekttests aus. Ändere keine anderen Dateien "
+             "und übernimm nichts automatisch.")
+    assert requests_test_files(order)
+    lane = select_do_lane(order, tracked_files=["src/format.js", "test/baseline.test.js", "package.json"])
+    assert (lane.lane, lane.deliverable, lane.with_tests) == ("bounded", "src/format.js", True)
