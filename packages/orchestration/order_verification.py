@@ -62,9 +62,10 @@ def require_order_tests(job_id: str, order: str) -> str:
     if not any(c.kind in _TEST_CHECK_KINDS for c in checks):
         checks.append(DoDCheck(id=ORDER_TESTS_CHECK_ID, kind="project_tests", source="standard",
                                blocking=True, description=request))
-    store_dod(job_id, DoD(schema_v=DOD_SCHEMA_V, checks=checks,
-                          compiled=dod.compiled if dod is not None else False,
-                          origin=dod.origin if dod is not None else "deterministic"))
+    store_dod(job_id, DoD.model_validate({
+        "schema_v": DOD_SCHEMA_V, "checks": [check.model_dump() for check in checks],
+        "compiled": dod.compiled if dod is not None else False,
+        "origin": dod.origin if dod is not None else "deterministic"}))
     return request
 
 
