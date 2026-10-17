@@ -652,6 +652,8 @@ def _cmd_job_run(
     # rather than waiting for someone to type `job evidence`. Never fatal.
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     cost_mirror = mirror_job_run_into_ledger(job.job_id)
+    from packages.orchestration.review_reports import continue_review_report
+    continue_review_report(job)     # exec-1017c: a walk's job run later joins the walk's review report
 
     report = export_job_report(job) if json_output else {}
     if json_output:

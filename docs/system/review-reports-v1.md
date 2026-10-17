@@ -33,8 +33,13 @@ retention rule removes them.
 
 Atomically, twice, under the same id: when the walk starts (`outcome.status` `running`) and when it
 ends, whatever ended it. The outcome is `completed`, `failed`, `stopped`, `budget_exhausted`,
-`cancelled` (Ctrl-C or SIGTERM) or `crashed` (an unexpected error; the walk's own error still ends
-the command). A process killed outright leaves the `running` write, which says it never finished.
+`cancelled` (Ctrl-C, SIGTERM, or the order's cancel request, whose reason and step the outcome
+names) or `crashed` (an unexpected error; the walk's own error still ends the command). A process
+killed outright leaves the `running` write, which says it never finished. `order` names the
+supervisor's order id (`supervisor_order_id`) and its cancel request (`cancel`) for a walk the
+serve supervisor started. Every job of the walk keeps the report's id, so a job run later (a waiting
+job, a resumed one) rewrites its entry under `jobs` and adds itself to `continued`; the walk's own
+outcome stays what the walk ended with.
 A report that cannot be built is written `incomplete` with the reason. `not_measured` names what
 the walk cannot know: queue time before its process started, inference time apart from tool time
 inside one Pi call, planner tokens.

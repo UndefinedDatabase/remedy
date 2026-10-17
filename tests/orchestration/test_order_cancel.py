@@ -210,3 +210,37 @@ def test_only_a_walk_run_from_a_supervised_order_folder_reads_a_cancel(tmp_path,
     assert walk_order_dir() is None             # no record: not an order the supervisor started
     (folder / "order.json").write_text("{}", encoding="utf-8")
     assert walk_order_dir() == folder.resolve()
+
+
+def test_the_review_report_of_a_cancelled_order_says_cancelled_and_why(order, monkeypatch):
+    from packages.orchestration.review_reports import review_reports_dir
+
+    _wrap_step(monkeypatch, "plan", lambda ctx: order.cancel(reason="wrong repository"))
+
+    envelope = order.walk("Fix the typo in README.md.", "--capture-review")
+
+    report = json.loads((review_reports_dir() / f"{envelope['review_report']['report_id']}.json").read_text())
+    assert report["outcome"]["status"] == "cancelled"
+    assert "wrong repository" in report["outcome"]["reason"] and "shape" in report["outcome"]["reason"]
+    assert report["order"]["supervisor_order_id"] == ORDER_ID
+    assert report["order"]["cancel"]["reason"] == "wrong repository"
+
+
+def test_a_waiting_job_run_later_joins_its_walks_review_report(order, monkeypatch):
+    from apps.cli.grouped import main
+    from packages.orchestration.review_reports import review_reports_dir
+
+    envelope = order.walk("Add a usage section to README.md and add a CHANGELOG.md entry.",
+                          "--force-mission", "--capture-review")
+    waiting = envelope["waiting_job_ids"][0]
+    path = review_reports_dir() / f"{envelope['review_report']['report_id']}.json"
+    before = {job["job_id"]: job["state"] for job in json.loads(path.read_text())["jobs"]}
+    assert before[waiting] == "planned"
+
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.suppress(SystemExit):
+        main(["job", "run", waiting, "--builder-provider", "fake", "--reviewer-provider", "fake", "--json"])
+
+    report = json.loads(path.read_text())
+    after = {job["job_id"]: job["state"] for job in report["jobs"]}
+    assert after[waiting] == load_job_plan(waiting).state.value != "planned"
+    assert [entry["job_id"] for entry in report["continued"]] == [waiting]
