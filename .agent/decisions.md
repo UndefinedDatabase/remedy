@@ -30039,3 +30039,16 @@ exec-1017 D5 (review reports without a job id): `remedy do --capture-review` and
 exec-1017 D6 (a remote client chooses only what the server offers): `execution_options.remote_provider_refusal` refuses, before anything starts, a `builder_provider`/`reviewer_provider` that HTTP does not offer, with 400 `api_provider_not_offered`, on both `POST /api/v1/orders` and `POST /api/v1/jobs/{job}/run`. Offered: builder `pi`, `claude`, `fake`; reviewer `pi`, `ollama`, `claude`, `fake`. `claude-cli` was accepted over HTTP until now and runs the Claude Code CLI with the host's file and shell tools outside the tool sandbox (amend1016sb D1 covers Pi only), so it is a command-line choice of the operator until its isolation is verified; `ollama` cannot write files and is no builder. The value is refused, never substituted. Reverse: drop the check from the two routes.
 
 exec-1017 D7 (experience is code, not prompt text): audit in `.agent/exec1017_experience_audit.md`. No model call of a new job receives earlier experience: memory cards are written only by a manual `remedy memory learn` (0 entries on the operator's data root), post-mortems are written and counted but never read back (0 over 3 jobs), the project brain and study feed the viewer. Of three earlier failures checked, retrieval would have prevented none; each repeat was prevented by a deterministic guard with a regression test. Context overhead today: 0 tokens. Nothing built: more prompt text is resent on every Pi turn (D4) and the local planner ignored explicit rules (amend1016p). The acceptance matrix of the order is `.agent/exec1017_acceptance_matrix.md`; the scale matrix is version 2 with the incident order and the four verification states.
+
+## 2026-10-17: test audit (operator order) — D1 keepers per scenario, D2 no runtime claim for batch 1
+D1. Where several tests ran the same `run_job` scenario and each asserted a slice of it, the
+batch folds them into ONE keeper per scenario that carries every distinct assertion, and deletes
+only byte-identical or strictly subsumed tests. It does not merge tests whose INPUTS differ (a
+tracked file rewritten vs a file added; four different corruptions of one result), and it does
+not touch the continuation-config family, whose overlaps are partial (ledger, batch 2). Each
+keeper is shown red by one mutation of `pingpong_job.py`, restored byte for byte.
+Tradeoff: one failing keeper names the scenario, not the slice; the assertion line names the
+slice. D2. The batch saves lines, not seconds (36.5 s → 36.3 s serial): the expensive part of the
+file is the continuation family and the git work inside a successful fake run. The order's
+runtime goal is met by the change-aware fast lane, not by deleting cheap tests.
+Evidence: `.agent/test_audit_1017_ledger.md`.
