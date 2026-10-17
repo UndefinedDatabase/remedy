@@ -250,7 +250,7 @@ class TestStreamArtifactsReachTheReviewZip:
         # builds the manifest, and packages the ZIP across four separate scripts. A missing one aborts
         # the run, so copy the complete set (the packages/ tree resolves via the EXPLICIT PYTHONPATH
         # set on the child below, never inherited outer-shell state).
-        for helper in ("select_review_evidence.py", "stage_review_evidence.py",
+        for helper in ("select_review_evidence.py", "stage_review_evidence.py", "stage_review_reports.py",
                        "build_observability_index.py", "build_review_manifest.py",
                        "rotate_live_review.py", "build_review_zip.py"):
             src = MAKE_REVIEW_ZIP.parent / helper

@@ -99,4 +99,26 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=300,
     ),
+    ConfigKeySpec(
+        key="pi.max_turns_per_call",
+        env_var="REMEDY_PI_MAX_TURNS_PER_CALL",
+        description=(
+            "How many model turns one Pi call's agent loop may take: once it has used them and asks "
+            "for another tool, Remedy ends the call, keeps what it wrote and ends the task "
+            "budget_exhausted; a final answer is never cut off (exec-1017 D4)."
+        ),
+        value_type=int,
+        default=40,
+    ),
+    ConfigKeySpec(
+        key="pi.max_input_tokens_per_call",
+        env_var="REMEDY_PI_MAX_INPUT_TOKENS_PER_CALL",
+        description=(
+            "How many input tokens one Pi call's agent loop may consume over all its turns (each "
+            "turn resends the prompt and the history) before Remedy ends it the same way; the job's "
+            "remaining max_total_tokens lowers it further (exec-1017 D4)."
+        ),
+        value_type=int,
+        default=400000,
+    ),
 )

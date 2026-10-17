@@ -121,7 +121,7 @@ class TestTaskReport:
         out = capsys.readouterr().out
         assert "Task input:" in out
         assert "Task hash:" in out
-        assert "Task size:" in out
+        assert "Task text size:" in out and "not usage" in out
 
     def test_text_report_no_full_prompt(self, tmp_path, monkeypatch, capsys):
         task_text = "# Secret Task\nDo SECRET_VALUE_12345 operation.\n"

@@ -734,11 +734,12 @@ def plan_mission(
     provider: str = "",
     provider_kind: str = "",
     max_milestones: int | None = None,
-    dod_call_fn: Callable[[str, int], str] | None = None,
+    dod_call_fn: Callable[[str, int], str] | None = None, repo_root: str = "",
 ) -> MissionPlanOutcome:
     """Compile (or recompile) a mission's plan, persist it, render it.
 
     *call_fn* serves only the plan; milestone DoDs are deterministic unless a DoD-bound *dod_call_fn* is given.
+    *repo_root* is the target repository the planner's repo facts describe; "" keeps the working directory.
 
     A recompile KEEPS every prior version — the old body moves into
     ``_versions`` and the previous ``mission_plan.md`` stays on disk beside the
@@ -772,10 +773,9 @@ def plan_mission(
 
     prompt_traces: list[Any] = []
     goal = mission.orders[-1].text if mission.orders else mission.goal
-    result = compile_mission_plan(goal, call_fn, traces=prompt_traces,
-                                  provider=provider,
-                                  provider_kind=provider_kind,
-                                  max_milestones=max_milestones)
+    result = compile_mission_plan(goal, call_fn, traces=prompt_traces, provider=provider,
+                                  provider_kind=provider_kind, max_milestones=max_milestones,
+                                  project_facts=repo_facts_block(repo_root) if repo_root else "")
     evidence_dir = mission_evidence_dir(project_id, mission.id, root)
     ref_prefix = ""
     if mission.orders:

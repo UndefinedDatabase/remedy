@@ -25,7 +25,15 @@ HEADER_CONSTRAINTS_MARKER = "\n\nConstraints the plan must honour:\n"
 
 _UNIT_BREAK_RE = re.compile(r"(?<=[.!?])\s+|;\s*|\n+")
 _LIST_MARKER_RE = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)]|#{1,6})[ \t]+", re.MULTILINE)
-_QUOTED_RE = re.compile(r"\"[^\"\n]*\"|„[^“”\n]*[“”]|“[^”\n]*”|«[^»\n]*»")
+_QUOTED_RE = re.compile(r"```.*?```|`[^`\n]*`|\"[^\"\n]*\"|„[^“”\n]*[“”]|“[^”\n]*”|«[^»\n]*»", re.DOTALL)
+# A line that announces literal content ("… mit genau diesen zwei Sätzen:", "… with this text:"): the
+# lines after it, up to the next blank line, are that part's PAYLOAD, never parts of their own. On
+# 2026-10-17 the two sentences to insert counted as two more deliverables, so a one-file README order
+# was "several things" and walked the full lane.
+_PAYLOAD_INTRO_RE = re.compile(
+    r"\b(?:sätzen?|satz|texte?s?|zeilen?|inhalt|wortlaut|absatz|absätzen?|folgendes|sentences?|lines?|"
+    r"text|content|wording|paragraphs?)\b[^:\n]{0,40}:[ \t]*\n(?:[ \t]*\n)?(?=[ \t]*\S)(?:[^\n]*\S[^\n]*(?:\n|$))+",
+    re.IGNORECASE)
 _PATH_RE = re.compile(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b")
 
 # Scope fences: the files the work may touch.
@@ -34,12 +42,16 @@ _SCOPE = re.compile(
     r"änder\w*|veränder\w*|bearbeit\w*)"
     r"|\b(?:change|modify|edit|touch|änder\w*|veränder\w*)\b.{0,30}\b(?:only|ausschlie(?:ß|ss)lich|nur)\b"
     r"|\b(?:no|keine)\s+(?:other|anderen?|weiteren?|zusätzlichen?|unrelated|new|neuen?)\s+(?:files?|dateien?)\b"
-    r"|\bdo(?:\s+not|n't)\s+(?:create|add|change|modify|touch)\s+(?:any\s+)?(?:other|unrelated|new|extra)\s+files?\b",
+    r"|\bdo(?:\s+not|n't)\s+(?:create|add|change|modify|touch)\s+(?:any\s+)?(?:other|unrelated|new|extra)\s+files?\b"
+    # "Verändere sonst nichts", "change nothing else", "leave everything else unchanged".
+    r"|\b(?:change|modify|edit|touch|änder\w*|veränder\w*|bearbeit\w*)\b.{0,20}"
+    r"\b(?:(?:sonst|ansonsten)\s+nichts|nichts\s+(?:anderes|weiteres|sonst)|nothing\s+else|anything\s+else)\b"
+    r"|\b(?:alles\s+andere|everything\s+else)\b.{0,30}\b(?:unverändert|unchanged|untouched|as\s+it\s+is)\b",
     re.IGNORECASE)
-# Running or passing the project's own tests.
+# Running or passing the project's own tests ("Führe den vorhandenen Testbefehl aus" names no "test").
 _TESTS = re.compile(
     r"\b(?:run|execute|führ\w*|start\w*)\b.{0,40}\b(?:tests?|test\s?suite|npm\s+test|pytest|"
-    r"testsuite|unit\s?tests?)\b"
+    r"testsuite|unit\s?tests?|test[\s-]?(?:command|script|runner)s?|test(?:befehl|kommando|skript|lauf)\w*)\b"
     r"|\b(?:tests?|test\s?suite|testsuite)\b.{0,30}\b(?:pass|passes|stay\s+green|green|bestehen|grün)\b"
     r"|\bmake\s+sure\b.{0,20}\btests?\b",
     re.IGNORECASE)
@@ -97,7 +109,7 @@ class OrderScope:
         """How many separate actions the deliverables ask for, by their leading verbs."""
         count = 0
         for sentence in self.deliverables:
-            for clause in _ACTION_SPLIT_RE.split(sentence):
+            for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
                 words = clause.strip().lower().split()
                 count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
         return count
@@ -113,6 +125,16 @@ class OrderScope:
         return len(self.deliverables) == 1 and self.actions <= 1
 
 
+_PAYLOAD_HEAD_RE = re.compile(_PAYLOAD_INTRO_RE.pattern.split(r"[ \t]*\n", 1)[0] + r"(?=\s*\S)", re.IGNORECASE)
+
+
+def order_unit_head(unit: str) -> str:
+    """The words of a part that ASK, without the literal payload it announces (the text to insert):
+    "Ergänze … mit genau diesen zwei Sätzen: Dieses Repository …" asks "Ergänze … Sätzen:"."""
+    head = _PAYLOAD_HEAD_RE.search(unit)
+    return unit[:head.end()] if head else unit
+
+
 def _binds(clause: str) -> bool:
     return bool(_SCOPE.search(clause) or _TESTS.search(clause) or _APPROVAL.search(clause))
 
@@ -120,7 +142,7 @@ def _binds(clause: str) -> bool:
 def _has_work_clause(sentence: str) -> bool:
     """A clause that starts with an action verb and is no fence, test run or approval of its own:
     "Fix parse.py, add tests and change no other files" carries work beside its fence."""
-    for clause in _ACTION_SPLIT_RE.split(sentence):
+    for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
         words = clause.strip().lower().split()
         if words and words[0].strip("„\"'(") in _ACTION_VERBS and not _binds(clause):
             return True
@@ -129,7 +151,7 @@ def _has_work_clause(sentence: str) -> bool:
 
 def is_constraint_sentence(sentence: str) -> bool:
     """True when *sentence* only binds the work: a scope fence, a test run, approval, review or a report."""
-    text = sentence.strip()
+    text = order_unit_head(sentence.strip())
     if _has_work_clause(text):
         return False
     if _SCOPE.search(text):
@@ -156,14 +178,20 @@ def split_order_scope(order: str) -> OrderScope:
     return OrderScope(tuple(deliverables), tuple(constraints) + header)
 
 
+def _mask_after_colon(intro: str) -> str:
+    colon = intro.index(":") + 1
+    return intro[:colon] + "\0" * (len(intro) - colon)
+
+
 def _order_units(body: str) -> list[str]:
     """The sentences, list items and semicolon clauses of an order, in order, without list markers.
 
-    Quoted text ("Hello; world") is never split, and a line that only introduces a list ("Do
-    this:") is no part of its own.
+    Quoted text ("Hello; world") and the literal payload a line announces ("… these two sentences:")
+    are never split, and a line that only introduces a list ("Do this:") is no part of its own.
     """
     text = _LIST_MARKER_RE.sub("", body.strip())
     masked = _QUOTED_RE.sub(lambda m: "\0" * len(m.group()), text)
+    masked = _PAYLOAD_INTRO_RE.sub(lambda m: _mask_after_colon(m.group()), masked)
     units: list[str] = []
     start = 0
     for brk in [*_UNIT_BREAK_RE.finditer(masked), None]:
@@ -185,6 +213,16 @@ _TEST_REQUEST = re.compile(
 _TEST_PATH = re.compile(
     r"(?:^|/)(?:tests?|__tests__|spec|specs)/|(?:^|/)test_[^/]*$|[._-](?:test|spec)\.[A-Za-z0-9]+$"
     r"|_test\.go$", re.IGNORECASE)
+
+
+def order_test_request(order: str) -> str:
+    """The sentence of *order* that asks for the project's tests to RUN or pass, or "" when none does.
+
+    A constraint, a header `constraint:` line or a deliverable ("make sure the tests pass") counts;
+    a test the order asks to WRITE is a deliverable (`requests_test_files`), not a run.
+    """
+    scope = split_order_scope(order)
+    return next((s for s in (*scope.constraints, *scope.deliverables) if _TESTS.search(order_unit_head(s))), "")
 
 
 def requests_test_files(order: str) -> bool:

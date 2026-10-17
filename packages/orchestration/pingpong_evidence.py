@@ -228,7 +228,7 @@ def _build_summary_md(
         if ti.get("title"):
             lines.append(f"- Title: {ti['title']}")
         lines.append(f"- Hash: {ti.get('sha256', '')[:12]}...")
-        lines.append(f"- Size: ~{ti.get('tokens_estimated', 0)} tokens")
+        lines.append(f"- Task text size: ~{ti.get('tokens_estimated', 0)} tokens (an estimate, not usage)")
         lines.append("")
 
     # Rounds

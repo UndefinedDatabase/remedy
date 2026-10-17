@@ -277,7 +277,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.16`.
+Interface version: `1.17`.
 
 ### Envelope
 
@@ -313,6 +313,7 @@ Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
 Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
+Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
 Story phrase `planned_tasks`: `n`.
 Story phrase `working_on_file`: `file`, `round`.
@@ -321,6 +322,7 @@ Story phrase `changed_files`: `n`.
 Story phrase `no_file_changed`: none.
 Story phrase `no_test_command`: none.
 Story phrase `tests_not_run`: none.
+Story phrase `tests_not_requested`: none.
 Story phrase `tests_passed`: `n`.
 Story phrase `tests_failed`: `n`.
 Story phrase `provider_unavailable`: `provider`.
@@ -391,11 +393,12 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 | `--commit` | yes | no | yes | no | Implies --apply: apply each job as `remedy job apply --approve --commit` does, landing one commit of exactly its copied files on your current branch, as you, with this one line as its first line, followed by the job's number when the mission has several jobs; each job runs only after the one before it is committed. Refused before any step with --plan-only, another commit flag, a dirty tree or a detached HEAD |
 | `--commit-auto` | yes | no | no | no | As --commit, with a first line Remedy writes from the job's title or the mission's goal |
 | `--commit-with-history` | yes | no | no | no | Implies --apply: merge each job's commits, one per applied task step, onto your current branch with git merge --no-ff instead of copying, as `remedy job apply --approve --commit-with-history` does; each job runs only after the one before it is merged |
+| `--capture-review` | yes | no | no | no | Leave a review report of this walk under the data root's review_reports folder: what was asked and the configuration, the lane, the planning calls, each piece of work with its steps and attempts, phase times, measured usage, Pi turns and tool calls, verification, changed files, review verdicts, errors and outcome, written at the start and finished however the walk ends; the review ZIP carries the last ten |
 | `--push` | yes | no | no | no | With a commit flag only: push your branch to its configured upstream once, after the mission's last job, never forced; refused alone and, before any step, without an upstream; refused while any blocking criteria of the mission contract are unmet, naming those still open. The config key apply.push_after_mission does the same |
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `invalid_argument`, `invalid_budget`, `order_already_running`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
-Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `order_budget`, `order_id`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
+Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `order_budget`, `order_id`, `push`, `review_report`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.
 
 - `contract`: `amendments`, `criteria`, `schema`, `template`
@@ -405,8 +408,10 @@ Keys under the answer keys: see below.
 - `cost`: `cost_usd`, `job_ids`, `mirror_errors`, `mirror_failed_job_ids`, `roles`, `show_cost_usd`
   - `mirror_errors`: `*`
   - `roles`: `cache_read`, `cost_usd`, `harness_invocations`, `model_turns`, `role`, `tokens_in`, `tokens_out`
-- `jobs`: `job_id`, `tasks`
+- `jobs`: `job_id`, `tasks`, `verification`
   - `tasks`: `deliverable`, `title`
+  - `verification`: `reason`, `request`, `required`, `runs`, `status`
+    - `runs`: `blocking`, `check_id`, `command`, `source`, `status`, `task_id`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
 - `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
   - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
@@ -418,6 +423,7 @@ Keys under the answer keys: see below.
   - `used`: `calls`, `cost_usd`, `elapsed_minutes`, `tokens`
 - `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `repositories`, `sha`, `source`, `unchecked_blocking_criteria`
   - `repositories`: `branch`, `error`, `pushed`, `ref`, `remote`, `repo`, `sha`
+- `review_report`: `file`, `report_id`, `status`
 - `steps`: `detail`, `name`, `status`
 
 #### `remedy status run`
@@ -795,9 +801,32 @@ Keys under the answer keys: see below.
 - `exit_codes`: `code`, `meaning`, `name`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
-- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`
+- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
   - `phrases`: `*`
   - `reasons`: `*`
+
+#### `remedy client execution`
+
+Command id: `client.execution`.
+Description: Show what this server offers an execution: each role's providers with their defaults, availability, isolation and installed models, which of them a client may choose over HTTP, the lanes, request flags, budget caps, verification statuses, review reports, phases and the routes that show progress (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: none.
+Answer keys: `budgets`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
+Keys under the answer keys: see below.
+
+- `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`
+  - `pi_per_call`: `max_input_tokens`, `max_turns`
+- `phases`: `do_steps`, `story_steps`
+- `review_report`: `body_flag`, `cli_flag`, `zip_newest`
+- `roles`: `*`
+  - `*`: `default_model`, `default_provider`, `providers`, `selectable_over_http`
+    - `providers`: `available`, `id`, `isolation`, `models`, `not_offered_reason`, `offered_over_http`
+- `verification`: `command`, `command_over_http`, `statuses`
 
 #### `remedy client changes`
 
@@ -869,13 +898,13 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`.
+Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
 - `next`: `action`, `route`
   - `route`: `method`, `path`
-- `numbers`: `calls`, `duration_s`, `rounds`, `tokens_in`, `tokens_out`
+- `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`
 - `state_detail`: `changed_files`, `decision_id`, `file`, `question`, `reason`, `round`
   - `reason`: `args`, `key`
     - `args`: `*`
@@ -884,6 +913,7 @@ Keys under the answer keys: see below.
     - `args`: `*`
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
+- `verification`: `required`, `status`
 
 #### `remedy client diff`
 

@@ -31,7 +31,7 @@ from tests.orchestration.scale_harness import (
     filler_files,
 )
 
-MATRIX_VERSION = 1
+MATRIX_VERSION = 2
 
 README = {"README.md": "# Project\n\nA project.\n"}
 PY_PROJECT = {"src/add.py": "def add(a, b):\n    return a - b\n",
@@ -101,6 +101,29 @@ CASES: list[dict[str, Any]] = [
     {"id": "deliverable-report-file", "klass": "deliverable", "files": {**README, "package.json": "{}\n"},
      "order": "Write a report of the npm test results to TEST_REPORT.md. Change no other files.",
      "expect": {"lane": "bounded", "deliverable": "TEST_REPORT.md", "jobs": 1, "tasks": 1}},
+    # Version 2 (exec-1017): the 2026-10-17 incident order and the honest verification states.
+    {"id": "incident-readme-german-payload", "klass": "incident",
+     "files": {**README, "package.json": '{"scripts": {"test": "node --test"}}\n'},
+     "order": "Ergänze am Ende der Datei `README.md` den Abschnitt `## Testbetrieb` mit genau diesen zwei Sätzen:\n\n"
+              "Dieses Repository dient ausschließlich dazu, Codeänderungen sicher zu testen.\n"
+              "Alle Änderungen werden vor der Übernahme geprüft.\n\n"
+              "Verändere sonst nichts. Führe den vorhandenen Testbefehl aus. Übernimm die Änderungen nicht automatisch.",
+     "project_tests_exit": 0,
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "deliverable": "README.md",
+                "verification": "passed"}},
+    {"id": "required-test-command-fails", "klass": "verification",
+     "files": {**README, "package.json": '{"scripts": {"test": "node --test"}}\n'},
+     "order": "Fix the typo in README.md. Run the test command.", "project_tests_exit": 1,
+     "expect": {"lane": "bounded", "jobs": 1, "verification": "failed", "run_step": "failed"}},
+    {"id": "required-test-command-missing", "klass": "verification", "files": README,
+     "order": "Fix the typo in README.md. Run npm test.", "project_tests_exit": 0,
+     "expect": {"lane": "bounded", "jobs": 1, "verification": "not_run", "run_step": "done"}},
+    {"id": "no-test-requested", "klass": "verification", "files": README,
+     "order": "Fix the typo in README.md.", "project_tests_exit": 0,
+     "expect": {"lane": "bounded", "jobs": 1, "verification": "not_required"}},
+    {"id": "failed-reviewer", "klass": "failure", "files": README, "reviewer_fails": True,
+     "order": "Fix the typo in README.md.",
+     "expect": {"lane": "bounded", "jobs": 1, "run_step": "failed"}},
     {"id": "failure-planner-timeout", "klass": "failure", "files": {**PY_PROJECT, **README},
      "order": "Improve error handling everywhere in the project.", "planner_error": "TimeoutError",
      "expect": {"lane": "full", "honest_failure": True, "max_planner_calls": 2}},
@@ -131,6 +154,17 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
                 builds[_name] += 1
                 return _original(self, *args, **kwargs)
             patch.setattr(FakeProvider, method, counted)
+        if case.get("reviewer_fails"):
+            from packages.orchestration.pingpong_provider import ReviewerOutput
+            patch.setattr(FakeProvider, "review", lambda self, *a, **k: ReviewerOutput(
+                verdict="fail", summary="the change misses the order", provider="fake"))
+        if "project_tests_exit" in case:
+            import subprocess
+
+            from packages.orchestration import dod_runners
+            patch.setattr(dod_runners, "run_guarded_dod_process_command",
+                          lambda cmd, *, timeout_sec, cwd, env_overlay=None, _code=case["project_tests_exit"]:
+                          subprocess.CompletedProcess(list(cmd), _code, b"", b""))
         argv = ["do", case["order"], "--repo", ".", "--builder-provider", "fake",
                 "--reviewer-provider", "fake", "--json", "--no-ui", *case.get("flags", ["--run-unattended"])]
         out, began = io.StringIO(), time.monotonic()
@@ -159,6 +193,7 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
         "failed_detail": next((s["detail"][:160] for s in data.get("steps", []) if s["status"] == "failed"),
                               str(data.get("message") or "")[:160]),
         "run_detail": steps.get("run", {}).get("detail", "")[:160],
+        "verification": [(job.get("verification") or {}).get("status") for job in data.get("jobs") or []],
         "order_budget_calls": (data.get("order_budget") or {}).get("planner_calls"),
         "rationale": plan_detail.split("lane: ", 1)[-1].split("; no contract")[0][:200] if plan_detail else study_detail[:200],
     }
@@ -188,6 +223,10 @@ def check_expectations(case: dict[str, Any], record: dict[str, Any]) -> list[str
         problems.append("a high-risk one-file order took the bounded lane")
     if expect.get("run_needs_approval") and record["steps"].get("run") != "stopped":
         problems.append("an ambiguous order ran without approval")
+    if "verification" in expect and record["verification"] != [expect["verification"]]:
+        problems.append(f"verification: expected [{expect['verification']!r}], got {record['verification']!r}")
+    if "run_step" in expect and record["steps"].get("run") != expect["run_step"]:
+        problems.append(f"run step: expected {expect['run_step']!r}, got {record['steps'].get('run')!r}")
     if expect.get("honest_failure") and record["steps"].get("shape") != "failed":
         problems.append("a failing planner did not end the walk as failed")
     return problems

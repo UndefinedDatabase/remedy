@@ -4,6 +4,7 @@
 # A deletion round removes an entry in the same commit that removes its module.
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.client_interface
+apps.cli.client_interface_execution
 apps.cli.client_interface_story
 apps.cli.command_catalog
 apps.cli.command_catalog_client
@@ -196,6 +197,7 @@ packages.orchestration.evidence_index
 packages.orchestration.evidence_mode
 packages.orchestration.exec_guard
 packages.orchestration.execution_config
+packages.orchestration.execution_options
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
 packages.orchestration.fake_deliverable
@@ -253,6 +255,7 @@ packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_file
 packages.orchestration.order_ledger
 packages.orchestration.order_scope
+packages.orchestration.order_verification
 packages.orchestration.ownership
 packages.orchestration.ownership_phrases
 packages.orchestration.patch_apply
@@ -261,6 +264,7 @@ packages.orchestration.path_utils
 packages.orchestration.pause_control
 packages.orchestration.permissions
 packages.orchestration.pi_events
+packages.orchestration.pi_loop_limits
 packages.orchestration.pi_provider
 packages.orchestration.pi_turn_counts
 packages.orchestration.pingpong_call_record
@@ -306,6 +310,7 @@ packages.orchestration.repo_mission_reconcile
 packages.orchestration.report_task_record
 packages.orchestration.repository_snapshot
 packages.orchestration.result_tour
+packages.orchestration.review_reports
 packages.orchestration.review_scope
 packages.orchestration.review_subject
 packages.orchestration.reviewer

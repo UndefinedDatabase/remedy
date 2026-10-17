@@ -451,6 +451,15 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   fi
 fi
 
+# --- Review reports (operator order exec-1017, D5) ---
+# The newest ten reports `remedy do run --capture-review` left (failed and cancelled runs included),
+# always, with no argument and no job id: review_reports/ holds them, index.json and INDEX.md. With
+# none, the index says so and lists none. They are staged into the same byte source as the
+# evidence above, redacted again on the way.
+REPORTS_PREFIX="review_reports"
+REPORT_COUNT="$(python3 scripts/stage_review_reports.py --dest "$EVIDENCE_STAGING/$REPORTS_PREFIX")"
+echo "Review reports packaged: ${REPORT_COUNT} (newest first; see $REPORTS_PREFIX/INDEX.md)"
+
 # --- The EXACT repo-root outputs THIS invocation generates (F3, round 29 / F1, round 34) ---
 # The only packaging output that can appear in `git status` at manifest-build time is the root
 # manifest; the status-bearing final ZIP is published only at the very end, by the coordinator, and a
@@ -513,16 +522,14 @@ fi
 
 # --- The staged evidence file list (typed no-follow walk of the snapshot; includes the manifest
 #     is NOT here — the manifest is a repo-root member). Built AFTER the manifest so the list is
-#     complete for the archive builder. ---
-if [[ -n "$EVIDENCE_DIR" ]]; then
-  if ! python3 scripts/stage_review_evidence.py list \
-       --root "$EVIDENCE_STAGING" --nul-out "$TMP_EV0" --text-out "$TMP_EV0.txt"; then
-    echo "Evidence staging tree contains an unsafe member." >&2
-    exit 2
-  fi
-  cat "$TMP_EV0.txt" >> "$TMP"
-  rm -f "$TMP_EV0.txt"
+#     complete for the archive builder. The staging root always holds review_reports/. ---
+if ! python3 scripts/stage_review_evidence.py list \
+     --root "$EVIDENCE_STAGING" --nul-out "$TMP_EV0" --text-out "$TMP_EV0.txt"; then
+  echo "Evidence staging tree contains an unsafe member." >&2
+  exit 2
 fi
+cat "$TMP_EV0.txt" >> "$TMP"
+rm -f "$TMP_EV0.txt"
 
 sort -u "$TMP" -o "$TMP"
 
@@ -534,12 +541,8 @@ sort -u "$TMP" -o "$TMP"
 # intermediate ZIP, so nothing is deleted or renamed here.
 cd "$ROOT"
 
-EV_ROOT_ARG=""
-EV_FILES_ARG=""
-if [[ -n "$EVIDENCE_DIR" ]]; then
-  EV_ROOT_ARG="$EVIDENCE_STAGING"
-  EV_FILES_ARG="$TMP_EV0"
-fi
+EV_ROOT_ARG="$EVIDENCE_STAGING"
+EV_FILES_ARG="$TMP_EV0"
 
 # Round 20: Subject, Content-Proof and the generated plan all live in the STAGED snapshot, never
 # the original EVIDENCE_DIR.
@@ -552,7 +555,7 @@ fi
 if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/current_change_content_proof.json" ]]; then
   CONTENT_PROOF_ARG="$STAGED_CURRENT/current_change_content_proof.json"
 fi
-if [[ -n "$EV_ROOT_ARG" ]]; then
+if [[ -n "$EVIDENCE_DIR" ]]; then
   PLAN_OUT_ARG="$STAGED_CURRENT/review_archive_plan.json"
   # Stale plan from a prior zip build may have been copied during evidence
   # staging. Delete it — build_review_zip.py generates a fresh one at this
@@ -672,6 +675,10 @@ for name, status in ce.get('root_artifacts', {}).items():
   done <<< "$EXPECTED_EVIDENCE"
 fi
 
+if ! grep -qxF "$REPORTS_PREFIX/index.json" <<< "$ZIP_LISTING"; then
+  VERIFY_ERRORS="${VERIFY_ERRORS}Review report index missing from zip: $REPORTS_PREFIX/index.json\n"
+fi
+
 STALE_EV="$(echo "$ZIP_LISTING" | grep -E '^remedy-job-evidence-' || true)"
 if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
@@ -724,6 +731,7 @@ du -h "$ZIP_FULL_PATH"
 echo "Included files: $(echo "$ZIP_LISTING" | wc -l | tr -d ' ')"
 echo "Branch: $BRANCH"
 echo "Commit: $COMMIT"
+echo "Review reports: ${REPORT_COUNT} in $REPORTS_PREFIX/ (index: $REPORTS_PREFIX/INDEX.md)"
 if [[ -n "$EVIDENCE_DIR" ]]; then
   echo "Evidence: $CURRENT_PREFIX/"
 else

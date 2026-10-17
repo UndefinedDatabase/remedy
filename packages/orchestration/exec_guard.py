@@ -208,6 +208,8 @@ class ExecGuardPolicy:
     sandbox: SandboxSpec | None = None
     #: Asked about once a second while the child runs; True ends it as `cancelled` (a job stop).
     cancel_check: Callable[[], bool] | None = None
+    #: Handed each stdout chunk in the pump's thread; the Pi loop limit reads its live events here.
+    stdout_observer: Callable[[bytes], None] | None = None
 
 
 # WHY: the CHILD-side half of a policy — everything a `Popen` must pass to obey it — so a supervisor that owns its own PARENT half can still be limited.
@@ -285,10 +287,9 @@ class _StreamPump(threading.Thread):
     update of the three values against each other.
     """
 
-    def __init__(self, stream, cap: int | None) -> None:
+    def __init__(self, stream, cap: int | None, observer: Callable[[bytes], None] | None = None) -> None:
         super().__init__(daemon=True)
-        self._stream = stream
-        self._cap = cap
+        self._stream, self._cap, self._observer = stream, cap, observer or (lambda chunk: None)
         self._lock = threading.Lock()
         self._stored = bytearray()
         self._bytes_seen = 0
@@ -309,6 +310,7 @@ class _StreamPump(threading.Thread):
             chunk = self._stream.read1(_READ_CHUNK_BYTES)
             if not chunk:
                 break
+            self._observer(chunk)
             with self._lock:
                 self._bytes_seen += len(chunk)
                 if self._cap is None:
@@ -497,7 +499,7 @@ def run_guarded(cmd: Sequence[str], policy: ExecGuardPolicy) -> ExecGuardResult:
     )
     # start_new_session=True makes the child its own group leader, so its pid IS the pgid.
     pgid = proc.pid
-    out_pump = _StreamPump(proc.stdout, policy.output_cap_bytes)
+    out_pump = _StreamPump(proc.stdout, policy.output_cap_bytes, policy.stdout_observer)
     err_pump = _StreamPump(proc.stderr, policy.output_cap_bytes)
     out_pump.start()
     err_pump.start()

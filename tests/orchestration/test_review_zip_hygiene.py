@@ -296,6 +296,7 @@ _REQUIRED_SCRIPTS = (
     "build_observability_index.py",
     "select_review_evidence.py",
     "stage_review_evidence.py",            # F8 (round 19): typed no-follow evidence staging
+    "stage_review_reports.py",             # exec-1017 D5: the newest ten review reports
 )
 _REQUIRED_PACKAGE_MODULES = (
     "packages/orchestration/__init__.py",

@@ -49,6 +49,7 @@ SERVER_TOKEN = "f253-public-api-test-token"
 #: exists in this module, makes an unpinned route fail the suite.
 PINNED_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/interface"): "test_interface_route_answers_the_command_envelope",
+    ("GET", "/api/v1/execution"): "test_the_execution_route_answers_the_client_execution_command",
     ("GET", "/api/v1/digest"): "test_digest_route_answers_the_status_commands_client_object",
     ("GET", "/api/v1/jobs/{job}/proof"): "test_proof_route_answers_the_change_proof_command",
     ("GET", "/api/v1/changes"): "test_changes_route_answers_the_client_changes_command",
@@ -650,7 +651,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -922,7 +923,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1218,7 +1219,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1309,11 +1310,13 @@ def test_the_order_create_route_is_pinned_with_its_body_and_its_statuses():
     assert route.body == (
         ("order", "string"), ("no_llm", "flag"), ("new_mission", "flag"),
         ("force_job", "flag"), ("force_mission", "flag"), ("builder_provider", "string"),
-        ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"))
+        ("reviewer_provider", "string"), ("deadline", "string"), ("order_key", "string"),
+        ("capture_review", "flag"))
     assert route.refusals == ()
     assert route.refusal_default is None
     assert route.starts_order is True
     assert "`api_order_project_unknown`" in route.description
+    assert "`api_provider_not_offered`" in route.description
 
 
 def test_the_order_create_routes_body_matches_do_runs_own_flags():
@@ -1352,17 +1355,27 @@ def test_each_order_create_flag_set_false_passes_nothing(registered_project_slug
     assert calls == [(text, [])]
 
 
-@pytest.mark.parametrize("key, flag_name", [
-    ("builder_provider", "--builder-provider"),
-    ("reviewer_provider", "--reviewer-provider"),
-    ("deadline", "--deadline"),
+@pytest.mark.parametrize("key, flag_name, value", [
+    ("builder_provider", "--builder-provider", "fake"),
+    ("reviewer_provider", "--reviewer-provider", "ollama"),
+    ("deadline", "--deadline", "value-x"),
 ])
-def test_each_order_create_string_passes_its_value(registered_project_slug, key, flag_name):
+def test_each_order_create_string_passes_its_value(registered_project_slug, key, flag_name, value):
     text = _order_text(registered_project_slug)
     calls, start = _recording_order_starter(_fixture_order_record())
-    status, _body, _headers = _post_order({"order": text, key: "value-x"}, start)
+    status, _body, _headers = _post_order({"order": text, key: value}, start)
     assert status == 202
-    assert calls == [(text, [f"{flag_name}=value-x"])]
+    assert calls == [(text, [f"{flag_name}={value}"])]
+
+
+@pytest.mark.parametrize("body", [{"builder_provider": "claude-cli"}, {"reviewer_provider": "claude-cli"},
+                                  {"builder_provider": "ollama"}, {"builder_provider": "value-x"}])
+def test_a_provider_http_does_not_offer_is_refused_before_anything_starts(registered_project_slug, body):
+    """exec-1017 D6: the Claude Code CLI runs outside the tool sandbox; it is a command-line choice only."""
+    calls, start = _recording_order_starter(_fixture_order_record())
+    status, answer, _headers = _post_order({"order": _order_text(registered_project_slug), **body}, start)
+    assert (status, answer["error"]) == (400, "api_provider_not_offered")
+    assert calls == []
 
 
 def test_an_order_create_post_sends_the_order_text_to_the_starter_byte_for_byte(
@@ -2299,7 +2312,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2574,7 +2587,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.16"
+    assert public_api.PUBLIC_API_VERSION == "1.17"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
     assert expected["state"] == "planning" and story_problems(expected) == []
@@ -2657,3 +2670,15 @@ def test_the_diff_route_answers_the_client_diff_command(tcp_server, unix_server,
     assert (status, body["error"]) == (409, "diff_not_ready")
     status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/feed99/diff")
     assert (status, body["error"]) == (404, "invalid_job_id")
+
+
+def test_the_execution_route_answers_the_client_execution_command(monkeypatch):
+    """exec-1017 D6: the server's offer, the same envelope `remedy client execution --json` prints."""
+    from packages.orchestration.execution_options import execution_capabilities
+
+    monkeypatch.setattr("packages.orchestration.pi_provider._ollama_models", lambda host: ["m:latest"])
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/execution")
+    assert (route.method, route.twin, route.refusals) == ("GET", "client.execution", ())
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/execution")
+    assert status == 200 and body == {"ok": True, **execution_capabilities()} | {
+        key: body[key] for key in body if key not in execution_capabilities()}

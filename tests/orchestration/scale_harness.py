@@ -28,10 +28,13 @@ class FakePlannerService:
     fail_schemas: tuple[str, ...] = ()
     #: Seconds each answer takes (never slept; added to the recorded elapsed time only).
     calls: list[dict[str, Any]] = field(default_factory=list)
+    #: Each call's prompt, in call order, for the tests that read what the planner was shown.
+    prompts: list[str] = field(default_factory=list)
 
     def answer(self, schema_title: str, prompt: str) -> str:
         began = time.monotonic()
         self.calls.append({"schema": schema_title, "prompt_chars": len(prompt)})
+        self.prompts.append(prompt)
         if self.error is not None and (not self.fail_schemas or schema_title in self.fail_schemas):
             self.calls[-1]["error"] = type(self.error).__name__
             raise self.error

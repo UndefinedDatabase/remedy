@@ -237,7 +237,7 @@ def _cmd_do_order(
     commit: str | None = None,
     commit_auto: bool = False,
     commit_with_history: bool = False,
-    push_source: str = "", rehearse: bool = False,
+    push_source: str = "", rehearse: bool = False, capture_review: bool = False,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
@@ -302,11 +302,10 @@ def _cmd_do_order(
     from packages.orchestration.do_progress import DoProgress
     from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
     from packages.orchestration.do_summary import (
-        do_contract_summary_line,
         do_cost_summary,
-        do_cost_summary_lines,
         do_json_document,
         do_mission_contract,
+        do_summary_lines,
     )
 
     ctx = walk_do_sequence(DoContext(
@@ -335,7 +334,7 @@ def _cmd_do_order(
         commit_auto=commit_auto,
         commit_with_history=commit_with_history,
         push=bool(push_source),
-        push_source=push_source, rehearse=rehearse,
+        push_source=push_source, rehearse=rehearse, capture_review=capture_review,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         progress=None if json_output else DoProgress(),
@@ -361,10 +360,7 @@ def _cmd_do_order(
                 for number, task in enumerate(job["tasks"], start=1):
                     print(f"  job {job['job_id']} task {number}: {task['title']}"
                           f" — deliverable: {task['deliverable'] or '(none)'}")
-    contract_line = do_contract_summary_line(contract)
-    if contract_line is not None:
-        print(contract_line)
-    for line in do_cost_summary_lines(cost):
+    for line in do_summary_lines(contract, jobs, cost):
         print(line)
     for line in ctx.next_lines:
         print(f"Next: {line}")
@@ -400,7 +396,7 @@ def _cmd_do(
     commit: str | None = None, commit_auto: bool = False,
     commit_with_history: bool = False,
     push: bool = False,
-    new_mission: bool = False, rehearse: bool = False,
+    new_mission: bool = False, rehearse: bool = False, capture_review: bool = False,
 ) -> None:
     """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
 
@@ -482,7 +478,7 @@ def _cmd_do(
                   # Every commit flag implies --apply (T2_F270.md, DECISION F270 D4 (1)).
                   apply=apply or bool(mode), contract=contract,
                   commit=commit, commit_auto=commit_auto,
-                  commit_with_history=commit_with_history, push_source=push_source)
+                  commit_with_history=commit_with_history, push_source=push_source, capture_review=capture_review)
 
 
 def _cmd_job_run(
@@ -935,6 +931,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         commit_with_history=bool(getattr(args, "commit_with_history", False)),
         push=bool(getattr(args, "push", False)),
         new_mission=bool(getattr(args, "new_mission", False)), rehearse=bool(getattr(args, "rehearse", False)),
+        capture_review=bool(getattr(args, "capture_review", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

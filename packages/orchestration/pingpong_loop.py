@@ -2710,13 +2710,13 @@ def _call_with_retry(
 def provider_failure_status(error: str) -> str:
     """The final status of a run whose provider call failed for good.
 
-    R-1016, R-1027 and R-1035: three closures recorded ``provider_unavailable`` over a
-    call that timed out after its limit while the provider was there all along, which
-    sent readers looking for a missing binary. A call the timeout predicate recognises
-    ends ``provider_timeout``; every other failure keeps ``provider_unavailable``. The
-    error text beside it names the limit, as ``claude CLI timed out after 600s`` does.
+    R-1016, R-1027 and R-1035: three closures recorded ``provider_unavailable`` over a call that timed
+    out after its limit while the provider was there all along. A call the timeout predicate recognises
+    ends ``provider_timeout``, a Pi loop ended at its turn or token cap ``budget_exhausted`` (exec-1017
+    D4), every other failure ``provider_unavailable``; the error text beside it names the limit.
     """
-    return "provider_timeout" if is_timeout_error(error) else "provider_unavailable"
+    capped = "budget_exhausted" if ": pi_loop_limit:" in error else "provider_unavailable"
+    return "provider_timeout" if is_timeout_error(error) else capped
 
 
 def shared_call_id(out: Any, role: str, round_no: int, kind: str) -> str:

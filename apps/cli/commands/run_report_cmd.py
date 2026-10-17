@@ -87,7 +87,7 @@ def _print_text_report(run_id: str, data: dict) -> None:
         sha = ti.get("sha256", "")[:12]
         tokens = ti.get("tokens_estimated", 0)
         print(f"Task input: {kind_label}" + (f" ({title})" if title else ""))
-        print(f"Task size: ~{tokens} tokens")
+        print(f"Task text size: ~{tokens} tokens (an estimate of the task text, not usage)")
         print(f"Task hash: {sha}...")
         print()
 
@@ -151,9 +151,15 @@ def _print_text_report(run_id: str, data: dict) -> None:
     if ta:
         kind = ta.get("kind", "estimated")
         print(f"\nToken accounting: {kind}")
+        # exec-1017 D3: the measured usage comes first; the initial prompt's estimate is never shown
+        # alone under "actual" (on 2026-10-17 this page said ~210 beside 230,803 measured).
+        for role, used in sorted(((ta.get("usage_actuals") or {}).get("by_role") or {}).items()):
+            print(f"  {role} used: {used.get('input_tokens')} input, {used.get('output_tokens')} output "
+                  f"tokens over {used.get('provider_call_count')} call(s) (measured)")
         ctx_est = ta.get("context_tokens_estimated", 0)
         if ctx_est:
-            print(f"  Context sent: ~{ctx_est} tokens")
+            print(f"  Initial context sent: ~{ctx_est} tokens (an estimate of the first prompt; an agent "
+                  "loop resends it and its history every turn)")
         full_est = ta.get("full_repo_tokens_estimated", 0)
         if full_est:
             print(f"  Full repo estimate: ~{full_est} tokens")

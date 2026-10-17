@@ -148,6 +148,9 @@ DURABLE_CLASSES: tuple[DataRootClass, ...] = (
     DataRootClass("crash", "packages.orchestration.crash_report",
                   "never here; local crash reports `remedy doctor health` counts, "
                   "which nothing ever sends (F199)"),
+    DataRootClass("review_reports", "packages.orchestration.review_reports",
+                  "never; the review reports `remedy do run --capture-review` leaves, the last ten of "
+                  "which every review ZIP carries (exec-1017 D5)"),
     DataRootClass("logs", "packages.orchestration.structured_log",
                   "rotated by size by the setup itself; Remedy's operations log, "
                   "which is never evidence (F203)"),

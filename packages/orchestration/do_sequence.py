@@ -105,6 +105,7 @@ from packages.orchestration.order_ledger import (
     bind_order_ledger,
     reserve_waiting_budgets,
 )
+from packages.orchestration.review_reports import capture_review_report
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
 DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "apply")
@@ -123,7 +124,7 @@ def walk_do_sequence(ctx: DoContext,
     """
     steps = DO_STEP_TABLE if table is None else table
     ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
-    with bind_order_ledger(ctx.ledger):
+    with bind_order_ledger(ctx.ledger), capture_review_report(ctx):     # exec-1017 D5
         return _walk_steps(ctx, steps)
 
 
@@ -288,14 +289,26 @@ class OrderJobPlan:
         }
 
 
-def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
+def _deliverable_task_plan(plan: Any, order: str = "", repo: str = "") -> tuple[Any, list[Any]]:
     """The plan and its job tasks, every task a deliverable; raises :class:`OrderJobPlanError` otherwise.
 
     DECISION amend1011 D1 and operator amendment amend1014-do-golden-path-now D2: a plan is
     normalized before it may run, each inspection task folded into the task that needs it and
     the tasks serving one file merged into one; the planner's own plan is the last candidate,
-    and a plan still rejected afterwards fails.
+    and a plan still rejected afterwards fails. exec-1017 D2: first, a task whose deliverable the
+    *order* did not put in scope is left out, and a plan of nothing else fails.
     """
+    if order:
+        from packages.orchestration.do_lane import tracked_repo_files
+        from packages.orchestration.do_scope import out_of_scope_task_ids
+
+        outside = set(out_of_scope_task_ids(order, list(plan.tasks), tracked_repo_files(repo)))
+        if outside and outside == {task.id for task in plan.tasks}:
+            raise OrderJobPlanError("task plan rejected: every task delivers a file the order did not ask "
+                                    f"for ({', '.join(sorted(outside))})")
+        plan = plan.model_copy(update={"tasks": [
+            task.model_copy(update={"depends_on": [d for d in task.depends_on if d not in outside]})
+            for task in plan.tasks if task.id not in outside]})
     from packages.orchestration.job_plan import map_task_plan_to_tasks
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
@@ -479,7 +492,7 @@ def plan_order_job(
         # the provider receives and the manifest the trace records come from the
         # same composition — `prompt_chars` and `segment_manifest_chars` can no
         # longer describe two different prompts (R-0256).
-        plan_composed = compose_task_plan_prompt(plan_intake_dict)
+        plan_composed = compose_task_plan_prompt(plan_intake_dict, repo_root=target_repo_path)
         fp_result = plan_job_llm(
             plan_intake_dict,
             plan_call_fn,
@@ -492,7 +505,7 @@ def plan_order_job(
             ),
         )
         if fp_result.plan is not None:
-            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan)
+            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, mission, target_repo_path)
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
             fp_dict["_normalization"] = fp_result.transformations
@@ -675,7 +688,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         # that decides it, so the record cannot say "ollama" of a Claude CLI
         # run (amend0920-selfuse-real, DECISION D1). Without a provider the
         # compiler plans deterministically.
-        outcome = plan_mission(project_id, ctx.mission_id, call_fn,
+        outcome = plan_mission(project_id, ctx.mission_id, call_fn, repo_root=ctx.repo_root,
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
@@ -706,7 +719,8 @@ def _deterministic_plan_for_invented_scope(
         ctx.order, mission_plan_text(outcome.plan), tracked_repo_files(ctx.repo_root))
     if not invented:
         return outcome, ""
-    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name)
+    kept = plan_mission(project_id, ctx.mission_id, None, provider=planner_name, provider_kind=planner_name,
+                        repo_root=ctx.repo_root)
     return kept, (f"; the planner's plan named files the order did not request ({', '.join(invented)}), "
                   f"so the deterministic plan of the order's own deliverables was kept")
 
@@ -763,6 +777,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         merge_contract_slice_into_dod,
         record_job_milestone,
     )
+    from packages.orchestration.order_verification import require_order_tests
     from packages.orchestration.repo_mission import link_order_job
 
     lane = settle_do_lane(ctx)
@@ -798,6 +813,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if milestone_id is not None and str(target.project.id) == str(ctx.project.id):
             record_job_milestone(job_id, milestone_id)
         merge_contract_slice_into_dod(mission, milestone_id, job_id, hold_on_milestone=False)
+        require_order_tests(job_id, ctx.order)     # exec-1017 D2: a test run the order asks for blocks
         grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)
@@ -816,7 +832,11 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
 
 
 def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
-    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}]}``."""
+    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}], verification}``.
+
+    ``verification`` is `order_verification.job_verification` (exec-1017 D2), None for a job not found.
+    """
+    from packages.orchestration.order_verification import job_verification
     from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.task_deliverables import task_deliverable
 
@@ -826,7 +846,8 @@ def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
         tasks = [] if job is None else [
             {"title": task.title, "deliverable": task_deliverable(task)}
             for task in job.tasks]
-        listing.append({"job_id": job_id, "tasks": tasks})
+        listing.append({"job_id": job_id, "tasks": tasks,
+                        "verification": None if job is None else job_verification(job)})
     return listing
 
 

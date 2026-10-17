@@ -15,8 +15,15 @@ from typing import Any
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
     "changes", "ended_at", "job_id", "matches", "next", "note_open", "numbers", "order",
-    "started_at", "state", "state_detail", "steps", "updated_at",
+    "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
+
+#: A job's verification as `order_verification.job_verification` answers it (exec-1017 D2): the
+#: `do.run` answer's `jobs` carry it whole; the story carries only `status` and `required`.
+JOB_VERIFICATION_KEY_TREE: dict[str, Any] = {
+    "status": {}, "required": {}, "request": {}, "reason": {},
+    "runs": {"source": {}, "task_id": {}, "check_id": {}, "status": {}, "command": {}, "blocking": {}},
+}
 
 #: A phrase or a reason: its key, and its arguments by name; `story`'s phrases and reasons name them.
 _WORD_TREE: dict[str, Any] = {"key": {}, "args": {"*": {}}}
@@ -29,21 +36,22 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "steps": {"id": {}, "status": {}, "phrase": _WORD_TREE, "tokens": {"in": {}, "out": {}},
               "tasks": {"title": {}, "status": {}, "rounds": {}, "files": {}}},
     "changes": {"path": {}, "added": {}, "removed": {}},
-    "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "rounds": {}},
+    "numbers": {"duration_s": {}, "tokens_in": {}, "tokens_out": {}, "calls": {}, "model_turns": {}, "rounds": {}},
+    "verification": {"status": {}, "required": {}},
 }
 
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`
 #: and `reasons` each key is a word mapped to the names of its arguments.
 STORY_WORDS_KEY_TREE: dict[str, Any] = {
     "states": {}, "step_ids": {}, "step_statuses": {}, "next_actions": {},
-    "phrases": {"*": {}}, "reasons": {"*": {}}, "questions": {},
+    "phrases": {"*": {}}, "reasons": {"*": {}}, "questions": {}, "verification_statuses": {},
 }
 
 #: Each list of the `story` key and the label its page line carries.
 STORY_WORD_LABELS: tuple[tuple[str, str], ...] = (
     ("states", "Story states"), ("step_ids", "Story steps"),
     ("step_statuses", "Story step statuses"), ("next_actions", "Story next actions"),
-    ("questions", "Story questions"),
+    ("questions", "Story questions"), ("verification_statuses", "Story verification statuses"),
 )
 
 

@@ -68,6 +68,7 @@ from apps.cli.client_interface import (
     render_client_interface_markdown,
     write_client_interface_page,
 )
+from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
@@ -94,7 +95,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.16"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.17"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -438,10 +439,14 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset(),
         "passes its caller's keywords through; every call on these operations' paths passes none",
     ),
+    "apps.cli.commands.client_cmd:_cmd_client_execution:**capabilities": (
+        frozenset(CLIENT_EXECUTION_ANSWER_KEYS),
+        "the keys execution_capabilities in packages/orchestration/execution_options.py returns",
+    ),
     "apps.cli.commands.do_cmd:_cmd_do_order:**document": (
         frozenset({
             "contract", "cost", "job_ids", "jobs", "landed", "mission_id", "mission_plan_path",
-            "next", "order_budget", "order_id", "push", "shape", "shape_source", "steps",
+            "next", "order_budget", "order_id", "push", "review_report", "shape", "shape_source", "steps",
             "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
         }),
         "the keys do_json_document in packages/orchestration/do_summary.py returns",
@@ -551,7 +556,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
             "changes", "ended_at", "job_id", "next", "note_open", "numbers", "order",
-            "started_at", "state", "state_detail", "steps", "updated_at",
+            "started_at", "state", "state_detail", "steps", "updated_at", "verification",
         }),
         "the keys build_client_story in packages/orchestration/client_story.py returns, shared "
         "with GET /api/v1/jobs/{job}/story (DECISION amend1015f D14)",
@@ -817,8 +822,9 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     assert set(contract["criteria"]["check"]) == set(DoDCheck.model_fields)
     assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_summary,
                                                             "do_cost_summary")
-    assert _tree_names(trees["jobs"]) == _dict_literal_keys(_REPO_ROOT / do_sequence,
-                                                            "do_job_task_listing")
+    assert _tree_names(trees["jobs"]) == (
+        _dict_literal_keys(_REPO_ROOT / do_sequence, "do_job_task_listing")
+        | _dict_literal_keys(_REPO_ROOT / "packages/orchestration/order_verification.py", "job_verification"))
     assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
     assert set(trees["landed"]) == _expression_keys(do_apply, "ctx.landed")
     assert set(trees["push"]) == (_returned_dict_keys(do_apply, "_do_push_record")
@@ -1438,6 +1444,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     diffed = answer("client.diff", ["client", "diff", job_id[:8]], 0)
     assert diffed["state"] == "applied" and diffed["files"], diffed
     assert {("files", "patch"), ("files", "change")} <= _key_paths(_key_tree(diffed))
+    # The server's execution offer (exec-1017 D6), its Ollama pointed at a closed local port.
+    env["REMEDY_OLLAMA_HOST"] = "http://127.0.0.1:9"
+    offered = answer("client.execution", ["client", "execution"], 0)
+    assert {("roles", "builder", "providers", "offered_over_http")} <= _key_paths(_key_tree(offered))
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
