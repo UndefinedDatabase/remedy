@@ -230,6 +230,9 @@ def _order_units(body: str) -> list[str]:
 # Writing a test is a deliverable ("add a regression test"); running the suite is a constraint.
 _TEST_REQUEST = re.compile(
     r"\b(?:add|write|create|extend|include|ergänze\w*|schreib\w*|erstell\w*|füg\w*)\s+"
+    # "Schreibe dazu einen Regressionstest" (lab order of 2026-10-17): a filler between the verb and
+    # the test kept the test from being a request, so the order walked the full lane.
+    r"(?:(?:dazu|auch|noch|bitte|zusätzlich|außerdem|also|too|additionally)\s+)*"
     r"(?:(?:a|an|some|new|the|more|einen|ein|eine|neue[nr]?|weitere)\s+)*"
     r"(?:(?:regression|unit|failing|reproducing)[ -]?)?(?:tests?|test\s?cases?|testfall|testfälle|"
     r"regressions?tests?)\b", re.IGNORECASE)
