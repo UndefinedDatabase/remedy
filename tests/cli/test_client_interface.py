@@ -95,7 +95,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.17"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.18"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -502,7 +502,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({
             "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
             "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
-            "job_states", "mission_statuses", "operations", "story",
+            "job_states", "mission_statuses", "operations", "order_job_phases", "story",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -547,11 +547,16 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_order:**payload": (
         frozenset({
-            "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+            "answer", "ended_at", "exit_code", "jobs", "order_file", "order_id", "started_at", "state",
         }),
         "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
         "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
         "F253 D14 (4))",
+    ),
+    "apps.cli.commands.job_stop_cmd:_print_status:**payload": (
+        frozenset({"archived", "consumed_count", "job_id", "job_status", "pending", "stopped"}),
+        "the keys StopStatus.to_json in packages/orchestration/safe_points.py returns, and the "
+        "job_status and stopped _print_status stores into that payload",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_story:**story": (
         frozenset({
@@ -1408,6 +1413,9 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # A result that landed cannot be declined (DECISION F304 D5).
     refused = answer("job.decline", ["job", "decline", job_id, "--reason", "not needed"], 3)
     assert refused["error"] == "job_already_applied"
+    # A completed job has nothing left to stop (exec-1017b: the stop route's 409).
+    unstoppable = answer("job.stop", ["job", "stop", job_id, "--reason", "not needed"], 1)
+    assert unstoppable["error"] == "job_not_stoppable"
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     exported = answer("job.evidence", ["job", "evidence", job_id], 0)
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
@@ -1555,6 +1563,7 @@ def _read_page_section(section: str) -> dict:
                   "answer_trees": {}, "story": {"phrases": {}, "reasons": {}}}
     story_labels = {label: key for key, label in STORY_WORD_LABELS}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
+              "Phases of an order's jobs": "order_job_phases",
               "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
               "Approval recommendations": "approval_recommendations",
               "Approval risks": "approval_risks"}

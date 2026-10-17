@@ -555,6 +555,11 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
         if recorded is not None:
             record, state = recorded, "ended"
     answer = order_answer(record) if state != "running" else None
+    from packages.orchestration.order_jobs import order_file_job_ids, order_jobs_view
+
+    # exec-1017b: the order's jobs while it runs and after, read from the missions' batches, so a
+    # client sees what runs, what waits and why without having to learn a job id first.
+    source = str(Path(record.order_file).resolve()) if record.order_file else ""
     return {
         "order_id": record.order_id,
         "state": state,
@@ -563,6 +568,7 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
         "exit_code": record.exit_code,
         "order_file": record.order_file,
         "answer": answer,
+        "jobs": order_jobs_view(order_file_job_ids(source, since=record.started_at)),
     }
 
 

@@ -80,8 +80,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
 #: client token's refusal `api_client_policy_refused` on the proof, run and order polls
 #: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and
-#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`.
-PUBLIC_API_VERSION = "1.17"
+#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`, and order
+#: exec-1017b to `1.18` for `POST /api/v1/jobs/{job}/stop` and an order's `jobs`.
+PUBLIC_API_VERSION = "1.18"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
