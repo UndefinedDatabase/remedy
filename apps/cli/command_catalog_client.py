@@ -91,7 +91,7 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("client.order", "job.cancel"),
+        related=("client.order", "job.abandon"),
         exit_codes=(0, 1, 2, 3),
     ),
     # F253 (DECISION F253 D20): read the run the supervisor started for a job, as `client.order`

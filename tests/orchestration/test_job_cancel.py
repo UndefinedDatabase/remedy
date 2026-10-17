@@ -1,6 +1,6 @@
 """exec-1017c (R-1339) — a cancelled job ends for good, through the real `run_job` loop.
 
-The cancel is requested the way `remedy job cancel` requests it, sometimes from inside a provider
+The cancel is requested the way `remedy job abandon` requests it, sometimes from inside a provider
 call, so each test asks what the runner did with work in flight: it finished the call, started
 nothing new and ended the job `cancelled`, never `stopped` (which `remedy job run` would resume).
 Fake providers only; every data root lives in pytest's temporary directory.

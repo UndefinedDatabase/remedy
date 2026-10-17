@@ -651,9 +651,9 @@ Keys under the answer keys: see below.
 - `pending`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`
 - `stop`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`, `stopped_at`
 
-#### `remedy job cancel`
+#### `remedy job abandon`
 
-Command id: `job.cancel`.
+Command id: `job.abandon`.
 Description: End a job for good, under its mission: it never runs again and leaves the active views, its record and evidence stay; a running job ends at its next safe point. A completed result is declined, not cancelled.
 
 | Argument | Option | Required | Takes a value | Repeatable | Help |

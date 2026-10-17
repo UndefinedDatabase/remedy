@@ -14,6 +14,9 @@ start` (editable install) runs its code, so nothing is switched or pulled there.
 Order and job cancellation over CLI and HTTP, terminal state of abandoned work, story words for
 waiting and stopped work, lane honesty findings of the PR 360 review.
 
+## Steps
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+
 ## Do not touch
 The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
 provider defaults, `pi.*` caps, Universe's repositories.

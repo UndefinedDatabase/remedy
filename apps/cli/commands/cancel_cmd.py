@@ -1,11 +1,11 @@
-"""`remedy job cancel` and `remedy client cancel-order`: work the person no longer wants ends for good.
+"""`remedy job abandon` and `remedy client cancel-order`: work the person no longer wants ends for good.
 
 `remedy job stop` pauses a job so that `remedy job run` can resume it. A cancel is the other ending:
 the job is `cancelled`, never runs again and leaves the active views, while its record and evidence
 stay readable (`packages/orchestration/job_cancel.py`). `remedy client cancel-order` cancels an
 order the supervisor started, whatever it is doing: planning, running or waiting
 (`packages/orchestration/order_cancel.py`). Both are idempotent, and both are twinned over HTTP by
-`POST /api/v1/jobs/{job}/cancel` and `POST /api/v1/orders/{order}/cancel`.
+`POST /api/v1/jobs/{job}/abandon` and `POST /api/v1/orders/{order}/cancel`.
 
 Neither forwards to the supervisor: each writes its request durably and directly, and a running
 job or walk reads it at its next safe point, as it reads a stop.
@@ -17,7 +17,7 @@ from typing import Any
 from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.order_cancel import ORDER_CANCEL_ANSWER_KEYS, ORDER_CANCEL_ANSWER_TREE
 
-#: The refusal tokens and answer keys of `remedy job cancel`, as the machine client interface declares them.
+#: The refusal tokens and answer keys of `remedy job abandon`, as the machine client interface declares them.
 JOB_CANCEL_REFUSAL_TOKENS = ("ambiguous_job_id", "cancel_not_requested", "invalid_job_id",
                              "job_not_cancellable", "job_not_found")
 JOB_CANCEL_ANSWER_KEYS = ("already_cancelled", "cancel", "cancel_pending", "job_id", "job_status", "matches")
@@ -27,9 +27,9 @@ JOB_CANCEL_ANSWER_TREE: dict[str, Any] = {"cancel": {key: {} for key in ("job_id
 ORDER_CANCEL_REFUSAL_TOKENS = ("cancel_not_requested", "order_not_found")
 
 #: Both operations' tokens, answer keys and answer trees, as `apps/cli/client_interface.py` lists them.
-CANCEL_REFUSAL_TOKENS = {"job.cancel": JOB_CANCEL_REFUSAL_TOKENS, "client.cancel-order": ORDER_CANCEL_REFUSAL_TOKENS}
-CANCEL_ANSWER_KEYS = {"job.cancel": JOB_CANCEL_ANSWER_KEYS, "client.cancel-order": ORDER_CANCEL_ANSWER_KEYS}
-CANCEL_ANSWER_TREES = {"job.cancel": JOB_CANCEL_ANSWER_TREE, "client.cancel-order": ORDER_CANCEL_ANSWER_TREE}
+CANCEL_REFUSAL_TOKENS = {"job.abandon": JOB_CANCEL_REFUSAL_TOKENS, "client.cancel-order": ORDER_CANCEL_REFUSAL_TOKENS}
+CANCEL_ANSWER_KEYS = {"job.abandon": JOB_CANCEL_ANSWER_KEYS, "client.cancel-order": ORDER_CANCEL_ANSWER_KEYS}
+CANCEL_ANSWER_TREES = {"job.abandon": JOB_CANCEL_ANSWER_TREE, "client.cancel-order": ORDER_CANCEL_ANSWER_TREE}
 
 
 def _job_runner_alive(job_id: str) -> bool:
@@ -112,7 +112,7 @@ def _cmd_order_cancel(order_id: str, *, reason: str = "", source: str = "cli",
 
 
 COMMAND_HANDLERS = {
-    "job.cancel": lambda args: _cmd_job_cancel(
+    "job.abandon": lambda args: _cmd_job_cancel(
         getattr(args, "job_id", "") or "",
         reason=getattr(args, "reason", "") or "",
         source=getattr(args, "source", "") or "cli",

@@ -527,9 +527,7 @@ def _cmd_job_run(
         builder_provider=builder_provider, builder_model=builder_model,
         builder_effort=builder_effort, reviewer_provider=reviewer_provider,
         reviewer_model=reviewer_model, reviewer_effort=reviewer_effort,
-        repair_provider=repair_provider,
-        repair_model=repair_model,
-        repair_effort=repair_effort,
+        repair_provider=repair_provider, repair_model=repair_model, repair_effort=repair_effort,
     )
     if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
         fail(

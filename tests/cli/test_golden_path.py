@@ -213,7 +213,9 @@ class TestDoMission:
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        result = _run_do(repo, env, "fix src/main.py and update README.md", ["--json"])
+        # exec-1017c: planned only. The fake builder writes neither named file, so a run now ends
+        # blocked (`named_files_unchanged`, R-1342); the intake is persisted when the job is planned.
+        result = _run_do(repo, env, "fix src/main.py and update README.md", ["--json", "--plan-only"])
         assert result.returncode == 0, result.stderr
         job_id = json.loads(result.stdout)["job_ids"][0]
 

@@ -82,7 +82,7 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and
 #: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`, and order
 #: exec-1017b to `1.18` for `POST /api/v1/jobs/{job}/stop` and an order's `jobs`, and order exec-1017c
-#: to `1.19` for `POST /api/v1/jobs/{job}/cancel`, `POST /api/v1/orders/{order}/cancel` and an
+#: to `1.19` for `POST /api/v1/jobs/{job}/abandon`, `POST /api/v1/orders/{order}/cancel` and an
 #: order's `phase` and `cancel`.
 PUBLIC_API_VERSION = "1.19"
 

@@ -334,7 +334,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
-        related=("job.run", "job.show", "job.cancel"),
+        related=("job.run", "job.show", "job.abandon"),
         exit_codes=(0, 1, 2, 3),
     ),
     *JOB_CANCEL_COMMANDS,

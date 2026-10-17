@@ -39,9 +39,9 @@ def _job_stop_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
 
 
 def _job_cancel_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
-    """The command line `remedy job cancel` is run with (exec-1017c): `--reason` as the body gives it,
+    """The command line `remedy job abandon` is run with (exec-1017c): `--reason` as the body gives it,
     `--source=api`, then `--json`, `--` and the job."""
-    return ["job", "cancel", f"--reason={body.get('reason', '')}", "--source=api", "--json",
+    return ["job", "abandon", f"--reason={body.get('reason', '')}", "--source=api", "--json",
             "--", segments["job"]]
 
 
@@ -108,7 +108,7 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "job.decline": _job_decline_argv,
     "job.apply": _job_apply_argv,
     "job.stop": _job_stop_argv,
-    "job.cancel": _job_cancel_argv,
+    "job.abandon": _job_cancel_argv,
     "client.cancel-order": _order_cancel_argv,
 }
 

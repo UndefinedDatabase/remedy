@@ -143,12 +143,12 @@ def test_the_cancel_routes_hold_a_client_to_its_projects(tmp_path):
         calls.append((lock, argv))
         return {"ok": True}
 
-    for path in (f"/api/v1/jobs/{other}/cancel", "/api/v1/orders/aaaa000000000002/cancel"):
+    for path in (f"/api/v1/jobs/{other}/abandon", "/api/v1/orders/aaaa000000000002/cancel"):
         status, body, _headers = public_api.answer_public_api_post(path, b"{}", run, client=client)
         assert (status, body["error"]) == (403, "api_client_policy_refused"), path
         assert body["message"].endswith("nothing was run")
     assert calls == []
-    for path in (f"/api/v1/jobs/{own}/cancel", "/api/v1/orders/aaaa000000000001/cancel"):
+    for path in (f"/api/v1/jobs/{own}/abandon", "/api/v1/orders/aaaa000000000001/cancel"):
         status, body, _headers = public_api.answer_public_api_post(path, b"{}", run, client=client)
         assert status == 200, (path, body)
     assert [lock for lock, _argv in calls] == [own, "order:aaaa000000000001"]

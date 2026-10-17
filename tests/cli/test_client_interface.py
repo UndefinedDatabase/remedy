@@ -1456,7 +1456,7 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     assert refused_run["error"] == "run_not_found"
     # exec-1017c: a completed, applied job is never cancelled (its result was the person's to take),
     # and no order the supervisor started exists here; their real runs are tests/cli/test_cancel_cmd.py's.
-    assert answer("job.cancel", ["job", "cancel", job_id], 1)["error"] == "job_not_cancellable"
+    assert answer("job.abandon", ["job", "abandon", job_id], 1)["error"] == "job_not_cancellable"
     assert answer("client.cancel-order", ["client", "cancel-order", "0123456789abcdef"], 3)["error"] == (
         "order_not_found")
     # Remedy's own health passes or fails on this machine's state, so the run accepts either exit

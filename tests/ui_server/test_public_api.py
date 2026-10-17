@@ -62,7 +62,7 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/stop"):
         "test_the_stop_route_is_pinned_with_its_body_and_its_statuses",
-    ("POST", "/api/v1/jobs/{job}/cancel"):
+    ("POST", "/api/v1/jobs/{job}/abandon"):
         "test_the_cancel_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/orders/{order}/cancel"):
         "test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses",
@@ -1132,8 +1132,8 @@ def test_a_stop_post_runs_the_command_with_its_reason_and_the_api_door(body, rea
 
 def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
     """exec-1017c: a client ends a job for good without the command line."""
-    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/cancel")
-    assert (route.method, route.twin, route.body) == ("POST", "job.cancel", (("reason", "string"),))
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/abandon")
+    assert (route.method, route.twin, route.body) == ("POST", "job.abandon", (("reason", "string"),))
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_cancellable" in route.description
@@ -1142,15 +1142,15 @@ def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
 
 def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
     calls, run = _recording_runner()
-    status, _answer, _headers = _post("/api/v1/jobs/j1/cancel", {"reason": "not wanted"}, run)
+    status, _answer, _headers = _post("/api/v1/jobs/j1/abandon", {"reason": "not wanted"}, run)
     assert status == 200
-    assert calls == [("j1", ["job", "cancel", "--reason=not wanted", "--source=api", "--json", "--", "j1"])]
+    assert calls == [("j1", ["job", "abandon", "--reason=not wanted", "--source=api", "--json", "--", "j1"])]
 
 
 def test_a_cancel_of_a_completed_job_answers_409_with_the_commands_own_refusal():
     def run(_lock, _argv):
         return {"ok": False, "error": "job_not_cancellable", "message": "job j1 is completed"}
-    status, answer, _headers = _post("/api/v1/jobs/j1/cancel", {}, run)
+    status, answer, _headers = _post("/api/v1/jobs/j1/abandon", {}, run)
     assert (status, answer["error"]) == (409, "job_not_cancellable")
 
 

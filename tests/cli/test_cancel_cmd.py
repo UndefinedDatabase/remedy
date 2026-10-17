@@ -1,4 +1,4 @@
-"""exec-1017c — `remedy job cancel` and `remedy client cancel-order`, run as a client runs them.
+"""exec-1017c — `remedy job abandon` and `remedy client cancel-order`, run as a client runs them.
 
 Every `remedy` call is a subprocess with its own `REMEDY_DATA_DIR`, as in
 `tests/cli/test_client_order_cmd.py`; an order is started through `OrderLauncher` with a stand-in
@@ -52,8 +52,8 @@ def test_job_cancel_ends_a_job_that_never_ran_and_a_second_cancel_changes_nothin
     data_root = tmp_path / "data"
     job_id = _planned_job(tmp_path, data_root, monkeypatch)
 
-    code, first = _remedy(["job", "cancel", job_id[:8], "--reason", "not wanted"], tmp_path, data_root)
-    again_code, again = _remedy(["job", "cancel", job_id], tmp_path, data_root)
+    code, first = _remedy(["job", "abandon", job_id[:8], "--reason", "not wanted"], tmp_path, data_root)
+    again_code, again = _remedy(["job", "abandon", job_id], tmp_path, data_root)
     stop_code, stop = _remedy(["job", "stop", job_id], tmp_path, data_root)
 
     assert code == 0, first
@@ -66,8 +66,8 @@ def test_job_cancel_ends_a_job_that_never_ran_and_a_second_cancel_changes_nothin
 
 def test_job_cancel_refuses_an_unknown_and_a_path_shaped_job(tmp_path):
     data_root = tmp_path / "data"
-    assert _remedy(["job", "cancel", "ffffffffffffffff"], tmp_path, data_root)[1]["error"] == "job_not_found"
-    code, body = _remedy(["job", "cancel", "../x"], tmp_path, data_root)
+    assert _remedy(["job", "abandon", "ffffffffffffffff"], tmp_path, data_root)[1]["error"] == "job_not_found"
+    code, body = _remedy(["job", "abandon", "../x"], tmp_path, data_root)
     assert (code, body["error"]) == (2, "invalid_job_id")
 
 

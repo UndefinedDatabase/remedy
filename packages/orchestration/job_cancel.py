@@ -1,4 +1,4 @@
-"""A job ends for good: `remedy job cancel`, and the jobs of a cancelled order (exec-1017c, R-1339).
+"""A job ends for good: `remedy job abandon`, and the jobs of a cancelled order (exec-1017c, R-1339).
 
 `remedy job stop` pauses work on purpose: a stopped job keeps its pending tasks and `remedy job run`
 resumes it. A person who no longer wants the work had no way to say so: a `blocked` or `stopped`

@@ -56,7 +56,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy job apply` | 3 |
 | `remedy job decline` | 3 |
 | `remedy job stop` | 3 |
-| `remedy job cancel` | 3 |
+| `remedy job abandon` | 3 |
 | `remedy job pause` | 3 |
 | `remedy job unpause` | 3 |
 | `remedy job context` | 3 |

@@ -199,8 +199,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="POST",
-        path="/api/v1/jobs/{job}/cancel",
-        twin="job.cancel",
+        path="/api/v1/jobs/{job}/abandon",
+        twin="job.abandon",
         body=(("reason", "string"),),
         refusal_default=409,
         refusals=(
@@ -209,7 +209,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             ("ambiguous_job_id", 400),
         ),
         description=(
-            "Ends a job for good, as `remedy job cancel <job> --reason <reason> --json` does, "
+            "Ends a job for good, as `remedy job abandon <job> --reason <reason> --json` does, "
             "recorded as coming through `api`: it never runs again and leaves the digest's active "
             "jobs, while its record and evidence stay readable. A job no process runs is "
             "`cancelled` at once; a running one answers `cancel_pending` true and ends `cancelled` "
@@ -230,7 +230,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Cancels an order a `POST` to `/api/v1/orders` started, as `remedy client cancel-order "
             "<order> --json` does, whatever it is doing: a planning order stops before its next "
             "step (a planner call in flight finishes first), each of its jobs is cancelled as "
-            "`POST /api/v1/jobs/{job}/cancel` cancels one, no job of it starts afterwards and "
+            "`POST /api/v1/jobs/{job}/abandon` cancels one, no job of it starts afterwards and "
             "nothing of it is applied after the request. `phase` reads `cancelling` while the walk "
             "or a job still runs and `cancelled` once nothing does; `jobs` names what the cancel "
             "did to each job. An applied result stays applied; a result waiting for its apply stays "

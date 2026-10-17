@@ -201,7 +201,7 @@ cancel-order <order>` or `POST /api/v1/orders/{order}/cancel`: the walk reads th
 every step and before every apply, so the step in progress finishes (a planner or provider call in
 flight returns first), no later step runs, every job of the order is `cancelled` for good and
 nothing of it is applied afterwards; a result already waiting for its apply stays for you to apply
-or decline. One job is ended the same way with `remedy job cancel <job>`; `remedy job stop` only
+or decline. One job is ended the same way with `remedy job abandon <job>`; `remedy job stop` only
 pauses it, and `remedy job run` resumes a stopped job. A walk started in a terminal stops with
 Ctrl-C.
 

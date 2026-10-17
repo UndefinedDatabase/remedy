@@ -1,4 +1,4 @@
-"""The `job cancel` entry of the command catalog (operator order exec-1017c).
+"""The `job abandon` entry of the command catalog (operator order exec-1017c).
 
 Kept in a module of its own because `apps/cli/command_catalog.py` may not grow (its row in
 `docs/system/structure-ledger-v1.md`); `_BASE_CATALOG` splices `JOB_CANCEL_COMMANDS` in right after
@@ -11,9 +11,9 @@ from apps.cli.command_catalog_types import _JSON_OPT, ArgDef, CommandEntry
 
 JOB_CANCEL_COMMANDS: tuple[CommandEntry, ...] = (
     CommandEntry(
-        command_id="job.cancel",
+        command_id="job.abandon",
         group_id="job",
-        subcommand="cancel",
+        subcommand="abandon",
         description="End a job for good, under its mission: it never runs again and leaves the active views, its record and evidence stay; a running job ends at its next safe point. A completed result is declined, not cancelled.",
         action_class="write_metadata",
         supports_json=True,
