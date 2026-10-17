@@ -28,6 +28,7 @@ from pathlib import PurePosixPath
 from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_scope import order_scope_files, resolve_order_path
 from packages.orchestration.order_scope import (
+    is_scope_fence,
     is_test_path,
     requests_test_files,
     split_order_scope,
@@ -105,17 +106,22 @@ def order_risk(order: str, targets: list[str]) -> str:
 
 
 def _order_targets(order: str, tracked_files: list[str]) -> list[str]:
-    """The files an order's work is about: the files it names, else the tracked file its words name.
+    """The files an order's work is about: the files its deliverables name, else the files its scope
+    fence names, else the tracked document its words name.
 
-    A test file the order asks for beside its work is a companion, never a target of its own.
+    A file in a test run ("run pytest tests/x.py") or in a header constraint is never a target, and a
+    test file the order asks for beside its work is a companion, never a target of its own.
     """
-    named = explicit_order_paths(order)
+    scope = split_order_scope(order)
+    named = explicit_order_paths(" ".join(scope.deliverables))
+    if not named:
+        named = explicit_order_paths(" ".join(s for s in scope.constraints if is_scope_fence(s)))
     if requests_test_files(order):
         named = [path for path in named if not is_test_path(path)]
     if not named:
         # "Fix the typo in the readme": a tracked document whose name the order uses as a word. Only
         # documents, only long stems and only one match: "app" or "main" are words, not files.
-        by_word = [t for t in order_scope_files(order, tracked_files)
+        by_word = [t for t in order_scope_files(" ".join(scope.deliverables), tracked_files)
                    if PurePosixPath(t).suffix.lower() in _DOC_SUFFIXES
                    and len(PurePosixPath(t).stem) >= _MIN_WORD_STEM_CHARS]
         named = by_word if len(by_word) == 1 else []

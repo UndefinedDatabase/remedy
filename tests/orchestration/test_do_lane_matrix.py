@@ -47,6 +47,11 @@ MATRIX = [
      "src/add.py"),
     ("bug fix with an explicit test file",
      "Fix a bug in src/add.py and add a regression test in tests/test_add.py.", CODE, B, "src/add.py"),
+    ("a file only in a test run", "Fix the typo in README.md. Run pytest tests/test_add.py.", CODE, B,
+     "README.md"),
+    ("a file only in a header constraint",
+     "Fix the typo in README.md\n\nConstraints the plan must honour:\n- run tests/test_add.py\n"
+     "- change no other files", CODE, B, "README.md"),
     ("bug fix, tests only run", "Fix a bug in src/add.py. Run the tests.", CODE, B, "src/add.py"),
     ("feature in two files", "Add a feature to src/add.py and src/calc.js.", CODE, F, ""),
     ("typo without a suffix", "Fix the typo in the readme", CODE, B, "README.md"),

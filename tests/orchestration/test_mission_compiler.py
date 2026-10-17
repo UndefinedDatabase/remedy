@@ -771,6 +771,21 @@ class TestPlanMission:
         assert plan_version_of(outcome.mission) == 1
         assert outcome.plan_path.name == MISSION_PLAN_FILENAME
 
+    def test_the_milestone_dods_cost_no_provider_call(self, planned_mission):
+        """Scale audit 2026-10-17: the plan's call_fn is bound to the plan schema, so handing it to
+        the DoD compiler spent two calls per milestone on answers of the wrong shape."""
+        mission, call_fn = planned_mission
+        calls: list[str] = []
+
+        def counting(prompt: str, attempt: int) -> str:
+            calls.append(prompt[:20])
+            return call_fn(prompt, attempt)
+
+        outcome = plan_mission("proj", mission.id, counting)
+
+        assert len(calls) == 1 and outcome.source == "llm"
+        assert all(milestone.dod_ref for milestone in outcome.plan.milestones)
+
     def test_the_persisted_body_round_trips_back_into_the_model(
             self, planned_mission):
         mission, call_fn = planned_mission

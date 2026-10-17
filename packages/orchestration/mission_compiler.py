@@ -734,8 +734,11 @@ def plan_mission(
     provider: str = "",
     provider_kind: str = "",
     max_milestones: int | None = None,
+    dod_call_fn: Callable[[str, int], str] | None = None,
 ) -> MissionPlanOutcome:
     """Compile (or recompile) a mission's plan, persist it, render it.
+
+    *call_fn* serves only the plan; milestone DoDs are deterministic unless a DoD-bound *dod_call_fn* is given.
 
     A recompile KEEPS every prior version — the old body moves into
     ``_versions`` and the previous ``mission_plan.md`` stays on disk beside the
@@ -788,7 +791,7 @@ def plan_mission(
         append_trace_jsonl(prompt_traces, evidence_dir / "prompt_trace.jsonl")
     plan = attach_milestone_dods(
         result.plan, goal=goal, evidence_dir=evidence_dir,
-        call_fn=call_fn, ref_prefix=ref_prefix)
+        call_fn=dod_call_fn, ref_prefix=ref_prefix)
     # DECISION F269 D4 (2): one planner criterion per milestone, compiled by
     # F061's compiler with no provider, written before the plan so the record
     # this returns carries both.

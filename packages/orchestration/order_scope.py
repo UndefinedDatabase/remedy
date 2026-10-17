@@ -139,6 +139,11 @@ def is_constraint_sentence(sentence: str) -> bool:
     return bool(_TESTS.search(text) or _APPROVAL.search(text) or _REVIEW.search(text))
 
 
+def is_scope_fence(sentence: str) -> bool:
+    """True when *sentence* fences the work to files ("change only README.md")."""
+    return bool(_SCOPE.search(sentence))
+
+
 def split_order_scope(order: str) -> OrderScope:
     """Sort *order*'s sentences into deliverables and constraints (header constraints included)."""
     body, _, header_block = order.partition(HEADER_CONSTRAINTS_MARKER)
