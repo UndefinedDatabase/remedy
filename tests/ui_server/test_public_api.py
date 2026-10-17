@@ -2675,7 +2675,7 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert public_api.PUBLIC_API_VERSION == "1.19"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
-    assert expected["state"] == "planning" and story_problems(expected) == []
+    assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
 
     def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
         return [_tcp_request(tcp_server, "GET", path, headers=headers),

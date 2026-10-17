@@ -170,13 +170,14 @@ def test_a_budget_stop_asks_whether_to_extend(data_root, repo):
     assert story["next"]["route"]["path"].startswith(f"/api/v1/jobs/{job_id}/decisions/")
 
 
-@pytest.mark.parametrize(("state", "stop_source", "reason"), [
-    (RunState.STOPPED, "budget", "budget_exhausted"),
-    (RunState.STOPPED, "operator", "cancelled"),
-    (RunState.CANCELLED, "", "cancelled"),
-    (RunState.PAUSED, "", "paused"),
+@pytest.mark.parametrize(("state", "stop_source", "reason", "action"), [
+    (RunState.STOPPED, "budget", "budget_exhausted", "none"),
+    # exec-1017c (R-1340): a stop on request is resumable, so it is no cancel and it offers its resume.
+    (RunState.STOPPED, "operator", "stopped", "resume"),
+    (RunState.CANCELLED, "", "cancelled", "none"),
+    (RunState.PAUSED, "", "paused", "none"),
 ])
-def test_a_stopped_job_names_why(data_root, repo, monkeypatch, state, stop_source, reason):
+def test_a_stopped_job_names_why(data_root, repo, monkeypatch, state, stop_source, reason, action):
     import packages.orchestration.decision_queue as decision_queue
 
     monkeypatch.setattr(decision_queue, "list_decisions", lambda plan, events: [])  # answered
@@ -186,17 +187,20 @@ def test_a_stopped_job_names_why(data_root, repo, monkeypatch, state, stop_sourc
 
     assert story["state"] == "stopped"
     assert story["state_detail"] == {"reason": {"key": reason, "args": {}}}
-    assert story["next"] == {"action": "none", "route": None}
+    route = {"method": "POST", "path": f"/api/v1/jobs/{job_id}/run"} if action == "resume" else None
+    assert story["next"] == {"action": action, "route": route}
 
 
-def test_a_planned_job_reads_planning(data_root, repo):
+def test_a_planned_job_reads_queued_and_offers_its_run(data_root, repo):
+    """exec-1017c (R-1340): it read `planning`, its planning step `running`, with no next step."""
     from packages.orchestration.pingpong_job import parse_job_file
 
     job = parse_job_file(_JOB, str(repo))
     story = _story(job.job_id, data_root)
 
-    assert story["state"] == "planning"
-    assert _step(story, "planning")["status"] == "running"
+    assert (story["state"], story["state_detail"]) == ("queued", {})
+    assert story["next"] == {"action": "run", "route": {"method": "POST", "path": f"/api/v1/jobs/{job.job_id}/run"}}
+    assert _step(story, "planning")["status"] == "done"
     assert _step(story, "building")["status"] == "waiting"
     assert story["started_at"] is None and story["ended_at"] is None
     assert story["numbers"] == {"duration_s": None, "tokens_in": None, "tokens_out": None,
@@ -255,3 +259,20 @@ def test_an_open_decision_reads_waiting_and_names_its_answer_route(data_root, re
     assert story["next"] == {"action": "answer", "route": {
         "method": "POST", "path": f"/api/v1/jobs/{job_id}/decisions/dec%201"}}
 
+
+
+def test_a_job_queued_after_another_names_it_until_its_result_lands(data_root, repo, monkeypatch):
+    """The lab's job 537d7c3612864597 read `planning`, step `running`, next `none` (R-1340)."""
+    import packages.orchestration.job_apply as job_apply
+    from packages.orchestration.order_jobs import ORDER_JOB_WAITS_KEY
+    from packages.orchestration.pingpong_job import parse_job_file
+
+    job = parse_job_file(_JOB, str(repo))
+    _save(job.job_id, metadata={ORDER_JOB_WAITS_KEY: "aaaa000000000001"})
+
+    story = _story(job.job_id, data_root)
+    assert (story["state"], story["state_detail"]) == ("queued", {"after_job": "aaaa000000000001"})
+    assert story["next"] == {"action": "none", "route": None}      # the next step is that job's apply
+
+    monkeypatch.setattr(job_apply, "job_apply_landed", lambda job_id: True)
+    assert _story(job.job_id, data_root)["next"]["action"] == "run"

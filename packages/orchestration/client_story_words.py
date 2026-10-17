@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import json
 
-#: What the job is doing now, one word.
+#: What the job is doing now, one word. `queued` (exec-1017c, R-1340): planned and not running; its
+#: `state_detail.after_job` names the job of its order it runs after, when it waits for that one.
 STORY_STATES: tuple[str, ...] = (
     "reading", "planning", "working", "checking", "done", "done_applied", "stopped", "failed",
-    "waiting",
+    "waiting", "queued",
 )
 
 #: The five steps of every story, always in this order.
@@ -29,8 +30,9 @@ STORY_STEP_STATUSES: tuple[str, ...] = ("waiting", "running", "done", "skipped",
 
 #: The one next step the story names; `decline` is offered beside `apply` by every client and is
 #: never the one next step on its own. `retry` is named by no state since amend1015c D3: no route
-#: re-attempts a task that ended blocked (R-1331), and the list only grows.
-STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none")
+#: re-attempts a task that ended blocked (R-1331), and the list only grows. `run` starts a queued job
+#: that waits for nothing, `resume` a stopped one; both are `POST /api/v1/jobs/{job}/run` (exec-1017c).
+STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none", "run", "resume")
 
 #: Every phrase key a step carries, each with the names of its arguments.
 STORY_PHRASES: dict[str, tuple[str, ...]] = {
@@ -52,7 +54,8 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
     "declined": (),
 }
 
-#: Every reason key `state_detail.reason` carries while the job is stopped or failed.
+#: Every reason key `state_detail.reason` carries while the job is stopped or failed. `stopped` is a
+#: stop on request, resumable; `cancelled` is a cancel, which ends the job for good (exec-1017c).
 STORY_REASONS: dict[str, tuple[str, ...]] = {
     "provider_unavailable": ("provider",),
     "tests_failed": ("n",),
@@ -63,6 +66,7 @@ STORY_REASONS: dict[str, tuple[str, ...]] = {
     "cancelled": (),
     "paused": (),
     "unknown": (),
+    "stopped": (),
 }
 
 #: The job's verification status, `verification.status` (exec-1017 D2): its tests ran and passed or

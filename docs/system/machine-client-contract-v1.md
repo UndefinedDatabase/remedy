@@ -311,10 +311,10 @@ Approval risks: `low`, `medium`, `high`.
 
 The closed words of `remedy client story` and `GET /api/v1/jobs/{job}/story`. A phrase or a reason is `{key, args}`; its arguments are numbers, paths relative to the repository, and `provider`, a provider's id word.
 
-Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`.
+Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`, `queued`.
 Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
-Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
+Story next actions: `apply`, `decline`, `answer`, `retry`, `none`, `run`, `resume`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
 Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
@@ -342,6 +342,7 @@ Story reason `declined`: none.
 Story reason `cancelled`: none.
 Story reason `paused`: none.
 Story reason `unknown`: none.
+Story reason `stopped`: none.
 
 ### Operations
 
