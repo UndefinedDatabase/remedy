@@ -14,6 +14,7 @@ No planner redesign, no provider default, no new orchestrator.
 (only `order_budget` is added to the `do.run` answer).
 
 ## Constraints
+- Resource safety: pytest runs through one process tree at a time; no second suite beside a full run.
 - No real model call, no unattended loop, no install or restart.
 - Steps: one full local gate run at the end; structure ratchet: no listed function or file grows.
 - Commits at most 500 insertions.
