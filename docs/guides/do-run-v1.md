@@ -193,6 +193,15 @@ document and stderr silent (D4, D5).
 
 A step that stops or fails ends the walk; the steps after it are not called.
 
+An order the serve supervisor started (`POST /api/v1/orders`) is cancelled with `remedy client
+cancel-order <order>` or `POST /api/v1/orders/{order}/cancel`: the walk reads the request before
+every step and before every apply, so the step in progress finishes (a planner or provider call in
+flight returns first), no later step runs, every job of the order is `cancelled` for good and
+nothing of it is applied afterwards; a result already waiting for its apply stays for you to apply
+or decline. One job is ended the same way with `remedy job cancel <job>`; `remedy job stop` only
+pauses it, and `remedy job run` resumes a stopped job. A walk started in a terminal stops with
+Ctrl-C.
+
 ## Stop before apply
 
 Without `--apply` the walk ends at `apply` with the repository untouched and a
