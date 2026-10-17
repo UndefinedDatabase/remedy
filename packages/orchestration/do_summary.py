@@ -229,4 +229,5 @@ def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[s
         "landed": list(ctx.landed),
         "push": ctx.push_outcome,
         "next": list(ctx.next_lines),
+        "review_report": ctx.review_report,
     }

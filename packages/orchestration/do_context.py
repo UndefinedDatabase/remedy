@@ -158,6 +158,10 @@ class DoContext:
     cost_mirrors: dict[str, dict[str, Any]] = field(default_factory=dict)
     results: list[DoStepResult] = field(default_factory=list)
     next_lines: list[str] = field(default_factory=list)
+    #: `--capture-review` / the API's `capture_review`: the walk leaves a review report (exec-1017 D5).
+    capture_review: bool = False
+    #: The report the walk left, ``{report_id, status, file}``; None without `capture_review`.
+    review_report: dict[str, Any] | None = None
 
     @property
     def run_job_ids(self) -> list[str]:

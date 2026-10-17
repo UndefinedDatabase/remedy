@@ -105,6 +105,7 @@ from packages.orchestration.order_ledger import (
     bind_order_ledger,
     reserve_waiting_budgets,
 )
+from packages.orchestration.review_reports import capture_review_report
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
 DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "apply")
@@ -123,7 +124,7 @@ def walk_do_sequence(ctx: DoContext,
     """
     steps = DO_STEP_TABLE if table is None else table
     ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
-    with bind_order_ledger(ctx.ledger):
+    with bind_order_ledger(ctx.ledger), capture_review_report(ctx):     # exec-1017 D5
         return _walk_steps(ctx, steps)
 
 
