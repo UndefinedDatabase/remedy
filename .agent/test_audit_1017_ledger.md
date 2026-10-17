@@ -179,6 +179,13 @@ handling), each restored byte for byte, each turn exactly its test red. The thre
 `test_fast_lane_no_subprocess_files`) asserted that the script text names no subprocess file;
 that invariant is retired on purpose, since owner tests of a CLI module spawn processes.
 
+Method note, learned here: a mutation that keeps the file's byte length (the vanish mutation
+swapped `FileNotFoundError` for the equally long `ZeroDivisionError`) and is restored within the
+same second leaves a `__pycache__` entry Python still trusts (it checks whole-second mtime and
+size), so the restored source ran as the mutant in the next run. Mutation runs therefore set
+`PYTHONDONTWRITEBYTECODE=1` or delete the owner's `.pyc` after restoring; here the stale entry
+was found by its red, confirmed by reading the cached bytecode, and deleted.
+
 ## 8. Not done, risks, follow-ups
 
 - Full-suite before/after: not measured (collection only, this session). Expected effect of the
