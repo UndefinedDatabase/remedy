@@ -41,7 +41,11 @@ FLOOR = {
 #: F293 round 6 wrote five setup helpers' records in-process; each had asserted only that the
 #: child process writing the record exited 0 (`assert proc.returncode == 0, proc.stderr`). The
 #: in-process call raises when the write fails, so the check is in the call (DECISION F293 D11).
-ALLOWED_REMOVALS = {"tests/cli/test_mission_cmd.py": (5, 0)}
+#: The 2026-10-17 test audit (batch 1) removed 25 asserts from test_job_task_runner (548 to 523),
+#: every one a duplicate of an assert that still runs on the same scenario; two of them fall below
+#: F293's floor (`.agent/test_audit_1017_ledger.md`, section 6).
+ALLOWED_REMOVALS = {"tests/cli/test_mission_cmd.py": (5, 0),
+                    "tests/orchestration/test_job_task_runner.py": (2, 0)}
 
 #: Where F293 left main, and F293's first commit: while main does not hold that commit, F293 is
 #: open and every function, method and assignment that existed where it began in a module of
