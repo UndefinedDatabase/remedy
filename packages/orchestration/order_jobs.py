@@ -24,9 +24,11 @@ ORDER_JOB_WAIT_REASON = ("its workspace is cut from the repository's HEAD commit
 
 #: The `phase` of a job in an order's view: what a person needs to know first. `needs_plan_approval`
 #: is a task plan waiting for its approval, `awaiting_apply` a finished result waiting for the
-#: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold.
+#: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold,
+#: `stopped` a job stopped on purpose that can be resumed, `cancelled` one that ended for good
+#: (`job_cancel.py`, exec-1017c).
 ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "awaiting_apply", "applied",
-                    "declined", "blocked", "stopped", "failed")
+                    "declined", "blocked", "stopped", "cancelled", "failed")
 
 
 #: The keys of one entry of `order_jobs_view`, as the machine client interface declares them.
@@ -126,7 +128,7 @@ def _job_entry(job: Any) -> dict[str, Any]:
         phase = ("applied" if job_apply_landed(str(job.job_id))
                  else "declined" if job_result_decline(job) is not None else "awaiting_apply")
     elif state in ("stopped", "cancelled"):
-        phase = "stopped"
+        phase = state
     elif state == "blocked":
         phase = "blocked"
     else:

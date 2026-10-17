@@ -101,6 +101,7 @@ from packages.orchestration.do_targets import (
     name_do_job,
     resolve_do_shape,
 )
+from packages.orchestration.order_cancel import cancellable_do_steps
 from packages.orchestration.order_jobs import record_job_waits
 from packages.orchestration.order_ledger import (
     OrderCallLedger,
@@ -124,7 +125,7 @@ def walk_do_sequence(ctx: DoContext,
     With `--step-by-step`, a step that did work is followed by a halt before the
     next step (DECISION F268 D8); a halt that stops reports the next step stopped.
     """
-    steps = DO_STEP_TABLE if table is None else table
+    steps = cancellable_do_steps(DO_STEP_TABLE if table is None else table)   # exec-1017c: a cancel ends it
     ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
     with bind_order_ledger(ctx.ledger), capture_review_report(ctx):     # exec-1017 D5
         return _walk_steps(ctx, steps)
