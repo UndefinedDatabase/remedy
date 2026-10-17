@@ -80,7 +80,8 @@ CLIENT_DIGEST_ENDED_JOB_LIMIT = 20
 def _job_ended(plan: JobPlan, waits_for_apply: bool, open_decision_count: int) -> bool:
     """True when nothing is left to do about the job: its state is terminal, it does not wait for
     its apply and no decision of it is open. Every other job still needs something (DECISION F304
-    D16)."""
+    D16). A stopped job, run or not, can still be resumed, so it stays; work the person abandons is
+    cancelled (`job_cancel.py`, exec-1017c), which is terminal and asks no decision."""
     return job_is_terminal(plan.state) and not waits_for_apply and open_decision_count == 0
 
 

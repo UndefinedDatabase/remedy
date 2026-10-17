@@ -1015,6 +1015,13 @@ def test_every_job_that_still_needs_something_is_listed_whatever_the_window(root
                   RunState.BLOCKED, RunState.STOPPED):
         save_job_plan(JobPlan(job_title=f"still {state.value}", project_id="proj-1",
                               metadata=_job_metadata(), state=state))
+    # exec-1017c (R-1339): a job stopped before it ever ran can still be resumed, so it still needs
+    # something; work the person abandons is cancelled, which has ended.
+    save_job_plan(JobPlan(job_title="stopped before it ran", project_id="proj-1",
+                          metadata=_job_metadata(), state=RunState.STOPPED,
+                          finished_at="2026-01-01T05:00:00+00:00"))
+    save_job_plan(JobPlan(job_title="cancelled", project_id="proj-1", metadata=_job_metadata(),
+                          state=RunState.CANCELLED, finished_at="2026-01-01T05:00:00+00:00"))
     # Its target named, so that waiting for its apply is the one thing it still needs.
     save_job_plan(JobPlan(job_title="awaiting its apply", project_id="proj-1",
                           metadata=_job_metadata(), state=JOB_COMPLETED))
@@ -1029,8 +1036,8 @@ def test_every_job_that_still_needs_something_is_listed_whatever_the_window(root
 
     assert sorted(_listed(digest)) == sorted([
         "still planned", "still pending", "still running", "still paused", "still blocked",
-        "still stopped", "awaiting its apply", "failed with an open decision"])
-    assert digest["job_window"] == {"ended_limit": 0, "left_out": 2}
+        "still stopped", "stopped before it ran", "awaiting its apply", "failed with an open decision"])
+    assert digest["job_window"] == {"ended_limit": 0, "left_out": 3}
 
 
 def test_every_ended_job_lists_them_all_and_names_no_limit(root, monkeypatch):

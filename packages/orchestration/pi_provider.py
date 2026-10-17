@@ -28,7 +28,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from packages.orchestration.call_identity import prepare_call_input
@@ -122,14 +122,21 @@ _CONTEXT_MAX_FILES = 4
 _CONTEXT_MAX_FILE_CHARS = 6000
 _CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pycache__", ".remedy-wt",
                                 "dist", "build", ".next", ".cache"})
+#: The repository's own agent instructions, in the order Pi itself looks for them (exec-1017c).
+_CONTEXT_AGENT_FILES = ("AGENTS.md", "CLAUDE.md")
+#: An agent file this short is shown whole; a longer one is named, for the builder to read when needed.
+_CONTEXT_AGENT_FILE_MAX_CHARS = 2000
 
 
 def builder_workspace_context(cwd: str, prompt: str) -> str:
     """The workspace's file list and the text of the files *prompt* names, for the builder's prompt.
 
-    A named file that does not exist yet (a new test) brings one existing file of its folder as
-    the style to follow. Read with a plain bounded walk: no symlink is followed and no `git` runs
-    in the target repository, whose own configuration could run commands. "" without a workspace.
+    A named file is read by its path, so a file deep in a large repository is shown although the
+    bounded listing stops before it (it lists at most `_CONTEXT_MAX_LISTED` files and says so when
+    it is cut). A named file that does not exist yet (a new test) brings one existing file of its
+    folder as the style to follow. Read with plain bounded calls: no symlink is followed and no
+    `git` runs in the target repository, whose own configuration could run commands. "" without a
+    workspace.
     """
     if not cwd or not os.path.isdir(cwd):
         return ""
@@ -143,10 +150,16 @@ def builder_workspace_context(cwd: str, prompt: str) -> str:
                 listed.append(path.relative_to(root).as_posix())
         if len(listed) > _CONTEXT_MAX_LISTED:
             break
+    cut = len(listed) > _CONTEXT_MAX_LISTED
     listed = listed[:_CONTEXT_MAX_LISTED]
-    shown: list[str] = [p for p in listed if p in prompt]
-    for named in sorted(set(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt)) - set(listed)):
-        sibling = next((p for p in listed if "/" in named and p.rsplit("/", 1)[0] == named.rsplit("/", 1)[0]), "")
+    named = list(dict.fromkeys(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt)))   # as the task names them
+    shown = [rel for rel in named if _plain_workspace_file(root, rel)]
+    for rel in named:
+        if rel in shown or "/" not in rel or not _plain_workspace_dir(root, rel.rsplit("/", 1)[0]):
+            continue
+        folder = rel.rsplit("/", 1)[0]
+        sibling = next((f"{folder}/{name}" for name in sorted(os.listdir(root / folder))
+                        if _plain_workspace_file(root, f"{folder}/{name}")), "")
         if sibling and sibling not in shown:
             shown.append(sibling)
     blocks = []
@@ -157,12 +170,54 @@ def builder_workspace_context(cwd: str, prompt: str) -> str:
             continue
         if len(text) <= _CONTEXT_MAX_FILE_CHARS:
             blocks.append(f"--- {rel} ---\n{text.rstrip()}\n")
-    out = ("Files in your working copy (the complete list; do not list or search it again):\n"
-           + "".join(f"- {p}\n" for p in listed))
+    head = (f"Files in your working copy (the first {_CONTEXT_MAX_LISTED}; the tree is larger, so search "
+            "it only for a file the task needs that is neither listed nor shown below):\n" if cut else
+            "Files in your working copy (the complete list; do not list or search it again):\n")
+    out = head + "".join(f"- {p}\n" for p in listed) + _agent_file_context(root)
     if blocks:
         out += ("\nCurrent content of the files the task names (already read for you; do not read "
                 "them again before editing):\n\n" + "\n".join(blocks))
     return out + "\n"
+
+
+def _agent_file_context(root: Path) -> str:
+    """The repository's root agent instructions, bounded and named by path, or "" when it has none.
+
+    Pi is started with `--no-context-files`, so this is the one way they reach the builder: a short
+    file whole, a longer one as a pointer the builder follows only when the task needs it.
+    """
+    rel = next((name for name in _CONTEXT_AGENT_FILES if _plain_workspace_file(root, name)), "")
+    if not rel:
+        return ""
+    try:
+        text = (root / rel).read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return ""
+    if len(text) <= _CONTEXT_AGENT_FILE_MAX_CHARS:
+        return f"\nThis repository's instructions for coding agents ({rel}):\n{text}\n"
+    return (f"\n{rel} ({len(text)} characters) holds this repository's instructions for coding agents; "
+            "read it only if this task needs its conventions.\n")
+
+
+def _plain_workspace_file(root: Path, rel: str) -> bool:
+    """True for a regular file inside *root*, reached through no symlink and no skipped folder."""
+    return _plain_workspace_path(root, rel) and (root / rel).is_file()
+
+
+def _plain_workspace_dir(root: Path, rel: str) -> bool:
+    return _plain_workspace_path(root, rel) and (root / rel).is_dir()
+
+
+def _plain_workspace_path(root: Path, rel: str) -> bool:
+    parts = PurePosixPath(rel).parts
+    if not parts or rel.startswith("/") or ".." in parts or any(p in _CONTEXT_SKIP_DIRS for p in parts):
+        return False
+    path = root
+    for part in parts:
+        path = path / part
+        if path.is_symlink():
+            return False
+    return path.exists()
 
 
 # amend1016p D3: the reviewer judges what the change SAYS against what the task asks, not only
@@ -196,13 +251,16 @@ def build_pi_argv(pi_path: str, *, model: str, tools: str, prompt: str) -> list[
     """Pi's argument vector for one role call. Never a shell string.
 
     Every resource switch is off: no extension, MCP server, skill, prompt template or theme, no
-    session, no network at startup, and project-local executable resources stay untrusted.
+    session, no network at startup, and project-local executable resources stay untrusted. No
+    context file either (exec-1017c, R-1344): Pi otherwise loads the workspace's and every
+    ancestor's AGENTS.md or CLAUDE.md into every turn, whatever `--no-approve` says, unbounded and
+    absent from Remedy's own prompt evidence; `builder_workspace_context` shows a small one instead.
     """
     return [
         pi_path, "--mode", "json", "--no-session",
         "--provider", PI_INNER_PROVIDER, "--model", model,
         "--offline", "--no-approve", "--no-extensions", "--no-mcp", "--no-skills",
-        "--no-prompt-templates", "--no-themes", "--tools", tools, "--", prompt,
+        "--no-prompt-templates", "--no-themes", "--no-context-files", "--tools", tools, "--", prompt,
     ]
 
 
@@ -517,9 +575,10 @@ class PiProvider:
             summary, exit_code=guarded.returncode, term_signal=guarded.term_signal,
             tripped=guarded.tripped_limit, stderr=guarded.stderr, stream_error=stream_error)
         if watch.tripped:
-            # exec-1017 D4: the loop was ended at its cap, not by a stop; what it used is still real.
-            summary = summary if summary is not None else watch.summary()
             error = f"provider_error: {PI_LOOP_LIMIT_MARK}: {watch.tripped}"
+        # A loop ended by its cap, a stop, a timeout or a crash still used what its stream measured:
+        # the turns and tokens received before the end are real and count against the budgets.
+        summary = summary if summary is not None else watch.summary()
         duration_ms = int((time.monotonic() - started) * 1000)
         evidence = {
             "role": self._role, "provider": PI_PROVIDER_NAME, "inner_provider": PI_INNER_PROVIDER,
@@ -572,6 +631,12 @@ class PiProvider:
                 "total_cost_usd": 0.0, "model_turns": summary.model_turns,
                 "parse_source": "pi_json_events"}
 
+    def _failed_call_actuals(self, outcome: PiCallOutcome) -> dict[str, Any] | None:
+        """What a failed call's stream measured, so its tokens count against the budgets; None when
+        it reported no tokens at all (an unknown use is never recorded as a measured zero)."""
+        actuals = self._usage_actuals(outcome)
+        return actuals if actuals and actuals["total_tokens"] else None
+
     def build(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
               resume: str | None = None) -> BuilderOutput:
         full = _BUILDER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt
@@ -581,9 +646,11 @@ class PiProvider:
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         capped = PI_LOOP_LIMIT_MARK in outcome.error and outcome.summary is not None
         if outcome.error and not capped:
+            failed = self._failed_call_actuals(outcome)
             return BuilderOutput(error=outcome.error, provider=PI_PROVIDER_NAME,
-                                 duration_ms=outcome.duration_ms,
-                                 actual_missing_reason="provider_error", prepared_input=fingerprint)
+                                 duration_ms=outcome.duration_ms, usage_actuals=failed,
+                                 actual_missing_reason="" if failed else "provider_error",
+                                 prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None  # an empty error means the stream parsed
         actuals = self._usage_actuals(outcome)
@@ -614,10 +681,10 @@ class PiProvider:
             options={"tools": pi_role_tools("reviewer"), "inner_provider": PI_INNER_PROVIDER})
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         if outcome.error:
-            capped = self._usage_actuals(outcome) if PI_LOOP_LIMIT_MARK in outcome.error else None
+            failed = self._failed_call_actuals(outcome)
             return ReviewerOutput(error=outcome.error, error_class="provider_error",
-                                  provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms, usage_actuals=capped,
-                                  actual_missing_reason="" if capped else "provider_error",
+                                  provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms, usage_actuals=failed,
+                                  actual_missing_reason="" if failed else "provider_error",
                                   prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None

@@ -232,8 +232,8 @@ def _shape_job_orders(
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:
         if ctx.lane is not None and ctx.lane.bounded and ctx.lane.deliverable:
-            return [(order, [deliverable_task(ctx.lane.deliverable, order,
-                                              with_tests=ctx.lane.with_tests)], sole, own)]
+            return [(order, [deliverable_task(ctx.lane.deliverable, order, with_tests=ctx.lane.with_tests,
+                                              also=ctx.lane.also)], sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]
@@ -250,3 +250,40 @@ def _shape_job_orders(
     if not explicit_order_paths(order):
         return [(order, None, sole, own)]
     return [(order, [deliverable_task(deliverables[0], order)], sole, own)]
+
+
+#: The longest job title a list shows whole; a longer order is cut at a word and marked.
+DO_JOB_TITLE_MAX_CHARS = 80
+
+
+def do_job_title(job_order: str, order: str, *, project_slug: str, deliverables: list[str],
+                 several: bool) -> str:
+    """The title a person recognizes a job of a `remedy do` walk by: the first line of what it does.
+
+    A job planned from the order itself is titled by the order's first line (no Markdown marker,
+    no line break, cut at a word); one planned from a milestone outline by that outline. With
+    several jobs from one order, a title that would read the same for each names what this one
+    does: its repository (one job per repository) or its files. Before, every job of a walk was
+    `order[:80]`, so the jobs of one order were indistinguishable and the cut fell mid-word.
+    """
+    own = not job_order.startswith(order)            # a milestone outline names its own work
+    lines = [line.strip().lstrip("#").strip() for line in (job_order if own else order).splitlines()]
+    head = next((line for line in lines if line), "") or (job_order if own else order).strip()
+    if several and not own:
+        suffix = f"in {project_slug}" if job_order != order else ", ".join(deliverables)
+        head = f"{head} — {suffix}" if suffix else head
+    if len(head) <= DO_JOB_TITLE_MAX_CHARS:
+        return head
+    cut = head[:DO_JOB_TITLE_MAX_CHARS - 1].rsplit(" ", 1)[0].rstrip(" ,;:—-")
+    return f"{cut}…"
+
+
+def name_do_job(job: Any, job_order: str, order: str, target: DoJobTarget, *, several: bool) -> None:
+    """Give a planned job of the walk its `do_job_title` and save it."""
+    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job.job_title = do_job_title(job_order, order, project_slug=str(getattr(target.project, "slug", "")),
+                                 deliverables=[d for d in map(task_deliverable, job.tasks) if d],
+                                 several=several)
+    save_job_plan(job)

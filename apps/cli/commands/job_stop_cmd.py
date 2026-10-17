@@ -22,9 +22,21 @@ EXIT_USAGE = 2
 #: The contract's exit code for a job that does not exist.
 EXIT_UNKNOWN_JOB = 3
 
+#: The refusal tokens and answer keys this command can reach, as the machine client interface declares them.
+JOB_STOP_REFUSAL_TOKENS = ("ambiguous_job_id", "invalid_job_id", "job_not_found", "job_not_started",
+                           "job_not_stoppable", "serve_unreachable", "stop_not_requested")
+JOB_STOP_ANSWER_KEYS = ("already_stopped", "archived", "consumed_count", "detail", "job_id", "job_status",
+                        "matches", "pending", "status", "stop", "stopped")
+#: The keys under `stop`, `pending` and `archived` of this command's answers (a stop signal; an
+#: already stopped job's `stop` adds `stopped_at`), as the machine client interface declares them.
+_SIGNAL_KEYS = ("stop_signal_v", "job_id", "request_id", "reason", "source", "requested_at")
+JOB_STOP_ANSWER_TREE: dict = {"stop": {key: {} for key in (*_SIGNAL_KEYS, "stopped_at")},
+                              "pending": {key: {} for key in _SIGNAL_KEYS},
+                              "archived": {key: {} for key in _SIGNAL_KEYS}}
+
 #: A job that will never run again cannot be stopped, and saying "stop requested" would be
-#: a lie the operator has no way to catch.
-_FINISHED_STATES = frozenset({"completed"})
+#: a lie the operator has no way to catch. A cancelled job never runs again (exec-1017c).
+_FINISHED_STATES = frozenset({"completed", "cancelled"})
 
 
 def _load_job(job_id: str):

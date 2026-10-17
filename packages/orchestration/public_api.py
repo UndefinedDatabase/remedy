@@ -66,9 +66,9 @@ from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES, PublicAp
 from packages.orchestration.public_api_writes import (
     _TWIN_ARGV,
     PublicApiWriteRefusal,
-    _client_job_refusal,
-    _job_lock_key,
+    _client_write_refusal,
     _order_text_and_options,
+    _write_lock_key,
 )
 
 #: The path prefix every route under this registry lives below; the major version is in the path.
@@ -80,8 +80,11 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: `GET /api/v1/jobs/{job}/story`, and operator order amend1015-final-closure to `1.16` for the
 #: client token's refusal `api_client_policy_refused` on the proof, run and order polls
 #: (DECISION amend1015c D2) and for `GET /api/v1/jobs/{job}/diff` (DECISION amend1015c D5), and
-#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`.
-PUBLIC_API_VERSION = "1.17"
+#: order exec-1017 to `1.17` for the story's `verification` and `numbers.model_turns`, and order
+#: exec-1017b to `1.18` for `POST /api/v1/jobs/{job}/stop` and an order's `jobs`, and order exec-1017c
+#: to `1.19` for `POST /api/v1/jobs/{job}/abandon`, `POST /api/v1/orders/{order}/cancel` and an
+#: order's `phase` and `cancel`.
+PUBLIC_API_VERSION = "1.19"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
@@ -617,7 +620,7 @@ def answer_public_api_post(
     With a CLIENT (DECISION F253 D16 (5), (6)) an order outside its policy, and an apply whose
     client may not approve, answer 403 `api_client_policy_refused` and run nothing. So does a
     decision, a decline or an apply for a job outside the client's projects, and a budget answer
-    above the client's ceilings (DECISION F253 D17): `_client_job_refusal` reads the job after the
+    above the client's ceilings (DECISION F253 D17): `_client_write_refusal` reads the job after the
     body is checked and before the may-apply check.
 
     DECISION F253 D9. Matches POST routes as `answer_public_api_get` matches GET routes: a path no
@@ -653,7 +656,7 @@ def answer_public_api_post(
     Every other route's body, not a JSON object holding only its declared keys each of its kind,
     answers 400 `api_body_invalid`; a `PublicApiWriteRefusal` from the twin's argument builder
     answers its own status and token; none of these starts a command. Otherwise RUN_COMMAND is
-    called with the job the job segment names (`_job_lock_key`) and the argument list the twin's
+    called with the job or order its path names (`_write_lock_key`) and the argument list the twin's
     builder makes, and the envelope it returns is the answer: None answers 500
     `api_command_failed`, an `ok` envelope 200, a refusal the status `refusals` declares for its
     token or else the route's `refusal_default`.
@@ -723,8 +726,8 @@ def answer_public_api_post(
                     "api_command_failed",
                     f"the order for '{path}' could not be started; nothing runs"), {}
             return 202, build_ok(**order_record_payload(serve_paths(), record)), {}
-        if client is not None and "job" in segments:
-            refusal_text = _client_job_refusal(client, segments["job"])
+        if client is not None and ("job" in segments or "order" in segments):
+            refusal_text = _client_write_refusal(client, segments)
             if refusal_text is None and route.twin == "decision.resolve":
                 from packages.orchestration.api_clients import client_budget_answer_refusal
                 from packages.orchestration.decision_queue import is_budget_decision_id
@@ -744,7 +747,7 @@ def answer_public_api_post(
             argv = _TWIN_ARGV[route.twin](segments, checked)
         except PublicApiWriteRefusal as refusal:
             return refusal.status, build_error(refusal.error, refusal.message), {}
-        envelope = run_command(_job_lock_key(segments["job"]), argv)
+        envelope = run_command(_write_lock_key(segments), argv)
         if envelope is None:
             return 500, build_error(
                 "api_command_failed",

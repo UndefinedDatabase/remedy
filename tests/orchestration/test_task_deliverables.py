@@ -248,3 +248,54 @@ def test_a_requested_test_is_named_as_a_deliverable_of_the_same_task():
     assert "TWO things" in task.body and "Do not finish until both are written" in task.body
     assert task.acceptance.endswith("the test the order asks for exists and passes (test/calc.test.js)")
     assert deliverable_task("README.md", "Fix README.md.").title == "Deliver README.md"
+
+
+# exec-1017c (R-1342): a deterministic task over several named files that leaves one unchanged is no
+# completion, whatever the reviewer said; a planner's hints are never held to it.
+_TWO_FILE_ORDER = "Rename normalizeName to normalizePersonName in src/format.js and src/index.js."
+
+
+def _two_file_job(tmp_path, monkeypatch, *, planner_task: bool = False):
+    import os
+
+    from packages.orchestration.pingpong_job import TaskEntry, parse_job_file, save_job_plan
+    from packages.orchestration.task_deliverables import deliverable_task
+    from tests.orchestration.scale_harness import commit_repository
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    repo = commit_repository(tmp_path / "repo", {
+        "src/format.js": "export const normalizeName = (x) => x;\n",
+        "src/index.js": "export { normalizeName } from './format.js';\n"})
+    job = parse_job_file("# Job: two files\n\n## Task 1\nRename.\n\nAcceptance:\n- renamed\n", str(repo))
+    if planner_task:
+        task = TaskEntry(title="Rename", body=_TWO_FILE_ORDER, acceptance="renamed",
+                         files_hint=["src/format.js", "src/index.js"])
+    else:
+        task = deliverable_task("src/format.js", _TWO_FILE_ORDER, also=("src/index.js",))
+    job.tasks = [task]
+    save_job_plan(job)
+    return job.job_id
+
+
+@pytest.mark.parametrize(("changed", "planner_task", "blocked"), [
+    (["src/format.js"], False, True),
+    (["src/format.js", "src/index.js"], False, False),
+    (["src/format.js"], True, False),
+])
+def test_a_named_file_the_change_left_unchanged_blocks_the_task(tmp_path, monkeypatch, changed,
+                                                                 planner_task, blocked):
+    from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    job_id = _two_file_job(tmp_path, monkeypatch, planner_task=planner_task)
+    fake = FakeProvider(builder_files=changed, pass_on_round=1, fail_on_round=99)
+
+    ended = run_job(job_id, builder_provider=fake, reviewer_provider=fake, repair_rounds=0)
+
+    task = load_job_plan(job_id).tasks[0]
+    if blocked:
+        assert ended.state == JOB_BLOCKED
+        assert task.error.startswith("named_files_unchanged:") and "src/index.js" in task.error
+    else:
+        assert ended.state == JOB_COMPLETED, (ended.error, task.error)

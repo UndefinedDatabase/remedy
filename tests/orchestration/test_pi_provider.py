@@ -120,7 +120,7 @@ def test_builder_argv_cwd_and_environment_follow_the_contract(fake_pi, workspace
     assert argv[argv.index("--model") + 1] == "muse-glimmer:latest"
     assert argv[argv.index("--tools") + 1] == PI_BUILDER_TOOLS == "read,bash,edit,write,grep,find,ls"
     for flag in ("--offline", "--no-approve", "--no-extensions", "--no-mcp", "--no-skills",
-                 "--no-prompt-templates", "--no-themes"):
+                 "--no-prompt-templates", "--no-themes", "--no-context-files"):
         assert flag in argv
     assert argv[-2] == "--" and "add a paragraph" in argv[-1]
     assert Path(call["cwd"]).resolve() == workspace.resolve()
@@ -189,25 +189,33 @@ def test_every_model_turn_is_counted_and_the_evidence_names_the_chain(fake_pi, w
 
 # --- 4. failures ----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("behavior, fragment", [
-    ({"stdout": good_stream()[:-1]}, "pi_unsettled"),
-    ({"stdout": good_stream()[:-1] + ['{"type":"agent_settled","abor']}, "pi_malformed_stream"),
-    ({"stdout": ["not json\n"]}, "pi_malformed_stream"),
-    ({"stdout": good_stream()[:-1] + [_event({"type": "agent_settled", "aborted": True})]}, "pi_aborted"),
-    ({"stdout": good_stream(), "exit": 3, "stderr": "boom: provider unreachable"}, "pi_exit_3"),
-    ({"stdout": [], "exit": 1, "stderr": "only stderr"}, "pi_exit_1"),
-    ({"stdout": []}, "pi_no_response"),
+# The last column: the input tokens the failed call's stream measured before it ended, which count
+# against the budgets, or None when the stream reported none (never recorded as a measured zero).
+@pytest.mark.parametrize("behavior, fragment, measured_input", [
+    ({"stdout": good_stream()[:-1]}, "pi_unsettled", 200),
+    ({"stdout": good_stream()[:-1] + ['{"type":"agent_settled","abor']}, "pi_malformed_stream", 200),
+    ({"stdout": ["not json\n"]}, "pi_malformed_stream", None),
+    ({"stdout": good_stream()[:-1] + [_event({"type": "agent_settled", "aborted": True})]}, "pi_aborted", 200),
+    ({"stdout": good_stream(), "exit": 3, "stderr": "boom: provider unreachable"}, "pi_exit_3", 200),
+    ({"stdout": [], "exit": 1, "stderr": "only stderr"}, "pi_exit_1", None),
+    ({"stdout": []}, "pi_no_response", None),
     ({"stdout": [_event({"type": "message_end", "message": {
         "role": "assistant", "content": [], "stopReason": "error", "errorMessage": "model gone"}}),
-        _event({"type": "agent_settled", "aborted": False})]}, "pi_model_error"),
+        _event({"type": "agent_settled", "aborted": False})]}, "pi_model_error", None),
 ])
-def test_a_failed_pi_call_is_a_provider_error_with_bounded_evidence(fake_pi, workspace, behavior, fragment):
+def test_a_failed_pi_call_is_a_provider_error_with_bounded_evidence(fake_pi, workspace, behavior, fragment,
+                                                                    measured_input):
     fake_pi.behave(**behavior)
     out = PiProvider(role="builder", cwd=str(workspace)).build("x")
-    assert out.error.startswith("provider_error: ") and fragment in out.error
-    assert len(out.error) < 600 and out.actual_missing_reason == "provider_error"
     review = PiProvider(role="reviewer", cwd=str(workspace)).review("x")
+    assert out.error.startswith("provider_error: ") and fragment in out.error and len(out.error) < 600
     assert review.error.startswith("provider_error: ") and review.error_class == "provider_error"
+    for failed in (out, review):
+        if measured_input is None:
+            assert (failed.usage_actuals, failed.actual_missing_reason) == (None, "provider_error")
+        else:
+            assert failed.actual_missing_reason == ""
+            assert (failed.usage_actuals["input_tokens"], failed.usage_actuals["model_turns"]) == (measured_input, 2)
 
 
 def test_a_wall_clock_trip_and_the_output_cap_and_a_signal_death(fake_pi, workspace, monkeypatch):
@@ -351,4 +359,62 @@ def test_the_builder_gets_the_file_list_and_the_named_files_up_front(tmp_path):
     assert "node_modules" not in text and "link.js" not in text
     assert "--- src/calc.js ---\nexport function add" in text
     assert "--- test/baseline.test.js ---" in text          # the style for the new test file
+    assert "the complete list" in text
     assert builder_workspace_context("", "x") == ""
+
+
+def test_a_named_file_deep_in_a_large_repository_is_shown_and_the_cut_list_says_it_is_cut(tmp_path):
+    """A tiny edit in a large repository: the bounded listing stops long before the named file, and
+    it used to be neither shown nor reachable without a search, while the prompt called the list
+    complete. Named paths that escape the workspace or pass a symlink are never read."""
+    from packages.orchestration.pi_provider import builder_workspace_context
+
+    for n in range(120):
+        (tmp_path / "a" / f"d{n:03}").mkdir(parents=True)
+        (tmp_path / "a" / f"d{n:03}" / "f.txt").write_text("x")
+    deep = tmp_path / "z" / "pkg" / "src"
+    deep.mkdir(parents=True)
+    (deep / "util.py").write_text("def f():\n    return 1\n")
+    (tmp_path / "outside.txt").write_text("secret")
+    (tmp_path / "z" / "pkg" / "lnk").symlink_to(tmp_path)
+
+    text = builder_workspace_context(
+        str(tmp_path / "."), "Fix f in z/pkg/src/util.py; see ../outside.txt and z/pkg/lnk/outside.txt.")
+
+    assert "--- z/pkg/src/util.py ---\ndef f():" in text
+    assert "the first 80; the tree is larger" in text and "the complete list" not in text
+    assert "secret" not in text
+
+
+@pytest.mark.parametrize("size", [300, 27_364])
+def test_the_repositorys_agent_file_reaches_the_builder_bounded_and_by_name(tmp_path, size):
+    """exec-1017c (R-1344): Pi runs with `--no-context-files`, so it no longer loads AGENTS.md into every
+    turn unseen; a short one is shown whole in the builder's context, a long one only named."""
+    from packages.orchestration.pi_provider import builder_workspace_context
+
+    (tmp_path / "AGENTS.md").write_text("Use pnpm, never npm. " + "x" * (size - 22) + "\n")
+    (tmp_path / "src.js").write_text("x\n")
+
+    text = builder_workspace_context(str(tmp_path), "Fix src.js.")
+
+    if size < 2000:
+        assert "instructions for coding agents (AGENTS.md):\nUse pnpm, never npm." in text
+    else:
+        assert "AGENTS.md (27363 characters) holds this repository's instructions" in text
+        assert "Use pnpm" not in text
+
+
+def test_a_failed_calls_measured_tokens_reach_the_runs_usage_and_so_the_budgets(fake_pi, workspace):
+    """A Pi builder that used two turns and then crashed spent 220 tokens; the run's usage, which the
+    job's and the order's budgets read, carries them instead of reporting the call unmeasured."""
+    from packages.orchestration.pingpong_loop import PingPongResult, _aggregate_usage_actuals, _record_attempt
+
+    fake_pi.behave(stdout=good_stream(), exit=3, stderr="boom")
+    failed = PiProvider(role="builder", cwd=str(workspace)).build("x")
+    result = PingPongResult(builder_provider="pi", reviewer_provider="pi")
+    _record_attempt(result, failed, "builder", "pi", round_num=1)
+
+    usage = _aggregate_usage_actuals(result)
+
+    assert failed.error and usage["total_tokens"] == 220
+    assert (usage["provider_call_count"], usage["actual_call_count"]) == (1, 1)

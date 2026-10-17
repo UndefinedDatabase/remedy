@@ -145,6 +145,9 @@ def _evidence_json(ev: CheckEvidence) -> dict[str, Any]:
         "exit_code": ev.exit_code,
         "duration_ms": ev.duration_ms,
         "output_tail": ev.output_tail,
+        # The folder a check ran in, relative to the job's worktree ("" at its root): which package's
+        # tests a polyglot repository's check ran (exec-1017b).
+        "cwd": ev.cwd,
     }
 
 

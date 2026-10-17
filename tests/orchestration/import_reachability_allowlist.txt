@@ -7,6 +7,7 @@ apps.cli.client_interface
 apps.cli.client_interface_execution
 apps.cli.client_interface_story
 apps.cli.command_catalog
+apps.cli.command_catalog_cancel
 apps.cli.command_catalog_client
 apps.cli.command_catalog_do
 apps.cli.command_catalog_doctor
@@ -19,6 +20,7 @@ apps.cli.commands.absorb_cmd
 apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
+apps.cli.commands.cancel_cmd
 apps.cli.commands.change
 apps.cli.commands.chat_cmd
 apps.cli.commands.ci_cmd
@@ -220,6 +222,7 @@ packages.orchestration.job_apply_again
 packages.orchestration.job_apply_baseline
 packages.orchestration.job_apply_pending
 packages.orchestration.job_burn
+packages.orchestration.job_cancel
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_input_definition
@@ -252,7 +255,9 @@ packages.orchestration.model_routing
 packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
+packages.orchestration.order_cancel
 packages.orchestration.order_file
+packages.orchestration.order_jobs
 packages.orchestration.order_ledger
 packages.orchestration.order_scope
 packages.orchestration.order_verification

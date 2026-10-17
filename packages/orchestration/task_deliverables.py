@@ -28,6 +28,7 @@ The extractor is a deterministic floor, the LLM planner is the ceiling.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -96,32 +97,44 @@ def extract_order_deliverables(order: str) -> list[str]:
     return found or [order.strip()]
 
 
-def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False) -> TaskEntry:
+def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
+                     also: tuple[str, ...] = (), tests: tuple[str, ...] | None = None) -> TaskEntry:
     """One deterministic task producing one deliverable, with one acceptance item.
 
     *with_tests*: the order itself asks for a test beside the deliverable (2026-10-17 audit P0-2).
     That test is a requested output of this same task, so its files are allowed and its existence
-    is part of the one acceptance item; it is never a task of its own.
+    is part of the one acceptance item; it is never a task of its own. *tests* names the test files
+    of this task when the caller split them among several tasks (default: every test path the order
+    names). *also* names the further files of the same one change (a small change over a few named
+    files): they are declared as the task's `files_hint`, so every guard of a declared target reads
+    them, and the task says it changes all of them in one step.
     """
-    accept = f"{deliverable} is produced and meets the order: {order}"
+    files = [deliverable, *(path for path in also if path != deliverable)]
+    named_files = " and ".join(files) if len(files) <= 2 else ", ".join(files[:-1]) + f" and {files[-1]}"
+    verb = "is produced and meets" if len(files) == 1 else "are produced and meet"
+    accept = f"{named_files} {verb} the order: {order}"
     body = f"{order}\n\nThis task's deliverable: {deliverable}"
-    title = f"Deliver {deliverable}"
+    title = f"Deliver {named_files}"
     inputs = {"task_type": "deliverable", DELIVERABLE_INPUT_KEY: deliverable}
+    if len(files) > 1:
+        body += (f"\nThis one change spans {len(files)} files, all in this step: {named_files}. "
+                 "Change each of them as the order asks before you finish.")
     if with_tests:
         # Lab calc order of 2026-10-17: "deliverable: src/calc.js" with a side sentence about a test
         # made the builder fix only calc.js; the reviewer failed it and the repair round ran the job
         # out of budget. The test file is named as a deliverable of this same task.
         from packages.orchestration.order_scope import is_test_path
 
-        named = [p for p in explicit_order_paths(order) if is_test_path(p)]
+        named = list(tests) if tests is not None else [p for p in explicit_order_paths(order) if is_test_path(p)]
         test = " and ".join(named) if named else "a test file in the project's existing test folder"
-        title = f"Deliver {deliverable} and its test" + (f" {test}" if named else "")
-        body += (f"\nThis task delivers TWO things in this one step: the change to {deliverable} AND "
+        title = f"Deliver {named_files} and its test" + (f" {test}" if named else "")
+        body += (f"\nThis task delivers TWO things in this one step: the change to {named_files} AND "
                  f"the test the order asks for, {test} (it may be a new file; follow the existing "
                  "tests' location and style). Do not finish until both are written.")
         accept += "; the test the order asks for exists and passes" + (f" ({test})" if named else "")
         inputs["with_tests"] = True
-    return TaskEntry(title=title, body=body, acceptance=accept, inputs=inputs)
+    return TaskEntry(title=title, body=body, acceptance=accept, inputs=inputs,
+                     files_hint=files if len(files) > 1 else [])
 
 
 def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
@@ -134,6 +147,22 @@ def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
 def task_deliverable(task: TaskEntry) -> str:
     """The deliverable recorded on *task*, or "" when it has none."""
     return str(task.inputs.get(DELIVERABLE_INPUT_KEY) or "").strip()
+
+
+def named_files_left_unchanged(job: Any, result: Any, changed: list[str]) -> str:
+    """Why the task *result* ran may not pass: the named files of its one change it left unchanged.
+
+    Only a deterministic deliverable task over several named files (`deliverable_task(also=...)`,
+    whose files are its `files_hint`) is read: the order named each of them for this one change, so
+    a reviewer's pass over a change that skipped one is no completion (exec-1017c, R-1342). A
+    planner's task is never read here: its `files_hint` are hints, some only to be read. "" else.
+    """
+    task = next((t for t in job.tasks if str(t.task_id) == str(getattr(result, "task_id", ""))), None)
+    if task is None or task.inputs.get("task_type") != "deliverable" or not task.files_hint:
+        return ""
+    missing = [path for path in task.files_hint if path not in set(changed)]
+    return (f"named_files_unchanged: the change left {', '.join(missing)} unchanged, which the order "
+            f"names as part of it" if missing else "")
 
 
 def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:

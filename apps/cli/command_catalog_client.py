@@ -72,6 +72,28 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A value that names no order is absent, which exit 3's `not_ready` meaning covers.
         exit_codes=(0, 1, 2, 3),
     ),
+    # exec-1017c: cancel an order the supervisor started, whatever it is doing (`order_cancel.py`).
+    CommandEntry(
+        command_id="client.cancel-order",
+        group_id="client",
+        subcommand="cancel-order",
+        description="Cancel an order (an order file or text) the supervisor started, planning, running or waiting: its jobs end for good, nothing of it starts again and nothing is applied after it; a result waiting for its apply stays for you to answer unless --decline-results.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("order", "The order id the supervisor answered when it started your order "
+                  "file or text"),
+            ArgDef("--reason", "Why the order file or text is cancelled (kept with it and with each job of its mission)",
+                   required=False, is_option=True, default=""),
+            ArgDef("--source", "Who requested the cancel (default: cli)", required=False,
+                   is_option=True, default="cli"),
+            ArgDef("--decline-results", "Also decline each result of the order file or text still waiting for its apply",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.order", "job.abandon"),
+        exit_codes=(0, 1, 2, 3),
+    ),
     # F253 (DECISION F253 D20): read the run the supervisor started for a job, as `client.order`
     # reads an order.
     CommandEntry(

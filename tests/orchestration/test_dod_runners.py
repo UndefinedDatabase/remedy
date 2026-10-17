@@ -1077,3 +1077,20 @@ class TestTheDodAppSeam:
         assert callable(seen["kwargs"]["preexec_fn"])
         assert ev.status == STATUS_FAILED
         assert ev.reason == REASON_APP_START_FAILED
+
+
+def test_a_check_the_sandbox_refused_never_ran_and_is_no_failed_test(worktree: Path, monkeypatch):
+    """exec-1017c: without its tool sandbox the guard spawns nothing (exit 126); the check says so.
+
+    Through the real guard: `bwrap` is made unreachable and the sandbox's cached path is cleared,
+    as on a host where Bubblewrap is not installed.
+    """
+    from packages.orchestration import tool_sandbox
+
+    monkeypatch.setattr(tool_sandbox, "_READY_BWRAP", None)
+    monkeypatch.setenv("PATH", str(worktree / "no-such-bin"))
+
+    ev = run_check(check("custom_cmd", {"argv": EXIT_OK}), worktree, timeout_sec=7)
+
+    assert (ev.status, ev.reason, ev.exit_code) == (STATUS_FAILED, "sandbox_unavailable", None)
+    assert "refused to run without the tool sandbox" in ev.output_tail

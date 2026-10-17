@@ -1,22 +1,22 @@
-# Plan — evidence-based test audit and suite optimization (operator order 2026-10-17)
+# Plan — reliability campaign: cancel, stale work, truthful lifecycle (operator order 2026-10-17)
 
 ## Goal
-Less redundant test work with equally strong protection of real behavior. PR 352, worktree
-`.remedy-wt/test-audit`; outside the roadmap queue (F078 stays next); `.agent/STOP` and the
-supervisor untouched.
+Cancellation really ends an order's lifecycle, abandoned work leaves the active views for good
+(evidence kept), every lifecycle word is true, and clients control it all over the public API.
+Branch `feature/order-cancel` from PR 360's head `9b172a16c` (merge order: 360 first, then this);
+worktree `.remedy-wt/order-cancel`. Outside the roadmap queue (F078 stays next). `.agent/STOP`, the
+supervisor and the live checkout untouched; no merge, no deploy.
 
 ## Current Step
-6. Merge gate: main (through PR 359) merged into the branch without force-push; the combined
-tree gets the full local suite once, then PR 352 is merged if green (order 2026-10-17
-"Execution Excellence", section 11).
-
-Done: 1 audit, 2 ledger (`.agent/test_audit_1017_ledger.md`), 3 batch 1 (test_job_task_runner,
-217 to 191 tests, coverage and mutations held; one shadowed duplicate), 4 change-aware fast lane,
-5 targeted measurements (ledger sections 6 and 7).
+All steps done (findings R-1338..R-1344, decisions exec-1017c D1-D10, handoff written). Now: the
+one full local gate on the final tree, then the PR (not merged).
 
 ## Next Steps
-- Batch 2 candidate (separate PR): the continuation-config family (ledger section 5, lane 3).
+- Operator: merge PR 360, then this PR; restart `remedy serve`.
+- Open: R-1343's loop half (`--test-command` refusal reads `test_failed`); the calibration run
+  proposed in the handoff (needs an authorized model budget).
 
 ## Risks
-- Consolidated keepers trade per-test failure names for one test per scenario; each keeper names
-  its contract and a mutation shows it goes red.
+- `pingpong_job.py`, `decision_queue.py`, `command_catalog.py` are at their structure rows: every
+  edit there is line-neutral, new logic lives in new modules.
+- A planning order stops only when its planner call returns (safe points between steps).

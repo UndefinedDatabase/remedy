@@ -1,30 +1,27 @@
-# Context — test audit and suite optimization (operator order 2026-10-17)
+# Context — reliability campaign (operator order 2026-10-17, after PR 360)
 
 ## Active Branch
-feature/test-audit, cut from main `2039a6ae7` (PR 349 merged), checked out in the worktree
-`.remedy-wt/test-audit`. Another session runs in parallel; the main checkout and the running
-`remedy serve start` are not touched.
+feature/order-cancel from PR 360's head `9b172a16c` in `.remedy-wt/order-cancel`. It depends on PR
+360 (feature/execution-excellence): merge 360 first. The main checkout stays on main: `remedy serve
+start` (editable install) runs its code, so nothing is switched or pulled there.
 
-## Reference
-OpenClaw test-audit skill (SKILL.md, CAMPAIGN.md, references/audit.md), adapted to pytest:
-judge a test by its assertions, one owner per contract, keep independent security/API/
-persistence/packaging contracts, a mutation shows a keeper goes red.
+## Evidence (read through Remedy's own readers; `.data/**` not read raw)
+- `remedy status --json` and `remedy client story 537d7c3612864597 --json` on the operator's data
+  root, read-only, from outside the checkout.
+- `select_do_lane` probed against this branch's code with `PYTHONPATH` set to the worktree.
 
 ## Scope
-Phase 1 audit + Phase 2 ledger over four owners (routing/planning, Pi execution and guards,
-verification and job lifecycle, review evidence and public API); one test-only batch; the fast
-lane script and its guards.
-
-## Do not touch
-Production behavior, the roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, runtime data, CI stage
-budgets.
+Order and job cancellation over CLI and HTTP, terminal state of abandoned work, story words for
+waiting and stopped work, lane honesty findings of the PR 360 review.
 
 ## Steps
-Steps 1 to 5 of the order (audit, ledger, batch, fast lane, measurement); the current one
-is in plan.md.
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+
+## Do not touch
+The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
+provider defaults, `pi.*` caps, Universe's repositories.
 
 ## Constraints
-- Operator, this session: collection only, no suite runs; single owner files may run to prove a
-  batch (fake providers only, never concurrent with a real Ollama acceptance run).
-- Test load records go to the session scratchpad (`REMEDY_TEST_LOAD_LOG`), not the shared record.
-- Commits at most 500 insertions.
+- No real model call (no authorized Pi budget); fake providers only.
+- One pytest process tree at a time; one full local gate at the end.
+- Commits at most 500 insertions; structure ratchet: listed files and functions do not grow.

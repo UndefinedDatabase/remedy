@@ -98,8 +98,11 @@ from packages.orchestration.do_study import do_step_study
 from packages.orchestration.do_targets import (
     _shape_job_orders,
     _step_init,
+    name_do_job,
     resolve_do_shape,
 )
+from packages.orchestration.order_cancel import cancellable_do_steps
+from packages.orchestration.order_jobs import record_job_waits
 from packages.orchestration.order_ledger import (
     OrderCallLedger,
     bind_order_ledger,
@@ -122,7 +125,7 @@ def walk_do_sequence(ctx: DoContext,
     With `--step-by-step`, a step that did work is followed by a halt before the
     next step (DECISION F268 D8); a halt that stops reports the next step stopped.
     """
-    steps = DO_STEP_TABLE if table is None else table
+    steps = cancellable_do_steps(DO_STEP_TABLE if table is None else table)   # exec-1017c: a cancel ends it
     ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
     with bind_order_ledger(ctx.ledger), capture_review_report(ctx):     # exec-1017 D5
         return _walk_steps(ctx, steps)
@@ -790,7 +793,8 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     ctx.shape, ctx.shape_source = shape, source
 
     shaped_jobs: list[OrderJobPlan] = []
-    for order, tasks, milestone_id, target in _shape_job_orders(ctx, shape):
+    planned = _shape_job_orders(ctx, shape)
+    for order, tasks, milestone_id, target in planned:
         try:
             shaped = plan_order_job(
                 order,
@@ -807,6 +811,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         if lane.bounded and not ctx.no_llm:
             shaped.intake_fallback_reason = "bounded"
         job_id = str(shaped.job.job_id)
+        name_do_job(shaped.job, order, ctx.order, target, several=len(planned) > 1)
         # DECISION amend1011b D4: the job joins the mission of ITS repository, under this order.
         target_mission, target_order = ctx.project_missions[str(target.project.id)]
         mission = link_order_job(str(target.project.id), target_mission, target_order, job_id)
@@ -913,6 +918,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     chain = bool(ctx.commit_mode)
     ledger = ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
     ctx.waiting_job_ids = [] if chain else list(ctx.job_ids[1:])
+    record_job_waits(ctx.job_ids, ctx.waiting_job_ids)    # a client reads what each one waits for
     ran: list[str] = []
     for position, job_id in enumerate(ctx.run_job_ids, start=1):
         done_so_far = "; ".join(ran) or "no job has run yet"

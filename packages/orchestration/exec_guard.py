@@ -448,7 +448,7 @@ def _sandbox_refusal(reason: str, plan: ChildSpawnPlan) -> ExecGuardResult:
         returncode=126, term_signal=None, stdout=b"", stderr=message, stdout_truncated=False,
         stderr_truncated=False, stdout_bytes_seen=0, stderr_bytes_seen=len(message),
         streams_complete=True, wall_seconds=0.0, cpu_seconds_used=0.0,
-        classification="sandbox_unavailable", tripped_limit=None, limits_enforced=(),
+        classification="sandbox_unavailable", tripped_limit="sandbox_unavailable", limits_enforced=(),
         limits_unsupported=plan.limits_unsupported)
 
 

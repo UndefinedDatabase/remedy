@@ -527,9 +527,7 @@ def _cmd_job_run(
         builder_provider=builder_provider, builder_model=builder_model,
         builder_effort=builder_effort, reviewer_provider=reviewer_provider,
         reviewer_model=reviewer_model, reviewer_effort=reviewer_effort,
-        repair_provider=repair_provider,
-        repair_model=repair_model,
-        repair_effort=repair_effort,
+        repair_provider=repair_provider, repair_model=repair_model, repair_effort=repair_effort,
     )
     if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
         fail(
@@ -652,6 +650,8 @@ def _cmd_job_run(
     # rather than waiting for someone to type `job evidence`. Never fatal.
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     cost_mirror = mirror_job_run_into_ledger(job.job_id)
+    from packages.orchestration.review_reports import continue_review_report
+    continue_review_report(job)     # exec-1017c: a walk's job run later joins the walk's review report
 
     report = export_job_report(job) if json_output else {}
     if json_output:

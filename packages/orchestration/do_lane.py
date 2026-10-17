@@ -44,6 +44,12 @@ DO_LANE_HOLD = "hold"
 #: A repository holding this many tracked files or fewer is studied without a provider's narration.
 DO_TINY_REPO_MAX_FILES = 10
 
+#: A small change spread over a few named files is still ONE bounded job and one task: the files a
+#: rename, a fix and its call site, or a value and its two readers touch belong to one change, and a
+#: planner asked to split them made two jobs that could not see each other (lab order of 2026-10-17).
+#: More files than this is no longer "small" by its file count alone and gets a plan.
+MAX_BOUNDED_FILES = 3
+
 #: Documentation targets: a word like "authentication" in an order about a doc is no risk to code.
 _DOC_SUFFIXES = frozenset({".md", ".rst", ".txt", ".adoc"})
 #: A document is named by a word of the order only when its stem is at least this long.
@@ -64,6 +70,15 @@ _RISKY_WORDS = re.compile(
     r"rewrite|re-?architect\w*|overhaul|from\s+scratch|neu\s+schreiben|komplett\s+neu)\b"
     r"|\b(?:migrat\w*|migrier\w*)\b.{0,60}\b(?:all|every|entire|whole|alle\w*|sämtliche\w*|gesamte\w*)\b",
     re.IGNORECASE)
+#: Wording that reaches past the files an order names (exec-1017c, R-1341): "in src/a.js and everywhere
+#: else" names one file and asks for the project. A floor like the risk words, never a classifier; no
+#: negation ("keine anderen Dateien", "nothing elsewhere") and no in-file phrase ("all occurrences").
+_WIDER_SCOPE = re.compile(
+    r"\b(?:everywhere|throughout\s+the\s+(?:code\s*base|project|repo\w*)|"
+    r"across\s+the\s+(?:code\s*base|project|repo\w*)|in\s+(?:all|every)\s+(?:other\s+)?files?|"
+    r"(?:the\s+)?(?:whole|entire)\s+(?:code\s*base|project|repo\w*)|überall|"
+    r"in\s+allen\s+(?:anderen\s+)?dateien|im\s+(?:ganzen|gesamten)\s+(?:projekt|repo\w*|code))\b",
+    re.IGNORECASE)
 #: Wording that asks for a new file; without it a named file the repository does not track is a question.
 _CREATES = re.compile(r"\b(?:create|add|write|generate|new|introduce|erstell\w*|schreib\w*|"
                       r"neu\w*|ergänz\w*|füg\w*|lege)\b", re.IGNORECASE)
@@ -75,6 +90,8 @@ class DoLaneDecision:
 
     *risk* is the deterministic fact that took a one-file order off the bounded lane; *with_tests*
     says the order itself asks for a test beside the one file (a deliverable, never a check).
+    *also* names the further files of a small change over several named files, in the order's
+    own order; they belong to the same one task as *deliverable*.
     """
 
     lane: str
@@ -82,6 +99,7 @@ class DoLaneDecision:
     deliverable: str = ""
     risk: str = ""
     with_tests: bool = False
+    also: tuple[str, ...] = ()
 
     @property
     def bounded(self) -> bool:
@@ -143,8 +161,9 @@ def select_do_lane(
     """The lane for *order* over a repository holding *tracked_files*; the full lane when unclear.
 
     Bounded when there is one target repository, no `--force-mission`, and the order's deliverables
-    are a few plain actions on exactly one file that the repository proves (or, for a new file, that
-    the order says to create) and no fact marks the change risky. A bare file name two nested files
+    are a few plain actions on one file, or on up to `MAX_BOUNDED_FILES` named files of one small
+    change, that the repository proves (or, for a new file, that the order says to create) and no
+    fact marks the change risky. A bare file name two nested files
     share, or a named file nothing tracks that the order does not create, is a question (hold),
     never a guess. A test the order asks for beside the file is part of the one job. `--force-job`
     selects the bounded lane for a single-repository order and says what routing alone chose, except
@@ -159,7 +178,7 @@ def select_do_lane(
     if force_job and not auto.bounded and not auto.hold:   # an override never settles a question
         return DoLaneDecision(DO_LANE_BOUNDED, f"--force-job was given (routing alone chose the "
                               f"{auto.lane} lane: {auto.reason})", auto.deliverable, auto.risk,
-                              auto.with_tests)
+                              auto.with_tests, auto.also)
     return auto
 
 
@@ -169,39 +188,58 @@ def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: boo
     named_tests = [p for p in explicit_order_paths(" ".join(scope.deliverables))
                    if is_test_path(p) and p not in targets]
     with_tests = requests_test_files(order) or bool(named_tests)
-    if len(targets) > 1:
-        return DoLaneDecision(DO_LANE_FULL, f"the order names {len(targets)} files")
+    if len(targets) > MAX_BOUNDED_FILES:
+        return DoLaneDecision(DO_LANE_FULL, f"the order names {len(targets)} files, more than the "
+                              f"{MAX_BOUNDED_FILES} one bounded job changes")
     if not targets:
         if infer_single_file and len(tracked_files) == 1 and scope.single:
             return DoLaneDecision(
                 DO_LANE_BOUNDED, f"the repository tracks one file, {tracked_files[0]}, and the order "
                 "has one part", tracked_files[0], with_tests=with_tests)
         return DoLaneDecision(DO_LANE_FULL, "the scope of the order is not clearly one file")
-    [target] = targets
+    files: list[str] = []
+    for target in targets:
+        resolved, question = _resolved_target(order, target, tracked_files)
+        if question:
+            return DoLaneDecision(DO_LANE_HOLD, question)
+        files.append(resolved)
+    deliverable, also = files[0], tuple(dict.fromkeys(f for f in files[1:] if f != files[0]))
+    named = f"one file, {deliverable}" if not also else f"{1 + len(also)} files, {', '.join((deliverable, *also))}"
+    if risk := order_risk(order, [deliverable, *also]):
+        return DoLaneDecision(DO_LANE_FULL, f"the order names {named}, but it is high-risk: {risk}",
+                              risk=risk, with_tests=with_tests)
+    # One named file (and its tests) is one job whatever the order's wording: how many sentences
+    # it has or which verbs they use no longer sends it to the planner (lab orders of 2026-10-17,
+    # where each new phrasing missed a pattern and the local planner's plan then failed outright).
+    # A few named files of one small change are the same one job. Only many explicit actions ("add a
+    # section, write a changelog entry, add a CI workflow") still go to the planner: they likely
+    # need files the order does not name.
+    if wider := _WIDER_SCOPE.search(order):
+        return DoLaneDecision(DO_LANE_FULL, f"the order names {named}, but reaches beyond {'them' if also else 'it'} "
+                              f"({wider.group(0)!r})", with_tests=with_tests)
+    if scope.actions > MAX_SIMPLE_ACTIONS:
+        return DoLaneDecision(DO_LANE_FULL, f"the order names {named}, but asks for "
+                              f"{scope.actions} separate actions")
+    # exec-1017c (R-1341): several named files are one bounded job by their count, not because the
+    # order asks for one thing; the reason says which, and every named file must change (R-1342).
+    asks = ("asks for one thing" if not also else
+            f"they are one bounded job of at most {MAX_BOUNDED_FILES} files, each of which must change")
+    return DoLaneDecision(DO_LANE_BOUNDED, f"the order names {named}, and {asks}"
+                          + (" and a test for it" if with_tests else ""),
+                          deliverable, with_tests=with_tests, also=also)
+
+
+def _resolved_target(order: str, target: str, tracked_files: list[str]) -> tuple[str, str]:
+    """``(path, question)``: the tracked file *target* means, or the question a hold asks instead."""
     resolved = resolve_order_path(target, tracked_files)
     if resolved is None and tracked_files and "/" not in target:
         sharing = [t for t in tracked_files if PurePosixPath(t).name == target]
         if len(sharing) > 1:
-            return DoLaneDecision(DO_LANE_HOLD, f"{target} matches {len(sharing)} tracked files "
-                                  f"({', '.join(sharing[:4])}); which one is meant?")
+            return "", (f"{target} matches {len(sharing)} tracked files "
+                        f"({', '.join(sharing[:4])}); which one is meant?")
     if resolved is None and tracked_files and not _CREATES.search(order):
-        return DoLaneDecision(DO_LANE_HOLD, f"{target} is not tracked and the order does not say to "
-                              "create it; which existing file is meant?")
-    deliverable = resolved or target
-    if risk := order_risk(order, [deliverable]):
-        return DoLaneDecision(DO_LANE_FULL, f"the order names one file, {deliverable}, but it is "
-                              f"high-risk: {risk}", risk=risk, with_tests=with_tests)
-    # One named file (and its tests) is one job whatever the order's wording: how many sentences
-    # it has or which verbs they use no longer sends it to the planner (lab orders of 2026-10-17,
-    # where each new phrasing missed a pattern and the local planner's plan then failed outright).
-    # Only many explicit actions ("add a section, write a changelog entry, add a CI workflow") still
-    # go to the planner: they likely need files the order does not name.
-    if scope.actions > MAX_SIMPLE_ACTIONS:
-        return DoLaneDecision(DO_LANE_FULL, f"the order names one file, {deliverable}, but asks for "
-                              f"{scope.actions} separate actions")
-    return DoLaneDecision(DO_LANE_BOUNDED, f"the order names one file, {deliverable}, and asks for "
-                          "one thing" + (" and a test for it" if with_tests else ""),
-                          deliverable, with_tests=with_tests)
+        return "", f"{target} is not tracked and the order does not say to create it; which existing file is meant?"
+    return resolved or target, ""
 
 
 def tracked_repo_files(repo_root: str) -> list[str]:

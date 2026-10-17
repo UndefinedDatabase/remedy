@@ -1058,9 +1058,9 @@ def list_decisions(
     # is refused for arriving without its receipts.  It enforces only the types
     # in `TRIPLE_REQUIRED_TYPES`, which T002a made non-empty: `token_budget` is
     # in it from the commit that gave the budget stop a real triple, and each
-    # remaining producer joins the same way, in its own upgrade commit.
+    # remaining producer joins the same way, in its own upgrade commit. A cancelled job asks nothing.
     enforce_decision_evidence(decisions)
-    return decisions
+    return [] if str(getattr(job, "state", "")) == "cancelled" else decisions   # exec-1017c, job_cancel.py
 
 
 def get_decision(

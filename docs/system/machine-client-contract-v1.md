@@ -100,8 +100,9 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
    that wait for their apply. Read it as often as once a minute. By default `jobs` lists every
    job that still needs something and the 20 ended jobs that ended last, by the time each
    finished, or was created when its record holds no finish. A job has ended when its state is
-   `completed`, `failed` or `cancelled`, it does not wait for its apply and none of its
-   decisions is open; a job whose decisions could not be read has not. `job_window` names the
+   `completed`, `failed` or `cancelled`, or it was `stopped` before it ever ran, it does not wait
+   for its apply and none of its decisions is open; a job whose decisions could not be read has
+   not, and one stopped while it ran has not either, because it can be resumed. `job_window` names the
    limit under `ended_limit` and how many ended jobs it left out under `left_out`.
    `remedy status --json --all-ended-jobs` lists every ended job, and `ended_limit` is then
    null. Beside its `cost`, each job carries
@@ -277,7 +278,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.17`.
+Interface version: `1.19`.
 
 ### Envelope
 
@@ -298,6 +299,8 @@ Refusal keys: `error`, `message`.
 ### Words
 
 Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `cancelled`, `blocked`, `stopped`.
+Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`.
+Phases of an order: `planning`, `running`, `awaiting_apply`, `needs_plan_approval`, `waiting`, `ready`, `blocked`, `failed`, `stopped`, `cancelling`, `cancelled`, `done`, `ended`, `lost`.
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
@@ -308,10 +311,10 @@ Approval risks: `low`, `medium`, `high`.
 
 The closed words of `remedy client story` and `GET /api/v1/jobs/{job}/story`. A phrase or a reason is `{key, args}`; its arguments are numbers, paths relative to the repository, and `provider`, a provider's id word.
 
-Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`.
+Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`, `queued`.
 Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
-Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
+Story next actions: `apply`, `decline`, `answer`, `retry`, `none`, `run`, `resume`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
 Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
@@ -339,6 +342,7 @@ Story reason `declined`: none.
 Story reason `cancelled`: none.
 Story reason `paused`: none.
 Story reason `unknown`: none.
+Story reason `stopped`: none.
 
 ### Operations
 
@@ -625,6 +629,47 @@ Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_already_applied`, `jo
 Answer keys: `already_declined`, `declined_at`, `job_id`, `matches`, `reason`, `source`.
 Keys under the answer keys: none.
 
+#### `remedy job stop`
+
+Command id: `job.stop`.
+Description: Request a safe stop of a running job, under its mission, or stop one that has not started at once (F011 kill switch).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | Job ID to stop (under its mission) |
+| `--reason` | yes | no | yes | no | Why the job, under its mission, is being stopped (recorded in the run's evidence) |
+| `--source` | yes | no | yes | no | Who requested the stop (default: cli) |
+| `--status` | yes | no | no | no | Show pending and consumed stop requests instead of requesting one |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`, `job_not_started`, `job_not_stoppable`, `serve_unreachable`, `stop_not_requested`.
+Answer keys: `already_stopped`, `archived`, `consumed_count`, `detail`, `job_id`, `job_status`, `matches`, `pending`, `status`, `stop`, `stopped`.
+Keys under the answer keys: see below.
+
+- `archived`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`
+- `pending`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`
+- `stop`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`, `stopped_at`
+
+#### `remedy job abandon`
+
+Command id: `job.abandon`.
+Description: End a job for good, under its mission: it never runs again and leaves the active views, its record and evidence stay; a running job ends at its next safe point. A completed result is declined, not cancelled.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | Job ID to cancel (under its mission) |
+| `--reason` | yes | no | yes | no | Why the job, under its mission, is cancelled (kept on the job) |
+| `--source` | yes | no | yes | no | Who requested the cancel (default: cli) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `cancel_not_requested`, `invalid_job_id`, `job_not_cancellable`, `job_not_found`.
+Answer keys: `already_cancelled`, `cancel`, `cancel_pending`, `job_id`, `job_status`, `matches`.
+Keys under the answer keys: see below.
+
+- `cancel`: `job_id`, `reason`, `requested_at`, `source`
+
 #### `remedy change proof`
 
 Command id: `change.proof`.
@@ -789,7 +834,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `story`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `order_job_phases`, `order_phases`, `story`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -868,8 +913,12 @@ Description: Read an order (an order file or text) the supervisor started, as a 
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `order_not_found`.
-Answer keys: `answer`, `ended_at`, `exit_code`, `order_file`, `order_id`, `started_at`, `state`.
-Keys under the answer keys: none.
+Answer keys: `answer`, `cancel`, `ended_at`, `exit_code`, `jobs`, `order_file`, `order_id`, `phase`, `started_at`, `state`.
+Keys under the answer keys: see below.
+
+- `cancel`: `reason`, `requested_at`, `source`
+- `jobs`: `executable`, `job_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
+  - `tasks`: `current`, `done`, `total`
 
 #### `remedy client run`
 
@@ -931,6 +980,27 @@ Answer keys: `files`, `job`, `matches`, `state`, `truncated`.
 Keys under the answer keys: see below.
 
 - `files`: `added`, `change`, `patch`, `path`, `removed`, `truncated`
+
+#### `remedy client cancel-order`
+
+Command id: `client.cancel-order`.
+Description: Cancel an order (an order file or text) the supervisor started, planning, running or waiting: its jobs end for good, nothing of it starts again and nothing is applied after it; a result waiting for its apply stays for you to answer unless --decline-results.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--reason` | yes | no | yes | no | Why the order file or text is cancelled (kept with it and with each job of its mission) |
+| `--source` | yes | no | yes | no | Who requested the cancel (default: cli) |
+| `--decline-results` | yes | no | no | no | Also decline each result of the order file or text still waiting for its apply |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `cancel_not_requested`, `order_not_found`.
+Answer keys: `already_cancelled`, `cancel`, `jobs`, `order_id`, `phase`, `state`.
+Keys under the answer keys: see below.
+
+- `cancel`: `reason`, `requested_at`, `source`
+- `jobs`: `before`, `job_id`, `job_status`, `outcome`
 
 #### `remedy doctor health`
 

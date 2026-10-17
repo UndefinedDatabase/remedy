@@ -61,7 +61,8 @@ def stop_unstarted_job(job: Any, signal: StopSignal, *,
     `stop_error`, as the runner keeps it, and the next `run_job` acknowledges the request.
     """
     from packages.orchestration.failure_postmortem import safe_text
-    from packages.orchestration.pingpong_job import JOB_STOPPED, save_job_plan
+    from packages.orchestration.job_cancel import job_stop_end_state
+    from packages.orchestration.pingpong_job import save_job_plan
 
     try:
         archive_ref = archive_stop(job.job_id, signal, control_root_path=control_root_path)
@@ -76,7 +77,7 @@ def stop_unstarted_job(job: Any, signal: StopSignal, *,
     job.finished_at = now
     job.stop_error = ""
     job.error = ""
-    job.state = JOB_STOPPED
+    job.state = job_stop_end_state(job)        # exec-1017c: under a cancel request it ends cancelled
     save_job_plan(job)
     try:
         acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)

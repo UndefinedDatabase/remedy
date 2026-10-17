@@ -7,6 +7,8 @@ error paths — using fake/mock providers (no real Claude calls, no network).
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import stat
 import textwrap
 from pathlib import Path
@@ -758,7 +760,11 @@ class TestBuilderNoChanges:
         test_script = tmp_path / "test_pass.sh"
         test_script.write_text("#!/bin/bash\nexit 0\n")
         test_script.chmod(test_script.stat().st_mode | stat.S_IEXEC)
-        monkeypatch.setenv("PATH", f"{bin_dir}:{tmp_path}")
+        # The test command runs inside the tool sandbox, which needs `bwrap` on PATH. Run alone, no
+        # earlier test has filled `tool_sandbox._READY_BWRAP`, so a PATH of the fake's folders only
+        # made the sandbox refuse the command (exit 126) and the run read `test_failed` (exec-1017c).
+        sandbox_dir = os.path.dirname(shutil.which("bwrap") or "/usr/bin/bwrap")
+        monkeypatch.setenv("PATH", f"{bin_dir}:{tmp_path}:{sandbox_dir}")
         result = run_pingpong(
             "Fix README", str(demo_repo),
             builder_name="claude-cli", reviewer_name="claude-cli",

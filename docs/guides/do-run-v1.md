@@ -29,7 +29,10 @@ walk reports what is now uncommitted. Add `--commit-auto` to commit.
   text, so `--builder-provider ollama` is refused and names `pi`). Pi runs in Remedy's isolated
   job workspace; the reviewer's Pi has read-only tools. Explicit `--builder-provider claude-cli`
   (or `claude`, `fake`) remains an override. A missing Pi, Ollama or model stops the walk before any
-  model call with the action to take, and never falls back to another provider.
+  model call with the action to take, and never falls back to another provider. Pi loads no
+  `AGENTS.md` or `CLAUDE.md` on its own (`--no-context-files`): the builder sees the repository's
+  root agent file whole when it is at most 2,000 characters, and otherwise only its name, to read
+  when the task needs its conventions.
 - **A dirty working tree is the baseline, for the files the job may change.** At the start Remedy
   captures what you can see of the job's deliverable paths (bytes, executable bit, symlinks,
   deletions), seeds the job workspace from them and measures the proposed change from that state.
@@ -95,7 +98,14 @@ DoD check `project_tests`, which runs the project's own test command (its `.reme
 `[tests]` command, else its `package.json` `test` script, else pytest over `tests/`) inside the
 tool sandbox, becomes BLOCKING for that job, and is added when the job's DoD has none. A red run
 holds the job `blocked` (`dod_blocking_red:<check>`) instead of completing it; a project that
-names no test command leaves the check not run, and the job says so. Every walk ends with one
+names no test command leaves the check not run, and the job says so. A **high-risk** change (see
+below) requires its tests the same way whether or not the order asks. In a repository whose root
+names no test command (a polyglot repository, or several packages each with their own
+`package.json` or `tests/`), the check runs in the nearest folder above each of the job's files
+where one of the same three sources names a command, at most three packages, each its own check;
+a language Remedy finds no command for (a Go module, a Cargo crate) is reported not run, never
+passed. A check refused before it ran (an executable outside the allowed set, a test command the
+job itself changed, a missing tool) is `not_run` with its reason, never `failed` or `passed`. Every walk ends with one
 `Verification of job <id>:` line, and the JSON answer's `jobs[].verification` holds `status`
 (`passed`, `failed`, `not_run`, `not_required` or `pending`), `required`, the order's `request`,
 the `runs` (each task's own test run and each DoD test check, with its command and whether it
@@ -108,10 +118,16 @@ The lane is decided from the order and the repository's tracked files, with no m
 
 | Lane | When | What happens |
 |------|------|--------------|
-| **bounded** | one repository; the deliverables are at most two sentences and two actions, on exactly one file that the repository proves (tracked as written, or a bare name that one tracked file bears, or a file the order says to create, or a tracked document the order names as a word, such as "the readme"); no risk fact below | a deterministic scan, the one-milestone plan, one job, one task and **no planning provider call**, in a repository of any size; only the builder and the reviewer are called, the DoD still runs the project's tests, and the walk stops before apply |
+| **bounded** | one repository; the deliverables are at most two explicit actions on one file, or on up to three named files of one small change (a rename across a file and its caller, a fix in two files and its test), each of which the repository proves (tracked as written, or a bare name that one tracked file bears, or a file the order says to create, or a tracked document the order names as a word, such as "the readme"); no risk fact below; the order reaches no further than its files ("everywhere", "across the codebase", "in all other files", "überall" send it to the full lane). Every named file of the one task must change: a task that leaves one unchanged ends `blocked` (`named_files_unchanged`), whatever its reviewer said | a deterministic scan, the one-milestone plan, one job, one task and **no planning provider call**, in a repository of any size; only the builder and the reviewer are called, the DoD still runs the project's tests, and the walk stops before apply |
 | **bounded with a test** | as above, and a deliverable asks for a test to be written ("fix `src/add.py` and add a regression test") | the same one job and one task; the test is part of that task's acceptance and its test file may be created or changed; running the tests is a check, not a deliverable |
 | **hold** | the named file is a bare name two or more tracked files bear (`README.md` with only `docs/README.md` and `web/README.md` tracked), or it is not tracked and the order does not say to create it | the walk stops at the `study` step with the question, before any mission, plan or job exists; a root `README.md` beside `docs/README.md` is not ambiguous, the exact tracked path wins |
-| **full** | several files, several projects, `--force-mission`, a scope that is not clearly one file, or a **high-risk** one-file order | the planner plans milestones, jobs and tasks and keeps an approval boundary |
+| **full** | more than three named files, more than two explicit actions, several projects, `--force-mission`, a scope that names no file clearly, or a **high-risk** order | the planner plans milestones, jobs and tasks and keeps an approval boundary |
+
+Several named files in the bounded lane are ONE task: its title names them all ("Deliver
+`src/price.js` and `src/cart.js` and its test `test/cart.test.js`"), its body says they all change
+in this one step, and the further files are its `files_hint`. A hold for one of the files is a
+hold for the order, and a risky path among them takes the whole order to the planner (execution
+excellence order 2026-10-17).
 
 High-risk means a fact the order or the path carries: a path under or named for authentication,
 security, crypto, secrets, sessions, payments, migrations, schemas, databases, deployment, CI
@@ -179,6 +195,15 @@ document and stderr silent (D4, D5).
 | `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply` or a commit flag, which applies them; with a push, it then pushes the mission once. |
 
 A step that stops or fails ends the walk; the steps after it are not called.
+
+An order the serve supervisor started (`POST /api/v1/orders`) is cancelled with `remedy client
+cancel-order <order>` or `POST /api/v1/orders/{order}/cancel`: the walk reads the request before
+every step and before every apply, so the step in progress finishes (a planner or provider call in
+flight returns first), no later step runs, every job of the order is `cancelled` for good and
+nothing of it is applied afterwards; a result already waiting for its apply stays for you to apply
+or decline. One job is ended the same way with `remedy job abandon <job>`; `remedy job stop` only
+pauses it, and `remedy job run` resumes a stopped job. A walk started in a terminal stops with
+Ctrl-C.
 
 ## Stop before apply
 

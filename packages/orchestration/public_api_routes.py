@@ -177,6 +177,70 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="POST",
+        path="/api/v1/jobs/{job}/stop",
+        twin="job.stop",
+        body=(("reason", "string"),),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("ambiguous_job_id", 400),
+        ),
+        description=(
+            "Stops a job, as `remedy job stop <job> --reason <reason> --json` does, recorded as "
+            "coming through `api`: a running job stops at its next safe point (the provider call "
+            "in flight finishes, nothing new starts) and stays resumable, a job that never "
+            "started, such as one waiting for its predecessor, ends at once, and a job already "
+            "stopped answers the stop it had with `already_stopped`; a completed job is refused "
+            "with 409 `job_not_stoppable`, because its result waits for an apply or a decline. "
+            "A job id prefix is accepted, and a client token stops only a job of one of its "
+            "projects (403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/abandon",
+        twin="job.abandon",
+        body=(("reason", "string"),),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("ambiguous_job_id", 400),
+        ),
+        description=(
+            "Ends a job for good, as `remedy job abandon <job> --reason <reason> --json` does, "
+            "recorded as coming through `api`: it never runs again and leaves the digest's active "
+            "jobs, while its record and evidence stay readable. A job no process runs is "
+            "`cancelled` at once; a running one answers `cancel_pending` true and ends `cancelled` "
+            "at its next safe point; a cancelled one answers `already_cancelled`. A completed job "
+            "is refused with 409 `job_not_cancellable` (its result waits for an apply or a "
+            "decline), and so is a failed one. A job id prefix is accepted, and a client token "
+            "cancels only a job of one of its projects (403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/orders/{order}/cancel",
+        twin="client.cancel-order",
+        body=(("reason", "string"), ("decline_results", "flag")),
+        refusal_default=409,
+        refusals=(("order_not_found", 404),),
+        description=(
+            "Cancels an order a `POST` to `/api/v1/orders` started, as `remedy client cancel-order "
+            "<order> --json` does, whatever it is doing: a planning order stops before its next "
+            "step (a planner call in flight finishes first), each of its jobs is cancelled as "
+            "`POST /api/v1/jobs/{job}/abandon` cancels one, no job of it starts afterwards and "
+            "nothing of it is applied after the request. `phase` reads `cancelling` while the walk "
+            "or a job still runs and `cancelled` once nothing does; `jobs` names what the cancel "
+            "did to each job. An applied result stays applied; a result waiting for its apply stays "
+            "for the person's decision unless `decline_results` is `true`. A second cancel answers "
+            "`already_cancelled` true. A client token cancels only an order of one of its projects "
+            "(403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
         path="/api/v1/jobs/{job}/apply",
         twin="job.apply",
         body=(("commit", "string"), ("commit_auto", "flag"), ("commit_with_history", "flag"),
@@ -203,7 +267,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         refusals=(("order_not_found", 404),),
         description=(
             "Polls the order a `POST` to `/api/v1/orders` started, as `remedy client order "
-            "<order> --json` does: `state` reads `running`, `ended` or `lost`, and `answer` "
+            "<order> --json` does: `state` reads `running`, `ended` or `lost`, `phase` what the "
+            "order is doing (see `order_phases` in `GET /api/v1/interface`), `cancel` its cancel "
+            "request or null, `jobs` its jobs, and `answer` "
             "holds what `remedy do` printed once the order is not `running`. A client token "
             "reads only an order whose order file names its projects (403 "
             "`api_client_policy_refused`)."

@@ -269,7 +269,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1445 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1442 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1317 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -339,7 +339,7 @@ with the code that calls it.
 | 146 | `packages/orchestration/project_constitution.py` | `load_project_constitution` |
 | 145 | `packages/orchestration/context_coverage.py` | `derive_context_coverage` |
 | 103 | `apps/cli/commands/dev.py` | `_dev_status` |
-| 144 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
+| 143 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
 | 143 | `packages/orchestration/pingpong_loop.py` | `_call_with_retry` |
 | 143 | `packages/orchestration/token_authority.py` | `validate_token_truth` |
 | 142 | `packages/orchestration/repository_snapshot.py` | `build_snapshot_truth` |
@@ -426,7 +426,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5347 | `packages/orchestration/pingpong_job.py` |
+| 5343 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |

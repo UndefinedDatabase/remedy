@@ -29,6 +29,30 @@ def _job_decline_argv(segments: dict[str, str], body: dict[str, Any]) -> list[st
             "--", segments["job"]]
 
 
+def _job_stop_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job stop` is run with (exec-1017b): `--reason` as the body gives it,
+    `--source=api`, so the stop names the door it came through; then `--json`, `--` and the job.
+    A running job stops at its next safe point, one that never started ends at once, a stopped one
+    answers the stop it already had, and a completed one is refused `job_not_stoppable`."""
+    return ["job", "stop", f"--reason={body.get('reason', '')}", "--source=api", "--json",
+            "--", segments["job"]]
+
+
+def _job_cancel_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job abandon` is run with (exec-1017c): `--reason` as the body gives it,
+    `--source=api`, then `--json`, `--` and the job."""
+    return ["job", "abandon", f"--reason={body.get('reason', '')}", "--source=api", "--json",
+            "--", segments["job"]]
+
+
+def _order_cancel_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy client cancel-order` is run with (exec-1017c): `--reason`,
+    `--source=api`, `--decline-results` when the body sets `decline_results`, `--json`, `--`, the order."""
+    declines = ["--decline-results"] if body.get("decline_results") else []
+    return ["client", "cancel-order", f"--reason={body.get('reason', '')}", "--source=api", *declines,
+            "--json", "--", segments["order"]]
+
+
 class PublicApiWriteRefusal(Exception):
     """A write a route's argument builder refuses before any command runs (DECISION F253 D12)."""
 
@@ -83,6 +107,9 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "decision.resolve": _decision_resolve_argv,
     "job.decline": _job_decline_argv,
     "job.apply": _job_apply_argv,
+    "job.stop": _job_stop_argv,
+    "job.abandon": _job_cancel_argv,
+    "client.cancel-order": _order_cancel_argv,
 }
 
 #: The flags of the order-create route's body, each passed as its `remedy do` option when
@@ -199,6 +226,22 @@ def job_project_keys(plan: Any) -> list[str]:
         else:
             keys += [project.slug or "", str(project.id)]
     return keys
+
+
+def _client_write_refusal(client: Any, segments: dict[str, str]) -> str | None:
+    """One sentence when CLIENT may not write to the job or the order the path names, else None:
+    a job as `_client_job_refusal` reads it, an order as its read is scoped (exec-1017c)."""
+    if "job" in segments:
+        return _client_job_refusal(client, segments["job"])
+    from packages.orchestration.client_scope import client_order_read_refusal
+
+    refusal = client_order_read_refusal(client, segments["order"])
+    return None if refusal is None else f"{refusal}; nothing was run"
+
+
+def _write_lock_key(segments: dict[str, str]) -> str:
+    """The key a write waits on: the job's (`_job_lock_key`), or the order's own id."""
+    return _job_lock_key(segments["job"]) if "job" in segments else f"order:{segments['order']}"
 
 
 def _client_job_refusal(client: Any, job: str) -> str | None:

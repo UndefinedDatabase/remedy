@@ -64,6 +64,7 @@ from typing import Any
 
 from packages.orchestration.dod_schema import DoD, DoDCheck
 from packages.orchestration.exec_guard import (
+    TRIPPED_LIMIT_ATTR,
     dod_app_exec_policy,
     plan_child_spawn,
     run_guarded_dod_process_command,
@@ -107,6 +108,9 @@ REASON_TIMEOUT = "timeout"
 REASON_EXECUTABLE_NOT_ALLOWED = "executable_not_allowed"
 REASON_CWD_OUTSIDE_WORKTREE = "cwd_outside_worktree"
 REASON_CWD_MISSING = "cwd_missing"
+#: exec-1017c: the guard refused to spawn the command without its tool sandbox (exit 126 and no
+#: process). The command never ran, so its check is not run, never a failed test.
+REASON_SANDBOX_UNAVAILABLE = "sandbox_unavailable"
 #: project_tests (F299, DECISION F299 D1): the project names no test command at
 #: all — no config entry, no package.json test script, no tests folder.
 REASON_NO_TEST_COMMAND = "no_test_command"
@@ -349,6 +353,8 @@ def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
 
     duration_ms = int((time.monotonic() - start) * 1000)
     tail, truncated = _tail(proc.stdout + proc.stderr)
+    if getattr(proc, TRIPPED_LIMIT_ATTR, None) == REASON_SANDBOX_UNAVAILABLE:
+        return _refused(check, REASON_SANDBOX_UNAVAILABLE, argv, declared_cwd, tail)
     passed = proc.returncode == 0
     return CheckEvidence(
         check_id=check.id,
