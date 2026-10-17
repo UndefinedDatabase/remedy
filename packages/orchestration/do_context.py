@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from packages.orchestration.do_lane import DoLaneDecision
     from packages.orchestration.do_progress import DoProgress
+    from packages.orchestration.order_ledger import OrderCallLedger
     from packages.orchestration.project_registry import RemyProject
 
 #: The two shapes (DECISION F268 D5), and where the one in force came from; an order over
@@ -136,6 +137,9 @@ class DoContext:
     catalog_edges: tuple[str, ...] = ()
     #: Each of those projects' repository root, by project id (DECISION F205 D4).
     project_repos: dict[str, str] = field(default_factory=dict)
+    #: The order's one budget authority: its planner calls, its jobs' spend and what is left of its
+    #: caps (scale audit P1-4). Created by the walker when the walk starts.
+    ledger: OrderCallLedger | None = None
     mission_id: str = ""
     #: The order batch the walk's order is in the lead project's mission (DECISION amend1011b D3).
     order_id: str = ""

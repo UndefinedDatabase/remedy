@@ -215,9 +215,9 @@ def _shape_job_orders(
     job's order text cites them too (DECISION F206 D2).
     """
     from packages.orchestration.task_deliverables import (
-        deliverable_check_task,
         deliverable_task,
         deterministic_job_plans,
+        explicit_order_paths,
         extract_order_deliverables,
     )
 
@@ -232,7 +232,8 @@ def _shape_job_orders(
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:
         if ctx.lane is not None and ctx.lane.bounded and ctx.lane.deliverable:
-            return [(order, [deliverable_task(ctx.lane.deliverable, order)], sole, own)]
+            return [(order, [deliverable_task(ctx.lane.deliverable, order,
+                                              with_tests=ctx.lane.with_tests)], sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]
@@ -244,6 +245,8 @@ def _shape_job_orders(
     deliverables = extract_order_deliverables(order)
     if len(deliverables) >= 2:
         return [(order, [deliverable_task(d, order)], sole, own) for d in deliverables]
-    [only] = deliverables
-    return [(order, [deliverable_task(only, order)], sole, own),
-            (order, [deliverable_check_task(only, order)], sole, own)]
+    # Audit P1-3: one deliverable is ONE job. Its checks run in that job's verification; a second,
+    # check-only job would pay a whole job to repeat them. An order naming no file lets the planner choose.
+    if not explicit_order_paths(order):
+        return [(order, None, sole, own)]
+    return [(order, [deliverable_task(deliverables[0], order)], sole, own)]

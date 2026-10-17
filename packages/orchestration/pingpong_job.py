@@ -3389,7 +3389,7 @@ def run_job(
                 byte_count=len(task_prompt.encode()),
                 char_count=len(task_prompt),
                 tokens_estimated=len(task_prompt) // 4,
-                excerpt=task_prompt[:200],
+                excerpt=("\n".join(p for p in (task.body, task.acceptance) if p.strip()) or task.title)[:1500],
             )
 
             compiled_context_paths: list[str] | None = None

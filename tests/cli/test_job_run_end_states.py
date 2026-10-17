@@ -20,13 +20,18 @@ from apps.cli.client_interface import OPERATION_REFUSAL_TOKENS
 from apps.cli.grouped import main
 from packages.core.models import RunState
 from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-from tests.cli.test_machine_client_paths import UNATTENDED, _client, _remedy
+from tests.cli.test_machine_client_paths import (
+    TWO_FILE_ORDER_FILE_TEXT,
+    UNATTENDED,
+    _client,
+    _remedy,
+)
 
 ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 
 
 def test_a_run_that_blocks_answers_job_blocked_with_its_report(tmp_path):
-    repo, order_file, env = _client(tmp_path)
+    repo, order_file, env = _client(tmp_path, TWO_FILE_ORDER_FILE_TEXT)
     code, done = _remedy(["do", str(order_file), *UNATTENDED, "--force-mission"], repo, env)
     assert code == 0, done
     first, second = done["job_ids"]

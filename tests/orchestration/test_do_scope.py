@@ -5,6 +5,7 @@ from packages.orchestration.do_scope import (
     order_has_scope_fence,
     order_scope_files,
     order_scope_violations,
+    resolve_order_path,
 )
 
 INCIDENT_ORDER = (
@@ -37,3 +38,40 @@ def test_the_incident_order_keeps_only_its_own_file():
                                   ["README.md"]) == []
     assert order_scope_violations(INCIDENT_ORDER, "Insert it into README.md and add LICENSE",
                                   ["README.md"]) == ["LICENSE"]
+
+
+# --- 2026-10-17 audit P0-3: a bare file name is never the same file as a nested one ---------------
+
+BOTH_READMES = ["README.md", "docs/README.md", "src/app.py", "tests/test_app.py"]
+
+
+def test_root_readme_and_docs_readme_are_two_files():
+    order = "Change only README.md"
+    assert order_scope_violations(order, "Edit docs/README.md", BOTH_READMES) == ["docs/README.md"]
+    assert order_scope_violations(order, "Edit README.md", BOTH_READMES) == []
+    assert order_scope_violations("Change only docs/README.md", "Edit README.md", BOTH_READMES) == [
+        "README.md"]
+
+
+def test_a_bare_name_resolves_only_to_one_tracked_file():
+    tracked = ["docs/README.md", "src/app.py"]
+    assert order_scope_violations("Improve the README", "Edit README.md", tracked) == []
+    two = ["docs/README.md", "web/README.md"]
+    assert resolve_order_path("README.md", two) is None
+    assert resolve_order_path("README.md", ["README.md", *two]) == "README.md"
+    assert resolve_order_path("README.md", tracked) == "docs/README.md"
+
+
+def test_a_name_nothing_proves_is_not_equated_with_a_nested_path():
+    assert order_scope_violations("Change only README.md", "Edit docs/README.md", []) == [
+        "docs/README.md"]
+
+
+def test_a_test_the_order_asks_for_is_in_scope_and_a_test_run_is_not_a_license():
+    order = "Fix the bug in src/app.py and add a regression test."
+    assert order_scope_violations(order, "Add tests/test_app.py", BOTH_READMES) == []
+    assert order_scope_violations(order, "Add tests/test_app.py and LICENSE", BOTH_READMES) == [
+        "LICENSE"]
+    ran = "Fix the bug in src/app.py. Run the tests."
+    assert order_scope_violations(ran, "Add tests/test_other.py", BOTH_READMES) == [
+        "tests/test_other.py"]

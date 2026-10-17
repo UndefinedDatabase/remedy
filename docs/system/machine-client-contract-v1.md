@@ -395,7 +395,7 @@ Description: Plan and run what you ask: study the repo, plan a mission of jobs a
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `invalid_argument`, `invalid_budget`, `order_already_running`, `order_file_empty`, `order_file_invalid_header`, `order_file_no_cost_cap`, `order_file_not_found`, `order_file_unreadable`, `project_has_no_repo`, `repo_not_in_project`, `step_failed`, `unsupported_contract_template`, `unsupported_provider`.
-Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `order_id`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
+Answer keys: `contract`, `cost`, `failed_step`, `job_ids`, `jobs`, `landed`, `mission_id`, `mission_plan_path`, `next`, `order_budget`, `order_id`, `push`, `shape`, `shape_source`, `steps`, `stopped_before_apply`, `unmet_blocking_criteria`, `waiting_job_ids`.
 Keys under the answer keys: see below.
 
 - `contract`: `amendments`, `criteria`, `schema`, `template`
@@ -408,6 +408,14 @@ Keys under the answer keys: see below.
 - `jobs`: `job_id`, `tasks`
   - `tasks`: `deliverable`, `title`
 - `landed`: `branch`, `job_id`, `repo`, `sha`
+- `order_budget`: `calls`, `caps`, `cost`, `estimated_planning_tokens`, `jobs`, `planner_calls`, `planner_calls_by_reason`, `refused_calls`, `unmeasured_jobs`, `used`
+  - `calls`: `attempt`, `estimated_tokens`, `outcome`, `prompt_chars`, `reason`, `response_chars`, `role`, `seconds`, `tokens_estimated`
+  - `caps`: `*`
+  - `cost`: `cap_usd`, `enforced`, `measured_usd`, `unpriced_calls`
+  - `jobs`: `*`
+    - `*`: `calls`, `cost_usd`, `measured`, `tokens`, `unpriced_calls`
+  - `planner_calls_by_reason`: `*`
+  - `used`: `calls`, `cost_usd`, `elapsed_minutes`, `tokens`
 - `push`: `error`, `open_blocking_criteria`, `pushed`, `ref`, `remote`, `repositories`, `sha`, `source`, `unchecked_blocking_criteria`
   - `repositories`: `branch`, `error`, `pushed`, `ref`, `remote`, `repo`, `sha`
 - `steps`: `detail`, `name`, `status`

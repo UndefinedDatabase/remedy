@@ -326,6 +326,48 @@ def _repo_head_commit(repo_root: str) -> str:
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
+#: A study is stale once the repository moved on by this many paths since `studied_head`.
+STUDY_STALE_CHANGED_PATHS = 20
+#: Files whose change moves what a study records: dependencies, builds, workspace layout, tool config.
+_STUDY_FACT_FILES = frozenset({
+    "package.json", "package-lock.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock",
+    "lerna.json", "nx.json", "turbo.json", "tsconfig.json", "pyproject.toml", "setup.py", "setup.cfg",
+    "requirements.txt", "poetry.lock", "uv.lock", "Pipfile", "go.mod", "go.work", "go.sum",
+    "Cargo.toml", "Cargo.lock", "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle",
+    "Makefile", "Dockerfile", "docker-compose.yml", "Gemfile", "composer.json",
+})
+
+
+def study_stale_reason(repo_root: str, studied_head: str) -> str:
+    """Why a study recorded at *studied_head* no longer describes *repo_root*, or "" while it does.
+
+    Stale when that commit is unknown to the repository (a rewritten history) or no recorded
+    head exists, when a dependency, build or workspace file changed since it, or when at least
+    `STUDY_STALE_CHANGED_PATHS` paths did. A repository without a commit is never stale.
+    """
+    import subprocess
+
+    head = _repo_head_commit(repo_root)
+    if not head or head == studied_head:
+        return ""
+    if not studied_head:
+        return "the study recorded no head commit"
+    try:
+        proc = subprocess.run(
+            ["git", "diff", "--name-only", f"{studied_head}..{head}"],
+            cwd=repo_root, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return "the repository could not be compared with the studied head"
+    if proc.returncode != 0:
+        return f"the studied head {studied_head[:12]} is not in the repository's history"
+    changed = [line for line in proc.stdout.splitlines() if line]
+    if fact := next((c for c in changed if c.rsplit("/", 1)[-1] in _STUDY_FACT_FILES), ""):
+        return f"{fact} changed since the study"
+    if len(changed) >= STUDY_STALE_CHANGED_PATHS:
+        return f"{len(changed)} paths changed since the study"
+    return ""
+
+
 # DECISION F268 D3: the ONE writer of study-once. `remedy study run` and the
 # study step of `remedy do` both call it after a pass completes, so a study run
 # by hand counts as the one study `do` would otherwise run.

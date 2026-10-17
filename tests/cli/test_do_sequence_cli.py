@@ -19,6 +19,8 @@ import pytest
 from apps.cli.grouped import main
 
 ORDER = "Write a CONTRIBUTING.md"
+#: Two deliverables: the walk of a mission shape plans one job each (a single one is one job).
+TWO_DELIVERABLES = "Write a CONTRIBUTING.md and a CHANGELOG.md"
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -246,6 +248,18 @@ def test_the_order_plans_one_job_of_at_most_three_tasks_by_the_planners_shape(re
     assert 1 <= len(load_job_plan(job_id).tasks) <= 3
 
 
+def test_force_mission_on_one_deliverable_is_one_job_and_never_a_check_only_second_job(
+        repo, capsys):
+    """Audit P1-3: a single deliverable is one job; its checks belong to that job's verification."""
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    data = json.loads(_do(capsys, "--json", "--force-mission"))
+
+    [job_id] = data["job_ids"]
+    assert data["shape"] == "milestones" and data["waiting_job_ids"] == []
+    assert {t.inputs["task_type"] for t in load_job_plan(job_id).tasks} == {"deliverable"}
+
+
 def test_force_mission_yields_linked_jobs_runs_the_first_and_leaves_the_repo_untouched(
         repo, capsys):
     """DECISION F268 D12: only the first job runs; the rest wait, named in `waiting_job_ids`."""
@@ -256,11 +270,12 @@ def test_force_mission_yields_linked_jobs_runs_the_first_and_leaves_the_repo_unt
 
     before = _git(repo, "status", "--porcelain", "--untracked-files=all")
 
-    data = json.loads(_do(capsys, "--json", "--force-mission"))
+    data = json.loads(_do(capsys, "--json", "--force-mission",
+                          order="Write docs/part_00.md and docs/part_01.md"))
 
     assert (data["shape"], data["shape_source"]) == ("milestones", "--force-mission")
     job_ids = data["job_ids"]
-    assert len(job_ids) >= 2
+    assert len(job_ids) == 2
     mission = load_mission(str(resolve_project(repo).id), data["mission_id"])
     assert [(link.job_id, link.role) for link in mission.job_links] == [
         (job_ids[0], "initial"), *((j, "follow_up") for j in job_ids[1:])]
@@ -392,7 +407,7 @@ def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
     halts = _answer_every_halt(
         monkeypatch, lambda index: "q" if list_job_plans() else "")
 
-    data = json.loads(_do(capsys, "--json", "--step-by-step", "--force-mission"))
+    data = json.loads(_do(capsys, "--json", "--step-by-step", "--force-mission", order=TWO_DELIVERABLES))
 
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
@@ -431,7 +446,7 @@ def test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to
     monkeypatch.setattr("builtins.input", reader)
     extra = ("--force-mission",) if after_shape else ()
 
-    data = json.loads(_do(capsys, "--json", "--step-by-step", *extra))
+    data = json.loads(_do(capsys, "--json", "--step-by-step", *extra, order=TWO_DELIVERABLES))
 
     steps = [(s["name"], s["status"]) for s in data["steps"]]
     job_ids = data["job_ids"]
@@ -479,7 +494,7 @@ def test_plan_only_writes_the_mission_plan_plans_the_jobs_and_runs_none(
 def test_text_output_lists_each_tasks_deliverable(repo, capsys):
     from packages.orchestration.pingpong_job import list_job_plans
 
-    out = _do(capsys, "--force-mission")
+    out = _do(capsys, "--force-mission", order=TWO_DELIVERABLES)
 
     jobs = list_job_plans()
     assert len(jobs) >= 2
@@ -547,7 +562,7 @@ def test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_w
 
     monkeypatch.setattr(FakeProvider, "__init__", one_file_per_provider)
 
-    data = json.loads(_do(capsys, "--json", "--apply", "--force-mission"))
+    data = json.loads(_do(capsys, "--json", "--apply", "--force-mission", order=TWO_DELIVERABLES))
 
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
@@ -578,7 +593,7 @@ def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_wait
     its file — now applies job 1, runs no other job and exits 0."""
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == ""
 
-    data = json.loads(_do(capsys, "--json", "--apply", "--force-mission"))
+    data = json.loads(_do(capsys, "--json", "--apply", "--force-mission", order=TWO_DELIVERABLES))
 
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
@@ -603,7 +618,7 @@ def test_without_apply_a_force_mission_walk_runs_job_1_and_prints_how_job_2_runs
     carry job 1's apply command and job 2's run command with real ids."""
     from packages.orchestration.pingpong_job import JOB_COMPLETED, list_job_plans, load_job_plan
 
-    out = _do(capsys, "--force-mission")
+    out = _do(capsys, "--force-mission", order=TWO_DELIVERABLES)
 
     # The shape step's line names the jobs in walk order.
     job_ids = re.findall(r"([0-9a-f]{16}) \(\d+ task\(s\)\)", out)

@@ -81,9 +81,10 @@ def _remedy_command(*args: str) -> list[str]:
     return [sys.executable, "-m", "apps.cli.main", *args]
 
 
-def _order_text(slug: str, text: str = "Add a line saying hello to README.md") -> str:
-    """The whole text of an order of project SLUG with a cost cap, as `send_order` sends it."""
-    return f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n{text}\n"
+def _order_text(slug: str, text: str = "Add a line saying hello to README.md",
+                cap: str = "max-cost-usd: 1") -> str:
+    """The whole text of an order of project SLUG with a cap, as `send_order` sends it."""
+    return f"---\nproject: {slug}\n{cap}\n---\n{text}\n"
 
 
 def _first_line(child: subprocess.Popen) -> str:
@@ -154,9 +155,9 @@ class Supervisor:
         return json.loads(done.stdout), elsewhere
 
     def send_order(self, slug: str, text: str = "Add a line saying hello to README.md",
-                   **more: Any) -> dict:
-        """Send an order of project SLUG with a cost cap; the 202 answer's record."""
-        order = _order_text(slug, text)
+                   cap: str = "max-cost-usd: 1", **more: Any) -> dict:
+        """Send an order of project SLUG with a cap; the 202 answer's record."""
+        order = _order_text(slug, text, cap)
         status, created = self.post("/api/v1/orders", {"order": order, **ORDER_FLAGS, **more})
         assert status == 202, created
         assert created["state"] == "running", created
@@ -351,7 +352,9 @@ def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone_over_h
     repo = _repository(tmp_path)
     registered, _elsewhere = supervisor.register(repo)
 
-    ended = supervisor.ended_order(supervisor.send_order(registered["slug"], force_mission=True))
+    ended = supervisor.ended_order(supervisor.send_order(
+        registered["slug"], "Add a line saying hello to README.md and a line saying bye to NOTES.md",
+        cap="max-provider-calls: 100", force_mission=True))
     assert ended["exit_code"] == 0, ended
     first, second = ended["answer"]["job_ids"]
     assert ended["answer"]["waiting_job_ids"] == [second], ended

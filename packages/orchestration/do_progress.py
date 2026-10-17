@@ -138,8 +138,7 @@ def do_step_intro(name: str, ctx: DoContext) -> str:
     if name == "init":
         return "registering the repository"
     if name == "study":
-        deterministic = ctx.no_llm or settle_do_lane(ctx).bounded and ctx.tiny_repo
-        if deterministic:
+        if ctx.no_llm or settle_do_lane(ctx).bounded or settle_do_lane(ctx).hold:
             return "deterministic scan, no provider call" + (
                 f" (tiny repository, up to {DO_TINY_REPO_MAX_FILES} files)" if ctx.tiny_repo else "")
         return f"scan, narrated by provider {_role_provider('study', None)}"

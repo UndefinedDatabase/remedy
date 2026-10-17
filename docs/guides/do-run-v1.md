@@ -79,28 +79,60 @@ German, and every header `constraint:` line. Remedy enforces each constraint its
 guard, the DoD's project tests, the stop before apply, the reviewer), so a constraint never makes
 an order complex and never becomes a milestone, job or task (operator amendment amend1016p D1).
 An order made only of such sentences ("run npm test and report the result") asks for exactly
-that work. A **bounded** order, one repository and exactly one file (named in the order, or the
-only file the repository tracks) whose deliverables are one plain part (no list or heading, at
-most two sentences and two actions), walks the bounded lane: a deterministic scan of a tiny
-repository, the one-milestone plan, one job and one task for that file, and **no planning
-provider call**. Only the builder and the reviewer are called, in Remedy's isolated workspace,
-the DoD still runs the project's tests, and the walk stops before apply. Where the order came
-from plays no part: the same words typed, read from an order file or posted to the HTTP API get
-the same lane. Anything else, several files, several projects, one file with several
-requirements, `--force-mission`, or any order whose scope is not clearly one file, walks the
-**full lane**,
-which plans milestones, jobs and tasks with the planner and keeps an approval boundary: on a
-terminal Remedy shows the plan and asks whether to run it; with no terminal it stops and names
-`--run-unattended`. `--run-unattended` runs a generated plan without asking and takes the
-documented default for every open question; it never applies, commits, pushes, merges or
-deploys, because the target repository only changes with `--apply` or a commit flag.
-`--force-job` also selects the bounded lane. A planner that names a file the order did not ask
-for is not believed: the walk keeps the deterministic plan of the order's own deliverables
-(operator amendment amend1014-do-golden-path-now D1, D6). In the full lane a milestone or outline that
-only restates a constraint ("npm test has been run") is left out of the planner's plan, and a task
-that only makes a checking artifact the job never asked for (a checksum manifest, a snapshot, a
-comparison copy, a modification report) is left out of its task plan before normalization, unless
-the order itself is such a test run or report (amend1016p D2).
+that work. The layout of the order never counts: a bullet, a numbered line, a semicolon, a
+heading or a blank line holds the same parts as the same words in prose, in English or German.
+
+The lane is decided from the order and the repository's tracked files, with no model call:
+
+| Lane | When | What happens |
+|------|------|--------------|
+| **bounded** | one repository; the deliverables are at most two sentences and two actions, on exactly one file that the repository proves (tracked as written, or a bare name that one tracked file bears, or a file the order says to create, or a tracked document the order names as a word, such as "the readme"); no risk fact below | a deterministic scan, the one-milestone plan, one job, one task and **no planning provider call**, in a repository of any size; only the builder and the reviewer are called, the DoD still runs the project's tests, and the walk stops before apply |
+| **bounded with a test** | as above, and a deliverable asks for a test to be written ("fix `src/add.py` and add a regression test") | the same one job and one task; the test is part of that task's acceptance and its test file may be created or changed; running the tests is a check, not a deliverable |
+| **hold** | the named file is a bare name two or more tracked files bear (`README.md` with only `docs/README.md` and `web/README.md` tracked), or it is not tracked and the order does not say to create it | the walk stops at the `study` step with the question, before any mission, plan or job exists; a root `README.md` beside `docs/README.md` is not ambiguous, the exact tracked path wins |
+| **full** | several files, several projects, `--force-mission`, a scope that is not clearly one file, or a **high-risk** one-file order | the planner plans milestones, jobs and tasks and keeps an approval boundary |
+
+High-risk means a fact the order or the path carries: a path under or named for authentication,
+security, crypto, secrets, sessions, payments, migrations, schemas, databases, deployment, CI
+workflows, Dockerfiles, `.sql` or `.tf`, or an order that speaks of authentication,
+credentials, encryption, a schema or migration, deployment, production, breaking changes, a
+rewrite or "migrate ... all". Naming one file never makes such an order tiny. A documentation
+target (`.md`, `.rst`, `.txt`, `.adoc`) is not high-risk by its words. `--force-job` overrides all
+of this: it runs the bounded lane and the plan step says which lane routing alone had chosen.
+
+In the full lane, on a terminal Remedy shows the plan and asks whether to run it; with no terminal
+it stops and names `--run-unattended`. `--run-unattended` runs a generated plan without asking and
+takes the documented default for every open question; it never applies, commits, pushes, merges
+or deploys, because the target repository only changes with `--apply` or a commit flag. A planner
+that names a file the order did not ask for is not believed: the walk keeps the deterministic plan
+of the order's own deliverables. Two bare names are one file only when the repository proves it:
+`README.md` and `docs/README.md` are two files, and a file the order asks for beside its work (a
+test) is in scope while one it did not ask for is not (amend1014-do-golden-path-now D1, D6; scale
+audit 2026-10-17 P0-1 to P0-3). In the full lane a milestone or outline that only restates a
+constraint ("npm test has been run"), and a task that only makes a checking artifact the order
+never asked for (a checksum manifest, a snapshot, a comparison copy, a modification report, even
+as a named file such as `checksums.json`), is left out, and a plan of nothing else is replaced by
+the deterministic one (amend1016p D2). A mission of one deliverable is one job: its checks run in
+that job's verification and are never a second job.
+
+## One cap for the whole order
+
+The caps an order carries (`--max-provider-calls`, `--max-total-tokens`, `--max-cost-usd`,
+`--max-wall-clock-minutes` or the order file's header) are the ORDER's caps. Every planner call of
+the walk (study narration, mission plan, intake, task plan) is recorded in `order_budget` of
+`--json` with its reason, attempt, seconds, size and outcome; its tokens are an ESTIMATE
+(characters divided by four), never claimed as measured. A planning call that would pass the
+remaining call or token cap is refused and the plan or shape step fails with that sentence. Each
+job runs with the caps less the planning calls and the jobs before it, and no job starts once a
+cap is spent. A job the walk leaves waiting gets an equal share of what was left when the walk ended
+(calls, tokens, minutes and money divided by the number of waiting jobs), so the shares together
+never pass the leftover however the jobs are run. A job a whole-number cap cannot fund, or any
+waiting job of a spent order, is stored with an already-passed deadline: it stops before its
+first call and waits for a budget decision. A money cap (`--max-cost-usd`) is enforced only while
+every call so far has a price: planner calls carry none, so once one is made, or a job reports
+calls without a price, no further job or planner call starts, and `order_budget.cost` says
+`enforced: false` with the unpriced count. Token, call and time caps are unaffected.
+A recorded study is reused until a dependency, build or workspace file changed since it, twenty
+paths changed, or its head is gone; a bounded order never pays for the study's narration.
 
 ## While it works
 
@@ -118,7 +150,7 @@ document and stderr silent (D4, D5).
 | Step | What it does |
 |------|--------------|
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
-| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. A tiny repository of a bounded order is studied from facts alone. |
+| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped while the recorded study still describes the repository. A bounded order is studied from facts alone, in a repository of any size. |
 | `plan` | Finds the repository's one mission, creating it on the repository's first order, adds the order to it as a batch, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission and to the milestone it serves: the one whose outline it came from, or the plan's only milestone. Its gate evaluates that milestone's planner criterion, and never holds the job on it (R-0977, 2026-09-19). |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. Under a commit flag no job waits: each job but the last is run, applied and committed (or merged) before the next job's worktree is cut. |

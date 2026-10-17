@@ -1539,7 +1539,7 @@ def compose_reviewer_prompt(
         "reviewer_goal", SegmentStabilityRank.TASK,
         [f"## Original Goal\n{goal}\n"],
     ))
-    if not scoped and task_excerpt:
+    if task_excerpt:
         specs.append((
             "reviewer_task_input", SegmentStabilityRank.TASK,
             [
@@ -3410,7 +3410,7 @@ def run_pingpong(
                 findings=findings if is_repair else None,
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
                 safe_diff=repair_diff,
-                task_body=task_input.body if task_input and round_num == 1 else "",
+                task_body=task_input.body if task_input else "",
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,

@@ -150,3 +150,14 @@ def test_representability_refusals_stay_by_path_and_never_open_a_sensitive_file(
     assert (".env", "an environment file") in baseline.preserved
     with pytest.raises(DB.DirtyBaselineUnsupported, match="not a path|outside"):
         DB.seed_workspace_from_baseline(DB.DirtyBaseline("h", "b", (DB.BaselineEntry("../x", "file", "s"),), "d"), repo)
+
+
+def test_an_http_route_in_an_order_is_no_host_path_but_a_host_path_still_is():
+    from packages.orchestration.do_role_guards import sensitive_order_refusal
+
+    assert sensitive_order_refusal("Add a GET /health endpoint to src/api.py") == ""
+    assert sensitive_order_refusal("Serve /api/v2/users from src/routes.py") == ""
+    assert "outside the repository" in sensitive_order_refusal("Copy /etc/passwd into docs")
+    assert "outside the repository" in sensitive_order_refusal("Read /home/someone/notes")
+    assert "outside the repository" in sensitive_order_refusal("Write to /tmp/out.txt")
+    assert "outside the repository" in sensitive_order_refusal("Open ../secrets/notes")

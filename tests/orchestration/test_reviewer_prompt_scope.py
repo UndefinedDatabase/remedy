@@ -195,7 +195,9 @@ def test_scoped_prompt_includes_focused_diff():
     assert "## Focused Staged Diff" in prompt
 
 
-def test_scoped_prompt_omits_task_input_summary():
+def test_scoped_prompt_keeps_the_tasks_own_words():
+    """Scale audit 2026-10-17: a scoped prompt used to drop the task summary, so a reviewer told to
+    judge meaning saw only the task's title. The scope packet narrows the DIFF, never the ask."""
     prompt = _build_reviewer_prompt(
         "the goal",
         "builder summary",
@@ -205,7 +207,7 @@ def test_scoped_prompt_omits_task_input_summary():
         task_tokens_estimated=100,
         scope_packet=_sample_packet("hunk_only"),
     )
-    assert "## Task Input Summary" not in prompt
+    assert "## Task Input Summary" in prompt and "some task excerpt" in prompt
 
 
 def test_scoped_prompt_omits_staged_unified_diff():

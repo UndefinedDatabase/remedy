@@ -19,7 +19,8 @@ from pathlib import Path
 from tests.cli.test_machine_client_contract import _GIT_IDENTITY, _digest_job, _remedy, _scratch_repo
 
 #: An order a fake builder completes in one task step, with the cap an unattended order needs.
-ORDER_FILE_TEXT = "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n"
+ORDER_FILE_TEXT = "---\nmax-provider-calls: 100\n---\nAdd a line saying hello to README.md\n"
+TWO_FILE_ORDER_FILE_TEXT = ORDER_FILE_TEXT.replace("to README.md", "to README.md and a line saying bye to NOTES.md")
 
 #: The builder and reviewer the client names, here the fake ones.
 ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
@@ -33,7 +34,7 @@ def _git(repo: Path, *args: str) -> str:
                           env={**os.environ, **_GIT_IDENTITY}).stdout.strip()
 
 
-def _client(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
+def _client(tmp_path: Path, order_text: str = ORDER_FILE_TEXT) -> tuple[Path, Path, dict[str, str]]:
     """A scratch repository with one passing test, the order file beside it, and the environment
     the client runs in. The planner's one blocking criterion runs pytest over `tests`, so a
     repository without a test fails it and its push is refused, as a client's would be."""
@@ -45,7 +46,7 @@ def _client(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     _git(repo, "add", "tests")
     _git(repo, "commit", "-q", "-m", "Add a test")
     order_file = tmp_path / "order.md"
-    order_file.write_text(ORDER_FILE_TEXT, encoding="utf-8")
+    order_file.write_text(order_text, encoding="utf-8")
     env = {**os.environ, **_GIT_IDENTITY, "REMEDY_DATA_DIR": str(tmp_path / "data")}
     return repo, order_file, env
 
@@ -84,7 +85,7 @@ def test_an_order_file_is_merged_with_its_history_and_pushed_to_the_upstream(tmp
 
 
 def test_an_order_of_two_jobs_is_driven_to_its_end_from_the_answers_alone(tmp_path):
-    repo, order_file, env = _client(tmp_path)
+    repo, order_file, env = _client(tmp_path, TWO_FILE_ORDER_FILE_TEXT)
 
     code, done = _remedy(["do", str(order_file), *UNATTENDED, "--force-mission"], repo, env)
     assert code == 0, done

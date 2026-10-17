@@ -178,6 +178,7 @@ packages.orchestration.do_role_guards
 packages.orchestration.do_run
 packages.orchestration.do_scope
 packages.orchestration.do_sequence
+packages.orchestration.do_study
 packages.orchestration.do_summary
 packages.orchestration.do_targets
 packages.orchestration.dod_compiler
@@ -250,6 +251,7 @@ packages.orchestration.orchestrator_dispatch
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_file
+packages.orchestration.order_ledger
 packages.orchestration.order_scope
 packages.orchestration.ownership
 packages.orchestration.ownership_phrases

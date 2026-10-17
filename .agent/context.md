@@ -1,17 +1,20 @@
-# Context — amend1016p (simple orders stay simple)
+# Context — scale correctness (audit remedy_scale_audit_2026-10-17.md)
 
 ## Active Branch
-feature/simple-orders-fast-lane, in the worktree .remedy-wt/simple-orders. The supervisor runs main
-from the main checkout, and each new order starts `python -m apps.cli.main` from it, so a merge
-changes what the next order runs: merged only on decodeux's word.
+feature/scale-correctness-routing, cut from main `07b342626`. Not merged: the supervisor runs main, so
+a merge changes what the next order runs; merged only on decodeux's word.
 
 ## Scope
-The lane decision on deliverables, the full lane's constraint-only milestones and checking-only
-tasks, the Pi reviewer's meaning check, tests and docs. No planner redesign, no provider default.
+Lane decision, path resolution, order parts, check-only job, study staleness, the order's budget
+ledger, the reviewer's and repair round's view of the order, the scale matrix, tests and docs.
+No planner redesign, no provider default, no new orchestrator.
 
 ## Do not touch
-`.agent/STOP` (untracked), F078 and the autonomous queue, the sandbox, the public API contract.
+`.agent/STOP` (untracked), F078 and the autonomous queue, the sandbox, the public API contract
+(only `order_budget` is added to the `do.run` answer).
 
 ## Constraints
-- Resource safety: one pytest run at a time through `scripts/remedy_pytest.sh`; no full-suite rerun.
-- Structure ratchet: `compile_mission_plan` (101 lines) may not grow. Commits at most 500 insertions.
+- Resource safety: pytest runs through one process tree at a time; no second suite beside a full run.
+- No real model call, no unattended loop, no install or restart.
+- Steps: one full local gate run at the end; structure ratchet: no listed function or file grows.
+- Commits at most 500 insertions.

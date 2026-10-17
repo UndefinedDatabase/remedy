@@ -19,6 +19,7 @@ import pytest
 from apps.cli.grouped import main
 from tests.cli.test_do_sequence_cli import (  # noqa: F401 — fixtures used by name
     ORDER,
+    TWO_DELIVERABLES,
     _git,
     _step,
     commit_a_passing_suite,
@@ -34,7 +35,8 @@ def _run(capsys, *extra: str) -> tuple[int, dict | None, str]:
     """``(exit code, the --json object or None, stderr)`` of one `remedy do`."""
     code = 0
     try:
-        main(["do", ORDER, "--no-llm", "--no-ui", "--json",
+        # A mission walk plans one job per deliverable: two jobs need an order naming two files.
+        main(["do", TWO_DELIVERABLES if "--force-mission" in extra else ORDER, "--no-llm", "--no-ui", "--json",
               "--builder-provider", "fake", "--reviewer-provider", "fake", *extra])
     except SystemExit as exc:
         code = exc.code

@@ -44,6 +44,7 @@ from typing import Any
 from apps.cli.client_interface_story import (
     CLIENT_STORY_ANSWER_KEYS,
     CLIENT_STORY_KEY_TREE,
+    ORDER_BUDGET_KEY_TREE,
     STORY_WORDS_KEY_TREE,
     render_story_words_lines,
 )
@@ -172,7 +173,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "project.register": ("created", "project_id", "repo_path", "slug"),
     "do.run": (
         "contract", "cost", "failed_step", "job_ids", "jobs", "landed", "mission_id",
-        "mission_plan_path", "next", "order_id", "push", "shape", "shape_source", "steps", "stopped_before_apply",
+        "mission_plan_path", "next", "order_budget", "order_id", "push", "shape", "shape_source", "steps", "stopped_before_apply",
         "unmet_blocking_criteria", "waiting_job_ids",
     ),
     "status.run": (
@@ -518,7 +519,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "mirror_errors": {"*": {}},
             "show_cost_usd": {},
         },
-        "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}},
+        "jobs": {"job_id": {}, "tasks": {"title": {}, "deliverable": {}}}, "order_budget": ORDER_BUDGET_KEY_TREE,
         "steps": {"name": {}, "status": {}, "detail": {}},
         "landed": {"job_id": {}, "sha": {}, "branch": {}, "repo": {}},
         "push": {

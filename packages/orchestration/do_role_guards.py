@@ -45,4 +45,20 @@ def sensitive_order_refusal(order_text: str) -> str:
     from packages.orchestration.task_deliverables import explicit_order_paths
 
     words = [w.lstrip("'\"`([").rstrip(".,;:!?)]'\"`") for w in re.split(r"\s+", order_text)]
-    return sensitive_target_refusal([*explicit_order_paths(order_text), *(w for w in words if w)])
+    return sensitive_target_refusal([*explicit_order_paths(order_text),
+                                     *(w for w in words if w and not _is_web_route(w))])
+
+
+def _is_web_route(word: str) -> bool:
+    """True for a word like `/health` or `/api/users`: it starts with a slash but its first segment
+    is no directory under the host's root, so it names an HTTP route of the project, not a host path.
+
+    `/etc/passwd`, `/home/x` and `/tmp/y` still are host paths and stay refused (scale audit: an order
+    for an API endpoint names its route and used to be refused as "a path outside the repository").
+    """
+    import os
+
+    if not word.startswith("/") or word.startswith("//"):
+        return False
+    first = word[1:].split("/", 1)[0]
+    return bool(first) and first not in (".", "..") and not os.path.lexists(os.path.join("/", first))

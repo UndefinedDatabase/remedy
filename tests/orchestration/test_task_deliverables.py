@@ -13,7 +13,6 @@ from packages.orchestration.task_deliverables import (
     EXTENSIONLESS_DELIVERABLE_NAMES,
     INSPECTION_VERBS,
     DeliverablePlanError,
-    deliverable_check_task,
     deterministic_job_plans,
     extract_order_deliverables,
     record_llm_task_deliverables,
@@ -90,7 +89,7 @@ def test_every_deterministic_task_holds_at_most_the_configured_acceptance_count(
 
     ceiling = granularity_config().max_acceptance
     order = "Write " + " ".join(TEN_FILES)
-    tasks = _flat(deterministic_job_plans(order)) + [deliverable_check_task("README.md", order)]
+    tasks = _flat(deterministic_job_plans(order))
 
     for task in tasks:
         items = [line for line in task.acceptance.splitlines() if line.strip()]
@@ -99,7 +98,7 @@ def test_every_deterministic_task_holds_at_most_the_configured_acceptance_count(
 
 def test_the_validator_accepts_a_clean_deterministic_plan():
     order = "Write " + " ".join(TEN_FILES)
-    tasks = _flat(deterministic_job_plans(order)) + [deliverable_check_task(TEN_FILES[0], order)]
+    tasks = _flat(deterministic_job_plans(order))
 
     validate_deliverable_plan(tasks)
 

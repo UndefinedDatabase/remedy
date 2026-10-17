@@ -23,8 +23,9 @@ from typing import Any
 #: The block `order_file.parse_order_file_text` appends for header `constraint:` lines.
 HEADER_CONSTRAINTS_MARKER = "\n\nConstraints the plan must honour:\n"
 
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
-_STRUCTURE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)]|#{1,6})\s", re.MULTILINE)
+_UNIT_BREAK_RE = re.compile(r"(?<=[.!?])\s+|;\s*|\n+")
+_LIST_MARKER_RE = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)]|#{1,6})[ \t]+", re.MULTILINE)
+_QUOTED_RE = re.compile(r"\"[^\"\n]*\"|„[^“”\n]*[“”]|“[^”\n]*”|«[^»\n]*»")
 _PATH_RE = re.compile(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b")
 
 # Scope fences: the files the work may touch.
@@ -63,8 +64,11 @@ _CHECKING_ARTIFACT = re.compile(
     r"before[- ]after|pre-run|post-run|prüfsumme\w*)\b",
     re.IGNORECASE)
 _CHECKING_REQUEST = re.compile(
-    r"\b(?:manifest\w*|checksums?|hash(?:es)?|snapshot\w*|baseline\w*|report\w*|bericht\w*|"
-    r"prüfsumme\w*|audit\w*)\b", re.IGNORECASE)
+    r"\b(?:manifest\w*|checksums?|hash(?:es)?|snapshot\w*|baseline\w*|prüfsumme\w*|audit\w*)\b"
+    r"|\b(?:write|create|generate|produce|save|erstell\w*|schreib\w*|generier\w*)\b.{0,40}"
+    r"\b(?:report|bericht)\w*"
+    r"|\b(?:report|bericht)\w*\s+(?:file|datei)\b|[\w-]*(?:report|bericht)[\w-]*\.\w{1,5}\b",
+    re.IGNORECASE)
 
 _RUNS_SOMETHING = re.compile(r"(?:please\s+|bitte\s+)?(?:run|execute|führ\w*|start\w*)\b", re.IGNORECASE)
 _ACTION_SPLIT_RE = re.compile(r",|;|\band\b|\bund\b|\bthen\b|\bdann\b|\bsowie\b", re.IGNORECASE)
@@ -83,11 +87,10 @@ MAX_SIMPLE_SENTENCES = 2
 
 @dataclass(frozen=True)
 class OrderScope:
-    """An order sorted: what to deliver, what binds it, and whether it declares several parts."""
+    """An order sorted: what to deliver and what binds it. Its layout (list, heading, semicolon) never counts."""
 
     deliverables: tuple[str, ...]
     constraints: tuple[str, ...]
-    structured: bool
 
     @property
     def actions(self) -> int:
@@ -101,9 +104,13 @@ class OrderScope:
 
     @property
     def simple(self) -> bool:
-        """One plain part: no list or heading, few sentences, few actions."""
-        return (not self.structured and 0 < len(self.deliverables) <= MAX_SIMPLE_SENTENCES
-                and self.actions <= MAX_SIMPLE_ACTIONS)
+        """Few parts, few actions: the same words in a list, with semicolons or in prose count the same."""
+        return 0 < len(self.deliverables) <= MAX_SIMPLE_SENTENCES and self.actions <= MAX_SIMPLE_ACTIONS
+
+    @property
+    def single(self) -> bool:
+        """Exactly one part asking for at most one action."""
+        return len(self.deliverables) == 1 and self.actions <= 1
 
 
 def _binds(clause: str) -> bool:
@@ -132,18 +139,62 @@ def is_constraint_sentence(sentence: str) -> bool:
     return bool(_TESTS.search(text) or _APPROVAL.search(text) or _REVIEW.search(text))
 
 
+def is_scope_fence(sentence: str) -> bool:
+    """True when *sentence* fences the work to files ("change only README.md")."""
+    return bool(_SCOPE.search(sentence))
+
+
 def split_order_scope(order: str) -> OrderScope:
     """Sort *order*'s sentences into deliverables and constraints (header constraints included)."""
     body, _, header_block = order.partition(HEADER_CONSTRAINTS_MARKER)
     header = tuple(line[2:].strip() for line in header_block.splitlines() if line.startswith("- "))
-    text = body.strip()
-    structured = bool(_STRUCTURE_RE.search(text)) or ";" in text or "\n\n" in text
-    sentences = [s.strip() for s in _SENTENCE_RE.split(" ".join(text.split())) if s.strip()]
+    sentences = _order_units(body)
     constraints = [s for s in sentences if is_constraint_sentence(s)]
     deliverables = [s for s in sentences if s not in constraints]
     if not deliverables:
         deliverables, constraints = sentences, []       # the constraints ARE the order
-    return OrderScope(tuple(deliverables), tuple(constraints) + header, structured)
+    return OrderScope(tuple(deliverables), tuple(constraints) + header)
+
+
+def _order_units(body: str) -> list[str]:
+    """The sentences, list items and semicolon clauses of an order, in order, without list markers.
+
+    Quoted text ("Hello; world") is never split, and a line that only introduces a list ("Do
+    this:") is no part of its own.
+    """
+    text = _LIST_MARKER_RE.sub("", body.strip())
+    masked = _QUOTED_RE.sub(lambda m: "\0" * len(m.group()), text)
+    units: list[str] = []
+    start = 0
+    for brk in [*_UNIT_BREAK_RE.finditer(masked), None]:
+        end = len(text) if brk is None else brk.start()
+        unit = " ".join(text[start:end].split())
+        if brk is not None:
+            start = brk.end()
+        if unit.rstrip(";") and not (unit.endswith(":") and not _PATH_RE.search(unit)):
+            units.append(unit)
+    return units
+
+
+# Writing a test is a deliverable ("add a regression test"); running the suite is a constraint.
+_TEST_REQUEST = re.compile(
+    r"\b(?:add|write|create|extend|include|ergänze\w*|schreib\w*|erstell\w*|füg\w*)\s+"
+    r"(?:(?:a|an|some|new|the|more|einen|ein|eine|neue[nr]?|weitere)\s+)*"
+    r"(?:(?:regression|unit|failing|reproducing)[ -]?)?(?:tests?|test\s?cases?|testfall|testfälle|"
+    r"regressions?tests?)\b", re.IGNORECASE)
+_TEST_PATH = re.compile(
+    r"(?:^|/)(?:tests?|__tests__|spec|specs)/|(?:^|/)test_[^/]*$|[._-](?:test|spec)\.[A-Za-z0-9]+$"
+    r"|_test\.go$", re.IGNORECASE)
+
+
+def requests_test_files(order: str) -> bool:
+    """True when the order's DELIVERABLES ask for a test to be written (running tests does not count)."""
+    return any(_TEST_REQUEST.search(s) for s in split_order_scope(order).deliverables)
+
+
+def is_test_path(path: str) -> bool:
+    """True when *path* is by its location or name a test file, whatever the language."""
+    return bool(_TEST_PATH.search(path))
 
 
 def is_checking_only(text: str, *, requested: str) -> bool:
@@ -152,7 +203,9 @@ def is_checking_only(text: str, *, requested: str) -> bool:
     A milestone or task of that kind (a checksum manifest, a comparison copy, a modification
     report) adds a file and a round and proves nothing Remedy's own guards do not already prove.
     """
-    return bool(_CHECKING_ARTIFACT.search(text)) and not _CHECKING_REQUEST.search(requested)
+    # A file name spells its words with `_` and `-` (change_report.md): read it as the words it is.
+    words = text.replace("_", " ").replace("-", " ")
+    return bool(_CHECKING_ARTIFACT.search(words)) and not _CHECKING_REQUEST.search(requested)
 
 
 #: A plan item about the project's tests having run or passing, also in the planner's passive voice.
@@ -164,14 +217,17 @@ _TESTS_DONE = re.compile(
 def is_binding_plan_item(text: str, *, order: str) -> bool:
     """True when a planner's milestone or outline (*text*) only binds or checks the work.
 
-    An item that names a file is work on that file, whatever fence it also states. Otherwise it
-    binds when it is about the tests running or passing, approval, review or a report, or when it
-    only makes a checking artifact *order* never asked for.
+    A checking artifact *order* never asked for binds even when it names a file (`checksums.json`,
+    `change_report.md`): a file name is not a request. Any other item that names a file is work on
+    that file, whatever fence it also states. Otherwise it binds when it is about the tests
+    running or passing, approval, review or a report.
     """
+    if is_checking_only(text, requested=order):
+        return True
     if _PATH_RE.search(text) and not _RUNS_SOMETHING.match(text.strip()):
         return False
     return bool(_TESTS.search(text) or _TESTS_DONE.search(text) or _APPROVAL.search(text)
-                or _REVIEW.search(text.strip())) or is_checking_only(text, requested=order)
+                or _REVIEW.search(text.strip()))
 
 
 def _asks_for_work(order: str) -> bool:
@@ -184,19 +240,20 @@ def work_milestones(drafts: list[Any], order: str) -> list[dict[str, Any]]:
 
     "Run npm test" or "the codebase is unchanged after the tests" is no milestone when the order
     asks for real work: the DoD runs the tests and the scope guard holds the files. Nothing is
-    dropped for an order that is itself only a test run or a report, and at least one milestone,
-    and one outline per milestone, always stays.
+    dropped for an order that is itself only a test run or a report. A plan of nothing but
+    constraints and checking artifacts comes back EMPTY, never as the original (R-1336 left that
+    fallback keeping the unrequested artifact): the caller takes the deterministic plan instead.
     """
     dumps = [draft.model_dump() for draft in drafts]
     if not _asks_for_work(order):
         return dumps
-    keep = [m for m in dumps if not is_binding_plan_item(m["goal"], order=order)] or dumps
+    keep = [m for m in dumps if not is_binding_plan_item(m["goal"], order=order)]
     ids = {m["id"] for m in keep}
     for milestone in keep:
         milestone["depends_on"] = [d for d in milestone.get("depends_on", []) if d in ids]
-        outlines = milestone.get("jobs_draft") or []
-        milestone["jobs_draft"] = [j for j in outlines if not is_binding_plan_item(
-            f"{j.get('title', '')}. {j.get('goal', '')}", order=order)] or outlines
+        milestone["jobs_draft"] = [j for j in milestone.get("jobs_draft") or []
+                                   if not is_binding_plan_item(
+                                       f"{j.get('title', '')}. {j.get('goal', '')}", order=order)]
     return keep
 
 

@@ -44,6 +44,8 @@ LANE_TABLE = [
      ["README.md"], {}, DO_LANE_FULL),
     ("a semicolon list in a one-file repo", "Add a paragraph; fix the title", ["README.md"],
      {}, DO_LANE_FULL),
+    ("the same words as prose in a one-file repo", "Add a paragraph and fix the title", ["README.md"],
+     {}, DO_LANE_FULL),
     ("several projects", INCIDENT_ORDER, ["README.md"], {"projects": 2}, DO_LANE_FULL),
     ("the app's incident order", APP_INCIDENT_ORDER, LAB, {}, DO_LANE_BOUNDED),
     ("one file with test and approval constraints",
@@ -84,7 +86,7 @@ def test_the_bounded_lane_names_the_one_file_it_serves():
 def test_a_word_count_alone_never_picks_the_lane():
     """A long order naming one file is bounded, a short one naming two is not."""
     long_one = "Please " + "carefully " * 60 + "update README.md"
-    assert select_do_lane(long_one, tracked_files=["a", "b", "c"]).bounded
+    assert select_do_lane(long_one, tracked_files=["a", "b", "README.md"]).bounded
     assert not select_do_lane("Edit alpha.md beta.md", tracked_files=["alpha.md"]).bounded
 
 
