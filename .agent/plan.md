@@ -1,9 +1,11 @@
 # Plan — execution excellence (operator order 2026-10-17, after PR 359 and PR 352)
 
-Goal: trivial orders stay trivial, a small change over a few files is one job, verification is
+## Goal
+Trivial orders stay trivial, a small change over a few files is one job, verification is
 truthful across packages, every model call counts against the budget, and an order's jobs are
 readable and controllable through the public API. Worktree `.remedy-wt/exec-excellence`, branch
-`feature/execution-excellence` from main `6933bb0` (PR 352 merged). `.agent/STOP` stays; no deploy.
+`feature/execution-excellence` from main `6933bb0` (PR 352 merged), outside the roadmap queue (F078
+stays next). `.agent/STOP` stays; no deploy.
 
 ## Current Step
 Done on the branch: verification readings, Pi call accounting and context, the bounded lane over a

@@ -13,6 +13,9 @@ stays on main: `remedy serve start` (editable install) runs its code, so nothing
 Lane over a few named files, verification readings and package-scoped tests, Pi failed-call usage
 and builder context in large repositories, an order's jobs and a stop route over HTTP, job titles.
 
+## Steps
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+
 ## Do not touch
 The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
 provider defaults, `pi.*` caps.

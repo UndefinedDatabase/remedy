@@ -29,6 +29,12 @@ ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "await
                     "declined", "blocked", "stopped", "failed")
 
 
+#: The keys of one entry of `order_jobs_view`, as the machine client interface declares them.
+ORDER_JOBS_KEY_TREE: dict[str, Any] = {key: {} for key in (
+    "job_id", "title", "state", "phase", "executable", "waits_for", "waiting_reason", "verification",
+    "story")} | {"tasks": {"total": {}, "done": {}, "current": {}}}
+
+
 def record_job_waits(job_ids: list[str], waiting_ids: list[str]) -> None:
     """Name, on each waiting job, the job of the same order before it, which it waits for."""
     from packages.orchestration.pingpong_job import load_job_plan, save_job_plan

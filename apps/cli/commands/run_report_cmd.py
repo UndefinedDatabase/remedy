@@ -125,11 +125,8 @@ def _print_text_report(run_id: str, data: dict) -> None:
             if summary:
                 print(f"\nWorker self-report: {summary[:200]}")
 
-        # Remedy verification. No test in this run is not a failed test: a `remedy do` job runs the
-        # project's tests in its own verification after the task (lab add() order, 2026-10-17,
-        # printed "tests failed" for a run whose job then passed `npm test`).
-        passed = last.get("test_passed")
-        test_status = "not run in this run" if passed is None else ("passed" if passed else "failed")
+        # No test in this run is no failed test: a `remedy do` job runs them in its own verification.
+        test_status = {None: "not run in this run", True: "passed"}.get(last.get("test_passed"), "failed")
         print(f"Remedy verification: tests {test_status}")
         rv = last.get("reviewer", {})
         if rv:
