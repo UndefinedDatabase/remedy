@@ -21,23 +21,21 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
-from packages.orchestration.order_scope import is_test_path, requests_test_files
+from packages.orchestration.order_scope import is_scope_fence, is_test_path, requests_test_files, split_order_scope
 from packages.orchestration.task_deliverables import explicit_order_paths
-
-#: Words that fence an order to the files it names. A fence turns every other file into scope creep.
-_SCOPE_FENCE_RE = re.compile(
-    r"\b(?:no other files?|nothing else|(?:do not|don't|never) (?:change|modify|edit|touch) "
-    r"(?:any )?(?:other|more)|only (?:change|modify|edit|touch)|change only)\b",
-    re.IGNORECASE,
-)
 
 #: A tracked file's stem is used as a word only when it is at least this long (`a`, `io` match anything).
 _MIN_STEM_CHARS = 3
 
 
 def order_has_scope_fence(order: str) -> bool:
-    """True when the order says in words that no other file may change."""
-    return _SCOPE_FENCE_RE.search(order) is not None
+    """True when the order says in words, English or German, that no other file may change.
+
+    exec-1017 D2: the one fence vocabulary is `order_scope`'s; this module's own English-only pattern
+    was deleted, so "Verändere sonst nichts" fences a plan as "Change no other files" does.
+    """
+    scope = split_order_scope(order)
+    return any(is_scope_fence(unit) for unit in (*scope.deliverables, *scope.constraints))
 
 
 def order_scope_files(order: str, tracked_files: list[str]) -> list[str]:
@@ -80,6 +78,19 @@ def _same_file(produced: str, scoped: str, tracked_files: list[str]) -> bool:
     return resolved is not None and resolved == (resolve_order_path(scoped, tracked_files) or scoped)
 
 
+def out_of_scope_task_ids(order: str, tasks: list[Any], tracked_files: list[str]) -> list[str]:
+    """The ids of planned tasks whose deliverable (their first `files_hint`) the order did not put in
+    scope. On 2026-10-17 a planner shown the wrong folder planned `test_command.txt` with the
+    deliverable `order.md` for an order that said "Verändere sonst nichts"; the mission plan had this
+    guard, the task plan did not. Only a FENCED order binds its tasks: "make the gate refuse … and
+    document it in docs/gate.md" names one file but leaves the planner to find the gate's code."""
+    if not order_has_scope_fence(order):
+        return []
+    hints = {task.id: str(task.files_hint[0]).strip() for task in tasks if task.files_hint}
+    outside = set(_outside_order_scope(order, list(hints.values()), tracked_files))
+    return [task_id for task_id, hint in hints.items() if hint in outside]
+
+
 def mission_plan_text(plan: Any) -> str:
     """Every sentence of a mission plan that can name a file: milestone goals and job outlines."""
     parts: list[str] = []
@@ -96,10 +107,15 @@ def order_scope_violations(order: str, produced_text: str, tracked_files: list[s
     [] when the order is unbounded (it names nothing and carries no fence), so a planner that
     must discover the files of a broad order is never refused for finding them.
     """
+    return _outside_order_scope(order, explicit_order_paths(produced_text), tracked_files)
+
+
+def _outside_order_scope(order: str, paths: list[str], tracked_files: list[str]) -> list[str]:
+    """The *paths* the order did not put in scope; [] when the order is unbounded."""
     scope = order_scope_files(order, tracked_files)
     if not scope and not order_has_scope_fence(order):
         return []
     tests_requested = requests_test_files(order)
-    return [path for path in explicit_order_paths(produced_text)
+    return [path for path in paths
             if not (tests_requested and is_test_path(path))
             and not any(_same_file(path, scoped, tracked_files) for scoped in scope)]

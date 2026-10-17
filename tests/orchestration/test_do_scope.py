@@ -75,3 +75,22 @@ def test_a_test_the_order_asks_for_is_in_scope_and_a_test_run_is_not_a_license()
     ran = "Fix the bug in src/app.py. Run the tests."
     assert order_scope_violations(ran, "Add tests/test_other.py", BOTH_READMES) == [
         "tests/test_other.py"]
+
+
+def test_a_german_fence_bounds_a_plan_as_an_english_one_does():
+    order = "Ergänze einen Abschnitt in README.md. Verändere sonst nichts."
+    assert order_has_scope_fence(order)
+    assert order_scope_violations(order, "Write test_command.txt", ["README.md", "package.json"]) == [
+        "test_command.txt"]
+
+
+def test_a_planned_task_that_delivers_a_file_the_order_did_not_ask_for_is_named():
+    from types import SimpleNamespace
+
+    from packages.orchestration.do_scope import out_of_scope_task_ids
+
+    order = "Ergänze am Ende der Datei `README.md` einen Abschnitt. Verändere sonst nichts."
+    planned = [SimpleNamespace(id="T001", files_hint=["order.md", "order.json"]),       # the 2026-10-17 plan
+               SimpleNamespace(id="T003", files_hint=["README.md", "readme_baseline.txt"]),
+               SimpleNamespace(id="T004", files_hint=[])]
+    assert out_of_scope_task_ids(order, planned, ["README.md", "package.json"]) == ["T001"]

@@ -625,7 +625,24 @@ class TestTextReportTokenProof:
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Token accounting:" in out
-        assert "Context sent:" in out
+        assert "Initial context sent:" in out and "an estimate of the first prompt" in out
+
+    def test_text_report_names_measured_usage_before_the_estimate(self, tmp_path, monkeypatch, capsys):
+        """exec-1017 D3: the 2026-10-17 page printed ~210 tokens under "actual" beside 230,803 measured."""
+        import json
+
+        from apps.cli.commands.run_report_cmd import _cmd_run_show
+        from packages.orchestration import data_paths
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        run_dir = data_paths.run_dir("r1")
+        run_dir.mkdir(parents=True)
+        (run_dir / "result.json").write_text(json.dumps({"run_id": "r1", "token_accounting": {
+            "kind": "actual", "context_tokens_estimated": 210, "usage_actuals": {"by_role": {
+                "builder": {"input_tokens": 223221, "output_tokens": 7582, "provider_call_count": 1}}}}}))
+        _cmd_run_show("r1", json_output=False)
+        out = capsys.readouterr().out
+        assert out.index("builder used: 223221 input, 7582 output") < out.index("Initial context sent: ~210")
 
     def test_text_report_shows_savings(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))

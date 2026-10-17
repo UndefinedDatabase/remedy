@@ -288,14 +288,26 @@ class OrderJobPlan:
         }
 
 
-def _deliverable_task_plan(plan: Any) -> tuple[Any, list[Any]]:
+def _deliverable_task_plan(plan: Any, order: str = "", repo: str = "") -> tuple[Any, list[Any]]:
     """The plan and its job tasks, every task a deliverable; raises :class:`OrderJobPlanError` otherwise.
 
     DECISION amend1011 D1 and operator amendment amend1014-do-golden-path-now D2: a plan is
     normalized before it may run, each inspection task folded into the task that needs it and
     the tasks serving one file merged into one; the planner's own plan is the last candidate,
-    and a plan still rejected afterwards fails.
+    and a plan still rejected afterwards fails. exec-1017 D2: first, a task whose deliverable the
+    *order* did not put in scope is left out, and a plan of nothing else fails.
     """
+    if order:
+        from packages.orchestration.do_lane import tracked_repo_files
+        from packages.orchestration.do_scope import out_of_scope_task_ids
+
+        outside = set(out_of_scope_task_ids(order, list(plan.tasks), tracked_repo_files(repo)))
+        if outside and outside == {task.id for task in plan.tasks}:
+            raise OrderJobPlanError("task plan rejected: every task delivers a file the order did not ask "
+                                    f"for ({', '.join(sorted(outside))})")
+        plan = plan.model_copy(update={"tasks": [
+            task.model_copy(update={"depends_on": [d for d in task.depends_on if d not in outside]})
+            for task in plan.tasks if task.id not in outside]})
     from packages.orchestration.job_plan import map_task_plan_to_tasks
     from packages.orchestration.task_deliverables import (
         DeliverablePlanError,
@@ -492,7 +504,7 @@ def plan_order_job(
             ),
         )
         if fp_result.plan is not None:
-            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan)
+            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, mission, target_repo_path)
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
             fp_dict["_normalization"] = fp_result.transformations
