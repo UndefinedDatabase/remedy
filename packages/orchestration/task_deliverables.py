@@ -40,6 +40,9 @@ INSPECTION_VERBS: tuple[str, ...] = (
     "analyze", "analyse", "inspect", "review", "read", "explore",
     "investigate", "examine", "study", "understand", "survey", "research",
     "verify", "confirm", "locate", "find", "identify", "assess", "audit",
+    # German planners (lab order of 2026-10-17: "Prüfe Änderungsumfang und Abhängigkeiten").
+    "prüfe", "überprüfe", "verifiziere", "kontrolliere", "bestätige", "analysiere",
+    "untersuche", "inspiziere", "lies", "finde", "identifiziere", "ermittle",
 )
 
 #: The `inputs` key a task's deliverable is recorded under.
@@ -102,13 +105,23 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False) 
     """
     accept = f"{deliverable} is produced and meets the order: {order}"
     body = f"{order}\n\nThis task's deliverable: {deliverable}"
+    title = f"Deliver {deliverable}"
     inputs = {"task_type": "deliverable", DELIVERABLE_INPUT_KEY: deliverable}
     if with_tests:
-        body += ("\nThe order asks for a test: write it in the project's existing test location and "
-                 "style, and it may be a new test file.")
-        accept += "; the test the order asks for exists and passes"
+        # Lab calc order of 2026-10-17: "deliverable: src/calc.js" with a side sentence about a test
+        # made the builder fix only calc.js; the reviewer failed it and the repair round ran the job
+        # out of budget. The test file is named as a deliverable of this same task.
+        from packages.orchestration.order_scope import is_test_path
+
+        named = [p for p in explicit_order_paths(order) if is_test_path(p)]
+        test = " and ".join(named) if named else "a test file in the project's existing test folder"
+        title = f"Deliver {deliverable} and its test" + (f" {test}" if named else "")
+        body += (f"\nThis task delivers TWO things in this one step: the change to {deliverable} AND "
+                 f"the test the order asks for, {test} (it may be a new file; follow the existing "
+                 "tests' location and style). Do not finish until both are written.")
+        accept += "; the test the order asks for exists and passes" + (f" ({test})" if named else "")
         inputs["with_tests"] = True
-    return TaskEntry(title=f"Deliver {deliverable}", body=body, acceptance=accept, inputs=inputs)
+    return TaskEntry(title=title, body=body, acceptance=accept, inputs=inputs)
 
 
 def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
@@ -143,7 +156,8 @@ def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:
 
 
 def _first_word(title: str) -> str:
-    words = re.findall(r"[A-Za-z]+", title)
+    # Letters of any script: `[A-Za-z]` read "Prüfe" as "pr" (lab order of 2026-10-17).
+    words = re.findall(r"[^\W\d_]+", title)
     return words[0].lower() if words else ""
 
 
@@ -168,13 +182,14 @@ def _is_inspection(task: PlannedTask) -> bool:
     return _first_word(task.title) in INSPECTION_VERBS
 
 
-def _fold_into(target: PlannedTask, inspection: PlannedTask) -> PlannedTask:
-    """*target* with *inspection*'s work as its first step and its dependencies as its own."""
+def _fold_into(target: PlannedTask, inspection: PlannedTask, *, last: bool = False) -> PlannedTask:
+    """*target* with *inspection*'s work as its first (or, *last*, its final) step and its dependencies as its own."""
     depends = [d for d in [*target.depends_on, *inspection.depends_on]
                if d not in (inspection.id, target.id)]
     hints = [*target.files_hint, *(h for h in inspection.files_hint if h not in target.files_hint)]
+    when = "Last" if last else "First"
     return target.model_copy(update={
-        "goal": f"{target.goal}\nFirst, as part of this task: {inspection.title}: {inspection.goal}",
+        "goal": f"{target.goal}\n{when}, as part of this task: {inspection.title}: {inspection.goal}",
         "depends_on": list(dict.fromkeys(depends)),
         "files_hint": hints,
     })
@@ -250,10 +265,11 @@ def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
 
     The inspection task is dropped; its title and goal become the first step of
     the task that waits for it (or, when none does, of the next task in plan
-    order), and whatever waited for it waits for that task. Acceptance of an
+    order; when it is the last task, the final step of the work task before it),
+    and whatever waited for it waits for that task. Acceptance of an
     inspection task is dropped with it: reading is context, never a deliverable.
-    Returns None when the plan holds no inspection task, when one has no task
-    after it to fold into, or when the folded plan is no valid `TaskPlan`.
+    Returns None when the plan holds no inspection task, when one has no work task
+    to fold into, or when the folded plan is no valid `TaskPlan`.
     """
     tasks = list(plan.tasks)
     if not any(_is_inspection(t) for t in tasks):
@@ -266,8 +282,14 @@ def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
         target = next((t for t in later if inspection.id in t.depends_on),
                       later[0] if later else None)
         if target is None:
-            return None
-        folded = _fold_into(target, inspection)
+            # A check AFTER the work ("Verify only README.md changed", lab orders of 2026-10-17) is
+            # the last step of the work task before it, never a task of its own.
+            target = next((t for t in reversed(tasks[:index]) if not _is_inspection(t)), None)
+            if target is None:
+                return None
+            folded = _fold_into(target, inspection, last=True)
+        else:
+            folded = _fold_into(target, inspection)
         tasks = [
             folded if t.id == target.id else
             t.model_copy(update={"depends_on": list(dict.fromkeys(

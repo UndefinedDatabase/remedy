@@ -619,3 +619,16 @@ class TestStandardCheckRegistry:
         assert registered_standard_check_providers() == ()
         assert all(c.source == "plan_acceptance"
                    for c in compile_dod({"goal": "g"}, plan, None).dod.checks)
+
+
+@pytest.mark.parametrize(("line", "selector"), [
+    # Lab orders of 2026-10-17: a Node test named in the criterion ran under pytest and held correct work.
+    ("Ein Regressionstest in test/format.test.js belegt den Fall.", "tests"),
+    ("Repariere sie und ergänze einen Regressionstest in test/calc.test.js.", "tests"),
+    ("tests/test_parse.py::test_empty passes.", "tests/test_parse.py::test_empty"),
+    ("The new test tests/test_add.py passes.", "tests/test_add.py"),
+    ("Everything under tests/unit stays green.", "tests/unit"),
+])
+def test_only_a_python_test_path_becomes_a_pytest_selector(line, selector):
+    from packages.orchestration.dod_compiler import DEFAULT_TEST_SELECTOR, _selector_for
+    assert _selector_for(line, DEFAULT_TEST_SELECTOR) == selector

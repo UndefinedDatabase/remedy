@@ -2602,6 +2602,7 @@ def run_job(
     # the repository nor the workspace.
     from packages.orchestration.safe_points import StopSignal as _StopSignal
     from packages.orchestration.safe_points import control_root as _control_root
+    from packages.orchestration.safe_points import moot_budget_stop as _moot_budget_stop
     from packages.orchestration.safe_points import should_stop as _should_stop
     _control = _control_root()
 
@@ -2761,12 +2762,11 @@ def run_job(
             # R-0987: `usage_actuals` is a DICT (`_usage_actuals_dict`), so an
             # attribute read was always 0. The total is `_aggregate_usage_actuals`'
             # own: input plus output, cache tokens excluded, read the same way.
-            _accumulated_tokens += (
-                int(ua.get("input_tokens", 0) or 0) +
-                int(ua.get("output_tokens", 0) or 0)
-            )
+            _accumulated_tokens += int(ua.get("input_tokens", 0) or 0) + int(ua.get("output_tokens", 0) or 0)
         else:
             _accumulated_unmeasured += 1
+        # Lab 2026-10-17: the next Pi call's cap reads tokens left from job.budget_actuals (D10).
+        _persist_budget_actuals()
 
     def _money_kwargs(*, always=False):
         """The cost-side triple, as ``collect_counters_from_actuals`` kwargs.
@@ -3696,10 +3696,9 @@ def run_job(
                 _block_job(job, idx, _absorb_block)
                 return job
 
-            # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed
-            # now takes effect before the NEXT task is dispatched.
-            # R-1160: a pause read here parks the job as at every other safe point.
-            _stop = _stop_check()
+            # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed now takes
+            # effect before the NEXT task is dispatched. R-1160: a pause here parks the job as elsewhere.
+            _stop = _moot_budget_stop(_stop_check(), job.tasks[idx + 1:])   # none left: nothing to stop
             if _stop is not None:
                 return _settle_safe_point(_stop)    # no further task is dispatched
 

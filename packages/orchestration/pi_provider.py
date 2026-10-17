@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -101,21 +102,80 @@ _PI_MODEL_MAX_TOKENS = 16384
 _PI_CALL_MODE = "pi-json"
 _PI_VERSION_TIMEOUT_SEC = 20
 
+# Lab order of 2026-10-17 16:2x: a correct three-line README append took 12 turns and 53,730 input
+# tokens (5 reads, 3 shell calls, the edit, then more checking), because nothing told the builder
+# that Remedy itself runs the project's tests and has a reviewer read the diff afterwards.
 _BUILDER_PREAMBLE = (
     "You are the builder in an isolated working copy. Your current directory IS that copy; "
-    "work only inside it. Inspect the files the task names, make the edit directly with your "
-    "file tools, run only checks relevant to the task, inspect the actual change you made "
-    "(for example with `git diff`), and report truthfully. A change you describe but did not "
-    "write to a file does not exist. Change no file the task does not name.\n\n"
+    "work only inside it. Read the files the task names (each once), make the edit directly with "
+    "your file tools, look at the actual change once (for example with `git diff`), then stop and "
+    "answer in one or two sentences. Do NOT run the project's tests or build: Remedy runs them "
+    "itself after you finish, and a reviewer reads your diff; a sentence in the task asking for "
+    "the tests to run is Remedy's job, not yours. Every extra step resends the whole conversation, "
+    "so take as few steps as the edit needs. A change you describe but did not write to a file "
+    "does not exist. Change no file the task does not name.\n\n"
 )
+#: How much of the workspace the builder is handed up front (lab order of 2026-10-17: a one-line
+#: fix spent 8 of its 12 turns on ls, find, grep and reads before the first edit).
+_CONTEXT_MAX_LISTED = 80
+_CONTEXT_MAX_FILES = 4
+_CONTEXT_MAX_FILE_CHARS = 6000
+_CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pycache__", ".remedy-wt",
+                                "dist", "build", ".next", ".cache"})
+
+
+def builder_workspace_context(cwd: str, prompt: str) -> str:
+    """The workspace's file list and the text of the files *prompt* names, for the builder's prompt.
+
+    A named file that does not exist yet (a new test) brings one existing file of its folder as
+    the style to follow. Read with a plain bounded walk: no symlink is followed and no `git` runs
+    in the target repository, whose own configuration could run commands. "" without a workspace.
+    """
+    if not cwd or not os.path.isdir(cwd):
+        return ""
+    root = Path(cwd)
+    listed: list[str] = []
+    for folder, dirs, files in os.walk(cwd):
+        dirs[:] = sorted(d for d in dirs if d not in _CONTEXT_SKIP_DIRS and not os.path.islink(os.path.join(folder, d)))
+        for name in sorted(files):
+            path = Path(folder) / name
+            if not path.is_symlink():
+                listed.append(path.relative_to(root).as_posix())
+        if len(listed) > _CONTEXT_MAX_LISTED:
+            break
+    listed = listed[:_CONTEXT_MAX_LISTED]
+    shown: list[str] = [p for p in listed if p in prompt]
+    for named in sorted(set(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt)) - set(listed)):
+        sibling = next((p for p in listed if "/" in named and p.rsplit("/", 1)[0] == named.rsplit("/", 1)[0]), "")
+        if sibling and sibling not in shown:
+            shown.append(sibling)
+    blocks = []
+    for rel in shown[:_CONTEXT_MAX_FILES]:
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if len(text) <= _CONTEXT_MAX_FILE_CHARS:
+            blocks.append(f"--- {rel} ---\n{text.rstrip()}\n")
+    out = ("Files in your working copy (the complete list; do not list or search it again):\n"
+           + "".join(f"- {p}\n" for p in listed))
+    if blocks:
+        out += ("\nCurrent content of the files the task names (already read for you; do not read "
+                "them again before editing):\n\n" + "\n".join(blocks))
+    return out + "\n"
+
+
 # amend1016p D3: the reviewer judges what the change SAYS against what the task asks, not only
 # that a file changed, and fails a file the task does not ask for.
 _REVIEWER_PREAMBLE = (
     "You are the reviewer. You have read-only tools; you cannot edit. Judge the staged diff "
     "below against the task: does the changed text say what the task asks for, in its content "
     "and meaning, not merely in the right file? Fail a change whose wording misses the request, "
-    "and fail any file the task does not ask for (a report, a copy, a manifest). Answer in the "
-    "JSON shape the end of this message requires.\n\n"
+    "and fail any file the task does not ask for (a report, a copy, a manifest). The diff below "
+    "is the complete change and the files it touches are shown to you: do not list or search the "
+    "repository, read a file at most once and only if the diff leaves a real doubt, and do not run "
+    "the tests (Remedy runs them). Every extra step resends the whole conversation, so decide in as "
+    "few steps as you can. Answer in the JSON shape the end of this message requires.\n\n"
 )
 
 
@@ -514,24 +574,32 @@ class PiProvider:
 
     def build(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
               resume: str | None = None) -> BuilderOutput:
-        full = _BUILDER_PREAMBLE + prompt
+        full = _BUILDER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools(self._role), "inner_provider": PI_INNER_PROVIDER})
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
-        if outcome.error:
-            capped = self._usage_actuals(outcome) if PI_LOOP_LIMIT_MARK in outcome.error else None
+        capped = PI_LOOP_LIMIT_MARK in outcome.error and outcome.summary is not None
+        if outcome.error and not capped:
             return BuilderOutput(error=outcome.error, provider=PI_PROVIDER_NAME,
-                                 duration_ms=outcome.duration_ms, usage_actuals=capped,
-                                 actual_missing_reason="" if capped else "provider_error",
-                                 prepared_input=fingerprint)
+                                 duration_ms=outcome.duration_ms,
+                                 actual_missing_reason="provider_error", prepared_input=fingerprint)
         summary = outcome.summary
         assert summary is not None  # an empty error means the stream parsed
         actuals = self._usage_actuals(outcome)
+        final_text = summary.final_text
+        if capped:
+            # Lab order of 2026-10-17: the loop cap cut a builder that had ALREADY written the
+            # correct edit, and the task ended budget_exhausted with no review. The cap still
+            # ends the loop; what the builder wrote goes to the reviewer, who judges the diff
+            # (an unchanged workspace fails there as before). The evidence keeps the trip.
+            final_text = (f"{final_text}\n\nRemedy ended this builder loop at its cap "
+                          f"({outcome.error.split(PI_LOOP_LIMIT_MARK + ': ', 1)[-1]}); "
+                          "the edits it wrote are kept for review.").strip()
         # `files_changed` stays empty on purpose: the workspace diff is the authority, never
         # a list the assistant claimed.
         return BuilderOutput(
-            summary=summary.final_text[:500], files_changed=[], raw_text=summary.final_text,
+            summary=final_text[:500], files_changed=[], raw_text=final_text,
             provider=PI_PROVIDER_NAME, duration_ms=outcome.duration_ms,
             tokens_used=summary.usage["totalTokens"], usage_actuals=actuals,
             actual_missing_reason="" if actuals else "provider_actuals_unavailable",
@@ -539,7 +607,8 @@ class PiProvider:
 
     def review(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
                resume: str | None = None) -> ReviewerOutput:
-        full = _REVIEWER_PREAMBLE + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        # Lab calc order of 2026-10-17: the reviewer spent 12 turns and 51,469 tokens on ls, read and grep.
+        full = _REVIEWER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools("reviewer"), "inner_provider": PI_INNER_PROVIDER})

@@ -29,10 +29,13 @@ _QUOTED_RE = re.compile(r"```.*?```|`[^`\n]*`|\"[^\"\n]*\"|„[^“”\n]*[“�
 # A line that announces literal content ("… mit genau diesen zwei Sätzen:", "… with this text:"): the
 # lines after it, up to the next blank line, are that part's PAYLOAD, never parts of their own. On
 # 2026-10-17 the two sentences to insert counted as two more deliverables, so a one-file README order
-# was "several things" and walked the full lane.
+# was "several things" and walked the full lane. A payload may open with a Markdown heading and a
+# blank line ("… diesen Abschnitt:\n\n## Testbetrieb\n\nDieses …"): the heading and the paragraph
+# after it are one payload (lab order of 2026-10-17, 16:00).
 _PAYLOAD_INTRO_RE = re.compile(
-    r"\b(?:sätzen?|satz|texte?s?|zeilen?|inhalt|wortlaut|absatz|absätzen?|folgendes|sentences?|lines?|"
-    r"text|content|wording|paragraphs?)\b[^:\n]{0,40}:[ \t]*\n(?:[ \t]*\n)?(?=[ \t]*\S)(?:[^\n]*\S[^\n]*(?:\n|$))+",
+    r"\b(?:sätzen?|satz|texte?s?|zeilen?|inhalt|wortlaut|absatz|absätzen?|abschnitt\w*|überschrift\w*|"
+    r"folgendes|sentences?|lines?|text|content|wording|paragraphs?|sections?|headings?)\b[^:\n]{0,40}:"
+    r"[ \t]*\n(?:[ \t]*\n)?(?:[ \t]*#{1,6}[ \t][^\n]*\n(?:[ \t]*\n)?)?(?=[ \t]*\S)(?:[^\n]*\S[^\n]*(?:\n|$))+",
     re.IGNORECASE)
 _PATH_RE = re.compile(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b")
 
@@ -46,12 +49,16 @@ _SCOPE = re.compile(
     # "Verändere sonst nichts", "change nothing else", "leave everything else unchanged".
     r"|\b(?:change|modify|edit|touch|änder\w*|veränder\w*|bearbeit\w*)\b.{0,20}"
     r"\b(?:(?:sonst|ansonsten)\s+nichts|nichts\s+(?:anderes|weiteres|sonst)|nothing\s+else|anything\s+else)\b"
-    r"|\b(?:alles\s+andere|everything\s+else)\b.{0,30}\b(?:unverändert|unchanged|untouched|as\s+it\s+is)\b",
+    r"|\b(?:alles\s+andere|everything\s+else)\b.{0,30}\b(?:unverändert|unchanged|untouched|as\s+it\s+is)\b"
+    # "füge keine Abhängigkeiten hinzu", "add no dependencies", "don't add any dependencies".
+    r"|\b(?:no|keine)\s+(?:new\s+|neuen?\s+|external\s+|externen?\s+)?(?:dependencies|abhängigkeiten)\b"
+    r"|\bdo(?:\s+not|n't)\s+add\s+(?:any\s+)?(?:new\s+)?dependencies\b",
     re.IGNORECASE)
 # Running or passing the project's own tests ("Führe den vorhandenen Testbefehl aus" names no "test").
 _TESTS = re.compile(
     r"\b(?:run|execute|führ\w*|start\w*)\b.{0,40}\b(?:tests?|test\s?suite|npm\s+test|pytest|"
-    r"testsuite|unit\s?tests?|test[\s-]?(?:command|script|runner)s?|test(?:befehl|kommando|skript|lauf)\w*)\b"
+    r"testsuite|unit\s?tests?|test[\s-]?(?:command|script|runner)s?|test(?:befehl|kommando|skript|lauf)\w*|"
+    r"(?:projekt|project)[\s-]?tests?)\b"
     r"|\b(?:tests?|test\s?suite|testsuite)\b.{0,30}\b(?:pass|passes|stay\s+green|green|bestehen|grün)\b"
     r"|\bmake\s+sure\b.{0,20}\btests?\b",
     re.IGNORECASE)
@@ -89,7 +96,8 @@ _ACTION_VERBS = frozenset({
     "update", "change", "migrate", "move", "replace", "extend", "build", "document", "introduce",
     "convert", "split", "merge", "ergänze", "füge", "erstelle", "schreibe", "implementiere",
     "behebe", "entferne", "lösche", "benenne", "aktualisiere", "ändere", "migriere", "verschiebe",
-    "ersetze", "erweitere", "baue", "dokumentiere", "führe", "teile",
+    "ersetze", "erweitere", "baue", "dokumentiere", "führe", "teile", "repariere", "korrigiere",
+    "repair", "correct",
 })
 #: An order whose deliverables hold more actions than this asks for several things.
 MAX_SIMPLE_ACTIONS = 2
@@ -107,17 +115,19 @@ class OrderScope:
     @property
     def actions(self) -> int:
         """How many separate actions the deliverables ask for, by their leading verbs."""
-        count = 0
-        for sentence in self.deliverables:
-            for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
-                words = clause.strip().lower().split()
-                count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
-        return count
+        return sum(_sentence_actions(sentence) for sentence in self.deliverables)
 
     @property
     def simple(self) -> bool:
-        """Few parts, few actions: the same words in a list, with semicolons or in prose count the same."""
-        return 0 < len(self.deliverables) <= MAX_SIMPLE_SENTENCES and self.actions <= MAX_SIMPLE_ACTIONS
+        """Few parts, few actions: the same words in a list, with semicolons or in prose count the same.
+
+        A sentence that asks for no action only describes ("add(a, b) in src/calc.js rechnet falsch",
+        "Zeige durch den Test, dass …"): it is no part of its own while another sentence asks for the
+        work (lab calc order of 2026-10-17, which those two sentences sent to the full lane).
+        """
+        working = [s for s in self.deliverables if _sentence_actions(s)]
+        parts = working or self.deliverables
+        return 0 < len(parts) <= MAX_SIMPLE_SENTENCES and self.actions <= MAX_SIMPLE_ACTIONS
 
     @property
     def single(self) -> bool:
@@ -133,6 +143,15 @@ def order_unit_head(unit: str) -> str:
     "Ergänze … mit genau diesen zwei Sätzen: Dieses Repository …" asks "Ergänze … Sätzen:"."""
     head = _PAYLOAD_HEAD_RE.search(unit)
     return unit[:head.end()] if head else unit
+
+
+def _sentence_actions(sentence: str) -> int:
+    """How many clauses of *sentence* start with an action verb."""
+    count = 0
+    for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
+        words = clause.strip().lower().split()
+        count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
+    return count
 
 
 def _binds(clause: str) -> bool:
@@ -189,9 +208,13 @@ def _order_units(body: str) -> list[str]:
     Quoted text ("Hello; world") and the literal payload a line announces ("… these two sentences:")
     are never split, and a line that only introduces a list ("Do this:") is no part of its own.
     """
-    text = _LIST_MARKER_RE.sub("", body.strip())
-    masked = _QUOTED_RE.sub(lambda m: "\0" * len(m.group()), text)
+    # List markers become spaces, not nothing, so `text` and `masked` keep the same positions while
+    # the payload is still found by the heading marker it may open with.
+    raw = body.strip()
+    text = _LIST_MARKER_RE.sub(lambda m: " " * len(m.group()), raw)
+    masked = _QUOTED_RE.sub(lambda m: "\0" * len(m.group()), raw)
     masked = _PAYLOAD_INTRO_RE.sub(lambda m: _mask_after_colon(m.group()), masked)
+    masked = _LIST_MARKER_RE.sub(lambda m: " " * len(m.group()), masked)
     units: list[str] = []
     start = 0
     for brk in [*_UNIT_BREAK_RE.finditer(masked), None]:
@@ -207,6 +230,9 @@ def _order_units(body: str) -> list[str]:
 # Writing a test is a deliverable ("add a regression test"); running the suite is a constraint.
 _TEST_REQUEST = re.compile(
     r"\b(?:add|write|create|extend|include|ergänze\w*|schreib\w*|erstell\w*|füg\w*)\s+"
+    # "Schreibe dazu einen Regressionstest" (lab order of 2026-10-17): a filler between the verb and
+    # the test kept the test from being a request, so the order walked the full lane.
+    r"(?:(?:dazu|auch|noch|bitte|zusätzlich|außerdem|also|too|additionally)\s+)*"
     r"(?:(?:a|an|some|new|the|more|einen|ein|eine|neue[nr]?|weitere)\s+)*"
     r"(?:(?:regression|unit|failing|reproducing)[ -]?)?(?:tests?|test\s?cases?|testfall|testfälle|"
     r"regressions?tests?)\b", re.IGNORECASE)

@@ -331,3 +331,24 @@ def test_each_call_is_recorded_in_the_run_directory_with_the_prompt_as_a_hash(fa
     record = json.loads(lines[0])
     assert record["model_turns"] == 2 and record["inner_provider"] == "ollama"
     assert "secret-bearing" not in lines[0] and "<prompt sha256:" in " ".join(record["argv"])
+
+
+def test_the_builder_gets_the_file_list_and_the_named_files_up_front(tmp_path):
+    """Lab order of 2026-10-17: a one-line fix spent 8 of 12 turns on ls, find, grep and reads."""
+    from packages.orchestration.pi_provider import builder_workspace_context
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "test").mkdir()
+    (tmp_path / "src" / "calc.js").write_text("export function add(a, b) {\n  return a - b;\n}\n")
+    (tmp_path / "test" / "baseline.test.js").write_text('import { test } from "node:test";\n')
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "x.js").write_text("ignored")
+    (tmp_path / "link.js").symlink_to(tmp_path / "src" / "calc.js")
+
+    text = builder_workspace_context(str(tmp_path), "Fix add in src/calc.js and add test/calc.test.js.")
+
+    assert "- src/calc.js\n" in text and "- test/baseline.test.js\n" in text
+    assert "node_modules" not in text and "link.js" not in text
+    assert "--- src/calc.js ---\nexport function add" in text
+    assert "--- test/baseline.test.js ---" in text          # the style for the new test file
+    assert builder_workspace_context("", "x") == ""
