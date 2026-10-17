@@ -246,7 +246,8 @@ with the code that calls it.
   staying beside the code that calls it.
 - `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
   cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
-  table, the walker, `plan_order_job` and the study, plan, shape and run steps stay, because a
+  table, the walker, `plan_order_job` and the plan, shape and run steps stay (the study step moved to
+  `packages/orchestration/do_study.py` on 2026-10-17, which took the file under its row), because a
   test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
   targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
   Step (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the
@@ -306,7 +307,7 @@ with the code that calls it.
 | 205 | `apps/cli/commands/do_cmd.py` | `_cmd_job_run` |
 | 203 | `apps/cli/grouped.py` | `_add_command_args` |
 | 199 | `apps/cli/commands/runtime_cmd.py` | `_cmd_runtime_probe` |
-| 181 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
+| 165 | `apps/cli/commands/do_cmd.py` | `_cmd_do_order` |
 | 190 | `packages/orchestration/context_compiler.py` | `compile_task_context` |
 | 172 | `packages/orchestration/job_apply.py` | `summarize_job_apply` |
 | 190 | `packages/orchestration/pingpong_job.py` | `_strict_apply_to_workspace` |
@@ -446,7 +447,6 @@ with the code that calls it.
 | 1349 | `packages/orchestration/task_injection.py` |
 | 1205 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
-| 1015 | `apps/cli/commands/do_cmd.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
 | 1156 | `packages/orchestration/review_subject.py` |

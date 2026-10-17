@@ -305,8 +305,8 @@ def _cmd_do_order(
         do_contract_summary_line,
         do_cost_summary,
         do_cost_summary_lines,
+        do_json_document,
         do_mission_contract,
-        do_unmet_blocking_criteria,
     )
 
     ctx = walk_do_sequence(DoContext(
@@ -347,23 +347,7 @@ def _cmd_do_order(
     contract = do_mission_contract(ctx)
 
     if json_output:
-        document = {
-            "mission_id": ctx.mission_id or None, "order_id": ctx.order_id or None,
-            "job_ids": list(ctx.job_ids),
-            "waiting_job_ids": list(ctx.waiting_job_ids),
-            "contract": contract,
-            "unmet_blocking_criteria": do_unmet_blocking_criteria(contract),
-            "stopped_before_apply": ctx.stopped_before_apply,
-            "shape": ctx.shape or None,
-            "shape_source": ctx.shape_source or None,
-            "mission_plan_path": ctx.mission_plan_path or None,
-            "jobs": jobs,
-            "steps": [r.to_json() for r in ctx.results],
-            "cost": cost,
-            "landed": list(ctx.landed),
-            "push": ctx.push_outcome,
-            "next": list(ctx.next_lines),
-        }
+        document = do_json_document(ctx, jobs=jobs, cost=cost, contract=contract)
         if ctx.failed:
             last = ctx.results[-1]
             fail("step_failed", f"{last.name} failed: {last.detail}",

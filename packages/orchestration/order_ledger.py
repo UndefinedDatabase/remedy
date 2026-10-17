@@ -1,0 +1,224 @@
+"""One budget authority for a whole `remedy do` order (2026-10-17 scale audit P1-4).
+
+A job's budget (`JobBudgets`) used to be handed unchanged to every job of a walk, and the planning
+calls before the first job (study narration, mission plan, intake, task plan) were outside every
+budget, so an order's real spend was its cap times its jobs plus whatever planning cost. The
+order's caps (`ctx.budgets`: the flags or the order file's header) are now the ORDER's caps:
+
+- every planner call the walk makes is recorded here, with its reason, attempt, elapsed seconds,
+  size, outcome and an ESTIMATED token count (the planner interface returns text, not usage, so the
+  tokens of a planning call are never claimed as measured);
+- each job runs with what is left of the caps after the planning calls and the jobs before it;
+- a planning call that would pass the remaining call or token cap is refused, which the planner's
+  callers already read as a provider failure and answer with the deterministic plan;
+- when nothing is left, the walk stops before the next job instead of starting it.
+
+Remedy deliberately does not retry, escalate or loop on a refused call: the refusal is final for
+that order, and the entry says why.
+"""
+from __future__ import annotations
+
+import contextlib
+import contextvars
+import math
+import time
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
+from typing import Any
+
+#: The schema a planner call is bound to, read as the reason the call was made.
+CALL_REASONS = {
+    "JobIntake": "intake",
+    "TaskPlan": "task_plan",
+    "MissionPlanDraft": "mission_plan",
+    "StudyCategoryNarration": "study_narration",
+}
+#: Characters per token for the estimate of a planning call; labelled an estimate wherever shown.
+CHARS_PER_ESTIMATED_TOKEN = 4
+
+_BOUND: contextvars.ContextVar[OrderCallLedger | None] = contextvars.ContextVar(
+    "remedy_order_call_ledger", default=None)
+
+
+class OrderBudgetExhaustedError(RuntimeError):
+    """A planning call was refused because the order's own caps are spent."""
+
+
+@dataclass
+class OrderCallLedger:
+    """The planner calls of one order and the share of its caps they and its jobs have used."""
+
+    caps: dict[str, Any] | None = None
+    clock: Callable[[], float] = time.monotonic
+    started: float = field(default=0.0)
+    entries: list[dict[str, Any]] = field(default_factory=list)
+    #: job id -> what that job's persisted actuals say it used.
+    jobs: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.started = self.clock()
+
+    # --- recording -------------------------------------------------------------------------
+
+    def record_planner_call(self, reason: str, *, attempt: int, seconds: float, prompt_chars: int,
+                            response_chars: int, outcome: str) -> None:
+        self.entries.append({
+            "role": "planner", "reason": reason, "attempt": attempt, "seconds": round(seconds, 3),
+            "prompt_chars": prompt_chars, "response_chars": response_chars, "outcome": outcome,
+            "estimated_tokens": (prompt_chars + response_chars) // CHARS_PER_ESTIMATED_TOKEN,
+            "tokens_estimated": True})
+
+    def record_job(self, job: Any) -> None:
+        """Take the job's persisted actuals (calls, tokens, money) into the order's spend."""
+        from packages.orchestration.budget_guard import (
+            BudgetCounterError,
+            decode_persisted_budget_actuals,
+        )
+        raw = getattr(job, "budget_actuals", None)
+        used: dict[str, Any] = {"calls": 0, "tokens": 0, "cost_usd": None, "measured": False}
+        if raw:
+            try:
+                actuals = decode_persisted_budget_actuals(raw)
+            except BudgetCounterError:
+                actuals = None
+            if actuals is not None:
+                used = {"calls": actuals["provider_call_count"], "tokens": actuals["total_tokens"],
+                        "cost_usd": actuals.get("measured_cost_usd"), "measured": True}
+        self.jobs[str(job.job_id)] = used
+
+    def wrap(self, reason: str, call_fn: Callable[[str, int], str]) -> Callable[[str, int], str]:
+        """*call_fn* recorded here, and refused with `OrderBudgetExhaustedError` once the caps are spent."""
+        def recorded(prompt: str, attempt: int) -> str:
+            # The study's narration passes its token limit in the attempt slot; it has no retries.
+            attempt = 0 if reason == "study_narration" else attempt
+            if refusal := self.exhausted():
+                self.record_planner_call(reason, attempt=attempt, seconds=0.0,
+                                         prompt_chars=len(prompt), response_chars=0,
+                                         outcome=f"refused: {refusal}")
+                raise OrderBudgetExhaustedError(refusal)
+            began = self.clock()
+            try:
+                text = call_fn(prompt, attempt)
+            except Exception as exc:
+                self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
+                                         prompt_chars=len(prompt), response_chars=0,
+                                         outcome=f"error: {type(exc).__name__}")
+                raise
+            self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
+                                     prompt_chars=len(prompt), response_chars=len(text or ""),
+                                     outcome="ok")
+            return text
+        for name in ("resolved_model",):
+            if hasattr(call_fn, name):
+                setattr(recorded, name, getattr(call_fn, name))
+        return recorded
+
+    # --- the shares --------------------------------------------------------------------------
+
+    @property
+    def planner_calls(self) -> int:
+        return sum(1 for entry in self.entries if not entry["outcome"].startswith("refused"))
+
+    def used(self) -> dict[str, Any]:
+        """Calls, tokens (measured by jobs, estimated for planning) and measured money spent so far."""
+        planning_tokens = sum(e["estimated_tokens"] for e in self.entries
+                              if not e["outcome"].startswith("refused"))
+        cost = [j["cost_usd"] for j in self.jobs.values() if j["cost_usd"] is not None]
+        return {
+            "calls": self.planner_calls + sum(j["calls"] for j in self.jobs.values()),
+            "tokens": planning_tokens + sum(j["tokens"] for j in self.jobs.values()),
+            "cost_usd": sum(cost) if cost else None,
+            "elapsed_minutes": (self.clock() - self.started) / 60.0,
+        }
+
+    def exhausted(self) -> str:
+        """Why the order has nothing left to spend on another call, or "" while it has."""
+        caps = self.caps or {}
+        used = self.used()
+        for cap_key, used_key, unit in (("max_provider_calls", "calls", "provider calls"),
+                                        ("max_total_tokens", "tokens", "tokens"),
+                                        ("max_cost_usd", "cost_usd", "USD")):
+            cap = caps.get(cap_key)
+            if cap is not None and used[used_key] is not None and used[used_key] >= cap:
+                return f"the order's cap of {cap} {unit} is spent ({used[used_key]} used)"
+        minutes = caps.get("max_wall_clock_minutes")
+        if minutes is not None and used["elapsed_minutes"] >= minutes:
+            return f"the order's cap of {minutes} minute(s) of wall-clock time is spent"
+        return ""
+
+    def remaining(self) -> dict[str, Any] | None:
+        """The order's caps less what is spent: the budgets the next job runs with (None: uncapped)."""
+        if not self.caps:
+            return None
+        used = self.used()
+        left = dict(self.caps)
+        for cap_key, used_key in (("max_provider_calls", "calls"), ("max_total_tokens", "tokens")):
+            if left.get(cap_key) is not None:
+                left[cap_key] = max(1, left[cap_key] - used[used_key])
+        if left.get("max_cost_usd") is not None and used["cost_usd"] is not None:
+            left["max_cost_usd"] = max(left["max_cost_usd"] - used["cost_usd"], 1e-9)
+        if left.get("max_wall_clock_minutes") is not None:
+            left["max_wall_clock_minutes"] = max(
+                1, math.ceil(left["max_wall_clock_minutes"] - used["elapsed_minutes"]))
+        return left
+
+    def summary(self) -> dict[str, Any]:
+        """The order's planning calls and spend, for the walk's JSON and its evidence."""
+        by_reason: dict[str, int] = {}
+        for entry in self.entries:
+            if not entry["outcome"].startswith("refused"):
+                by_reason[entry["reason"]] = by_reason.get(entry["reason"], 0) + 1
+        used = self.used()
+        return {
+            "caps": self.caps,
+            "planner_calls": self.planner_calls,
+            "planner_calls_by_reason": by_reason,
+            "refused_calls": len(self.entries) - self.planner_calls,
+            "estimated_planning_tokens": sum(e["estimated_tokens"] for e in self.entries),
+            "used": {**used, "elapsed_minutes": round(used["elapsed_minutes"], 3)},
+            "jobs": dict(self.jobs),
+            "unmeasured_jobs": [job_id for job_id, job in self.jobs.items() if not job["measured"]],
+            "calls": list(self.entries),
+        }
+
+
+def reserve_waiting_budgets(job_ids: list[str], budgets: dict[str, Any] | None) -> list[str]:
+    """Give each job the walk leaves waiting the caps that were left when the walk ended.
+
+    A waiting job runs later, in another process, by `remedy job run`. Without this it would run
+    with no order cap at all. Each waiting job holds the same leftover: the leftover bounds every
+    one of them, but a manual run of the first does not shrink the second's; that limit is stated
+    in docs/system/do-guide, not hidden. Returns the ids that were given a cap.
+    """
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+    given: list[str] = []
+    for job_id in job_ids:
+        job = load_job_plan(job_id)
+        if budgets is None or job is None or job.budgets is not None:
+            continue
+        job.budgets = dict(budgets)
+        save_job_plan(job)
+        given.append(job_id)
+    return given
+
+
+def reason_for(model_cls: Any) -> str:
+    """The reason a planner call bound to *model_cls* is made."""
+    name = getattr(model_cls, "__name__", str(model_cls))
+    return CALL_REASONS.get(name, name)
+
+
+def bound_order_ledger() -> OrderCallLedger | None:
+    """The ledger of the walk running in this context, or None outside a `remedy do` walk."""
+    return _BOUND.get()
+
+
+@contextlib.contextmanager
+def bind_order_ledger(ledger: OrderCallLedger) -> Iterator[OrderCallLedger]:
+    """Make *ledger* the one every planner call made inside the block is recorded on."""
+    token = _BOUND.set(ledger)
+    try:
+        yield ledger
+    finally:
+        _BOUND.reset(token)

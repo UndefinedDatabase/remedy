@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.do_context import DO_STEP_SKIPPED
 from packages.orchestration.do_sequence import (
     DO_SEQUENCE,
     DO_STEP_DONE,
     DO_STEP_FAILED,
-    DO_STEP_SKIPPED,
     DO_STEP_STOPPED,
     DO_STEP_TABLE,
     DoContext,

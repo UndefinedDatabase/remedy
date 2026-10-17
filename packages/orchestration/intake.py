@@ -415,7 +415,12 @@ def make_structured_call_fn(
     # Readers use `getattr(fn, "resolved_model", None)`, so an unlabelled
     # call_fn reads as an absence and never as a default name.
     _call.resolved_model = planner.model  # type: ignore[attr-defined]
-    return _call
+    # Scale audit P1-4: inside a `remedy do` walk every planner call is recorded on the order's ledger
+    # and refused once the order's own caps are spent.
+    from packages.orchestration.order_ledger import bound_order_ledger, reason_for
+
+    ledger = bound_order_ledger()
+    return _call if ledger is None else ledger.wrap(reason_for(model_cls), _call)
 
 
 def make_provider_call_fn() -> Callable[[str, int], str] | None:

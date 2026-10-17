@@ -63,8 +63,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import shlex
-import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -85,7 +83,6 @@ from packages.orchestration.do_apply import (
 from packages.orchestration.do_context import (
     DO_STEP_DONE,
     DO_STEP_FAILED,
-    DO_STEP_SKIPPED,
     DO_STEP_STOPPED,
     DO_WALK_ENDING_STATUSES,
     DoContext,
@@ -97,10 +94,16 @@ from packages.orchestration.do_lane import settle_do_lane
 from packages.orchestration.do_plan_confirm import approve_confirmed_plan
 from packages.orchestration.do_progress import do_step_intro
 from packages.orchestration.do_rehearsal import stop_walk_for_rehearsal
+from packages.orchestration.do_study import do_step_study
 from packages.orchestration.do_targets import (
     _shape_job_orders,
     _step_init,
     resolve_do_shape,
+)
+from packages.orchestration.order_ledger import (
+    OrderCallLedger,
+    bind_order_ledger,
+    reserve_waiting_budgets,
 )
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
@@ -119,6 +122,12 @@ def walk_do_sequence(ctx: DoContext,
     next step (DECISION F268 D8); a halt that stops reports the next step stopped.
     """
     steps = DO_STEP_TABLE if table is None else table
+    ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
+    with bind_order_ledger(ctx.ledger):
+        return _walk_steps(ctx, steps)
+
+
+def _walk_steps(ctx: DoContext, steps: Mapping[str, DoStep]) -> DoContext:
     for index, name in enumerate(DO_SEQUENCE):
         status, detail = _announced_step(ctx, name, steps[name])
         ctx.results.append(DoStepResult(name=name, status=status, detail=detail))
@@ -597,56 +606,6 @@ def plan_order_job(
 # ---------------------------------------------------------------------------
 
 
-def _repo_has_committed_file(repo_root: str) -> bool:
-    """At least one commit exists and HEAD holds at least one tracked file."""
-    proc = subprocess.run(
-        ["git", "ls-tree", "-r", "--name-only", "HEAD"],
-        cwd=repo_root, capture_output=True, text=True, timeout=30,
-    )
-    return proc.returncode == 0 and bool(proc.stdout.strip())
-
-
-def _step_study(ctx: DoContext) -> tuple[str, str]:
-    """Study the repository exactly once, and only when it is non-empty (D3)."""
-    from packages.orchestration.study import (
-        record_study_pass,
-        run_study,
-        study_call_fn,
-        study_stale_reason,
-    )
-
-    lane = settle_do_lane(ctx)
-    if lane.hold:
-        # Audit P0-1: an order that cannot be placed is a question, never a guess that edits files.
-        return DO_STEP_STOPPED, f"nothing was planned or run: {lane.reason}"
-    metadata = ctx.project.metadata
-    stale = ""
-    if metadata.get("studied_at"):
-        stale = study_stale_reason(ctx.repo_root, str(metadata.get("studied_head") or ""))
-        if not stale:
-            return DO_STEP_SKIPPED, (
-                f"already studied at {metadata['studied_at']} "
-                f"(head {metadata.get('studied_head') or 'none'}); study again by hand: "
-                f"remedy study run --path {shlex.quote(ctx.repo_root)}")
-    if not _repo_has_committed_file(ctx.repo_root):
-        return DO_STEP_SKIPPED, (
-            f"{ctx.repo_root} has no commit holding a tracked file — nothing to study")
-
-    # Amend1014 D1 and audit P1-7: a bounded order is studied from facts, with no narration call, in a
-    # repository of any size: a README edit in a 10,000-file repository needs no whole-repository model pass.
-    call_fn = None if ctx.no_llm or lane.bounded else study_call_fn()
-    result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
-    updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
-    if updated is not None:
-        ctx.project = updated
-    detail = f"{len(result.cards_written)} memory card(s) written for project {ctx.project.slug}"
-    if stale:
-        detail += f" (studied again: {stale})"
-    if result.partial:
-        detail += f" (PARTIAL — {result.stopped_reason})"
-    return DO_STEP_DONE, detail
-
-
 def _step_plan(ctx: DoContext) -> tuple[str, str]:
     """Accept the order as a batch of the repository's one mission, and plan it (D4).
 
@@ -931,6 +890,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     # DECISION F270 D4 (2): a commit flag lets every job run, each cut from a HEAD
     # that holds its predecessor's committed output.
     chain = bool(ctx.commit_mode)
+    ledger = ctx.ledger = ctx.ledger or OrderCallLedger(caps=ctx.budgets)
     ctx.waiting_job_ids = [] if chain else list(ctx.job_ids[1:])
     ran: list[str] = []
     for position, job_id in enumerate(ctx.run_job_ids, start=1):
@@ -961,11 +921,18 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
                 f"job {job_id}'s task plan is {blocked}, not approved; it was not run "
                 f"(--run-unattended runs a generated plan without asking). Approve it with: {approve}")
 
+        # Scale audit P1-4: the caps are the ORDER's. A job runs with what the planning calls and the
+        # jobs before it left, and none starts once nothing is left.
+        if (spent := ledger.exhausted()):
+            ctx.next_lines.append(f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
+            return DO_STEP_STOPPED, (f"job {job_id} was not run: {spent}; "
+                                     f"ran before it: {done_so_far}")
         done = run_job(job_id, builder_name=ctx.builder_provider,
                        reviewer_name=ctx.reviewer_provider,
                        builder_model=ctx.builder_model,
                        reviewer_model=ctx.reviewer_model,
-                       budgets=ctx.budgets)
+                       budgets=ledger.remaining())
+        ledger.record_job(done)
         # DECISION F268 D11: the job's cost reaches the F103 ledger exactly as
         # `job run` sends it there; never fatal, a failure is named in the summary.
         from packages.orchestration.job_evidence import mirror_job_run_into_ledger
@@ -986,6 +953,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
                 return DO_STEP_FAILED, f"{failure}; ran before it: {'; '.join(ran)}"
             ran.append(f"{ctx.applied[job_id]} before the next job ran")
     if ctx.waiting_job_ids:
+        reserve_waiting_budgets(ctx.waiting_job_ids, ledger.remaining())
         ran.append(
             f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
             f"before it is applied and committed, because a job's workspace is cut from "
@@ -997,7 +965,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.
 DO_STEP_TABLE: dict[str, DoStep] = {
     "init": _step_init,
-    "study": _step_study,
+    "study": do_step_study,
     "plan": _step_plan,
     "shape": _step_shape,
     "run": _step_run,

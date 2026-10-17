@@ -178,3 +178,30 @@ def do_cost_summary_lines(summary: dict[str, Any] | None, *, show_cost_usd: bool
     lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
                  for job_id, error in summary["mirror_errors"].items())
     return lines
+
+
+def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[str, Any] | None,
+                     contract: dict[str, Any] | None) -> dict[str, Any]:
+    """The object `remedy do --json` answers: the walk's ids, shape, jobs, steps, cost and order budget.
+
+    `order_budget` is the order's one ledger (scale audit P1-4): the caps, every planner call with
+    its reason and outcome, the jobs' spend and what the planning calls cost in estimated tokens.
+    """
+    return {
+        "mission_id": ctx.mission_id or None, "order_id": ctx.order_id or None,
+        "job_ids": list(ctx.job_ids),
+        "waiting_job_ids": list(ctx.waiting_job_ids),
+        "contract": contract,
+        "unmet_blocking_criteria": do_unmet_blocking_criteria(contract),
+        "stopped_before_apply": ctx.stopped_before_apply,
+        "shape": ctx.shape or None,
+        "shape_source": ctx.shape_source or None,
+        "mission_plan_path": ctx.mission_plan_path or None,
+        "jobs": jobs,
+        "steps": [r.to_json() for r in ctx.results],
+        "cost": cost,
+        "order_budget": ctx.ledger.summary() if ctx.ledger is not None else None,
+        "landed": list(ctx.landed),
+        "push": ctx.push_outcome,
+        "next": list(ctx.next_lines),
+    }
