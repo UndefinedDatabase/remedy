@@ -235,3 +235,16 @@ def test_two_files_keep_two_tasks_and_each_file_one():
         _task("T4", "Insert log", "y2", files=["CHANGELOG.md"], depends=["T3"]))
     _normalized, tasks = _deliverable_task_plan(plan)
     assert [t.title.split(":")[0] for t in tasks] == ["Insert intro", "Insert log"]
+
+
+def test_a_requested_test_is_named_as_a_deliverable_of_the_same_task():
+    # Lab calc order of 2026-10-17 17:13: "deliverable: src/calc.js" plus a side sentence made the
+    # builder fix only calc.js; the reviewer failed it and the repair round ran out of budget.
+    from packages.orchestration.task_deliverables import deliverable_task
+
+    order = "add(a, b) in src/calc.js rechnet falsch. Repariere sie und ergänze einen Regressionstest in test/calc.test.js."
+    task = deliverable_task("src/calc.js", order, with_tests=True)
+    assert task.title == "Deliver src/calc.js and its test test/calc.test.js"
+    assert "TWO things" in task.body and "Do not finish until both are written" in task.body
+    assert task.acceptance.endswith("the test the order asks for exists and passes (test/calc.test.js)")
+    assert deliverable_task("README.md", "Fix README.md.").title == "Deliver README.md"
