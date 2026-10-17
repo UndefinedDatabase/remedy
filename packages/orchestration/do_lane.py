@@ -28,6 +28,7 @@ from pathlib import PurePosixPath
 from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_scope import order_scope_files, resolve_order_path
 from packages.orchestration.order_scope import (
+    MAX_SIMPLE_ACTIONS,
     is_scope_fence,
     is_test_path,
     requests_test_files,
@@ -116,7 +117,10 @@ def _order_targets(order: str, tracked_files: list[str]) -> list[str]:
     named = explicit_order_paths(" ".join(scope.deliverables))
     if not named:
         named = explicit_order_paths(" ".join(s for s in scope.constraints if is_scope_fence(s)))
-    if requests_test_files(order):
+    # A test file is a companion by its PATH, whatever words ask for it (lab orders of 2026-10-17:
+    # "Schreibe dazu einen Regressionstest in test/format.test.js" escaped every phrase pattern and
+    # the order fell to the planner). Only an order about test files alone keeps them as targets.
+    if any(not is_test_path(path) for path in named):
         named = [path for path in named if not is_test_path(path)]
     if not named:
         # "Fix the typo in the readme": a tracked document whose name the order uses as a word. Only
@@ -161,8 +165,10 @@ def select_do_lane(
 
 def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: bool) -> DoLaneDecision:
     scope = split_order_scope(order)
-    with_tests = requests_test_files(order)
     targets = _order_targets(order, tracked_files)
+    named_tests = [p for p in explicit_order_paths(" ".join(scope.deliverables))
+                   if is_test_path(p) and p not in targets]
+    with_tests = requests_test_files(order) or bool(named_tests)
     if len(targets) > 1:
         return DoLaneDecision(DO_LANE_FULL, f"the order names {len(targets)} files")
     if not targets:
@@ -185,9 +191,14 @@ def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: boo
     if risk := order_risk(order, [deliverable]):
         return DoLaneDecision(DO_LANE_FULL, f"the order names one file, {deliverable}, but it is "
                               f"high-risk: {risk}", risk=risk, with_tests=with_tests)
-    if not scope.simple:
+    # One named file (and its tests) is one job whatever the order's wording: how many sentences
+    # it has or which verbs they use no longer sends it to the planner (lab orders of 2026-10-17,
+    # where each new phrasing missed a pattern and the local planner's plan then failed outright).
+    # Only many explicit actions ("add a section, write a changelog entry, add a CI workflow") still
+    # go to the planner: they likely need files the order does not name.
+    if scope.actions > MAX_SIMPLE_ACTIONS:
         return DoLaneDecision(DO_LANE_FULL, f"the order names one file, {deliverable}, but asks for "
-                              "several things")
+                              f"{scope.actions} separate actions")
     return DoLaneDecision(DO_LANE_BOUNDED, f"the order names one file, {deliverable}, and asks for "
                           "one thing" + (" and a test for it" if with_tests else ""),
                           deliverable, with_tests=with_tests)
