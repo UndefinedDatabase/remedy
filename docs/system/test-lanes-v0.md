@@ -3,7 +3,7 @@
 ## Fast lane
 
 **Script**: `scripts/remedy_test_fast.sh` (selection: `scripts/select_changed_tests.py`)
-**Base**: changes since the merge base with `origin/main` (`REMEDY_FAST_BASE` overrides), plus
+**Base**: changes since the merge base with `origin/main` (a revision given as the script's one argument overrides it), plus
 staged, unstaged and untracked files
 
 Runs the owner tests of the change plus the core product spine. The selection, read from a

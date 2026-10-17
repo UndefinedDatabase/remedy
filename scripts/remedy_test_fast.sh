@@ -18,11 +18,11 @@
 # (or the gate the active protocol names).
 #
 # Usage: scripts/remedy_test_fast.sh            # changes since the merge base with origin/main
-#        REMEDY_FAST_BASE=main scripts/remedy_test_fast.sh
+#        scripts/remedy_test_fast.sh main       # the base as a revision of your choice
 set -euo pipefail
 
 export REMEDY_PYTEST_TIMEOUT_SEC="${REMEDY_PYTEST_TIMEOUT_SEC:-600}"
-BASE="${REMEDY_FAST_BASE:-origin/main}"
+BASE="${1:-origin/main}"
 
 echo "=== Fast Test Lane (owner tests of the change since ${BASE}, plus the spine) ==="
 
