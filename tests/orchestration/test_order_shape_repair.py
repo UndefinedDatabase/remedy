@@ -51,8 +51,18 @@ def test_an_inspection_task_is_folded_into_the_task_that_depends_on_it():
 
 def test_no_inspection_task_or_nothing_to_fold_into_is_not_repairable():
     assert fold_inspection_tasks(_plan(_task("T001", "Edit gate"))) is None
-    assert fold_inspection_tasks(_plan(_task("T001", "Edit gate"),
+    assert fold_inspection_tasks(_plan(_task("T001", "Verify the gate"),
                                        _task("T002", "Review result", deps=["T001"]))) is None
+
+
+def test_a_trailing_check_is_the_last_step_of_the_work_before_it():
+    # Lab orders of 2026-10-17 16:00: "Verify only README.md changed" after the edit was merged into
+    # one task under the check's title and the plan was refused.
+    plan = _plan(_task("T001", "Append Testbetrieb section to README.md", hint=["README.md"]),
+                 _task("T002", "Verify file change isolation", deps=["T001"], hint=["README.md"]))
+    folded = fold_inspection_tasks(plan)
+    assert [(t.id, t.depends_on) for t in folded.tasks] == [("T001", [])]
+    assert folded.tasks[0].goal.endswith("Last, as part of this task: Verify file change isolation: goal of T002")
 
 
 def _shape_with_plan(repo, monkeypatch, order, plan):

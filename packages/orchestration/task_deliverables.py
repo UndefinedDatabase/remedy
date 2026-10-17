@@ -168,13 +168,14 @@ def _is_inspection(task: PlannedTask) -> bool:
     return _first_word(task.title) in INSPECTION_VERBS
 
 
-def _fold_into(target: PlannedTask, inspection: PlannedTask) -> PlannedTask:
-    """*target* with *inspection*'s work as its first step and its dependencies as its own."""
+def _fold_into(target: PlannedTask, inspection: PlannedTask, *, last: bool = False) -> PlannedTask:
+    """*target* with *inspection*'s work as its first (or, *last*, its final) step and its dependencies as its own."""
     depends = [d for d in [*target.depends_on, *inspection.depends_on]
                if d not in (inspection.id, target.id)]
     hints = [*target.files_hint, *(h for h in inspection.files_hint if h not in target.files_hint)]
+    when = "Last" if last else "First"
     return target.model_copy(update={
-        "goal": f"{target.goal}\nFirst, as part of this task: {inspection.title}: {inspection.goal}",
+        "goal": f"{target.goal}\n{when}, as part of this task: {inspection.title}: {inspection.goal}",
         "depends_on": list(dict.fromkeys(depends)),
         "files_hint": hints,
     })
@@ -250,10 +251,11 @@ def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
 
     The inspection task is dropped; its title and goal become the first step of
     the task that waits for it (or, when none does, of the next task in plan
-    order), and whatever waited for it waits for that task. Acceptance of an
+    order; when it is the last task, the final step of the work task before it),
+    and whatever waited for it waits for that task. Acceptance of an
     inspection task is dropped with it: reading is context, never a deliverable.
-    Returns None when the plan holds no inspection task, when one has no task
-    after it to fold into, or when the folded plan is no valid `TaskPlan`.
+    Returns None when the plan holds no inspection task, when one has no work task
+    to fold into, or when the folded plan is no valid `TaskPlan`.
     """
     tasks = list(plan.tasks)
     if not any(_is_inspection(t) for t in tasks):
@@ -266,8 +268,14 @@ def fold_inspection_tasks(plan: TaskPlan) -> TaskPlan | None:
         target = next((t for t in later if inspection.id in t.depends_on),
                       later[0] if later else None)
         if target is None:
-            return None
-        folded = _fold_into(target, inspection)
+            # A check AFTER the work ("Verify only README.md changed", lab orders of 2026-10-17) is
+            # the last step of the work task before it, never a task of its own.
+            target = next((t for t in reversed(tasks[:index]) if not _is_inspection(t)), None)
+            if target is None:
+                return None
+            folded = _fold_into(target, inspection, last=True)
+        else:
+            folded = _fold_into(target, inspection)
         tasks = [
             folded if t.id == target.id else
             t.model_copy(update={"depends_on": list(dict.fromkeys(
