@@ -105,13 +105,23 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False) 
     """
     accept = f"{deliverable} is produced and meets the order: {order}"
     body = f"{order}\n\nThis task's deliverable: {deliverable}"
+    title = f"Deliver {deliverable}"
     inputs = {"task_type": "deliverable", DELIVERABLE_INPUT_KEY: deliverable}
     if with_tests:
-        body += ("\nThe order asks for a test: write it in the project's existing test location and "
-                 "style, and it may be a new test file.")
-        accept += "; the test the order asks for exists and passes"
+        # Lab calc order of 2026-10-17: "deliverable: src/calc.js" with a side sentence about a test
+        # made the builder fix only calc.js; the reviewer failed it and the repair round ran the job
+        # out of budget. The test file is named as a deliverable of this same task.
+        from packages.orchestration.order_scope import is_test_path
+
+        named = [p for p in explicit_order_paths(order) if is_test_path(p)]
+        test = " and ".join(named) if named else "a test file in the project's existing test folder"
+        title = f"Deliver {deliverable} and its test" + (f" {test}" if named else "")
+        body += (f"\nThis task delivers TWO things in this one step: the change to {deliverable} AND "
+                 f"the test the order asks for, {test} (it may be a new file; follow the existing "
+                 "tests' location and style). Do not finish until both are written.")
+        accept += "; the test the order asks for exists and passes" + (f" ({test})" if named else "")
         inputs["with_tests"] = True
-    return TaskEntry(title=f"Deliver {deliverable}", body=body, acceptance=accept, inputs=inputs)
+    return TaskEntry(title=title, body=body, acceptance=accept, inputs=inputs)
 
 
 def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
