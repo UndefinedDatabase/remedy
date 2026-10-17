@@ -58,6 +58,10 @@ def test_a_malformed_line_never_raises_from_the_pump_thread():
 
 
 def test_the_jobs_tokens_left_lower_the_input_cap(monkeypatch):
+    # The operator's own user config may set both caps (the workstation's sets 12 turns and 60,000
+    # tokens); this test is about the defaults and the job's tokens left, so no config is read.
+    import packages.orchestration.config as config_module
+    monkeypatch.setattr(config_module, "get_config", lambda *a, **k: {})
     job = SimpleNamespace(budgets={"max_total_tokens": 30_000}, budget_actuals={"total_tokens": 25_000})
     PLL.bind_job_token_budget(job)
     limits = PLL.pi_loop_limits()
