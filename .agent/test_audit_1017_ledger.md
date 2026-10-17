@@ -141,3 +141,61 @@ found by the change-aware fast lane's first run, not by running the owner file a
 Also: test_proposed_tasks `TestMaterialization` defined `test_materialize_non_approved_raises`
 twice; Python kept only the second, so the first never ran. The dead copy is deleted (collected
 count unchanged).
+
+## 7. Fast lane — before and after
+
+Before: `scripts/remedy_test_fast.sh` ran three fixed files, 128 tests, 5.6 s wall, whatever
+changed. After: the same spine plus the owner tests of the change (`scripts/select_changed_tests.py`,
+rules in `docs/system/test-lanes-v0.md`); the selection takes about 2.5 s.
+
+| Change | Files selected | CPU s (load record) |
+|---|---|---|
+| `packages/orchestration/pi_provider.py` | 7 | 6.4 |
+| `packages/orchestration/order_scope.py` | 3 | 3.3 |
+| `packages/orchestration/model_routing.py` | 7 | 21.4 |
+| `packages/orchestration/public_api.py` | 4 | 11.5 |
+| `packages/orchestration/final_verifier.py` | 14 | 18.5 |
+| `packages/orchestration/pingpong_job.py` (hub) | 325 | 590.4 |
+| `apps/cli/commands/job.py` | 113 | 297.7 |
+| `scripts/make_review_zip.sh` | 18 | 61.5 |
+| `docs/system/test-lanes-v0.md` | 10 | 1.3 |
+| this branch (42 paths) | 40 + 3 spine | 1 274 tests, 21.9 s wall, green |
+
+One hop of production importers was measured and dropped: from `pi_provider`, `order_scope`,
+`model_routing` or `final_verifier` it selects 424 to 469 files (668 to 718 CPU s), because the
+hop reaches `pingpong_job`. Neighbours of a change are therefore the full suite, which stays the
+merge and release gate (DECISION D3).
+
+The lane's first runs on this branch found what the owner file alone did not: F293's assertion
+floor for test_job_task_runner, and the `.agent` state checks (a roadmap id in plan.md and
+context.md, the word "Steps" in context.md), all repaired; and a race in the selector itself,
+a scratch `tests/regression/test_slow_*.py` that `test_resource_safety` writes into the checkout
+and removes while the suite runs, now skipped when it vanishes (tested).
+
+Selector proof: 11 tests in `tests/test_select_changed_tests.py`; five mutations of the selector
+(from-package imports ignored, CLI dispatch rule, machinery refusal, unique-name rule, vanish
+handling), each restored byte for byte, each turn exactly its test red. The three retired guards
+(`test_fast_script_no_subprocess_files`, `test_fast_lane_no_heavy_runtime_smoke`,
+`test_fast_lane_no_subprocess_files`) asserted that the script text names no subprocess file;
+that invariant is retired on purpose, since owner tests of a CLI module spawn processes.
+
+## 8. Not done, risks, follow-ups
+
+- Full-suite before/after: not measured (collection only, this session). Expected effect of the
+  batch on the full suite: below 1 CPU s; the fast lane changes no full-suite cost.
+- Coverage on this tree: not measured beyond the owner of batch 1.
+- Batch 2 candidate: the continuation-config family of test_job_task_runner (~15 s serial).
+- Lane 1/3/4 D and F follow-ups in section 5 (rule-name copies, role-config pair, the
+  `_is_unsafe_path` pair, the `inspect.getsource` greps of `_run_isolated_process`, the
+  review-subject non-git pair).
+- The `subprocess` marker is a 21-name list; the `fast` CI stage holds 75 spawning files
+  (404 CPU s). Deriving the marker from the import of `subprocess` would change stage selection,
+  a marker-semantics change this order did not authorize.
+- `test_resource_safety` writes scratch test files into the checkout's `tests/regression/`.
+- Selector gaps: a handler reached only through a CLI subprocess by a test that imports neither it
+  nor the dispatch; a root-level shared name (`README.md`) over-selects (171 files), never under.
+- `docs/system/test-lanes-v0.md` full-lane numbers ("3-4 minutes, ~6860+") and the
+  `remedy_test_full.sh` header are stale (now 21 5xx tests, about 5.5 min with 6 workers).
+- `TestCommandPathGateSmoke::test_config_unaffected_by_gate_block` stayed green with the
+  missing-reviewer gate removed (mutation M2): it blocks for another reason; read before relying
+  on it as gate proof.

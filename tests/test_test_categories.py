@@ -1,7 +1,8 @@
 """Test category enforcement.
 
 Verifies:
-- Fast script uses targeted file list (core spine suites)
+- Fast script always runs the core spine suites (its change-aware selection is
+  tests/test_select_changed_tests.py)
 - Scripts use remedy_pytest.sh
 - Scripts don't use background processes
 - Marker definitions exist in pyproject.toml
@@ -27,16 +28,6 @@ def test_fast_script_targets_core_suites():
         "test_product_spine.py",
     ]:
         assert suite in source, f"Fast lane must include {suite}"
-
-
-def test_fast_script_no_subprocess_files():
-    source = (SCRIPTS / "remedy_test_fast.sh").read_text()
-    for suite in [
-        "test_command_catalog.py",
-        "test_contract_runtime.py",
-        "test_config_cmd.py",
-    ]:
-        assert suite not in source, f"Fast lane must not include subprocess file {suite}"
 
 
 def test_runtime_script_exists():

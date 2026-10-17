@@ -19,6 +19,10 @@ lane script and its guards.
 Production behavior, the roadmap queue (F078 stays next), `.agent/STOP`, the supervisor, runtime data, CI stage
 budgets.
 
+## Steps
+Steps 1 to 5 of the order (audit, ledger, batch, fast lane, measurement); the current one
+is in plan.md.
+
 ## Constraints
 - Operator, this session: collection only, no suite runs; single owner files may run to prove a
   batch (fake providers only, never concurrent with a real Ollama acceptance run).

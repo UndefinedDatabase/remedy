@@ -8,19 +8,16 @@ merged); outside the roadmap queue (F078 stays next); no merge, no deploy, `.age
 supervisor untouched.
 
 ## Current Step
-3. First batch: `tests/orchestration/test_job_task_runner.py`, the completion-gate and
-   target-guard replay family (owner `packages/orchestration/pingpong_job.py`). Delete verbatim
-   duplicates; fold same-scenario run_job replays into one keeper per scenario carrying every
-   distinct assertion; negative controls by mutating the owner, restored byte for byte.
+5. Handback and PR (not merged: operator decides).
 
-Done: 1 audit (numbers, cost, gates), 2 evidence ledger (`.agent/test_audit_1017_ledger.md`).
+Done: 1 audit, 2 ledger (`.agent/test_audit_1017_ledger.md`), 3 batch 1 (test_job_task_runner,
+217 to 191 tests, coverage and mutations held; one shadowed duplicate), 4 change-aware fast lane
+(`scripts/select_changed_tests.py`, the spine plus owner tests; three retired text guards
+replaced by a behavior test), 5 targeted measurements (ledger sections 6 and 7).
 
 ## Next Steps
-4. Change-aware fast lane: `scripts/remedy_test_fast.sh` selects the owner tests of the changed
-   modules (static import index) plus the contract guards, instead of three fixed files; its
-   source-grep guards become a behavior test of the selection. Full suite stays mandatory at the
-   gates that already require it.
-5. Measure (targeted before/after; full suite only when the operator allows it), handback, PR.
+- Operator: review the PR; allow one full-suite run for the before/after the order asks for.
+- Batch 2 candidate: the continuation-config family (ledger section 5, lane 3).
 
 ## Risks
 - Consolidated keepers trade per-test failure names for one test per scenario; each keeper names

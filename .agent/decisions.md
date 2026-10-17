@@ -30052,3 +30052,10 @@ slice. D2. The batch saves lines, not seconds (36.5 s → 36.3 s serial): the ex
 file is the continuation family and the git work inside a successful fake run. The order's
 runtime goal is met by the change-aware fast lane, not by deleting cheap tests.
 Evidence: `.agent/test_audit_1017_ledger.md`.
+D3. The fast lane selects by the test files' own imports (plus the CLI dispatch, the docs checks,
+named paths and quoted unique file names), and deliberately follows no production importer:
+measured, one hop from almost any orchestration module reaches the `pingpong_job` hub and selects
+424 to 469 of 775 test files. A change to the test machinery exits 3 instead of guessing. The
+three guards asserting that the fast script names no subprocess file are deleted with the
+invariant they pinned (replacing is deleting); `tests/test_select_changed_tests.py` proves the
+selection instead.
