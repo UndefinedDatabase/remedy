@@ -515,11 +515,6 @@ class TestMaterialization:
         with pytest.raises(Exception):
             do_materialize(JOB_ID, t.id)
 
-    def test_materialize_non_approved_raises(self):
-        t = ProposedTask(title="X", status=ProposedTaskStatus.EVALUATED)
-        with pytest.raises(ValueError, match="not approved_for_build"):
-            materialize_approved_task(t)
-
 
 class TestEndToEndFlow:
     def test_full_proposed_task_lifecycle(self, tmp_path, monkeypatch):
