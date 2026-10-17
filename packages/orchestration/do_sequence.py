@@ -612,26 +612,36 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
         record_study_pass,
         run_study,
         study_call_fn,
+        study_stale_reason,
     )
 
+    lane = settle_do_lane(ctx)
+    if lane.hold:
+        # Audit P0-1: an order that cannot be placed is a question, never a guess that edits files.
+        return DO_STEP_STOPPED, f"nothing was planned or run: {lane.reason}"
     metadata = ctx.project.metadata
+    stale = ""
     if metadata.get("studied_at"):
-        return DO_STEP_SKIPPED, (
-            f"already studied at {metadata['studied_at']} "
-            f"(head {metadata.get('studied_head') or 'none'}); study again by hand: "
-            f"remedy study run --path {shlex.quote(ctx.repo_root)}")
+        stale = study_stale_reason(ctx.repo_root, str(metadata.get("studied_head") or ""))
+        if not stale:
+            return DO_STEP_SKIPPED, (
+                f"already studied at {metadata['studied_at']} "
+                f"(head {metadata.get('studied_head') or 'none'}); study again by hand: "
+                f"remedy study run --path {shlex.quote(ctx.repo_root)}")
     if not _repo_has_committed_file(ctx.repo_root):
         return DO_STEP_SKIPPED, (
             f"{ctx.repo_root} has no commit holding a tracked file — nothing to study")
 
-    # Amend1014 D1: a tiny repository of a bounded order is studied from facts, with no narration call.
-    lane = settle_do_lane(ctx)
-    call_fn = None if ctx.no_llm or (lane.bounded and ctx.tiny_repo) else study_call_fn()
+    # Amend1014 D1 and audit P1-7: a bounded order is studied from facts, with no narration call, in a
+    # repository of any size: a README edit in a 10,000-file repository needs no whole-repository model pass.
+    call_fn = None if ctx.no_llm or lane.bounded else study_call_fn()
     result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
     updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
     if updated is not None:
         ctx.project = updated
     detail = f"{len(result.cards_written)} memory card(s) written for project {ctx.project.slug}"
+    if stale:
+        detail += f" (studied again: {stale})"
     if result.partial:
         detail += f" (PARTIAL — {result.stopped_reason})"
     return DO_STEP_DONE, detail

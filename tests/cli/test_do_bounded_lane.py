@@ -227,7 +227,7 @@ def test_force_mission_on_the_incident_order_still_scales_up(repo, capsys, event
 
     assert "lane: full" in _step(data, "plan")["detail"]
     assert data["shape"] == "milestones"
-    assert len(data["job_ids"]) >= 2
+    assert len(data["job_ids"]) == 1       # audit P1-3: one deliverable is one job, never a check-only second
 
 
 def test_a_repository_of_many_files_and_a_vague_order_is_the_full_lane(tmp_path, monkeypatch, capsys):
@@ -276,7 +276,10 @@ def test_a_planner_that_expands_improve_the_readme_is_replaced_by_the_determinis
         do_sequence, "plan_order_job",
         lambda order, **kwargs: real_plan_order_job(order, **{**kwargs, "no_llm": True}))
 
-    data = json.loads(_do(capsys, "--json", "--plan-only", order="Improve the README"))
+    # The order alone is bounded now (a README named by a word); --force-mission puts the planner back
+    # in the walk so the scope guard has a plan to refuse.
+    data = json.loads(_do(capsys, "--json", "--plan-only", "--force-mission",
+                          order="Improve the README"))
 
     plan_detail = _step(data, "plan")["detail"]
     assert "named files the order did not request" in plan_detail

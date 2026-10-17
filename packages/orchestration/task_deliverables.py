@@ -93,25 +93,22 @@ def extract_order_deliverables(order: str) -> list[str]:
     return found or [order.strip()]
 
 
-def deliverable_task(deliverable: str, order: str) -> TaskEntry:
-    """One deterministic task producing one deliverable, with one acceptance item."""
-    return TaskEntry(
-        title=f"Deliver {deliverable}",
-        body=f"{order}\n\nThis task's deliverable: {deliverable}",
-        acceptance=f"{deliverable} is produced and meets the order: {order}",
-        inputs={"task_type": "deliverable", DELIVERABLE_INPUT_KEY: deliverable},
-    )
+def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False) -> TaskEntry:
+    """One deterministic task producing one deliverable, with one acceptance item.
 
-
-def deliverable_check_task(deliverable: str, order: str) -> TaskEntry:
-    """One deterministic task whose deliverable is the named check that *deliverable* meets the order."""
-    check = f"check: {deliverable} meets the order"
-    return TaskEntry(
-        title=f"Check that {deliverable} meets the order",
-        body=f"{order}\n\nThis task's deliverable: {check}",
-        acceptance=f"A check exists and passes showing {deliverable} meets the order: {order}",
-        inputs={"task_type": "deliverable_check", DELIVERABLE_INPUT_KEY: check},
-    )
+    *with_tests*: the order itself asks for a test beside the deliverable (2026-10-17 audit P0-2).
+    That test is a requested output of this same task, so its files are allowed and its existence
+    is part of the one acceptance item; it is never a task of its own.
+    """
+    accept = f"{deliverable} is produced and meets the order: {order}"
+    body = f"{order}\n\nThis task's deliverable: {deliverable}"
+    inputs = {"task_type": "deliverable", DELIVERABLE_INPUT_KEY: deliverable}
+    if with_tests:
+        body += ("\nThe order asks for a test: write it in the project's existing test location and "
+                 "style, and it may be a new test file.")
+        accept += "; the test the order asks for exists and passes"
+        inputs["with_tests"] = True
+    return TaskEntry(title=f"Deliver {deliverable}", body=body, acceptance=accept, inputs=inputs)
 
 
 def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
