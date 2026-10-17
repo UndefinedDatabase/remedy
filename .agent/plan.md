@@ -8,17 +8,13 @@ worktree `.remedy-wt/order-cancel`. Outside the roadmap queue (F078 stays next).
 supervisor and the live checkout untouched; no merge, no deploy.
 
 ## Current Step
-Done: 1 findings R-1338..R-1342; 2 `job_cancel.py` (job cancel, settle at safe point and at run
-start, no decisions, digest hiding rule deleted); 3 `order_cancel.py` (`client cancel-order`, the
-walk reads the request before/after every step and before every apply, `phase`/`cancel`); CLI,
-HTTP 1.19, docs, decisions exec-1017c D1-D4. Now: commits, then step 4.
+All steps done (findings R-1338..R-1344, decisions exec-1017c D1-D10, handoff written). Now: the
+one full local gate on the final tree, then the PR (not merged).
 
 ## Next Steps
-4. Story: a waiting job says what it waits for (R-1340); a cancelled job reads cancelled, a stop
-   reads stopped; an order job whose predecessor was cancelled or declined is not "waiting".
-5. R-1341/R-1342 (lane honesty, named files unchanged) if the evidence supports a small fix.
-6. P1 investigations (efficiency, verification across project types, memory) recorded with
-   evidence; owner and neighbouring tests; one full local gate on the final commit; PR (not merged).
+- Operator: merge PR 360, then this PR; restart `remedy serve`.
+- Open: R-1343's loop half (`--test-command` refusal reads `test_failed`); the calibration run
+  proposed in the handoff (needs an authorized model budget).
 
 ## Risks
 - `pingpong_job.py`, `decision_queue.py`, `command_catalog.py` are at their structure rows: every
