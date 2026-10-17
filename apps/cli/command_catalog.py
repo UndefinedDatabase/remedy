@@ -29,6 +29,7 @@ from dataclasses import replace
 # mission, stats, project, doctor and client groups live in modules of their own; this module imports
 # the names it uses, and every other consumer imports each name from its own module (operator
 # amendment amend1014-luna-mission-fixes D.2).
+from apps.cli.command_catalog_cancel import JOB_CANCEL_COMMANDS
 from apps.cli.command_catalog_client import CLIENT_COMMANDS
 from apps.cli.command_catalog_do import DO_COMMANDS
 from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
@@ -333,11 +334,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("job.run", "job.show"),
+        related=("job.run", "job.show", "job.cancel"),
         exit_codes=(0, 1, 2, 3),
     ),
+    *JOB_CANCEL_COMMANDS,
 
     # ── job pause / unpause (F025 T002, DECISION F025 D2) ────────────────
     CommandEntry(

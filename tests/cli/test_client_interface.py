@@ -95,7 +95,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.18"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.19"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -294,6 +294,11 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"job_not_started"}),
         "forward_effect passes its caller's `error` through; on a client's path its one caller, "
         "_cmd_job_run in apps/cli/commands/do_cmd.py, passes job_not_started",
+    ),
+    "apps.cli.commands.cancel_cmd:_cmd_job_cancel:refusal.token": (
+        frozenset({"job_not_cancellable"}),
+        "a JobCancelRefused's token; the one JobCancelRefused(...) in "
+        "packages/orchestration/job_cancel.py names job_not_cancellable (exec-1017c)",
     ),
     "apps.cli.commands.client_cmd:_cmd_client_diff:exc.token": (
         frozenset({"diff_not_ready", "diff_unavailable"}),
@@ -502,7 +507,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({
             "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
             "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
-            "job_states", "mission_statuses", "operations", "order_job_phases", "story",
+            "job_states", "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
     ),
@@ -547,11 +552,21 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "apps.cli.commands.client_cmd:_cmd_client_order:**payload": (
         frozenset({
-            "answer", "ended_at", "exit_code", "jobs", "order_file", "order_id", "started_at", "state",
+            "answer", "cancel", "ended_at", "exit_code", "jobs", "order_file", "order_id", "phase",
+            "started_at", "state",
         }),
         "the keys order_record_payload in packages/orchestration/serve_runs.py returns, shared "
         "with GET /api/v1/orders/{order} and the 202 answer of POST /api/v1/orders (DECISION "
         "F253 D14 (4))",
+    ),
+    "apps.cli.commands.cancel_cmd:_cmd_job_cancel:**answer": (
+        frozenset({"already_cancelled", "cancel", "cancel_pending", "job_id", "job_status"}),
+        "the keys cancel_job in packages/orchestration/job_cancel.py returns (exec-1017c)",
+    ),
+    "apps.cli.commands.cancel_cmd:_cmd_order_cancel:**answer": (
+        frozenset({"already_cancelled", "cancel", "jobs", "order_id", "phase", "state"}),
+        "the keys cancel_order in packages/orchestration/order_cancel.py returns, shared with "
+        "POST /api/v1/orders/{order}/cancel (exec-1017c)",
     ),
     "apps.cli.commands.job_stop_cmd:_print_status:**payload": (
         frozenset({"archived", "consumed_count", "job_id", "job_status", "pending", "stopped"}),
@@ -712,6 +727,10 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
         _returned_dict_keys("packages/orchestration/client_story.py", "build_client_story"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_diff:**answer"] == (
         _returned_dict_keys("packages/orchestration/client_diff.py", "job_client_diff"))
+    assert sites["apps.cli.commands.cancel_cmd:_cmd_job_cancel:**answer"] == (
+        _returned_dict_keys("packages/orchestration/job_cancel.py", "cancel_job"))
+    assert sites["apps.cli.commands.cancel_cmd:_cmd_order_cancel:**answer"] == (
+        _returned_dict_keys("packages/orchestration/order_cancel.py", "cancel_order"))
     assert sites["apps.cli.commands.client_cmd:_cmd_client_interface:**interface"] == (
         _returned_dict_keys("apps/cli/client_interface.py", "build_client_interface"))
     assert sites["apps.cli.commands.job:_cmd_job_resume:**preview"] == (
@@ -1435,6 +1454,11 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # client.run (DECISION F253 D20); its real run is tests/cli/test_client_run_cmd.py's.
     refused_run = answer("client.run", ["client", "run", "0123456789abcdef"], 3)
     assert refused_run["error"] == "run_not_found"
+    # exec-1017c: a completed, applied job is never cancelled (its result was the person's to take),
+    # and no order the supervisor started exists here; their real runs are tests/cli/test_cancel_cmd.py's.
+    assert answer("job.cancel", ["job", "cancel", job_id], 1)["error"] == "job_not_cancellable"
+    assert answer("client.cancel-order", ["client", "cancel-order", "0123456789abcdef"], 3)["error"] == (
+        "order_not_found")
     # Remedy's own health passes or fails on this machine's state, so the run accepts either exit
     # code; its answer's keys are the same in both (DECISION F199 D3).
     health_code, health_body = _remedy(["doctor", "health", "--json"], repo, env)
@@ -1563,7 +1587,7 @@ def _read_page_section(section: str) -> dict:
                   "answer_trees": {}, "story": {"phrases": {}, "reasons": {}}}
     story_labels = {label: key for key, label in STORY_WORD_LABELS}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
-              "Phases of an order's jobs": "order_job_phases",
+              "Phases of an order's jobs": "order_job_phases", "Phases of an order": "order_phases",
               "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
               "Approval recommendations": "approval_recommendations",
               "Approval risks": "approval_risks"}

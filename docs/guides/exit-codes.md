@@ -56,6 +56,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy job apply` | 3 |
 | `remedy job decline` | 3 |
 | `remedy job stop` | 3 |
+| `remedy job cancel` | 3 |
 | `remedy job pause` | 3 |
 | `remedy job unpause` | 3 |
 | `remedy job context` | 3 |
@@ -97,6 +98,7 @@ Every command not listed here exits only `0`, `1` or `2`.
 | `remedy chat show` | 3 |
 | `remedy chat ask` | 3 |
 | `remedy client order` | 3 |
+| `remedy client cancel-order` | 3 |
 | `remedy client diff` | 3 |
 | `remedy client run` | 3 |
 | `remedy runtime serve` | 3, 4, 5 |
