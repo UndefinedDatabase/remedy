@@ -19,7 +19,7 @@ from pathlib import Path
 from tests.cli.test_machine_client_contract import _GIT_IDENTITY, _digest_job, _remedy, _scratch_repo
 
 #: An order a fake builder completes in one task step, with the cap an unattended order needs.
-ORDER_FILE_TEXT = "---\nmax-cost-usd: 1\n---\nAdd a line saying hello to README.md\n"
+ORDER_FILE_TEXT = "---\nmax-provider-calls: 100\n---\nAdd a line saying hello to README.md\n"
 TWO_FILE_ORDER_FILE_TEXT = ORDER_FILE_TEXT.replace("to README.md", "to README.md and a line saying bye to NOTES.md")
 
 #: The builder and reviewer the client names, here the fake ones.

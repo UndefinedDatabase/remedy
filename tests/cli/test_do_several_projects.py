@@ -34,7 +34,7 @@ from tests.cli.test_do_project_repo import (  # noqa: F401 — fixtures used by 
 def _order(folder: Path, *slugs: str) -> Path:
     path = folder / "order.md"
     header = "".join(f"project: {slug}\n" for slug in slugs)
-    path.write_text(f"---\n{header}max-cost-usd: 1\n---\nWrite a CONTRIBUTING.md\n")
+    path.write_text(f"---\n{header}max-provider-calls: 100\n---\nWrite a CONTRIBUTING.md\n")
     return path
 
 
@@ -329,7 +329,8 @@ def test_an_order_over_two_repositories_has_one_aggregate_cap_and_runs_in_sequen
         _commit_a_passing_suite(repo)
         _bare_upstream(repo)
     monkeypatch.setattr(OrderCallLedger, "record_job", lambda self, job: self.jobs.__setitem__(
-        str(job.job_id), {"calls": 11, "tokens": 0, "cost_usd": None, "measured": True}))
+        str(job.job_id), {"calls": 11, "tokens": 0, "cost_usd": None, "measured": True,
+        "unpriced_calls": 0}))
 
     data = _do_json(capsys, _order(tmp_path, project_a.slug, project_b.slug),
                     "--commit", "Add the guide", "--max-provider-calls", "30")
@@ -339,3 +340,23 @@ def test_an_order_over_two_repositories_has_one_aggregate_cap_and_runs_in_sequen
     assert [first.budgets["max_provider_calls"], second.budgets["max_provider_calls"]] == [30, 19]
     assert data["order_budget"]["caps"]["max_provider_calls"] == 30
     assert data["order_budget"]["used"]["calls"] == 22
+
+
+def test_a_money_cap_the_unpriced_builder_cannot_prove_stops_the_chain_before_the_second_job(
+        projects, tmp_path, capsys):
+    """Unknown spend is not zero spend: a fake builder reports no price, so `max-cost-usd` is not
+    called enforced and the second repository's job is not started."""
+    (a, project_a), (b, project_b) = projects["a"], projects["b"]
+    for repo in (a, b):
+        _commit_a_passing_suite(repo)
+    path = tmp_path / "order.md"
+    path.write_text(f"---\nproject: {project_a.slug}\nproject: {project_b.slug}\nmax-cost-usd: 1\n---\n"
+                    "Write a CONTRIBUTING.md\n")
+
+    data = _do_json(capsys, path, "--commit", "Add the guide")
+
+    assert data["order_budget"]["cost"]["enforced"] is False
+    assert data["order_budget"]["cost"]["unpriced_calls"] > 0
+    run = next(s for s in data["steps"] if s["name"] == "run")
+    assert run["status"] == "stopped" and "cannot be enforced" in run["detail"]
+    assert len(data["landed"]) == 1
