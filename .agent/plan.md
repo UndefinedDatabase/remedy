@@ -8,11 +8,9 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-3. R-1346 done (DECISION exec-1018 D2); next R-1347 project rule delivery.
+4. R-1347 done (DECISION exec-1018 D3); next R-1348/R-1350 named-file roles.
 
 ## Next Steps
-4. R-1347: the repository's rule files (root and nested along the task's files) reach builder and
-   reviewer whole under a hard ceiling, with provenance and precedence; over it the call stops.
 5. R-1348/R-1350: named files get roles (required, optional, context, protected); protected ones
    refuse a change; independent deliverables become one task each in the one bounded job.
 6. R-1349: an order that asks for a plan only walks `--plan-only`; one that asks for verification

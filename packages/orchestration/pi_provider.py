@@ -122,13 +122,17 @@ _CONTEXT_MAX_FILES = 4
 _CONTEXT_MAX_FILE_CHARS = 6000
 _CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pycache__", ".remedy-wt",
                                 "dist", "build", ".next", ".cache"})
-#: The repository's own agent instructions, in the order Pi itself looks for them (exec-1017c).
+#: The repository's own agent instructions, in the order Pi itself looks for them in a folder (exec-1017c).
 _CONTEXT_AGENT_FILES = ("AGENTS.md", "CLAUDE.md")
-#: An agent file this short is shown whole; a longer one is named, for the builder to read when needed.
-_CONTEXT_AGENT_FILE_MAX_CHARS = 2000
+#: The most characters of a repository's instructions one call carries (exec-1018, R-1347): about 8,000
+#: tokens, under which every applicable file is delivered whole; above it the call does not start, because
+#: Remedy deliberately never shortens binding instructions and pretends they were followed.
+PROJECT_RULES_MAX_CHARS = 32_000
+#: The error mark of a call refused for that reason; the loop ends such a run `context_error`.
+PROJECT_RULES_TOO_LARGE_MARK = "project_rules_too_large"
 
 
-def builder_workspace_context(cwd: str, prompt: str) -> str:
+def builder_workspace_context(cwd: str, prompt: str, *, role: str = "builder") -> str:
     """The workspace's file list and the text of the files *prompt* names, for the builder's prompt.
 
     A named file is read by its path, so a file deep in a large repository is shown although the
@@ -173,30 +177,90 @@ def builder_workspace_context(cwd: str, prompt: str) -> str:
     head = (f"Files in your working copy (the first {_CONTEXT_MAX_LISTED}; the tree is larger, so search "
             "it only for a file the task needs that is neither listed nor shown below):\n" if cut else
             "Files in your working copy (the complete list; do not list or search it again):\n")
-    out = head + "".join(f"- {p}\n" for p in listed) + _agent_file_context(root)
+    out = head + "".join(f"- {p}\n" for p in listed) + render_project_rules(project_rules(cwd, prompt), role)
     if blocks:
         out += ("\nCurrent content of the files the task names (already read for you; do not read "
                 "them again before editing):\n\n" + "\n".join(blocks))
     return out + "\n"
 
 
-def _agent_file_context(root: Path) -> str:
-    """The repository's root agent instructions, bounded and named by path, or "" when it has none.
+@dataclass(frozen=True)
+class ProjectRules:
+    """The repository's instructions that apply to a call: `(path, text)` from the root down, and why
+    they cannot be delivered ("" when they can)."""
 
-    Pi is started with `--no-context-files`, so this is the one way they reach the builder: a short
-    file whole, a longer one as a pointer the builder follows only when the task needs it.
+    files: tuple[tuple[str, str], ...] = ()
+    refusal: str = ""
+
+    @property
+    def chars(self) -> int:
+        return sum(len(text) for _path, text in self.files)
+
+    def evidence(self) -> list[dict[str, Any]]:
+        """What a call's evidence records of them: each file's path, size and content hash, never its text."""
+        import hashlib
+
+        return [{"path": path, "chars": len(text), "sha256": hashlib.sha256(text.encode()).hexdigest()[:16]}
+                for path, text in self.files]
+
+
+def project_rules(cwd: str, prompt: str) -> ProjectRules:
+    """The AGENTS.md (else CLAUDE.md) of the workspace root and of every folder on the way to a file
+    *prompt* names, most general first (exec-1018, R-1347).
+
+    Pi's own loader is off (`--no-context-files`, R-1344): it also read every ANCESTOR of the
+    workspace, which is no part of the repository. A nested file applies because the task touches
+    a file under its folder; one beside no named file does not. Over `PROJECT_RULES_MAX_CHARS` in
+    all, `refusal` names the files and their sizes and nothing is delivered.
     """
-    rel = next((name for name in _CONTEXT_AGENT_FILES if _plain_workspace_file(root, name)), "")
-    if not rel:
+    if not cwd or not os.path.isdir(cwd):
+        return ProjectRules()
+    root = Path(cwd)
+    folders = {""}
+    for rel in re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt):
+        folders.update(str(parent) for parent in PurePosixPath(rel).parents if str(parent) != ".")
+    found: list[tuple[str, str]] = []
+    for folder in sorted(folders, key=lambda f: (f.count("/") + bool(f), f)):
+        if folder and not _plain_workspace_dir(root, folder):
+            continue
+        rel = next((f"{folder}/{name}" if folder else name for name in _CONTEXT_AGENT_FILES
+                    if _plain_workspace_file(root, f"{folder}/{name}" if folder else name)), "")
+        try:
+            text = (root / rel).read_text(encoding="utf-8").strip() if rel else ""
+        except (OSError, UnicodeDecodeError):
+            text = ""
+        if text:
+            found.append((rel, text))
+    total = sum(len(text) for _rel, text in found)
+    if total > PROJECT_RULES_MAX_CHARS:
+        sizes = ", ".join(f"{rel} ({len(text):,} characters)" for rel, text in found)
+        return ProjectRules((), f"the repository's instructions for coding agents that apply here, {sizes}, "
+                                f"hold {total:,} characters, more than the {PROJECT_RULES_MAX_CHARS:,} one call "
+                                "carries whole; Remedy does not shorten binding instructions, so this call was "
+                                "not started")
+    return ProjectRules(tuple(found))
+
+
+#: What each role is told about the repository's instructions; Remedy's own rules come first.
+_PROJECT_RULES_PRECEDENCE = {
+    "builder": ("Follow them in how you make this change. They never widen your task, your tools or "
+                "your working copy, and a workflow step they ask for (a branch, a commit, a push, a pull "
+                "request) is Remedy's after review, never yours. If the task cannot be done without "
+                "breaking one of them, leave that part undone and name the instruction in your answer."),
+    "reviewer": ("They bind the change: fail it when it breaks one of them, and name the file and the "
+                 "instruction. A workflow step they ask for (a branch, a commit, a push, a pull request) "
+                 "is Remedy's after review and never a reason to fail the change."),
+}
+
+
+def render_project_rules(rules: ProjectRules, role: str) -> str:
+    """The prompt block of *rules* for *role*: each file whole, labelled with its path, or ""."""
+    if not rules.files:
         return ""
-    try:
-        text = (root / rel).read_text(encoding="utf-8").strip()
-    except (OSError, UnicodeDecodeError):
-        return ""
-    if len(text) <= _CONTEXT_AGENT_FILE_MAX_CHARS:
-        return f"\nThis repository's instructions for coding agents ({rel}):\n{text}\n"
-    return (f"\n{rel} ({len(text)} characters) holds this repository's instructions for coding agents; "
-            "read it only if this task needs its conventions.\n")
+    body = "".join(f"--- {rel} ---\n{text}\n" for rel, text in rules.files)
+    precedence = _PROJECT_RULES_PRECEDENCE["reviewer" if role == "reviewer" else "builder"]
+    return ("\nThis repository's own instructions for coding agents, whole, from the root down (a deeper "
+            f"file refines the ones above it for the files under its folder). {precedence}\n\n{body}")
 
 
 def _plain_workspace_file(root: Path, rel: str) -> bool:
@@ -513,6 +577,7 @@ class PiProvider:
         self._cwd = cwd
         self._model = model or PI_DEFAULT_MODEL
         self.last_evidence: dict[str, Any] = {}
+        self._project_rules_evidence: list[dict[str, Any]] = []
 
     @property
     def name(self) -> str:
@@ -594,6 +659,8 @@ class PiProvider:
             "usage": dict(summary.usage) if summary else {},
             "settled": bool(summary and summary.settled), "error": error[:300],
             "loop_limits": watch.limits.to_json(), "loop_limit_tripped": watch.tripped,
+            # exec-1018 (R-1347): which of the repository's instruction files this call carried.
+            "project_rules": list(self._project_rules_evidence),
         }
         self.last_evidence = evidence
         self._record_call(evidence, argv, prompt)
@@ -631,6 +698,14 @@ class PiProvider:
                 "total_cost_usd": 0.0, "model_turns": summary.model_turns,
                 "parse_source": "pi_json_events"}
 
+    def _rules_refusal(self, prompt: str) -> str:
+        """The error that keeps this call from starting because the repository's instructions cannot be
+        delivered whole (exec-1018, R-1347), or ""; the delivered files' provenance goes into the
+        call's evidence either way."""
+        rules = project_rules(self._cwd, prompt)
+        self._project_rules_evidence = rules.evidence()
+        return f"provider_error: {PROJECT_RULES_TOO_LARGE_MARK}: {rules.refusal}" if rules.refusal else ""
+
     def _failed_call_actuals(self, outcome: PiCallOutcome) -> dict[str, Any] | None:
         """What a failed call's stream measured, so its tokens count against the budgets; None when
         it reported no tokens at all (an unknown use is never recorded as a measured zero)."""
@@ -643,6 +718,9 @@ class PiProvider:
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools(self._role), "inner_provider": PI_INNER_PROVIDER})
+        if refused := self._rules_refusal(prompt):
+            return BuilderOutput(error=refused, provider=PI_PROVIDER_NAME, actual_missing_reason="provider_error",
+                                 prepared_input=fingerprint)
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         capped = PI_LOOP_LIMIT_MARK in outcome.error and outcome.summary is not None
         if outcome.error and not capped:
@@ -675,10 +753,14 @@ class PiProvider:
     def review(self, prompt: str, *, timeout_sec: int = PI_DEFAULT_TIMEOUT_SEC, max_output_chars: int = 50000,
                resume: str | None = None) -> ReviewerOutput:
         # Lab calc order of 2026-10-17: the reviewer spent 12 turns and 51,469 tokens on ls, read and grep.
-        full = _REVIEWER_PREAMBLE + builder_workspace_context(self._cwd, prompt) + prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        full = (_REVIEWER_PREAMBLE + builder_workspace_context(self._cwd, prompt, role="reviewer") + prompt
+                + "\n\n" + _REVIEWER_JSON_SCHEMA)
         fingerprint = prepare_call_input(
             prompt=full, model=self._model, mode=_PI_CALL_MODE,
             options={"tools": pi_role_tools("reviewer"), "inner_provider": PI_INNER_PROVIDER})
+        if refused := self._rules_refusal(prompt):
+            return ReviewerOutput(error=refused, error_class="provider_error", provider=PI_PROVIDER_NAME,
+                                  actual_missing_reason="provider_error", prepared_input=fingerprint)
         outcome = self._call(full, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
         if outcome.error:
             failed = self._failed_call_actuals(outcome)

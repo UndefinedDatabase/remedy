@@ -2710,12 +2710,12 @@ def _call_with_retry(
 def provider_failure_status(error: str) -> str:
     """The final status of a run whose provider call failed for good.
 
-    R-1016, R-1027 and R-1035: three closures recorded ``provider_unavailable`` over a call that timed
-    out after its limit while the provider was there all along. A call the timeout predicate recognises
-    ends ``provider_timeout``, a Pi loop ended at its turn or token cap ``budget_exhausted`` (exec-1017
-    D4), every other failure ``provider_unavailable``; the error text beside it names the limit.
-    """
+    A call the timeout predicate recognises ends ``provider_timeout`` (R-1016, R-1027, R-1035: it read
+    ``provider_unavailable`` while the provider was there), a Pi loop ended at its cap ``budget_exhausted``
+    (exec-1017 D4), a call refused for instructions too large to carry whole ``context_error`` (exec-1018),
+    any other failure ``provider_unavailable``; the error text beside it names the limit."""
     capped = "budget_exhausted" if ": pi_loop_limit:" in error else "provider_unavailable"
+    capped = "context_error" if ": project_rules_too_large:" in error else capped   # exec-1018, R-1347
     return "provider_timeout" if is_timeout_error(error) else capped
 
 

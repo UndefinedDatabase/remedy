@@ -140,6 +140,17 @@ def test_a_declined_result_reads_stopped_declined(data_root, repo):
     assert "not wanted" not in json.dumps(story)
 
 
+def test_instructions_too_large_for_one_call_read_as_their_own_reason(data_root, repo):
+    """exec-1018 (R-1347): a builder call refused because the repository's instructions cannot be
+    carried whole is a context error, never a missing provider, and its story says why."""
+    job_id = _run(repo, builder_error="provider_error: project_rules_too_large: AGENTS.md (40,000 "
+                                      "characters) is more than one call carries whole; not started")
+    story = _story(job_id, data_root)
+
+    assert story["state"] == "failed"
+    assert story["state_detail"] == {"reason": {"key": "project_rules_too_large", "args": {}}}
+    assert "40,000" not in json.dumps(story)            # a closed word, never Remedy's sentence
+
 def test_a_provider_failure_reads_failed_and_offers_no_retry(data_root, repo):
     """amend1015c D3 (R-1331): a run of a job whose task ended blocked re-attempts nothing, so the
     story offers no step that cannot succeed."""

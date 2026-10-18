@@ -87,6 +87,29 @@ are recorded in the run's `pi/<role>.jsonl` with the limits that applied (`loop_
 is checked about once a second, so a tool the model starts in that second may still run
 (exec-1017 D4).
 
+## The repository's own instructions
+
+Pi runs with `--no-context-files` (R-1344): its own loader read the workspace's and every
+ANCESTOR folder's AGENTS.md or CLAUDE.md into every turn, including files outside the repository
+(a job workspace under a checkout carried that checkout's rules). Remedy delivers them itself
+instead (`pi_provider.project_rules`, exec-1018 D3):
+
+- which: the AGENTS.md (else CLAUDE.md) of the workspace root and of every folder on the way to
+  a file the call's prompt names, most general first; a folder the task touches no file under
+  contributes nothing, and nothing above the workspace or behind a symlink is read;
+- how: each file whole and labelled with its path, once, in the first message of the call (Pi
+  resends that message every turn, so the cost is per turn: about 6,900 tokens for a 27 KB file);
+- precedence: a deeper file refines the ones above it for the files under its folder; the rules
+  bind how the builder changes files and what the reviewer fails, but never widen the task, the
+  tools or the working copy, and a workflow step they ask for (branch, commit, push, pull
+  request) is Remedy's after review. A builder that cannot do the task without breaking a rule
+  leaves that part undone and says so;
+- the ceiling: above 32,000 characters in all, the call is not started (`project_rules_too_large`,
+  the run ends `context_error`, the story's reason is `project_rules_too_large`); Remedy never
+  cuts a binding instruction or points at it for the model to read if it likes;
+- provenance: each call's evidence (`pi/<role>.jsonl`, key `project_rules`) names every file it
+  carried with its size and content hash.
+
 ## Fail closed
 
 There is no unsafe mode. A missing or broken sandbox refuses the work:

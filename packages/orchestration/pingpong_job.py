@@ -1851,7 +1851,7 @@ def final_status_detail_of(result: Any) -> str:
     its redacted stderr tail, for ``provider_timeout`` the limit it ran into. Every other outcome records "".
     """
     if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted",
-                                                   "sandbox_unavailable"):
+                                                   "sandbox_unavailable", "context_error"):
         return ""
     return str(getattr(result, "error", "") or "")
 

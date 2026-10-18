@@ -170,6 +170,8 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
         return _word("provider_unavailable", provider=name if _PROVIDER_ID.fullmatch(name) else "unknown")
     if "sandbox_unavailable" in finals:     # R-1343: no test could run, which is no failed test
         return _word("sandbox_unavailable")
+    if any("project_rules_too_large" in str(t.final_status_detail or "") for t in tasks):
+        return _word("project_rules_too_large")     # R-1347: the repository's instructions exceed one call
     failed_tests = [r for r in job_verification(plan)["runs"] if r["status"] == "failed"]
     if failed_tests or any(t.final_status == "test_failed" for t in tasks):
         return _word("tests_failed", n=max(len(failed_tests), 1))
