@@ -80,6 +80,9 @@ def _force_survivor(monkeypatch):
     monkeypatch.setattr(DS, "_pid_alive",
                         lambda pid: True if pid else False)
     monkeypatch.setattr(DS, "stop_process_tree", _pretend_survivor)
+    # A forced-alive supervisor waits out the whole stop window whatever its length, and the same branch
+    # follows: 1 s proves what 15 s did (exec-1018b P1 7; the constant is named for this).
+    monkeypatch.setattr(DS, "STOP_REQUEST_TIMEOUT_S", 1.0)
 
 
 def _unforce_survivor(monkeypatch):
