@@ -261,11 +261,14 @@ prefix is accepted; the refusals are `invalid_job_id` 404, `job_not_found` 404 a
 `api_client_policy_refused`).
 
 The answer's keys: `order` is the person's own order text; `job_id`; `updated_at`, `started_at` and
-`ended_at` are times or `null`; `state` is one of `reading`, `planning`, `working`, `checking`,
-`done`, `done_applied`, `stopped`, `failed` and `waiting`. `state_detail` holds `file` and `round`
+`ended_at` are times or `null`; `state` is one of `reading`, `planning`, `queued` (since 1.19: a
+planned job no process runs, which read `planning` before), `working`, `checking`, `done`,
+`done_applied`, `stopped`, `failed` and `waiting`. A job stopped on request reads the reason `stopped`
+since 1.19 (it read `cancelled` before, although it can be resumed). `state_detail` holds `file` and `round`
 while `working`, `reason` while `stopped` or `failed`, `question` and `decision_id` while `waiting`,
-and `changed_files` once `done` or `done_applied`. `next` holds the one next step, `action` (`apply`,
-`answer`, `retry` or `none`; a client offers `decline`, `POST /api/v1/jobs/<job>/decline`, beside `apply`), and `route`, the HTTP
+and `changed_files` once `done` or `done_applied`, and `after_job` while `queued` behind a job of the
+same order whose result has not landed. `next` holds the one next step, `action` (`apply`, `answer`,
+`run`, `resume`, `retry` or `none`; a client offers `decline`, `POST /api/v1/jobs/<job>/decline`, beside `apply`), and `route`, the HTTP
 operation that takes it, or `null`. `end` (since 1.21) is the way out beside it, so a client can
 close every job that is still open whatever it waits for (a stopped, blocked or queued job, one
 waiting for an answer or for its predecessor): `{action, route}` with `action` `decline` (`POST
@@ -277,7 +280,14 @@ declined, failed or cancelled):
 |---|---|
 | `apply` | `POST /api/v1/jobs/<job>/apply` |
 | `answer` | `POST /api/v1/jobs/<job>/decisions/<decision>` |
+| `run` (since 1.19) | `POST /api/v1/jobs/<job>/run`, a queued job that waits for nothing |
+| `resume` (since 1.19) | `POST /api/v1/jobs/<job>/run`, a job stopped on request |
 | `none` | `null` |
+
+Both `end` routes take the body `{"reason": "<why>"}`; `decline` refuses a missing or blank reason
+with 400 `missing_argument`, `abandon` records `cancelled` when none is given. Every route, story key,
+story word and order phase is listed with the version that added it, and every value change of an
+existing field per version, in [api-release-matrix-v1.json](api-release-matrix-v1.json).
 
 `retry` is in the closed list but no state names it since version 1.16: a run of a job whose task
 ended blocked or failed re-attempts nothing and ends `blocked` again, and no route puts such a task
