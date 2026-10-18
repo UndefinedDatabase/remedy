@@ -26,6 +26,8 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
     TASK_PENDING,
+    JobPlan,
+    TaskEntry,
     load_job_plan,
     parse_job_file,
     run_job,
@@ -245,3 +247,20 @@ def test_a_cancel_during_the_jobs_final_gate_ends_it_cancelled_and_nothing_is_ap
     assert [a["cancel_pending"] for a in answers] == [True]
     assert load_job_plan(job_id).state == RunState.CANCELLED
     assert (work / "README.md").read_text() == readme
+
+
+def test_a_walks_apply_refuses_a_job_with_a_cancel_request_whatever_its_state(data_root, monkeypatch):
+    """R-1357, the second fence: whatever state a cancelled job's record reads, the walk never applies it."""
+    from packages.orchestration import do_apply, job_apply
+
+    def must_not_apply(*args, **kwargs):
+        raise AssertionError("an apply ran for a cancelled job")
+    monkeypatch.setattr(job_apply, "apply_job", must_not_apply)
+    job = JobPlan(job_title="t", tasks=[TaskEntry(title="Deliver README.md")])
+    save_job_plan(job)
+    request_job_cancel_marker(str(job.job_id), reason="no longer wanted", source="test")
+
+    class Ctx:
+        commit_mode, job_ids, next_lines, applied = False, [str(job.job_id)], [], {}
+
+    assert do_apply.do_apply_one_job(Ctx(), str(job.job_id)).endswith("the job was cancelled (no longer wanted)")
