@@ -37,7 +37,7 @@ DIAGNOSTIC = "does not provide an export named 'strictEqual'"
 
 def _walk(tmp_path: Path, *, repair_fixes: bool = True, extra_argv: tuple[str, ...] = (),
           on_first_review: Any = None, spawn_exit: int | None = None, sandbox_refuses: bool = False,
-          provider_calls_seen: int | None = None) -> dict[str, Any]:
+          provider_calls_seen: int | None = None, repair_writes: dict[str, str] | None = None) -> dict[str, Any]:
     """One `remedy do` walk of the lab add order; the answer, the job, its rounds and builder prompts."""
     from apps.cli.grouped import main
     from packages.orchestration import pingpong_loop
@@ -63,6 +63,9 @@ def _walk(tmp_path: Path, *, repair_fixes: bool = True, extra_argv: tuple[str, .
             fixed = repair_fixes and len(prompts) > 1 and DIAGNOSTIC in prompts[-1]
             (staging / "test/calc.test.js").write_text(FIXED_TEST if fixed else BROKEN_TEST)
             output.files_changed = ["src/calc.js", "test/calc.test.js"]
+            for name, text in (repair_writes or {}).items() if len(prompts) > 1 else ():
+                (staging / name).write_text(text)      # a repair answer that reaches past the order
+                output.files_changed.append(name)
 
         review = FakeProvider.review
 
@@ -175,3 +178,25 @@ def test_a_test_that_never_started_is_not_run_and_never_repaired(tmp_path, spawn
     assert reason in walk["rounds"][0]["test_summary"]
     assert walk["verification"]["status"] == "not_run", walk["verification"]
     assert _state(walk["job"]) == "blocked"     # required tests that did not run are no pass
+
+
+def test_a_repair_round_stays_inside_the_files_the_order_names(tmp_path):
+    """The lab order says "Ändere keine anderen Dateien": a repair answer that also rewrites another
+    file is refused like any round's, so the job blocks and nothing of it waits for an apply."""
+    walk = _walk(tmp_path, repair_writes={"src/format.js": "export function normalizeName(i) { return i; }\n"})
+
+    assert [r["test_passed"] for r in walk["rounds"]] == [False, True]     # the repair itself went green
+    assert _state(walk["job"]) == "blocked"
+    assert walk["job"].tasks[-1].error.startswith("unrequested_file_changed: the change touched src/format.js")
+    assert (walk["repo"] / "src/format.js").read_text() == LAB["src/format.js"]
+
+
+def test_a_repair_round_cannot_pass_by_rewriting_the_test_command(tmp_path):
+    """A repair that edits package.json's test script never runs as its own check: not run, blocked."""
+    cheat = '{"name": "remedy-lab", "type": "module", "scripts": {"test": "exit 0"}}\n'
+    walk = _walk(tmp_path, repair_fixes=False, repair_writes={"package.json": cheat})
+
+    assert [r["test_passed"] for r in walk["rounds"]] == [False, None]
+    assert "test_command_changed" in walk["rounds"][-1]["test_summary"]
+    assert walk["verification"]["status"] == "not_run" and _state(walk["job"]) == "blocked"
+    assert (walk["repo"] / "package.json").read_text() == LAB["package.json"]

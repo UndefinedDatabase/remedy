@@ -169,6 +169,14 @@ it, stay one task. A requested test keeps the change one task. A file the builde
 rightly left alone is fine when it is context, optional or protected; a required file it left
 alone blocks the job and says which, so the person decides.
 
+An order that fences its files ("Change no other files", "Ändere keine anderen Dateien", "Verändere
+sonst nichts") holds every round of its task to the files it names in any role, a repair round's
+too: a run that changes a file the order never names ends `blocked`
+(`unrequested_file_changed`) and nothing of it waits for an apply (R-1363). A test file counts as
+named when the order asks for a test without naming it, and a tool cache a test run leaves
+(`__pycache__`, `.pytest_cache`, `node_modules`) is no change. An order without a fence leaves the
+builder free as before; the reviewer judges what it changed.
+
 What the order asks for at all is read the same way: "only plan …", "do not change anything" with
 a plan word walks as `--plan-only`; "only run the tests", "ändere nichts" beside a test request is
 **verification only**: one job with no build task, whose DoD runs the project's tests in the

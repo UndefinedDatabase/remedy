@@ -103,6 +103,9 @@ TASK_CONTEXT_FILES_KEY = "context_files"
 TASK_PROTECTED_FILES_KEY = "protected_files"
 #: exec-1018b (R-1358): files the order names whose role its words did not make sure; never held to change.
 TASK_MENTIONED_FILES_KEY = "mentioned_files"
+#: exec-1018c (R-1363): when the order fences its files ("change no other files"), every file it names in
+#: any role; a change to any other file is refused, in every round of the task, a repair round's too.
+TASK_FENCE_FILES_KEY = "fence_files"
 
 
 def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
@@ -149,6 +152,13 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
         if named:
             inputs[key] = list(named)
             body += f"\nThese files {words}: {', '.join(named)}."
+    from packages.orchestration.do_scope import order_has_scope_fence
+
+    if order_has_scope_fence(order):
+        # Every file the order names counts, whatever role its words were read in: a misread role
+        # (R-1358) must never turn a requested change into a refused one. Protected files stay refused.
+        inputs[TASK_FENCE_FILES_KEY] = sorted({*files, *explicit_order_paths(order), *(tests or ()),
+                                               *optional, *context, *mentioned})
     if with_tests:
         # Lab calc order of 2026-10-17: "deliverable: src/calc.js" with a side sentence about a test
         # made the builder fix only calc.js; the reviewer failed it and the repair round ran the job
@@ -187,9 +197,12 @@ def deliverable_files_refusal(job: Any, result: Any, changed: list[str]) -> str:
 
     * `named_files_unchanged`: the task's one change spans several named files (its `files_hint`)
       and the run left one of them unchanged; a reviewer's pass over it is no completion (R-1342);
-    * `protected_file_changed`: the run changed a file the order says must stay unchanged (R-1348).
+    * `protected_file_changed`: the run changed a file the order says must stay unchanged (R-1348);
+    * `unrequested_file_changed`: the order fences its files and the run changed one it does not name
+      (R-1363); a test file counts as named when the task delivers a test the order did not name, and a
+      tool cache a test run leaves is no change.
 
-    A file the order names only as context or merely allows is held to nothing.
+    A file the order names only as context or merely allows is held to nothing else.
     """
     task = next((t for t in job.tasks if str(t.task_id) == str(getattr(result, "task_id", ""))), None)
     if task is None or task.inputs.get("task_type") != "deliverable":
@@ -199,8 +212,27 @@ def deliverable_files_refusal(job: Any, result: Any, changed: list[str]) -> str:
         return (f"named_files_unchanged: the change left {', '.join(missing)} unchanged, which the order "
                 f"names as part of it")
     touched = [path for path in task.inputs.get(TASK_PROTECTED_FILES_KEY) or [] if path in set(changed)]
-    return (f"protected_file_changed: the change touched {', '.join(touched)}, which the order says must "
-            f"stay unchanged" if touched else "")
+    if touched:
+        return (f"protected_file_changed: the change touched {', '.join(touched)}, which the order says must "
+                f"stay unchanged")
+    fence = task.inputs.get(TASK_FENCE_FILES_KEY)
+    outside = [path for path in changed if fence is not None and not _fence_allows(task, fence, path)]
+    return (f"unrequested_file_changed: the change touched {', '.join(outside)}, which the order does not "
+            f"name and says no other file may change" if outside else "")
+
+
+def _fence_allows(task: TaskEntry, fence: list[str], path: str) -> bool:
+    """Whether a fenced *task* may change *path*: a named file (a bare name matches it in any folder), a
+    test file when the task delivers a test the order did not name, or a test run's tool cache."""
+    from packages.orchestration.order_scope import is_test_path
+    from packages.orchestration.pingpong_loop import _is_target_noise
+
+    name = path.rsplit("/", 1)[-1]
+    if path in fence or any("/" not in named and named == name for named in fence):
+        return True
+    if task.inputs.get("with_tests") and is_test_path(path) and not any(is_test_path(f) for f in fence):
+        return True
+    return any(_is_target_noise(part) for part in path.split("/"))
 
 
 def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:
