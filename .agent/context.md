@@ -17,7 +17,7 @@ Prevention" option 2 applies (new branch from the tip, separate PR).
 P0: R-1351, review-report export, combined review of 360-362. P1 as far as measured. API handoff.
 
 ## Steps
-The order's phases; the current one is in plan.md.
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
 
 ## Do not touch
 The roadmap queue, `.agent/STOP`, the supervisor and `luna-remedy-serve.service`, the live

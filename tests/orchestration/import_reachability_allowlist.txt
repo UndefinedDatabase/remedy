@@ -393,6 +393,7 @@ packages.orchestration.tool_sandbox
 packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.ui_server
+packages.orchestration.verified_repair
 packages.orchestration.verifier
 packages.orchestration.verifier_profiles
 packages.orchestration.veto_proposal
