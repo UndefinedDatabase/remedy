@@ -12,7 +12,7 @@ read no request, so a job its shape step saved after the client stopped the list
    runner holds ends `cancelled` at once, a running one at its next safe point.
 3. The walk, which `OrderLauncher` runs from that folder (the fact `serve_runs._process_is_this_order`
    reads to say the order runs), reads the request before every step and after it
-   (`cancellable_do_steps`), and before every apply (`walk_cancel_note`). A step that sees it runs nothing; after the step it cancels every job of
+   (`cancellable_walk`), and before every apply (`walk_cancel_note`). A step that sees it runs nothing; after the step it cancels every job of
    the walk the step made, so a job saved between the client's listing and the walk's reading is
    caught by one of the two (both write before they read). A planner call in flight is ended too
    (`planner_cancel.py`, exec-1018): the walk's reader is bound to it (`walk_cancel_reader`), the
@@ -29,10 +29,11 @@ refused, so a restart brings back nothing that was cancelled.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
@@ -269,18 +270,21 @@ def _cancel_walk_jobs(ctx: Any, request: dict[str, str]) -> str:
     return f"; cancelled job(s) {', '.join(cancelled)}" if cancelled else ""
 
 
-def cancellable_do_steps(steps: Mapping[str, Callable[[Any], tuple[str, str]]]
-                         ) -> Mapping[str, Callable[[Any], tuple[str, str]]]:
-    """*steps*, each reading the order's cancel request before and after it runs.
+@contextlib.contextmanager
+def cancellable_walk(steps: Mapping[str, Callable[[Any], tuple[str, str]]]
+                     ) -> Iterator[Mapping[str, Callable[[Any], tuple[str, str]]]]:
+    """For the walk's duration: *steps*, each reading the order's cancel request before and after it runs.
 
     The order's folder is read once, when the walk starts (`walk_order_dir`); outside a supervised
-    order the table is returned unchanged.
+    order the table is yielded unchanged. The walk's order ends with the walk (exec-1018b, R-1356):
+    a later call in the same thread is no part of it, so no cancel of it binds that call.
     """
     order_dir = walk_order_dir()
-    _WALK_ORDER_DIR.set(order_dir)
-    if order_dir is None:
-        return steps
-    return {name: _cancellable_step(name, step) for name, step in steps.items()}
+    token = _WALK_ORDER_DIR.set(order_dir)
+    try:
+        yield steps if order_dir is None else {name: _cancellable_step(name, step) for name, step in steps.items()}
+    finally:
+        _WALK_ORDER_DIR.reset(token)
 
 
 def _cancellable_step(name: str, step: Callable[[Any], tuple[str, str]]) -> Callable[[Any], tuple[str, str]]:
