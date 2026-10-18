@@ -534,8 +534,17 @@ def _budget_events(
     }]
 
 
+def _budget_stopped_stub(events: list[dict]) -> _StubJob:
+    """The job the budget guard stopped, its stop fields as `pingpong_job` writes them beside the
+    event (exec-1018c, R-1362: the queue offers only a stop its answer takes)."""
+    job, meta = _StubJob(), events[0]["metadata"]
+    job.stop_source, job.stop_reason = "budget", meta["reason"]
+    job.stop_request_id, job.stopped_at = meta.get("request_id", ""), events[0]["timestamp"]
+    return job
+
+
 def _budget_decision(events: list[dict]) -> HumanDecision:
-    decisions = [d for d in list_decisions(_StubJob(), events)
+    decisions = [d for d in list_decisions(_budget_stopped_stub(events), events)
                  if d.type == "token_budget"]
     assert len(decisions) == 1
     return decisions[0]

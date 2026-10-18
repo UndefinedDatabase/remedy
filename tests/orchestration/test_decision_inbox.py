@@ -126,8 +126,9 @@ def _fixture_test_failure() -> tuple[JobPlan, list[dict]]:
 
 
 def _fixture_token_budget() -> tuple[JobPlan, list[dict]]:
-    return _make_job(metadata={"target_repo": "/tmp/repo",
-                               "budget_stop_reason": "budget_exhausted"}), []
+    # exec-1018c (R-1362): a budget stop as the guard writes it; the legacy key alone is none.
+    return _make_job(stop_source="budget", stop_reason="budget_exhausted", stop_request_id="req1",
+                     stopped_at=FIXED_NOW.isoformat()), []
 
 
 def _fixture_memory_review() -> tuple[JobPlan, list[dict]]:

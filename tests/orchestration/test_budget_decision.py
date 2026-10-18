@@ -349,3 +349,26 @@ def test_every_budget_decision_the_queue_offers_can_be_answered(make) -> None:
         answer = answer_budget_decision(copy.deepcopy(job), decision.id, "abandon", [], now=NOW)
         assert answer["outcome"] == "abandoned", answer
     assert bool(offered) == (job.stop_source == "budget")
+
+
+def test_a_budget_stop_answered_before_a_later_operator_stop_is_never_offered_again() -> None:
+    """exec-1018c (R-1362): a budget stop answered `extend`, the job resumed and then stopped by the
+    person. Its run log still holds the budget stop's event and the new stop postdates the answer, so
+    the queue offered the old budget decision again, and its answer refused it (`decision_not_found`)
+    because the job's stop is the person's own: the question could never close."""
+    job = _budget_stopped_job(stop_reason="budget_exhausted:max_cost_usd", stopped_at=NOW)
+    events = [{"event": "job_stopped", "timestamp": NOW.isoformat(),
+               "metadata": {"source": "budget", "reason": job.stop_reason, "request_id": "req1",
+                            "exhausted_limit": "max_cost_usd"}}]
+    [offered] = [d for d in list_decisions(job, events) if d.type == "token_budget"]
+    extended = answer_budget_decision(job, offered.id, "extend", ["max_cost_usd=9"],
+                                      now=NOW + timedelta(minutes=1))
+    assert extended["outcome"] == "extended", extended
+    job.stop_source, job.stop_reason, job.stop_request_id = "api", "closed from the chat", "req2"
+    job.stopped_at = (NOW + timedelta(minutes=5)).isoformat()
+    job.state = RunState.STOPPED
+    events.append({"event": "job_stopped", "timestamp": job.stopped_at,
+                   "metadata": {"source": "api", "reason": job.stop_reason, "request_id": "req2"}})
+
+    assert [d for d in list_decisions(job, events) if d.type == "token_budget"] == []
+    assert open_budget_decision_id(job) == ""
