@@ -307,3 +307,19 @@ def test_a_cancel_ends_the_planner_call_in_flight_and_no_plan_is_written(order, 
     assert list(resolve_data_root().rglob("mission_plan*.md")) == []   # no fallback plan after it
     assert order.cancel()["already_cancelled"] is True
     assert order_record_payload(order.paths, order.rec)["phase"] in ("cancelled", "cancelling")
+
+
+def test_a_walks_order_ends_with_the_walk_and_binds_no_later_call_in_the_same_thread(order, tmp_path, monkeypatch):
+    """exec-1018b (R-1356): the order a walk runs for is the walk's own. After a cancelled order's walk
+    ended, a planner call or an apply made later in this thread (a test, an embedded use of Remedy)
+    is no part of that order: no cancel reader binds it and no cancel note refuses it."""
+    from packages.orchestration.order_cancel import walk_cancel_note, walk_cancel_reader, walk_cancel_request
+
+    order.cancel()
+    envelope = order.walk("Fix the typo in README.md.")
+    assert _steps(envelope)["init"][0] == "stopped"           # the walk itself read its cancel
+    monkeypatch.chdir(tmp_path)
+
+    assert walk_cancel_request() is None
+    assert walk_cancel_reader() is None
+    assert walk_cancel_note() == ""
