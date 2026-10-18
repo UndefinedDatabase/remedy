@@ -8,7 +8,7 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-5-6. R-1348/R-1349/R-1350 done (DECISION exec-1018 D4, matrix v5); next P1 items.
+7a. P1 8 Go/Cargo verification done (D5); next local calibration, then P1 7/9/10.
 
 ## Next Steps
 7. Scale matrix v5 rows for every case of the order; P1 items (efficiency, go/cargo, lessons,

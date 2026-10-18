@@ -27,10 +27,20 @@ job's worktree, whose files the job itself writes; the other two sources are rea
    `test_command_invalid`.
 2. `npm test`, when the project's `package.json` has a `test` script other than the placeholder
    that `npm init` writes.
-3. Python's test runner on the `tests` folder, when that folder exists:
+3. The language's own test command for a Go module or a Rust package (exec-1018): `go test ./...`
+   when the folder holds `go.mod` (`go test -mod=vendor ./...` when `vendor/modules.txt` exists),
+   `cargo test --offline` when it holds `Cargo.toml`. They come before the `tests` folder, since a
+   Rust crate's `tests` folder holds Rust integration tests. The tool sandbox gives no network, so
+   a module that requires other modules, or a crate with dependencies, that is not vendored cannot
+   be tested as it stands: its check is refused as `tool_unavailable` with that reason and reads
+   not run, never failed. A missing `go` or `cargo` is refused the same way.
+4. Python's test runner on the `tests` folder, when that folder exists:
    `python -m pytest -p no:cacheprovider tests -q`, under the project's own interpreter.
 
-A project whose tests run any other way names its command in `.remedy/config.toml`.
+A project whose tests run any other way names its command in `.remedy/config.toml`. In a
+repository whose root names no command, each check runs in the package folder that owns the job's
+files (the nearest folder where one of these sources finds a command) and its evidence names that
+folder (`cwd`); the command is always the package's whole test command, never a selection of tests.
 
 When the job's own copy of the file its command comes from — `.remedy/config.toml`, or the
 `package.json` of `npm test` — differs from the checkout's, the check is refused as
