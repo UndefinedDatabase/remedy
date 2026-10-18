@@ -14,6 +14,9 @@ checkout stays on main (editable install, supervisor), never switched or pulled 
 P0: R-1343 loop half, in-flight planner cancel, project rule delivery, lane/target roles,
 plan-only/verify-only wording. P1 as far as measured. API/interface contract additions.
 
+## Steps
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+
 ## Do not touch
 The roadmap queue, `.agent/STOP`, the supervisor and service, the live checkout, the lab
 repository, provider defaults, `pi.*` caps, Universe's repositories, other sessions' processes.
