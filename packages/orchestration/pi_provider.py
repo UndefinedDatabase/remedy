@@ -124,6 +124,9 @@ _CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pyca
                                 "dist", "build", ".next", ".cache"})
 #: The repository's own agent instructions, in the order Pi itself looks for them in a folder (exec-1017c).
 _CONTEXT_AGENT_FILES = ("AGENTS.md", "CLAUDE.md")
+#: What a prompt shows rather than asks for: a fenced block (the loop's file tree, a context file's text,
+#: a diff) and a heading that is only a file name (`## README.md`, the section that holds its text).
+_SHOWN_NOT_NAMED = re.compile(r"```.*?```|^#{1,6}[ \t]+[\w./-]+\.[A-Za-z0-9]{1,8}[ \t]*$", re.DOTALL | re.MULTILINE)
 #: The most characters of a repository's instructions one call carries (exec-1018, R-1347): about 8,000
 #: tokens, under which every applicable file is delivered whole; above it the call does not start, because
 #: Remedy deliberately never shortens binding instructions and pretends they were followed.
@@ -156,7 +159,11 @@ def builder_workspace_context(cwd: str, prompt: str, *, role: str = "builder") -
             break
     cut = len(listed) > _CONTEXT_MAX_LISTED
     listed = listed[:_CONTEXT_MAX_LISTED]
-    named = list(dict.fromkeys(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", prompt)))   # as the task names them
+    # exec-1018c: as the task's own words name them. Read from the whole prompt, the loop's file tree and
+    # README section filled the slots with files nobody asked for and cut the new test's style file, and
+    # the real builder's first turn was a read; the repository's rules arrive whole as rules, never twice.
+    named = [rel for rel in dict.fromkeys(re.findall(r"[\w./-]+\.[A-Za-z0-9]{1,8}\b", _SHOWN_NOT_NAMED.sub("", prompt)))
+             if rel.rsplit("/", 1)[-1] not in _CONTEXT_AGENT_FILES]
     shown = [rel for rel in named if _plain_workspace_file(root, rel)]
     for rel in named:
         if rel in shown or "/" not in rel or not _plain_workspace_dir(root, rel.rsplit("/", 1)[0]):
