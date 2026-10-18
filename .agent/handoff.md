@@ -1,41 +1,41 @@
-# Handoff — exec-1017c: cancellation ends the lifecycle (overnight reliability campaign 2026-10-17/18)
+# Handoff — exec-1018: adaptive execution, complete safety, real-world reliability (2026-10-18)
 
-Session 1 of exec-1017c. Branch `feature/order-cancel` from PR 360's head `9b172a16c`; worktree
-`.remedy-wt/order-cancel`. **Merge order: PR 360 first, then this PR.** Not merged, not deployed;
-`.agent/STOP`, the supervisor and the live checkout (main, editable install) untouched. Outside the
-roadmap queue: F078 stays next. Decisions exec-1017c D1–D10; findings R-1338–R-1344.
+Session 1 of exec-1018. Branch `feature/adaptive-reliability` from PR 361's head `652029edc` (PR 361
+is on PR 360's `9b172a16c`); worktree `.remedy-wt/adaptive-reliability`. **Merge order: PR 360, then
+PR 361, then this PR.** Not merged, not deployed; `.agent/STOP`, the supervisor (`remedy serve`,
+running on main) and the live checkout (main `6933bb0e0`, editable install) untouched. Outside the
+roadmap queue: F078 stays next. Decisions exec-1018 D1–D10; findings R-1345–R-1353.
 
-## Findings and status
+## Findings and items
 | Item | Status | Reason |
 |---|---|---|
-| R-1338 no order cancel | done | D3: `remedy client cancel-order`, `POST /api/v1/orders/{order}/cancel` |
-| R-1339 abandoned work actionable / hidden | done | D1, D2, D10: `remedy job abandon`, terminal `cancelled`; hiding rule deleted |
-| R-1340 waiting story reads planning | done | D5: `queued` + `after_job`, `stopped`/`resume`, orphaned wait reason |
-| R-1341 lane "one thing" / reaches past files | done | D6 |
-| R-1342 named file left unchanged passes | done | D6: `named_files_unchanged`; matrix v4 row |
-| R-1343 sandbox refusal reads as failed test | deviated | DoD path done (D7); loop `--test-command` path open |
-| R-1344 Pi loads AGENTS.md into every turn | done | D9: `--no-context-files`, bounded agent file |
-| P1-5 efficiency | deviated | measured and analysed (D9); no prompt/tool change without a real run |
-| P1-6 verification by project type | done | probed: py/js/package found; go/rust/root-monorepo `not_run` with config hint (by design) |
-| P1-8 progress + review reports | done | order `phase`/`cancel`; reports record cancel and later runs (D8) |
-| P1-9 historical memory | skipped | nothing reaches the model (goal, file_tree, readme); no evidence which lesson helps |
-| P1-10 test audit | done | `test_claude_cli_no_changes` order dependence fixed; 299 nodes run alone: only it was red |
-| Real Pi/Ollama calibration | skipped | no authorized model budget |
+| R-1343 loop half / R-1345 refused test command, post-mortem class | done | D1 |
+| R-1346 planner call in flight not cancellable, fallback plan after cancel | done | D2; real Ollama: 0.246 s |
+| R-1347 rules only short and root, never the reviewer | done | D3 |
+| R-1348 context/forbidden named files required | done | D4 |
+| R-1349 plan-only / verify-only orders change files | done | D4 |
+| R-1350 independent parts one task | done | D4 |
+| R-1351 red tests after review: no repair from that evidence | skipped | registered; needs an A/B, `run_job` at its row |
+| R-1352 tiny full-lane order pays narration | done | D7 |
+| R-1353 no lesson or study card reaches a walk's model call | skipped | measured (D8); product decision |
+| P1 7 efficiency | deviated | measured in calibration; R-1343 and R-1352 repaired, tool set unchanged |
+| P1 8 Go/Rust verification | done | D5 |
+| P1 9 historical lessons | done | experiment D8: nothing reaches a prompt, nothing built |
+| P1 10 test audit | done | D9 |
+| Local calibration (4 cases) | done | D6 |
+| API/interface 1.20 | done | D10 |
 
-## Calibration proposal (needs an authorized real run; fake providers cannot measure it)
-Measured on the lab jobs: builder 85–92 % of tokens (15,544 / 40,764 / 33,090 input over 4 / 8 / 7
-turns), about 5,000 input tokens per turn, Remedy's own prompts about 1,800 tokens, `cacheRead` 0.
-The normalize builder made `read` ×3, `ls`, `bash` ×3 although its files were shown. Candidates,
-each A/B on the three lab orders: (1) bounded tasks with all named files shown get tools
-`edit,write,bash` only; (2) the builder is told the project tests run after it (the DoD runs them).
-Expected effect only where measured; `--no-context-files` (D9) changes nothing for remedy-lab.
+## Calibration (real model, local Ollama `muse-glimmer:latest`, disposable repositories)
+c1 lab README 25.8 s / 18,953 tok / builder 4 turns, passed; c2 lab add 37.0 s / 28,419 / 6 turns,
+BLOCKED by real `npm test` (R-1351); c3 two-file rename 22.3 s / 17,211 / 4 turns, correct diff,
+passed; c4 high-risk plan-only cancelled in its mission-plan call: ended 0.246 s after the request.
+Evidence and the harness: session scratchpad `calib/` (not committed).
 
 ## Verification
-- Owner and neighbour selections green during the work (cancel 19, guards ~1,300, neighbours 1,399).
-- Full local gate: first run on `9376b9ce2` was red on 7 nodes (deleted id `job.cancel`, reachability
-  allowlist, `_cmd_job_run` row, context.md headings, golden-path run now honestly blocked); all
-  repaired in `ac3c18b88`. The final gate's command, tree and result are in the PR body.
+Focused owner and neighbour selections green per step (see the PR body for the list); repo-wide
+guards 3,816 green; campaign nodes 68/68 green alone with an empty HOME. The one full local gate
+on the final commit is in the PR body (command, tree, interpreter, result).
 
 ## Next
-Operator: review and merge PR 360, then this PR; restart `remedy serve` to load the code. Universe:
-use `POST /api/v1/orders/{order}/cancel`, `phase`, story `queued`/`resume`, `POST .../abandon`.
+Operator: review and merge PR 360, then PR 361, then this PR; restart `remedy serve` to load the
+code. Then: R-1351 A/B (one repair round from a red DoD) and R-1353 (lessons) as one paydown.

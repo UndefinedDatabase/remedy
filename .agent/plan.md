@@ -8,12 +8,12 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-8a. API and interface 1.20 (D10); next the final matrix comparison, the full local gate, PR, handback.
+8b. All steps done (D1-D10, R-1345..R-1353, handoff written). Now: the one full local gate on this
+commit, then the PR (not merged).
 
 ## Next Steps
-7. Scale matrix v5 rows for every case of the order; P1 items (efficiency, go/cargo, lessons,
-   test audit) as far as measured; up to four local Ollama calibration runs if every limit holds.
-8. Docs, API/interface version, one full local gate on the final commit, PR, German handback.
+- Operator: merge PR 360, PR 361, then this PR; restart `remedy serve`.
+- Open: R-1351 (A/B of one repair round from a red DoD), R-1353 (lessons in the builder context).
 
 ## Risks
 - `pingpong_loop.run_pingpong`, `pingpong_job.run_job` and their files are at their ledger rows:
