@@ -28,8 +28,12 @@ def test_the_case_meets_its_expectations(case, tmp_path):
     assert check_expectations(case, record) == [], record
 
 
-def test_a_tiny_order_costs_the_same_in_a_repository_of_ten_thousand_files(tmp_path):
-    tiny, large = (run_matrix(tmp_path, [case_id])[0] for case_id in ("tiny-readme", "large-readme-edit"))
+def test_a_tiny_order_costs_the_same_in_a_repository_of_ten_thousand_files():
+    """Both rows pin every cost key and their parametrized cases run them; the pins must agree.
 
-    for key in ("lane", "planner_calls", "jobs", "tasks", "builder_calls", "reviewer_calls"):
-        assert tiny[key] == large[key], (key, tiny, large)
+    exec-1018 test audit: this test re-ran `large-readme-edit` (about 8 s) beside its own case to
+    compare the records; comparing the pinned expectations proves the same without a second walk."""
+    expect = {case["id"]: case["expect"] for case in CASES}
+    keys = ("lane", "planner_calls", "jobs", "tasks", "builder_calls", "reviewer_calls")
+    assert all(key in expect["tiny-readme"] for key in keys)
+    assert {key: expect["tiny-readme"][key] for key in keys} == {key: expect["large-readme-edit"][key] for key in keys}

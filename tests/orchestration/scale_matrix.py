@@ -86,7 +86,8 @@ POLYGLOT_TESTED = {**POLYGLOT, "web/package.json": '{"scripts": {"test": "node -
 CASES: list[dict[str, Any]] = [
     {"id": "tiny-readme", "klass": "tiny", "files": README,
      "order": "Add a usage section to README.md.",
-     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1}},
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "builder_calls": 2,
+                "reviewer_calls": 2}},
     {"id": "small-typo-plain", "klass": "small", "files": {**README, **filler_files(40)},
      "order": "Fix the typo in README.md",
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1}},
@@ -121,7 +122,9 @@ CASES: list[dict[str, Any]] = [
      "expect": {"lane": "full", "no_check_only_job": True, "max_planner_calls": 7}},
     {"id": "large-readme-edit", "klass": "large", "files": {**README, **filler_files(10_000, per_dir=200)},
      "order": "Fix the typo in README.md",
-     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1}},
+     # The same cost as tiny-readme's in a repository of 10,000 files (both pinned, compared without a run).
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "builder_calls": 2,
+                "reviewer_calls": 2}},
     {"id": "large-one-file-auth-migration", "klass": "large",
      "files": {"src/auth.ts": "export {}\n", **filler_files(10_000, per_dir=200)},
      "order": "Migrate the password hashing in src/auth.ts from md5 to argon2.",
