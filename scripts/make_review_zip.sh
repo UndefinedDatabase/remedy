@@ -459,6 +459,7 @@ fi
 REPORTS_PREFIX="review_reports"
 REPORT_COUNT="$(python3 scripts/stage_review_reports.py --dest "$EVIDENCE_STAGING/$REPORTS_PREFIX")"
 echo "Review reports packaged: ${REPORT_COUNT} (newest first; see $REPORTS_PREFIX/INDEX.md)"
+echo "Review reports read from: $(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["reports_dir"])' "$EVIDENCE_STAGING/$REPORTS_PREFIX/index.json")"
 
 # --- The EXACT repo-root outputs THIS invocation generates (F3, round 29 / F1, round 34) ---
 # The only packaging output that can appear in `git status` at manifest-build time is the root

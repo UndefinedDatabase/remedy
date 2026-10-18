@@ -71,6 +71,18 @@ def test_with_no_report_the_index_says_so_and_lists_none(tmp_path, monkeypatch):
     assert SRR.stage(tmp_path / "staged") == 0
     index = json.loads((tmp_path / "staged" / "index.json").read_text())
     assert index["reports"] == [] and index["note"].startswith("no review report exists")
+    # exec-1018c: a ZIP built beside another data root than the service's says where it looked.
+    assert index["reports_dir"] == str(tmp_path / "empty" / "review_reports") in index["note"]
+    assert f"Read from `{index['reports_dir']}`." in (tmp_path / "staged" / "INDEX.md").read_text()
+
+
+def test_the_folder_read_is_named_with_the_home_directory_as_a_tilde(tmp_path, monkeypatch):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    SRR.stage(tmp_path / "staged")
+
+    assert json.loads((tmp_path / "staged" / "index.json").read_text())["reports_dir"] == "~/data/review_reports"
 
 
 @pytest.mark.skipif(shutil.which("git") is None or shutil.which("zip") is None, reason="git and zip required")
@@ -83,6 +95,7 @@ def test_the_ordinary_review_zip_carries_the_ten_newest_reports_without_any_argu
                           capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "Review reports packaged: 10" in proc.stdout
+    assert f"Review reports read from: {data_root / 'review_reports'}" in proc.stdout
     [package] = list(repo.glob("remedy-review-*.zip"))
     with zipfile.ZipFile(package) as archive:
         names = set(archive.namelist())
