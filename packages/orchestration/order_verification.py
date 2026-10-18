@@ -191,6 +191,11 @@ def job_verification(job: Any) -> dict[str, Any]:
                      "status": "passed" if check.get("status") == "passed" else "failed",
                      "command": _command_words(str(check.get("command") or "")),
                      "blocking": bool(check.get("blocking"))})
+    if not str(getattr(getattr(job, "execution_config", None), "test_command", "") or "") and any(
+            run["source"] == "dod" for run in runs):
+        # R-1351: with no test command of its own, a task's run WAS the DoD's checks, run again by the
+        # gate after the last task; the gate's run is the reading, so one suite never counts twice.
+        runs = [run for run in runs if run["source"] != "task"]
     state = getattr(job.state, "value", str(job.state))
     if any(run["status"] == "failed" for run in runs):
         status = "failed"

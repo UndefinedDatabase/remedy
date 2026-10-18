@@ -35,10 +35,7 @@ from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
-from packages.orchestration.pingpong_call_record import (
-    _add_exit_detail,
-    _session_fields,
-)
+from packages.orchestration.pingpong_call_record import _add_exit_detail, _session_fields
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
@@ -83,6 +80,7 @@ from packages.orchestration.session_sent_index import (
     record_finalized_call,
     should_dedupe_segment,
 )
+from packages.orchestration.verified_repair import review_test_evidence, with_test_failure_finding
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -3640,7 +3638,7 @@ def run_pingpong(
             # An explicit test command that failed stops the run at once when repair_rounds is 0, else
             # its failure is the reviewer's evidence. One the sandbox refused ran no test (R-1343): it
             # always stops here, before any review or repair, as `sandbox_unavailable`.
-            if has_test_command and not rd.test_passed:
+            if has_test_command and (rd.test_passed is False or rd.test_tripped_limit == "sandbox_unavailable"):
                 if repair_rounds == 0 or rd.test_passed is None:
                     rd.finished_at = datetime.now(timezone.utc).isoformat()
                     result.rounds.append(rd)
@@ -4062,7 +4060,7 @@ def run_pingpong(
             result.rounds.append(rd)
 
             # --- Repair decision ---
-            decision = make_repair_decision(
+            decision = review_test_evidence(make_repair_decision(
                 round_num=round_num,
                 reviewer_verdict=reviewer_out.verdict,
                 tests_passed=rd.test_passed,
@@ -4071,7 +4069,7 @@ def run_pingpong(
                 repair_rounds_used=result.repair_rounds_used,
                 is_repair=is_repair,
                 coherence_error=coherence_error,
-            )
+            ), rd, result.rounds, test_command)
             if reviewer_out.verdict_normalized:
                 decision.normalization_note = (
                     f"reviewer verdict normalized "
@@ -4109,7 +4107,7 @@ def run_pingpong(
                 result.final_status = "repair_exhausted"
                 break
             elif decision.repair_decision == "repair":
-                findings = reviewer_out.findings
+                findings = with_test_failure_finding(reviewer_out.findings, rd)
                 repair_triggered = True
                 if round_num >= max_rounds:
                     result.final_status = "max_rounds_reached"
@@ -4273,6 +4271,8 @@ def _run_test_command(
     A command the guard refused to spawn without its tool sandbox ran no test at all (R-1343):
     *passed* is None then, never False, and the summary says why.
     """
+    if hasattr(command, "run_in"):    # R-1351: the job's blocking DoD test checks (verified_repair)
+        return command.run_in(staging)
     try:
         argv = shlex.split(command)
     except ValueError as exc:

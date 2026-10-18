@@ -40,12 +40,7 @@ from packages.core.models import Artifact, Budget, JobFences, RunState
 # Module-level and not function-scoped: the default_factory of JobPlan and of
 # TaskEntry below is read when the class body runs, which a local import could
 # never reach.
-from packages.orchestration.data_paths import (
-    mint_episode_id,
-    mint_job_id,
-    mint_run_id,
-    mint_task_id,
-)
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
 from packages.orchestration.execution_config import (
     ExecutionConfig,
     _export_execution_config,
@@ -53,6 +48,7 @@ from packages.orchestration.execution_config import (
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
+from packages.orchestration.verified_repair import final_task_test_command
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -3441,7 +3437,7 @@ def run_job(
                     timeout_sec=timeout_sec,
                     timeout_profile=timeout_profile,
                     max_output_chars=max_output_chars,
-                    test_command=test_command,
+                    test_command=final_task_test_command(job, task, test_command, _build_budget_counters),
                     claude_cli_write_mode=claude_cli_write_mode,
                     stream_evidence=stream_evidence,
                     stream_evidence_dir=(
