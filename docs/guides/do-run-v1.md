@@ -148,7 +148,17 @@ has a role, read from the clause that names it, English or German:
 | required | "Fix add() in `src/calc.js`" | a target; with several, each must change (`named_files_unchanged`) |
 | optional | "you may also adjust `src/format.js` if needed" | allowed, never required; a target only when the order names no required file |
 | context | "as described in `docs/FORMAT.md`", "see `src/format.js`", "siehe …", "gemäß …" | named in the task as reference, read-only, never required |
-| protected | "do not touch `src/format.js`", "`src/format.js` nicht ändern", "leave … unchanged" | must stay unchanged: a run that changes it ends `blocked` (`protected_file_changed`) |
+| protected | "do not touch `src/format.js`", "`src/format.js` nicht ändern", "leave … unchanged", "without touching …", "ohne … anzufassen", "… is off limits", "Finger weg von …" | must stay unchanged: a run that changes it ends `blocked` (`protected_file_changed`) |
+| mentioned | a clause no pattern recognises that carries a negation: "Under no circumstances modify `config/prod.json`" | the reading is unsure: a target, never held to change, never a task of its own; the builder is told to change it only as far as the order asks, and the reviewer judges it |
+
+Context also comes from a reading verb right before the path ("Read `docs/FORMAT.md` first", "Lies
+zuerst …"); permission words ("is fine", "erlaubt") make a file optional. The patterns cannot know
+every wording: on wordings none was tuned on they misread 7 of 12 (exec-1018b), so the one fallback
+that remains costly was made safe. An unrecognised clause WITHOUT a negation keeps its file
+required, so an unknown verb ("Lass `src/price.js` kaufmännisch runden") drops no work; one WITH a
+negation is a guard the patterns missed, and its file is only mentioned (R-1358). A test run inside
+a sentence ("… und führe die Tests aus") is no action, and a connector ("Also update …") is no
+verb, so an order counts the same actions in English and in German.
 
 A file required in one clause stays required where another clause guards a part of it ("do not
 change the API of `src/calc.js`"). An order's own parts that refer to nothing of each other (no

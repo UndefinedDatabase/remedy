@@ -19,8 +19,15 @@ path of every deliverable sentence as a file to change. Three readings were miss
 
 All three are fixed patterns, English and German, and no model call, as `order_scope` is: a
 classifier call would spend a provider call to decide whether to spend provider calls. Where a
-reading is unsure it falls back to the old one (a file is required, parts are one task): the guards
-then demand more of a job, never less.
+reading is unsure it falls back to the old one (a file is required, parts are one task), with one
+exception (exec-1018b, R-1358): a clause that matches no guard, reference or permission pattern, opens
+with no known verb and states no defect or requirement, but carries a NEGATION ("Under no
+circumstances modify X") is most likely a guard the patterns miss. Its file is `mentioned`: never held
+to change, never a task of its own, and the builder is told to change it only as far as the order
+asks. Negations are a closed class and verbs are not, so an unknown verb ("Lass src/price.js
+kaufmännisch runden") keeps its file required and no part of the order is dropped. Measured on
+wordings no pattern was tuned on, the patterns misread 8 of 12 before this order; what changed is
+that a missed guard no longer becomes an instruction to change the file it guards.
 """
 from __future__ import annotations
 
@@ -45,31 +52,39 @@ FILE_ROLE_REQUIRED = "required"
 FILE_ROLE_OPTIONAL = "optional"
 FILE_ROLE_CONTEXT = "context"
 FILE_ROLE_PROTECTED = "protected"
+FILE_ROLE_MENTIONED = "mentioned"
 #: When one file is named in several roles, the strongest wins: a file the order asks to change in
 #: one clause is required even where another clause guards a part of it ("do not change its API").
-_ROLE_RANK = {FILE_ROLE_REQUIRED: 3, FILE_ROLE_PROTECTED: 2, FILE_ROLE_OPTIONAL: 1, FILE_ROLE_CONTEXT: 0}
+_ROLE_RANK = {FILE_ROLE_REQUIRED: 4, FILE_ROLE_PROTECTED: 3, FILE_ROLE_MENTIONED: 2, FILE_ROLE_OPTIONAL: 1,
+              FILE_ROLE_CONTEXT: 0}
 
 # The order asks for no change at all (never "change nothing ELSE", which is a scope fence).
 _NO_CHANGE = re.compile(
     r"\b(?:do\s+not|don't|never|must\s+not)\s+(?:change|modify|edit|touch|implement|write)\s+"
     r"(?:anything|any\s+(?:files?|code))\b"
     r"|\bchange\s+nothing\b|\bwithout\s+changing\s+anything\b|\bread[- ]only\b"
+    r"|(?:^|[.!?;:]\s*)no\s+changes\b"
+    r"|\bohne\s+(?:etwas|irgendetwas|was)\s+zu\s+(?:ändern|verändern)\b"
     r"|\b(?:ändere|verändere|änderst|veränderst)\s+(?:bitte\s+)?nichts\b"
     r"|\bnichts\s+(?:ändern|verändern|umsetzen|implementieren|anfassen)\b"
     r"|\bkeine\s+(?:datei(?:en)?|änderungen?)\s+(?:ändern|verändern|vornehmen|anfassen)\b"
     r"|\b(?:only|just|nur|lediglich)\s+(?:a\s+|einen\s+)?(?:plan\w*|planung)\b|\bplan\s+only\b",
     re.IGNORECASE)
+#: Words beside a no-change that make it a fence on a part of the work, never the order's intent:
+#: "change nothing ELSE", and "do not change any CODE" beside a documentation change (R-1358).
 _ELSE = re.compile(r"\b(?:else|elsewhere|other|others|besides|sonst|ansonsten|anderes|anderen|weiteres|"
-                   r"weiteren|woanders|anderswo)\b", re.IGNORECASE)
+                   r"weiteren|woanders|anderswo|code|quellcode)\b", re.IGNORECASE)
 _PLAN_WORDS = re.compile(
     r"\bplan\w*\b|\bhow\s+(?:would|should|could|to)\b|\bapproach\b|\bpropos\w*\b|\bdesign\b"
-    r"|\bvorschlag\w*\b|\bwie\s+(?:würde|sollte|könnte|man)\b|\bkonzept\w*\b|\bentwurf\w*\b",
+    r"|\bvorschlag\w*\b|\bschlag\w*\b(?=.{0,80}\bvor\b)|\bwie\s+(?:würde|sollte|könnte|man)\b"
+    r"|\bkonzept\w*\b|\bentwurf\w*\b",
     re.IGNORECASE)
 _ONLY_RUN = re.compile(r"\b(?:only|just|nur|lediglich)\s+(?:run|execute|führe|test|prüf\w*|verify|check)\w*",
                        re.IGNORECASE)
 
 # Roles of a named file, read inside the clause that names it.
 _CLAUSE_SPLIT = re.compile(r",|;|\bbut\b|\baber\b|\bsondern\b|\bwhereas\b|\bwhile\b|\bwährend\b"
+                           r"|(?=\bwithout\b|\bohne\b)"     # kept: the guard reads it
                            r"|\b(?:and|und)\b(?=\s+(?:leave|keep|do\s+not|don't|never|lass\w*|nicht)\b)",
                            re.IGNORECASE)
 _PROTECT = re.compile(
@@ -77,20 +92,42 @@ _PROTECT = re.compile(
     r"\b(?:change|modify|edit|touch|alter|rewrite|änder\w*|veränder\w*|bearbeit\w*|anfass\w*|anrühr\w*)"
     r"|\b(?:change|modify|edit|touch|änder\w*|veränder\w*|bearbeit\w*)\b.{0,60}?\b(?:nicht|nie)\b"
     r"|\b(?:leave|keep|lass\w*)\b.{0,60}?\b(?:unchanged|untouched|as\s+it\s+is|unverändert|in\s+ruhe)\b"
-    r"|\b(?:stays?|remains?|bleibt|bleiben)\s+(?:unchanged|untouched|as\s+it\s+is|unverändert)\b",
+    r"|\b(?:stays?|remains?|bleibt|bleiben)\s+(?:unchanged|untouched|as\s+it\s+is|unverändert)\b"
+    r"|^\s*(?:without\s+(?:changing|touching|modifying|editing|breaking)|ohne\b.{0,60}?\b(?:\w*ändern|anzufassen))\b"
+    r"|\boff[- ]limits\b|\bhands\s+off\b|\bfinger\s+weg\b",
     re.IGNORECASE)
 _OPTIONAL = re.compile(
     r"\b(?:may|might|can|could|if\s+(?:needed|necessary|required)|where\s+needed|optionally|"
-    r"darfst|kannst|falls\s+nötig|bei\s+bedarf|wenn\s+nötig|gegebenenfalls|ggf)\b", re.IGNORECASE)
+    r"darfst|kannst|falls\s+nötig|bei\s+bedarf|wenn\s+nötig|gegebenenfalls|ggf|"
+    r"fine|allowed|ok(?:ay)?|erlaubt|in\s+ordnung)\b", re.IGNORECASE)
 #: A cue right before a path that names it as a reference, not as work.
 _CONTEXT_CUE = re.compile(
     r"\b(?:see|siehe|described\s+in|documented\s+in|defined\s+in|specified\s+in|explained\s+in|"
     r"as\s+in|like\s+in|like|according\s+to|following|based\s+on|per|for\s+reference\s*:?|"
     r"wie\s+in|gemäß|laut|nach\s+dem\s+vorbild\s+von|beschrieben\s+in|dokumentiert\s+in|"
-    r"definiert\s+in|steht\s+in|vorbild)\s*(?:the\s+|der\s+|die\s+|das\s+|dem\s+|den\s+)?"
+    r"definiert\s+in|steht\s+in|vorbild|"
+    # a reading verb right before the path (R-1358): "Read docs/X.md first", "Lies zuerst docs/X.md"
+    r"(?:read|consult|use|look\s+at|lies|nutze|verwende|schau\s+dir)(?:\s+(?:first|zuerst|erst|bitte|kurz|vorher))?)"
+    r"\s*(?:the\s+|der\s+|die\s+|das\s+|dem\s+|den\s+)?"
     r"(?:file\s+|datei\s+)?`?$", re.IGNORECASE)
 
 # Parts of an order that refer to one another.
+#: Imperatives that open a clause of work beside `order_scope._ACTION_VERBS`, which also counts an
+#: order's actions for its lane and so stays as it is (R-1358): "register it in src/api/app.py".
+_WORK_VERBS = _ACTION_VERBS | frozenset({
+    "make", "register", "trim", "round", "bump", "wire", "expose", "handle", "validate", "return", "set",
+    "adjust", "raise", "lower", "sort", "call", "pass", "export", "import", "mach", "registriere", "runde",
+    "setze", "passe", "stelle", "erhöhe", "senke", "sortiere", "exportiere", "importiere", "validiere"})
+#: A clause that is work on the files it names although no action verb opens it: a defect it states
+#: ("... rechnet falsch") or a behaviour it requires ("... soll ... zurückgeben") (R-1358).
+_WORK_STATEMENT = re.compile(
+    r"\b(?:wrong|broken|buggy|bug|incorrect|typo|fails?|failing|crash\w*|should|must|needs?\s+to|has\s+to|"
+    r"falsch|fehler\w*|kaputt|defekt|tippfehler|stimmt\s+nicht|soll\w*|muss|müssen)\b", re.IGNORECASE)
+
+#: The closed class that tells a guard the patterns miss from work they miss (R-1358).
+_NEGATION = re.compile(r"\b(?:no|not|never|nothing|without|nicht|kein\w*|nie|niemals|nichts|ohne|keinesfalls)\b"
+                       r"|n't\b", re.IGNORECASE)
+
 _BACK_REFERENCE = re.compile(
     r"\b(?:it|its|them|they|their|this|that|these|those|the\s+same|there|accordingly|"
     r"es|sie|ihn|ihm|ihr|ihre\w*|dazu|damit|davon|dafür|diese\w*|dieselbe\w*|entsprechend\w*)\b",
@@ -129,13 +166,15 @@ def _clause_role(clause: str, path: str) -> str:
     if _CONTEXT_CUE.search(before.rstrip()):
         return FILE_ROLE_CONTEXT
     words = clause.strip().lower().split()
-    leads_with_work = bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
+    leads_with_work = bool(words) and words[0].strip("„\"'(") in _WORK_VERBS
     # "do not change anything" is the order's intent (`order_intent`), never a guard on one file.
     if _PROTECT.search(clause) and not leads_with_work and not _NO_CHANGE.search(clause):
         return FILE_ROLE_PROTECTED
     if _OPTIONAL.search(clause):
         return FILE_ROLE_OPTIONAL
-    return FILE_ROLE_REQUIRED
+    if leads_with_work or _WORK_STATEMENT.search(clause) or not _NEGATION.search(clause):
+        return FILE_ROLE_REQUIRED
+    return FILE_ROLE_MENTIONED
 
 
 def _units(order: str) -> list[str]:

@@ -29,6 +29,7 @@ from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_scope import order_scope_files, resolve_order_path
 from packages.orchestration.order_intent import (
     FILE_ROLE_CONTEXT,
+    FILE_ROLE_MENTIONED,
     FILE_ROLE_OPTIONAL,
     FILE_ROLE_PROTECTED,
     FILE_ROLE_REQUIRED,
@@ -121,6 +122,8 @@ class DoLaneDecision:
     context: tuple[str, ...] = ()
     protected: tuple[str, ...] = ()
     parts: tuple[tuple[str, ...], ...] = ()
+    #: exec-1018b (R-1358): targets whose role the order's words did not make sure; never held to change.
+    mentioned: tuple[str, ...] = ()
 
     @property
     def bounded(self) -> bool:
@@ -158,6 +161,7 @@ def _order_targets(order: str, tracked_files: list[str], roles: dict[str, str] |
     # target; a file the order merely allows is one only when it names no file to change.
     roles = roles if roles is not None else order_file_roles(order)
     required = [path for path in named if roles.get(path, FILE_ROLE_REQUIRED) == FILE_ROLE_REQUIRED]
+    required += [path for path in named if roles.get(path) == FILE_ROLE_MENTIONED]     # sure ones first
     named = required or [path for path in named if roles.get(path) == FILE_ROLE_OPTIONAL]
     if not named:
         named = explicit_order_paths(" ".join(s for s in scope.constraints if is_scope_fence(s)))
@@ -268,12 +272,15 @@ def _routed_change(order: str, tracked_files: list[str], *, infer_single_file: b
     # exec-1018 (R-1350): parts that refer to nothing of each other are one task each; a requested
     # test keeps the change one task, since no fact says which part it tests.
     resolved = dict(zip(targets, files))
-    parts = [] if with_tests else [[resolved[path] for path in part]
-                                   for part in independent_parts(order, list(targets))]
+    sure = [path for path in targets if roles.get(path) != FILE_ROLE_MENTIONED] or list(targets)
+    # R-1358: a file the words do not clearly ask to change is never a part, so never a task of its own.
+    parts = [] if with_tests else [[resolved[path] for path in part] for part in independent_parts(order, sure)]
+    unsure = [resolved[path] for path in targets if roles.get(path) == FILE_ROLE_MENTIONED]
+    held = (f"each of which must change but {', '.join(unsure)}, which its words do not clearly ask to change"
+            if unsure else "each of which must change")
     asks = ("asks for one thing" if not also else
-            f"they are {len(parts)} independent parts of one bounded job, one task each, every named "
-            "file of which must change" if len(parts) > 1 else
-            f"they are one bounded job of at most {MAX_BOUNDED_FILES} files, each of which must change")
+            f"they are {len(parts)} independent parts of one bounded job, one task each, {held}"
+            if len(parts) > 1 else f"they are one bounded job of at most {MAX_BOUNDED_FILES} files, {held}")
     roles_of = {role: tuple(dict.fromkeys(resolve_order_path(path, tracked_files) or path for path, named_role
                                           in roles.items() if named_role == role and path not in resolved))
                 for role in (FILE_ROLE_OPTIONAL, FILE_ROLE_CONTEXT, FILE_ROLE_PROTECTED)}
@@ -281,7 +288,8 @@ def _routed_change(order: str, tracked_files: list[str], *, infer_single_file: b
                           + (" and a test for it" if with_tests else ""),
                           deliverable, with_tests=with_tests, also=also, optional=roles_of[FILE_ROLE_OPTIONAL],
                           context=roles_of[FILE_ROLE_CONTEXT], protected=roles_of[FILE_ROLE_PROTECTED],
-                          parts=tuple(tuple(part) for part in parts) if len(parts) > 1 else ())
+                          parts=tuple(tuple(part) for part in parts) if len(parts) > 1 else (),
+                          mentioned=tuple(unsure))
 
 
 def _resolved_target(order: str, target: str, tracked_files: list[str]) -> tuple[str, str]:

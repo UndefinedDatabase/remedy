@@ -256,3 +256,13 @@ def test_a_filler_between_the_verb_and_the_test_still_asks_for_a_test():
     assert requests_test_files(order)
     lane = select_do_lane(order, tracked_files=["src/format.js", "test/baseline.test.js", "package.json"])
     assert (lane.lane, lane.deliverable, lane.with_tests) == ("bounded", "src/format.js", True)
+
+
+@pytest.mark.parametrize(("order", "actions"), [
+    ("Schreibe einen Regressionstest in test/x.test.js und führe die Tests aus.", 1),     # a test run is no action
+    ("Write a regression test in test/x.test.js. Run the tests.", 1),
+    ("Fix the parser in parse.py. Also update the docs.", 2),                            # a connector is no verb
+], ids=["test-run-in-sentence-de", "test-run-sentence-en", "also-update"])
+def test_an_orders_actions_are_counted_alike_whatever_its_wording(order, actions):
+    """exec-1018b (R-1358): one order in English and in German walks one lane."""
+    assert split_order_scope(order).actions == actions
