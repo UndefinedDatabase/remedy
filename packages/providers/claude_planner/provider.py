@@ -186,6 +186,12 @@ class ClaudeCliPlanner:
             raise RuntimeError(
                 f"claude CLI timed out after {self.timeout_sec}s"
             ) from None
+        # R-1346: the guard ended the child because the order was cancelled (`_cli_exec_policy`
+        # binds the walk's reader as its cancel_check); an answer that came anyway is discarded.
+        from packages.orchestration.planner_cancel import PlannerCallCancelled, planner_cancel_reason
+
+        if cancelled := planner_cancel_reason():
+            raise PlannerCallCancelled(cancelled, interrupted=proc.returncode != 0)
         if proc.returncode != 0:
             stderr = (proc.stderr or "")[:500]
             raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr}")

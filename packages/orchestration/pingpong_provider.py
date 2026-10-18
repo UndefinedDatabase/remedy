@@ -29,6 +29,7 @@ from packages.orchestration.call_identity import (
 from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL, build_claude_cli_args
 from packages.orchestration.exec_guard import ExecGuardPolicy, run_guarded
 from packages.orchestration.model_aliases import resolve_model_alias
+from packages.orchestration.planner_cancel import planner_cancel_check
 from packages.orchestration.schemas import (
     ReviewVerdict as _ReviewVerdictSchema,
 )
@@ -1008,11 +1009,10 @@ def _cli_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPolicy:
     into a parse failure. `env_allowlist` stays None for a kindred reason: the child
     is the operator's authenticated `claude` CLI and reads its credentials from the
     inherited environment. Both are stage-1 gaps, owed to T003's limitations
-    document. Enforced and real: the wall deadline, the cwd pin, a zero core.
+    document. Enforced and real: the wall deadline, the cwd pin, a zero core, a planner call's cancel.
     """
-    return ExecGuardPolicy(
-        wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
-    )
+    return ExecGuardPolicy(wall_timeout_seconds=float(timeout_sec), cwd=cwd, core_file_bytes=0,
+                           cancel_check=planner_cancel_check())   # a cancelled order's planner child (R-1346)
 
 
 def _stream_exec_policy(cwd: str | None) -> ExecGuardPolicy:

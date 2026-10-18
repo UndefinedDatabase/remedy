@@ -13,7 +13,10 @@ import contextlib
 import io
 import json
 import os
+import threading
+import time
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -49,10 +52,10 @@ def order(tmp_path, monkeypatch):
         rec = record
 
         @staticmethod
-        def walk(text: str, *flags: str) -> dict:
+        def walk(text: str, *flags: str, header: str = "max-cost-usd: 1") -> dict:
             from apps.cli.grouped import main
 
-            (order_dir / "order.md").write_text(f"---\nmax-cost-usd: 1\n---\n{text}\n", encoding="utf-8")
+            (order_dir / "order.md").write_text(f"---\n{header}\n---\n{text}\n", encoding="utf-8")
             out = io.StringIO()
             with contextlib.redirect_stdout(out), contextlib.suppress(SystemExit):
                 main(["do", "run", "--repo", str(repo), "--builder-provider", "fake",
@@ -244,3 +247,63 @@ def test_a_waiting_job_run_later_joins_its_walks_review_report(order, monkeypatc
     after = {job["job_id"]: job["state"] for job in report["jobs"]}
     assert after[waiting] == load_job_plan(waiting).state.value != "planned"
     assert [entry["job_id"] for entry in report["continued"]] == [waiting]
+
+
+def _streaming_planner(monkeypatch, on_plan_call):
+    """The REAL `OllamaPlanner` over a fake `ollama.Client` whose mission-plan answer never ends.
+
+    Every other schema answers the scale harness's minimal document at once. The mission plan's
+    stream calls *on_plan_call()* (the client's cancel arrives while the call is in flight) and then
+    yields nothing until its connection is closed, as a model that is still generating would.
+    """
+    import ollama
+
+    from tests.orchestration.scale_harness import FakePlannerService
+
+    service, closed, marks = FakePlannerService(target="README.md"), threading.Event(), {}
+
+    def answer_chunks(title: str, prompt: str):
+        if title == "MissionPlanDraft":
+            on_plan_call()
+            marks["cancelled_at"] = time.monotonic()
+            if not closed.wait(30):
+                raise AssertionError("the planner call was never ended")
+            marks["closed_at"] = time.monotonic()
+            raise OSError("the connection was closed")
+        yield SimpleNamespace(message=SimpleNamespace(content=service.answer(title, prompt)))
+
+    class Client:
+        def __init__(self, *args, **kwargs):
+            self._client = SimpleNamespace(close=closed.set)
+
+        def list(self):
+            return {"models": []}
+
+        def chat(self, *, model, messages, format, stream=False, options=None):
+            chunks = answer_chunks(str(format.get("title")), messages[-1]["content"])
+            return chunks if stream else next(chunks)
+
+    monkeypatch.setattr(ollama, "Client", Client)
+    return service, marks
+
+
+def test_a_cancel_ends_the_planner_call_in_flight_and_no_plan_is_written(order, monkeypatch):
+    """exec-1018 (R-1346): the mission-plan call is streaming when the client cancels; the walk's
+    reader ends that call within about a poll, the step writes no plan (no deterministic fallback)
+    and stops, nothing is shaped or run, and a second cancel changes nothing."""
+    from packages.orchestration.data_paths import resolve_data_root
+
+    _service, marks = _streaming_planner(monkeypatch, lambda: order.cancel(reason="changed my mind"))
+
+    envelope = order.walk("Improve error handling everywhere in the project.", "--force-mission",
+                          header="max-provider-calls: 20")
+
+    steps = _steps(envelope)
+    assert steps["plan"][0] == "stopped", steps
+    assert "the order was cancelled" in steps["plan"][1] and "wrote no plan" in steps["plan"][1]
+    assert "shape" not in steps and "run" not in steps and "apply" not in steps
+    assert marks["closed_at"] - marks["cancelled_at"] < 1.5, marks
+    assert envelope.get("job_ids") in ([], None)
+    assert list(resolve_data_root().rglob("mission_plan*.md")) == []   # no fallback plan after it
+    assert order.cancel()["already_cancelled"] is True
+    assert order_record_payload(order.paths, order.rec)["phase"] in ("cancelled", "cancelling")

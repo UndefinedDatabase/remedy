@@ -183,13 +183,17 @@ class OllamaPlanner:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = client.chat(
+        # Streamed, and ended by its order's cancel, when a supervised walk makes the call (R-1346);
+        # otherwise the one blocking call it always was.
+        from packages.orchestration.planner_cancel import cancellable_ollama_chat
+
+        return cancellable_ollama_chat(
+            client,
             model=self.model,
             messages=messages,
             format=schema,
             **({"options": options} if options else {}),
         )
-        return response.message.content
 
     def plan_raw(self, prompt: str, *, schema: dict) -> str:
         """F005 native structured call: return the raw Ollama response text.

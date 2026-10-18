@@ -278,6 +278,7 @@ packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop
 packages.orchestration.pingpong_provider
 packages.orchestration.plan_editing
+packages.orchestration.planner_cancel
 packages.orchestration.planner_models
 packages.orchestration.preview_control
 packages.orchestration.preview_runner
