@@ -282,7 +282,9 @@ counts harness invocations and `model_turns` the model responses inside them (a 
 loop of many turns). A task's `proof_summary.tokens_estimated` in a job report is the size of the
 task's TEXT, never usage. `verification` (since 1.17) is `{status, required}`: `status` is `passed`
 or `failed` when the job's tests ran (the tasks' own test runs and the job's DoD test checks),
-`not_run` when the order asked for its tests and none ran, `not_required` when the order asked for
+`not_run` when the order asked for its tests and none ran, or when a test command the tool
+sandbox refused could not run (since 1.20; then never `passed`, even beside another task's passing
+test, and the story's reason is `sandbox_unavailable`), `not_required` when the order asked for
 none and none ran, and `pending` while the job runs; `required` says the order asked for the
 tests to run. An unexecuted test is never `passed`. `note_open` is always
 `false`, because no route of this API takes a steering note.

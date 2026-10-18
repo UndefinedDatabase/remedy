@@ -1338,7 +1338,7 @@ RUN_FINAL_STATUS_TO_LEDGER_STATE = {
     "builder_no_changes": "completed",     # recognised by pingpong_evidence as a clean pass
     "stopped": "stopped",                  # F011
     "staged_blocked": "blocked",
-    "target_mutation_blocked": "blocked",
+    "target_mutation_blocked": "blocked", "sandbox_unavailable": "blocked",   # R-1343: no test could run
     "review_failed": "failed",
     "review_inconsistent": "failed",
     "test_failed": "failed",

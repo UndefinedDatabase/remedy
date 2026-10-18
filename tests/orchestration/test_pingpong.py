@@ -378,6 +378,25 @@ def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypat
     assert "err-line" in summary
 
 
+
+def test_a_test_command_the_sandbox_refused_ran_no_test(tmp_path, monkeypatch):
+    """R-1343: the guard's refusal (exit 126, `tripped_limit` sandbox_unavailable) is no failed test."""
+    import subprocess
+
+    from packages.orchestration import pingpong_loop
+    from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR
+
+    def _refused(cmd, *, timeout_sec, cwd, extra_env_keys=()):
+        done = subprocess.CompletedProcess(list(cmd), 126, b"", b"remedy: refused to run without the tool sandbox")
+        setattr(done, TRIPPED_LIMIT_ATTR, "sandbox_unavailable")
+        return done
+
+    monkeypatch.setattr(pingpong_loop, "run_guarded_test_command", _refused)
+    passed, summary, tripped = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
+
+    assert (passed, tripped) == (None, "sandbox_unavailable")
+    assert summary.startswith("tests_not_run: sandbox_unavailable") and "tool sandbox" in summary
+
 # F112 T003b2a — compiled_context_token_budget passthrough on run_pingpong
 
 

@@ -55,7 +55,8 @@ STORY_PHRASES: dict[str, tuple[str, ...]] = {
 }
 
 #: Every reason key `state_detail.reason` carries while the job is stopped or failed. `stopped` is a
-#: stop on request, resumable; `cancelled` is a cancel, which ends the job for good (exec-1017c).
+#: stop on request, resumable; `cancelled` is a cancel, which ends the job for good (exec-1017c);
+#: `sandbox_unavailable` a test command the tool sandbox could not run, so no test ran (R-1343).
 STORY_REASONS: dict[str, tuple[str, ...]] = {
     "provider_unavailable": ("provider",),
     "tests_failed": ("n",),
@@ -67,6 +68,7 @@ STORY_REASONS: dict[str, tuple[str, ...]] = {
     "paused": (),
     "unknown": (),
     "stopped": (),
+    "sandbox_unavailable": (),
 }
 
 #: The job's verification status, `verification.status` (exec-1017 D2): its tests ran and passed or

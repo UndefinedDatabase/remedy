@@ -8,11 +8,9 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-1. Findings R-1345..R-1350 registered (this commit); baseline scale matrix v4 recorded on 652029edc.
+2. R-1343/R-1345 done (DECISION exec-1018 D1); next R-1346 in-flight planner cancel.
 
 ## Next Steps
-2. R-1343/R-1345: a sandbox-refused test command ends the loop `sandbox_unavailable`, no review,
-   no repair; post-mortem class `sandbox_unavailable`; verification `not_run` with its reason.
 3. R-1346: planner calls of a supervised walk are cancellable in flight (Ollama streamed, Claude
    CLI through the guard's cancel_check); a cancelled call never degrades to a fallback plan.
 4. R-1347: the repository's rule files (root and nested along the task's files) reach builder and

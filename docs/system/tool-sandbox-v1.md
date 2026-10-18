@@ -95,6 +95,12 @@ There is no unsafe mode. A missing or broken sandbox refuses the work:
 - a sandboxed command returns exit 126 with `remedy: refused to run without the tool sandbox`
   and nothing is spawned.
 
+A refusal is never read as a failed test (R-1343). A DoD test check records the reason
+`sandbox_unavailable` and no exit code. A task's `--test-command` ends its run
+`sandbox_unavailable` at once: no reviewer call, no repair round, the task's `test_passed` stays
+unknown, and its post-mortem class is `sandbox_unavailable`, not `resource_limit`. The job's
+verification then reads `not_run` with the reason, and its story's reason is `sandbox_unavailable`.
+
 `remedy doctor health` (line `default_chain`) and `remedy worker doctor` (line `tool_sandbox`)
 run the real self-test, which uses synthetic files and runs no model. They report one of:
 

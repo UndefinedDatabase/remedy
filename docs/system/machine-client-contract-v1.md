@@ -343,6 +343,7 @@ Story reason `cancelled`: none.
 Story reason `paused`: none.
 Story reason `unknown`: none.
 Story reason `stopped`: none.
+Story reason `sandbox_unavailable`: none.
 
 ### Operations
 

@@ -3633,22 +3633,19 @@ def run_pingpong(
             # --- Test phase ---
             if has_test_command:
                 rd.test_passed, rd.test_summary, rd.test_tripped_limit = _run_test_command(
-                    test_command, staging, timeout_sec=timeout_sec,
-                )
+                    test_command, staging, timeout_sec=timeout_sec)
             else:
-                rd.test_passed = None
-                rd.test_summary = "tests_not_run"
-                result.tests_not_run = True
+                rd.test_passed, rd.test_summary, result.tests_not_run = None, "tests_not_run", True
 
-            # If explicit test command failed:
-            # - When repair_rounds > 0: continue to reviewer (test failure is evidence)
-            # - Otherwise (repair_rounds=0, original behavior): stop immediately
+            # An explicit test command that failed stops the run at once when repair_rounds is 0, else
+            # its failure is the reviewer's evidence. One the sandbox refused ran no test (R-1343): it
+            # always stops here, before any review or repair, as `sandbox_unavailable`.
             if has_test_command and not rd.test_passed:
-                if repair_rounds == 0:
+                if repair_rounds == 0 or rd.test_passed is None:
                     rd.finished_at = datetime.now(timezone.utc).isoformat()
                     result.rounds.append(rd)
-                    result.final_status = "test_failed"
-                    result.error = rd.test_summary
+                    result.final_status = "test_failed" if rd.test_passed is False else "sandbox_unavailable"
+                    result.error, result.tests_not_run = rd.test_summary, rd.test_passed is None
                     break
                 # repair_rounds > 0: continue to reviewer with test failure evidence
 
@@ -4267,13 +4264,14 @@ def _run_test_command(
     staging: Path,
     *,
     timeout_sec: int = 120,
-) -> tuple[bool, str, str]:
+) -> tuple[bool | None, str, str]:
     """Run a test command in the staging workspace.
 
-    Returns (passed, summary, tripped_limit). Uses shlex.split — no shell=True.
-    `tripped_limit` is the execution guard's own report of which limit it enforced
-    on a run that did NOT pass (R-0568) — "" when the run passed or the guard
-    tripped nothing — so the task's post-mortem can name the limit.
+    Returns (passed, summary, tripped_limit). Uses shlex.split — no shell=True. `tripped_limit` is
+    the execution guard's own report of which limit it enforced on a run that did NOT pass (R-0568)
+    — "" when the run passed or the guard tripped nothing — so the task's post-mortem can name it.
+    A command the guard refused to spawn without its tool sandbox ran no test at all (R-1343):
+    *passed* is None then, never False, and the summary says why.
     """
     try:
         argv = shlex.split(command)
@@ -4306,6 +4304,8 @@ def _run_test_command(
         last_lines = output.strip().splitlines()[-5:]
         summary += " | " + " ".join(last_lines)
     tripped = "" if passed else (getattr(proc, TRIPPED_LIMIT_ATTR, None) or "")
+    if tripped == "sandbox_unavailable":    # exit 126 and no process: not a failed assertion
+        return None, f"tests_not_run: sandbox_unavailable: {output.strip()[-300:]}", tripped
     return passed, summary, tripped
 
 

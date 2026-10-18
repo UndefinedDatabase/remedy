@@ -1845,13 +1845,13 @@ def _strict_apply_to_workspace(
 # ---------------------------------------------------------------------------
 
 def final_status_detail_of(result: Any) -> str:
-    """The cause a task records beside a provider failure (R-1016).
+    """The cause a task records beside a provider failure (R-1016) or a refused test command (R-1343).
 
-    The run's ``error`` is the failed provider call's text: for ``provider_unavailable``
-    it names the child's exit code and the redacted tail of its stderr, and for
-    ``provider_timeout`` the limit the call ran into. Every other outcome records "".
+    The run's ``error`` is the failed call's text: for ``provider_unavailable`` the child's exit code and
+    its redacted stderr tail, for ``provider_timeout`` the limit it ran into. Every other outcome records "".
     """
-    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted"):
+    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted",
+                                                   "sandbox_unavailable"):
         return ""
     return str(getattr(result, "error", "") or "")
 
