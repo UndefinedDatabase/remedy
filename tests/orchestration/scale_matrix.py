@@ -31,7 +31,7 @@ from tests.orchestration.scale_harness import (
     filler_files,
 )
 
-MATRIX_VERSION = 4
+MATRIX_VERSION = 5
 
 README = {"README.md": "# Project\n\nA project.\n"}
 PY_PROJECT = {"src/add.py": "def add(a, b):\n    return a - b\n",
@@ -208,6 +208,44 @@ CASES: list[dict[str, Any]] = [
     {"id": "plan-only-tiny", "klass": "plan-only", "files": README, "flags": ["--plan-only"],
      "order": "Add a usage section to README.md.",
      "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "builder_calls": 0, "run_step": "stopped"}},
+    # Version 5 (exec-1018): named files have roles, an order's own words ask for a plan or for its
+    # checks only, independent parts are one task each, and a sandbox refusal is no failed test.
+    {"id": "contextual-file-stays-unchanged", "klass": "file-roles", "files": {**SMALL_JS, "docs/FORMAT.md": "# F\n"},
+     "order": "Fix the empty-name bug in src/format.js; the expected format is described in docs/FORMAT.md.",
+     "builder_files": ["src/format.js"],
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "deliverable": "src/format.js",
+                "run_step": "done"}},
+    {"id": "protected-file-german", "klass": "file-roles", "files": SMALL_JS,
+     "order": "Behebe den Fehler in src/calc.js. Die Datei src/format.js nicht ändern.",
+     "builder_files": ["src/calc.js"],
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "deliverable": "src/calc.js",
+                "run_step": "done"}},
+    {"id": "protected-file-changed", "klass": "file-roles", "files": SMALL_JS,
+     "order": "Fix add() in src/calc.js but do not touch src/format.js.",
+     "builder_files": ["src/calc.js", "src/format.js"],
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "run_step": "failed",
+                "failed_detail_has": "protected_file_changed"}},
+    {"id": "optional-file-untouched", "klass": "file-roles", "files": SMALL_JS,
+     "order": "Fix add() in src/calc.js; you may also adjust src/format.js if needed.",
+     "builder_files": ["src/calc.js"],
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 1, "run_step": "done"}},
+    {"id": "three-independent-parts", "klass": "independent", "files": SMALL_JS,
+     "order": "1. Fix the typo in README.md. 2. Make src/price.js round half up. 3. Trim the input in src/format.js.",
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 3, "builder_calls": 6, "run_step": "done"}},
+    {"id": "plan-only-by-words", "klass": "plan-only", "files": README,
+     "order": "Only plan how to restructure README.md; do not change anything.",
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "builder_calls": 0, "reviewer_calls": 0,
+                "run_step": "stopped"}},
+    {"id": "verify-only-by-words", "klass": "verify-only", "files": LAB, "project_tests_exit": 0,
+     "order": "Only run the project tests and report the result; do not change any file.",
+     "expect": {"lane": "bounded", "planner_calls": 0, "jobs": 1, "tasks": 0, "builder_calls": 0,
+                "reviewer_calls": 0, "verification": "passed", "run_step": "done"}},
+    {"id": "no-work-is-a-question", "klass": "verify-only", "files": README,
+     "order": "Do not change anything.",
+     "expect": {"lane": "hold", "jobs": 0, "planner_calls": 0}},
+    {"id": "required-tests-sandbox-refused", "klass": "verification", "files": LAB, "project_tests_exit": 126,
+     "sandbox_refuses": True, "order": "Fix the typo in README.md. Run the project tests.",
+     "expect": {"lane": "bounded", "jobs": 1, "verification": "not_run"}},
     {"id": "high-risk-plan-only", "klass": "plan-only",
      "files": {"src/auth/session.py": "TTL = 60\n", **PY_PROJECT}, "flags": ["--plan-only"],
      "order": "Change the session token expiry in src/auth/session.py to 15 minutes.",
@@ -250,9 +288,14 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
             import subprocess
 
             from packages.orchestration import dod_runners
-            patch.setattr(dod_runners, "run_guarded_dod_process_command",
-                          lambda cmd, *, timeout_sec, cwd, env_overlay=None, _code=case["project_tests_exit"]:
-                          subprocess.CompletedProcess(list(cmd), _code, b"", b""))
+            from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR
+
+            def tests_ran(cmd, *, timeout_sec, cwd, env_overlay=None, _code=case["project_tests_exit"]):
+                done = subprocess.CompletedProcess(list(cmd), _code, b"", b"")
+                if case.get("sandbox_refuses"):     # version 5: the guard refused to spawn (exit 126)
+                    setattr(done, TRIPPED_LIMIT_ATTR, "sandbox_unavailable")
+                return done
+            patch.setattr(dod_runners, "run_guarded_dod_process_command", tests_ran)
         argv = ["do", case["order"], "--repo", ".", "--builder-provider", "fake",
                 "--reviewer-provider", "fake", "--json", "--no-ui", *case.get("flags", ["--run-unattended"])]
         out, began = io.StringIO(), time.monotonic()
@@ -318,6 +361,8 @@ def check_expectations(case: dict[str, Any], record: dict[str, Any]) -> list[str
         problems.append(f"verification: expected [{expect['verification']!r}], got {record['verification']!r}")
     if "run_step" in expect and record["steps"].get("run") != expect["run_step"]:
         problems.append(f"run step: expected {expect['run_step']!r}, got {record['steps'].get('run')!r}")
+    if "failed_detail_has" in expect and expect["failed_detail_has"] not in record["failed_detail"]:
+        problems.append(f"failed detail: expected {expect['failed_detail_has']!r} in {record['failed_detail']!r}")
     if expect.get("honest_failure") and record["steps"].get("shape") != "failed":
         problems.append("a failing planner did not end the walk as failed")
     return problems

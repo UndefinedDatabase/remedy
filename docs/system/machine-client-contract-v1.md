@@ -299,7 +299,7 @@ Refusal keys: `error`, `message`.
 ### Words
 
 Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `cancelled`, `blocked`, `stopped`.
-Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`.
+Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`, `checked`.
 Phases of an order: `planning`, `running`, `awaiting_apply`, `needs_plan_approval`, `waiting`, `ready`, `blocked`, `failed`, `stopped`, `cancelling`, `cancelled`, `done`, `ended`, `lost`.
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.

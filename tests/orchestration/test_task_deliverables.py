@@ -299,3 +299,35 @@ def test_a_named_file_the_change_left_unchanged_blocks_the_task(tmp_path, monkey
         assert task.error.startswith("named_files_unchanged:") and "src/index.js" in task.error
     else:
         assert ended.state == JOB_COMPLETED, (ended.error, task.error)
+
+
+@pytest.mark.parametrize(("changed", "blocked"), [
+    (["src/format.js"], False),                      # the context file stayed as it was: correct
+    (["src/format.js", "docs/FORMAT.md"], False),    # a context file is held to nothing either way
+    (["src/format.js", "src/index.js"], True),       # the protected file changed: refused
+])
+def test_only_the_files_an_order_asks_to_change_are_held_to_it(tmp_path, monkeypatch, changed, blocked):
+    """exec-1018 (R-1348), through a REAL job run and its real diff: a file the order names only as
+    context passes unchanged, and a file it says to leave unchanged blocks the task when touched."""
+    from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job, save_job_plan
+    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.task_deliverables import deliverable_task
+
+    job_id = _two_file_job(tmp_path, monkeypatch)
+    job = load_job_plan(job_id)
+    order = ("Fix normalizeName in src/format.js as described in docs/FORMAT.md, and leave src/index.js "
+             "unchanged.")
+    job.tasks = [deliverable_task("src/format.js", order, context=("docs/FORMAT.md",), protected=("src/index.js",))]
+    save_job_plan(job)
+    fake = FakeProvider(builder_files=changed, pass_on_round=1, fail_on_round=99)
+
+    ended = run_job(job_id, builder_provider=fake, reviewer_provider=fake, repair_rounds=0)
+
+    task = load_job_plan(job_id).tasks[0]
+    assert "must stay unchanged, as the order says: src/index.js" in task.body
+    assert "do not change them: docs/FORMAT.md" in task.body
+    if blocked:
+        assert ended.state == JOB_BLOCKED
+        assert task.error.startswith("protected_file_changed:") and "src/index.js" in task.error
+    else:
+        assert ended.state == JOB_COMPLETED, (ended.error, task.error)

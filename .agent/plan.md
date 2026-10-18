@@ -8,13 +8,9 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-4. R-1347 done (DECISION exec-1018 D3); next R-1348/R-1350 named-file roles.
+5-6. R-1348/R-1349/R-1350 done (DECISION exec-1018 D4, matrix v5); next P1 items.
 
 ## Next Steps
-5. R-1348/R-1350: named files get roles (required, optional, context, protected); protected ones
-   refuse a change; independent deliverables become one task each in the one bounded job.
-6. R-1349: an order that asks for a plan only walks `--plan-only`; one that asks for verification
-   only plans no change (hold with the verification answer).
 7. Scale matrix v5 rows for every case of the order; P1 items (efficiency, go/cargo, lessons,
    test audit) as far as measured; up to four local Ollama calibration runs if every limit holds.
 8. Docs, API/interface version, one full local gate on the final commit, PR, German handback.

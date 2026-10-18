@@ -1924,16 +1924,16 @@ def task_fence_refusal(job: Any, result: Any) -> str:
     ``fences.deny`` globs: all under :data:`BOOKKEEPING_FENCE` is :data:`BOOKKEEPING_ONLY_REASON`."""
     from fnmatch import fnmatch
 
-    from packages.orchestration.task_deliverables import named_files_left_unchanged
+    from packages.orchestration.task_deliverables import deliverable_files_refusal
 
     deny = list(job.fences.deny) if getattr(job, "fences", None) else []
     changed = sorted({
         "/".join(p for p in str(path).replace("\\", "/").split("/") if p and p != ".")
         for path in (*result.staged_files, *result.safe_diff_files)
     } - {""})
-    unchanged = named_files_left_unchanged(job, result, changed)
-    if unchanged or not deny or not changed:
-        return unchanged
+    refused = deliverable_files_refusal(job, result, changed)
+    if refused or not deny or not changed:
+        return refused
     denied = [path for path in changed if any(fnmatch(path, glob) for glob in deny)]
     if not denied:
         return ""

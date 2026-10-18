@@ -51,7 +51,7 @@ _ORDER_FOLDER_NAME = re.compile(r"[0-9a-f]{16}")
 #: decline, `needs_plan_approval`, `waiting` for a job that waits for its predecessor, `ready` for
 #: one that may run now, `blocked`, `failed`, `stopped` (resumable), `cancelling` until nothing of
 #: a cancelled order runs any more, `cancelled`, `done` when every job's result was applied or
-#: declined, `ended` for a walk that ended with no job (its answer says why), `lost` when the
+#: declined or the job only ran its checks, `ended` for a walk that ended with no job (its answer says why), `lost` when the
 #: walk's process is gone with no recorded end.
 ORDER_PHASES = ("planning", "running", "awaiting_apply", "needs_plan_approval", "waiting", "ready",
                 "blocked", "failed", "stopped", "cancelling", "cancelled", "done", "ended", "lost")
@@ -200,7 +200,7 @@ def order_phase(state: str, cancel: dict[str, str] | None, jobs: list[dict[str, 
                   "ready", "waiting"):
         if phase in phases:
             return phase
-    if phases and all(phase in ("applied", "declined", "cancelled") for phase in phases):
+    if phases and all(phase in ("applied", "declined", "cancelled", "checked") for phase in phases):
         return "cancelled" if all(phase == "cancelled" for phase in phases) else "done"
     return "failed" if exit_code not in (0, None) else "ended"
 

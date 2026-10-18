@@ -582,7 +582,7 @@ def plan_order_job(
                     f"one job holds; `remedy do` plans them as {len(plans)} jobs")
             [tasks] = plans
         try:
-            validate_deliverable_plan(tasks)
+            validate_deliverable_plan(tasks, allow_empty=deterministic_tasks is not None)
         except DeliverablePlanError as exc:
             raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
         job = JobPlan(

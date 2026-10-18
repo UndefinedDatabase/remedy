@@ -30,9 +30,10 @@ ORDER_JOB_ORPHANED_REASON = ("job {job} was {ended} and its result will not be a
 #: is a task plan waiting for its approval, `awaiting_apply` a finished result waiting for the
 #: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold,
 #: `stopped` a job stopped on purpose that can be resumed, `cancelled` one that ended for good
-#: (`job_cancel.py`, exec-1017c).
+#: (`job_cancel.py`, exec-1017c), `checked` a job with no build task that ran its checks and has
+#: nothing to apply (a verification-only order's, exec-1018).
 ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "awaiting_apply", "applied",
-                    "declined", "blocked", "stopped", "cancelled", "failed")
+                    "declined", "blocked", "stopped", "cancelled", "failed", "checked")
 
 
 #: The keys of one entry of `order_jobs_view`, as the machine client interface declares them.
@@ -141,6 +142,8 @@ def _job_entry(job: Any) -> dict[str, Any]:
         phase = "waiting"
     elif state in ("planned", "pending"):
         phase = "needs_plan_approval" if task_plan_blocks_execution(job) is not None else "ready"
+    elif state == "completed" and not job.tasks:
+        phase = "checked"
     elif state == "completed":
         phase = ("applied" if job_apply_landed(str(job.job_id))
                  else "declined" if job_result_decline(job) is not None else "awaiting_apply")

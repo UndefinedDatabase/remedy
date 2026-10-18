@@ -257,6 +257,7 @@ packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.order_cancel
 packages.orchestration.order_file
+packages.orchestration.order_intent
 packages.orchestration.order_jobs
 packages.orchestration.order_ledger
 packages.orchestration.order_scope
