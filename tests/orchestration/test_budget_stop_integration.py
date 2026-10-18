@@ -189,12 +189,21 @@ class TestDecisionQueueDerivation:
     def test_budget_exhausted_produces_decision(self):
         from packages.orchestration.decision_queue import list_decisions
         from packages.orchestration.pingpong_job import JobPlan
-        job = JobPlan(job_title="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
+        job = JobPlan(job_title="budget-test")
+        job.stop_source, job.stop_reason = "budget", "budget_exhausted: max_provider_calls"
         decisions = list_decisions(job, [])
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
         assert len(budget_decisions) == 1
         assert budget_decisions[0].severity == "blocker"
         assert "budget_exhausted" in budget_decisions[0].safe_summary
+
+    def test_an_error_text_alone_is_no_budget_stop(self):
+        """exec-1018b (R-1359): this test read an error string as a budget stop; a task's loop cap writes
+        that string too, and the decision it produced was refused whatever the person answered."""
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
+        assert [d for d in list_decisions(job, []) if d.type == "token_budget"] == []
 
     def test_no_budget_error_no_decision(self):
         from packages.orchestration.decision_queue import list_decisions

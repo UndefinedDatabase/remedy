@@ -271,7 +271,7 @@ with the code that calls it.
 |---|---|---|
 | 1442 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1314 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
-| 909 | `packages/orchestration/decision_queue.py` | `list_decisions` |
+| 907 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
 | 428 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
@@ -445,7 +445,7 @@ with the code that calls it.
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
-| 1204 | `packages/orchestration/decision_queue.py` |
+| 1202 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
