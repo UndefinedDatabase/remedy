@@ -1,27 +1,24 @@
-# Context — reliability campaign (operator order 2026-10-17, after PR 360)
+# Context — adaptive reliability campaign (operator order 2026-10-18)
 
 ## Active Branch
-feature/order-cancel from PR 360's head `9b172a16c` in `.remedy-wt/order-cancel`. It depends on PR
-360 (feature/execution-excellence): merge 360 first. The main checkout stays on main: `remedy serve
-start` (editable install) runs its code, so nothing is switched or pulled there.
+feature/adaptive-reliability from PR 361's head `652029edc` (feature/order-cancel, itself on PR
+360's `9b172a16c`) in `.remedy-wt/adaptive-reliability`. Merge order: 360, 361, this. The main
+checkout stays on main (editable install, supervisor), never switched or pulled here.
 
-## Evidence (read through Remedy's own readers; `.data/**` not read raw)
-- `remedy status --json` and `remedy client story 537d7c3612864597 --json` on the operator's data
-  root, read-only, from outside the checkout.
-- `select_do_lane` probed against this branch's code with `PYTHONPATH` set to the worktree.
+## Evidence
+- Scale matrix (tests/orchestration/scale_matrix.py) with fake providers, run from the worktree;
+  baseline on 652029edc kept in the session scratchpad.
+- Reproductions through `run_pingpong` and the real `remedy do` walk in disposable repositories.
 
 ## Scope
-Order and job cancellation over CLI and HTTP, terminal state of abandoned work, story words for
-waiting and stopped work, lane honesty findings of the PR 360 review.
-
-## Steps
-The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+P0: R-1343 loop half, in-flight planner cancel, project rule delivery, lane/target roles,
+plan-only/verify-only wording. P1 as far as measured. API/interface contract additions.
 
 ## Do not touch
-The roadmap queue, `.agent/STOP`, the supervisor and service, the lab repository, the sandbox,
-provider defaults, `pi.*` caps, Universe's repositories.
+The roadmap queue, `.agent/STOP`, the supervisor and service, the live checkout, the lab
+repository, provider defaults, `pi.*` caps, Universe's repositories, other sessions' processes.
 
 ## Constraints
-- No real model call (no authorized Pi budget); fake providers only.
-- One pytest process tree at a time; one full local gate at the end.
+- Real model calls only as the order's local calibration (disposable fixtures, local Ollama, caps).
+- One pytest process tree at a time; focused tests per phase; one full local gate at the end.
 - Commits at most 500 insertions; structure ratchet: listed files and functions do not grow.
