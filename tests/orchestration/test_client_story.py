@@ -287,3 +287,36 @@ def test_a_job_queued_after_another_names_it_until_its_result_lands(data_root, r
 
     monkeypatch.setattr(job_apply, "job_apply_landed", lambda job_id: True)
     assert _story(job.job_id, data_root)["next"]["action"] == "run"
+
+
+@pytest.mark.parametrize(("state", "action"), [
+    (RunState.COMPLETED, "decline"), (RunState.RUNNING, "abandon"), (RunState.PLANNED, "abandon"),
+    (RunState.STOPPED, "abandon"), (RunState.PAUSED, "abandon"), (RunState.BLOCKED, "abandon"),
+    (RunState.FAILED, None), (RunState.CANCELLED, None),
+])
+def test_every_open_job_names_its_way_out_and_an_ended_one_none(data_root, repo, monkeypatch, state, action):
+    """exec-1018b (R-1360): `next` is the one step forward and was `none` for a stopped, blocked or
+    waiting job, so a client could close none of them; `end` is always the way out while the job is open."""
+    import packages.orchestration.decision_queue as decision_queue
+
+    monkeypatch.setattr(decision_queue, "list_decisions", lambda plan, events: [])
+    job_id = _run(repo)
+    _save(job_id, state=state)
+    story = _story(job_id, data_root)
+
+    route = {"method": "POST", "path": f"/api/v1/jobs/{job_id}/{action}"} if action else None
+    assert story["end"] == ({"action": action, "route": route} if action else None)
+
+
+def test_an_applied_or_declined_result_has_no_way_out_left(data_root, repo):
+    from packages.orchestration.job_apply import apply_job, decline_job_result
+    from packages.orchestration.pingpong_job import _persist_job, load_job_plan_safe
+
+    applied = _run(repo)
+    assert apply_job(applied, str(repo), approve=True).status == "applied"
+    declined = _run(repo)
+    plan, _degraded = load_job_plan_safe(declined)
+    decline_job_result(plan, reason="not wanted", source="test", now=_NOW)
+    _persist_job(plan)
+
+    assert _story(applied, data_root)["end"] is None and _story(declined, data_root)["end"] is None

@@ -85,8 +85,8 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: to `1.19` for `POST /api/v1/jobs/{job}/abandon`, `POST /api/v1/orders/{order}/cancel` and an
 #: order's `phase` and `cancel`, and order exec-1018 to `1.20` for the story reasons
 #: `sandbox_unavailable` and `project_rules_too_large`, an order job's phase `checked`, and a cancel
-#: that ends a planner call in flight.
-PUBLIC_API_VERSION = "1.20"
+#: that ends a planner call in flight, and order exec-1018b to `1.21` for the story's `end`.
+PUBLIC_API_VERSION = "1.21"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

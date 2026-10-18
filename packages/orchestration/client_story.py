@@ -351,6 +351,20 @@ def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, An
     return {"action": "none", "route": None}
 
 
+def _end(plan: Any, state: str, declined: bool) -> dict[str, Any] | None:
+    """How the person ends the job PLAN for good, or None once it has ended (exec-1018b, R-1360).
+
+    `next` is the one step forward; `end` is always the way out, so a client can close every job that
+    is still open, whatever it waits for: a completed result waiting for its apply is declined, any
+    other open job (queued, running, stopped, blocked, waiting for an answer) is abandoned.
+    """
+    raw = str(getattr(plan.state, "value", plan.state))
+    if raw in ("failed", "cancelled") or state == "done_applied" or declined:
+        return None
+    action = "decline" if raw == "completed" else "abandon"
+    return {"action": action, "route": {"method": "POST", "path": f"/api/v1/jobs/{plan.job_id}/{action}"}}
+
+
 def _iso(moment: datetime | None) -> str | None:
     return moment.isoformat() if moment is not None else None
 
@@ -415,6 +429,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
         "state": state,
         "state_detail": detail,
         "next": _next(str(plan.job_id), state, detail, pending),
+        "end": _end(plan, state, declined is not None),
         "steps": _steps(plan, state, detail, changes, rounds,
                         {"in": summary["tokens_in"], "out": summary["tokens_out"]} if measured else None),
         "changes": changes,

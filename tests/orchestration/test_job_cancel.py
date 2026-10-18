@@ -264,3 +264,19 @@ def test_a_walks_apply_refuses_a_job_with_a_cancel_request_whatever_its_state(da
         commit_mode, job_ids, next_lines, applied = False, [str(job.job_id)], [], {}
 
     assert do_apply.do_apply_one_job(Ctx(), str(job.job_id)).endswith("the job was cancelled (no longer wanted)")
+
+
+@pytest.mark.parametrize("state", [RunState.BLOCKED, RunState.PAUSED, RunState.STOPPED, RunState.PLANNED],
+                         ids=["blocked", "paused", "stopped", "never-started"])
+def test_every_job_the_story_offers_to_abandon_ends_cancelled_at_once(data_root, state):
+    """exec-1018b (R-1360): the story's `end` offers `abandon` for each of these; none may refuse it.
+    The live jobs of 2026-10-18 were blocked (two), stopped (four) and one never started."""
+    job = JobPlan(job_title="t", tasks=[TaskEntry(title="Deliver README.md")])
+    job.state = state
+    save_job_plan(job)
+
+    answer = cancel_job(load_job_plan(str(job.job_id)), reason="closed from the chat", source="api",
+                        runner_alive=False)
+
+    assert (answer["job_status"], answer["cancel_pending"]) == ("cancelled", False)
+    assert load_job_plan(str(job.job_id)).state == RunState.CANCELLED

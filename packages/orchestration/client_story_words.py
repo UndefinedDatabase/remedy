@@ -33,6 +33,9 @@ STORY_STEP_STATUSES: tuple[str, ...] = ("waiting", "running", "done", "skipped",
 #: re-attempts a task that ended blocked (R-1331), and the list only grows. `run` starts a queued job
 #: that waits for nothing, `resume` a stopped one; both are `POST /api/v1/jobs/{job}/run` (exec-1017c).
 STORY_NEXT_ACTIONS: tuple[str, ...] = ("apply", "decline", "answer", "retry", "none", "run", "resume")
+#: How a job that has not ended is ended for good, the story's `end` (exec-1018b, R-1360): a completed
+#: result waiting for its apply is declined, any other open job abandoned; `end` is null once it ended.
+STORY_END_ACTIONS: tuple[str, ...] = ("abandon", "decline")
 
 #: Every phrase key a step carries, each with the names of its arguments.
 STORY_PHRASES: dict[str, tuple[str, ...]] = {
@@ -94,6 +97,7 @@ def story_words() -> dict[str, object]:
         "step_ids": list(STORY_STEP_IDS),
         "step_statuses": list(STORY_STEP_STATUSES),
         "next_actions": list(STORY_NEXT_ACTIONS),
+        "end_actions": list(STORY_END_ACTIONS),
         "phrases": {key: list(args) for key, args in STORY_PHRASES.items()},
         "reasons": {key: list(args) for key, args in STORY_REASONS.items()},
         "questions": list(STORY_QUESTIONS),
@@ -146,6 +150,9 @@ def story_problems(story: dict[str, object]) -> list[str]:
     nxt = story.get("next") or {}
     if not isinstance(nxt, dict) or nxt.get("action") not in STORY_NEXT_ACTIONS:
         problems.append("next.action is not in the closed list")
+    end = story.get("end")
+    if end is not None and (not isinstance(end, dict) or end.get("action") not in STORY_END_ACTIONS):
+        problems.append("end.action is not in the closed list")
     steps = story.get("steps") or []
     if [s.get("id") for s in steps if isinstance(s, dict)] != list(STORY_STEP_IDS):
         problems.append("steps are not the five steps in their order")
