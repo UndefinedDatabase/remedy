@@ -138,13 +138,15 @@ interface lists under `order_job_phases`: `running`; `waiting`, when the job run
 job it names under `waits_for` is applied and committed, because its workspace is cut from the
 repository's HEAD; `ready`, the one job that may run now (`executable`); `needs_plan_approval`;
 `awaiting_apply`, a finished result nothing applied or declined yet; `applied`; `declined`;
-`blocked`; `stopped`, resumable; `cancelled`, ended for good; `failed`. A job whose record cannot be read is listed with state `missing`,
+`blocked`; `stopped`, resumable; `cancelled`, ended for good; `failed`; `checked` (since 1.20), a
+job with no build task that ran only its checks, the job of an order that asked only for its tests
+to run, with nothing to apply. A job whose record cannot be read is listed with state `missing`,
 never left out, and an order that planned nothing yet lists none. The view is read when polled:
 it is no live stream, and a client that wants to know sooner polls again.
 
 **Stopping, cancelling and abandoning work.** `POST /api/v1/jobs/{job}/stop` pauses one job, as
-`remedy job stop` does: a running job finishes the provider call in flight, starts nothing new and
-stays resumable; a job that never started ends at once, `stopped`; a completed job is refused with
+`remedy job stop` does: a running job's Pi call in flight is ended within about a second
+(another provider's call finishes first), it starts nothing new and stays resumable; a job that never started ends at once, `stopped`; a completed job is refused with
 409 `job_not_stoppable`, because its result waits for an apply or a decline
 (`POST /api/v1/jobs/{job}/decline`). A stopped job, run or not, can be resumed, so it stays among
 the jobs that still need something. `POST /api/v1/jobs/{job}/abandon` ends one job for good, as
@@ -367,7 +369,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.19`.
+API version: `1.20`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|

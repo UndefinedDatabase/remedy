@@ -73,8 +73,9 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: and the `job_already_applied` refusal of a second `job apply`, and operator order
 #: amend1015-final-closure to `1.16` for a client token's read scope (DECISION amend1015c D2) and
 #: `client.diff` (DECISION amend1015c D5), exec-1017 to `1.17` (verification, turns), exec-1017b to `1.18` (job.stop, jobs),
-#: and exec-1017c to `1.19` (`job.abandon`, `client.cancel-order`, an order's `phase` and `cancel`).
-CLIENT_INTERFACE_VERSION = "1.19"
+#: exec-1017c to `1.19` (`job.abandon`, `client.cancel-order`, an order's `phase` and `cancel`), and
+#: exec-1018 to `1.20` (story reasons `sandbox_unavailable`, `project_rules_too_large`; job phase `checked`).
+CLIENT_INTERFACE_VERSION = "1.20"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the

@@ -8,7 +8,7 @@ PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Out
 queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-7c. P1 9 lessons measured (D8, R-1353), P1 10 test audit (D9); next API version, docs, full gate.
+8a. API and interface 1.20 (D10); next the final matrix comparison, the full local gate, PR, handback.
 
 ## Next Steps
 7. Scale matrix v5 rows for every case of the order; P1 items (efficiency, go/cargo, lessons,
