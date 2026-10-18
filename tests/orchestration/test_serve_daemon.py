@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 import time
+import zipfile
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -1172,3 +1173,80 @@ def test_an_apply_post_refuses_as_the_command_does_or_before_it(root, running_wi
     records = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
     assert (records[-1]["method"], records[-1]["path"], records[-1]["status"]) == (
         "POST", path, 409)
+
+
+def _poll_order_end(port: int, token: str, order_id: str, limit_s: float = 120) -> dict:
+    polled: dict = {"state": "running"}
+    deadline = time.monotonic() + limit_s
+    while time.monotonic() < deadline and polled["state"] == "running":
+        time.sleep(0.2)
+        status, polled = _api_request(port, "GET", f"/api/v1/orders/{order_id}", headers=_bearer(token))
+        assert status == 200, polled
+    assert polled["state"] != "running", f"order {order_id} never ended within {limit_s} seconds"
+    return polled
+
+
+def test_http_orders_with_capture_review_leave_reports_the_ordinary_zip_stages_without_a_job_id(
+        root, running_with_api, tmp_path):
+    """Operator order 2026-10-18 (P0 2): `capture_review: true` on `POST /api/v1/orders`, through the
+    supervisor's own child process and data root, leaves one report per order however it ends
+    (completed, stopped by its budget, cancelled), and the ZIP's stager finds all three in the data
+    root alone: no job id is named anywhere, and the order's secret is in no staged byte."""
+    import importlib.util
+
+    from packages.orchestration.review_reports import review_reports_dir
+    from tests.cli.test_client_order_cmd import _PAST_DEADLINE, _git_repo
+
+    spec = importlib.util.spec_from_file_location(
+        "stage_review_reports", Path(__file__).resolve().parents[2] / "scripts" / "stage_review_reports.py")
+    stager = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(stager)
+    token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()
+    port = running_with_api.state.api_port
+    slug = _register_project(root, _git_repo(tmp_path / "capture-repo"))
+    secret = "sk-ant-api03-" + "C" * 40
+    base = {"no_llm": True, "builder_provider": "fake", "reviewer_provider": "fake", "capture_review": True}
+
+    def order(line: str, **extra) -> str:
+        text = f"---\nproject: {slug}\nmax-cost-usd: 1\n---\n{line}\n"
+        status, created = _post_order(port, token, {**base, "order": text, **extra})
+        assert status == 202, created
+        return created["order_id"]
+
+    done = order(f"Add a line saying hello to README.md. Token {secret} must not leak.")
+    ended = {"completed": _poll_order_end(port, token, done)}
+    ended["budget"] = _poll_order_end(port, token, order("Add a line saying bye to README.md",
+                                                         deadline=_PAST_DEADLINE))
+    cancelled = order("Add a line saying maybe to README.md")
+    status, answer = _api_request(port, "POST", f"/api/v1/orders/{cancelled}/cancel", headers=_bearer(token),
+                                  body=json.dumps({"reason": "test"}).encode())
+    assert status in (200, 202), answer
+    ended["cancelled"] = _poll_order_end(port, token, cancelled)
+
+    stored = sorted(review_reports_dir(Path(root)).glob("rr-*.json"))
+    assert len(stored) == 3, [p.name for p in stored]
+    staged = tmp_path / "staged"
+    assert stager.stage(staged, root=Path(root)) == 3
+    index = json.loads((staged / "index.json").read_text(encoding="utf-8"))
+    by_order = {next(w for w in ("hello", "bye", "maybe") if w in e["order"]): e for e in index["reports"]}
+    assert by_order["hello"]["status"] == "completed"
+    assert by_order["hello"]["job_ids"] == ended["completed"]["answer"]["job_ids"]
+    assert by_order["bye"]["status"] != "completed" and by_order["maybe"]["status"] == "cancelled", by_order
+    assert [e["started_at"] for e in index["reports"]] == sorted((e["started_at"] for e in index["reports"]),
+                                                                 reverse=True)
+    staged_bytes = "".join(p.read_text(encoding="utf-8") for p in staged.iterdir())
+    assert secret not in staged_bytes and os.path.expanduser("~") not in staged_bytes
+    # The ordinary package, built with no argument and no job id, carries the same three.
+    from tests.orchestration.test_review_zip_hygiene import _make_git_repo_with_scripts
+
+    packaging = _make_git_repo_with_scripts(tmp_path / "packaging")
+    env = {**os.environ, "REMEDY_DATA_DIR": str(root), "REMEDY_REVIEW_DIR": "."}
+    proc = subprocess.run(["bash", "scripts/make_review_zip.sh"], cwd=packaging, env=env,
+                          capture_output=True, text=True, timeout=180)
+    assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-2000:]
+    assert "Review reports packaged: 3" in proc.stdout
+    [package] = list(packaging.glob("remedy-review-*.zip"))
+    with zipfile.ZipFile(package) as archive:
+        packaged = sorted(n for n in archive.namelist() if n.startswith("review_reports/rr-"))
+        assert packaged == sorted(f"review_reports/{p.name}" for p in stored)
+        assert all(secret not in archive.read(n).decode() for n in packaged)
