@@ -196,7 +196,7 @@ every call so far has a price: planner calls carry none, so once one is made, or
 calls without a price, no further job or planner call starts, and `order_budget.cost` says
 `enforced: false` with the unpriced count. Token, call and time caps are unaffected.
 A recorded study is reused until a dependency, build or workspace file changed since it, twenty
-paths changed, or its head is gone; a bounded order never pays for the study's narration.
+paths changed, or its head is gone; a bounded order never pays for the study's narration, and nor does any order on a repository of at most ten tracked files, whose facts the planner sees whole.
 
 ## While it works
 

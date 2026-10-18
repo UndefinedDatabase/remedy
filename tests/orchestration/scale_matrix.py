@@ -132,7 +132,8 @@ CASES: list[dict[str, Any]] = [
     {"id": "monorepo-schema-change", "klass": "monorepo", "files": MONOREPO,
      "order": "Change the user schema in packages/schema/user.ts and update the consumers in "
               "packages/web/profile.ts and packages/api/users.ts.",
-     "expect": {"lane": "full", "no_check_only_job": True, "max_planner_calls": 7}},
+     # Version 5 (R-1352): a tiny repository is studied from its facts in every lane.
+     "expect": {"lane": "full", "no_check_only_job": True, "max_planner_calls": 7, "no_study_narration": True}},
     {"id": "ambiguous-vague-target", "klass": "ambiguous", "files": {**PY_PROJECT, **README},
      "order": "Fix the bug.", "flags": [],
      "expect": {"lane": "full", "run_needs_approval": True}},
@@ -250,7 +251,7 @@ CASES: list[dict[str, Any]] = [
      "files": {"src/auth/session.py": "TTL = 60\n", **PY_PROJECT}, "flags": ["--plan-only"],
      "order": "Change the session token expiry in src/auth/session.py to 15 minutes.",
      "expect": {"lane": "full", "never_tiny": True, "builder_calls": 0, "run_step": "stopped",
-                "max_planner_calls": 7}},
+                "max_planner_calls": 7, "no_study_narration": True}},
 ]
 
 _LANE = re.compile(r"lane: (\w+)")
@@ -361,6 +362,8 @@ def check_expectations(case: dict[str, Any], record: dict[str, Any]) -> list[str
         problems.append(f"verification: expected [{expect['verification']!r}], got {record['verification']!r}")
     if "run_step" in expect and record["steps"].get("run") != expect["run_step"]:
         problems.append(f"run step: expected {expect['run_step']!r}, got {record['steps'].get('run')!r}")
+    if expect.get("no_study_narration") and record["planner_by_schema"].get("StudyCategoryNarration"):
+        problems.append(f"a tiny repository paid study narration: {record['planner_by_schema']}")
     if "failed_detail_has" in expect and expect["failed_detail_has"] not in record["failed_detail"]:
         problems.append(f"failed detail: expected {expect['failed_detail_has']!r} in {record['failed_detail']!r}")
     if expect.get("honest_failure") and record["steps"].get("shape") != "failed":
