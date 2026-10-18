@@ -325,3 +325,27 @@ def test_run_job_returns_a_cancelled_job_untouched(tmp_path, monkeypatch) -> Non
     assert result.error.startswith("job_cancelled:")
     assert result.tasks[0].status == RunState.PENDING
     assert record_path.read_bytes() == before
+
+
+def _blocked_by_a_task_loop_cap() -> JobPlan:
+    """The live state of 2026-10-18 (jobs bd41e75f, 3806bb26): a task's Pi loop hit its cap, the task
+    gate failed with `final_status=budget_exhausted`, and the job ended blocked. No budget stop: the
+    guard never stopped it, so it has no stop source and no stop request."""
+    job = JobPlan(job_title="blocked-by-a-loop-cap", tasks=[TaskEntry(title="d")])
+    job.state = RunState.BLOCKED
+    job.error = "task_0485b88a5c724372_gate_failed: final_status=budget_exhausted; missing_reviewer_output"
+    return job
+
+
+@pytest.mark.parametrize("make", [_blocked_by_a_task_loop_cap, _budget_stopped_job],
+                         ids=["task-loop-cap", "budget-stop"])
+def test_every_budget_decision_the_queue_offers_can_be_answered(make) -> None:
+    """exec-1018b (R-1359): the queue offered a budget decision for a job its answer then refused
+    (`decision_not_found`) whatever the person chose, so the client's question could never close."""
+    job = make()
+    offered = [d for d in list_decisions(job, []) if d.type == "token_budget"]
+
+    for decision in offered:
+        answer = answer_budget_decision(copy.deepcopy(job), decision.id, "abandon", [], now=NOW)
+        assert answer["outcome"] == "abandoned", answer
+    assert bool(offered) == (job.stop_source == "budget")

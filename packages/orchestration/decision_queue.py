@@ -419,11 +419,10 @@ def list_decisions(
                     (ev.get("metadata") or {}).get("reason", "budget_exhausted"))
                 break
 
-    # DECISION F295 D11 (4): a budget stop answered since the job last stopped
-    # is left off the queue — `budget_stop_answer` is the one reader of that,
-    # shared with the resume guard, so the two can never disagree about it.
+    # DECISION F295 D11 (4): an answered budget stop is left off (`budget_stop_answer`, shared with the
+    # resume guard). R-1359: only a stop BY THE BUDGET is offered, the one `answer_budget_decision` takes.
     if (budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error)
-            and budget_stop_answer(job) is None):
+            and str(getattr(job, "stop_source", "") or "") == "budget" and budget_stop_answer(job) is None):
         _budget_request_id = ""
         _budget_created_at = ""
         _budget_limit = ""
@@ -436,7 +435,7 @@ def list_decisions(
                 _budget_limit = str(
                     (ev.get("metadata") or {}).get("exhausted_limit", ""))
                 break
-        _decision_id = budget_decision_id(_budget_request_id)
+        _decision_id = budget_decision_id(str(getattr(job, "stop_request_id", "") or "") or _budget_request_id)
         # F032 T002a: the receipts behind the budget stop are built from what
         # this branch ALREADY read out of the stop event, so the card cites the
         # same evidence the guard acted on rather than a fresh derivation.  A
