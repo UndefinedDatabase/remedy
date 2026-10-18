@@ -9,17 +9,12 @@ Merge order: 360, 361, 362, this. No merge, no deploy; `.agent/STOP`, supervisor
 untouched. Outside the roadmap queue (F078 stays next).
 
 ## Current Step
-6. Investigative full run (durations, order dependence), then at most three controlled real runs.
-
-## Done (this branch)
-R-1351/R-1354/R-1355 verified repair; review-report e2e + diagnosis (D3); combined review: R-1356
-walk order scope, R-1357 cancel during the final gate; P1 4 R-1358 adversarial matrix; P1 5 rule
-dedupe (D7); P1 6 measured, nothing built (D8).
+9. All steps done (D1–D10, R-1354–R-1358, handoff written): the one full gate on this commit, then
+   the PR (not merged).
 
 ## Next Steps
-7. Test-suite findings from the investigative run (P1 7), proven before any consolidation.
-8. Real runs (D9) or the written blocker; API handoff; handoff.md; one full gate on the final
-   commit; PR into main stacked on 360, 361, 362 (not merged).
+- Operator: merge PR 360, 361, 362, then this PR; restart `remedy serve`.
+- Open: context files misread as required (D6); capture-by-default is the operator's call (D3).
 
 ## Risks
 - `run_job`, `run_pingpong` and both files sit at their ledger rows: edits there stay line-neutral,

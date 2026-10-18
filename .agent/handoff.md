@@ -1,41 +1,46 @@
-# Handoff — exec-1018: adaptive execution, complete safety, real-world reliability (2026-10-18)
+# Handoff — exec-1018b: verified repair, reliable evidence, adaptive execution (2026-10-18)
 
-Session 1 of exec-1018. Branch `feature/adaptive-reliability` from PR 361's head `652029edc` (PR 361
-is on PR 360's `9b172a16c`); worktree `.remedy-wt/adaptive-reliability`. **Merge order: PR 360, then
-PR 361, then this PR.** Not merged, not deployed; `.agent/STOP`, the supervisor (`remedy serve`,
-running on main) and the live checkout (main `6933bb0e0`, editable install) untouched. Outside the
-roadmap queue: F078 stays next. Decisions exec-1018 D1–D10; findings R-1345–R-1353.
+Session 1 of exec-1018b. Branch `feature/verified-repair` from PR 362's head `cfd906254` (PR 362 is on
+PR 361's `652029edc`, on PR 360's `9b172a16c`); worktree `.remedy-wt/verified-repair`. **Merge
+order: PR 360, PR 361, PR 362, then this PR.** Not merged, not deployed; `.agent/STOP`, the
+supervisor (`luna-remedy-serve.service`, `remedy serve start` on main) and the live checkout (main
+`6933bb0e0`) untouched; its `.data` was never read (the operator's settings deny it). Outside the
+roadmap queue: F078 stays next. Decisions exec-1018b D1–D10; findings R-1354–R-1358.
 
 ## Findings and items
 | Item | Status | Reason |
 |---|---|---|
-| R-1343 loop half / R-1345 refused test command, post-mortem class | done | D1 |
-| R-1346 planner call in flight not cancellable, fallback plan after cancel | done | D2; real Ollama: 0.246 s |
-| R-1347 rules only short and root, never the reviewer | done | D3 |
-| R-1348 context/forbidden named files required | done | D4 |
-| R-1349 plan-only / verify-only orders change files | done | D4 |
-| R-1350 independent parts one task | done | D4 |
-| R-1351 red tests after review: no repair from that evidence | skipped | registered; needs an A/B, `run_job` at its row |
-| R-1352 tiny full-lane order pays narration | done | D7 |
-| R-1353 no lesson or study card reaches a walk's model call | skipped | measured (D8); product decision |
-| P1 7 efficiency | deviated | measured in calibration; R-1343 and R-1352 repaired, tool set unchanged |
-| P1 8 Go/Rust verification | done | D5 |
-| P1 9 historical lessons | done | experiment D8: nothing reaches a prompt, nothing built |
-| P1 10 test audit | done | D9 |
-| Local calibration (4 cases) | done | D6 |
-| API/interface 1.20 | done | D10 |
-
-## Calibration (real model, local Ollama `muse-glimmer:latest`, disposable repositories)
-c1 lab README 25.8 s / 18,953 tok / builder 4 turns, passed; c2 lab add 37.0 s / 28,419 / 6 turns,
-BLOCKED by real `npm test` (R-1351); c3 two-file rename 22.3 s / 17,211 / 4 turns, correct diff,
-passed; c4 high-risk plan-only cancelled in its mission-plan call: ended 0.246 s after the request.
-Evidence and the harness: session scratchpad `calib/` (not committed).
+| R-1351 red tests after review: no repair from that evidence | done | D1; real run 3 (D9) |
+| R-1354 repair round after a reviewer pass carried no test evidence | done | D1 |
+| R-1355 shell exit 126/127 read as a failed test | done | D2 |
+| P0 2 review reports export | done | D3: path proven over HTTP on this branch and on main; no captured runs |
+| R-1356 walk order outlived its walk (`_WALK_ORDER_DIR`) | done | D4 |
+| R-1357 job cancelled during its final gate completed and was applied | done | D5 |
+| R-1358 wording decides whether a guarded file is changed | done | D6; matrix 12/21 → 21/21 |
+| P1 5 project rules per turn | done | D7: lossless dedupe |
+| P1 6 experience reuse | done | D8: measured, nothing shipped |
+| P1 7 test-suite efficiency | done | D10 |
+| Real local-model runs (3) | done | D9 |
+| Public API | done | no route, key or word added; route text of job abandon updated; stays 1.20 |
 
 ## Verification
-Focused owner and neighbour selections green per step (see the PR body for the list); repo-wide
-guards 3,816 green; campaign nodes 68/68 green alone with an empty HOME. The one full local gate
-on the final commit is in the PR body (command, tree, interpreter, result).
+Focused owner selections green per step; one investigative full run on `d54ff1e96` (D10). The one
+full local gate on the final commit is recorded in the PR body (commit, tree, command, interpreter,
+result).
+
+## Universe API handoff (no new fields; behaviour within the 1.20 contract)
+- A required test that fails in a job's last task now gets one repair round: a running job's story
+  shows round 2 (`task_round_repaired`); `verification` stays `{status, required}`; a job held at
+  its task by red tests reads `tests_failed` as before. `verification.runs` (CLI and order JSON)
+  may hold a `source: "task"` run when the gate never ran.
+- `POST /api/v1/jobs/{job}/abandon` on a running job (`cancel_pending: true`) now always ends the job
+  `cancelled`, also when the cancel lands while its final checks run; such a job is never applied.
+- Story reason `tests_failed` / `sandbox_unavailable` / verification `not_run` unchanged; a test
+  script whose tool is missing (exit 127) is `not_run`, never `failed`.
+- Review reports: `capture_review: true` on `POST /api/v1/orders` is the only switch; reports exist
+  only for orders that set it.
 
 ## Next
-Operator: review and merge PR 360, then PR 361, then this PR; restart `remedy serve` to load the
-code. Then: R-1351 A/B (one repair round from a red DoD) and R-1353 (lessons) as one paydown.
+Operator: review and merge PR 360, 361, 362, then this PR; restart `remedy serve` to load the code.
+Open: context files misread as required still block correct work on unknown wordings (D6); capture
+by default is the operator's decision (D3).
