@@ -23,10 +23,10 @@ from packages.orchestration.verified_repair import (
     TEST_FAILURE_FINDING_ID,
     DoDTestCommand,
     final_task_test_command,
-    repair_round_affordable,
-    review_test_evidence,
     red_test_diagnostic,
     red_test_fingerprint,
+    repair_round_affordable,
+    review_test_evidence,
     with_test_failure_finding,
 )
 
