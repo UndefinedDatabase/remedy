@@ -9,10 +9,15 @@ Prevention" option 2 (new branch from the tip, separate dependent PR).
 ## Scope
 Verify, do not reimplement: fixes only for reproduced defects. No new cancellation command.
 
+## Steps
+The order's phases; the current one is in plan.md. Outside the roadmap queue: F078 stays next.
+
 ## Do not touch
 `.agent/STOP`, the supervisor, the live checkout and its `.data` (operator settings deny reading
 it), Universe's repositories, other worktrees, provider defaults.
 
 ## Constraints
 - Disposable data roots and fake providers for evidence; real model runs only if load allows.
+- Resource safety: one pytest process tree at a time (`scripts/remedy_pytest.sh` holds the lock),
+  focused `-n 4` selections; the workstation is shared with Universe.
 - Commits at most 500 insertions; listed ratchet files stay line-neutral.

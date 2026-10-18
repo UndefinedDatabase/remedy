@@ -4,7 +4,8 @@
 Verify the stacked release (#360 → #361 → #362 → #363 → #364) as one production change, fix only
 real remaining defects in a dependent PR, and hand over one release-candidate report. Branch
 `feature/release-candidate-verify` from PR 364's head `eb439f9fb`; worktree `.remedy-wt/rc-verify`.
-No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouched.
+No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouched. Outside the
+roadmap queue: F078 stays next.
 
 ## Current Step
 8. Full local gate on the final commit, then the PR (result in its body). Handoff written.
