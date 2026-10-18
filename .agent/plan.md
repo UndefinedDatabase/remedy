@@ -9,14 +9,17 @@ Merge order: 360, 361, 362, this. No merge, no deploy; `.agent/STOP`, supervisor
 untouched. Outside the roadmap queue (F078 stays next).
 
 ## Current Step
-1. R-1351 repaired in the loop's own test phase (`verified_repair.py`), with its acceptance walk.
+6. Investigative full run (durations, order dependence), then at most three controlled real runs.
+
+## Done (this branch)
+R-1351/R-1354/R-1355 verified repair; review-report e2e + diagnosis (D3); combined review: R-1356
+walk order scope, R-1357 cancel during the final gate; P1 4 R-1358 adversarial matrix; P1 5 rule
+dedupe (D7); P1 6 measured, nothing built (D8).
 
 ## Next Steps
-2. Review reports (P0 2): HTTP e2e through the supervisor; diagnosis in decisions (no `.data` read).
-3. Combined review of 360-362 (P0 3), `_WALK_ORDER_DIR`; findings registered, then repaired.
-4. P1: adversarial multi-file matrix (EN/DE), rule-file context tokens, lessons A/B, test-suite time.
-5. At most three real local-model runs, only if every control holds; else the blocker is written.
-6. Public API handoff, one full local gate on the final commit, PR, German handback.
+7. Test-suite findings from the investigative run (P1 7), proven before any consolidation.
+8. Real runs (D9) or the written blocker; API handoff; handoff.md; one full gate on the final
+   commit; PR into main stacked on 360, 361, 362 (not merged).
 
 ## Risks
 - `run_job`, `run_pingpong` and both files sit at their ledger rows: edits there stay line-neutral,
