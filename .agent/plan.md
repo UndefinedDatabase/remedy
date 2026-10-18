@@ -7,11 +7,10 @@ real remaining defects in a dependent PR, and hand over one release-candidate re
 No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouched.
 
 ## Current Step
-1. Lifecycle: every state's offered `end`/`next` taken through the real public API dispatch
-   (R-1361 repaired: abandon of a job a dead walk left running).
+3. Repair (#363). Done: R-1361, R-1362 repaired; lifecycle matrix over HTTP
+   (`tests/ui_server/test_public_api_lifecycle.py`, 15 rows, real CommandRunner).
 
 ## Next Steps
-2. Lifecycle matrix integration test over HTTP + real CommandRunner (12 states, two clients).
 3. Repair (#363): scope, budget, cancel, identical failures, infra vs test failure.
 4. Review-report capture and ZIP export end to end; Universe contract.
 5. API 1.17 → 1.21 compatibility matrix (machine-checkable).
