@@ -1105,3 +1105,15 @@ def test_a_go_module_whose_dependencies_need_the_network_is_not_run_never_failed
 
     assert (ev.status, ev.reason, ev.exit_code) == (STATUS_FAILED, "tool_unavailable", None)
     assert "no network" in ev.output_tail and "nothing was run" in ev.output_tail
+
+
+@pytest.mark.skipif(shutil.which("npm") is None, reason="needs npm")
+def test_a_test_script_whose_tool_is_missing_is_not_run_never_failed(worktree: Path):
+    """R-1355: the shell answers 127 when the script's tool is not installed; no test started, so the
+    check reads tool_unavailable with no exit code, and nothing blames (or repairs) the code."""
+    (worktree / "package.json").write_text('{"scripts": {"test": "r1351-no-such-test-tool"}}\n')
+
+    ev = run_check(check("project_tests", {}), worktree, timeout_sec=60)
+
+    assert (ev.status, ev.reason, ev.exit_code) == (STATUS_FAILED, "tool_unavailable", None)
+    assert "not found" in ev.output_tail

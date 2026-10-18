@@ -111,6 +111,8 @@ REASON_CWD_MISSING = "cwd_missing"
 #: exec-1017c: the guard refused to spawn the command without its tool sandbox (exit 126 and no
 #: process). The command never ran, so its check is not run, never a failed test.
 REASON_SANDBOX_UNAVAILABLE = "sandbox_unavailable"
+#: The shell's own exits for a command it could not execute (126) or could not find (127).
+SHELL_NOT_RUN_EXITS = frozenset({126, 127})
 #: project_tests (F299, DECISION F299 D1): the project names no test command at
 #: all — no config entry, no package.json test script, no tests folder.
 REASON_NO_TEST_COMMAND = "no_test_command"
@@ -355,6 +357,10 @@ def _spawn_check(check: DoDCheck, ctx: _RunContext, argv: list[str], cwd: Path,
     tail, truncated = _tail(proc.stdout + proc.stderr)
     if getattr(proc, TRIPPED_LIMIT_ATTR, None) == REASON_SANDBOX_UNAVAILABLE:
         return _refused(check, REASON_SANDBOX_UNAVAILABLE, argv, declared_cwd, tail)
+    if proc.returncode in SHELL_NOT_RUN_EXITS:
+        # R-1355: the shell found no tool to run (a missing toolchain or dev dependency), so no test
+        # started; that is not run, never a failed test a repair should chase.
+        return _refused(check, REASON_TOOL_UNAVAILABLE, argv, declared_cwd, tail)
     passed = proc.returncode == 0
     return CheckEvidence(
         check_id=check.id,
