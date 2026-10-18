@@ -249,7 +249,9 @@ CASES: list[dict[str, Any]] = [
      "expect": {"lane": "hold", "jobs": 0, "planner_calls": 0}},
     {"id": "required-tests-sandbox-refused", "klass": "verification", "files": LAB, "project_tests_exit": 126,
      "sandbox_refuses": True, "order": "Fix the typo in README.md. Run the project tests.",
-     "expect": {"lane": "bounded", "jobs": 1, "verification": "not_run"}},
+     # A required check that could not run is no pass: the job is held, and its story says why.
+     "expect": {"lane": "bounded", "jobs": 1, "verification": "not_run", "run_step": "failed",
+                "story_reason": "sandbox_unavailable"}},
     {"id": "high-risk-plan-only", "klass": "plan-only",
      "files": {"src/auth/session.py": "TTL = 60\n", **PY_PROJECT}, "flags": ["--plan-only"],
      "order": "Change the session token expiry in src/auth/session.py to 15 minutes.",
@@ -307,8 +309,11 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
             main(argv)
         elapsed = time.monotonic() - began
         data = json.loads(out.getvalue())
+        from packages.orchestration.client_story import job_client_story
         from packages.orchestration.pingpong_job import load_job_plan
         jobs = [job for job in (load_job_plan(j) for j in data.get("job_ids", [])) if job is not None]
+        story_reasons = [((job_client_story(str(job.job_id), job)["state_detail"].get("reason") or {}).get("key"))
+                         for job in jobs]
     steps = {s["name"]: s for s in data.get("steps", [])}
     plan_detail = steps.get("plan", {}).get("detail", "")
     study_detail = steps.get("study", {}).get("detail", "")
@@ -330,6 +335,7 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
                               str(data.get("message") or "")[:160]),
         "run_detail": steps.get("run", {}).get("detail", "")[:160],
         "verification": [(job.get("verification") or {}).get("status") for job in data.get("jobs") or []],
+        "story_reasons": story_reasons,
         "order_budget_calls": (data.get("order_budget") or {}).get("planner_calls"),
         "rationale": plan_detail.split("lane: ", 1)[-1].split("; no contract")[0][:200] if plan_detail else study_detail[:200],
     }
@@ -367,6 +373,8 @@ def check_expectations(case: dict[str, Any], record: dict[str, Any]) -> list[str
         problems.append(f"run step: expected {expect['run_step']!r}, got {record['steps'].get('run')!r}")
     if expect.get("no_study_narration") and record["planner_by_schema"].get("StudyCategoryNarration"):
         problems.append(f"a tiny repository paid study narration: {record['planner_by_schema']}")
+    if "story_reason" in expect and record["story_reasons"] != [expect["story_reason"]]:
+        problems.append(f"story reason: expected [{expect['story_reason']!r}], got {record['story_reasons']!r}")
     if "failed_detail_has" in expect and expect["failed_detail_has"] not in record["failed_detail"]:
         problems.append(f"failed detail: expected {expect['failed_detail_has']!r} in {record['failed_detail']!r}")
     if expect.get("honest_failure") and record["steps"].get("shape") != "failed":
