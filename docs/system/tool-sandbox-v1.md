@@ -99,6 +99,11 @@ instead (`pi_provider.project_rules`, exec-1018 D3):
   contributes nothing, and nothing above the workspace or behind a symlink is read;
 - how: each file whole and labelled with its path, once, in the first message of the call (Pi
   resends that message every turn, so the cost is per turn: about 6,900 tokens for a 27 KB file);
+  what an upper file already delivers is named, never sent twice: a nested file identical to an
+  upper one is one line naming it, and a section (heading to heading) identical to one above is one
+  line naming its heading and file; a file with nothing repeated is sent byte for byte, and the
+  ceiling below counts what is sent (exec-1018b: a nested copy of a 5,182-character root file
+  went from 10,314 to 5,198 characters per turn);
 - precedence: a deeper file refines the ones above it for the files under its folder; the rules
   bind how the builder changes files and what the reviewer fails, but never widen the task, the
   tools or the working copy, and a workflow step they ask for (branch, commit, push, pull

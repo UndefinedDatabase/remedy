@@ -498,3 +498,38 @@ def test_a_failed_calls_measured_tokens_reach_the_runs_usage_and_so_the_budgets(
 
     assert failed.error and usage["total_tokens"] == 220
     assert (usage["provider_call_count"], usage["actual_call_count"]) == (1, 1)
+
+
+ROOT_RULES = "# Rules\n\nUse Python 3.10.\n\n## Commits\n\nOne logical step per commit.\n\n## Tests\n\nEvery fix has a test.\n"
+
+
+@pytest.mark.parametrize(("nested", "delivered"), [
+    (ROOT_RULES, "[identical to AGENTS.md, delivered above]"),
+    ("# Package rules\n\nIndent with tabs.\n\n## Tests\n\nEvery fix has a test.\n",
+     '# Package rules\n\nIndent with tabs.\n\n[the section "Tests" is identical to AGENTS.md\'s, delivered above]'),
+], ids=["identical-file", "shared-section"])
+def test_a_rule_that_an_upper_file_already_delivers_is_named_never_sent_twice(tmp_path, nested, delivered):
+    """exec-1018b (P1 5): lossless; a nested copy of the root rules was sent twice in every model turn."""
+    from packages.orchestration.pi_provider import builder_workspace_context, project_rules
+
+    (tmp_path / "AGENTS.md").write_text(ROOT_RULES)
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "AGENTS.md").write_text(nested)
+    (tmp_path / "pkg" / "a.py").write_text("x = 1\n")
+
+    rules = project_rules(str(tmp_path), "Fix pkg/a.py.")
+
+    assert rules.files == (("AGENTS.md", ROOT_RULES.strip()), ("pkg/AGENTS.md", delivered))
+    assert builder_workspace_context(str(tmp_path), "Fix pkg/a.py.").count("Every fix has a test.") == 1
+
+
+def test_a_rule_file_with_nothing_repeated_is_delivered_byte_for_byte(tmp_path):
+    from packages.orchestration.pi_provider import project_rules
+
+    nested = "# Package\n\nTabs.\n## Odd spacing\nkept as written\n\n\n## Tests\n\nOnly here.\n"
+    (tmp_path / "AGENTS.md").write_text(ROOT_RULES)
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "AGENTS.md").write_text(nested)
+    (tmp_path / "pkg" / "a.py").write_text("x = 1\n")
+
+    assert project_rules(str(tmp_path), "Fix pkg/a.py.").files[1] == ("pkg/AGENTS.md", nested.strip())

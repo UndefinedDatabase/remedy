@@ -231,6 +231,7 @@ def project_rules(cwd: str, prompt: str) -> ProjectRules:
             text = ""
         if text:
             found.append((rel, text))
+    found = _without_repeated_rules(found)
     total = sum(len(text) for _rel, text in found)
     if total > PROJECT_RULES_MAX_CHARS:
         sizes = ", ".join(f"{rel} ({len(text):,} characters)" for rel, text in found)
@@ -239,6 +240,40 @@ def project_rules(cwd: str, prompt: str) -> ProjectRules:
                                 "carries whole; Remedy does not shorten binding instructions, so this call was "
                                 "not started")
     return ProjectRules(tuple(found))
+
+
+#: A markdown heading line: where one section of a rule file begins.
+_RULES_SECTION = re.compile(r"^(?=#{1,6} )", re.MULTILINE)
+
+
+def _without_repeated_rules(found: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """*found*, each deeper file's text with what an earlier file already delivers named, not repeated.
+
+    Lossless (exec-1018b, P1 5): a file identical to an earlier one becomes one line naming it, and a
+    section (from one markdown heading to the next) identical to one delivered above becomes one
+    line naming its heading and file. Nothing is shortened or summarised; a nested copy of the root
+    file (a common layout) is no longer sent twice in every model turn.
+    """
+    delivered: dict[str, str] = {}
+    sections: dict[str, str] = {}
+    out: list[tuple[str, str]] = []
+    for rel, text in found:
+        if text in delivered:
+            out.append((rel, f"[identical to {delivered[text]}, delivered above]"))
+            continue
+        delivered[text] = rel
+        parts = []
+        for section in (piece for piece in _RULES_SECTION.split(text) if piece.strip()):
+            body = section.strip()
+            if body in sections and body.startswith("#"):
+                heading = body.splitlines()[0].lstrip("#").strip()
+                parts.append(f"[the section \"{heading}\" is identical to {sections[body]}'s, delivered above]")
+            else:
+                sections.setdefault(body, rel)
+                parts.append(body)
+        repeated = any(part.startswith("[the section ") for part in parts)
+        out.append((rel, "\n\n".join(parts) if repeated else text))    # untouched unless a section repeats
+    return out
 
 
 #: What each role is told about the repository's instructions; Remedy's own rules come first.
