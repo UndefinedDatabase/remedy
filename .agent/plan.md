@@ -9,11 +9,10 @@ No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouc
 roadmap queue: F078 stays next.
 
 ## Current Step
-3. R-1366 repaired (D3): a rejected plan offers no `run`; plan approval rows in the lifecycle matrix.
-   Done: 1. handback recovered, ZIP diagnosed (D1); 2. R-1365 pending cancel of a dead runner (D2).
+4. R-1367 repaired (D4): a refused change reads `review_not_passed`; repair ends read by the story.
+   Done: 1. handback recovered, ZIP diagnosed (D1); 2. R-1365 (D2); 3. R-1366 rejected plan (D3).
 
 ## Next Steps
-- 3b. Repair owners re-run independently (real `node --test` scenarios).
 - 4. Scale matrix and real-model evidence: read, not re-run, unless the load allows.
 - 5. Review-report ZIP: a captured disposable HTTP order through the ordinary no-argument export.
 - 6. Full local gate once on the final commit; handoff; PR (not merged).
