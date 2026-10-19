@@ -586,6 +586,41 @@ def order_record_job_ids(record: OrderRecord) -> list[str]:
     return order_file_job_ids(source, since=record.started_at)
 
 
+def order_record_for_job(paths: ServePaths, job_id: str) -> OrderRecord | None:
+    """The newest order the supervisor started whose jobs include JOB_ID, or None.
+
+    Newest first, because an order key's file is sent again and an older record's window then
+    reaches the newer run's jobs too (`order_record_job_ids`).
+    """
+    if not paths.orders_dir.is_dir():
+        return None
+    records = [record for record in (read_order_record(paths, entry.name)
+                                     for entry in paths.orders_dir.iterdir()) if record is not None]
+    for record in sorted(records, key=lambda r: r.started_at, reverse=True):
+        if job_id in order_record_job_ids(record):
+            return record
+    return None
+
+
+# WHY: a walk runs its jobs in its own process, so an order's job has no run record; with only the
+# run record read, a job a dead walk left `running` looked alive forever and its abandon never ended
+# (exec-1018c, R-1361). `order_cancel._runner_alive` applies the same rule with the order in hand.
+def job_runner_alive(paths: ServePaths, job_id: str) -> bool:
+    """False only when every process the supervisor started that could run JOB_ID is known gone.
+
+    A run of it still running, or the walk of the newest order that lists it, is alive. With
+    neither a run record nor an order, no supervisor process ever ran it, and a run in a terminal
+    may hold it, so it counts as alive.
+    """
+    run = read_run_record(paths, job_id)
+    if run is not None and run_state(paths, run) == "running":
+        return True
+    order = order_record_for_job(paths, job_id)
+    if order is not None:
+        return order_state(paths, order) == "running"
+    return run is None
+
+
 def run_not_found_message(job_id: str) -> str:
     """The sentence a job with no run record is refused with (DECISION F253 D20 (1)).
 

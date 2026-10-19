@@ -33,13 +33,11 @@ CANCEL_ANSWER_TREES = {"job.abandon": JOB_CANCEL_ANSWER_TREE, "client.cancel-ord
 
 
 def _job_runner_alive(job_id: str) -> bool:
-    """False only when the supervisor's own run of *job_id* is known to have ended or been lost."""
+    """False only when every process the supervisor started for *job_id* is known gone (R-1361)."""
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import read_run_record, run_state
+    from packages.orchestration.serve_runs import job_runner_alive
 
-    paths = serve_paths()
-    run = read_run_record(paths, job_id)
-    return run is None or run_state(paths, run) == "running"
+    return job_runner_alive(serve_paths(), job_id)
 
 
 def _cmd_job_cancel(job_id: str, *, reason: str = "", source: str = "cli", json_output: bool = False) -> None:
@@ -66,8 +64,10 @@ def _cmd_job_cancel(job_id: str, *, reason: str = "", source: str = "cli", json_
         fail("job_not_found", f"No job matches {job_id!r}. Try: remedy job list.",
              json_output=json_output, exit_code=3, job_id=job_id)
     try:
+        # Only a `running` job's cancel reads its runner, and finding that runner reads every order.
         answer = cancel_job(job, reason=reason, source=source or "cli",
-                            runner_alive=_job_runner_alive(job_id))
+                            runner_alive=getattr(job.state, "value", job.state) == "running"
+                            and _job_runner_alive(job_id))
     except JobCancelRefused as refusal:
         fail(refusal.token, str(refusal), json_output=json_output, job_id=job_id,
              job_status=getattr(job.state, "value", str(job.state)))

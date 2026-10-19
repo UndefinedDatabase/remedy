@@ -19,8 +19,7 @@ with Universe's Improve tasks or Luna's reports.
 
 The `do` answer's `review_report` names it: `{report_id, status, file}`, `file` relative to the
 data root; null without the flag. Every job the walk plans and runs is in the report, including the
-jobs of an HTTP order. A job left waiting and run later by `remedy job run` is not: that run is not
-part of the walk.
+jobs of an HTTP order; a job left waiting and run later joins it (see below).
 
 ## Where it lives
 
@@ -51,8 +50,15 @@ Every string is redacted by `stream_evidence.redact_json_value` and the home dir
 
 `scripts/make_review_zip.sh`, with no argument, packages the newest ten reports (by start time,
 then id; failed and cancelled runs included) under `review_reports/`, with `index.json` and
-`INDEX.md`. With none, the index says that none exists and lists none. The copies are redacted a
-second time. The ZIP's timestamps are fixed, so the same reports give the same bytes.
+`INDEX.md`. With none, the index says that none exists and lists none. The index names the folder
+it read (`reports_dir`, the home directory written `~`), and the script prints it (`Review reports
+read from: …`). The copies are redacted a second time. The ZIP's timestamps are fixed, so the same
+reports give the same bytes.
+
+The script reads the data root of the checkout it runs in. The installed supervisor
+(`remedy serve start`, no `REMEDY_DATA_DIR`, no configured `data_dir`) writes to the `.data/` of the
+checkout its package resolves to, so build the ZIP from that checkout, or set `REMEDY_DATA_DIR` to
+the service's data root; a ZIP built in a worktree reads that worktree's own `.data/` and says so.
 `--evidence-dir` and `--job-id` keep working as before.
 
 ## Code

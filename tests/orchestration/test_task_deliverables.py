@@ -331,3 +331,59 @@ def test_only_the_files_an_order_asks_to_change_are_held_to_it(tmp_path, monkeyp
         assert task.error.startswith("protected_file_changed:") and "src/index.js" in task.error
     else:
         assert ended.state == JOB_COMPLETED, (ended.error, task.error)
+
+
+_FENCED_ORDER = ("Fix normalizeName in src/format.js and add a regression test in test/format.test.js. "
+                 "Change no other files.")
+
+
+@pytest.mark.parametrize(("order", "with_tests", "changed", "refused"), [
+    (_FENCED_ORDER, True, ["src/format.js", "test/format.test.js"], ""),
+    (_FENCED_ORDER, True, ["src/format.js", "src/index.js"], "src/index.js"),
+    (_FENCED_ORDER.replace(" Change no other files.", " Ändere keine anderen Dateien."), True,
+     ["src/format.js", "package.json"], "package.json"),
+    ("Fix normalizeName in src/format.js and add a regression test. Change no other files.", True,
+     ["src/format.js", "test/format.test.js"], ""),                 # a test it asks for but does not name
+    (_FENCED_ORDER.replace(" Change no other files.", ""), True, ["src/format.js", "src/index.js"], ""),
+], ids=["named", "unnamed-file", "german-fence", "unnamed-test", "no-fence"])
+def test_an_order_that_fences_its_files_refuses_a_change_to_any_other(tmp_path, monkeypatch, order, with_tests,
+                                                                        changed, refused):
+    """exec-1018c (R-1363), through a REAL job run and its real diff: "change no other files" holds
+    every round of the task to the files the order names, a repair round's too; a test-run cache is
+    no change, and an order without the fence leaves the builder free as before."""
+    from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job, save_job_plan
+    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.task_deliverables import deliverable_task
+
+    job_id = _two_file_job(tmp_path, monkeypatch)
+    job = load_job_plan(job_id)
+    job.tasks = [deliverable_task("src/format.js", order, with_tests=with_tests)]
+    save_job_plan(job)
+    fake = FakeProvider(builder_files=changed, pass_on_round=1, fail_on_round=99)
+
+    ended = run_job(job_id, builder_provider=fake, reviewer_provider=fake, repair_rounds=0)
+
+    task = load_job_plan(job_id).tasks[0]
+    if refused:
+        assert ended.state == JOB_BLOCKED
+        assert task.error == (f"unrequested_file_changed: the change touched {refused}, which the order "
+                              f"does not name and says no other file may change"), task.error
+    else:
+        assert ended.state == JOB_COMPLETED, (ended.error, task.error)
+
+
+def test_a_fenced_task_reads_a_test_runs_cache_as_no_change():
+    """A job-owned worktree's diff holds untracked files, so a test run's caches may appear beside the
+    code; they are no change of the task's (`pingpong_loop._is_target_noise`, read per component)."""
+    from types import SimpleNamespace
+
+    from packages.orchestration.task_deliverables import deliverable_files_refusal, deliverable_task
+
+    task = deliverable_task("src/format.js", _FENCED_ORDER, with_tests=True)
+    job, result = SimpleNamespace(tasks=[task]), SimpleNamespace(task_id=task.task_id)
+    changed = ["src/format.js", "test/format.test.js", "src/__pycache__/format.cpython-310.pyc",
+               "test/.pytest_cache/v/cache/nodeids", "node_modules/.package-lock.json"]
+
+    assert deliverable_files_refusal(job, result, changed) == ""
+    assert deliverable_files_refusal(job, result, [*changed, "src/index.js"]).startswith(
+        "unrequested_file_changed: the change touched src/index.js")

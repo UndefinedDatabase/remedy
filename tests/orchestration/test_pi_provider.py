@@ -363,6 +363,38 @@ def test_the_builder_gets_the_file_list_and_the_named_files_up_front(tmp_path):
     assert builder_workspace_context("", "x") == ""
 
 
+#: The loop's builder prompt of the 2026-10-18 real run r1351 (exec-1018b D9), shortened: its file tree
+#: and README section name files the task never asks for.
+_LOOP_PROMPT = (
+    "You are a Builder working on a software task.\n\n## Goal\nDeliver src/calc.js and its test "
+    "test/calc.test.js\n\n## File Tree\n```\n.git\nAGENTS.md\nREADME.md\npackage.json\nsrc/calc.js\n"
+    "src/format.js\ntest/baseline.test.js\n```\n\n## README.md\n```\n# remedy-lab\nSee package.json.\n```\n\n"
+    "## Task (Round 1)\nDie Funktion add(a, b) in src/calc.js rechnet falsch. Repariere sie und ergänze einen "
+    "Regressionstest in test/calc.test.js.\n")
+
+
+def test_the_files_shown_up_front_are_the_ones_the_task_names_not_the_trees(tmp_path):
+    """exec-1018c (P1 7): the named files were read from the WHOLE prompt, so the loop's file tree and
+    README section filled the four slots with README.md, package.json and src/format.js, and the style
+    file for the new test was cut: in the real run the builder's first turn was a read. AGENTS.md
+    arrives as project rules and is never shown twice."""
+    from packages.orchestration.pi_provider import builder_workspace_context
+
+    for rel, text in {"src/calc.js": "export function add(a, b) {\n  return a - b;\n}\n",
+                      "src/format.js": "export const f = 1;\n", "README.md": "# remedy-lab\n",
+                      "package.json": "{}\n", "AGENTS.md": "Use two spaces.\n",
+                      "test/baseline.test.js": 'import { test } from "node:test";\n'}.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+
+    text = builder_workspace_context(str(tmp_path), _LOOP_PROMPT)
+
+    preread = text.split("Current content of the files the task names", 1)[1]
+    shown = [line[4:-4] for line in preread.splitlines() if line.startswith("--- ") and line.endswith(" ---")]
+    assert shown == ["src/calc.js", "test/baseline.test.js"], shown
+    assert text.count("Use two spaces.") == 1                   # the rules, once
+
+
 def test_a_named_file_deep_in_a_large_repository_is_shown_and_the_cut_list_says_it_is_cut(tmp_path):
     """A tiny edit in a large repository: the bounded listing stops long before the named file, and
     it used to be neither shown nor reachable without a search, while the prompt called the list

@@ -242,7 +242,7 @@ table "Exit codes of every command" of the generated section at the end of this 
 |---|---|
 | `task_plan_approval` | `remedy decision resolve <job> plan:approval --reason approve` or `reject`, with `--answer <question>=<text>` for its bundled questions |
 | `task_decision` | `remedy decision resolve <job> <decision> --reason <answer>` |
-| `token_budget` | `remedy decision resolve <job> <decision> --reason extend --answer <limit>=<value>`, or `--reason abandon` |
+| `token_budget` | `remedy decision resolve <job> <decision> --reason extend --answer <limit>=<value>`, or `--reason abandon`; listed exactly while the job's current stop is a budget stop with no answer since, so every listed one takes both answers |
 | `proposal` | `remedy decision resolve <job> <decision> --reason approve`, `reject` or `defer` |
 | `replan_proposal` | `remedy decision resolve <job> <decision> --reason replan_follow_up` or `accept_reduced_scope` |
 | `stop_reason` | `remedy decision resolve <job> <decision>` |

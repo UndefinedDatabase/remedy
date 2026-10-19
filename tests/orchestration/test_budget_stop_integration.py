@@ -343,10 +343,13 @@ class TestDeterministicBudgetStopId:
 class TestDecisionQueueBudgetEvents:
     """Decision queue detects budget stops from events."""
 
-    def test_job_stopped_event_produces_decision(self):
+    def test_a_budget_stop_and_its_event_produce_the_decision_its_answer_takes(self):
+        from packages.orchestration.budget_decision import answer_budget_decision
         from packages.orchestration.decision_queue import list_decisions
         from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="event-test")
+        job.stop_source, job.stop_reason = "budget", "budget_exhausted:max_provider_calls"
+        job.stop_request_id, job.stopped_at = "budget_abc123", "2026-10-18T00:00:00+00:00"
         events = [{
             "event": "job_stopped",
             "metadata": {
@@ -359,17 +362,22 @@ class TestDecisionQueueBudgetEvents:
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
         assert len(budget_decisions) == 1
         assert "budget" in budget_decisions[0].safe_summary
+        answer = answer_budget_decision(job, budget_decisions[0].id, "abandon", [],
+                                        now=datetime(2026, 10, 18, 1, tzinfo=timezone.utc))
+        assert answer["outcome"] == "abandoned", answer
 
-    def test_metadata_budget_stop_produces_decision(self):
+    def test_an_event_or_a_legacy_key_alone_is_no_budget_stop(self):
+        """exec-1018c (R-1362): these two shapes were offered, and `answer_budget_decision` refused
+        every answer to them (`decision_not_found`), because the job's own stop is not the budget's.
+        The event survives in the run log after the person stops the job again."""
         from packages.orchestration.decision_queue import list_decisions
         from packages.orchestration.pingpong_job import JobPlan
-        job = JobPlan(
-            job_title="meta-budget-test",
-            metadata={"budget_stop_reason": "budget_exhausted:max_total_tokens"},
-        )
-        decisions = list_decisions(job, [])
-        budget_decisions = [d for d in decisions if d.type == "token_budget"]
-        assert len(budget_decisions) == 1
+        event_only = [{"event": "job_stopped", "metadata": {
+            "source": "budget", "reason": "budget_exhausted:max_provider_calls", "request_id": "b1"}}]
+        legacy = JobPlan(job_title="meta-budget-test",
+                         metadata={"budget_stop_reason": "budget_exhausted:max_total_tokens"})
+        for job, events in ((JobPlan(job_title="event-test"), event_only), (legacy, [])):
+            assert [d for d in list_decisions(job, events) if d.type == "token_budget"] == []
 
 
 # ---------------------------------------------------------------------------

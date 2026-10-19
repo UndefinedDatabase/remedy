@@ -1,22 +1,19 @@
-# Plan — verified repair, reliable evidence, adaptive execution (operator order exec-1018b, 2026-10-18)
+# Plan — release-candidate verification of PR 360-364 (operator order exec-1018c, 2026-10-18)
 
 ## Goal
-A real test that fails after a passing review leads to one budgeted, evidence-fed repair instead of
-a misleading completion or a pointless loop (R-1351); the review-report export is explained and
-proven end to end; PRs 360, 361 and 362 are reviewed as one release. Branch
-`feature/verified-repair` from PR 362's head `cfd906254`; worktree `.remedy-wt/verified-repair`.
-Merge order: 360, 361, 362, this. No merge, no deploy; `.agent/STOP`, supervisor, live checkout
-untouched. Outside the roadmap queue (F078 stays next).
+Verify the stacked release (#360 → #361 → #362 → #363 → #364) as one production change, fix only
+real remaining defects in a dependent PR, and hand over one release-candidate report. Branch
+`feature/release-candidate-verify` from PR 364's head `eb439f9fb`; worktree `.remedy-wt/rc-verify`.
+No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouched. Outside the
+roadmap queue: F078 stays next.
 
 ## Current Step
-10. Operator report 2026-10-18 (branch `feature/close-from-chat`, stacked on PR 363): R-1359 the
-    unanswerable budget question, R-1360 the story's `end` (API 1.21). Full gate, then the PR.
+8. Full local gate on the final commit, then the PR (result in its body). Handoff written.
+   Done: R-1361..R-1364, lifecycle matrix (15 rows over HTTP), API matrix 1.17-1.21 (D5),
+   builder targeting from the task's words (D6, replayed on real prompts, turns unmeasured).
 
 ## Next Steps
-- Operator: merge PR 360, 361, 362, 363, then this PR; restart `remedy serve`; Luna offers `end`.
-- Open: context files misread as required (D6); capture-by-default is the operator's call (D3).
+- Operator: review with 360-364, merge 360 → 361 → 362 → 363 → 364 → this; deploy per handoff 12.
 
 ## Risks
-- `run_job`, `run_pingpong` and both files sit at their ledger rows: edits there stay line-neutral,
-  new logic lives in `verified_repair.py`.
-- Another session (Universe recording) uses local Ollama and the CPU: real runs check load first.
+- Workstation shared with Universe: one pytest tree at a time, `-n 4` for focused runs.

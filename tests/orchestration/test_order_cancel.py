@@ -328,3 +328,49 @@ def test_a_walks_order_ends_with_the_walk_and_binds_no_later_call_in_the_same_th
     assert walk_cancel_request() is None
     assert walk_cancel_reader() is None
     assert walk_cancel_note() == ""
+
+
+def _abandon(job_id: str) -> dict:
+    """`remedy job abandon <job> --json` in this process, its envelope."""
+    from apps.cli.grouped import main
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.suppress(SystemExit):
+        main(["job", "abandon", job_id, "--reason", "not wanted", "--json"])
+    return json.loads(out.getvalue())
+
+
+def test_abandon_ends_at_once_an_order_job_its_ended_walk_left_running(order, monkeypatch, tmp_path):
+    """A walk runs its jobs in its own process, so they have no run record of their own. When the walk
+    is gone (a crash, a supervisor restart) a job it left `running` has no runner: abandoning it must
+    end it `cancelled` now, never answer `cancel_pending` for a stop no process will ever read."""
+    from packages.orchestration.pingpong_job import save_job_plan
+
+    envelope = order.walk("Add a usage section to README.md and add a CHANGELOG.md entry.", "--force-mission")
+    waiting = envelope["waiting_job_ids"][0]
+    job = load_job_plan(waiting)
+    job.state = RunState.RUNNING                   # the walk died while it ran this job
+    save_job_plan(job)
+    monkeypatch.chdir(tmp_path)                    # the walk's process has ended: the order is `lost`
+
+    answer = _abandon(waiting)
+
+    assert answer["ok"] is True, answer
+    assert (answer["cancel_pending"], answer["job_status"]) == (False, "cancelled"), answer
+    assert load_job_plan(waiting).state == RunState.CANCELLED
+
+
+def test_abandon_of_an_order_job_its_live_walk_runs_waits_for_the_walks_safe_point(order, monkeypatch):
+    """The counterpart: while the walk's process lives it may hold the job, so the cancel is pending."""
+    from packages.orchestration.pingpong_job import save_job_plan
+
+    envelope = order.walk("Add a usage section to README.md and add a CHANGELOG.md entry.", "--force-mission")
+    waiting = envelope["waiting_job_ids"][0]
+    job = load_job_plan(waiting)
+    job.state = RunState.RUNNING
+    save_job_plan(job)                             # still in the order's folder: the walk reads `running`
+
+    answer = _abandon(waiting)
+
+    assert (answer["cancel_pending"], answer["job_status"]) == (True, "running"), answer
+    assert load_job_plan(waiting).state == RunState.RUNNING

@@ -393,47 +393,28 @@ def list_decisions(
             ),
         ))
 
-    # 4. Budget exhaustion — check job fields, metadata, AND stop events
-    # JobPlan carries a real .metadata field too now (F112 T003a); getattr
-    # still covers any job shape without one, so nothing here changed.
-    _job_meta = getattr(job, "metadata", None) or {}
-    if not isinstance(_job_meta, dict):
-        _job_meta = {}
-    # R-1359: a job's ERROR text is no budget stop (a task's loop cap writes `budget_exhausted` there too,
-    # and `answer_budget_decision` refuses every answer): only the stop's own fields, event or legacy key are.
-    budget_error = str(_job_meta.get("budget_stop_reason", "") or "")
-    if "budget_exhausted" not in budget_error:
-        _stop_reason = str(getattr(job, "stop_reason", "") or "")
-        _stop_source = str(getattr(job, "stop_source", "") or "")
-        if "budget" in _stop_source or "budget_exhausted" in _stop_reason:
-            budget_error = _stop_reason or "budget_exhausted"
-
-    if "budget_exhausted" not in budget_error:
-        for ev in events:
-            if (ev.get("event") == "job_stopped"
-                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
-                budget_error = str(
-                    (ev.get("metadata") or {}).get("reason", "budget_exhausted"))
-                break
-
-    # DECISION F295 D11 (4): a budget stop answered since the job last stopped
-    # is left off the queue — `budget_stop_answer` is the one reader of that,
-    # shared with the resume guard, so the two can never disagree about it.
-    if (budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error)
-            and budget_stop_answer(job) is None):
+    # 4. Budget exhaustion — the job's own stop, read as its answer reads it.
+    # R-1359, R-1362: the queue offers a budget decision exactly when `answer_budget_decision` takes one:
+    # the job's current stop is the budget's and unanswered (`open_budget_decision_id`, the answer's and
+    # the resume guard's own reader). An error text (a task's loop cap writes `budget_exhausted` there),
+    # the legacy `budget_stop_reason` key, or an earlier budget stop's event left in the run log after the
+    # person stopped the job again is no open budget stop: each was offered, and every answer refused.
+    _decision_id = open_budget_decision_id(job)
+    budget_error = (str(getattr(job, "stop_reason", "") or "") or "budget_exhausted") if _decision_id else ""
+    if _decision_id:
+        _stop_request = str(getattr(job, "stop_request_id", "") or "")
         _budget_request_id = ""
         _budget_created_at = ""
         _budget_limit = ""
+        # The receipts cite the event of this stop, not of an earlier budget stop the person answered.
         for ev in events:
-            if (ev.get("event") == "job_stopped"
-                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
-                _budget_request_id = str(
-                    (ev.get("metadata") or {}).get("request_id", ""))
+            _meta = ev.get("metadata") or {}
+            if (ev.get("event") == "job_stopped" and str(_meta.get("source", "")) == "budget"
+                    and (not _stop_request or str(_meta.get("request_id", "")) == _stop_request)):
+                _budget_request_id = str(_meta.get("request_id", ""))
                 _budget_created_at = str(ev.get("timestamp", ""))
-                _budget_limit = str(
-                    (ev.get("metadata") or {}).get("exhausted_limit", ""))
+                _budget_limit = str(_meta.get("exhausted_limit", ""))
                 break
-        _decision_id = budget_decision_id(str(getattr(job, "stop_request_id", "") or "") or _budget_request_id)
         # F032 T002a: the receipts behind the budget stop are built from what
         # this branch ALREADY read out of the stop event, so the card cites the
         # same evidence the guard acted on rather than a fresh derivation.  A
