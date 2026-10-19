@@ -284,7 +284,7 @@ find . \
   \( \
     -path './.git' -o \
     -path './.data' -o \
-    -path './.agent/Evidence' -o \
+    -path './.agent' -o \
     -path './node_modules' -o \
     -path './*/node_modules' -o \
     -path './dist' -o \
@@ -646,18 +646,11 @@ if [[ -n "$LEAKED" ]]; then
 fi
 
 VERIFY_ERRORS=""
-for AGENT_FILE in .agent/live_review.md .agent/plan.md .agent/review_protocol.md; do
-  MANIFEST_STATUS="$(python3 -c "
-import json, sys
-m = json.load(open('$MANIFEST'))
-print(m.get('agent_state', {}).get('$AGENT_FILE', 'absent'))
-" 2>/dev/null || echo "error")"
-  if [[ "$MANIFEST_STATUS" == "present" ]]; then
-    if ! grep -qF "$AGENT_FILE" <<< "$ZIP_LISTING"; then
-      VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $AGENT_FILE present but missing from zip\n"
-    fi
-  fi
-done
+# `.agent/` is development-only operator state. The manifest may report whether selected workflow
+# files exist, but their bytes are deliberately never review-package members.
+if grep -qE '^\.agent(/|$)' <<< "$ZIP_LISTING"; then
+  VERIFY_ERRORS="${VERIFY_ERRORS}Development-only .agent state found in zip\n"
+fi
 
 if python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('current_evidence') else 1)" 2>/dev/null; then
   EXPECTED_EVIDENCE="$(python3 -c "

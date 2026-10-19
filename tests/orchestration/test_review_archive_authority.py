@@ -2,8 +2,8 @@
 
 The ArchivePlan used to mark all 21 ReviewSubject files authoritative, re-authorizing the three
 `.agent` operator-state files and disagreeing with the 18-file Content-Proof authority set. A
-member is now authoritative iff its path is in the explicit authority set, and `.agent` state is
-classified operator-context, non-authoritative, regardless of subject membership.
+member is authoritative iff its path is in the explicit authority set, while development-only
+`.agent` state is excluded regardless of subject membership.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import subprocess
 import pytest
 
 from packages.orchestration.archive_plan import (
-    SOURCE_OPERATOR_CONTEXT,
+    DISP_EXCLUDE_SAFE_CONTEXT,
     SOURCE_REPOSITORY,
     build_archive_plan,
 )
@@ -71,17 +71,17 @@ class TestAuthorityIsExplicit:
         assert _member(plan, "a.py").authoritative is True
         assert _member(plan, "b.py").authoritative is False
 
-    def test_agent_operator_state_is_never_authoritative(self, repo):
+    def test_agent_operator_state_is_excluded_even_if_claimed_as_authority(self, repo):
         r, base = repo
         (r / ".agent").mkdir()
         (r / ".agent" / "plan.md").write_text("# plan\n")
         _sh(r, "git add -A && git commit -qm agent")
         subject = resolve_review_subject(r, base)
-        # Even if a caller wrongly puts `.agent/plan.md` in the authority set, it is operator state.
         plan = _plan(r, subject, {".agent/plan.md"}, [".agent/plan.md", "base.txt"])
-        m = _member(plan, ".agent/plan.md")
-        assert m is not None
-        assert m.source_class == SOURCE_OPERATOR_CONTEXT
+
+        assert _member(plan, ".agent/plan.md") is None
+        excluded = {record.path: record.disposition for record in plan.excluded_records}
+        assert excluded[".agent/plan.md"] == DISP_EXCLUDE_SAFE_CONTEXT
 
     def test_authority_set_hash_is_recorded(self, repo):
         r, base = repo

@@ -52,8 +52,9 @@ Every string is redacted by `stream_evidence.redact_json_value` and the home dir
 then id; failed and cancelled runs included) under `review_reports/`, with `index.json` and
 `INDEX.md`. With none, the index says that none exists and lists none. The index names the folder
 it read (`reports_dir`, the home directory written `~`), and the script prints it (`Review reports
-read from: …`). The copies are redacted a second time. The ZIP's timestamps are fixed, so the same
-reports give the same bytes.
+read from: …`). The copies are redacted a second time. Development-only `.agent/` state is never
+packaged; review truth comes from the staged evidence and report copies instead. The ZIP's
+timestamps are fixed, so the same reports give the same bytes.
 
 The script reads the data root of the checkout it runs in. The installed supervisor
 (`remedy serve start`, no `REMEDY_DATA_DIR`, no configured `data_dir`) writes to the `.data/` of the

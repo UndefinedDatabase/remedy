@@ -14,8 +14,8 @@ import pytest
 
 from packages.orchestration.archive_plan import (
     DISP_BLOCK_SENSITIVE,
+    DISP_EXCLUDE_SAFE_CONTEXT,
     DISP_INCLUDE,
-    DISP_OPERATOR_CONTEXT,
     build_archive_plan,
     classify_bundle_path,
 )
@@ -67,10 +67,10 @@ class TestBundleSafetyPolicy:
     def test_a_plain_context_path_is_included(self):
         assert classify_bundle_path("src/app.py", changed=False) == DISP_INCLUDE
 
-    def test_agent_state_is_operator_context(self):
+    def test_agent_state_is_safely_excluded(self):
         assert classify_bundle_path(".agent/plan.md", changed=True,
                                     is_authoritative_source=lambda p: True) \
-            == DISP_OPERATOR_CONTEXT
+            == DISP_EXCLUDE_SAFE_CONTEXT
 
     def test_a_changed_env_is_blocked_in_the_plan_not_packaged(self, repo):
         r, base = repo

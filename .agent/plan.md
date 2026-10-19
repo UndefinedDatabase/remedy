@@ -1,20 +1,19 @@
-# Plan — release readiness of PR 360-365 (operator order rel-1019, 2026-10-19)
+# Plan — agent-state data hygiene
 
 ## Goal
-Make the stacked release (#360 → #361 → #362 → #363 → #364 → #365) a reviewed, deployable,
-dependable release: recover the newest handback, re-verify the stack independently, fix only
-reproduced defects in one dependent PR, and hand over one German release handoff. Branch
-`feature/release-readiness` from PR 365's head `7181a2311`; worktree `.remedy-wt/release-readiness`.
-No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouched. Outside the
-roadmap queue: F078 stays next.
+Keep development-only `.agent` content out of review packages and reject newly staged sensitive
+agent-state additions before commit; preserve required workflow state and Git history. This is
+outside the roadmap queue; F078 remains next.
 
 ## Current Step
-6. Handoff, then the full local gate once on the final commit, then the PR (not merged).
-   Done: 1. handback recovered, ZIP diagnosed (D1); 2. R-1365 (D2); 3. R-1366 (D3); 4. R-1367 (D4);
-   5. measurements: one real run, live jobs read-only, scale matrix, ZIP with a real report (D5).
+6. Review finding R-1368 repaired and verified; commit, push, update PR 367, then merge.
 
 ## Next Steps
-- Operator: review PRs 360-365 and this one; merge in order; deploy per handoff section 12.
+- Merge PR 367 after the correction passes review and local gates.
+- Operator: decide separately whether a coordinated history rewrite is warranted; this change keeps
+  historical records out of new packages without rewriting them.
 
 ## Risks
-- Workstation shared with Universe: one pytest tree at a time, `-n 6` at most.
+- Historical committed records remain in Git history and cannot be rewritten under current rules.
+- Required append-only workflow records cannot be destructively sanitized; prevention applies to new
+  staged lines, while package exclusion prevents their distribution.

@@ -16,7 +16,9 @@ compliance for the current development block.
 - NOT canonical progress truth
 - NOT core product readiness truth
 
-Normal Remedy users never need to read, edit, or depend on this file.
+Normal Remedy users never need to read, edit, or depend on this file. Review packages exclude the
+entire `.agent/` tree: development coordination state is not a review artifact and must not be sent
+to an external reviewer.
 
 ## Allowed development uses
 
@@ -34,6 +36,14 @@ The following modules must NOT depend on `.agent/live_review.md`:
 
 Guard tests enforce this boundary (see
 `tests/orchestration/test_development_artifact_boundary.py`).
+
+## Data hygiene
+
+Newly staged `.agent/` lines are checked by `scripts/check_agent_hygiene.py` from the repository's
+pre-commit hook. Credentials, machine-local paths, provider-session links and private-network
+addresses are refused; binary attachments, symlinks and other non-regular entries are refused as
+well. Historical Git objects are not
+rewritten by this forward-looking guard.
 
 ## Current legacy dependencies
 
