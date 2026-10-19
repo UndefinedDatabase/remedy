@@ -278,7 +278,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.20`.
+Interface version: `1.21`.
 
 ### Envelope
 
@@ -315,6 +315,7 @@ Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applie
 Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
 Story next actions: `apply`, `decline`, `answer`, `retry`, `none`, `run`, `resume`.
+Story end actions: `abandon`, `decline`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
 Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
@@ -848,7 +849,7 @@ Keys under the answer keys: see below.
 - `exit_codes`: `code`, `meaning`, `name`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
-- `story`: `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
+- `story`: `end_actions`, `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
   - `phrases`: `*`
   - `reasons`: `*`
 
@@ -949,10 +950,12 @@ Description: Read one Job's run story in closed words a client translates: its s
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
-Answer keys: `changes`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
+Answer keys: `changes`, `end`, `ended_at`, `job_id`, `matches`, `next`, `note_open`, `numbers`, `order`, `started_at`, `state`, `state_detail`, `steps`, `updated_at`, `verification`.
 Keys under the answer keys: see below.
 
 - `changes`: `added`, `path`, `removed`
+- `end`: `action`, `route`
+  - `route`: `method`, `path`
 - `next`: `action`, `route`
   - `route`: `method`, `path`
 - `numbers`: `calls`, `duration_s`, `model_turns`, `rounds`, `tokens_in`, `tokens_out`

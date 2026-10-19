@@ -328,6 +328,9 @@ class TestDecisionIdentity:
 
         job = JobPlan(job_title="test", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
+        # As `_stop_job` records a budget stop on the job beside its event (R-1359: the queue offers
+        # only the decision `answer_budget_decision` can answer, which reads these two fields).
+        job.stop_source, job.stop_request_id = "budget", "budget_abc123"
         events = [{
             "event": "job_stopped",
             "timestamp": "2026-07-01T12:00:00Z",
@@ -653,6 +656,9 @@ class TestJobplanStopCreatesDecision:
 
         job = JobPlan(job_title="stopjob", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
+        # As `_stop_job` records a budget stop on the job beside its event (R-1359: the queue offers
+        # only the decision `answer_budget_decision` can answer, which reads these two fields).
+        job.stop_source, job.stop_request_id = "budget", "budget_plan_req_42"
         events = [{
             "event": "job_stopped",
             "timestamp": "2026-07-01T13:00:00Z",

@@ -333,7 +333,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         description=(
             "One job's run story in closed words a client translates, as `remedy client story "
             "<job> --json` prints it: `order`, `state` and `state_detail`, `next` with the one "
-            "next step and the route that takes it, the five `steps` with the job's tasks under "
+            "next step and the route that takes it, `end` with the way out of a job that is still open "
+            "(since 1.21), the five `steps` with the job's tasks under "
             "`building`, `changes`, `numbers` (null where not measured) and `note_open`. Every "
             "word is in the `story` key of `GET /api/v1/interface`. A job id prefix is accepted, "
             "and a client token reads only a job of one of its projects (403 "

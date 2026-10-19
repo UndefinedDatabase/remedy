@@ -14,7 +14,7 @@ from typing import Any
 #: The top-level keys `remedy client story <job> --json` can answer beside the envelope's own:
 #: `build_client_story`'s keys, and `matches` of the `ambiguous_job_id` refusal.
 CLIENT_STORY_ANSWER_KEYS: tuple[str, ...] = (
-    "changes", "ended_at", "job_id", "matches", "next", "note_open", "numbers", "order",
+    "changes", "end", "ended_at", "job_id", "matches", "next", "note_open", "numbers", "order",
     "started_at", "state", "state_detail", "steps", "updated_at", "verification",
 )
 
@@ -33,6 +33,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
     "state_detail": {"file": {}, "round": {}, "reason": _WORD_TREE, "question": {},
                      "decision_id": {}, "changed_files": {}},
     "next": {"action": {}, "route": {"method": {}, "path": {}}},
+    "end": {"action": {}, "route": {"method": {}, "path": {}}},
     "steps": {"id": {}, "status": {}, "phrase": _WORD_TREE, "tokens": {"in": {}, "out": {}},
               "tasks": {"title": {}, "status": {}, "rounds": {}, "files": {}}},
     "changes": {"path": {}, "added": {}, "removed": {}},
@@ -43,7 +44,7 @@ CLIENT_STORY_KEY_TREE: dict[str, Any] = {
 #: The keys of the interface's `story` key, `client_story_words.story_words()`; under `phrases`
 #: and `reasons` each key is a word mapped to the names of its arguments.
 STORY_WORDS_KEY_TREE: dict[str, Any] = {
-    "states": {}, "step_ids": {}, "step_statuses": {}, "next_actions": {},
+    "states": {}, "step_ids": {}, "step_statuses": {}, "next_actions": {}, "end_actions": {},
     "phrases": {"*": {}}, "reasons": {"*": {}}, "questions": {}, "verification_statuses": {},
 }
 
@@ -51,6 +52,7 @@ STORY_WORDS_KEY_TREE: dict[str, Any] = {
 STORY_WORD_LABELS: tuple[tuple[str, str], ...] = (
     ("states", "Story states"), ("step_ids", "Story steps"),
     ("step_statuses", "Story step statuses"), ("next_actions", "Story next actions"),
+    ("end_actions", "Story end actions"),
     ("questions", "Story questions"), ("verification_statuses", "Story verification statuses"),
 )
 

@@ -399,12 +399,9 @@ def list_decisions(
     _job_meta = getattr(job, "metadata", None) or {}
     if not isinstance(_job_meta, dict):
         _job_meta = {}
-    budget_error = str(
-        _job_meta.get("budget_stop_reason", "")
-        or _job_meta.get("error", "")
-        or getattr(job, "error", "")
-        or ""
-    )
+    # R-1359: a job's ERROR text is no budget stop (a task's loop cap writes `budget_exhausted` there too,
+    # and `answer_budget_decision` refuses every answer): only the stop's own fields, event or legacy key are.
+    budget_error = str(_job_meta.get("budget_stop_reason", "") or "")
     if "budget_exhausted" not in budget_error:
         _stop_reason = str(getattr(job, "stop_reason", "") or "")
         _stop_source = str(getattr(job, "stop_source", "") or "")
@@ -436,7 +433,7 @@ def list_decisions(
                 _budget_limit = str(
                     (ev.get("metadata") or {}).get("exhausted_limit", ""))
                 break
-        _decision_id = budget_decision_id(_budget_request_id)
+        _decision_id = budget_decision_id(str(getattr(job, "stop_request_id", "") or "") or _budget_request_id)
         # F032 T002a: the receipts behind the budget stop are built from what
         # this branch ALREADY read out of the stop event, so the card cites the
         # same evidence the guard acted on rather than a fresh derivation.  A

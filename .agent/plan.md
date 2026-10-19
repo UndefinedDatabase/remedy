@@ -9,11 +9,11 @@ Merge order: 360, 361, 362, this. No merge, no deploy; `.agent/STOP`, supervisor
 untouched. Outside the roadmap queue (F078 stays next).
 
 ## Current Step
-9. All steps done (D1–D10, R-1354–R-1358, handoff written): the one full gate on this commit, then
-   the PR (not merged).
+10. Operator report 2026-10-18 (branch `feature/close-from-chat`, stacked on PR 363): R-1359 the
+    unanswerable budget question, R-1360 the story's `end` (API 1.21). Full gate, then the PR.
 
 ## Next Steps
-- Operator: merge PR 360, 361, 362, then this PR; restart `remedy serve`.
+- Operator: merge PR 360, 361, 362, 363, then this PR; restart `remedy serve`; Luna offers `end`.
 - Open: context files misread as required (D6); capture-by-default is the operator's call (D3).
 
 ## Risks
