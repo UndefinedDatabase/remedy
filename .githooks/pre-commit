@@ -9,3 +9,7 @@ if [ -n "$staged" ]; then
     echo "$staged" | head -5 >&2
     exit 1
 fi
+
+# Agent state is shared with coding providers and must not gain credentials, machine-local
+# identifiers, provider-session links, private-network addresses, or binary attachments.
+python3 scripts/check_agent_hygiene.py --staged || exit $?

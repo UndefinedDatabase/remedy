@@ -53,15 +53,13 @@ _GIT_MODE_TO_MEMBER = {
 SOURCE_REPOSITORY = "repository"
 SOURCE_EVIDENCE = "evidence"
 SOURCE_GENERATED_MANIFEST = "generated_manifest"
-SOURCE_OPERATOR_CONTEXT = "operator_context"
 
 #: F7 (round 19): the bundle-SAFETY policy — decided per path BEFORE any byte is read, kept
 #: SEPARATE from the authority policy (`is_attestable_source` decides authority, never whether
 #: bytes may enter). A `.env`/key/log/archive changed inside the reviewed tree is BLOCK_SENSITIVE;
-#: `.agent` state is OPERATOR_CONTEXT (included, non-authoritative); a deletion is a TOMBSTONE; an
-#: unrepresentable kind is BLOCK_UNSUPPORTED; everything else INCLUDE.
+#: `.agent` state is development-only and excluded; a deletion is a TOMBSTONE; an unrepresentable
+#: kind is BLOCK_UNSUPPORTED; everything else INCLUDE.
 DISP_INCLUDE = "include"
-DISP_OPERATOR_CONTEXT = "operator_context"
 DISP_EXCLUDE_SAFE_CONTEXT = "exclude_safe_context"   # F5 (round 21): unchanged sensitive context
 DISP_TOMBSTONE = "tombstone"
 DISP_BLOCK_SENSITIVE = "block_sensitive"
@@ -78,7 +76,7 @@ _SENSITIVE_NAMES = frozenset({
     "service-account.json", "service_account.json", "client_secret.json",
     "firebase-adminsdk.json", "settings.local.json",
 })
-#: Operator-state directory prefix — included as non-authoritative context, never blocked.
+#: Development-only operator-state prefix — recorded as excluded, never packaged.
 _OPERATOR_STATE_PREFIX = ".agent/"
 #: F5 (round 23): the review-package build-output basename prefix (a prior `remedy-review-*.zip` and
 #: its `.sha256` sidecar). Classified EXCLUDE_SAFE_CONTEXT so a prior output cannot recurse.
@@ -108,13 +106,13 @@ def classify_bundle_path(rel: str, *, changed: bool, kind: str | None = None,
     The decision is made from the path alone, BEFORE any read, and it is the SAME policy for a
     changed member and for unchanged bundle context (round 20 F7): a sensitive path — a `.env`, a
     key, a certificate, a log, an old archive, a binary — never enters the package whether or not it
-    is part of the reviewed change. Operator state is always context. ``kind``/``source_class`` are
+    is part of the reviewed change. Operator state is always excluded. ``kind``/``source_class`` are
     accepted so every caller invokes one signature; ``is_authoritative_source`` is ignored
     (disposition is independent of authority).
     """
     norm = rel.replace("\\", "/")
     if norm.startswith(_OPERATOR_STATE_PREFIX):
-        return DISP_OPERATOR_CONTEXT
+        return DISP_EXCLUDE_SAFE_CONTEXT
     base = norm.rsplit("/", 1)[-1]
     low = base.lower()
     # F5 (round 23): a PRIOR review package (or its .sha256 sidecar) is a build output, identified
@@ -183,8 +181,8 @@ class BlockedRecordV1:
 
 @dataclass(frozen=True)
 class ExcludedRecordV1:
-    """F5 (round 21): an unchanged sensitive CONTEXT path that is safely EXCLUDED — never packaged,
-    but recorded with an explicit disposition so it never silently disappears."""
+    """A sensitive or development-only path that is safely EXCLUDED — never packaged, but recorded
+    with an explicit disposition so it never silently disappears."""
     path: str
     disposition: str
     reason: str
@@ -288,11 +286,6 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
         # Content Proof names it. Authority is the proof set MINUS operator state, always.
         return p in authoritative_paths and not _is_operator_state(p)
 
-    def _source_class(p: str, auth: bool) -> str:
-        if _is_operator_state(p):
-            return SOURCE_OPERATOR_CONTEXT
-        return SOURCE_REPOSITORY
-
     # 1. The reviewed change — every ReviewSubject file, one disposition each.
     for f in subject.files:
         disp = classify_bundle_path(f.path, changed=True, kind=f.kind)
@@ -303,6 +296,11 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             blocked.append(BlockedRecordV1(
                 path=f.path, reason="changed sensitive path (secret/key/log/archive/binary); "
                                     "its bytes must never enter the package"))
+            continue
+        if disp == DISP_EXCLUDE_SAFE_CONTEXT:
+            excluded.append(ExcludedRecordV1(
+                path=f.path, disposition=DISP_EXCLUDE_SAFE_CONTEXT,
+                reason="development-only .agent state; excluded"))
             continue
         if f.kind in (KIND_DIRECTORY, KIND_SPECIAL):
             blocked.append(BlockedRecordV1(
@@ -324,7 +322,7 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
         members[f.path] = ArchiveMemberV1(
             archive_path=f.path, kind=kind, mode=mode, authoritative=auth,
             source_root=str(repo_root), source_rel=f.path,
-            source_class=_source_class(f.path, auth),
+            source_class=SOURCE_REPOSITORY,
             expected_sha256=(f.current_sha256 if kind == MEMBER_REGULAR else None),
             expected_link_target=(f.link_target if kind == MEMBER_SYMLINK else None))
 
@@ -346,7 +344,7 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
                 reason="unchanged sensitive context (secret/key/log/archive/binary); excluded"))
             continue
         auth = _is_auth(rel)
-        sclass = _source_class(rel, auth)
+        sclass = SOURCE_REPOSITORY
         disk = repo_root / rel
         try:
             st = disk.lstat()

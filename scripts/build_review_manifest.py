@@ -3445,7 +3445,7 @@ def build_manifest_from_snapshot(
         "policy": (
             "Current-run evidence under evidence/current/. "
             "Stale evidence dirs excluded by default. "
-            "Excludes .git, .data, node_modules, caches, build outputs, "
+            "Excludes .git, .data, .agent operator state, node_modules, caches, build outputs, "
             "env files, private keys, logs, old archives."
         ),
         "agent_state": {
