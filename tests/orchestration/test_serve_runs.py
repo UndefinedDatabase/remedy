@@ -919,3 +919,67 @@ def test_a_running_run_that_has_printed_an_envelope_reads_no_answer_until_it_end
     ended = SR.run_record_payload(paths, SR.read_run_record(paths, "jobR"))
     assert ended["state"] == "ended"
     assert ended["answer"] == {"ok": True, "job_id": "jobR"}
+
+
+# --- R-1365: a pending cancel whose runner died ends the job ------------------------------------
+
+
+def _running_job_with_pending_cancel(root: Path) -> str:
+    """A `running` job the cancel answered `cancel_pending` for, as a live runner leaves it."""
+    from packages.orchestration.job_cancel import cancel_job
+    from packages.orchestration.pingpong_job import JOB_RUNNING, JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_title="cancel-pending", state=JOB_RUNNING, tasks=[TaskEntry(title="t0", body="d")])
+    save_job_plan(job, root)
+    answer = cancel_job(job, reason="not wanted any more", source="api", runner_alive=True)
+    assert (answer["cancel_pending"], answer["job_status"]) == (True, "running")
+    return str(job.job_id)
+
+
+def test_a_run_that_dies_before_its_safe_point_ends_its_cancelled_job(setup, monkeypatch):
+    from packages.orchestration.pingpong_job import JOB_RUNNING, load_job_plan
+
+    root, paths, launcher, release = setup
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+    job_id = _running_job_with_pending_cancel(root)
+    launcher.start(job_id)
+    assert SR.settle_orphaned_job_cancels(paths) == []          # its run is alive: the cancel waits
+    assert load_job_plan(job_id).state == JOB_RUNNING
+    release.touch()                                               # the run exits without a safe point
+    assert launcher.wait(job_id, timeout=30) == 3
+    job = load_job_plan(job_id)
+    assert (job.state.value, job.metadata["cancel"]["reason"]) == ("cancelled", "not wanted any more")
+
+
+def test_the_supervisors_start_ends_a_cancelled_job_whose_run_is_gone(setup, monkeypatch):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    root, paths, launcher, release = setup
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
+    job_id = _running_job_with_pending_cancel(root)
+    _plant_record(paths, SR.RunRecord(job_id=job_id, pid=_dead_pid(), started_at="2026-10-19T08:00:00Z",
+                                      out_log="o", err_log="e", ended_at="2026-10-19T08:01:00Z"))
+    assert SR.settle_orphaned_job_cancels(paths) == [job_id]
+    assert load_job_plan(job_id).state.value == "cancelled"
+    assert SR.settle_orphaned_job_cancels(paths) == []          # once: an ended job is left as it is
+
+
+def test_a_job_no_supervisor_process_ran_keeps_its_pending_cancel(tmp_path, monkeypatch):
+    """No run record and no order: a run in a terminal may hold it, so only that run ends it."""
+    from packages.orchestration.pingpong_job import JOB_RUNNING, load_job_plan
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    job_id = _running_job_with_pending_cancel(tmp_path)
+    assert SR.settle_orphaned_job_cancels(serve_paths(tmp_path)) == []
+    assert load_job_plan(job_id).state == JOB_RUNNING
+
+
+def test_an_order_that_ends_settles_the_cancels_of_its_jobs(order_setup, monkeypatch):
+    root, paths, launcher, release = order_setup
+    seen: list[list[str]] = []
+    monkeypatch.setattr(SR, "settle_orphaned_job_cancels", lambda _paths, ids=None: seen.append(ids) or [])
+    monkeypatch.setattr(SR, "order_record_job_ids", lambda record: [f"job-of-{record.order_id}"])
+    record = launcher.start("x", [str(release), "0"])
+    release.touch()
+    launcher.wait(record.order_id, timeout=30)
+    assert seen == [[f"job-of-{record.order_id}"]]

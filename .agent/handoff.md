@@ -1,135 +1,133 @@
-# Handoff — exec-1018c: release candidate of PRs 360-364 (2026-10-18)
+# Handoff — rel-1019: release readiness of PRs 360-365 (2026-10-19)
 
-Session 1 of exec-1018c. Branch `feature/release-candidate-verify` from PR 364's head `eb439f9fb`,
-worktree `.remedy-wt/rc-verify`. Not merged, not deployed. `.agent/STOP`, the supervisor
-(`luna-remedy-serve.service`), the live checkout (main `6933bb0e0`) and its `.data` untouched; the
-live data root was never read (the operator's settings deny it). Decisions exec-1018c D1–D6;
-findings R-1361–R-1364. This is no claim that Remedy is perfect: what is below is what was shown.
+Session 1 of rel-1019 (operator order "Release Readiness, Operational Reliability and Real Execution
+Quality"). Branch `feature/release-readiness` from PR 365's head `7181a2311`, worktree
+`.remedy-wt/release-readiness`. Not merged, not deployed. `.agent/STOP`, the supervisor
+(`luna-remedy-serve.service`, main `6933bb0e0`, API 1.17), the main checkout and its `.data`, and
+every live job untouched. Decisions rel-1019 D1–D5; findings R-1365–R-1367 (all repaired here).
 
-## 1. Git and PR dependency state (verified directly)
-| PR | Branch | Head | Base | API |
+## 1. Git and PR state (read from git and GitHub at the start of the session)
+| PR | Branch | Head | API | State |
 |---|---|---|---|---|
-| 360 | feature/execution-excellence | `9b172a16c` | main `6933bb0e0` | 1.18 |
-| 361 | feature/order-cancel | `652029edc` | 360 | 1.19 |
-| 362 | feature/adaptive-reliability | `cfd906254` | 361 | 1.20 |
-| 363 | feature/verified-repair | `6f26f3c2e` | 362 | 1.20 |
-| 364 | feature/close-from-chat | `eb439f9fb` | 363 | 1.21 |
-| this | feature/release-candidate-verify | see PR | 364 | 1.21 |
-Every PR targets `main`; each head is an ancestor of the next (checked with `git merge-base
---is-ancestor`). The installed service runs main (1.17); none of 360-364 is deployed.
+| 360 | feature/execution-excellence | `9b172a16c` | 1.18 | open, mergeable, no checks |
+| 361 | feature/order-cancel | `652029edc` | 1.19 | open, mergeable |
+| 362 | feature/adaptive-reliability | `cfd906254` | 1.20 | open, mergeable |
+| 363 | feature/verified-repair | `6f26f3c2e` | 1.20 | open, mergeable |
+| 364 | feature/close-from-chat | `eb439f9fb` | 1.21 | open, mergeable |
+| 365 | feature/release-candidate-verify | `7181a2311` | 1.21 | open, mergeable |
+| this | feature/release-readiness | see PR | 1.21 | new |
+Each head is an ancestor of the next (`git merge-base --is-ancestor`). All target `main`. Hosted CI
+is manual (amend1011), so no PR carries a check. Implemented, tested and pushed: all seven. Merged,
+installed, active in the supervisor: none (the service runs main 1.17, started 2026-10-17 17:53).
 
-## 2. Independent findings and fixes
+## 2. The lost handback (rel-1019 D1)
+The newest engineering handback is `.agent/handoff.md` on PR 365's branch (commit `0ec6848cc`). The
+ZIP of 2026-10-19 09:18 (`remedy-review-20261019-091839-NO_EVIDENCE.zip`) was packaged from the main
+checkout at `6933bb0e0` (its manifest: branch `main`, dirty only `?? .agent/STOP`), so it carries
+main's last handoff (scale-correctness) and main's stager (no `reports_dir`). Nothing was lost; the
+stack is just not on main. A ZIP shows the handoff of the branch it is built from (shown again
+below: the ZIP built on this branch carried PR 365's handoff until this file replaced it).
+
+## 3. Findings and repairs
 | Item | Status | Reason |
 |---|---|---|
-| R-1361 High: abandon of an order's job a dead walk left `running` answered `cancel_pending` forever | done | D1, `serve_runs.job_runner_alive` |
-| R-1362 High: R-1359 recurred through the run log (answered budget stop, later person's stop) | done | D2, queue reads `open_budget_decision_id`; 1,032/1,600 → 0 |
-| R-1363 Medium: a fenced order's round (a repair's too) could change an unnamed file and complete | done | D3, `unrequested_file_changed` |
-| R-1364 Low: the review ZIP's "none" never said which data root it read | done | D4 |
-| Stale HTTP doc: story `queued`, `run`, `resume` (1.19) missing | done | D5 |
-| P1 7 builder targeting from the whole prompt | done | D6, deterministic replay; real turns unmeasured |
-| Pre-existing: `test_do_evidence_package.py` → `test_do_order_budget.py` red in one process | skipped | R-1172's leaked tripwire class (F297); reproduced identically on `eb439f9fb` |
+| R-1365 Medium: a `cancel_pending` job whose run or walk died before its safe point stayed `running`, its order `cancelling` on every poll | done | D2, `serve_runs.settle_orphaned_job_cancels` at process end and supervisor start |
+| R-1366 Medium: a rejected plan's story offered `run`, which every run refuses (`plan_rejected`); order view said `needs_plan_approval` | done | D3, story `stopped`/`declined`, next `none`, end `abandon`; order phase `declined` |
+| R-1367 Low: a change Remedy's file check refused read `unknown`, while the 1.21 matrix promised `review_not_passed` | done | D4, code made to match the documented contract |
+| Tool missing (exit 127) reads reason `unknown` beside `verification: not_run` | skipped | a precise word is a new closed word (API 1.22), operator's call |
+| `order_cancel._runner_alive` duplicates `serve_runs.job_runner_alive` | skipped | same rule with the order in hand; merging them is a refactor, not a release fix |
+| Pre-existing R-1172 pollution (`test_do_evidence_package.py` then `test_do_order_budget.py` in one process) | skipped | owned by F297; full gate unaffected |
 
-## 3. Lifecycle matrix and budget answers (`tests/ui_server/test_public_api_lifecycle.py`)
-Through `answer_public_api_get/post` and the supervisor's own `CommandRunner` (the real `remedy`
-child); a fresh runner re-reads the disk after each action (a restart). Client token scoped to the
-job's project for every row; a foreign project's token gets 403 and runs nothing.
-| State | Story before | Action (body `{"reason": …}`) | Answer | After (story / digest active) | A process may still run |
+## 4. Lifecycle acceptance (`tests/ui_server/test_public_api_lifecycle.py`, now 17 rows, real `CommandRunner`)
+PR 365's 15 rows stand (never started, waiting for predecessor, orphaned, loop cap, stopped, budget
+stop through both doors, answered then stopped, awaiting apply, ended, running alive/gone, two
+clients, decline under polling, foreign token, order cancelled while planning across a restart).
+Added: plan awaiting approval (`waiting task_plan_approval`, next `answer`, end `abandon`; approve →
+`queued`/`run`), plan rejected (R-1366). Restart during cancellation (R-1365):
+`test_order_cancel.py` (a real walk dies after `cancel_pending`: order `lost`/`cancelled`, job
+`cancelled` with the first reason), `test_serve_runs.py` (a run dies; a terminal-held job keeps
+waiting; an order's reaper settles its jobs), `test_serve_daemon.py` (a starting supervisor ends it).
+
+Live jobs (D5 (2)), read with this branch's `remedy client story --json` under a read-only
+Bubblewrap mount, nothing changed: 11 open, every one `end: abandon` (4 stopped + `resume`, 1 queued
++ `run`, 4 failed `tests_failed`, 2 failed `budget_exhausted` without a budget question). None runs,
+so each abandon ends it at once. Closing them is the operator's action (section 13).
+
+## 5. Repair and verification (real `node --test`, `tests/cli/test_do_verified_repair.py`)
+| Scenario | Builds | Story | Verification |
+|---|---|---|---|
+| broken import → red → diagnostic in repair prompt → green | 2 | done, next apply | passed |
+| repair cannot fix (same failure) | 2 | failed `tests_failed` | failed |
+| sandbox refused (126) / tool missing (127), simulated at the spawn | 1 | failed `sandbox_unavailable` / `unknown` | not_run |
+| budget cannot pay a round | 1 | failed `tests_failed` | failed |
+| cancelled before repair | 1 | cancelled | — |
+| repair touches an unnamed file of a fenced order | 2 | failed `review_not_passed` (R-1367) | passed, never applied |
+| repair rewrites the test script | 2 | failed `review_not_passed` | not_run |
+Manual apply kept in every case; nothing reached the repository.
+
+## 6. Workloads, small to large (D5 (3), deterministic fake providers)
+| Case | Lane | Jobs/tasks | Planner | Builder/Reviewer (fake) | Verification |
 |---|---|---|---|---|---|
-| order planning | order `planning` | `POST /orders/{o}/cancel` | `cancelling`, then `cancelled` after the walk | `cancelled`, no jobs; 2nd cancel `already_cancelled` | the walk until its next step |
-| never started | `queued`, next `run`, end `abandon` | end | `cancelled` | `stopped/cancelled`, end null / no | no |
-| waits for job | `queued {after_job}`, next `none`, end `abandon` | end | `cancelled` | ended / no; predecessor untouched | no |
-| predecessor cancelled | `queued`, next `none`, end `abandon` | end | `cancelled` | ended / no | no |
-| blocked by loop cap | `failed budget_exhausted`, no budget question | end | `cancelled` | ended / no | no |
-| stopped (resumable) | `stopped`, next `resume`, end `abandon` | end | `cancelled` | ended / no | no |
-| budget stop | `waiting token_budget`, next `answer`, end `abandon` | answer `abandon` or end | `cancelled` | ended / no, question closed | no |
-| budget stop answered, then stopped by the person | `stopped`, next `resume`, end `abandon`, no question | end | `cancelled` | ended / no | no |
-| awaiting apply | `done`, next `apply`, end `decline` | end (blank reason → 400 `missing_argument`) | declined | `stopped/declined`, changes still listed / no; abandon 409 | no |
-| running, runner alive | end `abandon` | end | `cancel_pending: true`, still `running` | active until its safe point | yes |
-| running, runner gone | end `abandon` | end | `cancelled` at once (first reason kept) | ended / no | no |
-| failed / cancelled / declined | end null | abandon | 409 `job_not_cancellable` / `already_cancelled` / `already_declined` | unchanged | no |
-| two clients | end `abandon` | two runners at once | both 200, one request | `cancelled` once | no |
-| decline under polling | `done` | end | declined | every poll reads `done/decline` or `stopped/null` | no |
+| tiny README / same in 10,000 files | bounded | 1/1 | 0 | 2/2 | not_required |
+| lab bugfix + test | bounded | 1/1 | 0 | 2/2 | passed (fence blocks the fake's extra file) |
+| bug + regression test | bounded | 1/1 | 0 | 2/2 | failed (fake does not fix) |
+| multi-file rename | bounded | 1/1 | 0 | 2/2 | passed |
+| three independent parts | bounded | 1/3 | 0 | 6/6 | passed |
+| medium planned feature | full | 1/1 | 7 (4 study) | 2/2 | passed |
+| large one-file auth migration | full | 1/1 | 7 | 2/2 | not_run |
+| polyglot package tests | bounded | 1/1 | 0 | 2/2 | passed |
+| high-risk plan-only | full | 1/1 | 3 | 0/0 | pending |
+| ambiguous bare README | hold | 0 | 0 | 0/0 | — |
+Multi-repository: `tests/cli/test_do_several_projects.py` (green). The fake reviewer fails round 1
+by design, so 2/2 is the fake's; real runs are 1/1. Study runs once per repository head.
 
-## 4. Verified repair (PR 363), independently checked
-Real `node --test` in `tests/cli/test_do_verified_repair.py`: red → diagnostic in the repair
-prompt → green (completed, apply manual); unchanged failure → one repair, `test_failure_unchanged`,
-blocked; budget for one round missing → no repair; cancel during review → no repair, `cancelled`;
-exit 126 (sandbox) / 127 (tool) → `not_run`, never repaired. Added here: a repair that rewrites the
-test script → `test_command_changed`, `not_run`, blocked; a repair that touches an unnamed file of a
-fenced order → blocked (R-1363). Edge accepted: only the previous round is compared, so failures
-alternating A/B run to the repair cap (bounded).
+## 7. Real model usage (D5 (1), one sample per side)
+| Run | Wall | Calls | Tokens | Builder turns / input | Builder tools |
+|---|---|---|---|---|---|
+| PR 363 code (exec-1018b D9) | 37.0 s | 2 | 31,709 | 7 / 26,971 | read, ls, edit, write, bash, bash |
+| this branch | 38.5 s | 2 | 25,294 | 5 / 20,275 | edit, write, bash, bash |
+Local `muse-glimmer:latest` through Pi only; no paid call; `claude-cli` over HTTP stays refused.
 
-## 5. Execution scale by task type
-`tests/orchestration/scale_matrix.py` holds 40 cases with exact lanes and call counts (tiny edit,
-one-file bug, bug + test, multi-file, three independent parts, medium HTTP, large repo tiny edit,
-high-risk auth plan, polyglot with tests, plan-only, verify-only, ambiguous, sandbox refusal);
-multi-repository ordering is `tests/cli/test_do_several_projects.py`, cancellation at each stage
-`tests/orchestration/test_order_cancel.py`. All green on this branch; none added (all shapes covered).
-
-## 6. Real model measurements versus fake-provider results
-Real (exec-1018b D9, local `muse-glimmer` via Pi, not repeated here): builder 6-7 turns, ~27k input
-tokens per call, ~3.9k per turn; reviewer ~3k. Simulated here (D6): the context the builder is
-handed, replayed over those recorded prompts: lab add and rules runs now get the deliverable and the
-new test's style file instead of README/package.json/format.js/AGENTS.md (−26 %, −21 % chars).
-Effect on real turns: NOT measured (another session's `pi` held the shared Ollama). Fake-provider
-call counts are pinned by the scale matrix and say nothing about tokens.
-
-## 7. Reporting and ZIP
-`tests/orchestration/test_serve_daemon.py::test_http_orders_with_capture_review_leave_reports…`:
-a real supervisor, three HTTP orders with `capture_review: true` (completed, budget-stopped,
-cancelled) → three reports, the stager and the no-argument ZIP carry all three, no secret and no
-home path in any byte. Installed configuration: the service (`~/.local/bin/remedy`, no
-`REMEDY_DATA_DIR`, no `data_dir`) writes to `~/Repos/remedy/.data`; build the ZIP from that checkout
-(or set `REMEDY_DATA_DIR`). The index now names `reports_dir`, so a ZIP built elsewhere says where it
-looked. Empty case: "no review report exists in <dir>". No report was fabricated.
-
-## 8. CLI/API contract changes
-This branch: none (stays 1.21). Behaviour inside 1.21: R-1361 (abandon answers `cancelled`, not a
-pending cancel nobody reads), R-1362 (no unanswerable budget question), R-1363 (a fenced order's
-stray change blocks; story reads `failed`/`review_not_passed`). The stack: `docs/system/api-release-
-matrix-v1.json` — additive only from 1.17 (3 routes, 3 commands, keys and words; nothing removed),
-with each version's value changes (1.19: `planning` → `queued`; reason `cancelled` → `stopped` for a
-resumable stop; `next` `none` → `run`/`resume`).
+## 8. Review reports and ZIP
+Empty index on the live ZIP = no captured order (capture is opt-in), same root on both sides (D1).
+Proven on real data: the real run above left one report; `make_review_zip.sh` with no argument
+(`REMEDY_DATA_DIR` = that run's data root, `REMEDY_REVIEW_DIR` = `.remedy-wt/rel1019-evidence/zips`)
+→ `remedy-review-20261019-101509-NO_EVIDENCE.zip`, exit 0, `review_reports/index.json` count 1,
+`reports_dir` named, no home path and no secret-like string in the report. Latest ten, failed
+runs, redaction: `test_stage_review_reports.py`, `test_review_reports.py` (green). Operator check,
+read-only: `ls ~/Repos/remedy/.data/review_reports | wc -l` (0 confirms D1).
 
 ## 9. Tests
-Focused owners per step (all green; listed in the PR). Full local gate: once, on this branch's final
-commit; commit, tree, command, interpreter, result and wall time are in the PR body.
+Focused owners per repair green (counts in the PR). Measured: owner suites of the stack 147 in
+22 s; root and guard files 3,655 in 28 s. Slowest modules of the last full run (2026-10-18, 339 s
+wall, 6 workers): review ZIP hygiene 47 s CPU (real packagings), supervisor portability 45 s, scale
+matrix 43 s. No test deleted or merged: no equivalence was proven. Full gate: once, on the final
+commit; result in the PR body.
 
-## 10. Remaining risks
-- A job held `running` by a crashed TERMINAL run (no supervisor record) still answers
-  `cancel_pending`; ending it there could race a live process. Supervisor-started work is covered.
-- R-1363's refusal reads `review_not_passed` in the story (as protected-file refusals do); a precise
-  reason word is an API change (1.22), the operator's call.
-- Derived stop reasons (`sr:derived_no_repo`, `sr:derived_test_fail`) are counted by the digest for
-  ended jobs; only jobs without a target repository or legacy test events reach them, never an
-  order's job of 360-364.
-- R-1172 test pollution can turn a hand-picked serial selection red; the full gate is unaffected.
-- Real-model effect of D6 unmeasured; Pi turn waste beyond it is model compliance.
+## 10. API for Universe (1.21, unchanged version)
+Discovery: `GET /api/v1/interface` (`version` 1.21, closed word lists). Job card: `GET
+/api/v1/jobs/{job}/story` → `state`, `state_detail`, `next` {action, route}, `end` {action, route}
+or null. Offer `next` when not `none`; offer "Beenden" whenever `end` is not null, POST its route with
+`{"reason": "<non-blank>"}`; after `abandon` read `cancel_pending` (true: poll; since R-1365 it ends
+even if the process dies). Answer a question by POSTing `next.route` (`task_plan_approval`: reason
+`approve`/`reject`; `token_budget`: `extend` with `answer` `["max_provider_calls=<n>"]` or
+`abandon`). Orders: `POST /api/v1/orders` (`capture_review` for the report), `GET
+/api/v1/orders/{order}` (`phase`, `jobs[].phase`, `jobs[].story`), `POST
+/api/v1/orders/{order}/cancel` (`decline_results`). Value changes inside 1.21 are listed in
+`docs/system/api-release-matrix-v1.json` (this branch: R-1365, R-1366, R-1367).
 
 ## 11. Merge order
-360 → 361 → 362 → 363 → 364 → this PR. Each with a merge commit, no squash (the later branches carry
-the earlier commits).
+360 → 361 → 362 → 363 → 364 → 365 → this PR, each a merge commit, no squash.
 
-## 12. Deployment and rollback (operator)
-Deploy: merge in order; in `~/Repos/remedy` (the service's checkout) `git pull --ff-only`;
-`sudo systemctl restart luna-remedy-serve.service`; check `GET /api/v1/interface` reads `1.21` and
-`remedy doctor health --json` passes. Rollback: `git checkout 6933bb0e0` in that checkout (main
-before the stack; no data migration exists in 360-364, records written by 1.21 stay readable as
-plain job JSON) and restart the service; `.agent/STOP` stays as the operator left it.
+## 12. Deploy and rollback (operator)
+Merge in order; in `~/Repos/remedy` `git pull --ff-only`; `sudo systemctl restart
+luna-remedy-serve.service`; `GET /api/v1/interface` reads 1.21; `remedy doctor health --json` passes.
+Rollback: `git checkout 6933bb0e0` there and restart; no data migration in 360-365 or here.
 
-## 13. What Universe Chat consumes after release
-Per job card: `GET /api/v1/jobs/{job}/story`; show `state`/`state_detail` words from
-`GET /api/v1/interface` `story`; offer `next` (`apply`, `answer`, `run`, `resume`) and, whenever
-`end` is not null, a "Beenden" button that POSTs `end.route.path` with `{"reason": "<text>"}`
-(non-blank: `decline` refuses a blank one with 400 `missing_argument`). After `abandon`, read
-`cancel_pending`: true means still running until its safe point; poll the story. Offer a budget
-question only when the story's `state` is `waiting` with `question: token_budget`, answering
-`POST next.route.path` with `{"reason": "extend", "answer": ["max_provider_calls=<n>"]}` or
-`{"reason": "abandon"}`. Per order: `POST /api/v1/orders` (with `capture_review: true` for the
-checkbox), poll `GET /api/v1/orders/{order}` (`phase`, `jobs[].story`), cancel with `POST
-/api/v1/orders/{order}/cancel` (`decline_results: true` to also decline waiting results). Remote
-providers: builder `pi|claude|fake`, reviewer `pi|ollama|claude|fake`; `claude-cli` is refused with
-400 `api_provider_not_offered`.
+## 13. Operator approvals needed
+Merging and deploying; abandoning the 11 open live jobs (each `POST /api/v1/jobs/{job}/abandon` or
+`remedy job abandon <job> --reason ...`); turning capture on by default (product choice); a 1.22
+word for a missing test tool.
 
 ## Next
-Operator: review this PR beside 360-364 and merge in the order above; deploy as in 12.
+Operator: review this PR beside 360-365 and merge in the order above; deploy per section 12.

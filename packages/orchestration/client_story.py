@@ -44,6 +44,9 @@ _TASK_STORY_STATUS = {"planned": "waiting", "open": "running", "done": "done",
 #: The final statuses that mean the reviewer did not pass the task in the rounds it had.
 _REVIEW_NOT_PASSED = frozenset({"review_failed", "repair_exhausted", "max_rounds_reached",
                                 "review_inconsistent"})
+#: The refusals of `task_deliverables.deliverable_files_refusal`, the first word of a task's error:
+#: Remedy's own check of the change did not pass it (R-1342, R-1348, R-1363).
+_DELIVERABLE_REFUSALS = frozenset({"named_files_unchanged", "protected_file_changed", "unrequested_file_changed"})
 #: A stop reason `stop_reasons.derive_stop_reasons` computes afresh on every read: it has no record
 #: an answer could resolve, so it is no question (DECISION amend1015f D13).
 _DERIVED_STOP = "sr:derived_"
@@ -175,7 +178,10 @@ def _failure_reason(plan: Any, rounds: dict[str, int]) -> dict[str, Any]:
     failed_tests = [r for r in job_verification(plan)["runs"] if r["status"] == "failed"]
     if failed_tests or any(t.final_status == "test_failed" for t in tasks):
         return _word("tests_failed", n=max(len(failed_tests), 1))
-    stuck = [t for t in tasks if t.final_status in _REVIEW_NOT_PASSED]
+    # rel-1019 (R-1367): a change Remedy's file check refused read `unknown`, although the release
+    # matrix promised `review_not_passed`, the word a protected-file refusal was said to read.
+    stuck = [t for t in tasks if t.final_status in _REVIEW_NOT_PASSED
+             or str(t.error or "").split(":", 1)[0] in _DELIVERABLE_REFUSALS]
     if stuck:
         return _word("review_not_passed", rounds=max(rounds.get(str(t.task_id), 0) for t in stuck))
     if "target_mutation_blocked" in finals:
@@ -225,6 +231,12 @@ def _story_state(plan: Any, decision: Any, pending: dict[str, Any], declined: bo
                            "round": _working_round(event, rounds, str(task.task_id))}
     if not plan.tasks:
         return "reading", {}
+    # rel-1019 (R-1366): a rejected plan is final for its job (`REJECTED_PLAN_NEXT_STEP`): the person
+    # said no, so it reads declined; before, it read `queued` and offered `run`, which every run refuses.
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+
+    if task_plan_blocks_execution(plan) == "rejected":
+        return "stopped", {"reason": _word("declined")}
     # exec-1017c (R-1340): planned, nothing runs it. Before, it read `planning` with that step
     # `running` and no next step, so a client showed a job of a split order as busy forever.
     after = _waits_for_job(plan)

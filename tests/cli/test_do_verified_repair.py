@@ -200,3 +200,17 @@ def test_a_repair_round_cannot_pass_by_rewriting_the_test_command(tmp_path):
     assert "test_command_changed" in walk["rounds"][-1]["test_summary"]
     assert walk["verification"]["status"] == "not_run" and _state(walk["job"]) == "blocked"
     assert (walk["repo"] / "package.json").read_text() == LAB["package.json"]
+
+
+def test_a_refused_repair_reads_review_not_passed_in_the_story(tmp_path, monkeypatch):
+    """R-1367: the story a client reads names why the job ended; a change Remedy's own file check
+    refused read `unknown`, although the release matrix of 1.21 promised `review_not_passed`."""
+    from packages.orchestration.client_story import job_client_story
+
+    walk = _walk(tmp_path, repair_writes={"src/format.js": "export function normalizeName(i) { return i; }\n"})
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    story = job_client_story(str(walk["job"].job_id), walk["job"])
+
+    assert story["state"] == "failed"
+    assert story["state_detail"]["reason"] == {"key": "review_not_passed", "args": {"rounds": 2}}
+    assert (story["next"]["action"], story["end"]["action"]) == ("none", "abandon")

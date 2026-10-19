@@ -250,6 +250,48 @@ def test_an_answered_budget_stop_then_stopped_by_the_person_asks_nothing_unanswe
     _ended_cancelled(api, job_id, answer, status)
 
 
+
+def _awaiting_plan_approval(api: Api) -> str:
+    """A job whose task plan waits for the person's approval, as `remedy do --approve-plan` leaves it."""
+    job_id = _planned(api)
+    job = load_job_plan(job_id)
+    job.task_plan = {"_approval": "pending", "tasks": [{"title": "Add a usage line", "files": ["README.md"]}]}
+    save_job_plan(job)
+    return job_id
+
+
+def test_a_plan_waiting_for_approval_is_answered_through_its_question_or_ended(api):
+    job_id = _awaiting_plan_approval(api)
+    story = api.story(job_id)
+    assert (story["state"], story["state_detail"]["question"]) == ("waiting", "task_plan_approval")
+    assert (story["next"]["action"], story["end"]["action"]) == ("answer", "abandon")
+
+    status, answer = api.post(story["next"]["route"]["path"], {"reason": "approve"})
+
+    assert status == 200 and answer["outcome"] == "approved", answer
+    story = api.story(job_id)
+    assert (story["state"], story["next"]["action"], story["end"]["action"]) == ("queued", "run", "abandon")
+    _ended_cancelled(api, job_id, *reversed(api.end(job_id)))
+
+
+def test_a_rejected_plan_offers_no_run_and_ends_through_its_end(api):
+    """R-1366: a rejected plan is final for its job; before, the story read `queued` and offered `run`,
+    which every run refuses with `plan_rejected`, and the order's view still read `needs_plan_approval`."""
+    from packages.orchestration.order_jobs import order_jobs_view
+
+    job_id = _awaiting_plan_approval(api)
+    status, answer = api.post(api.story(job_id)["next"]["route"]["path"], {"reason": "reject"})
+    assert status == 200 and answer["outcome"] == "rejected", answer
+
+    story = api.story(job_id)
+    assert (story["state"], story["state_detail"]["reason"]["key"]) == ("stopped", "declined")
+    assert (story["next"]["action"], story["end"]["action"]) == ("none", "abandon")
+    assert [entry["phase"] for entry in order_jobs_view([job_id])] == ["declined"]
+    assert api.active(job_id) is True                 # still open until the person ends it
+
+    _ended_cancelled(api, job_id, *reversed(api.end(job_id)))
+
+
 def test_a_result_waiting_for_its_apply_is_declined_and_stays_auditable(api):
     job_id = _ran(api)
     story = api.story(job_id)
