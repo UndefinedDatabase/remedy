@@ -1,8 +1,8 @@
 # Handoff — agent-state data hygiene
 
 Feature round 1, session 1. Branch `feature/agent-data-hygiene`, based on `a6f9ba80a`.
-Implementation commit `8d960e702`; PR pending. `.agent/STOP`, runtime data, provider settings, other
-worktrees and Git history were not changed.
+Implementation commit `8d960e702`, first handoff commit `494a51591`, PR 367. `.agent/STOP`, runtime
+data, provider settings, other worktrees and Git history were not changed.
 
 ## State
 Review packages now exclude development-only `.agent` bytes at both discovery and ArchivePlan
@@ -37,5 +37,5 @@ Open findings: 84 by `open_finding_ids`; none is newly claimed or resolved by th
 - No review ZIP artifact was retained; integration tests built packages only in temporary repositories.
 
 ## Next
-Commit this state handoff, push, and create the PR. The operator may separately authorize a
-coordinated history rewrite if removal from old Git objects is required.
+Operator: review PR 367 and separately decide whether removal from old Git objects warrants a
+coordinated history rewrite.
