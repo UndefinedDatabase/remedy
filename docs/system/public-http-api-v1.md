@@ -164,6 +164,10 @@ the request being written. No Ollama server or other process is touched. The ord
 `phase` reads `cancelling` while anything of it still runs and `cancelled` once nothing can; a
 result waiting for its apply stays for the person unless the body sets `decline_results`; an
 applied result is never reverted. Both cancels are idempotent and survive a supervisor restart.
+A `cancel_pending` job whose process dies before its safe point (a crash, a reboot) is not left
+`running`: the supervisor ends it `cancelled` when that run or walk ends, and again when it starts,
+for every job a process it started could have held; a job only a run in a terminal may hold keeps
+waiting for that run (R-1365, inside 1.21: no key, word or route changed).
 Records, evidence and worktrees stay as the retention rules keep them: neither a stop nor a cancel
 is a deletion.
 

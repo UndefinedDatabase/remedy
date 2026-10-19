@@ -39,6 +39,7 @@ from packages.orchestration.serve_runs import (
     RunLauncher,
     RunRefused,
     job_run_argv,
+    settle_orphaned_job_cancels,
 )
 
 #: `run_supervisor`'s own sentinel for `api_port`, distinguishing "the caller passed no
@@ -288,17 +289,16 @@ def run_supervisor(
 ) -> None:
     """Answer ROOT's socket until STOP is set, or until SIGTERM or SIGINT arrives.
 
-    Refuses a data root whose socket path is too long and a socket another
-    supervisor already answers; a socket file nobody answers is what a killed
-    supervisor leaves behind, and it is replaced. The socket, the process id file
-    and the token file are removed when the supervisor ends. A run it started keeps
-    running when it ends; RUN_ARGV builds each run's command, which tests replace.
+    Refuses a data root whose socket path is too long and a socket another supervisor already
+    answers; a socket file nobody answers is what a killed supervisor leaves behind, and it is
+    replaced. The socket, the process id file and the token file are removed when the supervisor
+    ends. A run it started keeps running when it ends; RUN_ARGV, which tests replace, builds each run's command.
 
-    Before the supervisor serves any request on its socket, and before ON_READY
-    is called (DECISION F200 D7), the registry is reconciled: every run this
-    data root still names as open is adopted, restarted or declared lost — see
-    `RunLauncher.resume_registered`, which JOB_IS_RUNNING is passed through to;
-    tests replace it the way they replace RUN_ARGV.
+    Before the supervisor serves any request on its socket, and before ON_READY is called
+    (DECISION F200 D7), the registry is reconciled: every run this data root still names as open
+    is adopted, restarted or declared lost — see `RunLauncher.resume_registered`, which
+    JOB_IS_RUNNING (replaced by tests as RUN_ARGV is) is passed through to; then a `running` job
+    under a cancel request that no process runs any more ends `cancelled` (R-1365).
 
     One `OrderLauncher` is made per supervisor and handed to both the socket's handler and the
     public HTTP API's, so `POST /api/v1/orders` on either answers through the same registry of
@@ -346,6 +346,7 @@ def run_supervisor(
         os.chmod(paths.socket, 0o600)
         _write_private(paths.pid_file, str(os.getpid()))
         launcher.resume_registered(job_is_running=job_is_running)
+        settle_orphaned_job_cancels(paths)
         if resolved_api_port is not None:
             try:
                 api_server = ThreadingHTTPServer(

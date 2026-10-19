@@ -220,6 +220,33 @@ sys.exit(4)
 """
 
 
+
+def test_a_starting_supervisor_ends_a_cancelled_job_its_dead_run_left_running(root):
+    """A run that died during a cancel (R-1365) never reached its safe point, so its job still read
+    `running` under a cancel request after its end was recorded; the next supervisor ends the job
+    before it serves anything. (An order's walk leaves the same state with no run record at all.)"""
+    from packages.orchestration.job_cancel import cancel_job
+
+    job_id = _job()
+    job = load_job_plan(job_id)
+    job.state = JOB_RUNNING
+    save_job_plan(job)
+    assert cancel_job(job, reason="reboot during cancel", source="api")["cancel_pending"] is True
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    paths = serve_paths(root)
+    paths.runs_dir.mkdir(parents=True, exist_ok=True)
+    (paths.runs_dir / f"{job_id}.json").write_text(json.dumps(SR.RunRecord(
+        job_id=job_id, pid=gone.pid, started_at="2026-10-19T08:00:00Z", out_log="o", err_log="e",
+        ended_at="2026-10-19T08:01:00Z").to_json()))
+    supervisor = _Running(root)
+    try:
+        ended = load_job_plan(job_id)
+        assert (ended.state.value, ended.metadata["cancel"]["reason"]) == ("cancelled", "reboot during cancel")
+    finally:
+        supervisor.close()
+
+
 @pytest.fixture
 def running_with_runs(root):
     release = root / "release"

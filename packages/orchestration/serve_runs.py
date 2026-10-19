@@ -262,6 +262,7 @@ class RunLauncher:
         code = child.wait()
         with self._lock:
             self._write(replace(record, exit_code=code, ended_at=_now()))
+        settle_orphaned_job_cancels(self._paths, [record.job_id])      # R-1365
 
     def resume_registered(self, *, job_is_running: Callable[[str], bool] | None = None
                           ) -> list[dict[str, str]]:
@@ -350,6 +351,7 @@ class RunLauncher:
         with self._lock:
             self._adopted.discard(record.job_id)
             self._write(replace(record, ended_at=_now()))
+        settle_orphaned_job_cancels(self._paths, [record.job_id])      # R-1365
 
     def wait(self, job_id: str, timeout: float | None = None) -> int | None:
         """Wait until JOB_ID's run has ended and its record says so; its exit code, or
@@ -621,6 +623,42 @@ def job_runner_alive(paths: ServePaths, job_id: str) -> bool:
     return run is None
 
 
+# WHY: a cancel answered `cancel_pending` is carried out by the job's runner at its next safe point;
+# a runner that died first (a crash, an out-of-memory kill, a reboot) left the job `running` under
+# its request with nobody to end it, and the order listing it read `cancelling` for good (R-1365).
+def settle_orphaned_job_cancels(paths: ServePaths, job_ids: Sequence[str] | None = None) -> list[str]:
+    """End `cancelled` each job of JOB_IDS that holds a cancel request and that no process runs.
+
+    JOB_IDS None reads every job with a control area. A job is ended only when `job_runner_alive`
+    says every process the supervisor started that could run it is gone, so a job a run in a
+    terminal may hold is left to that run, exactly as `remedy job abandon` leaves it. Returns the
+    ids of the jobs it ended; a job that ended otherwise, or holds no request, is unchanged.
+    """
+    from packages.orchestration.job_cancel import job_cancel_request, settle_job_cancel
+    from packages.orchestration.pingpong_job import JOB_RUNNING, load_job_plan_safe
+    from packages.orchestration.safe_points import JOBS_DIRNAME, StopControlError, control_root
+
+    if job_ids is None:
+        folder = control_root() / JOBS_DIRNAME
+        job_ids = sorted(entry.name for entry in folder.iterdir()) if folder.is_dir() else []
+    settled: list[str] = []
+    for job_id in job_ids:
+        try:
+            if job_cancel_request(job_id) is None:
+                continue
+        except StopControlError:
+            continue                    # an unreadable control area is the job's own runner's to report
+        job, _degraded = load_job_plan_safe(job_id)
+        if job is None or job.state != JOB_RUNNING or job_runner_alive(paths, job_id):
+            continue                    # only a `running` job waits for a runner; any other was ended at once
+        try:
+            if settle_job_cancel(job):
+                settled.append(job_id)
+        except OSError:
+            continue                    # its record cannot be written now; `remedy job abandon` still ends it
+    return settled
+
+
 def run_not_found_message(job_id: str) -> str:
     """The sentence a job with no run record is refused with (DECISION F253 D20 (1)).
 
@@ -726,6 +764,7 @@ class OrderLauncher:
         code = child.wait()
         with self._lock:
             self._write(replace(record, exit_code=code, ended_at=_now()))
+        settle_orphaned_job_cancels(self._paths, order_record_job_ids(record))      # R-1365
 
     def wait(self, order_id: str, timeout: float | None = None) -> int | None:
         """Wait until ORDER_ID's order has ended and its record says so; its exit code, or

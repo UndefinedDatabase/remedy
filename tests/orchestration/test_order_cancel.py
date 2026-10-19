@@ -374,3 +374,30 @@ def test_abandon_of_an_order_job_its_live_walk_runs_waits_for_the_walks_safe_poi
 
     assert (answer["cancel_pending"], answer["job_status"]) == (True, "running"), answer
     assert load_job_plan(waiting).state == RunState.RUNNING
+
+
+def test_an_order_cancelled_while_its_job_runs_ends_when_its_walk_dies_before_the_safe_point(
+        order, monkeypatch, tmp_path):
+    """R-1365: the cancel arrived while the walk ran the job (`cancel_pending`), and the walk died (a
+    crash, a reboot) before its next safe point. The order read `cancelling` and the job `running`
+    for good. The supervisor settles it when the walk's process ends and when it starts again."""
+    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.serve_runs import read_order_record, settle_orphaned_job_cancels
+
+    envelope = order.walk("Add a usage section to README.md and add a CHANGELOG.md entry.", "--force-mission")
+    waiting = envelope["waiting_job_ids"][0]
+    job = load_job_plan(waiting)
+    job.state = RunState.RUNNING                   # the walk is inside this job's builder call
+    save_job_plan(job)
+    answer = order.cancel(reason="restart during cancel")
+    assert answer["phase"] == "cancelling"
+    assert {entry["job_id"]: entry["outcome"] for entry in answer["jobs"]}[waiting] == "cancel_pending"
+    assert settle_orphaned_job_cancels(order.paths) == []      # the walk lives: its safe point ends it
+    monkeypatch.chdir(tmp_path)                    # the walk's process is gone, its end never written
+
+    assert settle_orphaned_job_cancels(order.paths) == [waiting]
+
+    ended = load_job_plan(waiting)
+    assert (ended.state, ended.metadata["cancel"]["reason"]) == (RunState.CANCELLED, "restart during cancel")
+    polled = order_record_payload(order.paths, read_order_record(order.paths, ORDER_ID))
+    assert (polled["state"], polled["phase"]) == ("lost", "cancelled")
