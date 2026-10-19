@@ -1,22 +1,22 @@
-# Plan — execution excellence (operator order 2026-10-17, after PR 359 and PR 352)
+# Plan — reliability campaign: cancel, stale work, truthful lifecycle (operator order 2026-10-17)
 
 ## Goal
-Trivial orders stay trivial, a small change over a few files is one job, verification is
-truthful across packages, every model call counts against the budget, and an order's jobs are
-readable and controllable through the public API. Worktree `.remedy-wt/exec-excellence`, branch
-`feature/execution-excellence` from main `6933bb0` (PR 352 merged), outside the roadmap queue (F078
-stays next). `.agent/STOP` stays; no deploy.
+Cancellation really ends an order's lifecycle, abandoned work leaves the active views for good
+(evidence kept), every lifecycle word is true, and clients control it all over the public API.
+Branch `feature/order-cancel` from PR 360's head `9b172a16c` (merge order: 360 first, then this);
+worktree `.remedy-wt/order-cancel`. Outside the roadmap queue (F078 stays next). `.agent/STOP`, the
+supervisor and the live checkout untouched; no merge, no deploy.
 
 ## Current Step
-Done on the branch: verification readings, Pi call accounting and context, the bounded lane over a
-few named files, the order's jobs over the public API, review report fields, the digest's ended
-stop, scale matrix v3, docs, decisions exec-1017b D1–D5. Now: one full local gate, then the PR.
+All steps done (findings R-1338..R-1344, decisions exec-1017c D1-D10, handoff written). Now: the
+one full local gate on the final tree, then the PR (not merged).
 
 ## Next Steps
-- PR (not merged: the operator decides and deploys).
-- Operator: optional bounded real Pi run of corpus `lab-*` and `small-multi-file-*` in remedy-lab.
+- Operator: merge PR 360, then this PR; restart `remedy serve`.
+- Open: R-1343's loop half (`--test-command` refusal reads `test_failed`); the calibration run
+  proposed in the handoff (needs an authorized model budget).
 
 ## Risks
-- One task over up to three files leans on the local builder doing all of them; the reviewer and
-  the handoff coverage gate still fail a missing file.
-- Pre-existing, not this branch: `test_claude_cli_no_changes` is red when run alone (green in the suite).
+- `pingpong_job.py`, `decision_queue.py`, `command_catalog.py` are at their structure rows: every
+  edit there is line-neutral, new logic lives in new modules.
+- A planning order stops only when its planner call returns (safe points between steps).

@@ -278,7 +278,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.18`.
+Interface version: `1.19`.
 
 ### Envelope
 
@@ -299,7 +299,8 @@ Refusal keys: `error`, `message`.
 ### Words
 
 Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `cancelled`, `blocked`, `stopped`.
-Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `failed`.
+Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`.
+Phases of an order: `planning`, `running`, `awaiting_apply`, `needs_plan_approval`, `waiting`, `ready`, `blocked`, `failed`, `stopped`, `cancelling`, `cancelled`, `done`, `ended`, `lost`.
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
 Budget kinds: `max_total_tokens`, `max_provider_calls`, `max_wall_clock_minutes`, `max_cost_usd`, `deadline`, `min_free_disk_bytes`.
@@ -310,10 +311,10 @@ Approval risks: `low`, `medium`, `high`.
 
 The closed words of `remedy client story` and `GET /api/v1/jobs/{job}/story`. A phrase or a reason is `{key, args}`; its arguments are numbers, paths relative to the repository, and `provider`, a provider's id word.
 
-Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`.
+Story states: `reading`, `planning`, `working`, `checking`, `done`, `done_applied`, `stopped`, `failed`, `waiting`, `queued`.
 Story steps: `reading`, `planning`, `building`, `checking`, `finished`.
 Story step statuses: `waiting`, `running`, `done`, `skipped`, `failed`.
-Story next actions: `apply`, `decline`, `answer`, `retry`, `none`.
+Story next actions: `apply`, `decline`, `answer`, `retry`, `none`, `run`, `resume`.
 Story questions: `patch_approval`, `stop_reason`, `test_failure`, `token_budget`, `memory_review`, `task_plan_approval`, `task_decision`, `proposal`, `other`.
 Story verification statuses: `passed`, `failed`, `not_run`, `not_required`, `pending`.
 Story phrase `found_files`: `n`, `first`.
@@ -341,6 +342,7 @@ Story reason `declined`: none.
 Story reason `cancelled`: none.
 Story reason `paused`: none.
 Story reason `unknown`: none.
+Story reason `stopped`: none.
 
 ### Operations
 
@@ -649,6 +651,25 @@ Keys under the answer keys: see below.
 - `pending`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`
 - `stop`: `job_id`, `reason`, `request_id`, `requested_at`, `source`, `stop_signal_v`, `stopped_at`
 
+#### `remedy job abandon`
+
+Command id: `job.abandon`.
+Description: End a job for good, under its mission: it never runs again and leaves the active views, its record and evidence stay; a running job ends at its next safe point. A completed result is declined, not cancelled.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | Job ID to cancel (under its mission) |
+| `--reason` | yes | no | yes | no | Why the job, under its mission, is cancelled (kept on the job) |
+| `--source` | yes | no | yes | no | Who requested the cancel (default: cli) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `cancel_not_requested`, `invalid_job_id`, `job_not_cancellable`, `job_not_found`.
+Answer keys: `already_cancelled`, `cancel`, `cancel_pending`, `job_id`, `job_status`, `matches`.
+Keys under the answer keys: see below.
+
+- `cancel`: `job_id`, `reason`, `requested_at`, `source`
+
 #### `remedy change proof`
 
 Command id: `change.proof`.
@@ -813,7 +834,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `order_job_phases`, `story`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `order_job_phases`, `order_phases`, `story`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -892,9 +913,10 @@ Description: Read an order (an order file or text) the supervisor started, as a 
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `order_not_found`.
-Answer keys: `answer`, `ended_at`, `exit_code`, `jobs`, `order_file`, `order_id`, `started_at`, `state`.
+Answer keys: `answer`, `cancel`, `ended_at`, `exit_code`, `jobs`, `order_file`, `order_id`, `phase`, `started_at`, `state`.
 Keys under the answer keys: see below.
 
+- `cancel`: `reason`, `requested_at`, `source`
 - `jobs`: `executable`, `job_id`, `phase`, `state`, `story`, `tasks`, `title`, `verification`, `waiting_reason`, `waits_for`
   - `tasks`: `current`, `done`, `total`
 
@@ -958,6 +980,27 @@ Answer keys: `files`, `job`, `matches`, `state`, `truncated`.
 Keys under the answer keys: see below.
 
 - `files`: `added`, `change`, `patch`, `path`, `removed`, `truncated`
+
+#### `remedy client cancel-order`
+
+Command id: `client.cancel-order`.
+Description: Cancel an order (an order file or text) the supervisor started, planning, running or waiting: its jobs end for good, nothing of it starts again and nothing is applied after it; a result waiting for its apply stays for you to answer unless --decline-results.
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `order` | no | yes | yes | no | The order id the supervisor answered when it started your order file or text |
+| `--reason` | yes | no | yes | no | Why the order file or text is cancelled (kept with it and with each job of its mission) |
+| `--source` | yes | no | yes | no | Who requested the cancel (default: cli) |
+| `--decline-results` | yes | no | no | no | Also decline each result of the order file or text still waiting for its apply |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `cancel_not_requested`, `order_not_found`.
+Answer keys: `already_cancelled`, `cancel`, `jobs`, `order_id`, `phase`, `state`.
+Keys under the answer keys: see below.
+
+- `cancel`: `reason`, `requested_at`, `source`
+- `jobs`: `before`, `job_id`, `job_status`, `outcome`
 
 #### `remedy doctor health`
 

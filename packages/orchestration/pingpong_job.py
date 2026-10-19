@@ -1917,23 +1917,23 @@ BOOKKEEPING_ONLY_REASON = "the run changed only bookkeeping"
 
 
 def task_fence_refusal(job: Any, result: Any) -> str:
-    """Why a task's changes break its job's own deny fence, or "" when they do not.
+    """Why a task's changes break its job's own deny fence or leave its named files, or "".
 
-    Reads the job's declared ``fences.deny`` globs against every path the task's
-    run staged or reported in its safe diff. A job without deny globs, or a task
-    that changed nothing, is never refused here. When every changed path lies
-    under :data:`BOOKKEEPING_FENCE` and the job denies it, the reason is
-    :data:`BOOKKEEPING_ONLY_REASON`; otherwise it names the denied paths.
-    """
+    Every path the task's run staged or reported in its safe diff is read against the files a
+    deterministic task over several named files must change (exec-1017c, R-1342) and the job's
+    ``fences.deny`` globs: all under :data:`BOOKKEEPING_FENCE` is :data:`BOOKKEEPING_ONLY_REASON`."""
     from fnmatch import fnmatch
+
+    from packages.orchestration.task_deliverables import named_files_left_unchanged
 
     deny = list(job.fences.deny) if getattr(job, "fences", None) else []
     changed = sorted({
         "/".join(p for p in str(path).replace("\\", "/").split("/") if p and p != ".")
         for path in (*result.staged_files, *result.safe_diff_files)
     } - {""})
-    if not deny or not changed:
-        return ""
+    unchanged = named_files_left_unchanged(job, result, changed)
+    if unchanged or not deny or not changed:
+        return unchanged
     denied = [path for path in changed if any(fnmatch(path, glob) for glob in deny)]
     if not denied:
         return ""
@@ -2485,12 +2485,9 @@ def run_job(
     None parameters mean "omitted by caller". Resolution order:
     explicit CLI value > persisted config > product default.
     """
+    from packages.orchestration.job_cancel import settle_job_cancel
     from packages.orchestration.pingpong_call_record import parked_session_refs
-    from packages.orchestration.pingpong_loop import (
-        TaskInput,
-        load_run,
-        run_pingpong,
-    )
+    from packages.orchestration.pingpong_loop import TaskInput, load_run, run_pingpong
 
     job = load_job_plan(job_id)
     if job is None:
@@ -2501,9 +2498,9 @@ def run_job(
         )
 
     # DECISION F295 D12 (3): a cancelled job never runs again, whatever cancelled
-    # it. Checked HERE, before the F018 stopped-job guard and anything else, and
-    # not persisted — there is nothing to update on a terminal record.
-    if job.state == RunState.CANCELLED:
+    # it, and a cancel request no runner reached yet ends it here (exec-1017c,
+    # job_cancel.py). Checked HERE, before the F018 stopped-job guard and anything else.
+    if settle_job_cancel(job):
         job.error = f"job_cancelled: job {job_id} is cancelled and never runs again"
         return job
 
@@ -3592,7 +3589,7 @@ def run_job(
                 task.status = TASK_BLOCKED
                 task.error = fence_refusal
                 _log_task_ended(task_log, task, "scope_fence_refused", attempt_id)
-                _block_job(job, idx, f"task_{task.task_id}_scope_fence_refused")
+                _block_job(job, idx, f"task_{task.task_id}_scope_fence_refused: {fence_refusal}")
                 return job
 
             task.status = TASK_PASSED
@@ -4991,11 +4988,8 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
     second event or post-mortem.
     """
     from packages.orchestration.failure_postmortem import safe_text
-    from packages.orchestration.safe_points import (
-        StopControlError,
-        acknowledge_stop,
-        archive_stop,
-    )
+    from packages.orchestration.job_cancel import job_stop_end_state
+    from packages.orchestration.safe_points import StopControlError, acknowledge_stop, archive_stop
 
     task_id = task.task_id if task is not None else ""
 
@@ -5094,7 +5088,9 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
         raise StopFinalizationError(job.run_manifest_error)
 
     # --- 5. the durable STOPPED checkpoint --------------------------------------------
-    job.state = JOB_STOPPED
+    # exec-1017c: under a cancel request (`job_cancel.py`) the same checkpoint ends the job
+    # `cancelled`, never resumable; the episode, its archive and its event stay a stop's.
+    job.state = job_stop_end_state(job)
     job.finished_at = datetime.now(timezone.utc).isoformat()   # R-0828
     job.error = ""
     _persist_job(job)                 # if THIS throws, the request is still pending: good

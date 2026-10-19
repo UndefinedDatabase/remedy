@@ -120,7 +120,7 @@ def test_builder_argv_cwd_and_environment_follow_the_contract(fake_pi, workspace
     assert argv[argv.index("--model") + 1] == "muse-glimmer:latest"
     assert argv[argv.index("--tools") + 1] == PI_BUILDER_TOOLS == "read,bash,edit,write,grep,find,ls"
     for flag in ("--offline", "--no-approve", "--no-extensions", "--no-mcp", "--no-skills",
-                 "--no-prompt-templates", "--no-themes"):
+                 "--no-prompt-templates", "--no-themes", "--no-context-files"):
         assert flag in argv
     assert argv[-2] == "--" and "add a paragraph" in argv[-1]
     assert Path(call["cwd"]).resolve() == workspace.resolve()
@@ -384,6 +384,24 @@ def test_a_named_file_deep_in_a_large_repository_is_shown_and_the_cut_list_says_
     assert "--- z/pkg/src/util.py ---\ndef f():" in text
     assert "the first 80; the tree is larger" in text and "the complete list" not in text
     assert "secret" not in text
+
+
+@pytest.mark.parametrize("size", [300, 27_364])
+def test_the_repositorys_agent_file_reaches_the_builder_bounded_and_by_name(tmp_path, size):
+    """exec-1017c (R-1344): Pi runs with `--no-context-files`, so it no longer loads AGENTS.md into every
+    turn unseen; a short one is shown whole in the builder's context, a long one only named."""
+    from packages.orchestration.pi_provider import builder_workspace_context
+
+    (tmp_path / "AGENTS.md").write_text("Use pnpm, never npm. " + "x" * (size - 22) + "\n")
+    (tmp_path / "src.js").write_text("x\n")
+
+    text = builder_workspace_context(str(tmp_path), "Fix src.js.")
+
+    if size < 2000:
+        assert "instructions for coding agents (AGENTS.md):\nUse pnpm, never npm." in text
+    else:
+        assert "AGENTS.md (27363 characters) holds this repository's instructions" in text
+        assert "Use pnpm" not in text
 
 
 def test_a_failed_calls_measured_tokens_reach_the_runs_usage_and_so_the_budgets(fake_pi, workspace):

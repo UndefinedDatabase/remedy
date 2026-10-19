@@ -171,12 +171,22 @@ def _job_report(job_id: str) -> dict[str, Any]:
 
 
 def _outcome(ctx: Any, ended_by: str) -> dict[str, str]:
-    """The walk's outcome word and why: `completed`, `failed`, `stopped`, `budget_exhausted`, `cancelled`."""
+    """The walk's outcome word and why: `completed`, `failed`, `stopped`, `budget_exhausted`, `cancelled`.
+
+    A walk its order's cancel request ended (`order_cancel.py`, exec-1017c) is `cancelled` too, with
+    the request's reason and the step that read it.
+    """
+    from packages.orchestration.order_cancel import walk_cancel_request
+
     if ended_by:
         return {"status": "cancelled" if ended_by in ("SIGTERM", "KeyboardInterrupt") else "crashed",
                 "reason": ended_by}
     failed = next((r for r in ctx.results if r.status == "failed"), None)
     stopped = next((r for r in ctx.results if r.status == "stopped" and r.name != "apply"), None)
+    end = failed or stopped or next((r for r in ctx.results if r.status == "stopped"), None)
+    if (cancel := walk_cancel_request()) is not None and end is not None:
+        return {"status": "cancelled", "reason": f"the order was cancelled ({cancel['reason']}); "
+                                                 f"{end.name}: {end.detail}"[:600]}
     end = failed or stopped
     budget = "budget" in (end.detail if end else "") or any(
         getattr(job, "stop_source", "") == "budget" for job in _loaded_jobs(ctx))
@@ -207,7 +217,9 @@ def build_review_report(ctx: Any, report_id: str, started_at: str, *, ended_by: 
                     "left by a process that did not finish"} if running else _outcome(ctx, ended_by),
         "order": {"text": ctx.order, "source": "order_file" if ctx.order_source_path else "text",
                   "source_sha256": ctx.order_source_sha256 or None, "order_id": ctx.order_id or None,
-                  "mission_id": ctx.mission_id or None},
+                  "mission_id": ctx.mission_id or None,
+                  # exec-1017c: the order the supervisor started this walk for, and its cancel request.
+                  "supervisor_order_id": _supervisor_order_id(), "cancel": _walk_cancel()},
         "configuration": {
             "repository": ctx.repo_root or ctx.repo, "lane": getattr(lane, "lane", None),
             "lane_reason": getattr(lane, "reason", None), "shape": ctx.shape or None,
@@ -228,6 +240,55 @@ def build_review_report(ctx: Any, report_id: str, started_at: str, *, ended_by: 
         "not_measured": list(NOT_MEASURED),
     }
     return redact_review_report(report)
+
+
+def _supervisor_order_id() -> str | None:
+    from packages.orchestration.order_cancel import walk_order_dir
+
+    folder = walk_order_dir()
+    return folder.name if folder is not None else None
+
+
+def _walk_cancel() -> dict[str, str] | None:
+    from packages.orchestration.order_cancel import walk_cancel_request
+
+    return walk_cancel_request()
+
+
+#: The job metadata key naming the review report of the walk that made the job (exec-1017c).
+JOB_REVIEW_REPORT_KEY = "review_report_id"
+
+
+def continue_review_report(job: Any, root: Path | None = None) -> None:
+    """A job of a walk that ran later (a waiting job, a resumed one) joins that walk's review report.
+
+    Its entry under `jobs` is read again and the run is added to `continued`; the walk's own outcome
+    stays what the walk ended with. Never fatal: a report that is gone or unreadable is left alone.
+    """
+    report_id = str((getattr(job, "metadata", None) or {}).get(JOB_REVIEW_REPORT_KEY) or "")
+    path = review_reports_dir(root) / f"{report_id}.json"
+    if not report_id or "/" in report_id or not path.is_file():
+        return
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        job_id = str(job.job_id)
+        report["jobs"] = [_job_report(job_id) if entry.get("job_id") == job_id else entry
+                          for entry in report.get("jobs") or []]
+        report.setdefault("continued", []).append(
+            {"job_id": job_id, "at": _now().isoformat(), "state": getattr(job.state, "value", str(job.state))})
+        write_review_report(report, root)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return
+
+
+def _remember_review_report(ctx: Any, report_id: str) -> None:
+    """Name the report on every job of the walk, so a later run of one of them finds it."""
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+    for job in (load_job_plan(job_id) for job_id in ctx.job_ids):
+        if job is not None and job.metadata.get(JOB_REVIEW_REPORT_KEY) != report_id:
+            job.metadata[JOB_REVIEW_REPORT_KEY] = report_id
+            save_job_plan(job)
 
 
 def write_review_report(report: dict[str, Any], root: Path | None = None) -> Path:
@@ -272,5 +333,7 @@ def capture_review_report(ctx: Any) -> Iterator[None]:
                                          f"built: {type(exc).__name__}: {exc}"[:600]},
                              "job_ids": list(ctx.job_ids), "not_measured": list(NOT_MEASURED)})
         write_review_report(report)
+        with contextlib.suppress(OSError, ValueError):
+            _remember_review_report(ctx, report_id)
         ctx.review_report = {"report_id": report_id, "status": report["outcome"]["status"],
                              "file": f"{REVIEW_REPORTS_CLASS}/{report_id}.json"}

@@ -35,8 +35,8 @@ JOB_STOP_ANSWER_TREE: dict = {"stop": {key: {} for key in (*_SIGNAL_KEYS, "stopp
                               "archived": {key: {} for key in _SIGNAL_KEYS}}
 
 #: A job that will never run again cannot be stopped, and saying "stop requested" would be
-#: a lie the operator has no way to catch.
-_FINISHED_STATES = frozenset({"completed"})
+#: a lie the operator has no way to catch. A cancelled job never runs again (exec-1017c).
+_FINISHED_STATES = frozenset({"completed", "cancelled"})
 
 
 def _load_job(job_id: str):

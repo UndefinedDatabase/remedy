@@ -555,21 +555,35 @@ def order_record_payload(paths: ServePaths, record: OrderRecord) -> dict[str, An
         if recorded is not None:
             record, state = recorded, "ended"
     answer = order_answer(record) if state != "running" else None
-    from packages.orchestration.order_jobs import order_file_job_ids, order_jobs_view
+    from packages.orchestration.order_cancel import order_cancel_request, order_phase
+    from packages.orchestration.order_jobs import order_jobs_view
 
     # exec-1017b: the order's jobs while it runs and after, read from the missions' batches, so a
     # client sees what runs, what waits and why without having to learn a job id first.
-    source = str(Path(record.order_file).resolve()) if record.order_file else ""
+    # exec-1017c: its cancel request and its phase, read from the same facts.
+    jobs = order_jobs_view(order_record_job_ids(record))
+    cancel = order_cancel_request(paths.orders_dir / record.order_id)
     return {
         "order_id": record.order_id,
         "state": state,
+        "phase": order_phase(state, cancel, jobs, record.exit_code),
         "started_at": record.started_at,
         "ended_at": record.ended_at,
         "exit_code": record.exit_code,
         "order_file": record.order_file,
         "answer": answer,
-        "jobs": order_jobs_view(order_file_job_ids(source, since=record.started_at)),
+        "cancel": cancel,
+        "jobs": jobs,
     }
+
+
+def order_record_job_ids(record: OrderRecord) -> list[str]:
+    """The jobs of the order RECORD names, in planned order, read from the missions' batches
+    (`order_jobs.order_file_job_ids`); only those of this run of its order file."""
+    from packages.orchestration.order_jobs import order_file_job_ids
+
+    source = str(Path(record.order_file).resolve()) if record.order_file else ""
+    return order_file_job_ids(source, since=record.started_at)
 
 
 def run_not_found_message(job_id: str) -> str:

@@ -62,6 +62,10 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_apply_route_is_pinned_with_its_body_and_its_statuses",
     ("POST", "/api/v1/jobs/{job}/stop"):
         "test_the_stop_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/jobs/{job}/abandon"):
+        "test_the_cancel_route_is_pinned_with_its_body_and_its_statuses",
+    ("POST", "/api/v1/orders/{order}/cancel"):
+        "test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/orders/{order}"):
         "test_the_order_poll_route_is_pinned_with_its_statuses",
     ("POST", "/api/v1/orders"):
@@ -653,7 +657,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/health")
     assert (route.method, route.twin, route.refusals) == (
         "GET", "doctor.health", (("health_failed", 503),))
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
 
     for name, check in (("check_config_coherence", "config"), ("check_staging_copies", "staging"),
                         ("check_disk_floor", "disk"), ("check_providers", "providers"),
@@ -925,7 +929,7 @@ def test_the_decision_route_is_pinned_with_its_body_and_its_statuses():
         ("decision_not_resolvable", 400),
     )
     assert "--as-mission" in route.description and "is not offered" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
 
 
 def test_the_page_names_the_body_keys_and_the_default_status_of_the_decision_route():
@@ -1115,7 +1119,7 @@ def test_the_stop_route_is_pinned_with_its_body_and_its_statuses():
     assert (route.refusal_default, route.refusals) == (
         409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
     assert "`api`" in route.description and "job_not_stoppable" in route.description
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
 
 
 @pytest.mark.parametrize("body, reason", [({"reason": "obsolete"}, "obsolete"), ({}, "")])
@@ -1124,6 +1128,58 @@ def test_a_stop_post_runs_the_command_with_its_reason_and_the_api_door(body, rea
     status, _answer, _headers = _post("/api/v1/jobs/j1/stop", body, run)
     assert status == 200
     assert calls == [("j1", ["job", "stop", f"--reason={reason}", "--source=api", "--json", "--", "j1"])]
+
+
+def test_the_cancel_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017c: a client ends a job for good without the command line."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/abandon")
+    assert (route.method, route.twin, route.body) == ("POST", "job.abandon", (("reason", "string"),))
+    assert (route.refusal_default, route.refusals) == (
+        409, (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)))
+    assert "`api`" in route.description and "job_not_cancellable" in route.description
+    assert public_api.PUBLIC_API_VERSION == "1.19"
+
+
+def test_a_cancel_post_runs_the_command_with_its_reason_and_the_api_door():
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/jobs/j1/abandon", {"reason": "not wanted"}, run)
+    assert status == 200
+    assert calls == [("j1", ["job", "abandon", "--reason=not wanted", "--source=api", "--json", "--", "j1"])]
+
+
+def test_a_cancel_of_a_completed_job_answers_409_with_the_commands_own_refusal():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "job_not_cancellable", "message": "job j1 is completed"}
+    status, answer, _headers = _post("/api/v1/jobs/j1/abandon", {}, run)
+    assert (status, answer["error"]) == (409, "job_not_cancellable")
+
+
+def test_the_order_cancel_route_is_pinned_with_its_body_and_its_statuses():
+    """exec-1017c: one call cancels an order, whatever it is doing; no client stops its jobs one by one."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/orders/{order}/cancel")
+    assert (route.method, route.twin, route.body) == (
+        "POST", "client.cancel-order", (("reason", "string"), ("decline_results", "flag")))
+    assert (route.refusal_default, route.refusals) == (409, (("order_not_found", 404),))
+    assert "cancelling" in route.description and "already_cancelled" in route.description
+
+
+@pytest.mark.parametrize("body, extra", [({"reason": "wrong order"}, []),
+                                         ({"reason": "wrong order", "decline_results": True},
+                                          ["--decline-results"])])
+def test_an_order_cancel_post_runs_the_command_locked_on_the_order(body, extra):
+    calls, run = _recording_runner()
+    status, _answer, _headers = _post("/api/v1/orders/0123456789abcdef/cancel", body, run)
+    assert status == 200
+    assert calls == [("order:0123456789abcdef",
+                      ["client", "cancel-order", "--reason=wrong order", "--source=api", *extra, "--json",
+                       "--", "0123456789abcdef"])]
+
+
+def test_an_unknown_order_cancel_answers_404():
+    def run(_lock, _argv):
+        return {"ok": False, "error": "order_not_found", "message": "no order record names 'x'."}
+    status, answer, _headers = _post("/api/v1/orders/0123456789abcdef/cancel", {}, run)
+    assert (status, answer["error"]) == (404, "order_not_found")
 
 
 def test_a_stop_of_a_completed_job_answers_409_with_the_commands_own_refusal():
@@ -1246,7 +1302,7 @@ def test_the_order_poll_route_is_pinned_with_its_statuses():
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == ORDER_POLL_PATH)
     assert (route.method, route.twin) == ("GET", "client.order")
     assert route.refusals == (("order_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
 
 
 def test_the_order_poll_route_answers_as_the_client_order_command_does(tcp_server):
@@ -1434,6 +1490,7 @@ def test_an_order_create_post_answers_202_with_the_starters_record(
         "exit_code": record.exit_code, "order_file": record.order_file,
         "answer": {"ok": True, "mission_id": "m-fixture"},
         "jobs": [],          # no mission batch records this order file: no job is invented
+        "phase": "ended", "cancel": None,     # exec-1017c: a walk that ended with no job, never cancelled
     }
     assert calls == [(text, [])]
 
@@ -2340,7 +2397,7 @@ def test_the_run_poll_route_is_pinned_with_its_statuses():
                  if r.path == RUN_PATH and r.method == "GET")
     assert (route.method, route.twin) == ("GET", "client.run")
     assert route.refusals == (("run_not_found", 404),)
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
 
 
 def test_the_run_poll_route_answers_as_the_client_run_command_does(tcp_server):
@@ -2615,10 +2672,10 @@ def test_the_story_route_answers_the_client_story_command(tcp_server, unix_serve
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
         "GET", "client.story",
         (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (), ())
-    assert public_api.PUBLIC_API_VERSION == "1.18"
+    assert public_api.PUBLIC_API_VERSION == "1.19"
     job_id = _saved_job_with_id("abc1230000000000")
     expected = build_ok(**job_client_story(job_id, require_job_plan(job_id)))
-    assert expected["state"] == "planning" and story_problems(expected) == []
+    assert expected["state"] == "queued" and story_problems(expected) == []     # exec-1017c: not "planning"
 
     def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
         return [_tcp_request(tcp_server, "GET", path, headers=headers),

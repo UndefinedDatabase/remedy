@@ -198,8 +198,8 @@ def _story_state(plan: Any, decision: Any, pending: dict[str, Any], declined: bo
     if state in ("failed", "blocked"):
         return "failed", {"reason": _failure_reason(plan, rounds)}
     if state in ("stopped", "cancelled", "paused"):
-        reason = ("paused" if state == "paused" else
-                  "budget_exhausted" if getattr(plan, "stop_source", "") == "budget" else "cancelled")
+        reason = ("paused" if state == "paused" else "cancelled" if state == "cancelled" else
+                  "budget_exhausted" if getattr(plan, "stop_source", "") == "budget" else "stopped")
         return "stopped", {"reason": _word(reason)}
     if state == "running":
         task, event = opened
@@ -211,7 +211,21 @@ def _story_state(plan: Any, decision: Any, pending: dict[str, Any], declined: bo
             return "checking", {}
         return "working", {"file": _task_file(task),
                            "round": _working_round(event, rounds, str(task.task_id))}
-    return ("planning" if plan.tasks else "reading"), {}
+    if not plan.tasks:
+        return "reading", {}
+    # exec-1017c (R-1340): planned, nothing runs it. Before, it read `planning` with that step
+    # `running` and no next step, so a client showed a job of a split order as busy forever.
+    after = _waits_for_job(plan)
+    return "queued", ({"after_job": after} if after else {})
+
+
+def _waits_for_job(plan: Any) -> str:
+    """The job of the same order *plan* runs after, while that one's result has not landed; else ""."""
+    from packages.orchestration.job_apply import job_apply_landed
+    from packages.orchestration.order_jobs import ORDER_JOB_WAITS_KEY
+
+    after = str((getattr(plan, "metadata", None) or {}).get(ORDER_JOB_WAITS_KEY) or "")
+    return after if after and not job_apply_landed(after) else ""
 
 
 def _task_rows(plan: Any, rounds: dict[str, int]) -> list[dict[str, Any]]:
@@ -313,6 +327,12 @@ def _next(job_id: str, state: str, detail: dict[str, Any], pending: dict[str, An
     if state == "waiting":
         decision = quote(str(detail["decision_id"]), safe="")
         return {"action": "answer", "route": {"method": "POST", "path": f"{base}/decisions/{decision}"}}
+    # exec-1017c: a queued job that waits for nothing runs, a stop on request resumes; one queued
+    # after another job waits for that job's apply, which is that job's own next step.
+    if state == "queued" and "after_job" not in detail:
+        return {"action": "run", "route": {"method": "POST", "path": f"{base}/run"}}
+    if state == "stopped" and (detail.get("reason") or {}).get("key") == "stopped":
+        return {"action": "resume", "route": {"method": "POST", "path": f"{base}/run"}}
     # amend1015c D3 (R-1331): Remedy deliberately offers no `retry` for a failed job: a run of it
     # re-attempts no task that ended blocked or failed and ends blocked again, and no route of the
     # public API puts such a task back to pending yet. `retry` stays in the closed list for that route.

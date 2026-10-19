@@ -37,6 +37,17 @@ def test_a_waiting_job_names_the_job_it_waits_for_and_why(data_root):
     assert load_job_plan(str(first.job_id)).metadata.get(OJ.ORDER_JOB_WAITS_KEY) is None
 
 
+def test_a_job_whose_predecessor_was_cancelled_says_nothing_releases_it(data_root):
+    """exec-1017c: it would otherwise wait for an apply that can never come."""
+    first, second = _saved("a.md", "cancelled"), _saved("b.md")
+    OJ.record_job_waits([str(first.job_id), str(second.job_id)], [str(second.job_id)])
+
+    view = OJ.order_jobs_view([str(first.job_id), str(second.job_id)])
+
+    assert view[1]["phase"] == "waiting" and view[1]["waits_for"] == str(first.job_id)
+    assert "was cancelled" in view[1]["waiting_reason"] and "cancel it" in view[1]["waiting_reason"]
+
+
 def test_a_job_whose_predecessor_landed_is_the_executable_one(data_root, monkeypatch):
     first, second = _saved("a.md", "completed"), _saved("b.md")
     OJ.record_job_waits([str(first.job_id), str(second.job_id)], [str(second.job_id)])
@@ -50,7 +61,7 @@ def test_a_job_whose_predecessor_landed_is_the_executable_one(data_root, monkeyp
 
 @pytest.mark.parametrize(("state", "phase"), [
     ("completed", "awaiting_apply"), ("blocked", "blocked"), ("stopped", "stopped"),
-    ("failed", "failed"), ("planned", "ready"),
+    ("failed", "failed"), ("planned", "ready"), ("cancelled", "cancelled"),
 ])
 def test_each_job_state_reads_as_the_phase_a_person_needs(data_root, state, phase):
     job = _saved("x.md", state)

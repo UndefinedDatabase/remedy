@@ -21,12 +21,18 @@ ORDER_JOB_WAITS_KEY = "waits_for_job"
 #: Why such a job waits, in the words of DECISION F268 D12.
 ORDER_JOB_WAIT_REASON = ("its workspace is cut from the repository's HEAD commit, so it runs once "
                          "job {job} is applied and committed")
+#: Why it still waits when that job ended without its result landing (exec-1017c): nothing will
+#: release it, so the person cancels it or runs it on the repository as it is.
+ORDER_JOB_ORPHANED_REASON = ("job {job} was {ended} and its result will not be applied, so nothing "
+                             "releases this job: cancel it, or run it on the repository as it is")
 
 #: The `phase` of a job in an order's view: what a person needs to know first. `needs_plan_approval`
 #: is a task plan waiting for its approval, `awaiting_apply` a finished result waiting for the
-#: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold.
+#: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold,
+#: `stopped` a job stopped on purpose that can be resumed, `cancelled` one that ended for good
+#: (`job_cancel.py`, exec-1017c).
 ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "awaiting_apply", "applied",
-                    "declined", "blocked", "stopped", "failed")
+                    "declined", "blocked", "stopped", "cancelled", "failed")
 
 
 #: The keys of one entry of `order_jobs_view`, as the machine client interface declares them.
@@ -105,6 +111,19 @@ def _missing(job_id: str) -> dict[str, Any]:
             "verification": None, "story": f"/api/v1/jobs/{job_id}/story"}
 
 
+def _wait_reason(waits_for: str) -> str:
+    """Why a job waits for *waits_for*: its apply, or nothing any more when that job ended without one."""
+    from packages.orchestration.job_apply import job_result_decline
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    before = load_job_plan(waits_for)
+    state = getattr(getattr(before, "state", None), "value", "")
+    ended = ("cancelled" if state == "cancelled" else "failed" if state == "failed" else
+             "declined" if before is not None and job_result_decline(before) is not None else "")
+    return (ORDER_JOB_ORPHANED_REASON.format(job=waits_for, ended=ended) if ended
+            else ORDER_JOB_WAIT_REASON.format(job=waits_for))
+
+
 def _job_entry(job: Any) -> dict[str, Any]:
     from packages.orchestration.job_apply import job_apply_landed, job_result_decline
     from packages.orchestration.job_plan import task_plan_blocks_execution
@@ -126,7 +145,7 @@ def _job_entry(job: Any) -> dict[str, Any]:
         phase = ("applied" if job_apply_landed(str(job.job_id))
                  else "declined" if job_result_decline(job) is not None else "awaiting_apply")
     elif state in ("stopped", "cancelled"):
-        phase = "stopped"
+        phase = state
     elif state == "blocked":
         phase = "blocked"
     else:
@@ -136,7 +155,7 @@ def _job_entry(job: Any) -> dict[str, Any]:
         "executable": phase == "ready",
         "tasks": {"total": len(job.tasks), "done": done, "current": current},
         "waits_for": waits_for if waiting else None,
-        "waiting_reason": ORDER_JOB_WAIT_REASON.format(job=waits_for) if waiting else "",
+        "waiting_reason": _wait_reason(waits_for) if waiting else "",
         "verification": job_verification(job)["status"],
         "story": f"/api/v1/jobs/{job.job_id}/story",
     }

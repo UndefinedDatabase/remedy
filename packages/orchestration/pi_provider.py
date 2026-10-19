@@ -122,6 +122,10 @@ _CONTEXT_MAX_FILES = 4
 _CONTEXT_MAX_FILE_CHARS = 6000
 _CONTEXT_SKIP_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "__pycache__", ".remedy-wt",
                                 "dist", "build", ".next", ".cache"})
+#: The repository's own agent instructions, in the order Pi itself looks for them (exec-1017c).
+_CONTEXT_AGENT_FILES = ("AGENTS.md", "CLAUDE.md")
+#: An agent file this short is shown whole; a longer one is named, for the builder to read when needed.
+_CONTEXT_AGENT_FILE_MAX_CHARS = 2000
 
 
 def builder_workspace_context(cwd: str, prompt: str) -> str:
@@ -169,11 +173,30 @@ def builder_workspace_context(cwd: str, prompt: str) -> str:
     head = (f"Files in your working copy (the first {_CONTEXT_MAX_LISTED}; the tree is larger, so search "
             "it only for a file the task needs that is neither listed nor shown below):\n" if cut else
             "Files in your working copy (the complete list; do not list or search it again):\n")
-    out = head + "".join(f"- {p}\n" for p in listed)
+    out = head + "".join(f"- {p}\n" for p in listed) + _agent_file_context(root)
     if blocks:
         out += ("\nCurrent content of the files the task names (already read for you; do not read "
                 "them again before editing):\n\n" + "\n".join(blocks))
     return out + "\n"
+
+
+def _agent_file_context(root: Path) -> str:
+    """The repository's root agent instructions, bounded and named by path, or "" when it has none.
+
+    Pi is started with `--no-context-files`, so this is the one way they reach the builder: a short
+    file whole, a longer one as a pointer the builder follows only when the task needs it.
+    """
+    rel = next((name for name in _CONTEXT_AGENT_FILES if _plain_workspace_file(root, name)), "")
+    if not rel:
+        return ""
+    try:
+        text = (root / rel).read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return ""
+    if len(text) <= _CONTEXT_AGENT_FILE_MAX_CHARS:
+        return f"\nThis repository's instructions for coding agents ({rel}):\n{text}\n"
+    return (f"\n{rel} ({len(text)} characters) holds this repository's instructions for coding agents; "
+            "read it only if this task needs its conventions.\n")
 
 
 def _plain_workspace_file(root: Path, rel: str) -> bool:
@@ -228,13 +251,16 @@ def build_pi_argv(pi_path: str, *, model: str, tools: str, prompt: str) -> list[
     """Pi's argument vector for one role call. Never a shell string.
 
     Every resource switch is off: no extension, MCP server, skill, prompt template or theme, no
-    session, no network at startup, and project-local executable resources stay untrusted.
+    session, no network at startup, and project-local executable resources stay untrusted. No
+    context file either (exec-1017c, R-1344): Pi otherwise loads the workspace's and every
+    ancestor's AGENTS.md or CLAUDE.md into every turn, whatever `--no-approve` says, unbounded and
+    absent from Remedy's own prompt evidence; `builder_workspace_context` shows a small one instead.
     """
     return [
         pi_path, "--mode", "json", "--no-session",
         "--provider", PI_INNER_PROVIDER, "--model", model,
         "--offline", "--no-approve", "--no-extensions", "--no-mcp", "--no-skills",
-        "--no-prompt-templates", "--no-themes", "--tools", tools, "--", prompt,
+        "--no-prompt-templates", "--no-themes", "--no-context-files", "--tools", tools, "--", prompt,
     ]
 
 

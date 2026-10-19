@@ -33,8 +33,10 @@ _EXITING_RESOLVER_REMAINING: dict[str, int] = {}
 #: callers that handle `JobIdAmbiguous` themselves and so keep talking to
 #: `lookup_job_id` directly instead of through `resolve_job_id_or_fail`. Measured at
 #: `63141657`. F025 R4 C3 adds `job_pause_cmd.py`, modelled on `job_stop_cmd.py` for
-#: the same reason: its own `_resolve_job_id` handles `JobIdAmbiguous` itself.
+#: the same reason: its own `_resolve_job_id` handles `JobIdAmbiguous` itself, and exec-1017c
+#: adds `cancel_cmd.py`, whose `job abandon` resolves a job id exactly as `job stop` does.
 _LOOKUP_CALLERS: dict[str, int] = {
+    "cancel_cmd.py": 1,
     "job_id_arg.py": 1,
     "job_pause_cmd.py": 1,
     "job_stop_cmd.py": 1,

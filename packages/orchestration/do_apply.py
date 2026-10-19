@@ -105,7 +105,10 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
     (DECISION F270 D4 (3)). What landed is added to ``ctx.landed``.
     """
     from packages.orchestration.job_apply import apply_job, apply_refusal
+    from packages.orchestration.order_cancel import walk_cancel_note
 
+    if (cancelled := walk_cancel_note()):
+        return f"job {job_id} was not applied: {cancelled}"       # exec-1017c: nothing lands after a cancel
     flags: dict[str, Any] = {}
     if ctx.commit_mode:
         total = len(ctx.job_ids)

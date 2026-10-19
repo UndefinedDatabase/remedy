@@ -28,6 +28,7 @@ The extractor is a deterministic floor, the LLM planner is the ceiling.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -146,6 +147,22 @@ def deterministic_job_plans(order: str) -> list[list[TaskEntry]]:
 def task_deliverable(task: TaskEntry) -> str:
     """The deliverable recorded on *task*, or "" when it has none."""
     return str(task.inputs.get(DELIVERABLE_INPUT_KEY) or "").strip()
+
+
+def named_files_left_unchanged(job: Any, result: Any, changed: list[str]) -> str:
+    """Why the task *result* ran may not pass: the named files of its one change it left unchanged.
+
+    Only a deterministic deliverable task over several named files (`deliverable_task(also=...)`,
+    whose files are its `files_hint`) is read: the order named each of them for this one change, so
+    a reviewer's pass over a change that skipped one is no completion (exec-1017c, R-1342). A
+    planner's task is never read here: its `files_hint` are hints, some only to be read. "" else.
+    """
+    task = next((t for t in job.tasks if str(t.task_id) == str(getattr(result, "task_id", ""))), None)
+    if task is None or task.inputs.get("task_type") != "deliverable" or not task.files_hint:
+        return ""
+    missing = [path for path in task.files_hint if path not in set(changed)]
+    return (f"named_files_unchanged: the change left {', '.join(missing)} unchanged, which the order "
+            f"names as part of it" if missing else "")
 
 
 def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:
