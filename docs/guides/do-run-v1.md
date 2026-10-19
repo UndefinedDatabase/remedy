@@ -129,6 +129,32 @@ in this one step, and the further files are its `files_hint`. A hold for one of 
 hold for the order, and a risky path among them takes the whole order to the planner (execution
 excellence order 2026-10-17).
 
+Not every file an order names is a file to change (exec-1018, `order_intent.py`). Each named file
+has a role, read from the clause that names it, English or German:
+
+| Role | Example | What Remedy does |
+|------|---------|------------------|
+| required | "Fix add() in `src/calc.js`" | a target; with several, each must change (`named_files_unchanged`) |
+| optional | "you may also adjust `src/format.js` if needed" | allowed, never required; a target only when the order names no required file |
+| context | "as described in `docs/FORMAT.md`", "see `src/format.js`", "siehe …", "gemäß …" | named in the task as reference, read-only, never required |
+| protected | "do not touch `src/format.js`", "`src/format.js` nicht ändern", "leave … unchanged" | must stay unchanged: a run that changes it ends `blocked` (`protected_file_changed`) |
+
+A file required in one clause stays required where another clause guards a part of it ("do not
+change the API of `src/calc.js`"). An order's own parts that refer to nothing of each other (no
+"it", "dazu", "the same", no shared identifier, no file of one named in another) are one task each
+in the one bounded job ("1. Fix the typo in README.md. 2. Make `src/price.js` round half up. 3. Trim
+the input in `src/format.js`." is three tasks); a rename and its callers, or a change and a use of
+it, stay one task. A requested test keeps the change one task. A file the builder looked at and
+rightly left alone is fine when it is context, optional or protected; a required file it left
+alone blocks the job and says which, so the person decides.
+
+What the order asks for at all is read the same way: "only plan …", "do not change anything" with
+a plan word walks as `--plan-only`; "only run the tests", "ändere nichts" beside a test request is
+**verification only**: one job with no build task, whose DoD runs the project's tests in the
+sandbox, no model is called, and the apply step says there is nothing to apply (the order's job
+reads `checked`); "do not change anything" alone is a hold. "Change nothing else" and "verändere
+sonst nichts" stay scope fences.
+
 High-risk means a fact the order or the path carries: a path under or named for authentication,
 security, crypto, secrets, sessions, payments, migrations, schemas, databases, deployment, CI
 workflows, Dockerfiles, `.sql` or `.tf`, or an order that speaks of authentication,
@@ -170,7 +196,7 @@ every call so far has a price: planner calls carry none, so once one is made, or
 calls without a price, no further job or planner call starts, and `order_budget.cost` says
 `enforced: false` with the unpriced count. Token, call and time caps are unaffected.
 A recorded study is reused until a dependency, build or workspace file changed since it, twenty
-paths changed, or its head is gone; a bounded order never pays for the study's narration.
+paths changed, or its head is gone; a bounded order never pays for the study's narration, and nor does any order on a repository of at most ten tracked files, whose facts the planner sees whole.
 
 ## While it works
 
@@ -239,7 +265,8 @@ not people (operator amendment amend1015).
 ## --plan-only and --step-by-step
 
 - `--plan-only` ends the walk after `shape`: `run` reports stopped, no job is
-  run, and a `remedy job run <job_id>` line is printed per planned job.
+  run, and a `remedy job run <job_id>` line is printed per planned job. An order whose own
+  words ask for a plan only ("only plan …; do not change anything") walks the same way.
 - `--step-by-step` halts after every step that did work, and inside `run`
   before each job: it prints what happened and what comes next, and reads one
   line. Enter continues; `q` or end of input stops the walk and asks every job

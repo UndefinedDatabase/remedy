@@ -22,11 +22,24 @@ from __future__ import annotations
 
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import PurePosixPath
 
 from packages.orchestration.do_context import DoContext
 from packages.orchestration.do_scope import order_scope_files, resolve_order_path
+from packages.orchestration.order_intent import (
+    FILE_ROLE_CONTEXT,
+    FILE_ROLE_OPTIONAL,
+    FILE_ROLE_PROTECTED,
+    FILE_ROLE_REQUIRED,
+    ORDER_INTENT_CHANGE,
+    ORDER_INTENT_NO_WORK,
+    ORDER_INTENT_PLAN_ONLY,
+    ORDER_INTENT_VERIFY_ONLY,
+    independent_parts,
+    order_file_roles,
+    order_intent,
+)
 from packages.orchestration.order_scope import (
     MAX_SIMPLE_ACTIONS,
     is_scope_fence,
@@ -91,7 +104,10 @@ class DoLaneDecision:
     *risk* is the deterministic fact that took a one-file order off the bounded lane; *with_tests*
     says the order itself asks for a test beside the one file (a deliverable, never a check).
     *also* names the further files of a small change over several named files, in the order's
-    own order; they belong to the same one task as *deliverable*.
+    own order; they belong to the same one task as *deliverable*. exec-1018: *intent* is what the
+    order asks for at all (`order_intent`); *optional*, *context* and *protected* are the named files
+    the order allows, only refers to, or forbids to change; *parts* groups the changed files into
+    the order's independent parts, one task each, when there is more than one.
     """
 
     lane: str
@@ -100,6 +116,11 @@ class DoLaneDecision:
     risk: str = ""
     with_tests: bool = False
     also: tuple[str, ...] = ()
+    intent: str = ORDER_INTENT_CHANGE
+    optional: tuple[str, ...] = ()
+    context: tuple[str, ...] = ()
+    protected: tuple[str, ...] = ()
+    parts: tuple[tuple[str, ...], ...] = ()
 
     @property
     def bounded(self) -> bool:
@@ -124,7 +145,7 @@ def order_risk(order: str, targets: list[str]) -> str:
     return ""
 
 
-def _order_targets(order: str, tracked_files: list[str]) -> list[str]:
+def _order_targets(order: str, tracked_files: list[str], roles: dict[str, str] | None = None) -> list[str]:
     """The files an order's work is about: the files its deliverables name, else the files its scope
     fence names, else the tracked document its words name.
 
@@ -133,6 +154,11 @@ def _order_targets(order: str, tracked_files: list[str]) -> list[str]:
     """
     scope = split_order_scope(order)
     named = explicit_order_paths(" ".join(scope.deliverables))
+    # exec-1018 (R-1348): a file named only as context, or that the order forbids to change, is no
+    # target; a file the order merely allows is one only when it names no file to change.
+    roles = roles if roles is not None else order_file_roles(order)
+    required = [path for path in named if roles.get(path, FILE_ROLE_REQUIRED) == FILE_ROLE_REQUIRED]
+    named = required or [path for path in named if roles.get(path) == FILE_ROLE_OPTIONAL]
     if not named:
         named = explicit_order_paths(" ".join(s for s in scope.constraints if is_scope_fence(s)))
     # A test file is a companion by its PATH, whatever words ask for it (lab orders of 2026-10-17:
@@ -176,15 +202,32 @@ def select_do_lane(
         return DoLaneDecision(DO_LANE_FULL, "--force-mission was given")
     auto = _routed_lane(order, tracked_files, infer_single_file=not force_job)
     if force_job and not auto.bounded and not auto.hold:   # an override never settles a question
-        return DoLaneDecision(DO_LANE_BOUNDED, f"--force-job was given (routing alone chose the "
-                              f"{auto.lane} lane: {auto.reason})", auto.deliverable, auto.risk,
-                              auto.with_tests, auto.also)
+        return replace(auto, lane=DO_LANE_BOUNDED,
+                       reason=f"--force-job was given (routing alone chose the {auto.lane} lane: {auto.reason})")
     return auto
 
 
 def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: bool) -> DoLaneDecision:
+    intent = order_intent(order)
+    if intent == ORDER_INTENT_VERIFY_ONLY:
+        # exec-1018 (R-1349): one job with no build task; its DoD runs the project's tests, no model runs.
+        return DoLaneDecision(DO_LANE_BOUNDED, "the order asks only for its checks to run and for no "
+                              "change: one job without a build task runs the project's tests",
+                              intent=intent)
+    if intent == ORDER_INTENT_NO_WORK:
+        return DoLaneDecision(DO_LANE_HOLD, "the order asks for no change, no plan and no check; "
+                              "what should be done?", intent=intent)
+    decided = _routed_change(order, tracked_files, infer_single_file=infer_single_file)
+    if intent == ORDER_INTENT_PLAN_ONLY and not decided.hold:
+        return replace(decided, intent=intent, reason=f"{decided.reason}; the order asks for a plan only, "
+                                                      "so nothing is run")
+    return decided
+
+
+def _routed_change(order: str, tracked_files: list[str], *, infer_single_file: bool) -> DoLaneDecision:
     scope = split_order_scope(order)
-    targets = _order_targets(order, tracked_files)
+    roles = order_file_roles(order)
+    targets = _order_targets(order, tracked_files, roles)
     named_tests = [p for p in explicit_order_paths(" ".join(scope.deliverables))
                    if is_test_path(p) and p not in targets]
     with_tests = requests_test_files(order) or bool(named_tests)
@@ -222,11 +265,23 @@ def _routed_lane(order: str, tracked_files: list[str], *, infer_single_file: boo
                               f"{scope.actions} separate actions")
     # exec-1017c (R-1341): several named files are one bounded job by their count, not because the
     # order asks for one thing; the reason says which, and every named file must change (R-1342).
+    # exec-1018 (R-1350): parts that refer to nothing of each other are one task each; a requested
+    # test keeps the change one task, since no fact says which part it tests.
+    resolved = dict(zip(targets, files))
+    parts = [] if with_tests else [[resolved[path] for path in part]
+                                   for part in independent_parts(order, list(targets))]
     asks = ("asks for one thing" if not also else
+            f"they are {len(parts)} independent parts of one bounded job, one task each, every named "
+            "file of which must change" if len(parts) > 1 else
             f"they are one bounded job of at most {MAX_BOUNDED_FILES} files, each of which must change")
+    roles_of = {role: tuple(dict.fromkeys(resolve_order_path(path, tracked_files) or path for path, named_role
+                                          in roles.items() if named_role == role and path not in resolved))
+                for role in (FILE_ROLE_OPTIONAL, FILE_ROLE_CONTEXT, FILE_ROLE_PROTECTED)}
     return DoLaneDecision(DO_LANE_BOUNDED, f"the order names {named}, and {asks}"
                           + (" and a test for it" if with_tests else ""),
-                          deliverable, with_tests=with_tests, also=also)
+                          deliverable, with_tests=with_tests, also=also, optional=roles_of[FILE_ROLE_OPTIONAL],
+                          context=roles_of[FILE_ROLE_CONTEXT], protected=roles_of[FILE_ROLE_PROTECTED],
+                          parts=tuple(tuple(part) for part in parts) if len(parts) > 1 else ())
 
 
 def _resolved_target(order: str, target: str, tracked_files: list[str]) -> tuple[str, str]:
@@ -266,4 +321,6 @@ def settle_do_lane(ctx: DoContext) -> DoLaneDecision:
             ctx.order, tracked_files=files, projects=len(ctx.projects) or 1,
             force_job=ctx.force_job, force_mission=ctx.force_mission)
         ctx.tiny_repo = is_tiny_repo(files)
+        # exec-1018 (R-1349): an order whose own words ask for a plan only walks as `--plan-only`.
+        ctx.plan_only = ctx.plan_only or ctx.lane.intent == ORDER_INTENT_PLAN_ONLY
     return ctx.lane

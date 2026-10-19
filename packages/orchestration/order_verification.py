@@ -167,7 +167,12 @@ def job_verification(job: Any) -> dict[str, Any]:
     runs: list[dict[str, Any]] = [
         {"source": "task", "task_id": str(task.task_id), "status": "passed" if task.test_passed else "failed"}
         for task in job.tasks if task.test_passed is not None]
-    not_run_reason = ""
+    # R-1343: a task test command the sandbox refused ran nothing, so it is neither a run nor absent.
+    refused_task = next((task for task in job.tasks
+                         if task.test_passed is None and task.tripped_limit == "sandbox_unavailable"), None)
+    refused = refused_task is not None
+    not_run_reason = (f"the test command of task {refused_task.task_id} was refused: the tool sandbox is "
+                      "unavailable, so no test ran" if refused_task is not None else "")
     gate = load_gate_result(str(job.job_id)) or {}
     for check in gate.get("checks") or []:
         if not isinstance(check, dict) or check.get("kind") not in _TEST_CHECK_KINDS:
@@ -178,8 +183,9 @@ def job_verification(job: Any) -> dict[str, Any]:
             continue
         if _refused_before_running(check):
             # A check refused before exec (an executable outside the allowed set, a test command
-            # the job itself changed) ran nothing: it is never a failed test, and never a pass.
+            # the job itself changed, no tool sandbox) ran nothing: never a failed test, never a pass.
             not_run_reason = not_run_reason or f"the test check was refused before it ran ({check.get('reason')})"
+            refused = True
             continue
         runs.append({"source": "dod", "check_id": str(check.get("check_id") or ""),
                      "status": "passed" if check.get("status") == "passed" else "failed",
@@ -188,11 +194,11 @@ def job_verification(job: Any) -> dict[str, Any]:
     state = getattr(job.state, "value", str(job.state))
     if any(run["status"] == "failed" for run in runs):
         status = "failed"
-    elif runs:
+    elif runs and not refused:    # one test that could not run leaves the verification incomplete
         status = "passed"
     elif state not in _ENDED_STATES:
         status = "pending"
-    elif request:
+    elif request or refused:      # a test check that was there and could not run is not "not required"
         status = "not_run"
         not_run_reason = not_run_reason or f"the job ended {state} before its checks ran"
     else:

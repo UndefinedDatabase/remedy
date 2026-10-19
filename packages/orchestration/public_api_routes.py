@@ -188,8 +188,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         ),
         description=(
             "Stops a job, as `remedy job stop <job> --reason <reason> --json` does, recorded as "
-            "coming through `api`: a running job stops at its next safe point (the provider call "
-            "in flight finishes, nothing new starts) and stays resumable, a job that never "
+            "coming through `api`: a running job stops at its next safe point (a Pi call in "
+            "flight is ended within about a second, another provider's call finishes first, "
+            "nothing new starts) and stays resumable, a job that never "
             "started, such as one waiting for its predecessor, ends at once, and a job already "
             "stopped answers the stop it had with `already_stopped`; a completed job is refused "
             "with 409 `job_not_stoppable`, because its result waits for an apply or a decline. "
@@ -229,7 +230,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         description=(
             "Cancels an order a `POST` to `/api/v1/orders` started, as `remedy client cancel-order "
             "<order> --json` does, whatever it is doing: a planning order stops before its next "
-            "step (a planner call in flight finishes first), each of its jobs is cancelled as "
+            "step and a planner call in flight is ended and writes no plan, each of its jobs is cancelled as "
             "`POST /api/v1/jobs/{job}/abandon` cancels one, no job of it starts afterwards and "
             "nothing of it is applied after the request. `phase` reads `cancelling` while the walk "
             "or a job still runs and `cancelled` once nothing does; `jobs` names what the cancel "

@@ -78,6 +78,32 @@ def test_config_beats_package_json_beats_tests_folder_beats_none(tmp_path: Path)
     assert find_project_test_command(cwd, "python3") is None
 
 
+
+@pytest.mark.parametrize(("files", "argv", "source", "runnable"), [
+    ({"go.mod": "module x\n\ngo 1.22\n"}, ("go", "test", "./..."), "go_module", True),
+    ({"go.mod": "module x\n\ngo 1.22\n\nrequire github.com/a/b v1.0.0\n"}, ("go", "test", "./..."),
+     "go_module", False),                                  # needs the network the sandbox does not give
+    ({"go.mod": "module x\nrequire github.com/a/b v1.0.0\n", "vendor/modules.txt": "# github.com/a/b\n"},
+     ("go", "test", "-mod=vendor", "./..."), "go_module", True),
+    # A Rust crate's tests folder holds Rust integration tests: cargo, never pytest.
+    ({"Cargo.toml": "[package]\nname = 'x'\nversion = '0.1.0'\n", "tests/it.rs": "#[test] fn t() {}\n"},
+     ("cargo", "test", "--offline"), "cargo_manifest", True),
+    ({"Cargo.toml": "[package]\nname = 'x'\nversion = '0.1.0'\n[dependencies]\nserde = '1'\n"},
+     ("cargo", "test", "--offline"), "cargo_manifest", False),
+    ({"Cargo.toml": "[package\n"}, ("cargo", "test", "--offline"), "cargo_manifest", False),
+])
+def test_go_and_rust_projects_get_their_standard_test_command_or_say_why_not(tmp_path: Path, files, argv,
+                                                                              source, runnable):
+    """exec-1018: the language-standard test command, honestly unrunnable when the sandbox cannot run it."""
+    for rel, text in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+
+    command = find_project_test_command(tmp_path, "python3")
+
+    assert command is not None and (command.argv, command.source) == (argv, source)
+    assert (command.unrunnable == "") is runnable
+
 def test_npm_placeholder_blank_script_and_unparseable_json_read_as_no_script(
         tmp_path: Path):
     (tmp_path / "tests").mkdir()

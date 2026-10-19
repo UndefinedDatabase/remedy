@@ -56,7 +56,9 @@ def do_step_study(ctx: DoContext) -> tuple[str, str]:
 
     # Amend1014 D1 and audit P1-7: a bounded order is studied from facts, with no narration call, in a
     # repository of any size: a README edit in a 10,000-file repository needs no whole-repository model pass.
-    call_fn = None if ctx.no_llm or lane.bounded else study_call_fn()
+    # exec-1018 (R-1352): nor does any order on a tiny repository, whose facts the planner sees whole
+    # (measured: four narration calls, 23.8 of 27.5 s, on six files).
+    call_fn = None if ctx.no_llm or lane.bounded or ctx.tiny_repo else study_call_fn()
     result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
     updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
     if updated is not None:

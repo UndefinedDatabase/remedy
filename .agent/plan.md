@@ -1,22 +1,22 @@
-# Plan — reliability campaign: cancel, stale work, truthful lifecycle (operator order 2026-10-17)
+# Plan — adaptive execution, complete safety, real-world reliability (operator order 2026-10-18)
 
 ## Goal
-Cancellation really ends an order's lifecycle, abandoned work leaves the active views for good
-(evidence kept), every lifecycle word is true, and clients control it all over the public API.
-Branch `feature/order-cancel` from PR 360's head `9b172a16c` (merge order: 360 first, then this);
-worktree `.remedy-wt/order-cancel`. Outside the roadmap queue (F078 stays next). `.agent/STOP`, the
-supervisor and the live checkout untouched; no merge, no deploy.
+Small work runs without orchestration, complex work is not underplanned, every applicable project
+rule reaches the model, outstanding work can really be cancelled, outcomes are verified and cost
+stays bounded. Branch `feature/adaptive-reliability` from PR 361's head `652029edc` (merge order:
+PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Outside the roadmap
+queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
 
 ## Current Step
-All steps done (findings R-1338..R-1344, decisions exec-1017c D1-D10, handoff written). Now: the
-one full local gate on the final tree, then the PR (not merged).
+8b. All steps done (D1-D10, R-1345..R-1353, handoff written). Now: the one full local gate on this
+commit, then the PR (not merged).
 
 ## Next Steps
-- Operator: merge PR 360, then this PR; restart `remedy serve`.
-- Open: R-1343's loop half (`--test-command` refusal reads `test_failed`); the calibration run
-  proposed in the handoff (needs an authorized model budget).
+- Operator: merge PR 360, PR 361, then this PR; restart `remedy serve`.
+- Open: R-1351 (A/B of one repair round from a red DoD), R-1353 (lessons in the builder context).
 
 ## Risks
-- `pingpong_job.py`, `decision_queue.py`, `command_catalog.py` are at their structure rows: every
-  edit there is line-neutral, new logic lives in new modules.
-- A planning order stops only when its planner call returns (safe points between steps).
+- `pingpong_loop.run_pingpong`, `pingpong_job.run_job` and their files are at their ledger rows:
+  edits there are line-neutral, new logic in other modules.
+- Another session's model (`muse-glimmer`) is loaded in Ollama and a Universe bench run is active:
+  calibration must not evict or slow it; skip if it would.

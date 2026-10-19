@@ -24,6 +24,7 @@ from packages.orchestration.do_context import (
     DO_STEP_FAILED,
     DoContext,
 )
+from packages.orchestration.order_intent import ORDER_INTENT_VERIFY_ONLY
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import TaskEntry
@@ -231,9 +232,16 @@ def _shape_job_orders(
                  DoJobTarget(project, ctx.project_repos[str(project.id)]))
                 for project in ctx.projects]
     if shape == DO_SHAPE_ONE_JOB:
-        if ctx.lane is not None and ctx.lane.bounded and ctx.lane.deliverable:
-            return [(order, [deliverable_task(ctx.lane.deliverable, order, with_tests=ctx.lane.with_tests,
-                                              also=ctx.lane.also)], sole, own)]
+        lane = ctx.lane
+        if lane is not None and lane.bounded and lane.intent == ORDER_INTENT_VERIFY_ONLY:
+            return [(order, [], sole, own)]     # exec-1018 (R-1349): no build task; the DoD runs the tests
+        if lane is not None and lane.bounded and lane.deliverable:
+            roles = {"optional": lane.optional, "context": lane.context, "protected": lane.protected}
+            if lane.parts:      # exec-1018 (R-1350): independent parts, one task each, in the one job
+                return [(order, [deliverable_task(part[0], order, also=part[1:], parts=len(lane.parts), **roles)
+                                 for part in lane.parts], sole, own)]
+            return [(order, [deliverable_task(lane.deliverable, order, with_tests=lane.with_tests,
+                                              also=lane.also, **roles)], sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]

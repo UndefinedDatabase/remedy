@@ -8,6 +8,7 @@ starts counting weather instead of failures.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -296,6 +297,67 @@ class TestGuardTripReachesTheTaskRollup:
         assert task.tripped_limit == ""
         assert record["failure_class"] == "test_failed"
         assert record["signal_source"] == "terminal_status"
+
+
+class TestASandboxRefusedTestCommandIsNoFailedTest:
+    """R-1343's loop half, end to end: on a host whose Bubblewrap cannot create a namespace (the
+    AppArmor restriction of recent Ubuntu releases), the REAL guard refuses the job's REAL test
+    command. The run ends `sandbox_unavailable` before any review or repair, and every surface says
+    no test ran: the task, its post-mortem, the job's verification, and the story over CLI and HTTP."""
+
+    _JOB = "# Job: refused\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- done\n"
+
+    @pytest.mark.subprocess
+    def test_no_review_no_repair_and_every_surface_says_not_run(self, demo_repo, tmp_path, monkeypatch):
+        import contextlib
+        import io
+
+        from apps.cli.grouped import main
+        from packages.orchestration import public_api, tool_sandbox
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.order_verification import job_verification
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        bindir = tmp_path / "fakebin"
+        bindir.mkdir()
+        (bindir / "bwrap").write_text("#!/bin/sh\necho 'bwrap: setting up uid map: Permission denied' >&2\nexit 1\n")
+        (bindir / "bwrap").chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bindir}:{os.environ['PATH']}")
+        monkeypatch.setattr(tool_sandbox, "_READY_BWRAP", None)
+        calls = {"review": 0}
+
+        class CountingReviewer(FakeProvider):
+            def review(self, *args, **kwargs):
+                calls["review"] += 1
+                return super().review(*args, **kwargs)
+
+        job = parse_job_file(self._JOB, str(demo_repo))
+        run = run_job(job.job_id, builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+                      reviewer_provider=CountingReviewer(pass_on_round=1, fail_on_round=99),
+                      repair_rounds=2, test_command="true", timeout_sec=30)
+        [task] = run.tasks
+
+        assert (task.final_status, task.test_passed, task.tripped_limit) == (
+            "sandbox_unavailable", None, "sandbox_unavailable")
+        assert calls["review"] == 0 and task.repair_rounds_used == 0     # no model spent on it
+        assert run.state.value == "blocked"
+        out = tmp_path / "evidence"
+        export_job_evidence(job.job_id, str(out))
+        record = json.loads((out / "task_runs" / task.task_id / "postmortem.json").read_text())
+        assert record["failure_class"] == "sandbox_unavailable"       # never `resource_limit`
+        verification = job_verification(run)
+        assert verification["status"] == "not_run" and "sandbox" in verification["reason"]
+        assert verification["runs"] == []
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed), contextlib.suppress(SystemExit):
+            main(["client", "story", job.job_id, "--json"])
+        cli_story = json.loads(printed.getvalue())
+        status, http_story, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{job.job_id}/story")
+        assert status == 200
+        for story in (cli_story, http_story):
+            assert story["state_detail"]["reason"]["key"] == "sandbox_unavailable"
+            assert story["verification"]["status"] == "not_run"
 
 
 class TestTypedWorktreeExceptions:

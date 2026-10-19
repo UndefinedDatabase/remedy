@@ -13,9 +13,14 @@ first tests is judged by them:
      table;
   2. a ``test`` script in the project's ``package.json`` that is not the
      placeholder ``npm init`` writes;
-  3. the pytest argv for the selector ``tests``, under the project's own
+  3. ``go test ./...`` for a Go module (``go.mod``) and ``cargo test --offline``
+     for a Rust package (``Cargo.toml``), before the tests folder, because a
+     Rust crate's ``tests`` folder holds Rust integration tests (exec-1018);
+     either is ``unrunnable`` when its dependencies are not vendored, since the
+     tool sandbox gives no network to fetch them, and the check then says so;
+  4. the pytest argv for the selector ``tests``, under the project's own
      interpreter, when a ``tests`` folder exists;
-  4. none of the above: no test command, and the caller refuses the check
+  5. none of the above: no test command, and the caller refuses the check
      rather than judging it.
 
 R-1236: when the check runs in a job's worktree, the configured command, the
@@ -53,7 +58,7 @@ NPM_PLACEHOLDER_MARK = "Error: no test specified"
 VENV_DIRNAMES = (".venv", "venv")
 
 #: Where a found command came from, in DECISION F299 D1 (2)'s order.
-PROJECT_TEST_SOURCES = ("config", "package_json", "tests_folder")
+PROJECT_TEST_SOURCES = ("config", "package_json", "go_module", "cargo_manifest", "tests_folder")
 
 #: The file each source reads its command from; the tests folder's argv is Remedy's own.
 PROJECT_TEST_SOURCE_FILES = {"config": CONFIG_RELPATH, "package_json": Path("package.json")}
@@ -63,13 +68,19 @@ class ProjectTestConfigError(ValueError):
     """The `[tests]` table of `.remedy/config.toml` cannot be used."""
 
 
-#: `source` is one of `PROJECT_TEST_SOURCES` — which of D1 (2)'s three places found `argv`.
+#: `source` is one of `PROJECT_TEST_SOURCES` — which of D1 (2)'s places found `argv`.
 @dataclass(frozen=True)
 class ProjectTestCommand:
-    """One found test command: its argv, and which source found it."""
+    """One found test command: its argv, which source found it, and why it cannot run ("" when it can).
+
+    *unrunnable* names a known command that the tool sandbox cannot run as it stands (a Go or Rust
+    project whose dependencies are not vendored needs the network): the check refuses it with that
+    reason, so the verification reads not run, never failed and never passed.
+    """
 
     argv: tuple[str, ...]
     source: str
+    unrunnable: str = ""
 
 
 #: No source named a command — the caller refuses the check rather than judging it.
@@ -278,9 +289,47 @@ def find_project_test_command(cwd: Path, python: str) -> ProjectTestCommand | No
                         and NPM_PLACEHOLDER_MARK not in test_script):
                     return ProjectTestCommand(argv=("npm", "test"), source="package_json")
 
+    if (cwd / "go.mod").is_file():
+        return _go_test_command(cwd)
+    if (cwd / "Cargo.toml").is_file():
+        return _cargo_test_command(cwd)
+
     if (cwd / "tests").is_dir():
         return ProjectTestCommand(
             argv=(python, "-m", "pytest", "-p", "no:cacheprovider", "tests", "-q"),
             source="tests_folder")
 
     return None
+
+
+#: Why a Go or Rust check cannot run in the sandbox as it stands.
+NEEDS_NETWORK_WORDS = ("its dependencies are not vendored, and the tool sandbox gives no network to "
+                       "fetch them")
+
+
+def _go_test_command(cwd: Path) -> ProjectTestCommand:
+    """`go test ./...` for the module at *cwd*; vendored dependencies run with `-mod=vendor`."""
+    try:
+        text = (cwd / "go.mod").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        text = ""
+    requires = any(line.strip().startswith("require") for line in text.splitlines())
+    if (cwd / "vendor" / "modules.txt").is_file():
+        return ProjectTestCommand(argv=("go", "test", "-mod=vendor", "./..."), source="go_module")
+    return ProjectTestCommand(argv=("go", "test", "./..."), source="go_module",
+                              unrunnable=f"go.mod requires modules: {NEEDS_NETWORK_WORDS}" if requires else "")
+
+
+def _cargo_test_command(cwd: Path) -> ProjectTestCommand:
+    """`cargo test --offline` for the package at *cwd*, unrunnable when it depends on crates not vendored."""
+    argv = ("cargo", "test", "--offline")
+    try:
+        manifest = tomllib.loads((cwd / "Cargo.toml").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        return ProjectTestCommand(argv=argv, source="cargo_manifest",
+                                  unrunnable=f"Cargo.toml cannot be read ({exc})")
+    depends = any(manifest.get(table) for table in ("dependencies", "dev-dependencies", "build-dependencies"))
+    vendored = (cwd / "vendor").is_dir() and (cwd / ".cargo" / "config.toml").is_file()
+    return ProjectTestCommand(argv=argv, source="cargo_manifest",
+                              unrunnable=f"Cargo.toml depends on crates: {NEEDS_NETWORK_WORDS}"
+                              if depends and not vendored else "")

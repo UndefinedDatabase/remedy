@@ -431,6 +431,9 @@ def _run_project_tests(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             check, REASON_TEST_COMMAND_CHANGED, argv, declared_cwd,
             f"the job changed {changed}, the file this check's test command comes from; a "
             f"command the job wrote is never run as its own check, so nothing was run")
+    if command.unrunnable:              # exec-1018: a Go or Rust check the sandbox cannot run
+        return _refused(check, REASON_TOOL_UNAVAILABLE, argv, declared_cwd,
+                        f"{' '.join(argv)} cannot run here: {command.unrunnable}; nothing was run")
     if command.source != "tests_folder" and argv[0] not in ctx.allowed:
         return _refused(
             check, REASON_EXECUTABLE_NOT_ALLOWED, argv, declared_cwd,

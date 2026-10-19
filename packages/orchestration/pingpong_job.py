@@ -1845,13 +1845,13 @@ def _strict_apply_to_workspace(
 # ---------------------------------------------------------------------------
 
 def final_status_detail_of(result: Any) -> str:
-    """The cause a task records beside a provider failure (R-1016).
+    """The cause a task records beside a provider failure (R-1016) or a refused test command (R-1343).
 
-    The run's ``error`` is the failed provider call's text: for ``provider_unavailable``
-    it names the child's exit code and the redacted tail of its stderr, and for
-    ``provider_timeout`` the limit the call ran into. Every other outcome records "".
+    The run's ``error`` is the failed call's text: for ``provider_unavailable`` the child's exit code and
+    its redacted stderr tail, for ``provider_timeout`` the limit it ran into. Every other outcome records "".
     """
-    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted"):
+    if getattr(result, "final_status", "") not in ("provider_unavailable", "provider_timeout", "budget_exhausted",
+                                                   "sandbox_unavailable", "context_error"):
         return ""
     return str(getattr(result, "error", "") or "")
 
@@ -1924,16 +1924,16 @@ def task_fence_refusal(job: Any, result: Any) -> str:
     ``fences.deny`` globs: all under :data:`BOOKKEEPING_FENCE` is :data:`BOOKKEEPING_ONLY_REASON`."""
     from fnmatch import fnmatch
 
-    from packages.orchestration.task_deliverables import named_files_left_unchanged
+    from packages.orchestration.task_deliverables import deliverable_files_refusal
 
     deny = list(job.fences.deny) if getattr(job, "fences", None) else []
     changed = sorted({
         "/".join(p for p in str(path).replace("\\", "/").split("/") if p and p != ".")
         for path in (*result.staged_files, *result.safe_diff_files)
     } - {""})
-    unchanged = named_files_left_unchanged(job, result, changed)
-    if unchanged or not deny or not changed:
-        return unchanged
+    refused = deliverable_files_refusal(job, result, changed)
+    if refused or not deny or not changed:
+        return refused
     denied = [path for path in changed if any(fnmatch(path, glob) for glob in deny)]
     if not denied:
         return ""

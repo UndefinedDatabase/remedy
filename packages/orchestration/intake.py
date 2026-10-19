@@ -406,7 +406,12 @@ def make_structured_call_fn(
     schema = to_json_schema(model_cls)
 
     def _call(prompt: str, attempt: int) -> str:
-        return planner.raw_call(prompt, schema=schema)
+        # exec-1018 (R-1346): inside a supervised walk, the order's cancel ends this call in flight.
+        from packages.orchestration.order_cancel import walk_cancel_reader
+        from packages.orchestration.planner_cancel import planner_call_scope
+
+        with planner_call_scope(walk_cancel_reader()):
+            return planner.raw_call(prompt, schema=schema)
 
     # F082 T003b (DECISION F082 D8): the model this call_fn will ACTUALLY serve
     # with, read off the instance that serves it rather than re-resolved from

@@ -1094,3 +1094,14 @@ def test_a_check_the_sandbox_refused_never_ran_and_is_no_failed_test(worktree: P
 
     assert (ev.status, ev.reason, ev.exit_code) == (STATUS_FAILED, "sandbox_unavailable", None)
     assert "refused to run without the tool sandbox" in ev.output_tail
+
+
+def test_a_go_module_whose_dependencies_need_the_network_is_not_run_never_failed(worktree: Path):
+    """exec-1018: the tool sandbox gives no network, so a module that requires others cannot be
+    tested as it stands; the check says so before running anything, and no exit code is invented."""
+    (worktree / "go.mod").write_text("module x\n\ngo 1.22\n\nrequire github.com/a/b v1.0.0\n")
+
+    ev = run_check(check("project_tests", {}), worktree, timeout_sec=7)
+
+    assert (ev.status, ev.reason, ev.exit_code) == (STATUS_FAILED, "tool_unavailable", None)
+    assert "no network" in ev.output_tail and "nothing was run" in ev.output_tail

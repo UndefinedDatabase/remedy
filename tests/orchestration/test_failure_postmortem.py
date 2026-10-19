@@ -74,6 +74,11 @@ class TestClassifyEveryClass:
          FailureClass.PROVIDER_UNAVAILABLE, FP.SIGNAL_TERMINAL_STATUS),
         (FailureSignals(runtime_probe_failed=True, error_text="supervisor_missing"),
          FailureClass.RUNTIME_PROBE_FAILED, FP.SIGNAL_TERMINAL_STATUS),
+        # R-1343: a refusal is its own class from either signal, never `resource_limit`
+        (FailureSignals(tripped_limit="sandbox_unavailable", terminal_status="sandbox_unavailable"),
+         FailureClass.SANDBOX_UNAVAILABLE, FP.SIGNAL_GUARD_TRIP),
+        (FailureSignals(terminal_status="sandbox_unavailable"),
+         FailureClass.SANDBOX_UNAVAILABLE, FP.SIGNAL_TERMINAL_STATUS),
         # reserved classes: classifiable, wired to nothing (F011 / F018)
         (FailureSignals(terminal_status="stopped"),
          FailureClass.STOPPED, FP.SIGNAL_TERMINAL_STATUS),
@@ -144,6 +149,8 @@ class TestClassifyEveryClass:
             FailureSignals(error_class="config"),
             # R-0568: the guard's own trip on a non-provider subprocess.
             FailureSignals(tripped_limit="output_bytes"),
+            # R-1343: the guard refused to spawn without its tool sandbox; nothing ran.
+            FailureSignals(tripped_limit="sandbox_unavailable"),
             FailureSignals(),
         ):
             produced.add(classify(signals).failure_class)

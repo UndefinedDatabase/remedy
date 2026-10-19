@@ -26,6 +26,8 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.orchestration.planner_cancel import PlannerCallCancelled
+
 #: The schema a planner call is bound to, read as the reason the call was made.
 CALL_REASONS = {
     "JobIntake": "intake",
@@ -116,6 +118,10 @@ class OrderCallLedger:
             began = self.clock()
             try:
                 text = call_fn(prompt, attempt)
+            except PlannerCallCancelled:     # exec-1018: ended in flight by the order's cancel, no failure
+                self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,
+                                         prompt_chars=len(prompt), response_chars=0, outcome="cancelled")
+                raise
             except Exception as exc:
                 self.failures_in_a_row += 1
                 self.record_planner_call(reason, attempt=attempt, seconds=self.clock() - began,

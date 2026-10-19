@@ -140,6 +140,29 @@ def test_a_check_refused_before_it_ran_is_not_run_never_failed_or_passed(data_ro
         assert reason in found["reason"]
 
 
+
+@pytest.mark.parametrize("request_", ["Run the tests.", ""])
+def test_a_task_test_command_the_sandbox_refused_is_not_run_even_beside_a_passing_one(data_root, request_):
+    """R-1343: a refused command ran no test; it leaves the job unverified, asked for or not, and one
+    passing test of another task never turns the job's verification into a pass."""
+    job = _job("blocked", [TaskEntry(title="ran", test_passed=True),
+                           TaskEntry(title="refused", test_passed=None, tripped_limit="sandbox_unavailable")])
+    job.metadata[OV.ORDER_TEST_REQUEST_KEY] = request_
+
+    found = OV.job_verification(job)
+
+    assert found["status"] == "not_run"
+    assert "tool sandbox is unavailable" in found["reason"]
+    assert [run["status"] for run in found["runs"]] == ["passed"]
+
+
+def test_a_refused_check_without_a_request_is_not_run_never_not_required(data_root):
+    job = _job("blocked")
+    _gate(job, {"check_id": "project-tests", "kind": "project_tests", "status": "failed",
+                "reason": "sandbox_unavailable", "exit_code": None, "command": "npm test"})
+
+    assert OV.job_verification(job)["status"] == "not_run"
+
 def _polyglot(tmp_path):
     repo = tmp_path / "repo"
     for rel, text in {"web/package.json": '{"scripts": {"test": "node --test"}}',

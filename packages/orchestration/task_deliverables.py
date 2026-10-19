@@ -97,8 +97,16 @@ def extract_order_deliverables(order: str) -> list[str]:
     return found or [order.strip()]
 
 
+#: The inputs a deterministic task records the order's other named files under (exec-1018, R-1348).
+TASK_OPTIONAL_FILES_KEY = "optional_files"
+TASK_CONTEXT_FILES_KEY = "context_files"
+TASK_PROTECTED_FILES_KEY = "protected_files"
+
+
 def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
-                     also: tuple[str, ...] = (), tests: tuple[str, ...] | None = None) -> TaskEntry:
+                     also: tuple[str, ...] = (), tests: tuple[str, ...] | None = None,
+                     optional: tuple[str, ...] = (), context: tuple[str, ...] = (),
+                     protected: tuple[str, ...] = (), parts: int = 0) -> TaskEntry:
     """One deterministic task producing one deliverable, with one acceptance item.
 
     *with_tests*: the order itself asks for a test beside the deliverable (2026-10-17 audit P0-2).
@@ -108,6 +116,11 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
     names). *also* names the further files of the same one change (a small change over a few named
     files): they are declared as the task's `files_hint`, so every guard of a declared target reads
     them, and the task says it changes all of them in one step.
+
+    exec-1018: *optional*, *context* and *protected* are the order's other named files (it allows
+    them, only refers to them, or forbids changing them, `order_intent.order_file_roles`); the task
+    says so and records them, and `deliverable_files_refusal` holds a protected one unchanged.
+    *parts* > 1 says this task is one of that many independent parts of the order, each its own task.
     """
     files = [deliverable, *(path for path in also if path != deliverable)]
     named_files = " and ".join(files) if len(files) <= 2 else ", ".join(files[:-1]) + f" and {files[-1]}"
@@ -119,6 +132,16 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
     if len(files) > 1:
         body += (f"\nThis one change spans {len(files)} files, all in this step: {named_files}. "
                  "Change each of them as the order asks before you finish.")
+    if parts > 1:
+        body += (f"\nThe order has {parts} independent parts, each its own task: this task does only "
+                 f"the part about {named_files}; leave the other parts to their own tasks.")
+    for key, named, words in ((TASK_OPTIONAL_FILES_KEY, optional, "you may change, if the change needs it"),
+                              (TASK_CONTEXT_FILES_KEY, context, "are named for reference: read them if useful, "
+                               "do not change them"),
+                              (TASK_PROTECTED_FILES_KEY, protected, "must stay unchanged, as the order says")):
+        if named:
+            inputs[key] = list(named)
+            body += f"\nThese files {words}: {', '.join(named)}."
     if with_tests:
         # Lab calc order of 2026-10-17: "deliverable: src/calc.js" with a side sentence about a test
         # made the builder fix only calc.js; the reviewer failed it and the repair round ran the job
@@ -149,20 +172,28 @@ def task_deliverable(task: TaskEntry) -> str:
     return str(task.inputs.get(DELIVERABLE_INPUT_KEY) or "").strip()
 
 
-def named_files_left_unchanged(job: Any, result: Any, changed: list[str]) -> str:
-    """Why the task *result* ran may not pass: the named files of its one change it left unchanged.
+def deliverable_files_refusal(job: Any, result: Any, changed: list[str]) -> str:
+    """Why the task *result* ran may not pass by the files it changed, or "" when it may.
 
-    Only a deterministic deliverable task over several named files (`deliverable_task(also=...)`,
-    whose files are its `files_hint`) is read: the order named each of them for this one change, so
-    a reviewer's pass over a change that skipped one is no completion (exec-1017c, R-1342). A
-    planner's task is never read here: its `files_hint` are hints, some only to be read. "" else.
+    Only a deterministic deliverable task is read (`deliverable_task`); a planner's task never is,
+    because its `files_hint` are hints, some only to be read. Two refusals, the first that applies:
+
+    * `named_files_unchanged`: the task's one change spans several named files (its `files_hint`)
+      and the run left one of them unchanged; a reviewer's pass over it is no completion (R-1342);
+    * `protected_file_changed`: the run changed a file the order says must stay unchanged (R-1348).
+
+    A file the order names only as context or merely allows is held to nothing.
     """
     task = next((t for t in job.tasks if str(t.task_id) == str(getattr(result, "task_id", ""))), None)
-    if task is None or task.inputs.get("task_type") != "deliverable" or not task.files_hint:
+    if task is None or task.inputs.get("task_type") != "deliverable":
         return ""
     missing = [path for path in task.files_hint if path not in set(changed)]
-    return (f"named_files_unchanged: the change left {', '.join(missing)} unchanged, which the order "
-            f"names as part of it" if missing else "")
+    if missing:
+        return (f"named_files_unchanged: the change left {', '.join(missing)} unchanged, which the order "
+                f"names as part of it")
+    touched = [path for path in task.inputs.get(TASK_PROTECTED_FILES_KEY) or [] if path in set(changed)]
+    return (f"protected_file_changed: the change touched {', '.join(touched)}, which the order says must "
+            f"stay unchanged" if touched else "")
 
 
 def record_llm_task_deliverables(tasks: list[TaskEntry]) -> None:
@@ -190,10 +221,14 @@ def _first_word(title: str) -> str:
     return words[0].lower() if words else ""
 
 
-def validate_deliverable_plan(tasks: list[TaskEntry]) -> None:
-    """Raise `DeliverablePlanError` naming every task without a deliverable or that only inspects."""
+def validate_deliverable_plan(tasks: list[TaskEntry], *, allow_empty: bool = False) -> None:
+    """Raise `DeliverablePlanError` naming every task without a deliverable or that only inspects.
+
+    An empty plan is refused unless *allow_empty*: a job the shape step plans with no build task by
+    design, a verification-only order's, whose DoD runs the project's tests (exec-1018, R-1349).
+    """
     problems: list[str] = []
-    if not tasks:
+    if not tasks and not allow_empty:
         problems.append("the plan holds no task")
     for task in tasks:
         if not task_deliverable(task):

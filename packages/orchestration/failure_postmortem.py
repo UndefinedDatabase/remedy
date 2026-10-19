@@ -116,6 +116,10 @@ class FailureClass(str, enum.Enum):
     #: timeout is NOT this class: it stays ``provider_timeout``, which names it
     #: more precisely, because the provider seam never reports a trip here.
     RESOURCE_LIMIT = "resource_limit"
+    #: The guard REFUSED to spawn a command without its tool sandbox (exit 126, no process): the
+    #: machine cannot run it as required, so nothing about the change or its tests is known (R-1343).
+    #: Not ``resource_limit``: no limit was enforced on anything that ran.
+    SANDBOX_UNAVAILABLE = "sandbox_unavailable"
     UNKNOWN = "unknown"
 
 
@@ -200,6 +204,7 @@ TERMINAL_STATUS_CLASSES: dict[str, FailureClass] = {
     "budget_exhausted": FailureClass.BUDGET_EXHAUSTED,
     "disk_exhausted": FailureClass.DISK_EXHAUSTED,
     "fence_violation": FailureClass.FENCE_VIOLATION,
+    "sandbox_unavailable": FailureClass.SANDBOX_UNAVAILABLE,
 }
 
 #: Structured ``error_class`` values produced by the provider layer.
@@ -353,6 +358,9 @@ def classify(signals: FailureSignals) -> Classification:
         # carrying its text.
 
     tripped = (signals.tripped_limit or "").strip()
+    if tripped == FailureClass.SANDBOX_UNAVAILABLE.value:
+        return Classification(FailureClass.SANDBOX_UNAVAILABLE, SIGNAL_GUARD_TRIP,
+                              signals.error_text or "the tool sandbox is unavailable")
     if tripped:
         reason = f"tripped_limit={tripped}"
         if signals.error_text:

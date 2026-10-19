@@ -14,8 +14,11 @@ read no request, so a job its shape step saved after the client stopped the list
    reads to say the order runs), reads the request before every step and after it
    (`cancellable_do_steps`), and before every apply (`walk_cancel_note`). A step that sees it runs nothing; after the step it cancels every job of
    the walk the step made, so a job saved between the client's listing and the walk's reading is
-   caught by one of the two (both write before they read). A planning order therefore stops once
-   its planner call in flight returns; Remedy deliberately kills no process, as a job stop does not.
+   caught by one of the two (both write before they read). A planner call in flight is ended too
+   (`planner_cancel.py`, exec-1018): the walk's reader is bound to it (`walk_cancel_reader`), the
+   Ollama planner closes its own request's connection and the Claude CLI planner's child is ended by
+   its guard, and the call writes no plan. A running job's Pi call ends through the job's stop
+   request, within about a second. No Ollama server or other process outside the call is touched.
 
 What landed stays: an applied result is never reverted. A completed result waiting for its apply is
 the person's decision, so it is left as it is unless the request says `decline_results`, which
@@ -48,7 +51,7 @@ _ORDER_FOLDER_NAME = re.compile(r"[0-9a-f]{16}")
 #: decline, `needs_plan_approval`, `waiting` for a job that waits for its predecessor, `ready` for
 #: one that may run now, `blocked`, `failed`, `stopped` (resumable), `cancelling` until nothing of
 #: a cancelled order runs any more, `cancelled`, `done` when every job's result was applied or
-#: declined, `ended` for a walk that ended with no job (its answer says why), `lost` when the
+#: declined or the job only ran its checks, `ended` for a walk that ended with no job (its answer says why), `lost` when the
 #: walk's process is gone with no recorded end.
 ORDER_PHASES = ("planning", "running", "awaiting_apply", "needs_plan_approval", "waiting", "ready",
                 "blocked", "failed", "stopped", "cancelling", "cancelled", "done", "ended", "lost")
@@ -197,7 +200,7 @@ def order_phase(state: str, cancel: dict[str, str] | None, jobs: list[dict[str, 
                   "ready", "waiting"):
         if phase in phases:
             return phase
-    if phases and all(phase in ("applied", "declined", "cancelled") for phase in phases):
+    if phases and all(phase in ("applied", "declined", "cancelled", "checked") for phase in phases):
         return "cancelled" if all(phase == "cancelled" for phase in phases) else "done"
     return "failed" if exit_code not in (0, None) else "ended"
 
@@ -229,6 +232,21 @@ def walk_cancel_request() -> dict[str, str] | None:
     """The cancel request of the order this walk runs for, or None (none, or not a supervised order)."""
     order_dir = _WALK_ORDER_DIR.get()
     return order_cancel_request(order_dir) if order_dir is not None else None
+
+
+def walk_cancel_reader() -> Callable[[], str] | None:
+    """For a supervised walk, the reader of its order's cancel reason ("" while none); else None.
+
+    A planner call binds it (`planner_cancel.planner_call_scope`), so a cancel ends that call in
+    flight (exec-1018, R-1346); outside a supervised order no planner call is made cancellable.
+    """
+    if _WALK_ORDER_DIR.get() is None:
+        return None
+
+    def reason() -> str:
+        request = walk_cancel_request()
+        return "" if request is None else f"the order was cancelled ({request['reason']})"
+    return reason
 
 
 def walk_cancel_note() -> str:
@@ -273,12 +291,18 @@ def _cancellable_step(name: str, step: Callable[[Any], tuple[str, str]]) -> Call
         if request is not None:
             return DO_STEP_STOPPED, (f"not run: the order was cancelled ({request['reason']})"
                                      f"{_cancel_walk_jobs(ctx, request)}")
-        status, detail = step(ctx)
+        from packages.orchestration.planner_cancel import PlannerCallCancelled
+
+        try:
+            status, detail = step(ctx)
+        except PlannerCallCancelled as ended:      # exec-1018 (R-1346): its planner call ended in flight
+            status, detail = DO_STEP_STOPPED, (f"its planner call was ended after {ended.seconds:.1f} s "
+                                               f"and wrote no plan")
         request = walk_cancel_request()
         if request is None:
             return status, detail
         note = _cancel_walk_jobs(ctx, request)
-        if status == DO_STEP_FAILED or note:
+        if status in (DO_STEP_FAILED, DO_STEP_STOPPED) or note:
             # A job the cancel ended reads failed to the step that ran it: say what ended it.
             return DO_STEP_STOPPED, f"the order was cancelled during {name} ({request['reason']}): {detail}{note}"
         return status, detail

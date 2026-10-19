@@ -386,22 +386,102 @@ def test_a_named_file_deep_in_a_large_repository_is_shown_and_the_cut_list_says_
     assert "secret" not in text
 
 
-@pytest.mark.parametrize("size", [300, 27_364])
-def test_the_repositorys_agent_file_reaches_the_builder_bounded_and_by_name(tmp_path, size):
-    """exec-1017c (R-1344): Pi runs with `--no-context-files`, so it no longer loads AGENTS.md into every
-    turn unseen; a short one is shown whole in the builder's context, a long one only named."""
-    from packages.orchestration.pi_provider import builder_workspace_context
+# --- the repository's own instructions (exec-1018, R-1347) ---------------------------------------
 
-    (tmp_path / "AGENTS.md").write_text("Use pnpm, never npm. " + "x" * (size - 22) + "\n")
-    (tmp_path / "src.js").write_text("x\n")
+_MUST = "MANDATORY: every exported function carries a docstring."
 
-    text = builder_workspace_context(str(tmp_path), "Fix src.js.")
 
-    if size < 2000:
-        assert "instructions for coding agents (AGENTS.md):\nUse pnpm, never npm." in text
-    else:
-        assert "AGENTS.md (27363 characters) holds this repository's instructions" in text
-        assert "Use pnpm" not in text
+def _rules_repo(root: Path) -> Path:
+    """A repository whose rules: a 27,364-character root AGENTS.md whose binding sentence is its LAST
+    line (any cut would drop it), a nested pkg/AGENTS.md that contradicts the root on indentation,
+    a CLAUDE.md in a folder the task does not touch, and an AGENTS.md ABOVE the repository."""
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "AGENTS.md").write_text("Indent with tabs.\n" + "Context line.\n" * 1950 + _MUST + "\n")
+    for rel, text in {"pkg/AGENTS.md": "Indent with four spaces in this package.\n",
+                      "pkg/src/util.py": "def f():\n    return 1\n",
+                      "other/CLAUDE.md": "Unrelated: the docs team writes in British English.\n",
+                      "other/page.md": "# page\n"}.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text)
+    return root
+
+
+def test_every_applicable_rule_file_reaches_the_builder_whole_and_in_order(tmp_path):
+    """A large root file is delivered whole (its last, binding line included), the nested file of
+    the touched folder after it, with the precedence stated; an untouched folder's file and any file
+    above the repository never are."""
+    from packages.orchestration.pi_provider import builder_workspace_context, project_rules
+
+    (tmp_path / "AGENTS.md").write_text("ABOVE THE REPOSITORY: never reach me.\n")
+    repo = _rules_repo(tmp_path / "repo")
+
+    text = builder_workspace_context(str(repo), "Fix f in pkg/src/util.py.")
+    rules = project_rules(str(repo), "Fix f in pkg/src/util.py.")
+
+    assert [path for path, _text in rules.files] == ["AGENTS.md", "pkg/AGENTS.md"]
+    assert rules.files[0][1].endswith(_MUST) and len(rules.files[0][1]) > 27_000      # never cut
+    assert text.count(_MUST) == 1 and text.index("--- AGENTS.md ---") < text.index("--- pkg/AGENTS.md ---")
+    assert "a deeper file refines the ones above it" in text and "Indent with four spaces" in text
+    assert "British English" not in text and "ABOVE THE REPOSITORY" not in text
+    assert "is Remedy's after review, never yours" in text      # Remedy's own rules come first
+    assert rules.evidence()[1] == {"path": "pkg/AGENTS.md", "chars": 40,
+                                   "sha256": rules.evidence()[1]["sha256"]}
+
+
+def test_a_symlinked_rule_file_or_folder_is_never_followed(tmp_path):
+    from packages.orchestration.pi_provider import project_rules
+
+    (tmp_path / "secret.md").write_text("PRIVATE\n")
+    repo = tmp_path / "repo"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "AGENTS.md").symlink_to(tmp_path / "secret.md")
+    (repo / "lnk").symlink_to(tmp_path)
+
+    assert project_rules(str(repo), "Fix pkg/a.py and lnk/repo/x.py.").files == ()
+
+
+def test_the_reviewer_is_held_to_the_same_rules_and_told_to_fail_a_break(fake_pi, tmp_path):
+    repo = _rules_repo(tmp_path / "job-workspace")
+    fake_pi.behave(stdout=good_stream('{"verdict":"pass","findings":[],"confidence":"high","summary":"ok"}'))
+
+    PiProvider(role="reviewer", cwd=str(repo)).review("M pkg/src/util.py\njudge this diff")
+
+    prompt = fake_pi.call()["argv"][-1]
+    assert _MUST in prompt and "Indent with four spaces" in prompt
+    assert "They bind the change: fail it when it breaks one of them" in prompt
+
+
+def test_rules_reach_the_model_once_in_the_prompt_and_never_through_pi_s_own_loader(fake_pi, tmp_path):
+    """Repeated Pi turns: Pi resends its conversation every turn, so the rules ride in the first message
+    exactly once and Pi's own context-file loader (which also read every ancestor folder) stays off."""
+    repo = _rules_repo(tmp_path / "job-workspace")
+    provider = PiProvider(role="builder", cwd=str(repo))
+
+    provider.build("Fix f in pkg/src/util.py.")
+
+    argv = fake_pi.call()["argv"]
+    assert "--no-context-files" in argv and argv[-1].count(_MUST) == 1
+    assert [entry["path"] for entry in provider.last_evidence["project_rules"]] == ["AGENTS.md", "pkg/AGENTS.md"]
+
+
+def test_rules_too_large_for_one_call_stop_it_before_pi_starts_and_say_so(fake_pi, tmp_path):
+    """Over the ceiling Remedy neither cuts nor points: the call is refused before Pi starts, and the
+    loop reads the refusal as a context error, never as a missing provider."""
+    from packages.orchestration.pi_provider import PROJECT_RULES_MAX_CHARS
+    from packages.orchestration.pingpong_loop import provider_failure_status
+
+    repo = tmp_path / "job-workspace"
+    repo.mkdir()
+    (repo / "AGENTS.md").write_text("Rule.\n" * (PROJECT_RULES_MAX_CHARS // 6 + 10))
+    (repo / "a.py").write_text("x = 1\n")
+    size = len((repo / "AGENTS.md").read_text().strip())
+
+    out = PiProvider(role="builder", cwd=str(repo)).build("Fix a.py.")
+
+    assert out.error.startswith("provider_error: project_rules_too_large: ")
+    assert f"AGENTS.md ({size:,} characters)" in out.error and "not started" in out.error
+    assert not (repo / ".fake-pi-call.json").exists()         # Pi never ran
+    assert provider_failure_status(out.error) == "context_error"
 
 
 def test_a_failed_calls_measured_tokens_reach_the_runs_usage_and_so_the_budgets(fake_pi, workspace):

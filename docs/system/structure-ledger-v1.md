@@ -270,7 +270,7 @@ with the code that calls it.
 | Lines | File | Function |
 |---|---|---|
 | 1442 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1317 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1314 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 910 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |

@@ -62,6 +62,10 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
     last job (DECISION F270 D4 (4)); in a walk of one job a red contract
     refuses it before anything is applied (D4 (6)).
     """
+    if ctx.run_job_ids and all(_checks_only(job_id) for job_id in ctx.run_job_ids):
+        # exec-1018 (R-1349): a verification-only order's job has no build task and changed nothing.
+        return DO_STEP_DONE, "nothing to apply: " + "; ".join(
+            f"job {job_id} ran only its checks and changed no file" for job_id in ctx.run_job_ids)
     if not ctx.apply:
         commands = [job_apply_command(job_id, do_job_repo(ctx, job_id)) for job_id in ctx.run_job_ids]
         ctx.next_lines.extend(commands)
@@ -94,6 +98,14 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
         return DO_STEP_DONE, detail
     status, sentence = do_push_mission(ctx)
     return status, f"{detail}; {sentence}"
+
+
+def _checks_only(job_id: str) -> bool:
+    """True for a job planned with no build task (a verification-only order's), which has nothing to apply."""
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id)
+    return job is not None and not job.tasks
 
 
 def do_apply_one_job(ctx: DoContext, job_id: str) -> str:

@@ -278,7 +278,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.19`.
+Interface version: `1.20`.
 
 ### Envelope
 
@@ -299,7 +299,7 @@ Refusal keys: `error`, `message`.
 ### Words
 
 Job states: `pending`, `planned`, `running`, `paused`, `completed`, `failed`, `cancelled`, `blocked`, `stopped`.
-Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`.
+Phases of an order's jobs: `running`, `waiting`, `ready`, `needs_plan_approval`, `awaiting_apply`, `applied`, `declined`, `blocked`, `stopped`, `cancelled`, `failed`, `checked`.
 Phases of an order: `planning`, `running`, `awaiting_apply`, `needs_plan_approval`, `waiting`, `ready`, `blocked`, `failed`, `stopped`, `cancelling`, `cancelled`, `done`, `ended`, `lost`.
 Mission statuses: `active`, `paused`, `achieved`, `abandoned`.
 Contract templates: `api-service`, `cli-tool`, `python-library`, `website`.
@@ -343,6 +343,8 @@ Story reason `cancelled`: none.
 Story reason `paused`: none.
 Story reason `unknown`: none.
 Story reason `stopped`: none.
+Story reason `sandbox_unavailable`: none.
+Story reason `project_rules_too_large`: none.
 
 ### Operations
 
