@@ -11,5 +11,5 @@ if [ -n "$staged" ]; then
 fi
 
 # Agent state is shared with coding providers and must not gain credentials, machine-local
-# identifiers, provider-session links, private-network addresses, or binary attachments.
+# identifiers, provider-session links, private-network addresses, or non-text attachments.
 python3 scripts/check_agent_hygiene.py --staged || exit $?

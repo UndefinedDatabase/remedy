@@ -6,10 +6,10 @@ agent-state additions before commit; preserve required workflow state and Git hi
 outside the roadmap queue; F078 remains next.
 
 ## Current Step
-Complete: implementation, review, final fast gate, push, and PR 367.
+6. Review finding R-1368 repaired and verified; commit, push, update PR 367, then merge.
 
 ## Next Steps
-- Operator: review PR 367.
+- Merge PR 367 after the correction passes review and local gates.
 - Operator: decide separately whether a coordinated history rewrite is warranted; this change keeps
   historical records out of new packages without rewriting them.
 

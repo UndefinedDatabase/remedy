@@ -74,6 +74,19 @@ Binary files /dev/null and b/.agent/screenshot.png differ
     ]
 
 
+def test_staged_symlink_agent_state_is_rejected():
+    hygiene = _load_hygiene_module()
+    changed = b".agent/context-link\0.agent/plan.md\0"
+    index_entries = (
+        b"120000 1111111111111111111111111111111111111111 0\t.agent/context-link\0"
+        b"100644 2222222222222222222222222222222222222222 0\t.agent/plan.md\0"
+    )
+
+    assert hygiene.scan_staged_modes(changed, index_entries) == [
+        hygiene.Finding(".agent/context-link", 0, "non-regular agent-state entry")
+    ]
+
+
 def test_pre_commit_hook_runs_agent_hygiene_guard():
     hook = (REPO_ROOT / ".githooks" / "pre-commit").read_text(encoding="utf-8")
 

@@ -87,16 +87,47 @@ def scan_staged_diff(diff_text: str) -> list[Finding]:
     return findings
 
 
-def staged_diff() -> str:
-    proc = subprocess.run(
-        ["git", "diff", "--cached", "--unified=0", "--no-color", "--", ".agent"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+def scan_staged_modes(changed_output: bytes, index_output: bytes) -> list[Finding]:
+    """Reject changed agent-state entries that are not regular index files."""
+    changed = {
+        raw.decode("utf-8", errors="surrogateescape")
+        for raw in changed_output.split(b"\0")
+        if raw
+    }
+    findings: list[Finding] = []
+    for raw in index_output.split(b"\0"):
+        if not raw or b"\t" not in raw:
+            continue
+        metadata, raw_path = raw.split(b"\t", 1)
+        path = raw_path.decode("utf-8", errors="surrogateescape")
+        fields = metadata.split()
+        if path in changed and _is_agent_path(path) and fields and fields[0] not in {b"100644", b"100755"}:
+            findings.append(Finding(path, 0, "non-regular agent-state entry"))
+    return findings
+
+
+def _git_bytes(args: list[str]) -> bytes:
+    proc = subprocess.run(["git", *args], check=False, capture_output=True)
     if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or "git diff failed")
+        message = proc.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(message or f"git {' '.join(args)} failed")
     return proc.stdout
+
+
+def staged_diff() -> str:
+    output = _git_bytes([
+        "diff", "--cached", "--unified=0", "--no-color", "--no-ext-diff", "--no-textconv",
+        "--", ".agent",
+    ])
+    return output.decode("utf-8", errors="strict")
+
+
+def staged_mode_findings() -> list[Finding]:
+    changed = _git_bytes([
+        "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR", "--", ".agent",
+    ])
+    index_entries = _git_bytes(["ls-files", "--stage", "-z", "--", ".agent"])
+    return scan_staged_modes(changed, index_entries)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -105,10 +136,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         diff_text = staged_diff() if args.staged else sys.stdin.read()
-    except RuntimeError as exc:
+        mode_findings = staged_mode_findings() if args.staged else []
+    except (RuntimeError, UnicodeDecodeError) as exc:
         print(f"agent hygiene check failed: {exc}", file=sys.stderr)
         return 2
-    findings = scan_staged_diff(diff_text)
+    findings = scan_staged_diff(diff_text) + mode_findings
     for finding in findings:
         location = f"{finding.path}:{finding.line}" if finding.line else finding.path
         print(f"{location}: refused {finding.reason}", file=sys.stderr)

@@ -41,7 +41,8 @@ Guard tests enforce this boundary (see
 
 Newly staged `.agent/` lines are checked by `scripts/check_agent_hygiene.py` from the repository's
 pre-commit hook. Credentials, machine-local paths, provider-session links and private-network
-addresses are refused; binary attachments are refused as well. Historical Git objects are not
+addresses are refused; binary attachments, symlinks and other non-regular entries are refused as
+well. Historical Git objects are not
 rewritten by this forward-looking guard.
 
 ## Current legacy dependencies
