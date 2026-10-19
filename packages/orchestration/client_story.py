@@ -225,6 +225,12 @@ def _story_state(plan: Any, decision: Any, pending: dict[str, Any], declined: bo
                            "round": _working_round(event, rounds, str(task.task_id))}
     if not plan.tasks:
         return "reading", {}
+    # rel-1019 (R-1366): a rejected plan is final for its job (`REJECTED_PLAN_NEXT_STEP`): the person
+    # said no, so it reads declined; before, it read `queued` and offered `run`, which every run refuses.
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+
+    if task_plan_blocks_execution(plan) == "rejected":
+        return "stopped", {"reason": _word("declined")}
     # exec-1017c (R-1340): planned, nothing runs it. Before, it read `planning` with that step
     # `running` and no next step, so a client showed a job of a split order as busy forever.
     after = _waits_for_job(plan)

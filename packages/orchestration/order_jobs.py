@@ -27,11 +27,11 @@ ORDER_JOB_ORPHANED_REASON = ("job {job} was {ended} and its result will not be a
                              "releases this job: cancel it, or run it on the repository as it is")
 
 #: The `phase` of a job in an order's view: what a person needs to know first. `needs_plan_approval`
-#: is a task plan waiting for its approval, `awaiting_apply` a finished result waiting for the
-#: person's apply or decline (nothing lands on its own), `blocked` a job its checks or a decision hold,
-#: `stopped` a job stopped on purpose that can be resumed, `cancelled` one that ended for good
-#: (`job_cancel.py`, exec-1017c), `checked` a job with no build task that ran its checks and has
-#: nothing to apply (a verification-only order's, exec-1018).
+#: is a task plan waiting for its approval (`declined` once the person rejected it), `awaiting_apply`
+#: a finished result waiting for the person's apply or decline (nothing lands on its own), `blocked`
+#: a job its checks or a decision hold, `stopped` a job stopped on purpose that can be resumed,
+#: `cancelled` one that ended for good (`job_cancel.py`, exec-1017c), `checked` a job with no build
+#: task that ran its checks and has nothing to apply (a verification-only order's, exec-1018).
 ORDER_JOB_PHASES = ("running", "waiting", "ready", "needs_plan_approval", "awaiting_apply", "applied",
                     "declined", "blocked", "stopped", "cancelled", "failed", "checked")
 
@@ -141,7 +141,9 @@ def _job_entry(job: Any) -> dict[str, Any]:
     elif waiting:
         phase = "waiting"
     elif state in ("planned", "pending"):
-        phase = "needs_plan_approval" if task_plan_blocks_execution(job) is not None else "ready"
+        # rel-1019 (R-1366): a rejected plan never runs; nothing is left to approve.
+        blocked_by = task_plan_blocks_execution(job)
+        phase = "declined" if blocked_by == "rejected" else "needs_plan_approval" if blocked_by else "ready"
     elif state == "completed" and not job.tasks:
         phase = "checked"
     elif state == "completed":

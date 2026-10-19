@@ -143,6 +143,26 @@
      "after": "blocked, task error unrequested_file_changed; story failed with reason review_not_passed (as protected_file_changed already reads), end abandon"
     }
    ]
+  },
+  {
+   "version": "1.21",
+   "pr": null,
+   "branch": "feature/release-readiness",
+   "added": [],
+   "value_changes": [
+    {
+     "field": "job state / order phase",
+     "case": "a job answered cancel_pending whose run or walk died before its safe point (R-1365)",
+     "before": "running / cancelling, until a second cancel",
+     "after": "cancelled / cancelled, when the process ends or the supervisor starts"
+    },
+    {
+     "field": "story.state, story.next / order_jobs[].phase",
+     "case": "a job whose task plan the person rejected (R-1366)",
+     "before": "queued with next run (every run refused plan_rejected) / needs_plan_approval",
+     "after": "stopped with reason declined, next none, end abandon / declined"
+    }
+   ]
   }
  ],
  "inventory": {

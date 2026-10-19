@@ -268,7 +268,9 @@ The answer's keys: `order` is the person's own order text; `job_id`; `updated_at
 `ended_at` are times or `null`; `state` is one of `reading`, `planning`, `queued` (since 1.19: a
 planned job no process runs, which read `planning` before), `working`, `checking`, `done`,
 `done_applied`, `stopped`, `failed` and `waiting`. A job stopped on request reads the reason `stopped`
-since 1.19 (it read `cancelled` before, although it can be resumed). `state_detail` holds `file` and `round`
+since 1.19 (it read `cancelled` before, although it can be resumed). A job whose task plan the
+person rejected reads `stopped` with the reason `declined`, `next` `none` and `end` `abandon`: a
+rejected plan is final for its job, and the order's view reads its phase `declined` (R-1366). `state_detail` holds `file` and `round`
 while `working`, `reason` while `stopped` or `failed`, `question` and `decision_id` while `waiting`,
 and `changed_files` once `done` or `done_applied`, and `after_job` while `queued` behind a job of the
 same order whose result has not landed. `next` holds the one next step, `action` (`apply`, `answer`,
