@@ -101,12 +101,15 @@ def extract_order_deliverables(order: str) -> list[str]:
 TASK_OPTIONAL_FILES_KEY = "optional_files"
 TASK_CONTEXT_FILES_KEY = "context_files"
 TASK_PROTECTED_FILES_KEY = "protected_files"
+#: exec-1018b (R-1358): files the order names whose role its words did not make sure; never held to change.
+TASK_MENTIONED_FILES_KEY = "mentioned_files"
 
 
 def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
                      also: tuple[str, ...] = (), tests: tuple[str, ...] | None = None,
                      optional: tuple[str, ...] = (), context: tuple[str, ...] = (),
-                     protected: tuple[str, ...] = (), parts: int = 0) -> TaskEntry:
+                     protected: tuple[str, ...] = (), parts: int = 0,
+                     mentioned: tuple[str, ...] = ()) -> TaskEntry:
     """One deterministic task producing one deliverable, with one acceptance item.
 
     *with_tests*: the order itself asks for a test beside the deliverable (2026-10-17 audit P0-2).
@@ -121,6 +124,8 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
     them, only refers to them, or forbids changing them, `order_intent.order_file_roles`); the task
     says so and records them, and `deliverable_files_refusal` holds a protected one unchanged.
     *parts* > 1 says this task is one of that many independent parts of the order, each its own task.
+    exec-1018b: *mentioned* are named files whose role the order's words did not make sure
+    (`order_intent.FILE_ROLE_MENTIONED`): the task names them for the builder, never holds them to change.
     """
     files = [deliverable, *(path for path in also if path != deliverable)]
     named_files = " and ".join(files) if len(files) <= 2 else ", ".join(files[:-1]) + f" and {files[-1]}"
@@ -138,7 +143,9 @@ def deliverable_task(deliverable: str, order: str, *, with_tests: bool = False,
     for key, named, words in ((TASK_OPTIONAL_FILES_KEY, optional, "you may change, if the change needs it"),
                               (TASK_CONTEXT_FILES_KEY, context, "are named for reference: read them if useful, "
                                "do not change them"),
-                              (TASK_PROTECTED_FILES_KEY, protected, "must stay unchanged, as the order says")):
+                              (TASK_PROTECTED_FILES_KEY, protected, "must stay unchanged, as the order says"),
+                              (TASK_MENTIONED_FILES_KEY, mentioned, "are named in the order too: change them only as "
+                               "far as the order asks, and leave them as they are where it does not")):
         if named:
             inputs[key] = list(named)
             body += f"\nThese files {words}: {', '.join(named)}."

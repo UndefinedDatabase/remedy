@@ -73,7 +73,9 @@ def _run_writers(ev, tmp_path, manifests, *, gate_after_preflight=True):
     """Run writers concurrently, optionally forcing them all to preflight before any publishes —
     the exact interleaving that produced two ordinal-2 episodes."""
     results: dict[str, str] = {}
-    barrier = threading.Barrier(len(manifests), timeout=10) if gate_after_preflight else None
+    # With the append lock only one writer reaches the barrier, so each run waits out its timeout: 2 s,
+    # not 10. exec-1018b P1 7: with the lock disabled the three race tests fail at 2 s as at 10 s.
+    barrier = threading.Barrier(len(manifests), timeout=2) if gate_after_preflight else None
     real = RM.load_verified_canonical_chain_for_write
 
     def _gated(*a, **kw):

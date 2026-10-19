@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -172,6 +173,25 @@ def settle_job_cancel(job: Any) -> bool:
         return False
     _settle_now(job, request)
     return True
+
+
+def cancel_stop_at_job_end(job: Any, stop_check: Callable[[], Any]) -> Any:
+    """The operator stop that ends *job* `cancelled` after its final gate, or None (exec-1018b, R-1357).
+
+    The job's last safe point comes after its last task, but its DoD gate runs after that point and
+    may run the project's tests for minutes. A cancel that arrived meanwhile was answered
+    `cancel_pending`; the job must end `cancelled` then, never `completed` and applied. Only a
+    cancel request is read here: a plain stop, a pause or a budget stop of finished work is not.
+    """
+    from packages.orchestration.safe_points import StopControlError, StopSignal
+
+    try:
+        if job_cancel_request(str(job.job_id)) is None:
+            return None
+    except StopControlError:
+        return None
+    signal = stop_check()
+    return signal if isinstance(signal, StopSignal) and signal.source != "budget" else None
 
 
 def _settle_now(job: Any, request: JobCancelRequest) -> None:

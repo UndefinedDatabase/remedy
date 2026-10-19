@@ -171,7 +171,11 @@ def test_a_walks_apply_between_jobs_refuses_once_the_order_is_cancelled(order, m
     class Ctx:
         commit_mode, job_ids, next_lines, applied = False, ["j1"], [], {}
 
-    assert "the order was cancelled" in do_apply.do_apply_one_job(Ctx(), "j1")
+    # Inside the walk of this order (R-1356: outside one, no order's cancel binds an apply; this test
+    # used to pass alone only through the order an earlier test's walk left behind).
+    from packages.orchestration.order_cancel import cancellable_walk
+    with cancellable_walk({}):
+        assert "the order was cancelled" in do_apply.do_apply_one_job(Ctx(), "j1")
 
 
 def test_after_the_walk_a_cancel_ends_the_waiting_job_and_leaves_the_result_to_the_person(
@@ -201,12 +205,13 @@ def test_after_the_walk_a_cancel_ends_the_waiting_job_and_leaves_the_result_to_t
 def test_only_a_walk_run_from_a_supervised_order_folder_reads_a_cancel(tmp_path, monkeypatch):
     """A `remedy do` in a terminal is stopped with Ctrl-C; its step table stays as it is."""
     from packages.orchestration import do_sequence
-    from packages.orchestration.order_cancel import cancellable_do_steps, walk_order_dir
+    from packages.orchestration.order_cancel import cancellable_walk, walk_order_dir
 
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.chdir(tmp_path)
     assert walk_order_dir() is None
-    assert cancellable_do_steps(do_sequence.DO_STEP_TABLE) is do_sequence.DO_STEP_TABLE
+    with cancellable_walk(do_sequence.DO_STEP_TABLE) as steps:
+        assert steps is do_sequence.DO_STEP_TABLE
     folder = serve_paths().orders_dir / ORDER_ID
     folder.mkdir(parents=True)
     monkeypatch.chdir(folder)
@@ -307,3 +312,19 @@ def test_a_cancel_ends_the_planner_call_in_flight_and_no_plan_is_written(order, 
     assert list(resolve_data_root().rglob("mission_plan*.md")) == []   # no fallback plan after it
     assert order.cancel()["already_cancelled"] is True
     assert order_record_payload(order.paths, order.rec)["phase"] in ("cancelled", "cancelling")
+
+
+def test_a_walks_order_ends_with_the_walk_and_binds_no_later_call_in_the_same_thread(order, tmp_path, monkeypatch):
+    """exec-1018b (R-1356): the order a walk runs for is the walk's own. After a cancelled order's walk
+    ended, a planner call or an apply made later in this thread (a test, an embedded use of Remedy)
+    is no part of that order: no cancel reader binds it and no cancel note refuses it."""
+    from packages.orchestration.order_cancel import walk_cancel_note, walk_cancel_reader, walk_cancel_request
+
+    order.cancel()
+    envelope = order.walk("Fix the typo in README.md.")
+    assert _steps(envelope)["init"][0] == "stopped"           # the walk itself read its cancel
+    monkeypatch.chdir(tmp_path)
+
+    assert walk_cancel_request() is None
+    assert walk_cancel_reader() is None
+    assert walk_cancel_note() == ""

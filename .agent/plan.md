@@ -1,22 +1,22 @@
-# Plan — adaptive execution, complete safety, real-world reliability (operator order 2026-10-18)
+# Plan — verified repair, reliable evidence, adaptive execution (operator order exec-1018b, 2026-10-18)
 
 ## Goal
-Small work runs without orchestration, complex work is not underplanned, every applicable project
-rule reaches the model, outstanding work can really be cancelled, outcomes are verified and cost
-stays bounded. Branch `feature/adaptive-reliability` from PR 361's head `652029edc` (merge order:
-PR 360, then PR 361, then this); worktree `.remedy-wt/adaptive-reliability`. Outside the roadmap
-queue (F078 stays next). No merge, no deploy; `.agent/STOP`, supervisor, live checkout untouched.
+A real test that fails after a passing review leads to one budgeted, evidence-fed repair instead of
+a misleading completion or a pointless loop (R-1351); the review-report export is explained and
+proven end to end; PRs 360, 361 and 362 are reviewed as one release. Branch
+`feature/verified-repair` from PR 362's head `cfd906254`; worktree `.remedy-wt/verified-repair`.
+Merge order: 360, 361, 362, this. No merge, no deploy; `.agent/STOP`, supervisor, live checkout
+untouched. Outside the roadmap queue (F078 stays next).
 
 ## Current Step
-8b. All steps done (D1-D10, R-1345..R-1353, handoff written). Now: the one full local gate on this
-commit, then the PR (not merged).
+9. All steps done (D1–D10, R-1354–R-1358, handoff written): the one full gate on this commit, then
+   the PR (not merged).
 
 ## Next Steps
-- Operator: merge PR 360, PR 361, then this PR; restart `remedy serve`.
-- Open: R-1351 (A/B of one repair round from a red DoD), R-1353 (lessons in the builder context).
+- Operator: merge PR 360, 361, 362, then this PR; restart `remedy serve`.
+- Open: context files misread as required (D6); capture-by-default is the operator's call (D3).
 
 ## Risks
-- `pingpong_loop.run_pingpong`, `pingpong_job.run_job` and their files are at their ledger rows:
-  edits there are line-neutral, new logic in other modules.
-- Another session's model (`muse-glimmer`) is loaded in Ollama and a Universe bench run is active:
-  calibration must not evict or slow it; skip if it would.
+- `run_job`, `run_pingpong` and both files sit at their ledger rows: edits there stay line-neutral,
+  new logic lives in `verified_repair.py`.
+- Another session (Universe recording) uses local Ollama and the CPU: real runs check load first.

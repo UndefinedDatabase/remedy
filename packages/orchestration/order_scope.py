@@ -145,13 +145,25 @@ def order_unit_head(unit: str) -> str:
     return unit[:head.end()] if head else unit
 
 
+#: Words that join a clause to the one before and are not its verb: "Also update the docs" (R-1358).
+_CONNECTORS = frozenset({"also", "then", "and", "additionally", "finally", "auch", "dann", "außerdem",
+                         "zusätzlich", "und", "abschließend"})
+
+
+def _lead_word(clause: str) -> str:
+    """The clause's first word that is no connector, lower-cased and without an opening quote."""
+    words = [word.strip("„\"'(,") for word in clause.strip().lower().split()]
+    return next((word for word in words if word not in _CONNECTORS), "")
+
+
 def _sentence_actions(sentence: str) -> int:
-    """How many clauses of *sentence* start with an action verb."""
-    count = 0
-    for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
-        words = clause.strip().lower().split()
-        count += bool(words) and words[0].strip("„\"'(") in _ACTION_VERBS
-    return count
+    """How many clauses of *sentence* start with an action verb and are no fence, test run or approval.
+
+    The same reading as `_has_work_clause` (exec-1018b, R-1358): "Schreibe einen Test und führe die
+    Tests aus" asks for one action and one test run, as "Write a test. Run the tests." does.
+    """
+    return sum(_lead_word(clause) in _ACTION_VERBS and not _binds(clause)
+               for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)))
 
 
 def _binds(clause: str) -> bool:
@@ -161,11 +173,8 @@ def _binds(clause: str) -> bool:
 def _has_work_clause(sentence: str) -> bool:
     """A clause that starts with an action verb and is no fence, test run or approval of its own:
     "Fix parse.py, add tests and change no other files" carries work beside its fence."""
-    for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)):
-        words = clause.strip().lower().split()
-        if words and words[0].strip("„\"'(") in _ACTION_VERBS and not _binds(clause):
-            return True
-    return False
+    return any(_lead_word(clause) in _ACTION_VERBS and not _binds(clause)
+               for clause in _ACTION_SPLIT_RE.split(order_unit_head(sentence)))
 
 
 def is_constraint_sentence(sentence: str) -> bool:

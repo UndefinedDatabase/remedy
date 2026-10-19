@@ -151,11 +151,14 @@ def test_the_requested_test_command_runs_and_its_pass_is_reported(tmp_path, monk
     ran = _stub_project_tests(monkeypatch, 0)
     answer, [job], _planner = _walk_order_file(tmp_path, monkeypatch, INCIDENT_ORDER, LAB_FILES)
 
-    assert ran == [["npm", "test"]]
+    # R-1351: the required tests run in each round of the job's last task (two with the fake reviewer,
+    # which asks for one repair), then once more at the DoD gate; always the project's own command.
+    assert ran == [["npm", "test"]] * 3
     [listed] = answer["jobs"]
     verification = listed["verification"]
     assert (verification["status"], verification["required"]) == ("passed", True)
     assert verification["request"] == "Führe den vorhandenen Testbefehl aus."
+    # The task's earlier run of the same checks is not counted beside the gate's (R-1351).
     assert [(run["command"], run["status"], run["blocking"]) for run in verification["runs"]] == [
         ("npm test", "passed", True)]
     story = job_client_story(str(job.job_id), job)
@@ -171,7 +174,9 @@ def test_a_failing_requested_test_holds_the_job_instead_of_completing_it(tmp_pat
     assert job.state.value == "blocked"
     assert answer["jobs"][0]["verification"]["status"] == "failed"
     steps = {step["name"]: step for step in answer["steps"]}
-    assert steps["run"]["status"] == "failed" and "dod_blocking_red" in steps["run"]["detail"]
+    # R-1351: the red run reached the task's repair round; the same failure again ends the task, so the
+    # job is held at its task gate with the red test named, before the DoD gate would run it a third time.
+    assert steps["run"]["status"] == "failed" and "test_passed=False" in steps["run"]["detail"]
 
 
 def test_a_requested_test_the_project_cannot_run_is_an_explicit_unmet_verification(tmp_path, monkeypatch):

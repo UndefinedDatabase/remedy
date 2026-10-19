@@ -98,14 +98,25 @@ DoD check `project_tests`, which runs the project's own test command (its `.reme
 `[tests]` command, else its `package.json` `test` script, else pytest over `tests/`) inside the
 tool sandbox, becomes BLOCKING for that job, and is added when the job's DoD has none. A red run
 holds the job `blocked` (`dod_blocking_red:<check>`) instead of completing it; a project that
-names no test command leaves the check not run, and the job says so. A **high-risk** change (see
+names no test command leaves the check not run, and the job says so. **A red test gets one
+repair from its own evidence (R-1351):** the job's last task runs those blocking checks after its
+builder and before its reviewer, through the same runner, environment and refusals as the gate. A
+red run's failing lines (the error, the assertion, the offending source line, the last lines, no
+host path) are the round's test result: the reviewer reads them, and the repair round's builder
+gets them with a `test-failure` finding even when the reviewer found nothing. The repair round
+runs the tests again and is reviewed again; the gate still runs at the end. No repair starts when
+the run is red with the same failure as the round before (`test_failure_unchanged`), when the
+job's remaining calls, tokens or time cannot pay one more round
+(`test_failed_repair_budget_insufficient`), after a stop or a cancel, or when the test never
+started (a refused sandbox, a missing tool: then the round reads not run and the gate reports it).
+Earlier tasks of a multi-task job run no tests: their tests may rightly be red until the last one. A **high-risk** change (see
 below) requires its tests the same way whether or not the order asks. In a repository whose root
 names no test command (a polyglot repository, or several packages each with their own
 `package.json` or `tests/`), the check runs in the nearest folder above each of the job's files
 where one of the same three sources names a command, at most three packages, each its own check;
 a language Remedy finds no command for (a Go module, a Cargo crate) is reported not run, never
 passed. A check refused before it ran (an executable outside the allowed set, a test command the
-job itself changed, a missing tool) is `not_run` with its reason, never `failed` or `passed`. Every walk ends with one
+job itself changed, a missing tool, a test script whose shell exits 126 or 127) is `not_run` with its reason, never `failed` or `passed`. Every walk ends with one
 `Verification of job <id>:` line, and the JSON answer's `jobs[].verification` holds `status`
 (`passed`, `failed`, `not_run`, `not_required` or `pending`), `required`, the order's `request`,
 the `runs` (each task's own test run and each DoD test check, with its command and whether it
@@ -137,7 +148,17 @@ has a role, read from the clause that names it, English or German:
 | required | "Fix add() in `src/calc.js`" | a target; with several, each must change (`named_files_unchanged`) |
 | optional | "you may also adjust `src/format.js` if needed" | allowed, never required; a target only when the order names no required file |
 | context | "as described in `docs/FORMAT.md`", "see `src/format.js`", "siehe …", "gemäß …" | named in the task as reference, read-only, never required |
-| protected | "do not touch `src/format.js`", "`src/format.js` nicht ändern", "leave … unchanged" | must stay unchanged: a run that changes it ends `blocked` (`protected_file_changed`) |
+| protected | "do not touch `src/format.js`", "`src/format.js` nicht ändern", "leave … unchanged", "without touching …", "ohne … anzufassen", "… is off limits", "Finger weg von …" | must stay unchanged: a run that changes it ends `blocked` (`protected_file_changed`) |
+| mentioned | a clause no pattern recognises that carries a negation: "Under no circumstances modify `config/prod.json`" | the reading is unsure: a target, never held to change, never a task of its own; the builder is told to change it only as far as the order asks, and the reviewer judges it |
+
+Context also comes from a reading verb right before the path ("Read `docs/FORMAT.md` first", "Lies
+zuerst …"); permission words ("is fine", "erlaubt") make a file optional. The patterns cannot know
+every wording: on wordings none was tuned on they misread 7 of 12 (exec-1018b), so the one fallback
+that remains costly was made safe. An unrecognised clause WITHOUT a negation keeps its file
+required, so an unknown verb ("Lass `src/price.js` kaufmännisch runden") drops no work; one WITH a
+negation is a guard the patterns missed, and its file is only mentioned (R-1358). A test run inside
+a sentence ("… und führe die Tests aus") is no action, and a connector ("Also update …") is no
+verb, so an order counts the same actions in English and in German.
 
 A file required in one clause stays required where another clause guards a part of it ("do not
 change the API of `src/calc.js`"). An order's own parts that refer to nothing of each other (no

@@ -225,3 +225,28 @@ def test_a_high_risk_change_requires_the_tests_though_the_order_does_not_ask(dat
     [check] = load_dod(str(job.job_id)).checks
     assert (check.kind, check.blocking) == ("project_tests", True)
     assert load_job_plan(str(job.job_id)).metadata[OV.ORDER_TEST_REQUEST_KEY] == request
+
+
+@pytest.mark.parametrize(("own_command", "sources"), [("", ["dod"]), ("make check", ["task", "dod"])],
+                         ids=["dod-checks-in-the-task", "operator-command"])
+def test_a_tasks_run_of_the_dods_own_checks_is_not_counted_beside_the_gates(data_root, own_command, sources):
+    """R-1351: with no test command of its own, the last task ran the DoD's checks before review, and
+    the gate ran them again; one suite is one run. An operator's own command is a run of its own."""
+    job = _job(tasks=[TaskEntry(title="Deliver README.md", test_passed=True)])
+    if own_command:
+        from packages.orchestration.execution_config import ExecutionConfig
+        job.execution_config = ExecutionConfig(test_command=own_command)
+    _gate(job, {"check_id": "ctr-C001", "kind": "project_tests", "status": "passed", "blocking": True,
+                "command": "npm test"})
+
+    found = OV.job_verification(job)
+
+    assert found["status"] == "passed" and [run["source"] for run in found["runs"]] == sources
+
+
+def test_a_task_whose_red_run_held_the_job_before_the_gate_is_its_only_evidence(data_root):
+    job = _job("blocked", tasks=[TaskEntry(title="Deliver README.md", test_passed=False)])
+
+    found = OV.job_verification(job)
+
+    assert found["status"] == "failed" and [run["source"] for run in found["runs"]] == ["task"]

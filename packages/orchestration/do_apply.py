@@ -121,6 +121,10 @@ def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
 
     if (cancelled := walk_cancel_note()):
         return f"job {job_id} was not applied: {cancelled}"       # exec-1017c: nothing lands after a cancel
+    from packages.orchestration.job_cancel import job_cancel_request
+
+    if (request := job_cancel_request(job_id)) is not None:      # R-1357: nor after the job's own cancel
+        return f"job {job_id} was not applied: the job was cancelled ({request.reason})"
     flags: dict[str, Any] = {}
     if ctx.commit_mode:
         total = len(ctx.job_ids)

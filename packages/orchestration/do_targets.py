@@ -237,11 +237,15 @@ def _shape_job_orders(
             return [(order, [], sole, own)]     # exec-1018 (R-1349): no build task; the DoD runs the tests
         if lane is not None and lane.bounded and lane.deliverable:
             roles = {"optional": lane.optional, "context": lane.context, "protected": lane.protected}
+            sure = [path for path in (lane.deliverable, *lane.also) if path not in lane.mentioned]
             if lane.parts:      # exec-1018 (R-1350): independent parts, one task each, in the one job
-                return [(order, [deliverable_task(part[0], order, also=part[1:], parts=len(lane.parts), **roles)
+                return [(order, [deliverable_task(part[0], order, also=part[1:], parts=len(lane.parts),
+                                                  mentioned=lane.mentioned, **roles)
                                  for part in lane.parts], sole, own)]
             return [(order, [deliverable_task(lane.deliverable, order, with_tests=lane.with_tests,
-                                              also=lane.also, **roles)], sole, own)]
+                                              also=tuple(p for p in lane.also if p in sure),
+                                              mentioned=tuple(p for p in lane.also if p not in sure), **roles)],
+                     sole, own)]
         slices = deterministic_job_plans(order)
         if len(slices) == 1:
             return [(order, None, sole, own)]

@@ -26,6 +26,8 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
     TASK_PENDING,
+    JobPlan,
+    TaskEntry,
     load_job_plan,
     parse_job_file,
     run_job,
@@ -207,3 +209,58 @@ def test_a_cancelled_job_asks_no_decision():
     job.state = RunState.CANCELLED
 
     assert list_decisions(job, [event]) == []
+
+
+def test_a_cancel_during_the_jobs_final_gate_ends_it_cancelled_and_nothing_is_applied(tmp_path, monkeypatch):
+    """exec-1018b (R-1357): the job's DoD gate runs after its last safe point and may run the project's
+    tests for minutes. A cancel that arrives then was answered `cancel_pending`, yet the job ended
+    `completed` and the walk's `--apply` applied it. It ends `cancelled` now, and nothing lands."""
+    import contextlib
+    import io
+    import json
+    import os
+
+    from apps.cli.grouped import main
+    from packages.orchestration import dod_gate
+    from tests.orchestration.scale_harness import FakePlannerService, commit_repository
+
+    readme = "# P\n\nA projcet.\n"
+    work = commit_repository(tmp_path / "work", {"README.md": readme,
+                                                 "package.json": '{"scripts": {"test": "node --test"}}\n'})
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.chdir(work)
+    FakePlannerService(target="README.md").install(monkeypatch)
+    answers: list[dict] = []
+    gate = dod_gate.run_job_gate
+
+    def cancelled_while_gating(job_id, root, **kwargs):
+        answers.append(cancel_job(load_job_plan(job_id), reason="no longer wanted", source="test"))
+        return gate(job_id, root, **kwargs)
+    monkeypatch.setattr(dod_gate, "run_job_gate", cancelled_while_gating)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.suppress(SystemExit):
+        main(["do", "Fix the typo in README.md. Run the tests.", "--repo", ".", "--builder-provider", "fake",
+              "--reviewer-provider", "fake", "--json", "--no-ui", "--run-unattended", "--apply"])
+    [job_id] = json.loads(out.getvalue())["job_ids"]
+
+    assert [a["cancel_pending"] for a in answers] == [True]
+    assert load_job_plan(job_id).state == RunState.CANCELLED
+    assert (work / "README.md").read_text() == readme
+
+
+def test_a_walks_apply_refuses_a_job_with_a_cancel_request_whatever_its_state(data_root, monkeypatch):
+    """R-1357, the second fence: whatever state a cancelled job's record reads, the walk never applies it."""
+    from packages.orchestration import do_apply, job_apply
+
+    def must_not_apply(*args, **kwargs):
+        raise AssertionError("an apply ran for a cancelled job")
+    monkeypatch.setattr(job_apply, "apply_job", must_not_apply)
+    job = JobPlan(job_title="t", tasks=[TaskEntry(title="Deliver README.md")])
+    save_job_plan(job)
+    request_job_cancel_marker(str(job.job_id), reason="no longer wanted", source="test")
+
+    class Ctx:
+        commit_mode, job_ids, next_lines, applied = False, [str(job.job_id)], [], {}
+
+    assert do_apply.do_apply_one_job(Ctx(), str(job.job_id)).endswith("the job was cancelled (no longer wanted)")

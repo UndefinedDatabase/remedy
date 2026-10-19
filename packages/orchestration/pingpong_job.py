@@ -40,12 +40,7 @@ from packages.core.models import Artifact, Budget, JobFences, RunState
 # Module-level and not function-scoped: the default_factory of JobPlan and of
 # TaskEntry below is read when the class body runs, which a local import could
 # never reach.
-from packages.orchestration.data_paths import (
-    mint_episode_id,
-    mint_job_id,
-    mint_run_id,
-    mint_task_id,
-)
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
 from packages.orchestration.execution_config import (
     ExecutionConfig,
     _export_execution_config,
@@ -53,6 +48,7 @@ from packages.orchestration.execution_config import (
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
+from packages.orchestration.verified_repair import final_task_test_command
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -2485,7 +2481,7 @@ def run_job(
     None parameters mean "omitted by caller". Resolution order:
     explicit CLI value > persisted config > product default.
     """
-    from packages.orchestration.job_cancel import settle_job_cancel
+    from packages.orchestration.job_cancel import cancel_stop_at_job_end, settle_job_cancel
     from packages.orchestration.pingpong_call_record import parked_session_refs
     from packages.orchestration.pingpong_loop import TaskInput, load_run, run_pingpong
 
@@ -3441,7 +3437,7 @@ def run_job(
                     timeout_sec=timeout_sec,
                     timeout_profile=timeout_profile,
                     max_output_chars=max_output_chars,
-                    test_command=test_command,
+                    test_command=final_task_test_command(job, task, test_command, _build_budget_counters),
                     claude_cli_write_mode=claude_cli_write_mode,
                     stream_evidence=stream_evidence,
                     stream_evidence_dir=(
@@ -3796,10 +3792,10 @@ def run_job(
         # Determine final job status
         all_done, has_pending = job_task_ending(job.tasks)
 
-        # DECISION F269 D6 (2): the job's DoD gate, in the workspace, before the
-        # `finally` below finalizes it; a gate that holds blocks the job, and
-        # the finalizer then keeps its worktree.
+        # DECISION F269 D6 (2): the DoD gate, before `finally` finalizes the workspace; a hold blocks the job.
         dod_blocker = _gate_job_definition_of_done(job) if all_done else ""
+        if all_done and (_cancel_stop := cancel_stop_at_job_end(job, _stop_check)) is not None:
+            return _settle_safe_point(_cancel_stop)     # R-1357: cancelled while its gate ran
 
         if dod_blocker:
             job.state = JOB_BLOCKED
