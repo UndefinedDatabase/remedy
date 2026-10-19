@@ -53,6 +53,10 @@ def test_one_named_file_is_one_bounded_job_whatever_the_wording(order, deliverab
             f"Deliver {deliverable} and its test {test_file}")
 
 
-def test_two_named_source_files_still_go_to_the_planner():
+def test_two_named_source_files_are_one_bounded_job_and_four_go_to_the_planner():
+    """exec-1017 D14 left two named source files to the local planner, whose plans for small orders
+    failed; a small change over a few named files is one bounded task now (2026-10-17 order)."""
     lane = select_do_lane("Fix add in src/calc.js and normalizeName in src/format.js.", tracked_files=FILES)
-    assert lane.lane == "full"
+    assert (lane.lane, lane.deliverable, lane.also) == ("bounded", "src/calc.js", ("src/format.js",))
+    many = select_do_lane("Fix src/calc.js, src/format.js, README.md and package.json.", tracked_files=FILES)
+    assert many.lane == "full"

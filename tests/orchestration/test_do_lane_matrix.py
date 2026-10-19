@@ -53,7 +53,7 @@ MATRIX = [
      "Fix the typo in README.md\n\nConstraints the plan must honour:\n- run tests/test_add.py\n"
      "- change no other files", CODE, B, "README.md"),
     ("bug fix, tests only run", "Fix a bug in src/add.py. Run the tests.", CODE, B, "src/add.py"),
-    ("feature in two files", "Add a feature to src/add.py and src/calc.js.", CODE, F, ""),
+    ("feature in two files", "Add a feature to src/add.py and src/calc.js.", CODE, B, "src/add.py"),
     ("typo without a suffix", "Fix the typo in the readme", CODE, B, "README.md"),
     ("typo in German", "Korrigiere den Tippfehler in README.md", CODE, B, "README.md"),
     ("heading in German", "Ändere in README.md die Überschrift auf 'Hallo'.", CODE, B, "README.md"),

@@ -50,6 +50,8 @@ from apps.cli.client_interface_story import (
     STORY_WORDS_KEY_TREE,
     render_story_words_lines,
 )
+from apps.cli.commands.job_stop_cmd import JOB_STOP_ANSWER_KEYS, JOB_STOP_ANSWER_TREE, JOB_STOP_REFUSAL_TOKENS
+from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_TREE
 
 #: The document's own version. Its major number changes only when a name is removed or changes
 #: its meaning; adding a name raises the minor number. F253 S3a (DECISION F253 D4 (3)) raises it
@@ -68,8 +70,8 @@ from apps.cli.client_interface_story import (
 #: amend1015-face-migration (DECISION amend1015f D14, D16) to `1.15` for `client.story`, `story`
 #: and the `job_already_applied` refusal of a second `job apply`, and operator order
 #: amend1015-final-closure to `1.16` for a client token's read scope (DECISION amend1015c D2) and
-#: `client.diff` (DECISION amend1015c D5), and order exec-1017 to `1.17` for job verification and turns.
-CLIENT_INTERFACE_VERSION = "1.17"
+#: `client.diff` (DECISION amend1015c D5), exec-1017 to `1.17` (verification, turns), exec-1017b to `1.18` (job.stop, jobs).
+CLIENT_INTERFACE_VERSION = "1.18"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -84,7 +86,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "job.run",
     "job.resume",
     "job.apply",
-    "job.decline",
+    "job.decline", "job.stop",
     "change.proof",
     "job.evidence",
     "patch.hunks",
@@ -142,6 +144,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "ambiguous_job_id", "invalid_job_id", "job_already_applied", "job_not_declinable",
         "job_not_found", "missing_argument",
     ),
+    "job.stop": JOB_STOP_REFUSAL_TOKENS,
     "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
     "job.evidence": ("job_not_found", "unsafe_task_id"),
     "patch.hunks": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
@@ -221,6 +224,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "temporary_worktree_cleanup", "unexpected_source_files",
     ),
     "job.decline": ("already_declined", "declined_at", "job_id", "matches", "reason", "source"),
+    "job.stop": JOB_STOP_ANSWER_KEYS,
     "change.proof": (
         "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
         "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
@@ -234,14 +238,14 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "client.interface": (
         "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
         "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
-        "mission_statuses", "operations", "story",
+        "mission_statuses", "operations", "order_job_phases", "story",
     ),
     "client.changes": (
         "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
         "overlap_seconds", "read_at", "since", "skipped_files",
     ),
     "client.order": (
-        "answer", "ended_at", "exit_code", "order_file", "order_id", "started_at", "state",
+        "answer", "ended_at", "exit_code", "jobs", "order_file", "order_id", "started_at", "state",
     ),
     "client.run": (
         "answer", "ended_at", "err_log", "exit_code", "job_id", "out_log", "pid", "started_at",
@@ -586,6 +590,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "execution_config": EXECUTION_CONFIG_KEY_TREE,
     },
     "job.decline": {},
+    "job.stop": JOB_STOP_ANSWER_TREE,
     "change.proof": {
         "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
         "changes": {
@@ -753,11 +758,9 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "missions": {"project_id": {}, **DIGEST_KEY_TREE["projects"]["missions"]},
         "applies": {"job_id": {}, "job_apply_id": {}, "status": {}, "finished_at": {}},
     },
-    # F253 S5a (DECISION F253 D13): `answer` is the envelope `remedy do` printed, read only
-    # once the order is not `running`; no tree is declared under it in this round.
-    "client.order": {},
-    # F253 (DECISION F253 D20): `answer` is the envelope `remedy job run` printed, read only once
-    # the run is not `running`; no tree is declared under it.
+    # F253 D13: `answer` is what `remedy do` printed once the order ended (no tree); `jobs`: order_jobs_view.
+    "client.order": {"jobs": ORDER_JOBS_KEY_TREE},
+    # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,
     "client.diff": {"files": {key: {} for key in (
@@ -841,7 +844,7 @@ def build_client_interface() -> dict[str, Any]:
             {"code": meaning.code, "name": meaning.name, "meaning": meaning.meaning}
             for meaning in CLI_EXIT_CODES
         ],
-        "job_states": [state.value for state in RunState],
+        "job_states": [state.value for state in RunState], "order_job_phases": list(ORDER_JOB_PHASES),
         "mission_statuses": list(MISSION_STATUSES),
         "contract_templates": list(list_contract_templates()),
         "budget_kinds": list(JobBudgets.model_fields),
@@ -936,6 +939,7 @@ def render_client_interface_markdown(interface: dict[str, Any]) -> str:
         "### Words",
         "",
         f"Job states: {_listed(interface['job_states'])}.",
+        f"Phases of an order's jobs: {_listed(interface['order_job_phases'])}.",
         f"Mission statuses: {_listed(interface['mission_statuses'])}.",
         f"Contract templates: {_listed(interface['contract_templates'])}.",
         f"Budget kinds: {_listed(interface['budget_kinds'])}.",

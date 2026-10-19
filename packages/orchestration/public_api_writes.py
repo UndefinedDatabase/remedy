@@ -29,6 +29,15 @@ def _job_decline_argv(segments: dict[str, str], body: dict[str, Any]) -> list[st
             "--", segments["job"]]
 
 
+def _job_stop_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job stop` is run with (exec-1017b): `--reason` as the body gives it,
+    `--source=api`, so the stop names the door it came through; then `--json`, `--` and the job.
+    A running job stops at its next safe point, one that never started ends at once, a stopped one
+    answers the stop it already had, and a completed one is refused `job_not_stoppable`."""
+    return ["job", "stop", f"--reason={body.get('reason', '')}", "--source=api", "--json",
+            "--", segments["job"]]
+
+
 class PublicApiWriteRefusal(Exception):
     """A write a route's argument builder refuses before any command runs (DECISION F253 D12)."""
 
@@ -83,6 +92,7 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "decision.resolve": _decision_resolve_argv,
     "job.decline": _job_decline_argv,
     "job.apply": _job_apply_argv,
+    "job.stop": _job_stop_argv,
 }
 
 #: The flags of the order-create route's body, each passed as its `remedy do` option when

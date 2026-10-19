@@ -146,8 +146,11 @@ def _job_report(job_id: str) -> dict[str, Any]:
     if job is None:
         return {"job_id": job_id, "missing": "the job record could not be read"}
     gate = load_gate_result(job_id) or {}
+    from packages.orchestration.order_jobs import ORDER_JOB_WAITS_KEY
+
     return {
-        "job_id": job_id, "state": getattr(job.state, "value", str(job.state)), "error": job.error or "",
+        "job_id": job_id, "title": job.job_title, "state": getattr(job.state, "value", str(job.state)),
+        "waits_for": str(job.metadata.get(ORDER_JOB_WAITS_KEY) or "") or None, "error": job.error or "",
         "stop_reason": getattr(job, "stop_reason", "") or "", "stop_source": getattr(job, "stop_source", "") or "",
         "created_at": job.created_at, "first_running_at": job.first_running_at, "finished_at": job.finished_at,
         "duration_s": _seconds(job.first_running_at, job.finished_at),
@@ -156,9 +159,10 @@ def _job_report(job_id: str) -> dict[str, Any]:
         "budget_actuals": job.budget_actuals,
         "verification": job_verification(job),
         "dod_checks": [{key: check.get(key) for key in ("check_id", "kind", "status", "reason", "blocking",
-                                                       "exit_code", "duration_ms")}
+                                                       "exit_code", "duration_ms", "cwd")}
                        for check in gate.get("checks") or [] if isinstance(check, dict)],
         "tasks": [{"task_id": str(task.task_id), "title": task.title, "deliverable": task_deliverable(task),
+                   "files": list(task.files_hint) or [task_deliverable(task)],
                    "final_status": task.final_status, "reviewer_verdict": task.reviewer_verdict,
                    "test_passed": task.test_passed, "changed_files": list(task.safe_diff_files or []),
                    "runs": [_run_report(str(task.run_id))] if task.run_id else []}
