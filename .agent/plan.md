@@ -9,13 +9,12 @@ No merge, no deploy; `.agent/STOP`, supervisor, live checkout and `.data` untouc
 roadmap queue: F078 stays next.
 
 ## Current Step
-4. R-1367 repaired (D4): a refused change reads `review_not_passed`; repair ends read by the story.
-   Done: 1. handback recovered, ZIP diagnosed (D1); 2. R-1365 (D2); 3. R-1366 rejected plan (D3).
+6. Handoff, then the full local gate once on the final commit, then the PR (not merged).
+   Done: 1. handback recovered, ZIP diagnosed (D1); 2. R-1365 (D2); 3. R-1366 (D3); 4. R-1367 (D4);
+   5. measurements: one real run, live jobs read-only, scale matrix, ZIP with a real report (D5).
 
 ## Next Steps
-- 4. Scale matrix and real-model evidence: read, not re-run, unless the load allows.
-- 5. Review-report ZIP: a captured disposable HTTP order through the ordinary no-argument export.
-- 6. Full local gate once on the final commit; handoff; PR (not merged).
+- Operator: review PRs 360-365 and this one; merge in order; deploy per handoff section 12.
 
 ## Risks
 - Workstation shared with Universe: one pytest tree at a time, `-n 6` at most.
