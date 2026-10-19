@@ -1,8 +1,8 @@
 # Handoff — agent-state data hygiene
 
 Feature round 1, session 1. Branch `feature/agent-data-hygiene`, based on `a6f9ba80a`.
-No commit or PR yet. `.agent/STOP`, runtime data, provider settings, other worktrees and Git history
-were not changed.
+Implementation commit `8d960e702`; PR pending. `.agent/STOP`, runtime data, provider settings, other
+worktrees and Git history were not changed.
 
 ## State
 Review packages now exclude development-only `.agent` bytes at both discovery and ArchivePlan
@@ -25,7 +25,7 @@ rewritten.
 - Mypy: passed for both changed source modules.
 - Shell syntax and `git diff --check`: passed.
 - Fast lane first run: 1,518 passed, 1 skipped, 5 state/source-discovery failures; all five causes
-  corrected. Final fast lane: 1,523 passed, 1 skipped.
+  corrected. Completed-tree fast lane: 2,179 passed, 1 skipped.
 - Full pytest: not run.
 
 Open findings: 84 by `open_finding_ids`; none is newly claimed or resolved by this task.
@@ -37,5 +37,5 @@ Open findings: 84 by `open_finding_ids`; none is newly claimed or resolved by th
 - No review ZIP artifact was retained; integration tests built packages only in temporary repositories.
 
 ## Next
-Review the staged diff, commit, push, create the PR, and record final commit evidence. The operator
-may separately authorize a coordinated history rewrite if removal from old Git objects is required.
+Commit this state handoff, push, and create the PR. The operator may separately authorize a
+coordinated history rewrite if removal from old Git objects is required.

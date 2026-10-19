@@ -6,7 +6,7 @@ agent-state additions before commit; preserve required workflow state and Git hi
 outside the roadmap queue; F078 remains next.
 
 ## Current Step
-4. Review, commit, push, and open a PR.
+5. Implementation and final fast gate complete; commit state, push, and open a PR.
 
 ## Next Steps
 - Operator: decide separately whether a coordinated history rewrite is warranted; this change keeps
