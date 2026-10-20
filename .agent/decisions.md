@@ -30277,3 +30277,13 @@ An `abandon` still cancels the job as D12 rules, and it now also raises the miss
 ## DECISION F310 D6 — the F295 gate test changes with it (2026-10-20)
 
 `tests/cli/test_machine_client_contract.py::test_a_program_drives_an_order_file_to_its_proof_through_the_command_line` is F295's gate test, and `tests/cli/test_client_interface.py` pins its bytes in `F295_GATE_TEST_SHA256` so that no change to it is silent. It asserted that a program meets two decisions at a budget stop and that the `extend` closes the second; under DECISION F310 D6 a program meets one, the budget decision with the mission's blocking criteria, and the `extend` closes nothing. F310 round 4 changes those assertions, and its commit C4c updates the pin to the test's new digest in the same commit. HOW TO REVERSE: with DECISION F310 D6, restore the test and the pin from `79ed24137`.
+
+## DECISION F310 D7 — F310 closes with the integrity check failing only on High findings it does not own (2026-10-20)
+
+THE PROBLEM: precondition 3 of `docs/roadmap/STATUS_closure_protocol.md` asks `remedy integrity check --json` to pass, and at F310's base `ee53c20b3` and at every round since it fails on one check, `high_blockers_open`, which names thirteen High findings: twelve whose own text says an operator branch since merged into `main` resolved them, without a `Done:` paragraph, and R-1369, open by design and owned by F312. None is F310's, and booking the twelve means verifying twelve repairs outside F310's scope (AGENTS.md, Scope Control).
+
+CHOSEN: F310's closure reads the precondition as met when every other check passes and `high_blockers_open` names only findings F310 does not own, and closes PASS_WITH_RISKS naming that reading. Finding R-1375, owned by the rolling findings paydown F307, carries the booking of the twelve. Operator question Q20 records this ruling.
+
+ALTERNATIVES CONSIDERED: (a) booking the twelve inside F310 — rejected: each needs its own evidence, and none is F310's work; (b) holding F310 open until F307 runs — rejected: the closure would wait on work that does not change a line of F310's.
+
+HOW TO REVERSE: delete this paragraph and operator question Q20, and reopen F310's STATUS line until the check passes.
