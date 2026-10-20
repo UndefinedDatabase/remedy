@@ -200,6 +200,6 @@ def apply_scope_answer(job: Any, record: Mapping[str, Any]) -> bool:
     job.tasks = [deliverable_task(name, job.mission) for name in names]
     job.task_plan = None
     job.state = RunState.PLANNED
-    job.stop_reason = None
-    job.finished_at = None
+    job.stop_reason = ""
+    job.finished_at = ""
     return True
