@@ -30287,3 +30287,13 @@ CHOSEN: F310's closure reads the precondition as met when every other check pass
 ALTERNATIVES CONSIDERED: (a) booking the twelve inside F310 — rejected: each needs its own evidence, and none is F310's work; (b) holding F310 open until F307 runs — rejected: the closure would wait on work that does not change a line of F310's.
 
 HOW TO REVERSE: delete this paragraph and operator question Q20, and reopen F310's STATUS line until the check passes.
+
+## DECISION F310 D8 — F310's closure leaves the ledger unrotated, because the commit hook refuses the rotation (2026-10-20, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and `scripts/rotate_live_review.py` moves each record byte-verbatim into `.agent/live_review_archive.md`; the agent-state check the commit hook runs since PR 367 refuses any added line under `.agent/` that holds a path of this machine. F310's rotation would move F055's round 8 entry, which names its package folder by its absolute path, so its commit would be refused, and bypassing the hook is not allowed.
+
+CHOSEN: F310's closure skips the rotation commit and records why. Nothing is lost: the next closure's rotation moves every record this one would have moved, once finding R-1376, owned by F307, has reconciled the check with the rotation. The open-findings count is unchanged by the skip.
+
+ALTERNATIVES CONSIDERED: (a) committing with the hook bypassed — rejected: AGENTS.md and the protocol forbid skipping a hook; (b) editing the moved record to drop the path — rejected: the rotation verifies each record's sha256, and the archive is append-only.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
