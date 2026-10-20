@@ -1,18 +1,29 @@
-# Plan — amend1020-orb-insight (operator docs round)
+# Plan — F310 Budgets that fit the provider, and one stop, one question
 
 ## Goal
-Register F310, F311, F312 and F313 (REGISTERED THIN) before F078, from the operator's three lab
-runs of 2026-10-20, with findings R-1369 to R-1371 and DECISION amend1020 D1. Docs only; the
-loop builds the features afterwards.
+A job's default limits come from the profile of its provider class, its wall clock measures work
+and not waiting, and a budget stop asks the operator exactly one question
+(`docs/roadmap/features/T12_F310.md`). Owns findings R-1370 and R-1371.
 
 ## Current Step
-Done: feature files, STATUS block (F310, F312, F311, F313), README counters, docs-suite pin 313,
-findings, DECISION, handoff. Commit, push, PR, merge to main.
+Round 1 (session 1): claim F310, DECISIONs F310 D1 to D3, structure step (6) of
+`packages/orchestration/config.py` (the budget keys to `config_keys_budget.py`), and T001 —
+`packages/orchestration/budget_profiles.py` (provider class, profiles, `effective_job_budgets`),
+`run_job` reading its limits through it, the planner's suggested budgets no longer limits, and
+the execution offer naming the profiles and each provider's class.
 
 ## Next Steps
-- The operator starts the loop (`remedy-loop-feature`); Rule A5 proposes F310 first.
-- F310's first round fills F310 D1 to D5 before any code.
+1. Round 2, T002 under DECISION F310 D4: the wall clock counts work from the first model call,
+   waits are recorded and summed into `budget_actuals.waited_s`; the Pi call's time bound reads
+   `effective_job_budgets` (deferred from round 1 by DECISION F310 D2).
+2. Round 3, T003 under DECISION F310 D5: the budget decision carries the blockers, `extend`
+   without an answer doubles the exhausted limits, the resume follows by itself, the remainder
+   decision is raised only for a final job; the two old raise sites are deleted.
+3. Round 4, T004: the lab stop of 2026-10-20 rebuilt as a fixture,
+   `docs/system/job-budget-enforcement-v0.md` completed.
+4. Closure sequence per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- The 9-minute job limit's origin (the task plan's suggested budgets) is read from the code, not
-  yet from the job's record; F310's first round confirms it.
+- `run_job` and `plan_order_job` are structure-ledger rows: their edits shrink them or stay
+  line-neutral, and every shrink lowers its row in the same commit.
+- An order's own caps still bind its jobs (DECISION F310 D3, operator question Q19).

@@ -1,25 +1,24 @@
-# Live Review — F055 Rehearsal (dry check)
+# Live Review — F310 Budgets that fit the provider, and one stop, one question
 
-> Round-by-round review record, re-headed at the F055 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F308, whose STATUS
-> line went `[x]` on its own branch at `b384780e2`; pull request 337 merged it into `main` as
-> `eea4f5cfe`. F308's round 6 was reviewed after its own handback, so operator amendment
-> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
-> is happening anyway; its gate entry is appended at the end of this record by this claim. Only
-> the heading, this paragraph and the Steps section below are rewritten; everything else from the
-> Findings heading to the end of the file as it stood at `eea4f5cfe` is carried forward
+> Round-by-round review record, re-headed at the F310 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F055, whose STATUS
+> line went `[x]` on its own branch; pull request 338 merged it into `main` as `e688b30f3`. F055's
+> last round was its closure round, whose verdict lives in its handback and its pull request, as
+> §4 item 13 of that file says of every branch's last round, so nothing is booked for it here.
+> Only the heading, this paragraph and the Steps section below are rewritten; everything from the
+> Findings heading to the end of the file as it stood at `ee53c20b3` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `eea4f5cfe`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is R-1246 and R-1276 to R-1313; F307 owns every id in it.
+> open set at `ee53c20b3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> holds 87 ids, the lowest R-1246 and the highest R-1371; F310 owns R-1370 and R-1371.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F055 D1's. The first round claims F055, re-heads this record, books
-F308's round 6, moves the `do` group of the command catalog to a module of its own, writes the
-boundaries of `_cmd_do_order` and `_cmd_do` into the structure page, and lands T001: the
-`--rehearse` flag, the stop before any job runs, the refusals, and the reusable counters that
-prove nothing was built, applied or written. The second round lands T002, the rehearsal's record
-and summary. The third lands T003, the real run from a rehearsed plan. Then the closure.
+THE ORDER BELOW FOLLOWS THE FEATURE FILE'S TASK SLICING. The first round claims F310, re-heads this
+record, records DECISIONs F310 D1 to D3, moves the registry's budget keys to a module of their own,
+and lands T001: the provider class, the two profiles, the run's limits read through them, and the
+execution offer that names them. The second round lands T002, the working wall clock, under
+DECISION F310 D4. The third lands T003, one stop and one question, under DECISION F310 D5. The
+fourth lands T004, the rebuilt lab stop and the page. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
