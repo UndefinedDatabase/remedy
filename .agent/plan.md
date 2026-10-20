@@ -3,17 +3,18 @@
 ## Goal
 The scope guard tells three kinds of order apart and refuses a plan only for the kind that drew a
 fence; an order that names no file gives a plan, not a failure
-(`docs/roadmap/features/T2_F312.md`). F312 owns findings R-1369, R-1377 and R-1378.
+(`docs/roadmap/features/T2_F312.md`). F312 owns findings R-1369 and R-1377 to R-1380.
 
 ## Current Step
-Round 3 (session 1): book round 2 and R-1378, the DECISION F312 D3 addendum and DECISION F312
-D4, the answer path (`scope_question.apply_scope_answer`, called by
-`escalation.answer_task_decision`), the question job's prompt traces (R-1378), and their tests.
+Round 4 (session 1): book round 3, register R-1379 and R-1380, and repair both: an answered scope
+question clears its job's two string fields to `""`, and each guard of `apply_scope_answer` gets
+a test of its own.
 
 ## Next Steps
-1. The closure's integration-gate round: the one full suite, the Built State, the staging
-   reclaim, the evidence job and the review package.
-2. The closing round: R-1369's, R-1377's and R-1378's resolution lines, STATUS, README, the PR.
+1. The closure's integration-gate round: the Built State, the consolidation pass, the self-use
+   item, the one full suite.
+2. The evidence job and the review package; then the closing round: the resolution lines, STATUS,
+   README, the PR.
 
 ## Risks
 - The records of the failed lab job were not read (the data root is not readable here); the
