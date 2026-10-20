@@ -951,10 +951,10 @@ class TestPersistedActualsCarryMoney:
 
     def test_the_writer_writes_the_version_the_decoder_names(self):
         from packages.orchestration.budget_guard import (
-            PERSISTED_ACTUALS_SCHEMA_V2,
+            PERSISTED_ACTUALS_SCHEMA_V3,
             PERSISTED_ACTUALS_SCHEMA_VERSION,
         )
-        assert PERSISTED_ACTUALS_SCHEMA_VERSION == PERSISTED_ACTUALS_SCHEMA_V2 == "2.0.0"
+        assert PERSISTED_ACTUALS_SCHEMA_VERSION == PERSISTED_ACTUALS_SCHEMA_V3 == "3.0.0"
 
     @pytest.mark.parametrize("cost,priced,unpriced", [
         (1.25, 3, 0), (0.5, 1, 2), (None, 0, 2), (0.0, 2, 0),
@@ -1009,7 +1009,7 @@ class TestPersistedActualsCarryMoney:
     def test_an_unknown_version_is_rejected(self):
         from packages.orchestration.budget_guard import decode_persisted_budget_actuals
         with pytest.raises(BudgetCounterError, match="schema_version"):
-            decode_persisted_budget_actuals({**_V1_RECORD, "schema_version": "3.0.0"})
+            decode_persisted_budget_actuals({**_V1_RECORD, "schema_version": "4.0.0"})
 
     @pytest.mark.parametrize("cost,priced,unpriced", [
         (True, 1, 0), ("1.0", 1, 0), (-0.5, 1, 0), (float("nan"), 1, 0),
@@ -1048,7 +1048,7 @@ class TestTheRunPersistsItsLiveMoney:
         assert signal is not None
         assert len(ledger_calls) == 1
         record = self.job.budget_actuals
-        assert record["schema_version"] == "2.0.0"
+        assert record["schema_version"] == "3.0.0"
         assert (record["measured_cost_usd"], record["priced_call_count"],
                 record["unpriced_call_count"]) == (5.0, 3, 1)
         counters = counters_from_persisted(decode_persisted_budget_actuals(record))

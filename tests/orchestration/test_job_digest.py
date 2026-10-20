@@ -569,7 +569,7 @@ def test_a_measured_run_prices_the_digest_through_the_persisted_route(
     job = _run_and_mirror(repo, measured=True, budgets={"max_cost_usd": 100.0})
 
     record = job.budget_actuals
-    assert record["schema_version"] == "2.0.0"
+    assert record["schema_version"] == "3.0.0"
     # R-0986: both runs' four calls, not only the first run's mirrored two.
     per_call = _MeasuredStubProvider.USAGE["total_cost_usd"]
     assert record["measured_cost_usd"] == pytest.approx(4 * per_call)
@@ -675,7 +675,7 @@ def test_an_unpriced_run_stays_absent_through_the_persisted_route(
     job = _run_and_mirror(repo, measured=False, budgets={"max_cost_usd": 100.0})
 
     record = job.budget_actuals
-    assert record["schema_version"] == "2.0.0"
+    assert record["schema_version"] == "3.0.0"
     assert record["measured_cost_usd"] is None
     assert record["unpriced_call_count"] >= 1
     # R-0986: the fake calls the accumulator skips are still the ledger's rows.
