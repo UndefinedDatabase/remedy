@@ -57,6 +57,20 @@ def test_a_malformed_line_never_raises_from_the_pump_thread():
     assert watch.summary().model_turns == 1
 
 
+def test_on_record_receives_every_parsed_record_in_order_and_stays_optional():
+    # One turn that wants a tool (message_end, tool_execution_start), then a final answer.
+    stream = _turn(10, wants_tool=True) + _turn(10, wants_tool=False)
+    seen: list[dict] = []
+    watch = PiLoopWatch(PiLoopLimits(max_turns=40, max_input_tokens=400_000), on_record=seen.append)
+    for line in stream:
+        watch.feed(line.encode())
+    assert [record["type"] for record in seen] == ["message_end", "tool_execution_start", "message_end"]
+
+    # A watch built without `on_record` feeds exactly as before: no error, same counting.
+    plain = _watch(stream)
+    assert plain.summary().model_turns == 2
+
+
 def test_the_jobs_tokens_left_lower_the_input_cap(monkeypatch):
     # The operator's own user config may set both caps (the workstation's sets 12 turns and 60,000
     # tokens); this test is about the defaults and the job's tokens left, so no config is read.
