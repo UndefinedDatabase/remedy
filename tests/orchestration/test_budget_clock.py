@@ -226,3 +226,18 @@ def test_the_pi_call_reads_the_time_left_by_work_alone(tmp_path):
         PP.bind_job_clock(job)
         left = PP.effective_pi_timeout(600)[1]["job_left_sec"]
         assert (left > 0) is has_time, left
+
+
+def test_a_run_saves_the_moment_it_was_last_active_and_a_later_resume_reads_it_back(tmp_path):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = _resumed_job(tmp_path, last_active_ago=timedelta(hours=8, minutes=55))
+    before = datetime.now(timezone.utc)
+    result = _run(job)
+    after = datetime.now(timezone.utc)
+    saved = load_job_plan(result.job_id)
+    assert saved is not None
+    decoded = _decoded(saved)
+    assert before <= decoded["active_until"] <= after
+    _, waited = resume_job_clock(saved, decoded, now=decoded["active_until"] + timedelta(hours=1))
+    assert waited == pytest.approx(decoded["waited_s"] + 3600, abs=1)
