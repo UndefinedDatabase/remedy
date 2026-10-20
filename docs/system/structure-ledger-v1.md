@@ -237,6 +237,7 @@ with the code that calls it.
   Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
   Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
   Step (5), done by F203: the logging keys, `packages/orchestration/config_keys_logging.py`.
+  Step (6), done by F310: the budget keys, `packages/orchestration/config_keys_budget.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -440,7 +441,7 @@ with the code that calls it.
 | 1964 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1695 | `packages/orchestration/config.py` |
+| 1595 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |

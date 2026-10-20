@@ -142,6 +142,7 @@ packages.orchestration.command_nonce
 packages.orchestration.commit_execution_gate
 packages.orchestration.config
 packages.orchestration.config_key_spec
+packages.orchestration.config_keys_budget
 packages.orchestration.config_keys_claude
 packages.orchestration.config_keys_logging
 packages.orchestration.config_keys_mission
