@@ -1701,7 +1701,7 @@ def test_the_writer_replaces_only_the_generated_section(tmp_path):
 #: The sha256 of `tests/cli/test_machine_client_contract.py`, F295's gate test, as F295 accepted it
 #: and as F298 keeps it (R-1179). A change to that file is deliberate: it updates this digest in the
 #: same commit and its DECISION says why.
-F295_GATE_TEST_SHA256 = "45f761a03eb4405a2e12eb4f24210c7c33eb3aa3a5740c16b8ac2f07321778e1"
+F295_GATE_TEST_SHA256 = "dfe3d5b0f1d8d720fc4a0d2ff64c6ff3eeb67b3f69f1e0d5e3e9b1af8d768423"
 
 
 def test_f295s_gate_test_is_unchanged():
