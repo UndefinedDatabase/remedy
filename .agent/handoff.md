@@ -1,62 +1,152 @@
-# Handoff — amend1020-orb-insight (operator docs round)
+# Handoff — F310 round 1 (budgets per provider class)
 
-Operator session, round 1, session 1 (not the loop; `.agent/STOP` untouched). Branch
-`feature/amend1020-orb-insight` from `main` at `8ee02682d`, merged to `main` through its PR at the
-operator's order ("Commit und Push auf main"; AGENTS.md forbids a direct commit to `main`, so the
-round lands by PR merge). Commit SHAs: see `git log` on `main` after the merge.
+## Session
 
-## State
-Four features registered THIN in Package 1 directly before F078, in the order F310, F312, F311,
-F313 (DECISION amend1020 D1). Rule A5 now proposes F310 (`roadmap_index.next_feature` checked).
-Three findings minted in `.agent/live_review.md`: R-1369 (High, owner F312), R-1370 and R-1371
-(Medium, owner F310). No finding for the Orb's time-limit defect: it is Universe's (U513).
+SESSION 1 of feature F310 · round 1 · rounds so far 1
 
-## Item status
-| Item | Status | Reason |
-|------|--------|--------|
-| F310 feature file `T12_F310.md` | done | |
-| F312 feature file `T2_F312.md` | done | |
-| F311 feature file `T12_F311.md` | done | |
-| F313 feature file `T12_F313.md` | done | |
-| STATUS.md block before F078 (three headings, operator comment) | done | |
-| R-1369 (order without file names, F312) | done | |
-| R-1370 (two decisions for one budget stop, F310) | done | |
-| R-1371 (wall clock counts waiting, F310) | done | |
-| DECISION amend1020 D1 (`.agent/decisions.md`, cited in each feature file) | done | |
-| README counters (313 registered; Tier 2 48, Tier 12 16) and `TOTAL_FEATURES` 313 | done | |
-| `docs/README.md` | skipped | no document was added under `docs/` outside `docs/roadmap/features/`, which the index covers by its `T{tier}_F{nnn}.md` pattern |
-| Commit and push to `main` | deviated | via feature branch, PR and merge (AGENTS.md: never commit directly to `main`) |
+Context self-assessment: the worker ran on a long, interrupted session with four stops and three
+reviewer rulings; the working context stayed small because every file was read once and the gates
+were run once on the final tree.
 
-## Changed files
-| File | Change |
-|---|---|
-| `docs/roadmap/features/T12_F310.md`, `T2_F312.md`, `T12_F311.md`, `T12_F313.md` | new, REGISTERED THIN |
-| `docs/roadmap/STATUS.md` | amend1020 block before F078 |
-| `README.md` | counters |
-| `tests/docs/test_docs_consistency.py` | `TOTAL_FEATURES` 313 with its registration comment |
-| `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`, `.agent/context.md`, `.agent/handoff.md` | findings, D1, state |
+State block:
+Feature F310 (claimed `[~]`), branch `feature/f310-provider-budgets`, base `ee53c20b3`.
+Fortschritt: ~30 % (claim and T001 landed · T002, T003 and T004 open) — Schätzung
+
+## Range
+
+Review of `ee53c20b3`..HEAD (the four commits below, then this handback's own commit).
+
+## Commits
+
+### 5fa8aa1d3 F310 R1 C1: claim F310, re-head the ledger, DECISIONs F310 D1 to D3
+347 insertions, 38 deletions (`git show --shortstat`).
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f310-r1.md` | +255 | byte copy of the corrected block |
+| `docs/roadmap/STATUS.md` | +1/-1 | F310 claimed |
+| `.agent/live_review.md` | +17/-18 | re-headed |
+| `.agent/decisions.md` | +38 | DECISIONs F310 D1 to D3 |
+| `.agent/plan.md`, `.agent/context.md` | +21/-10, +15/-9 | state |
+
+### b5c78226c F310 R1 C2: the registry's budget keys move to config_keys_budget.py (structure step)
+122 insertions, 104 deletions.
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/config_keys_budget.py` | +116 | the budget group, moved unchanged |
+| `packages/orchestration/config.py` | +2/-102 | splice and import |
+| `docs/system/structure-ledger-v1.md` | +2/-1 | row 1695 to 1595, step (6) named |
+| `tests/test_structure_ratchet.py` | +1/-1 | `MAX_FILE_LINES` 64375 to 64275 |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1 | new module listed |
+
+### e18b07d09 F310 R1 C3: budgets per provider class, read by run_job and named by the execution offer
+278 insertions, 73 deletions.
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/budget_profiles.py` | +103 | provider class, profiles, `effective_job_budgets` |
+| `packages/orchestration/config_keys_budget.py` | +71 | seven profile keys |
+| `packages/orchestration/pingpong_job.py` | +10/-11 | `run_job` reads its limits through the profiles |
+| `packages/orchestration/do_sequence.py`, `job_plan.py` | -1 net, -21 | plan budgets no longer limits; `apply_plan_budgets` deleted |
+| `packages/orchestration/execution_options.py`, `apps/cli/client_interface_execution.py` | small | `class` per provider, `profiles` under `budgets` |
+| `docs/guides/environment.md`, `docs/system/machine-client-contract-v1.md` | regenerated | new keys and offer |
+| `docs/system/job-budget-enforcement-v0.md` | +38 | profiles section, precedence sentence |
+| `docs/system/structure-ledger-v1.md`, `tests/test_structure_ratchet.py` | rows and pins | see Verification |
+| `tests/orchestration/test_job_plan.py` | -23 | `TestBudgetPrecedence` deleted |
+| `tests/cli/test_plan_approval.py` | +6/-3 | amendment 1: one test renamed, asserts the reverse |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1 | `budget_profiles` listed |
+| `.agent/authored/f310-r1-amend1.md` | +19 | byte copy of amendment 1 |
+
+### 4b74287bd F310 R1 C4: the provider class, the profiles and the offer, tested
+229 insertions.
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_budget_profiles.py` | +210 | 28 tests |
+| `tests/orchestration/test_execution_options.py` | +19 | profiles and class in the offer |
+
+### this handback's commit (C5)
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewritten | this file |
+| `.agent/operator_questions.md` | +1 entry | Q19 replaces the EMPTY line |
+
+## External actions
+
+- `git push -u origin feature/f310-provider-budgets` after C5; the result is in the worker's report.
+- No pull request opened; no other gh command.
 
 ## Verification
-- `python3 -m pytest tests/docs -q -p no:cacheprovider` (Python 3.10): 341 passed. Only the docs
-  tests, as ordered; no full run.
-- `roadmap_index.next_feature(build_index('.'))` answers F310; the four files parse with no
-  grammar violation.
 
-## Read on the code (worth carrying into the rounds)
-- F312: the person's order "Super, jetzt mach ein schickes design" has no fence by itself; the
-  refusal came from `_deliverable_task_plan` judging against a milestone's planner-written job
-  outline (`_step_shape` → `plan_order_job`).
-- F310: job limits are `budget.*` filled by the task plan's suggested `budgets`
-  (`do_sequence.py:518`); the lab job's 100,000 tokens exceed the order cap of 85,000, so the
-  9 minutes very likely came from the local planner.
+All gates ran once, on the tree at `4b74287bd`, before this commit.
+1. `git status --porcelain` printed nothing. `verify.py` (sha256 `f892fbc2…d62f`, 133 lines): every
+   line `True`, C5 `absent`, last line `ALL True`.
+2. `python3 -m ruff check` over the 13 Python files of C2 to C4: `All checks passed!`
+3. `run_selection.py`: `paths 107`, `exit 0`, `4878 passed, 2 skipped in 58.49s`; no FAILED, ERROR or
+   "process(es) behind" line. SKIPPED: `tests/test_install_smoke.py:175` (opt-in install smoke) and
+   `tests/test_agent_tooling.py:43` (D12 quarantine, F252).
+4. `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1. Accepted reading
+   (reviewer ruling): the one failing check is `high_blockers_open`, naming exactly R-1335, R-1336,
+   R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362 and R-1369; the
+   other five checks pass. It is the ledger's standing state, identical at the base.
+5. `open_finding_ids` of `scripts/rotate_live_review.py` over the ledger: `87`, read at `4b74287bd`.
+6. `python3 -m apps.cli.main client execution --json`: exit 0. `budgets.profiles` =
+   `{"local": {"max_provider_calls": 200, "max_total_tokens": 1500000, "max_wall_clock_minutes": 480},
+   "paid": {"max_cost_usd": null, "max_provider_calls": null, "max_total_tokens": null,
+   "max_wall_clock_minutes": null}}`. Builder classes: pi local, claude paid, claude-cli paid, fake paid.
 
-## Deviations
-- Landed through a PR merge instead of a direct push to `main` (see above).
-- The findings are written straight into `.agent/live_review.md` in this round, not only carried
-  in this handoff (amend0827 rule 1 allows either).
+Structure ratchet rows lowered: `config.py` 1695 to 1595; `run_job` 1442 to 1441; `plan_order_job`
+250 to 249; `pingpong_job.py` 5339 to 5338; `MAX_FILE_LINES` 64375 to 64274 (C2: 64275, C3: 64274);
+`MAX_FUNCTION_LINES` 28964 to 28962. No row rose, none was added.
 
-Open findings: 84 before this round, 87 after (R-1369 to R-1371 open).
+## Authored-text proofs
+
+Byte copies, sha256 equal to the source in `.remedy-wt/f310-r1/prep/`: block (corrected,
+`dbad0091…bbb3`, 255 lines), the five prepared state files, amendment 1 (`3ec3b3dd…0261`, 19
+lines), the profiles section of `docs/system/job-budget-enforcement-v0.md` (checked by `verify.py`),
+and the operator question (checked by `verify.py` after this commit).
+
+## Item status
+
+| Item | Status | Reason |
+|---|---|---|
+| C0 branch | done | |
+| C1 | done | after the first refusal (stop 1) |
+| C2 | done | |
+| C3 | done | after stop 2 and amendment 1 |
+| C4 | done | |
+| C5 | done | this commit |
+| Gate 1 | done | |
+| Gate 2 | done | |
+| Gate 3 | done | |
+| Gate 4 | deviated | exit 1, `fail_count` 1; accepted reading above |
+| Gate 5 | done | 87 |
+| Gate 6 | done | |
+
+## Deviations & assumptions
+
+- Stop 1, reviewer's block defect: the block carried machine-local paths that the agent-state check
+  refused in the authored copy. The reviewer corrected the block; C1 was committed from the
+  corrected copy.
+- Stop 2: an existing test pinned the behaviour DECISION F310 D2 removes (a plan's suggested
+  budgets filling a limit). Amendment 1 added the test file and a copy of itself to C3; the test
+  is renamed and asserts the reverse.
+- Stop 3, reviewer's `verify.py` defect: the check wanted the wrapped precedence sentence on one
+  line. The reviewer changed `verify.py`; the wrapped text stays and there is no fix commit.
+- Stop 4, reviewer's block defect: gate 4 ordered `fail_count` 0, which the base already
+  contradicts. Accepted as stated in Verification; gates were not re-run.
+- C2's ledger bullet has one unwrapped line; accepted by the reviewer, C2 not amended.
+- Existing tests changed: `TestBudgetPrecedence` deleted (ordered), the renamed plan-approval test,
+  the ratchet pins, the reachability allowlist.
+
+## For the operator
+
+Remedy now gives every job a default limit that depends on where its models run. A job that uses
+only models served on this machine gets eight hours, two hundred provider calls and one and a half
+million tokens; any other job gets no default limit, exactly as before. A limit that a person, an
+order or a decision already set always wins, and the task plan's own suggested limits are only an
+estimate and never a limit. Every client can now read both sets of defaults and the kind of each
+provider. One question is open for you: whether an order's own limit should stay the ceiling.
 
 ## Next
-The operator starts the loop with `remedy-loop-feature`; it takes F310 first, whose first round
-fills F310 D1 to D5 before any code.
+
+In order: Phase 1 rule 1 (`.agent/STOP`), then rule 2 (Open PR Gate), then book round 1's verdict in
+the next round's first commit, then T002, under DECISION F310 D4.
+Operator questions open: 1. Open findings: 87 (gate 5, `open_finding_ids`, read at `4b74287bd`).
