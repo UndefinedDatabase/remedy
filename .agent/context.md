@@ -1,22 +1,20 @@
-# Context — F312 The scope guard knows orders without file names
+# Context — F311 The insight: what runs now, what the worker does, why it hangs
 
 ## Active Branch
-`feature/f312-scope-kinds` from `main` at `0eda402fe` (the merge commit of pull request 369).
+`feature/f311-insight` from `main` at `321f130f0` (the merge commit of pull request 370).
 
 ## Scope
-F312's three slices T001 to T003 as `.agent/plan.md` orders them, with the finding it owns,
-R-1369. Steps outside the feature file's slices are out of scope.
+F311's four slices T001 to T004 as `.agent/plan.md` orders them. F311 owns no open finding at its
+claim. Steps outside the feature file's slices are out of scope.
 
 ## Assumptions
-- The kind of an order is read from its text alone: a spelled path, then a fence, else open
-  (DECISION F312 D1).
-- The review reports and job records of the operator's lab runs are not read by this feature's
-  sessions; the finding's text and the code are the evidence.
+- The worker pulse is written only by Pi calls; jobs of other providers answer with null worker
+  fields and the stall reason `unmeasured` (DECISIONs F311 D2 and D3).
+- The public API's version stays `1.21`; F313 raises it.
 
 ## Constraints
 - One full pytest suite per feature, in the closure's integration-gate round; every round runs
   its own selection once (operator amendments amend0917-throughput and amend0930-test-load).
-- The structure ratchet: every listed function or file a round touches shrinks or stays as long
-  as its row, and a row falls in the commit that shrinks it.
-- Do not touch: the fence vocabulary of `order_scope` (amend1016p D1, exec-1017 D2),
-  `is_checking_only`, and the refusal of a fenced order's foreign file (R-1363).
+- The structure ratchet: no listed function or file grows; new logic goes into new modules.
+- Do not touch: the redaction of `stream_evidence.py`, the story's five steps and their words,
+  and the public API's version.

@@ -283,7 +283,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — The Orb's insight and the local-model budgets, continued (operator amendment amend1020-orb-insight)
 
-- [ ] F311 — The insight: what runs now, what the worker does, why it hangs
+- [~] F311 — The insight: what runs now, what the worker does, why it hangs
 - [ ] F313 — Contract 1.22 for the Orb
 
 ## Tier 3 — Luna gate C: controlled autonomy, continued (operator ruling amend1006-luna-control-plane)

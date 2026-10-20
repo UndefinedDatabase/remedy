@@ -1,29 +1,28 @@
-# Live Review — F312 The scope guard knows orders without file names
+# Live Review — F311 The insight: what runs now, what the worker does, why it hangs
 
-> Round-by-round review record, re-headed at the F312 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F310, whose STATUS
-> line went `[x]` on its own branch; pull request 369 merged it into `main` as `0eda402fe`. F310's
+> Round-by-round review record, re-headed at the F311 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F312, whose STATUS
+> line went `[x]` on its own branch; pull request 370 merged it into `main` as `321f130f0`. F312's
 > last round was its closure round, whose verdict lives in its handback and its pull request, as
 > §4 item 13 of that file says of every branch's last round, so nothing is booked for it here; the
-> reviewer read that round's diff `da0ad517c..c0ceeeffb` at this session's start and found it as
-> its handback states. The operator's commit `1c6a7f137` recorded the answer to Q19 as DECISION
-> F310 D9 after F310's acceptance and changed only `.agent/decisions.md` and
+> reviewer read that round's diff `c5e30c07f..27820a192` at this session's start and found it as
+> its handback states. The operator's commit `f4dba19b3` recorded the answer to Q20 as DECISION
+> F310 D10 after F312's acceptance and changed only `.agent/decisions.md` and
 > `.agent/operator_questions.md`; the session merged without a second suite run, as the session
-> after F058's acceptance merged pull request 332 over the same kind of commit (`b359efbe7`, Q17).
+> after F310's acceptance merged pull request 369 over the same kind of commit (`1c6a7f137`, Q19).
 > Only the heading, this paragraph and the Steps section below are rewritten; everything from the
-> Findings heading to the end of the file as it stood at `0eda402fe` is carried forward
+> Findings heading to the end of the file as it stood at `321f130f0` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `0eda402fe`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> holds 87 ids, the lowest R-1246 and the highest R-1376; F312 owns R-1369.
+> open set at `321f130f0`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> holds 87 ids, the lowest R-1246 and the highest R-1381; F311 owns none of them.
 
 ## Steps
 
-THE ORDER BELOW FOLLOWS THE FEATURE FILE'S TASK SLICING. The first round claims F312, re-heads this
-record, records DECISIONs F312 D1 and D2, takes step (2) of `plan_order_job`'s boundary on the
-structure ledger, and lands T001: the three kinds of order, the task-plan guard reading the kind of
-the person's order, and a milestone's outline that no longer draws a fence. The second round lands
-T002, the question after two refusals, under DECISION F312 D3, and T003, the three lab orders as a
-fixture through the real walk. Then the closure.
+THE ORDER BELOW FOLLOWS THE FEATURE FILE'S TASK SLICING. The first round claims F311, re-heads this
+record, records DECISIONs F311 D1 to D4, and lands the first half of T001: the worker pulse, which
+the Pi provider writes into the job's folder. The second round lands the reader of T001 and the
+stall reading of T002. The third and fourth land T003, the twins and the routes with their words
+in the interface, with T004's proofs beside each. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
