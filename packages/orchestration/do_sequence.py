@@ -367,6 +367,106 @@ def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
         logging.getLogger(__name__).warning("Warning: postmortem write failed: %s", exc)
 
 
+# Step (2) of `plan_order_job`'s boundary on docs/system/structure-ledger-v1.md (F312): the
+# first-pass task plan and its approval.
+def _first_pass_task_plan(
+        mission: str, intake_result: Any, plan_call_fn: Any, prompt_traces: list,
+        project: RemyProject, repo: str, target_repo_path: str, job_file_sha256: str,
+        run_unattended: bool,
+) -> tuple[Any, str]:
+    """The order's first-pass LLM task plan, approved or left pending: ``(job, plan_label)``."""
+    from packages.core.models import RunState
+    from packages.orchestration.job_plan import (
+        apply_plan_fences,
+        compose_task_plan_prompt,
+        make_task_plan_call_recorder,
+        plan_job_llm,
+        write_plan_md,
+    )
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    plan_intake_dict = intake_result.value.model_dump()
+    # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
+    # the provider receives and the manifest the trace records come from the
+    # same composition — `prompt_chars` and `segment_manifest_chars` can no
+    # longer describe two different prompts (R-0256).
+    plan_composed = compose_task_plan_prompt(plan_intake_dict, repo_root=target_repo_path)
+    fp_result = plan_job_llm(
+        plan_intake_dict,
+        plan_call_fn,
+        composed=plan_composed,
+        on_call=make_task_plan_call_recorder(
+            prompt_traces,
+            plan_composed,
+            provider="ollama",
+            provider_kind="ollama",
+        ),
+    )
+    if fp_result.plan is not None:
+        fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, mission, target_repo_path)
+        fp_dict = fp_result.plan.model_dump()
+        fp_dict["_approval"] = "pending"
+        fp_dict["_normalization"] = fp_result.transformations
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        config_budgets = resolve_job_budgets(project_root=repo)
+        config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
+        # DECISION F310 D2: the plan's suggested budgets are its estimate, never a limit.
+        merged_fences = apply_plan_fences(None, fp_result.plan.fences)
+        job_budgets, job_fences = order_job_limits(config_budgets_dict, merged_fences)
+        job = JobPlan(
+            job_title=mission[:80], mission=mission, user_prompt=mission,
+            job_file_sha256=job_file_sha256,
+            project_id=str(project.id),
+            repo_path=target_repo_path,
+            intake=intake_result.value.model_dump(),
+            task_plan=fp_dict,
+            tasks=tasks,
+            state=RunState.PLANNED,
+            budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None,
+            fences=job_fences,
+        )
+        save_job_plan(job)
+        from packages.orchestration.data_paths import job_evidence_export_dir
+        write_plan_md(
+            fp_result.plan, job_evidence_export_dir(str(job.job_id)),
+            transformations=fp_result.transformations)
+        if run_unattended:
+            # F034: --run-unattended covers approval AND clarifications: every open question
+            # runs on its documented default, in the assumption log, never silent. The semantics
+            # live in job_plan.auto_approve_task_plan, which the orchestrator loop runs too.
+            from packages.orchestration.job_plan import (
+                AUTO_APPROVAL_MODE,
+                announce_plan_approval,
+                auto_approve_task_plan,
+            )
+            fp_dict = auto_approve_task_plan(
+                fp_dict, job_evidence_export_dir(str(job.job_id)), reason=DO_UNATTENDED_REASON)
+            job.task_plan = fp_dict
+            save_job_plan(job)
+            announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
+            plan_label = (
+                f"task plan {fp_result.plan.schema_v} (approved via --run-unattended)"
+            )
+        else:
+            plan_label = (
+                f"task plan {fp_result.plan.schema_v} (awaiting approval)"
+            )
+    else:
+        job = JobPlan(
+            job_title=mission[:80], mission=mission, user_prompt=mission,
+            job_file_sha256=job_file_sha256,
+            project_id=str(project.id),
+            repo_path=target_repo_path,
+            intake=intake_result.value.model_dump(),
+            state=RunState.PENDING,
+        )
+        _record_unparsed_plan(job, fp_result.error_hint)
+        raise OrderJobPlanError(
+            f"task plan generation failed: "
+            f"{fp_result.error_hint or 'parse failure'}"
+        )
+    return job, plan_label
+
+
 def plan_order_job(
     order: str,
     *,
@@ -484,93 +584,9 @@ def plan_order_job(
         )
 
     if plan_call_fn is not None:
-        from packages.orchestration.job_plan import (
-            apply_plan_fences,
-            compose_task_plan_prompt,
-            make_task_plan_call_recorder,
-            plan_job_llm,
-            write_plan_md,
-        )
-        plan_intake_dict = intake_result.value.model_dump()
-        # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
-        # the provider receives and the manifest the trace records come from the
-        # same composition — `prompt_chars` and `segment_manifest_chars` can no
-        # longer describe two different prompts (R-0256).
-        plan_composed = compose_task_plan_prompt(plan_intake_dict, repo_root=target_repo_path)
-        fp_result = plan_job_llm(
-            plan_intake_dict,
-            plan_call_fn,
-            composed=plan_composed,
-            on_call=make_task_plan_call_recorder(
-                prompt_traces,
-                plan_composed,
-                provider="ollama",
-                provider_kind="ollama",
-            ),
-        )
-        if fp_result.plan is not None:
-            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, mission, target_repo_path)
-            fp_dict = fp_result.plan.model_dump()
-            fp_dict["_approval"] = "pending"
-            fp_dict["_normalization"] = fp_result.transformations
-            from packages.orchestration.budget_resolution import resolve_job_budgets
-            config_budgets = resolve_job_budgets(project_root=repo)
-            config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
-            # DECISION F310 D2: the plan's suggested budgets are its estimate, never a limit.
-            merged_fences = apply_plan_fences(None, fp_result.plan.fences)
-            job_budgets, job_fences = order_job_limits(config_budgets_dict, merged_fences)
-            job = JobPlan(
-                job_title=mission[:80], mission=mission, user_prompt=mission,
-                job_file_sha256=job_file_sha256,
-                project_id=str(project.id),
-                repo_path=target_repo_path,
-                intake=intake_result.value.model_dump(),
-                task_plan=fp_dict,
-                tasks=tasks,
-                state=RunState.PLANNED,
-                budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None,
-                fences=job_fences,
-            )
-            save_job_plan(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            write_plan_md(
-                fp_result.plan, job_evidence_export_dir(str(job.job_id)),
-                transformations=fp_result.transformations)
-            if run_unattended:
-                # F034: --run-unattended covers approval AND clarifications: every open question
-                # runs on its documented default, in the assumption log, never silent. The semantics
-                # live in job_plan.auto_approve_task_plan, which the orchestrator loop runs too.
-                from packages.orchestration.job_plan import (
-                    AUTO_APPROVAL_MODE,
-                    announce_plan_approval,
-                    auto_approve_task_plan,
-                )
-                fp_dict = auto_approve_task_plan(
-                    fp_dict, job_evidence_export_dir(str(job.job_id)), reason=DO_UNATTENDED_REASON)
-                job.task_plan = fp_dict
-                save_job_plan(job)
-                announce_plan_approval(job, mode=AUTO_APPROVAL_MODE)
-                plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (approved via --run-unattended)"
-                )
-            else:
-                plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (awaiting approval)"
-                )
-        else:
-            job = JobPlan(
-                job_title=mission[:80], mission=mission, user_prompt=mission,
-                job_file_sha256=job_file_sha256,
-                project_id=str(project.id),
-                repo_path=target_repo_path,
-                intake=intake_result.value.model_dump(),
-                state=RunState.PENDING,
-            )
-            _record_unparsed_plan(job, fp_result.error_hint)
-            raise OrderJobPlanError(
-                f"task plan generation failed: "
-                f"{fp_result.error_hint or 'parse failure'}"
-            )
+        job, plan_label = _first_pass_task_plan(
+            mission, intake_result, plan_call_fn, prompt_traces, project, repo,
+            target_repo_path, job_file_sha256, run_unattended)
 
     if job is None:
         if deterministic_tasks is not None:

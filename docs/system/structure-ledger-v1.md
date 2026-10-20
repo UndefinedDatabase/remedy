@@ -126,8 +126,8 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `plan_order_job` (`packages/orchestration/do_sequence.py`). Boundary: the intake call, the
   first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the
   deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
-  `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
-  (3) the deterministic plan becomes a function.
+  `_record_unparsed_plan`; (2) done by F312, the first-pass task plan with its approval is
+  `_first_pass_task_plan`; (3) the deterministic plan becomes a function.
 - `continue_from_node` (`packages/orchestration/continue_from_node.py`). Boundary: the checks of
   the parent and the node, the child job's record, the link to the project, and the two timeline
   events. Steps: (1) done by F203, the link to the project is `_link_child_to_project`; (2) the
@@ -299,7 +299,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 249 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 165 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
