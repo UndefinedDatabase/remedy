@@ -1,0 +1,13 @@
+$ git diff HEAD...remedy/job-ad990252606040b2  (exit 0)
+diff --git a/docs/README.md b/docs/README.md
+index b11482934..4cf43d72f 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -167,6 +167,7 @@ User-facing guides, quickstarts, and usage documentation.
+ | [environment.md](guides/environment.md) | Every environment variable Remedy reads, generated from the key registry |
+ | [exit-codes.md](guides/exit-codes.md) | Every CLI exit code's meaning, asserted from the command catalog |
+ | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
++| [http-clients.md](guides/http-clients.md) | Walking a program through the public HTTP API with `curl`: token, start an order, poll, read the story, apply or decline |
+ | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
+ | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
+ | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |

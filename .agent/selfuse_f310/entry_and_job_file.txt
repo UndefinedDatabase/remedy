@@ -1,0 +1,5 @@
+Entry ID: SU-065
+Entry Title: Fix stale documentation: docs_index_guide_registration in docs/README.md
+Entry Provenance: generated (self-use-generator tier 2, doc staleness, docs_index_guide_registration:docs/README.md:the Guides section has no link to `guides/http-clients.md`)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f310-r5-selfuse/SU-065.md
