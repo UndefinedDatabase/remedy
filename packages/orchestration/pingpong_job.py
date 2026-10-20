@@ -2648,17 +2648,16 @@ def run_job(
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     # A malformed persisted budget MUST block — never silently continue as unlimited.
-    _job_budgets = None
-    if job.budgets is not None:
-        from packages.core.models import JobBudgets as _JobBudgets
-        try:
-            _job_budgets = _JobBudgets.model_validate(job.budgets)
-        except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
-            job.state = JOB_BLOCKED
-            job.error = f"corrupt_budget_state: {_budget_exc}"
-            _write_job_postmortem_record(job, _budget_exc)
-            _persist_job(job)
-            return job
+    # DECISION F310 D2: a limit the job leaves unset comes from `budget.*`, then its class's profile.
+    from packages.orchestration.budget_profiles import effective_job_budgets
+    try:
+        _job_budgets = effective_job_budgets(job)
+    except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
+        job.state = JOB_BLOCKED
+        job.error = f"corrupt_budget_state: {_budget_exc}"
+        _write_job_postmortem_record(job, _budget_exc)
+        _persist_job(job)
+        return job
 
     # F015 T003, DECISION F015 D4: a job runs exactly the plan its approval covered. Checked
     # before any workspace exists, and at every start, because every door that starts a job

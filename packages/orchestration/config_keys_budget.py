@@ -113,4 +113,75 @@ BUDGET_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=str,
         default=None,
     ),
+    ConfigKeySpec(
+        key="budget.profile.local.max_total_tokens",
+        env_var="REMEDY_BUDGET_PROFILE_LOCAL_MAX_TOTAL_TOKENS",
+        description=(
+            "Default token limit of a job whose roles all run on a model Ollama serves on this "
+            "machine, when neither the job nor budget.max_total_tokens sets one (F310 profiles)"
+        ),
+        value_type=int,
+        default=1500000,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.local.max_provider_calls",
+        env_var="REMEDY_BUDGET_PROFILE_LOCAL_MAX_PROVIDER_CALLS",
+        description=(
+            "Default provider-call limit of a local job, when neither the job nor "
+            "budget.max_provider_calls sets one (F310 profiles)"
+        ),
+        value_type=int,
+        default=200,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.local.max_wall_clock_minutes",
+        env_var="REMEDY_BUDGET_PROFILE_LOCAL_MAX_WALL_CLOCK_MINUTES",
+        description=(
+            "Default wall-clock limit in minutes of a local job, when neither the job nor "
+            "budget.max_wall_clock_minutes sets one (F310 profiles)"
+        ),
+        value_type=int,
+        default=480,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.paid.max_total_tokens",
+        env_var="REMEDY_BUDGET_PROFILE_PAID_MAX_TOTAL_TOKENS",
+        description=(
+            "Default token limit of a job any of whose roles runs on a paid or remote model, when "
+            "neither the job nor budget.max_total_tokens sets one; unset means no limit (F310 "
+            "profiles)"
+        ),
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.paid.max_provider_calls",
+        env_var="REMEDY_BUDGET_PROFILE_PAID_MAX_PROVIDER_CALLS",
+        description=(
+            "Default provider-call limit of a paid job, when neither the job nor "
+            "budget.max_provider_calls sets one; unset means no limit (F310 profiles)"
+        ),
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.paid.max_wall_clock_minutes",
+        env_var="REMEDY_BUDGET_PROFILE_PAID_MAX_WALL_CLOCK_MINUTES",
+        description=(
+            "Default wall-clock limit in minutes of a paid job, when neither the job nor "
+            "budget.max_wall_clock_minutes sets one; unset means no limit (F310 profiles)"
+        ),
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.profile.paid.max_cost_usd",
+        env_var="REMEDY_BUDGET_PROFILE_PAID_MAX_COST_USD",
+        description=(
+            "Default cost limit in USD of a paid job, when neither the job nor "
+            "budget.max_cost_usd sets one; unset means no limit (F310 profiles)"
+        ),
+        value_type=float,
+        default=None,
+    ),
 )

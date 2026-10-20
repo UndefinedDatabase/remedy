@@ -567,27 +567,6 @@ def map_task_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
     return tasks
 
 
-def apply_plan_budgets(
-    job_budgets: dict[str, Any] | None,
-    plan_budgets: dict[str, int | str | None] | None,
-) -> dict[str, Any] | None:
-    """Merge plan-suggested budgets into job budgets (CLI/config wins).
-
-    Returns the merged dict, or None if both inputs are None.
-    Plan budgets fill only UNSET fields — explicit user values are never
-    overwritten.
-    """
-    if plan_budgets is None:
-        return job_budgets
-    if job_budgets is None:
-        return dict(plan_budgets)
-    merged = dict(job_budgets)
-    for key, val in plan_budgets.items():
-        if key not in merged or merged[key] is None:
-            merged[key] = val
-    return merged
-
-
 def apply_plan_fences(
     job_fences: dict[str, list[str]] | None,
     plan_fences: dict[str, list[str]] | None,

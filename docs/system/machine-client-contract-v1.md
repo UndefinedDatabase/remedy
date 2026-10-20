@@ -867,13 +867,16 @@ Refusal tokens: none.
 Answer keys: `budgets`, `lanes`, `observability`, `order_flags`, `phases`, `review_report`, `roles`, `verification`.
 Keys under the answer keys: see below.
 
-- `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`
+- `budgets`: `an_order_needs_one_cap`, `body_strings`, `order_header_caps`, `pi_per_call`, `profiles`
   - `pi_per_call`: `max_input_tokens`, `max_turns`
+  - `profiles`: `local`, `paid`
+    - `local`: `max_provider_calls`, `max_total_tokens`, `max_wall_clock_minutes`
+    - `paid`: `max_cost_usd`, `max_provider_calls`, `max_total_tokens`, `max_wall_clock_minutes`
 - `phases`: `do_steps`, `story_steps`
 - `review_report`: `body_flag`, `cli_flag`, `zip_newest`
 - `roles`: `*`
   - `*`: `default_model`, `default_provider`, `providers`, `selectable_over_http`
-    - `providers`: `available`, `id`, `isolation`, `models`, `not_offered_reason`, `offered_over_http`
+    - `providers`: `available`, `class`, `id`, `isolation`, `models`, `not_offered_reason`, `offered_over_http`
 - `verification`: `command`, `command_over_http`, `statuses`
 
 #### `remedy client changes`

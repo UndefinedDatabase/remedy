@@ -270,7 +270,7 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1442 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1441 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1314 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 888 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
@@ -292,7 +292,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 250 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 249 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
@@ -427,7 +427,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5339 | `packages/orchestration/pingpong_job.py` |
+| 5338 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |

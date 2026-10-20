@@ -12,7 +12,8 @@
 
 A job carries an optional `JobBudgets` record, resolved by
 `packages/orchestration/budget_resolution.py` with the precedence **CLI flag >
-env var > project `remedy.toml` > no limit**. Unset means *no limit*.
+env var > project `remedy.toml` > no limit**. Unset means *no limit* there; a
+run then fills what is still unset from its provider class's profile (below).
 
 | Limit | Unit | Flag |
 |---|---|---|
@@ -46,6 +47,41 @@ accepts but the manifest rejects cannot FINALIZE a stop at all — the job is le
 running with the stop request pending — and that failure has now happened twice,
 once for `max_cost_usd` (R-0225) and once for `min_free_disk_bytes`, which is why
 the list is derived rather than spelled a second time.
+
+## Profiles per provider class
+
+> Status (F310, 2026-10-20): built by F310's first round; DECISIONs F310 D1 to D3 in
+> `.agent/decisions.md`.
+
+A job is of the `local` class when every role that runs it, the builder, the reviewer and a
+repair provider when one is set, uses a model that Ollama serves on this machine: the providers
+`ollama` and `pi`, with any model whose name does not end in `-cloud` or `:cloud`. Every other job
+is of the `paid` class, a job run by the test provider `fake` included, because the paid profile is
+the behaviour every test of a fake run is written against. `job_provider_class` in
+`packages/orchestration/budget_profiles.py` decides it.
+
+Each class has a profile of default limits:
+
+| Limit | `local` | `paid` |
+|---|---|---|
+| `max_total_tokens` | 1,500,000 | none |
+| `max_provider_calls` | 200 | none |
+| `max_wall_clock_minutes` | 480 | none |
+| `max_cost_usd` | *(not a key)* | none |
+
+The numbers are configuration, `budget.profile.local.*` and `budget.profile.paid.*`, listed in
+[the environment guide](../guides/environment.md). A local model reports no price, so the local
+profile has no money limit at all.
+
+When `run_job` starts, it reads each limit from the first place that sets it: the job's own
+budgets, which a person, an order's caps or a budget decision wrote; then the configured
+`budget.*` value of the same name; then the profile of the job's class
+(`effective_job_budgets`). The profile's values are never written into the job's record, so the
+record keeps saying only what someone set.
+A task plan's suggested budgets are the planner's estimate and are never a limit. An order's caps
+are only what the order names: a profile fills each job's limits that the order leaves unset and
+never becomes a cap of the whole order. `GET /api/v1/execution` and `remedy client execution`
+name both profiles with their numbers under `budgets.profiles` and each offered provider's class.
 
 ## Cost is nullable by design
 

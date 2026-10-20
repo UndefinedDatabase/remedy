@@ -110,6 +110,7 @@ def execution_capabilities() -> dict[str, Any]:
     (an executable found, the Ollama endpoint answering, an API key set) and never names a secret or
     a host path; `offered_over_http` is the server's rule (`REMOTE_ROLE_PROVIDERS`).
     """
+    from packages.orchestration.budget_profiles import budget_profiles_offer, provider_class
     from packages.orchestration.client_story_words import STORY_STEP_IDS
     from packages.orchestration.do_lane import DO_LANE_BOUNDED, DO_LANE_FULL, DO_LANE_HOLD
     from packages.orchestration.do_sequence import DO_SEQUENCE
@@ -133,6 +134,7 @@ def execution_capabilities() -> dict[str, Any]:
                 "id": provider, "available": _available(provider, models),
                 "offered_over_http": provider in REMOTE_ROLE_PROVIDERS.get(role, ()),
                 "isolation": _PROVIDER_ISOLATION[provider],
+                "class": provider_class(provider),
                 "not_offered_reason": _not_offered_reason(role, provider),
                 "models": (models or []) if provider in ("pi", "ollama") else [],
             } for provider in providers],
@@ -144,7 +146,8 @@ def execution_capabilities() -> dict[str, Any]:
         "order_flags": list(_ORDER_CREATE_FLAGS),
         "budgets": {"order_header_caps": list(ORDER_FILE_CAP_KEYS), "body_strings": ["deadline"],
                     "an_order_needs_one_cap": True,
-                    "pi_per_call": {"max_turns": limits.max_turns, "max_input_tokens": limits.max_input_tokens}},
+                    "pi_per_call": {"max_turns": limits.max_turns, "max_input_tokens": limits.max_input_tokens},
+                    "profiles": budget_profiles_offer()},
         "verification": {"statuses": list(VERIFICATION_STATUSES), "command": "the project's own",
                          "command_over_http": False},
         "review_report": {"body_flag": "capture_review", "cli_flag": "--capture-review", "zip_newest": 10},

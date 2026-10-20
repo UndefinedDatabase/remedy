@@ -483,7 +483,6 @@ def plan_order_job(
 
     if plan_call_fn is not None:
         from packages.orchestration.job_plan import (
-            apply_plan_budgets,
             apply_plan_fences,
             compose_task_plan_prompt,
             make_task_plan_call_recorder,
@@ -515,9 +514,9 @@ def plan_order_job(
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
             config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
-            merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
+            # DECISION F310 D2: the plan's suggested budgets are its estimate, never a limit.
             merged_fences = apply_plan_fences(None, fp_result.plan.fences)
-            job_budgets, job_fences = order_job_limits(merged_budgets, merged_fences)
+            job_budgets, job_fences = order_job_limits(config_budgets_dict, merged_fences)
             job = JobPlan(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
                 job_file_sha256=job_file_sha256,
