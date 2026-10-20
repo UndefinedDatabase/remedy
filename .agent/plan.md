@@ -6,24 +6,22 @@ and not waiting, and a budget stop asks the operator exactly one question
 (`docs/roadmap/features/T12_F310.md`). Owns findings R-1370 and R-1371.
 
 ## Current Step
-Round 1 (session 1): claim F310, DECISIONs F310 D1 to D3, structure step (6) of
-`packages/orchestration/config.py` (the budget keys to `config_keys_budget.py`), and T001 —
-`packages/orchestration/budget_profiles.py` (provider class, profiles, `effective_job_budgets`),
-`run_job` reading its limits through it, the planner's suggested budgets no longer limits, and
-the execution offer naming the profiles and each provider's class.
+Round 2 (session 1): book round 1's verdict, DECISION F310 D4, the boundary and step (1) of
+`decode_persisted_budget_actuals` (the start instant to `budget_clock.py`), and T002 — version 3
+of the persisted record with `waited_s` and `active_until`, `run_job` adding every gap between
+runs to the seconds waited, the guard and the Pi call's time bound measuring work alone.
 
 ## Next Steps
-1. Round 2, T002 under DECISION F310 D4: the wall clock counts work from the first model call,
-   waits are recorded and summed into `budget_actuals.waited_s`; the Pi call's time bound reads
-   `effective_job_budgets` (deferred from round 1 by DECISION F310 D2).
-2. Round 3, T003 under DECISION F310 D5: the budget decision carries the blockers, `extend`
-   without an answer doubles the exhausted limits, the resume follows by itself, the remainder
-   decision is raised only for a final job; the two old raise sites are deleted.
-3. Round 4, T004: the lab stop of 2026-10-20 rebuilt as a fixture,
-   `docs/system/job-budget-enforcement-v0.md` completed.
-4. Closure sequence per `docs/roadmap/STATUS_closure_protocol.md`.
+1. Round 3, T003 under DECISION F310 D5: the budget decision carries the blockers, `extend`
+   without an answer doubles the exhausted limits (against the limits the run read), the resume
+   follows by itself, the remainder decision is raised only for a final job; the two old raise
+   sites are deleted.
+2. Round 4, T004: the lab stop of 2026-10-20 rebuilt as a fixture,
+   `docs/system/job-budget-enforcement-v0.md` completed, resolution of R-1370 and R-1371.
+3. Closure sequence per `docs/roadmap/STATUS_closure_protocol.md`.
 
 ## Risks
-- `run_job` and `plan_order_job` are structure-ledger rows: their edits shrink them or stay
-  line-neutral, and every shrink lowers its row in the same commit.
+- `run_job`, `plan_order_job` and `decode_persisted_budget_actuals` are structure-ledger rows,
+  and `budget_guard.py` stands near 1,000 lines: every edit shrinks them or stays line-neutral.
 - An order's own caps still bind its jobs (DECISION F310 D3, operator question Q19).
+- A budget decision's `extend` still compares against `job.budgets` alone; round 3 repairs that.
