@@ -924,32 +924,8 @@ def decode_persisted_budget_actuals(
         raise BudgetCounterError(
             f"persisted actual_call_count ({ac}) > 0 but actual_sources empty")
 
-    sa_raw = raw["started_at"]
-    if not isinstance(sa_raw, str) or not sa_raw:
-        raise BudgetCounterError(
-            f"persisted started_at must be a nonempty string, got {sa_raw!r}")
-    try:
-        sa_parsed = datetime.fromisoformat(sa_raw)
-    except (ValueError, TypeError) as exc:
-        raise BudgetCounterError(
-            f"persisted started_at cannot be parsed: {sa_raw!r}: {exc}")
-    if sa_parsed.tzinfo is None:
-        raise BudgetCounterError(
-            f"persisted started_at is timezone-naive: {sa_raw!r}")
-
-    if first_running_at is not None:
-        try:
-            fra_parsed = datetime.fromisoformat(first_running_at)
-        except (ValueError, TypeError) as exc:
-            raise BudgetCounterError(
-                f"first_running_at cannot be parsed: {first_running_at!r}: {exc}")
-        if fra_parsed.tzinfo is None:
-            raise BudgetCounterError(
-                f"first_running_at is timezone-naive: {first_running_at!r}")
-        if sa_parsed != fra_parsed:
-            raise BudgetCounterError(
-                f"persisted started_at ({sa_raw}) != "
-                f"first_running_at ({first_running_at}): wall-clock split")
+    from packages.orchestration.budget_clock import decode_persisted_started_at
+    sa_parsed = decode_persisted_started_at(raw["started_at"], first_running_at)
 
     return {
         "schema_version": sv,

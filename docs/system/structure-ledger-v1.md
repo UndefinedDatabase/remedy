@@ -164,6 +164,12 @@ commit with no alias left behind, and changes the tests in their import lines on
   pending stops become a function each; (2) the runtime's state becomes a function of its own;
   (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
   this function are line-neutral (DECISION F055 D3).
+- `decode_persisted_budget_actuals` (`packages/orchestration/budget_guard.py`). Boundary: the
+  closed field set and its version, the counts and how they agree, the sources, the start instant
+  and its agreement with the job's first run, and the money and clock fields of the versions that
+  carry them. Steps: (1) done by F310, the start instant's checks are
+  `decode_persisted_started_at` in `packages/orchestration/budget_clock.py`; (2) the counts and the
+  sources become a function of their own.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -367,7 +373,7 @@ with the code that calls it.
 | 131 | `packages/orchestration/run_manifest.py` | `validate_index_and_tree` |
 | 130 | `packages/orchestration/budget_guard.py` | `evaluate_budget` |
 | 129 | `packages/orchestration/test_runner.py` | `run_tests_local` |
-| 128 | `packages/orchestration/budget_guard.py` | `decode_persisted_budget_actuals` |
+| 104 | `packages/orchestration/budget_guard.py` | `decode_persisted_budget_actuals` |
 | 128 | `packages/runtimes/dev_server.py` | `classify_state` |
 | 127 | `packages/orchestration/pingpong_loop.py` | `export_pingpong_json` |
 | 127 | `packages/orchestration/stream_evidence.py` | `capture_stream_evidence` |
