@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -11,7 +12,9 @@ from packages.orchestration.api_clients import ApiClient, client_budget_answer_r
 from packages.orchestration.budget_decision import answer_budget_decision
 from packages.orchestration.budget_stop import (
     budget_stop_blockers,
+    budget_stop_walk_note,
     doubled_limit_answers,
+    raise_remainder_for_final_job,
     resume_after_budget_extend,
 )
 from packages.orchestration.decision_queue import budget_decision_id, list_decisions
@@ -254,3 +257,44 @@ def test_a_client_is_judged_on_the_doubled_value_when_it_sends_no_answer():
     assert refusal is not None and "at most 1000" in refusal and "gives 1200" in refusal
     assert client_budget_answer_refusal(client, []) is None
     assert client_budget_answer_refusal(client, [], job="ffffffff") is None
+
+
+# --- the walk's note and the remainder at a final stop (DECISION F310 D6) -------------------------
+
+def test_a_walk_note_for_an_open_budget_stop_names_its_one_question_and_adds_one_next_line():
+    ctx = SimpleNamespace(next_lines=[])
+    job = _linked_job(_criteria(("C001", "the suite passes", True, "open")))
+    job.stop_source, job.stop_request_id = "budget", "req1"
+    note = budget_stop_walk_note(ctx, job)
+    decision_id = budget_decision_id("req1")
+    assert ctx.next_lines == [f"remedy decision resolve {job.job_id} {decision_id} --reason extend"]
+    assert f"budget decision {decision_id} is its one open question, answered extend or abandon" in note
+    assert note.endswith(", and it names the mission's open blocking criteria")
+
+
+def test_a_walk_note_without_a_budget_stop_is_empty_and_adds_nothing():
+    ctx = SimpleNamespace(next_lines=[])
+    assert budget_stop_walk_note(ctx, _linked_job(None)) == ""
+    assert ctx.next_lines == []
+
+
+def test_a_job_that_is_not_cancelled_raises_no_remainder_decision():
+    job = _linked_job(_criteria(("C001", "the suite passes", True, "open")))
+    job.stop_source, job.stop_request_id = "budget", "req1"
+    assert raise_remainder_for_final_job(job) is None
+
+
+def test_a_cancelled_job_lists_only_its_missions_open_remainder_decision():
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import enqueue_task_decision
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = _linked_job(_criteria(("C001", "the suite passes", True, "open")))
+    enqueue_task_decision(job, task_id=job.tasks[0].task_id, question="Which database?",
+                          options=("a", "b"), safe_default="", impact="", now=NOW)
+    job.state = RunState.CANCELLED
+    save_job_plan(job)
+    remainder_id = raise_remainder_for_final_job(load_job_plan(job.job_id))
+    assert remainder_id
+    listed = list_decisions(load_job_plan(job.job_id), [])
+    assert [d.id for d in listed] == [remainder_id]
