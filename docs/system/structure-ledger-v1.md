@@ -254,14 +254,15 @@ with the code that calls it.
   staying beside the code that calls it.
 - `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
   cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
-  table, the walker, `plan_order_job` and the plan, shape and run steps stay (the study step moved to
-  `packages/orchestration/do_study.py` on 2026-10-17, which took the file under its row), because a
-  test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
-  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
-  Step (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the
-  old face since (amend1015f D22) and `packages/orchestration/do_summary.py`.
-  Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
-  left the table.
+  table, the walker, `plan_order_job` and the plan, shape and run steps stay (the study step moved
+  to `packages/orchestration/do_study.py` on 2026-10-17, which took the file under its row), because
+  a test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
+  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`. Step
+  (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the old face
+  since (amend1015f D22) and `packages/orchestration/do_summary.py`. Step (3), done by F205: the
+  apply and push, `packages/orchestration/do_apply.py`, and the file left the table. F312 moved
+  `do_job_task_listing`, the listing of the walk's jobs, to `packages/orchestration/do_summary.py`
+  under step (2).
 - `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `run`
   handlers, then the `job` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
   stay. Step (1), done by F205: `_order_repo` and the reading of the order file,

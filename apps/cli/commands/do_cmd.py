@@ -264,8 +264,7 @@ def _cmd_do_order(
     carries `landed` and `push` (D4 (7)).
     """
     if not order or not order.strip():
-        fail("invalid_argument", "order must not be empty.",
-             json_output=json_output, exit_code=2)
+        fail("invalid_argument", "order must not be empty.", json_output=json_output, exit_code=2)
     if force_job and force_mission:
         fail("invalid_argument",
              "--force-job and --force-mission cannot be given together.",
@@ -300,9 +299,10 @@ def _cmd_do_order(
 
     from apps.cli.commands.do_plan_prompt import interactive_plan_confirmer
     from packages.orchestration.do_progress import DoProgress
-    from packages.orchestration.do_sequence import DoContext, do_job_task_listing, walk_do_sequence
+    from packages.orchestration.do_sequence import DoContext, walk_do_sequence
     from packages.orchestration.do_summary import (
         do_cost_summary,
+        do_job_task_listing,
         do_json_document,
         do_mission_contract,
         do_summary_lines,

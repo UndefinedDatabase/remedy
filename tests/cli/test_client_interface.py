@@ -847,7 +847,7 @@ def test_the_do_answer_trees_name_exactly_what_their_code_builds():
     assert _tree_names(trees["cost"]) == _dict_literal_keys(_REPO_ROOT / do_summary,
                                                             "do_cost_summary")
     assert _tree_names(trees["jobs"]) == (
-        _dict_literal_keys(_REPO_ROOT / do_sequence, "do_job_task_listing")
+        _dict_literal_keys(_REPO_ROOT / do_summary, "do_job_task_listing")
         | _dict_literal_keys(_REPO_ROOT / "packages/orchestration/order_verification.py", "job_verification"))
     assert set(trees["steps"]) == _returned_dict_keys(do_context, "DoStepResult.to_json")
     assert set(trees["landed"]) == _expression_keys(do_apply, "ctx.landed")

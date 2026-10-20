@@ -231,3 +231,23 @@ def do_json_document(ctx: DoContext, *, jobs: list[dict[str, Any]], cost: dict[s
         "next": list(ctx.next_lines),
         "review_report": ctx.review_report,
     }
+
+
+def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
+    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}], verification}``.
+
+    ``verification`` is `order_verification.job_verification` (exec-1017 D2), None for a job not found.
+    """
+    from packages.orchestration.order_verification import job_verification
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    listing: list[dict[str, Any]] = []
+    for job_id in ctx.job_ids:
+        job = load_job_plan(job_id)
+        tasks = [] if job is None else [
+            {"title": task.title, "deliverable": task_deliverable(task)}
+            for task in job.tasks]
+        listing.append({"job_id": job_id, "tasks": tasks,
+                        "verification": None if job is None else job_verification(job)})
+    return listing

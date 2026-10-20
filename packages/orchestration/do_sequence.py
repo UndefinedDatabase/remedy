@@ -859,27 +859,6 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         f"(shape: {shape}, from {source}): {jobs}; "
         f"plan: {first.plan_label}, {first.intake_label}")
 
-
-def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
-    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}], verification}``.
-
-    ``verification`` is `order_verification.job_verification` (exec-1017 D2), None for a job not found.
-    """
-    from packages.orchestration.order_verification import job_verification
-    from packages.orchestration.pingpong_job import load_job_plan
-    from packages.orchestration.task_deliverables import task_deliverable
-
-    listing: list[dict[str, Any]] = []
-    for job_id in ctx.job_ids:
-        job = load_job_plan(job_id)
-        tasks = [] if job is None else [
-            {"title": task.title, "deliverable": task_deliverable(task)}
-            for task in job.tasks]
-        listing.append({"job_id": job_id, "tasks": tasks,
-                        "verification": None if job is None else job_verification(job)})
-    return listing
-
-
 def _step_run(ctx: DoContext) -> tuple[str, str]:
     """Run the walk's jobs; without a commit flag only the first, and the rest wait (F268 D12).
 
