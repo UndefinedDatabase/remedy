@@ -404,6 +404,7 @@ packages.orchestration.verifier_profiles
 packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
+packages.orchestration.worker_pulse
 packages.orchestration.workspace
 packages.orchestration.workspace_identity
 packages.orchestration.worktree_resume

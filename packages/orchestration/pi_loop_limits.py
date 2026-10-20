@@ -89,7 +89,8 @@ def pi_loop_limits() -> PiLoopLimits:
 class PiLoopWatch:
     """Fed every stdout chunk of one Pi call (from the stream pump's thread); `tripped` says why to stop."""
 
-    def __init__(self, limits: PiLoopLimits) -> None:
+    def __init__(self, limits: PiLoopLimits, *,
+                 on_record: Callable[[dict[str, Any]], None] | None = None) -> None:
         self.limits = limits
         self.tripped = ""
         self._stream = PiEventStream()
@@ -97,6 +98,7 @@ class PiLoopWatch:
         self._turns = 0
         self._input = 0
         self._lock = threading.Lock()
+        self._on_record = on_record
 
     def feed(self, chunk: bytes) -> None:
         try:
@@ -107,6 +109,9 @@ class PiLoopWatch:
             for record in records:
                 self._events.append(record)
                 self._count(record)
+        if self._on_record is not None:
+            for record in records:
+                self._on_record(record)
 
     def _count(self, record: dict[str, Any]) -> None:
         kind = record.get("type")
