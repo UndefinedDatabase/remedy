@@ -101,6 +101,19 @@ The record `budget_actuals` carries the clock in version `3.0.0`: `waited_s`, th
 far, and `active_until`, the moment the record was written. Versions 1 and 2 still read, as having
 waited nothing.
 
+## One stop, one question
+
+> Status (F310, 2026-10-20): built by F310's third round; DECISION F310 D5 in
+> `.agent/decisions.md`.
+
+When the budget stops a job, its budget decision is the one question to answer. It names, under
+`blockers`, the open blocking criteria of the job's mission, so the person sees what is left before
+choosing. `extend` with no answer raises every limit the stop exhausted to twice the value the run
+read, and the wall clock to at least 60 minutes, so a client need not compute new numbers; a
+deadline and the disk floor are never doubled and still need an answer. An answer that is given
+holds, but no answer can lower a limit below what the run read. Over the public API, the run starts
+again by itself as soon as `extend` is answered, and the answer names it under `resumed`.
+
 ## Cost is nullable by design
 
 Cost actuals come from the F103 per-project SQLite ledger

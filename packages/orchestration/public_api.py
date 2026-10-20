@@ -735,7 +735,7 @@ def answer_public_api_post(
                 from packages.orchestration.decision_queue import is_budget_decision_id
 
                 if is_budget_decision_id(segments["decision"]):
-                    refusal_text = client_budget_answer_refusal(client, checked.get("answer", []))
+                    refusal_text = client_budget_answer_refusal(client, checked.get("answer", []), job=segments["job"])
             if refusal_text is not None:
                 return 403, build_error("api_client_policy_refused", refusal_text), {}
         if client is not None and route.twin == "job.apply" and not client.may_apply:
@@ -754,11 +754,10 @@ def answer_public_api_post(
             return 500, build_error(
                 "api_command_failed",
                 f"the command for '{path}' printed no answer, or took longer than allowed"), {}
-        if envelope.get("ok"):
-            status = 200
-        else:
-            status = dict(route.refusals).get(envelope.get("error", ""),
-                                              route.refusal_default or 500)
+        from packages.orchestration.budget_stop import resume_after_budget_extend
+        envelope = resume_after_budget_extend(route.twin, segments, envelope, start_run)  # DECISION F310 D5 (4)
+        status = 200 if envelope.get("ok") else dict(route.refusals).get(
+            envelope.get("error", ""), route.refusal_default or 500)
         headers = {"Deprecation": "true"} if route.deprecated else {}
         return status, envelope, headers
 

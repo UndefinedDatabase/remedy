@@ -19,7 +19,9 @@ from datetime import datetime
 from typing import Any
 
 from packages.core.models import JobBudgets, RunState
+from packages.orchestration.budget_profiles import effective_job_budgets
 from packages.orchestration.budget_resolution import BudgetConfigError, parse_budget_limit
+from packages.orchestration.budget_stop import doubled_limit_answers
 from packages.orchestration.decision_queue import budget_decision_id, budget_stop_answer
 
 __all__ = ["answer_budget_decision"]
@@ -57,7 +59,7 @@ def answer_budget_decision(
     """D11 (2) to (4): answer one budget decision of `job`.
 
     Never raises for a refusal: checks in order the decision id, whether it is
-    already answered, the option, that at least one answer was given, whether
+    already answered, the option, that an answer is given or doubled for it, whether
     the stop is by the unraisable floor, that every answer parses, that the
     stop's own limit (if it names one) is among the answered limits, and that
     every answered limit actually raises the job's current value. Each refusal
@@ -104,11 +106,9 @@ def answer_budget_decision(
         job.state = RunState.CANCELLED
         return {"outcome": "abandoned", "state": "cancelled", "record": record}
 
-    if not answers:
-        return _refuse(
-            "missing_argument",
-            "at least one --answer is required, e.g. --answer max_cost_usd=2.5",
-        )
+    # DECISION F310 D5: with no answer, `extend` doubles every limit the stop exhausted.
+    if not (answers := list(answers) or doubled_limit_answers(job)):
+        return _refuse("missing_argument", "at least one --answer is required, e.g. --answer max_cost_usd=2.5")
 
     stop_reason = str(getattr(job, "stop_reason", "") or "")
     stop_limit = _stop_reason_limit(stop_reason)
@@ -155,6 +155,7 @@ def answer_budget_decision(
     try:
         current = JobBudgets.model_validate(
             current_raw if isinstance(current_raw, dict) else {})
+        limits = effective_job_budgets(job) or JobBudgets()   # DECISION F310 D5 (3): no answer lowers a limit
     except ValueError as exc:
         return _refuse("invalid_budget", f"the job's current budgets do not validate: {exc}")
 
@@ -166,14 +167,14 @@ def answer_budget_decision(
                     f"deadline must be later than now ({now.isoformat()}), "
                     f"got {value.isoformat()}.",
                 )
-            if current.deadline is not None and value <= current.deadline:
+            if limits.deadline is not None and value <= limits.deadline:
                 return _refuse(
                     "budget_limit_not_raised",
                     "deadline must be later than the job's current deadline "
-                    f"({current.deadline.isoformat()}).",
+                    f"({limits.deadline.isoformat()}).",
                 )
         else:
-            current_value = getattr(current, name)
+            current_value = getattr(limits, name)
             if current_value is not None and not value > current_value:
                 return _refuse(
                     "budget_limit_not_raised",

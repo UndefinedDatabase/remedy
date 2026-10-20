@@ -168,9 +168,14 @@ def client_order_refusal(
                             max_provider_calls))
 
 
-def client_budget_answer_refusal(client: ApiClient, answers: Sequence[str]) -> str | None:
+def client_budget_answer_refusal(
+    client: ApiClient, answers: Sequence[str], *, job: str | None = None,
+) -> str | None:
     """One sentence ending "; nothing was run" when an item of ANSWERS raises a limit above CLIENT's
     ceiling, else None (DECISION F253 D17 (2)).
+
+    With no ANSWERS and a JOB, the job is read with `lookup_job_id` and `load_job_plan_safe` and its
+    `doubled_limit_answers` are judged instead; a job that cannot be read judges nothing (DECISION F310 D5).
 
     Only an item `<limit>=<value>` whose limit, stripped, is `max_total_tokens` or
     `max_provider_calls`, and for which the client's ceiling is not None, can be refused: its value,
@@ -179,6 +184,16 @@ def client_budget_answer_refusal(client: ApiClient, answers: Sequence[str]) -> s
     """
     from packages.orchestration.budget_resolution import BudgetConfigError, _pos_int
 
+    if not answers and job is not None:
+        from packages.orchestration.budget_stop import doubled_limit_answers
+        from packages.orchestration.data_paths import JobIdError, lookup_job_id
+        from packages.orchestration.pingpong_job import load_job_plan_safe
+
+        try:
+            plan, _degraded = load_job_plan_safe(lookup_job_id(job))
+        except JobIdError:
+            plan = None
+        answers = doubled_limit_answers(plan) if plan is not None else []
     for item in answers:
         limit, equals, value = item.partition("=")
         limit = limit.strip()

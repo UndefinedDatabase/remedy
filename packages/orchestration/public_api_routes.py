@@ -153,7 +153,8 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Answers one decision of a job, as `remedy decision resolve <job> <decision> --json` "
             "does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id "
             "prefix is accepted, as on the command line, and `--as-mission` is not offered over "
-            "HTTP."
+            "HTTP. A budget decision answered `extend` starts the job's run at once, and the answer "
+            "names that run under `resumed`, or why it could not start under `resume_refused`."
         ),
     ),
     PublicApiRoute(

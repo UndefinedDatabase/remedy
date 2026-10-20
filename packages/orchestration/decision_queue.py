@@ -469,6 +469,7 @@ def list_decisions(
                 ),
             ),
         )
+        from packages.orchestration.budget_stop import budget_stop_blockers
         decisions.append(HumanDecision(
             id=_decision_id,
             type="token_budget",
@@ -482,11 +483,9 @@ def list_decisions(
             next_actions=("extend", "abandon"),
             created_at=_budget_created_at,
             resolved_at=None,
-            # DECISION F032 D6: the two choices are stated where the emit gate
-            # and the browser both already look.  `next_actions` is unchanged —
-            # `decisionCard.decisionAnswers` prefers `payload.options` and
-            # yields the same two answers in the same order.
-            payload={"options": ["extend", "abandon"]},
+            # DECISION F032 D6: the two choices beside next_actions; DECISION F310 D5: and the
+            # mission's open blocking criteria, so one question carries the whole stop.
+            payload={"options": ["extend", "abandon"], "blockers": budget_stop_blockers(job)},
             evidence=DecisionEvidenceTriple(
                 refs=tuple(_budget_refs),
                 outcomes=_budget_outcomes,

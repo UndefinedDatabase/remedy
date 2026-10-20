@@ -279,7 +279,7 @@ with the code that calls it.
 |---|---|---|
 | 1434 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1314 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
-| 888 | `packages/orchestration/decision_queue.py` | `list_decisions` |
+| 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
 | 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
@@ -337,8 +337,8 @@ with the code that calls it.
 | 159 | `packages/orchestration/run_manifest.py` | `validate_input_snapshot` |
 | 159 | `packages/orchestration/self_use_runner.py` | `run_next_self_use_item` |
 | 158 | `packages/orchestration/file_provenance.py` | `build_file_provenance` |
-| 158 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
-| 156 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
+| 157 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
+| 155 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
 | 155 | `packages/orchestration/task_injection.py` | `answer_injection_shortfall` |
 | 152 | `scripts/build_observability_index.py` | `build_observability_index` |
 | 151 | `packages/orchestration/ownership_phrases.py` | `ownership_sentence` |
@@ -453,7 +453,7 @@ with the code that calls it.
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
-| 1183 | `packages/orchestration/decision_queue.py` |
+| 1182 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |
