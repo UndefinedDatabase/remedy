@@ -30331,3 +30331,17 @@ CHOSEN: when `_deliverable_task_plan` refuses the first-pass task plan of a job 
 ALTERNATIVES CONSIDERED: (a) a second attempt with the refusal written into the prompt — rejected for now: `compose_task_plan_prompt` takes no feedback, and a prompt changed after composition breaks the trace's one-composition rule (R-0256); (b) a question after the first refusal — rejected: the feature file asks for two; (c) the question for every kind of order — rejected: a fenced or file-naming order already says which files it means.
 
 HOW TO REVERSE: delete `scope_question.py`, its call in `_first_pass_task_plan` and its branch in `_step_shape`, the tests that name `scope_question`, and this paragraph; the move of `do_job_task_listing` stays.
+
+## DECISION F312 D3 — addendum: the inspection-plan test of F268 D6 now names a file (2026-10-20)
+
+The test `tests/cli/test_plan_approval.py::TestTaskPlanLabel::test_llm_plan_holding_an_inspection_task_is_rejected` gave the open order `test mission`, which D3 now plans twice and then asks about. F268 D6's rule, the one validator refusing an inspection-only plan with no job saved, still holds for an order that names a file or fences, so F312 round 2 (amendment 1) changed only that test's order to `Write notes.md about the repository` and its docstring; its two assertions are byte-identical, and the open case is pinned by `tests/orchestration/test_scope_question.py`. HOW TO REVERSE: with D3, restore the order `test mission`.
+
+## DECISION F312 D4 — an answer to the scope question makes the named files the job's tasks, and the job can run (2026-10-20, R-1369)
+
+THE PROBLEM: DECISION F312 D3 stops an open order's job on one question after two refused plans, and today an answer is only recorded: the job stays stopped and nothing the person said reaches it.
+
+CHOSEN: `escalation.answer_task_decision`, which both answer doors call before they save the job, hands every answered record to `scope_question.apply_scope_answer(job, record)`. That function acts only when the job's stop reason is `scope_question` and the record's question starts with `SCOPE_QUESTION_MARKER`; otherwise it changes nothing. It reads the answer as file names separated by commas, each stripped, empty ones and repeats left out, and keeps a name only when it is a relative path that stays inside the repository (no leading `/`, no `..` segment). For the names it keeps, the job's tasks become one deliverable task per file (`task_deliverables.deliverable_task(name, job.mission)`, in the order given), its `task_plan` is cleared, its state becomes `planned` and its stop reason and finish time are cleared, so `remedy job resume <job>`, which both doors already name after an answer, runs it on the files the person named and spends no planner call. When no name is kept, the answer stays recorded and the job stays stopped; the person gives the order again with the files named. The question's job also keeps the prompt traces of the calls it spent (R-1378).
+
+ALTERNATIVES CONSIDERED: (a) re-planning with the named files in the prompt — rejected: it spends the third planner call D3 exists to avoid; (b) refusing an answer that names no usable file at the doors — rejected for now: each door would need a refusal of its own, and a recorded answer that changes nothing loses nothing.
+
+HOW TO REVERSE: delete `apply_scope_answer` and its call in `answer_task_decision`, the tests that name it, and this paragraph.
