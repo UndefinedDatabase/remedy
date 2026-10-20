@@ -83,6 +83,24 @@ are only what the order names: a profile fills each job's limits that the order 
 never becomes a cap of the whole order. `GET /api/v1/execution` and `remedy client execution`
 name both profiles with their numbers under `budgets.profiles` and each offered provider's class.
 
+## The working wall clock
+
+> Status (F310, 2026-10-20): built by F310's second round; DECISION F310 D4 in
+> `.agent/decisions.md`.
+
+`max_wall_clock_minutes` measures the time a job's runs were alive, not the time since it first
+started. Every gap between two runs of a job is waiting: the time it waited for a decision, for a
+stop or a pause to be answered, in a queue, for a lock that kept a run from starting, or after a
+run died. When a run starts again, `resume_job_clock` in `packages/orchestration/budget_clock.py`
+adds the gap from the job's last saved record to the seconds it has waited, and the guard measures
+from `first_running_at` plus those seconds. The Pi call's own time bound reads the same limits and
+the same start. Inside a run nothing counts as waiting: until a call's own time-out ends it, a model
+server that does not answer cannot be told from one that answers slowly.
+
+The record `budget_actuals` carries the clock in version `3.0.0`: `waited_s`, the seconds waited so
+far, and `active_until`, the moment the record was written. Versions 1 and 2 still read, as having
+waited nothing.
+
 ## Cost is nullable by design
 
 Cost actuals come from the F103 per-project SQLite ledger

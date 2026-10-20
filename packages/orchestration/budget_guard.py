@@ -784,8 +784,9 @@ PERSISTED_ACTUALS_SCHEMA_V1 = "1.0.0"
 #: Version 2 adds the three F104 money fields of the live counters (R-0753,
 #: DECISION F273 D5 (5)), so a reader across a process boundary can price a run.
 PERSISTED_ACTUALS_SCHEMA_V2 = "2.0.0"
+PERSISTED_ACTUALS_SCHEMA_V3 = "3.0.0"  # DECISION F310 D4: version 2 plus the working clock, waited_s and active_until
 #: What the job runner writes today.
-PERSISTED_ACTUALS_SCHEMA_VERSION = PERSISTED_ACTUALS_SCHEMA_V2
+PERSISTED_ACTUALS_SCHEMA_VERSION = PERSISTED_ACTUALS_SCHEMA_V3
 
 _PERSISTED_ACTUALS_FIELDS = frozenset({
     "schema_version", "provider_call_count", "actual_call_count",
@@ -798,6 +799,7 @@ _PERSISTED_MONEY_FIELDS = frozenset({
 _PERSISTED_ACTUALS_FIELDS_BY_VERSION = {
     PERSISTED_ACTUALS_SCHEMA_V1: _PERSISTED_ACTUALS_FIELDS,
     PERSISTED_ACTUALS_SCHEMA_V2: _PERSISTED_ACTUALS_FIELDS | _PERSISTED_MONEY_FIELDS,
+    PERSISTED_ACTUALS_SCHEMA_V3: _PERSISTED_ACTUALS_FIELDS | _PERSISTED_MONEY_FIELDS | {"waited_s", "active_until"},
 }
 
 
@@ -840,7 +842,7 @@ def decode_persisted_budget_actuals(
     *,
     first_running_at: str | None = None,
 ) -> dict[str, Any]:
-    """Decode and validate a persisted budget actuals record, version 1 or 2.
+    """Decode and validate a persisted budget actuals record, version 1, 2 or 3.
 
     Returns a validated dict with typed values. Raises BudgetCounterError on
     any schema violation — no default-zero repair, no invented sources.
@@ -873,7 +875,7 @@ def decode_persisted_budget_actuals(
         raise BudgetCounterError(
             f"persisted actuals schema_version {sv!r} is not one of "
             f"{sorted(_PERSISTED_ACTUALS_FIELDS_BY_VERSION)}")
-    if sv == PERSISTED_ACTUALS_SCHEMA_V2:
+    if sv != PERSISTED_ACTUALS_SCHEMA_V1:
         cost, priced, unpriced = _decode_persisted_money(raw)
     else:
         cost, priced, unpriced = None, 0, 0
@@ -924,8 +926,8 @@ def decode_persisted_budget_actuals(
         raise BudgetCounterError(
             f"persisted actual_call_count ({ac}) > 0 but actual_sources empty")
 
-    from packages.orchestration.budget_clock import decode_persisted_started_at
-    sa_parsed = decode_persisted_started_at(raw["started_at"], first_running_at)
+    from packages.orchestration.budget_clock import decode_persisted_clock
+    sa_parsed, waited_s, active_until = decode_persisted_clock(raw, first_running_at)
 
     return {
         "schema_version": sv,
@@ -934,7 +936,7 @@ def decode_persisted_budget_actuals(
         "unmeasured_call_count": umc,
         "total_tokens": tt,
         "actual_sources": tuple(str(s) for s in asrc),
-        "started_at": sa_parsed,
+        "started_at": sa_parsed, "waited_s": waited_s, "active_until": active_until,
         "measured_cost_usd": cost,
         "priced_call_count": priced,
         "unpriced_call_count": unpriced,
@@ -955,7 +957,7 @@ def counters_from_persisted(
     if now is None:
         now = datetime.now(timezone.utc)
     sa = validated["started_at"]
-    elapsed = max(0.0, (now - sa).total_seconds()) if isinstance(sa, datetime) else 0.0
+    elapsed = max(0.0, (now - sa).total_seconds() - validated.get("waited_s", 0.0)) if isinstance(sa, datetime) else 0.0
     return BudgetCounters(
         provider_calls=validated["provider_call_count"],
         measured_token_total=validated["total_tokens"],

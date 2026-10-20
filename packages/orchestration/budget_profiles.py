@@ -85,9 +85,10 @@ def budget_profiles_offer(
 def effective_job_budgets(job: Any) -> JobBudgets | None:
     """The limits a run is judged against, or None when every one is unset. Writes nothing to `job`."""
     own = None
-    if job.budgets is not None:
-        own = JobBudgets.model_validate(job.budgets)
-    root = job.repo_path or None
+    own_raw = getattr(job, "budgets", None)
+    if own_raw is not None:
+        own = JobBudgets.model_validate(own_raw)
+    root = getattr(job, "repo_path", "") or None
     configured = resolve_job_budgets(project_root=root)
     profile = resolve_budget_profile(job_provider_class(job), project_root=root)
     values: dict[str, Any] = {}
