@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job 24460560b40f4cd7 (blocked): task_T003_gate_failed: final_status=staged_blocked; reviewer_verdict=blocked
+2. T003 (blocked): completion_gate_failed: final_status=staged_blocked; reviewer_verdict=blocked
