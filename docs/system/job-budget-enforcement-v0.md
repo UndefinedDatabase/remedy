@@ -114,6 +114,12 @@ deadline and the disk floor are never doubled and still need an answer. An answe
 holds, but no answer can lower a limit below what the run read. Over the public API, the run starts
 again by itself as soon as `extend` is answered, and the answer names it under `resumed`.
 
+The mission's remainder decision, which offers a follow-up mission for the blocking criteria a
+job left open, is no longer raised while the budget decision is open. It is raised once, when the
+budget decision is answered `abandon` and the mission's contract still has blocking criteria,
+because the stop is final from that answer on. A mission loop that reaches its iteration limit
+raises it as before, since no budget decision is open there.
+
 ## Cost is nullable by design
 
 Cost actuals come from the F103 per-project SQLite ledger

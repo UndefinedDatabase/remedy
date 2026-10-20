@@ -35,6 +35,41 @@ def budget_stop_blockers(job: Any) -> list[str]:
     return [f"{criterion.id}: {criterion.text}" for criterion in criteria]
 
 
+# WHY: the walk names a budget stop's one question and its answering command, and raises no second decision.
+def budget_stop_walk_note(ctx: Any, job: Any) -> str:
+    """The detail's tail for a job its budget stopped, or "" (DECISION F310 D6); the Next line joins ``ctx``."""
+    from packages.orchestration.decision_queue import open_budget_decision_id
+
+    if str(getattr(job, "stop_source", "") or "") != "budget":
+        return ""
+    decision_id = open_budget_decision_id(job)
+    if not decision_id:
+        return ""
+    ctx.next_lines.append(f"remedy decision resolve {job.job_id} {decision_id} --reason extend")
+    note = (f"; its budget stopped it: budget decision {decision_id} is its one open question, "
+            "answered extend or abandon")
+    if budget_stop_blockers(job):
+        note += ", and it names the mission's open blocking criteria"
+    return note
+
+
+# WHY: the mission's remainder decision waits until the budget stop is final, which is the `abandon` answer.
+def raise_remainder_for_final_job(job: Any) -> str | None:
+    """The id of the remainder decision raised for a cancelled job's mission, or None (DECISION F310 D6)."""
+    from packages.orchestration.mission_contract import ContractError, raise_contract_remainder_decision
+    from packages.orchestration.mission_state import mission_for_job
+
+    if getattr(job, "state", None) != "cancelled":
+        return None
+    mission = mission_for_job(str(getattr(job, "job_id", "")))
+    if mission is None:
+        return None
+    try:
+        return raise_contract_remainder_decision(str(mission.project_id), str(mission.id))
+    except ContractError:
+        return None
+
+
 def _work_seconds(actuals: dict[str, Any], now: datetime) -> float:
     """The seconds of work a decoded record holds: the moment it was last active, less the start and the waiting."""
     return ((actuals["active_until"] or now) - actuals["started_at"]).total_seconds() - actuals["waited_s"]

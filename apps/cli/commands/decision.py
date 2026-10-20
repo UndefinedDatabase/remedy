@@ -287,6 +287,7 @@ def _resolve_budget_decision(
     from datetime import datetime, timezone
 
     from packages.orchestration.budget_decision import answer_budget_decision
+    from packages.orchestration.budget_stop import raise_remainder_for_final_job
     from packages.orchestration.mission_contract import answer_contract_remainder_on_extend
     from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
@@ -328,9 +329,13 @@ def _resolve_budget_decision(
 
     save_job_plan(job)
     if result["outcome"] == "abandoned":
+        remainder_id = raise_remainder_for_final_job(job)
         if not json_output:
             print(f"Answered {decision_id} for job {job_id_str}: abandoned")
             print(f"  Job {job_id_str} is cancelled and will never run again.")
+            if remainder_id:
+                print(f"  Remainder decision {remainder_id} raised: "
+                      "the mission's blocking criteria are still open.")
         if json_output:
             emit_ok(
                 decision_id=decision_id, job_id=job_id_str, outcome="abandoned",
