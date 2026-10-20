@@ -30345,3 +30345,13 @@ CHOSEN: `escalation.answer_task_decision`, which both answer doors call before t
 ALTERNATIVES CONSIDERED: (a) re-planning with the named files in the prompt — rejected: it spends the third planner call D3 exists to avoid; (b) refusing an answer that names no usable file at the doors — rejected for now: each door would need a refusal of its own, and a recorded answer that changes nothing loses nothing.
 
 HOW TO REVERSE: delete `apply_scope_answer` and its call in `answer_task_decision`, the tests that name it, and this paragraph.
+
+## DECISION F312 D5 — F312's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/` nor `scripts/rotate_live_review.py` has changed since F310's closure.
+
+CHOSEN: F312's closure skips the rotation commit, as F310's did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
