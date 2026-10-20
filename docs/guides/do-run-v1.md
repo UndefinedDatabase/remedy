@@ -217,6 +217,10 @@ planner: the files of its task plan are the delivery, and only a task that makes
 checking artifact the order never asked for is left out. A milestone's outline still says what its
 job works on, but it never fences a job the order did not fence.
 
+When the plan for such an open order is refused, Remedy plans it once more. When the second plan
+is refused too, Remedy does not plan a third time: the walk stops and asks which files the order
+means, offering the files the planner proposed, and its last line is the command that answers.
+
 ## One cap for the whole order
 
 The caps an order carries (`--max-provider-calls`, `--max-total-tokens`, `--max-cost-usd`,

@@ -49,7 +49,7 @@ def order_has_scope_fence(order: str) -> bool:
     return any(is_scope_fence(unit) for unit in (*scope.deliverables, *scope.constraints))
 
 
-#: `order_scope_kind`: the order spells out a tracked path of its own (DECISION F312 D1).
+#: `order_scope_kind`: the order spells out a file path (DECISION F312 D1).
 ORDER_SCOPE_NAMES_FILES = "names_files"
 #: `order_scope_kind`: the order fences the work in words without spelling a path (DECISION F312 D1).
 ORDER_SCOPE_FENCED = "fenced"

@@ -380,7 +380,12 @@ def _first_pass_task_plan(
         project: RemyProject, repo: str, target_repo_path: str, job_file_sha256: str,
         run_unattended: bool, scope_order: str,
 ) -> tuple[Any, str]:
-    """The order's first-pass LLM task plan, approved or left pending: ``(job, plan_label)``."""
+    """The order's first-pass LLM task plan, approved or left pending: ``(job, plan_label)``.
+
+    DECISION F312 D3: a plan `_deliverable_task_plan` refuses, for a *scope_order* of the `open`
+    kind, gets one more attempt through `scope_question.second_pass_task_plan`; a plan refused
+    again stops the walk on one question instead of a third planner call.
+    """
     from packages.core.models import RunState
     from packages.orchestration.job_plan import (
         apply_plan_fences,
@@ -396,19 +401,17 @@ def _first_pass_task_plan(
     # same composition — `prompt_chars` and `segment_manifest_chars` can no
     # longer describe two different prompts (R-0256).
     plan_composed = compose_task_plan_prompt(plan_intake_dict, repo_root=target_repo_path)
-    fp_result = plan_job_llm(
-        plan_intake_dict,
-        plan_call_fn,
-        composed=plan_composed,
-        on_call=make_task_plan_call_recorder(
-            prompt_traces,
-            plan_composed,
-            provider="ollama",
-            provider_kind="ollama",
-        ),
-    )
+    on_call = make_task_plan_call_recorder(
+        prompt_traces, plan_composed, provider="ollama", provider_kind="ollama")
+    fp_result = plan_job_llm(plan_intake_dict, plan_call_fn, composed=plan_composed, on_call=on_call)
     if fp_result.plan is not None:
-        fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, scope_order, target_repo_path)
+        try:
+            fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, scope_order, target_repo_path)
+        except OrderJobPlanError as refusal:
+            from packages.orchestration.scope_question import second_pass_task_plan
+            fp_result, tasks = second_pass_task_plan(
+                refusal, scope_order, plan_intake_dict, plan_call_fn, plan_composed, on_call,
+                mission, job_file_sha256, project, target_repo_path, intake_result)
         fp_dict = fp_result.plan.model_dump()
         fp_dict["_approval"] = "pending"
         fp_dict["_normalization"] = fp_result.transformations
@@ -805,6 +808,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     )
     from packages.orchestration.order_verification import require_order_tests
     from packages.orchestration.repo_mission import link_order_job
+    from packages.orchestration.scope_question import ScopeQuestionRaised
 
     lane = settle_do_lane(ctx)
     try:
@@ -830,6 +834,9 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 planner_provider=ctx.planner_provider,
                 scope_order=ctx.order,
             )
+        except ScopeQuestionRaised as exc:
+            ctx.next_lines.append(exc.answer_command)
+            return DO_STEP_STOPPED, str(exc) + _stop_unrun_shape_jobs(ctx)
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
         if lane.bounded and not ctx.no_llm:
