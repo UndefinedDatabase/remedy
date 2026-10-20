@@ -169,3 +169,21 @@ def test_the_run_step_never_resumes_a_job_stopped_before_it_ran(tmp_path, monkey
 
     assert status == DO_STEP_STOPPED
     assert f"job {job.job_id} was stopped before it ran" in detail
+
+
+# F312 T001 (DECISION F312 D1): an OPEN order's refusal names a checking artifact, not a file.
+
+
+def test_a_plan_of_only_checking_artifacts_is_refused_for_an_open_order():
+    from packages.orchestration.do_sequence import OrderJobPlanError, _deliverable_task_plan
+    from packages.orchestration.schemas.models import TaskPlan
+
+    plan = TaskPlan.model_validate({"schema_v": "task_plan_v1", "tasks": [
+        {"id": "T001", "title": "Write a checksum manifest of the site",
+         "goal": "Write a checksum manifest of the site", "acceptance": ["done"],
+         "depends_on": [], "est_tokens_band": "S", "files_hint": ["checksums.json"]},
+    ]})
+
+    with pytest.raises(OrderJobPlanError,
+                       match="every task only makes a checking artifact the order did not ask for"):
+        _deliverable_task_plan(plan, "Super, jetzt mach ein schickes design", ".")

@@ -1027,6 +1027,27 @@ def test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_cr
     assert data["unmet_blocking_criteria"] == []
 
 
+def test_force_mission_calls_plan_order_job_once_per_outline_with_scope_order_the_order_text(
+        repo, capsys, monkeypatch):
+    """F312 (DECISION F312 D2): a milestone's job outline is each job's own `order`, but the
+    task-plan guard reads `scope_order`, the person's ORDER, never the outline."""
+    from packages.orchestration import do_sequence
+
+    two_milestone_plan(monkeypatch)
+    real_plan_order_job, seen = do_sequence.plan_order_job, []
+
+    def recording(order, **kwargs):
+        seen.append(kwargs["scope_order"])
+        return real_plan_order_job(order, **kwargs)
+
+    monkeypatch.setattr(do_sequence, "plan_order_job", recording)
+
+    _do(capsys, "--force-mission", order=ORDER)
+
+    assert len(seen) >= 2
+    assert seen == [ORDER] * len(seen)
+
+
 def test_the_old_name_with_history_is_never_created(repo, capsys):
     with pytest.raises(SystemExit) as exc:
         _do(capsys, "--with-history")
