@@ -272,6 +272,20 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 - [x] F055 — Rehearsal (dry check) (T001–T003 complete; R-1316, R-1317, R-1318 and R-1320 resolved; accepted 2026-10-14 · live review PASS — ACCEPTED · Evidence job f055r5e1001 · package remedy-review-20261014-200011-READY_FOR_REVIEW.zip · SHA-256 7be134c461b533e26dab8ca02d1f28de90a750c6a18197a9fd549f87529611aa · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c3c6ae7bf958d712b77656e60a6ee9e9c33efe2a)
 
+<!-- operator amendment amend1020-orb-insight (2026-10-20, DECISION amend1020 D1): the four lines below are registered from the operator's three lab runs of 2026-10-20 (review reports rr-20261020T125848Z, rr-20261020T130335Z and rr-20261020T143546Z) and stand before Luna gate C, in the order F310, F312, F311, F313: without them the operator cannot test Remedy in the lab with a local model (a 9-minute wall clock ends normal work, one budget stop asks two questions, an order that names no file fails before any job), and every stage of gate C assumes that the Orb sees what runs. They carry three headings because that order falls into three contiguous tier runs (Tier 12, Tier 2, Tier 12), which tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier pins against each T<tier>_F<id>.md filename. Reversible by deleting the three headings, the four lines and this comment, and the four feature files. -->
+## Tier 12 — The Orb's insight and the local-model budgets (operator amendment amend1020-orb-insight)
+
+- [ ] F310 — Budgets that fit the provider, and one stop, one question
+
+## Tier 2 — The Orb's insight: orders without file names (operator amendment amend1020-orb-insight)
+
+- [ ] F312 — The scope guard knows orders without file names
+
+## Tier 12 — The Orb's insight and the local-model budgets, continued (operator amendment amend1020-orb-insight)
+
+- [ ] F311 — The insight: what runs now, what the worker does, why it hangs
+- [ ] F313 — Contract 1.22 for the Orb
+
 ## Tier 3 — Luna gate C: controlled autonomy, continued (operator ruling amend1006-luna-control-plane)
 
 - [ ] F078 — Autonomy levels

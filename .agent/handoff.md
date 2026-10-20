@@ -1,43 +1,62 @@
-# Handoff — agent-state data hygiene
+# Handoff — amend1020-orb-insight (operator docs round)
 
-Feature round 1, session 1. Branch `feature/agent-data-hygiene`, based on `a6f9ba80a`.
-Implementation commit `8d960e702`, first handoff commit `494a51591`, PR 367. `.agent/STOP`, runtime
-data, provider settings, other worktrees and Git history were not changed.
+Operator session, round 1, session 1 (not the loop; `.agent/STOP` untouched). Branch
+`feature/amend1020-orb-insight` from `main` at `8ee02682d`, merged to `main` through its PR at the
+operator's order ("Commit und Push auf main"; AGENTS.md forbids a direct commit to `main`, so the
+round lands by PR merge). Commit SHAs: see `git log` on `main` after the merge.
 
 ## State
-Review packages now exclude development-only `.agent` bytes at both discovery and ArchivePlan
-policy layers. A staged-diff guard refuses new credentials, machine-local paths, provider-session
-links, private-network addresses, binary attachments and non-regular entries under `.agent`;
-historical records are not rewritten. Review finding R-1368 (symlink bypass) is repaired.
+Four features registered THIN in Package 1 directly before F078, in the order F310, F312, F311,
+F313 (DECISION amend1020 D1). Rule A5 now proposes F310 (`roadmap_index.next_feature` checked).
+Three findings minted in `.agent/live_review.md`: R-1369 (High, owner F312), R-1370 and R-1371
+(Medium, owner F310). No finding for the Orb's time-limit defect: it is Universe's (U513).
+
+## Item status
+| Item | Status | Reason |
+|------|--------|--------|
+| F310 feature file `T12_F310.md` | done | |
+| F312 feature file `T2_F312.md` | done | |
+| F311 feature file `T12_F311.md` | done | |
+| F313 feature file `T12_F313.md` | done | |
+| STATUS.md block before F078 (three headings, operator comment) | done | |
+| R-1369 (order without file names, F312) | done | |
+| R-1370 (two decisions for one budget stop, F310) | done | |
+| R-1371 (wall clock counts waiting, F310) | done | |
+| DECISION amend1020 D1 (`.agent/decisions.md`, cited in each feature file) | done | |
+| README counters (313 registered; Tier 2 48, Tier 12 16) and `TOTAL_FEATURES` 313 | done | |
+| `docs/README.md` | skipped | no document was added under `docs/` outside `docs/roadmap/features/`, which the index covers by its `T{tier}_F{nnn}.md` pattern |
+| Commit and push to `main` | deviated | via feature branch, PR and merge (AGENTS.md: never commit directly to `main`) |
 
 ## Changed files
-| Area | Files | Change |
-|---|---|---|
-| Package boundary | ZIP shell, manifest and ArchivePlan policy | exclude all `.agent` members, including changed ReviewSubject files |
-| Prevention | `scripts/check_agent_hygiene.py`, `.githooks/pre-commit` | fail closed on sensitive staged additions |
-| Tests | `tests/test_agent_state_hygiene.py`, two ArchivePlan policy tests | red/green package and guard coverage |
-| Docs/state | two system pages and current plan/context/handoff | document boundary and task state |
+| File | Change |
+|---|---|
+| `docs/roadmap/features/T12_F310.md`, `T2_F312.md`, `T12_F311.md`, `T12_F313.md` | new, REGISTERED THIN |
+| `docs/roadmap/STATUS.md` | amend1020 block before F078 |
+| `README.md` | counters |
+| `tests/docs/test_docs_consistency.py` | `TOTAL_FEATURES` 313 with its registration comment |
+| `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md`, `.agent/context.md`, `.agent/handoff.md` | findings, D1, state |
 
 ## Verification
-- Focused package/policy suite: 48 passed, 1 skipped.
-- ZIP hygiene/full integration suite: 48 passed; manifest privacy suite: 10 passed.
-- Ruff: passed for changed Python files.
-- Mypy: passed for both changed source modules.
-- Shell syntax and `git diff --check`: passed.
-- Fast lane first run: 1,518 passed, 1 skipped, 5 state/source-discovery failures; all five causes
-  corrected. Completed-tree fast lane: 2,179 passed, 1 skipped.
-- Review correction: 28 focused tests passed; a real temporary-repository symlink attempt was
-  refused; fast lane 2,420 passed, 1 skipped.
-- Full pytest: not run.
+- `python3 -m pytest tests/docs -q -p no:cacheprovider` (Python 3.10): 341 passed. Only the docs
+  tests, as ordered; no full run.
+- `roadmap_index.next_feature(build_index('.'))` answers F310; the four files parse with no
+  grammar violation.
 
-Open findings: 84 by `open_finding_ids`; R-1368 was claimed and resolved in this review round.
+## Read on the code (worth carrying into the rounds)
+- F312: the person's order "Super, jetzt mach ein schickes design" has no fence by itself; the
+  refusal came from `_deliverable_task_plan` judging against a milestone's planner-written job
+  outline (`_step_shape` → `plan_order_job`).
+- F310: job limits are `budget.*` filled by the task plan's suggested `budgets`
+  (`do_sequence.py:518`); the lab job's 100,000 tokens exceed the order cap of 85,000, so the
+  9 minutes very likely came from the local planner.
 
 ## Deviations
-- No history rewrite: already committed sensitive metadata remains in Git history.
-- Required append-only workflow records were not destructively sanitized. Package exclusion prevents
-  their distribution; the staged guard is forward-looking.
-- No review ZIP artifact was retained; integration tests built packages only in temporary repositories.
+- Landed through a PR merge instead of a direct push to `main` (see above).
+- The findings are written straight into `.agent/live_review.md` in this round, not only carried
+  in this handoff (amend0827 rule 1 allows either).
+
+Open findings: 84 before this round, 87 after (R-1369 to R-1371 open).
 
 ## Next
-Commit and push the verified review correction, then merge PR 367. The operator may
-separately decide whether removal from old Git objects warrants a coordinated history rewrite.
+The operator starts the loop with `remedy-loop-feature`; it takes F310 first, whose first round
+fills F310 D1 to D5 before any code.

@@ -158,7 +158,14 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: after F055, under its own Tier 5 heading; see T5_F309.md.
 #: Operator order amend1016-stabilization withdrew F309 (DECISION amend1016 D1): its line
 #: is `[!]` in Package 2, so the pattern above accepts all four states of ROADMAP Part C.
-TOTAL_FEATURES = 309
+#: Four more, F310 (budgets that fit the provider, and one stop, one question),
+#: F311 (the insight: what runs now, what the worker does, why it hangs), F312
+#: (the scope guard knows orders without file names) and F313 (contract 1.22
+#: for the Orb), were registered on 2026-10-20 by operator amendment
+#: amend1020-orb-insight (DECISION amend1020 D1) and placed before F078 in the
+#: order F310, F312, F311, F313 under three headings (Tier 12, Tier 2, Tier 12);
+#: see their feature files.
+TOTAL_FEATURES = 313
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
