@@ -411,7 +411,7 @@ def _first_pass_task_plan(
             from packages.orchestration.scope_question import second_pass_task_plan
             fp_result, tasks = second_pass_task_plan(
                 refusal, scope_order, plan_intake_dict, plan_call_fn, plan_composed, on_call,
-                mission, job_file_sha256, project, target_repo_path, intake_result)
+                mission, job_file_sha256, project, target_repo_path, intake_result, prompt_traces)
         fp_dict = fp_result.plan.model_dump()
         fp_dict["_approval"] = "pending"
         fp_dict["_normalization"] = fp_result.transformations

@@ -220,6 +220,9 @@ job works on, but it never fences a job the order did not fence.
 When the plan for such an open order is refused, Remedy plans it once more. When the second plan
 is refused too, Remedy does not plan a third time: the walk stops and asks which files the order
 means, offering the files the planner proposed, and its last line is the command that answers.
+Answering with the file names, separated by commas, makes those files the job's tasks; the job then
+runs with `remedy job resume` and asks the planner nothing more. An answer that names no usable
+file is recorded and changes nothing, and the order can be given again with its files named.
 
 ## One cap for the whole order
 

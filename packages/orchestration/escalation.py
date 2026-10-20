@@ -304,6 +304,8 @@ def answer_task_decision(
     record["answer_source"] = str(source)
     record["answered_at"] = now.isoformat()
     _record_answer_on_task(job, record)
+    from packages.orchestration.scope_question import apply_scope_answer  # DECISION F312 D4
+    apply_scope_answer(job, record)
     return record
 
 
