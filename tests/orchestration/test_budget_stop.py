@@ -109,6 +109,15 @@ def test_a_limit_the_actuals_did_not_reach_is_not_doubled():
     assert doubled_limit_answers(job, now=NOW) == ["max_provider_calls=10"]
 
 
+def test_a_job_that_waited_does_not_double_a_wall_clock_its_work_stayed_under():
+    # R-1373: the record began two hours before its last active moment and waited 7,000 s of that,
+    # so its work is 200 s, under the 540 s of nine minutes; only the calls were exhausted.
+    job = _stopped_job("max_provider_calls", budgets={"max_wall_clock_minutes": 9, "max_provider_calls": 3},
+                       actuals={**_calls_and_tokens(3, 100), "waited_s": 7000,
+                                "active_until": NOW.isoformat()})
+    assert doubled_limit_answers(job, now=NOW) == ["max_provider_calls=6"]
+
+
 def test_a_deadline_stop_and_a_disk_floor_stop_double_nothing():
     assert doubled_limit_answers(_stopped_job("deadline")) == []
     assert doubled_limit_answers(_stopped_job("min_free_disk_bytes")) == []
