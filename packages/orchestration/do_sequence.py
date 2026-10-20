@@ -301,14 +301,20 @@ def _deliverable_task_plan(plan: Any, order: str = "", repo: str = "") -> tuple[
     normalized before it may run, each inspection task folded into the task that needs it and
     the tasks serving one file merged into one; the planner's own plan is the last candidate,
     and a plan still rejected afterwards fails. exec-1017 D2: first, a task whose deliverable the
-    *order* did not put in scope is left out, and a plan of nothing else fails.
+    *order* did not put in scope is left out, and a plan of nothing else fails. DECISION F312 D1:
+    for an order whose `do_scope.order_scope_kind` is open, that refusal names a checking artifact
+    instead of a foreign file.
     """
     if order:
         from packages.orchestration.do_lane import tracked_repo_files
-        from packages.orchestration.do_scope import out_of_scope_task_ids
+        from packages.orchestration.do_scope import ORDER_SCOPE_OPEN, order_scope_kind, out_of_scope_task_ids
 
         outside = set(out_of_scope_task_ids(order, list(plan.tasks), tracked_repo_files(repo)))
         if outside and outside == {task.id for task in plan.tasks}:
+            if order_scope_kind(order) == ORDER_SCOPE_OPEN:
+                raise OrderJobPlanError(
+                    "task plan rejected: every task only makes a checking artifact the order did not ask for "
+                    f"({', '.join(sorted(outside))})")
             raise OrderJobPlanError("task plan rejected: every task delivers a file the order did not ask "
                                     f"for ({', '.join(sorted(outside))})")
         plan = plan.model_copy(update={"tasks": [
@@ -372,7 +378,7 @@ def _record_unparsed_plan(job: JobPlan, error_hint: str | None) -> None:
 def _first_pass_task_plan(
         mission: str, intake_result: Any, plan_call_fn: Any, prompt_traces: list,
         project: RemyProject, repo: str, target_repo_path: str, job_file_sha256: str,
-        run_unattended: bool,
+        run_unattended: bool, scope_order: str,
 ) -> tuple[Any, str]:
     """The order's first-pass LLM task plan, approved or left pending: ``(job, plan_label)``."""
     from packages.core.models import RunState
@@ -402,7 +408,7 @@ def _first_pass_task_plan(
         ),
     )
     if fp_result.plan is not None:
-        fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, mission, target_repo_path)
+        fp_result.plan, tasks = _deliverable_task_plan(fp_result.plan, scope_order, target_repo_path)
         fp_dict = fp_result.plan.model_dump()
         fp_dict["_approval"] = "pending"
         fp_dict["_normalization"] = fp_result.transformations
@@ -477,24 +483,24 @@ def plan_order_job(
     deterministic_tasks: list[TaskEntry] | None = None,
     planner_model: str | None = None,
     planner_provider: str | None = None,
+    scope_order: str = "",
 ) -> OrderJobPlan:
     """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
-    ``repo_path`` is the job's target repository. ``run_unattended`` auto-approves an LLM
-    task plan through ``job_plan.auto_approve_task_plan`` (F034). The job is
-    saved and attached to ``project``. The deterministic plan is one task per
-    deliverable of the order (DECISION F268 D6); ``deterministic_tasks`` names
-    the job's tasks outright and skips the LLM task plan, which is how the
-    shape step plans a job per deliverable or per job-sized slice of them.
-    Every plan, LLM or deterministic, passes the deliverable validator.
-    ``planner_model`` is ``model=`` of the intake and task-plan calls
-    (DECISION F268 D16 (7)); omitted, the planner's configured model serves.
-    ``planner_provider`` is ``provider=`` of those same calls — which planning
-    SERVICE runs them (operator amendment amend0920-selfuse-real, DECISION D1);
-    omitted, the ``planner`` role answers, and its default is Ollama.
-    Raises :class:`OrderJobPlanError` when an LLM task plan cannot be parsed
-    (after writing the job's post-mortem), when a plan fails the validator,
-    or when the order names more deliverables than one job holds.
+    ``repo_path`` is the job's target repository. ``run_unattended`` auto-approves an LLM task plan
+    through ``job_plan.auto_approve_task_plan`` (F034). The job is saved and attached to
+    ``project``. The deterministic plan is one task per deliverable of the order (DECISION F268 D6);
+    ``deterministic_tasks`` names the job's tasks outright and skips the LLM task plan, which is how
+    the shape step plans a job per deliverable or per job-sized slice of them. Every plan, LLM or
+    deterministic, passes the deliverable validator. ``planner_model`` is ``model=`` of the intake
+    and task-plan calls (DECISION F268 D16 (7)); omitted, the planner's configured model serves.
+    ``planner_provider`` is ``provider=`` of those same calls — which planning SERVICE runs them
+    (operator amendment amend0920-selfuse-real, DECISION D1); omitted, the ``planner`` role answers,
+    and its default is Ollama. ``scope_order`` is the person's order whose kind the task-plan guard
+    reads (DECISION F312 D2); omitted, *order* serves.
+    Raises :class:`OrderJobPlanError` when an LLM task plan cannot be parsed (after writing the
+    job's post-mortem), when a plan fails the validator, or when the order names more deliverables
+    than one job holds.
     """
     from packages.core.models import RunState
     from packages.orchestration.intake import (
@@ -586,7 +592,7 @@ def plan_order_job(
     if plan_call_fn is not None:
         job, plan_label = _first_pass_task_plan(
             mission, intake_result, plan_call_fn, prompt_traces, project, repo,
-            target_repo_path, job_file_sha256, run_unattended)
+            target_repo_path, job_file_sha256, run_unattended, scope_order or mission)
 
     if job is None:
         if deterministic_tasks is not None:
@@ -822,6 +828,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 deterministic_tasks=tasks,
                 planner_model=ctx.planner_model,
                 planner_provider=ctx.planner_provider,
+                scope_order=ctx.order,
             )
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc) + _stop_unrun_shape_jobs(ctx)
