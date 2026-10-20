@@ -1030,14 +1030,14 @@ def list_decisions(
     except (ImportError, ValueError, OSError, AttributeError, TaskVetoError):
         pass
 
-    # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam
-    # every producer funnels through, so it is where an enforced decision type
-    # is refused for arriving without its receipts.  It enforces only the types
-    # in `TRIPLE_REQUIRED_TYPES`, which T002a made non-empty: `token_budget` is
-    # in it from the commit that gave the budget stop a real triple, and each
-    # remaining producer joins the same way, in its own upgrade commit. A cancelled job asks nothing.
+    # THE EMIT GATE (DECISION F032 D1): the one seam every producer funnels through, where an enforced type is
+    # refused for arriving without its receipts; it enforces only `TRIPLE_REQUIRED_TYPES`, which holds `token_budget`
+    # since the budget stop got a real triple, and each other producer joins in its own upgrade commit.
     enforce_decision_evidence(decisions)
-    return [] if str(getattr(job, "state", "")) == "cancelled" else decisions   # exec-1017c, job_cancel.py
+    from packages.orchestration.mission_contract import CONTRACT_REMAINDER_MARKER
+    if str(getattr(job, "state", "")) == "cancelled":   # exec-1017c; DECISION F310 D6: only its mission's remainder
+        return [d for d in decisions if str(d.payload.get("question", "")).startswith(CONTRACT_REMAINDER_MARKER)]
+    return decisions
 
 
 def get_decision(

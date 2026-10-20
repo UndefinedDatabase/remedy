@@ -30269,3 +30269,7 @@ An `extend` given no `--answer` is no longer refused `missing_argument`: it rais
 ## DECISION F295 D12 — continued by DECISION F310 D6 (2026-10-20)
 
 An `abandon` still cancels the job as D12 rules, and it now also raises the mission's remainder decision once when its contract's blocking criteria stay open, because the stop is final from that answer on (DECISION F310 D6). DECISION F295 D19 stands: an `extend` still answers an open remainder decision `no`, for a remainder raised before F310.
+
+## DECISION F310 D6 — addendum: a cancelled job still asks its mission's remainder question (2026-10-20, R-1374)
+
+`list_decisions` answers nothing for a cancelled job (exec-1017c), and the remainder decision an `abandon` raises sits on that job, so it was hidden. A cancelled job now lists the open decisions whose question begins with `CONTRACT_REMAINDER_MARKER` and nothing else: the job asks nothing more of its own, and the question about its mission stays where a person and a client read decisions. ALTERNATIVE REJECTED: attaching the remainder decision to another job of the mission, because a mission of one job has no other. HOW TO REVERSE: restore `list_decisions`' last eight lines from `6a3e024ec` and delete this paragraph.
