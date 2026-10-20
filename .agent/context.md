@@ -1,23 +1,16 @@
-# Context — agent-state data hygiene
+# Context — amend1020-orb-insight
 
 ## Active Branch
-`feature/agent-data-hygiene` from current `main`.
+`feature/amend1020-orb-insight` from `main` at `8ee02682d`; merged to `main` by the operator's order.
 
 ## Scope
-Exclude `.agent` from review packages; block newly staged credentials, machine-local paths,
-provider-session links, private-network addresses, and binary agent-state files. This work is
-outside the roadmap queue; F078 remains next.
-
-## Steps
-Package boundary, staged-content guard, focused verification, then review handoff.
+Operator docs round under explicit operator authority: four feature files, STATUS.md, README
+counters, the docs-suite feature count, three findings, DECISION amend1020 D1, agent state.
+No product code.
 
 ## Assumptions
-The operator's `.agents` means `.agent`. Existing Git history is retained; required append-only
-workflow records are not rewritten.
+The lab's review reports under `.data/review_reports/` are the evidence; nothing else under
+`.data/` was read.
 
 ## Do not touch
-`.agent/STOP`, runtime data, other worktrees, provider settings, or Git history.
-
-## Constraints
-Focused changes only; no force-push or history rewrite. Tests use temporary repositories and fake
-values only. Resource safety: one pytest process tree at a time.
+`.agent/STOP` (the loop stays stopped until the operator starts it), ROADMAP.md, product code.
