@@ -156,3 +156,166 @@ def test_a_fenced_order_refused_once_fails_at_once_with_no_second_call(tmp_path,
         _shape_order(repo, LAB_FENCED_ORDER)
 
     assert len(calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# F312 R3 C3 — DECISION F312 D4: an answer to the scope question (`apply_scope_answer`,
+# called by `escalation.answer_task_decision`), and R-1378's prompt traces.
+# ---------------------------------------------------------------------------
+
+
+def _build_stopped_question_job(tmp_path, monkeypatch):
+    """A real scope-question-stopped job, raised exactly as the tests above raise it."""
+    from packages.orchestration.escalation import open_task_decisions
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.scope_question import ScopeQuestionRaised
+    from tests.orchestration.test_do_sequence_order_digest import _registered_repo, _shape_order
+
+    repo = _registered_repo(tmp_path, monkeypatch)
+    _mock_intake(monkeypatch)
+    _mock_plan_calls(monkeypatch, _checksum_plan())
+
+    with pytest.raises(ScopeQuestionRaised) as excinfo:
+        _shape_order(repo, LAB_OPEN_ORDER)
+
+    job = load_job_plan(excinfo.value.job_id)
+    [decision] = open_task_decisions(job)
+    return job, decision["decision_id"]
+
+
+def test_apply_scope_answer_plans_the_job_with_both_names_as_tasks_in_order():
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.scope_question import (
+        SCOPE_QUESTION_MARKER,
+        SCOPE_QUESTION_STOP_REASON,
+        apply_scope_answer,
+    )
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job = JobPlan(job_title="t", mission=LAB_OPEN_ORDER, state=RunState.STOPPED,
+                 stop_reason=SCOPE_QUESTION_STOP_REASON)
+    record = {"question": f"{SCOPE_QUESTION_MARKER} the planner's last refusal.",
+             "answer": "style.css, index.html"}
+
+    assert apply_scope_answer(job, record) is True
+    assert job.state == RunState.PLANNED
+    assert job.stop_reason is None
+    assert job.finished_at is None
+    assert job.task_plan is None
+    assert [task_deliverable(t) for t in job.tasks] == ["style.css", "index.html"]
+
+
+def test_answering_through_answer_task_decision_plans_the_job_with_both_tasks_in_order(
+        tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job, decision_id = _build_stopped_question_job(tmp_path, monkeypatch)
+
+    record = answer_task_decision(
+        job, decision_id, answer="style.css, index.html", now=datetime.now(timezone.utc))
+
+    assert record is not None and record["status"] == "answered"
+    assert job.state == RunState.PLANNED
+    assert job.stop_reason is None
+    assert job.task_plan is None
+    assert [task_deliverable(t) for t in job.tasks] == ["style.css", "index.html"]
+
+
+def test_an_answer_with_junk_and_repeats_keeps_only_the_one_safe_name(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+
+    from packages.orchestration.escalation import answer_task_decision
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job, decision_id = _build_stopped_question_job(tmp_path, monkeypatch)
+
+    answer_task_decision(
+        job, decision_id, answer="/etc/passwd, ../x.css, , style.css, style.css",
+        now=datetime.now(timezone.utc))
+
+    assert [task_deliverable(t) for t in job.tasks] == ["style.css"]
+
+
+def test_an_answer_naming_no_usable_file_leaves_the_job_stopped(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision
+    from packages.orchestration.scope_question import SCOPE_QUESTION_STOP_REASON
+
+    job, decision_id = _build_stopped_question_job(tmp_path, monkeypatch)
+    before_task_ids = [t.task_id for t in job.tasks]
+
+    record = answer_task_decision(
+        job, decision_id, answer="/etc/passwd", now=datetime.now(timezone.utc))
+
+    assert record is not None and record["status"] == "answered"
+    assert job.state == RunState.STOPPED
+    assert job.stop_reason == SCOPE_QUESTION_STOP_REASON
+    assert [t.task_id for t in job.tasks] == before_task_ids
+
+
+def test_a_task_decision_on_a_job_not_stopped_by_the_scope_question_is_unchanged_by_the_hook():
+    """A remainder decision, or any other task decision, on any OTHER job: the hook does nothing
+    because `job.stop_reason` is not `scope_question` (DECISION F312 D4)."""
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+    task = TaskEntry(title="Do a thing")
+    job = JobPlan(job_title="t", mission="m", state=RunState.RUNNING, tasks=[task])
+    record = enqueue_task_decision(
+        job, task_id=task.task_id, question="Proceed with the risky approach?",
+        now=datetime.now(timezone.utc))
+
+    answered = answer_task_decision(
+        job, record["decision_id"], answer="yes", now=datetime.now(timezone.utc))
+
+    assert answered is not None and answered["status"] == "answered"
+    assert job.state == RunState.RUNNING
+    assert [t.task_id for t in job.tasks] == [task.task_id]
+    assert job.tasks[0].title == "Do a thing"
+
+
+def _fake_structured_calls(monkeypatch, task_plan_json: str):
+    """Fake only the LEAF call, so the real `plan_job_llm` runs and records its own `on_call`
+    trace (R-1378) — unlike `_mock_plan_calls` above, which replaces `plan_job_llm` itself and so
+    never invokes the recorder it is handed."""
+    monkeypatch.setattr(
+        "packages.orchestration.intake.make_provider_call_fn",
+        lambda: (lambda prompt, attempt: '{"schema_v": "ji1", "goal": "g", "context_refs": [], '
+                 '"constraints": [], "acceptance_hints": [], "truncated_input": false, '
+                 '"clarifications": []}'))
+    monkeypatch.setattr(
+        "packages.orchestration.intake.make_structured_call_fn",
+        lambda model_cls, **kw: (lambda prompt, attempt: task_plan_json))
+
+
+def test_the_question_jobs_prompt_trace_holds_at_least_two_task_plan_rows(tmp_path, monkeypatch):
+    """R-1378: the two task-plan calls spent before the question are not lost."""
+    import json
+
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.orchestration.scope_question import ScopeQuestionRaised
+    from tests.orchestration.test_do_sequence_order_digest import _registered_repo, _shape_order
+
+    repo = _registered_repo(tmp_path, monkeypatch)
+    checksum_json = json.dumps({"schema_v": "task_plan_v1", "tasks": [
+        _task("T001", "Write a checksum manifest of the site", "checksums.json")]})
+    _fake_structured_calls(monkeypatch, checksum_json)
+
+    with pytest.raises(ScopeQuestionRaised) as excinfo:
+        _shape_order(repo, LAB_OPEN_ORDER)
+
+    log = RunLogWriter(job_id=excinfo.value.job_id)
+    trace_path = log.path.parent / "prompt_trace.jsonl"
+    assert trace_path.exists()
+    rows = [json.loads(line) for line in trace_path.read_text().splitlines() if line.strip()]
+    assert len([r for r in rows if r.get("role") == "task_plan"]) >= 2

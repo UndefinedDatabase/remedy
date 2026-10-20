@@ -10,8 +10,10 @@ real model or network reached.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -173,3 +175,63 @@ def test_the_second_lab_order_with_a_checking_only_planner_stops_and_asks(
     assert "asks which files the order means" in shape_step["detail"]
     assert any("remedy decision resolve" in line for line in data["next"])
     assert len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# F312 R3 C3.4 — DECISION F312 D4, through the CLI door: `decision resolve` answers the
+# question's saved job, and `job resume` starts it with no further planner call.
+# ---------------------------------------------------------------------------
+
+
+def test_answering_the_stopped_second_order_through_the_cli_plans_and_resumes_it(
+        repo, capsys, monkeypatch):
+    data, _calls = _do_json(monkeypatch, capsys, LAB_ORDER_2, _checksum_task_plan_json)
+    [answer_line] = [line for line in data["next"] if "remedy decision resolve" in line]
+    job8, decision_id = re.search(r"remedy decision resolve (\S+) (\S+)", answer_line).groups()
+
+    main(["decision", "resolve", job8, decision_id, "--reason", "style.css", "--json"])
+    resolved = json.loads(capsys.readouterr().out)
+    assert resolved["ok"] is True and resolved["outcome"] == "answered"
+
+    from apps.cli.job_id_arg import lookup_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job = load_job_plan(lookup_job_id(job8))
+    assert job.state.value == "planned"
+    assert [task_deliverable(t) for t in job.tasks] == ["style.css"]
+
+    # `job resume` on this freshly-planned job has no persisted `execution_config`, so it takes
+    # the single-pass local runner (`_cmd_run_next_task_local`); its builder chain is faked here
+    # exactly as `tests/test_run_log_cli.py`'s `TestRunNextTaskLocalSuccess` fakes it, so no real
+    # model or network is reached.
+    from packages.orchestration.task_runner import RunTaskResult
+    from packages.orchestration.verifier import VerificationResult
+
+    task_id = job.tasks[0].task_id
+    run_result = RunTaskResult(job=job, task_id=task_id, changed=True)
+    vr = VerificationResult(task_id=task_id, passed=True, checks=[])
+
+    def _fake_finalize(result, verify_result):
+        for t in result.job.tasks:
+            if t.task_id == result.task_id:
+                t.status = "completed"
+
+    builder_instance = MagicMock()
+    builder_instance.model = "test-model"
+    fake_mf = MagicMock()
+    fake_mf.path = repo / "fake_ws.txt"
+    fake_mf.path.write_text("- change\n")
+
+    with (
+        patch("packages.providers.ollama_builder.provider.OllamaBuilder",
+              MagicMock(return_value=builder_instance)),
+        patch("packages.orchestration.task_runner.run_next_task", return_value=run_result),
+        patch("packages.orchestration.task_runner.annotate_task_result"),
+        patch("packages.orchestration.task_runner.materialize_task_output", return_value=fake_mf),
+        patch("packages.orchestration.verifier.verify_task_output", return_value=vr),
+        patch("packages.orchestration.task_runner.finalize_task", side_effect=_fake_finalize),
+    ):
+        main(["job", "resume", job8, "--yes", "--json"])
+    resumed = json.loads(capsys.readouterr().out)
+    assert resumed["ok"] is True and resumed["verified"] is True
