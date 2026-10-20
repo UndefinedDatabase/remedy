@@ -6,16 +6,14 @@ and not waiting, and a budget stop asks the operator exactly one question
 (`docs/roadmap/features/T12_F310.md`). Its findings R-1370 to R-1374 are resolved.
 
 ## Current Step
-Round 5 (session 1), the closure's integration-gate round: book round 4 and the five resolutions,
-register R-1375 with DECISION F310 D7, write the Built State, add the checklist's consolidation
-paragraph, run the closure's one self-use item to its approval gate, and run the feature's one
-full suite with its cost reading.
+Round 6 (session 1), the closure's repair and evidence round: book round 5, repair the one red
+node of the closure suite (F295's gate test over HTTP, which pinned the second question at a
+budget stop), run the one full suite again on the repaired tree, then the staging reclaim, the
+evidence job and the review package.
 
 ## Next Steps
-1. The evidence job and the review package (`docs/roadmap/STATUS_closure_protocol.md` steps 1
-   and 2), with the staging reclaim.
-2. The closing round: the ledger rotation, the STATUS line, the README, the self-use entry's
-   `consumed_by`, and the pull request.
+1. The closing round: the ledger rotation, the STATUS line, the README, the self-use entry's
+   `consumed_by`, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F310 does not own (R-1375, DECISION F310 D7).
