@@ -1,112 +1,63 @@
-# Handoff — F310 round 5 (the integration-gate round: Built State, consolidation, self-use run, one full suite)
+# Handoff — F310 round 6 (book round 5, repair the closure suite's red node, the one full suite again, the evidence, the package)
 
 ## Session
 
-SESSION 1 of feature F310 · round 5 · rounds so far 5
+SESSION 1 of feature F310 · round 6 · rounds so far 6
 
-Context self-assessment: the session stayed small; every prepared file was digest-checked with a Python reader before use, copies were made by script, and the two long commands ran once each.
+Context self-assessment: the session stayed small; every prepared file was digest-checked with a Python reader before use, copies were made by one script, and the three long commands each ran once and alone.
 
 State block:
-Feature F310 (claimed `[~]`), branch `feature/f310-provider-budgets`, base `b8b4a9546`.
-Fortschritt: ~90 % (T001 to T004 landed; the consolidation pass, the self-use run and the one full suite done · the evidence, the package and the closing round remain) — Schätzung
+Feature F310 (claimed `[~]`), branch `feature/f310-provider-budgets`, base `cc7b689d5`. Accepted head (C3): `899850b8dd6867d7d9683fb506bc0574454a7505`.
+Fortschritt: ~95 % (everything but the closing round is done) — Schätzung
 
 ## Range
 
-Review of `b8b4a9546`..HEAD (the five commits below, then this handback's own commit).
+Review of `cc7b689d5`..HEAD (the three commits below, then this handback's own commit).
 
 ## Commits
 
-### 1cc06950f F310 R5 C1: book round 4, resolve R-1370 R-1371 R-1373 R-1374, register R-1375, DECISION F310 D7
-327 insertions, 9 deletions.
+### e9e14602d F310 R6 C1: book round 5, its slip, the plan, the evidence script
+554 insertions, 8 deletions.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f310-r5.md` | +166 | byte copy of the block |
-| `.agent/authored/f310-r5-selfuse.py` | +127 | byte copy of the self-use script |
-| `.agent/plan.md` | +10/-9 | byte copy of the prepared plan |
-| `.agent/live_review.md` | +12 | appended ledger text |
-| `.agent/prose_slips.md` | +2 | appended slips |
-| `.agent/decisions.md` | +10 | appended DECISION F310 D7 |
+| `.agent/authored/f310-r6.md` | +154 | byte copy of the block |
+| `.agent/authored/f310-r6-create_f310_evidence.py` | +391 | byte copy of the evidence script |
+| `.agent/plan.md` | +6/-8 | byte copy of the prepared plan |
+| `.agent/live_review.md` | +2 | appended ledger text |
+| `.agent/prose_slips.md` | +1 | appended slip |
 
-### 370251a81 F310 R5 C2: F310's Built State
-37 insertions.
+### cc9a109e6 F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself
+8 insertions, 7 deletions.
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T12_F310.md` | +37 | the Built State appended |
+| `tests/orchestration/test_public_api_gate_paths.py` | +8/-7 | the one test: no second question, the extend closes nothing and names the run it resumed, no second call starts the run |
 
-### 273ed22c6 F310 R5 C3: the checklist's consolidation pass for F310
-13 insertions.
+### 899850b8d F310 R6 C3: the closure's one full suite on the repaired tree
+21 insertions, 21 deletions.
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/agents/planner_reviewer_prompt.md` | +13 | the consolidation paragraph before the next-consolidation line |
+| `.agent/authored/f310-closure-suite.txt` | +21/-21 | the new transcript, replacing the one on 9c072b916 |
 
-### 9c072b916 F310 R5 C4: the closure's self-use item run to its approval gate, never applied
-115 insertions.
-| Path | +/- | Reason |
-|---|---|---|
-| `scripts/self_use_queue.json` | +8 | the one generated entry SU-065, `consumed_by` empty |
-| `.agent/selfuse_f310/` | +107 | 10 files under this directory |
-
-### 56187b7b0 F310 R5 C5: the closure's one full suite and its CPU cost
-28 insertions.
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f310-closure-suite.txt` | +28 | the transcript, written as read (suite RED) |
-
-### this handback's commit (C6)
+### this handback's commit (C4)
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this file |
-| `.agent/operator_questions.md` | +17 | one empty line and Q20 appended |
 
 ## External actions
 
-- `git push origin feature/f310-provider-budgets` after C6; the result is in the worker's report.
-- The self-use run made two real provider calls through the claude-cli provider (budgeted).
+- `git push -u origin feature/f310-provider-budgets` after C3: `cc7b689d5..899850b8d`, accepted. The push after C4 is in the worker's report.
+- A2 (evidence job `f310r6e1001`) and A3 (review package) as below; both commit nothing.
 - No pull request opened; no other gh command.
 
 ## Verification
 
-1. Gate 1: `git status --porcelain` printed nothing. `python3 .remedy-wt/f310-r5/prep/verify.py .` (at `56187b7b0`): every line `True`, `absent` for C6, last line `ALL True`.
-2. Gate 2: the ten files under `.agent/selfuse_f310/`, all non-empty, bytes: `SU-065.md` 658, `entry_and_job_file.txt` 366, `execution_config.txt` 1367, `result_state.txt` 866, `timing.txt` 104, `changed_paths.txt` 15, `full_transcript.txt` 1586, `staleness_after.txt` 59, `job_diff.txt` 1219, `run_defects.txt` 5.
-3. Gate 3: the suite of C5: exit code 1; summary line `1 failed, 21988 passed, 11 skipped, 1 warning in 305.15s (0:05:05)`; bad node id `tests/orchestration/test_public_api_gate_paths.py::test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone`. The failure: `assert len(remainder) == 1` at `tests/orchestration/test_public_api_gate_paths.py:286` got 0 (`remainder` is the digest's `task_decision` entries for the stopped job).
-4. Gate 4: `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `13 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362, R-1369` (the same thirteen as at the base). `open_finding_ids` over the ledger: `86`.
+1. Gate 1: `git status --porcelain` printed nothing; `python3 .remedy-wt/f310-r6/prep/verify.py .` at `899850b8d`: every line `True`, `absent	C4`, last line `ALL True`.
+2. Gate 2: C3's suite: exit 0, summary line `21989 passed, 11 skipped, 1 warning in 330.52s (0:05:30)`, no bad node ids. A2: exit 0 wall 1260.0, lines below. A3: `PACKAGE_STATUS=READY_FOR_REVIEW`, below.
+3. Gate 3: `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `13 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362, R-1369`. `open_finding_ids` over the ledger: `86`. `git status --porcelain` empty.
 
 ## Authored-text proofs
 
-Byte copies and appends made by script from the digest-checked prepared files (all twelve digests matched before use); `verify.py` after C5 confirms C1 (block, self-use script, plan, the three appends), C2 and C3 equal their sources. C6's `operator_questions.md` append is one empty line plus the bytes of `src-question.md`.
-
-## Self-use run
-
-- Entry id: `SU-065`; title: `Fix stale documentation: docs_index_guide_registration in docs/README.md`; job id: `ad990252606040b2`.
-- Builder: `claude-cli`, model `claude-sonnet-4-6`; reviewer: `claude-cli`, model `claude-sonnet-4-6`.
-- Job state `completed`; stop reason empty.
-- Task T001: `applied_to_job_workspace`, reviewer verdict `pass`, final status `staged_review_passed`, repair rounds used 0.
-- Wall seconds (`timing.txt`): 37.7.
-- Changed paths: `docs/README.md`.
-
-`job_diff.txt` verbatim:
-
-```
-$ git diff HEAD...remedy/job-ad990252606040b2  (exit 0)
-diff --git a/docs/README.md b/docs/README.md
-index b11482934..4cf43d72f 100644
---- a/docs/README.md
-+++ b/docs/README.md
-@@ -167,6 +167,7 @@ User-facing guides, quickstarts, and usage documentation.
- | [environment.md](guides/environment.md) | Every environment variable Remedy reads, generated from the key registry |
- | [exit-codes.md](guides/exit-codes.md) | Every CLI exit code's meaning, asserted from the command catalog |
- | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
-+| [http-clients.md](guides/http-clients.md) | Walking a program through the public HTTP API with `curl`: token, start an order, poll, read the story, apply or decline |
- | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
- | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
- | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
-```
-
-`run_defects.txt` verbatim:
-
-```
-NONE
-```
+Byte copies and appends made by one script from the digest-checked prepared files (all eight digests matched before use), each proved by a bytes equality in the script; `verify.py` after C3 confirms C1 (block, script, plan, the two appends), C2 and C3.
 
 ## Closure suite
 
@@ -114,59 +65,94 @@ Quoting `.agent/authored/f310-closure-suite.txt` whole:
 
 ```
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 305.8s (the launcher's reading); pytest's own reported wall time: 305.15s (0:05:05)
-summary line: 1 failed, 21988 passed, 11 skipped, 1 warning in 305.15s (0:05:05)
+real exit code: 0
+wall time: 331.3s (the launcher's reading); pytest's own reported wall time: 330.52s (0:05:30)
+summary line: 21989 passed, 11 skipped, 1 warning in 330.52s (0:05:30)
 bad node ids (failed + errors):
-  - tests/orchestration/test_public_api_gate_paths.py::test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone
-leftover processes: NONE
-tree it ran on: 9c072b916 (F310 R5 C4: the closure's self-use item run to its approval gate, never applied)
-tree note: C1 to C4 changed only .agent/ files, the feature file, the checklist page and the self-use queue
-reflog before: 9c072b916 HEAD@{2026-10-20 21:20:18 +0200}: commit: F310 R5 C4: the closure's self-use item run to its approval gate, never applied
-reflog after: 9c072b916 HEAD@{2026-10-20 21:20:18 +0200}: commit: F310 R5 C4: the closure's self-use item run to its approval gate, never applied
+  - none
+leftover processes: none of the suite's own; two http.server processes of an earlier session's tmp folder (test_a_phone_outside_reaches_t0, pytest-11860) were already alive
+tree it ran on: cc9a109e6 (F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself)
+tree note: the run the operator amendment amend0921-operator-feedback rule 1 orders on the repaired tree; it replaces the run on 9c072b916
+reflog before: cc9a109e6 HEAD@{2026-10-20 21:32:02 +0200}: commit: F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself
+reflog after: cc9a109e6 HEAD@{2026-10-20 21:32:02 +0200}: commit: F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself
 reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F310 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
-Test load: 1201.66 CPU seconds, 305.16 wall seconds, 22000 tests collected, exit status 1, recorded 2026-10-20T19:25:26Z
-This closure's suite used 1201.66 CPU seconds, 6.1 percent less than F055's 1279.63, within the 10 percent limit.
+Test load: 1263.08 CPU seconds, 330.53 wall seconds, 22000 tests collected, exit status 0, recorded 2026-10-20T19:37:36Z
+This closure's suite used 1263.08 CPU seconds, 1.3 percent less than F055's 1279.63, within the 10 percent limit.
 The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
 The test modules whose CPU time rose most since F055's closure run:
-  +38.09 s  tests/cli/test_do_scale_matrix.py (0.00 -> 38.09)
-  +10.56 s  tests/cli/test_do_adversarial_orders.py (0.00 -> 10.56)
-  +7.75 s  tests/ui_server/test_public_api_lifecycle.py (0.00 -> 7.75)
-  +7.72 s  tests/orchestration/test_client_story.py (0.00 -> 7.72)
-  +7.29 s  tests/orchestration/test_event_name_coupling.py (13.13 -> 20.42)
-  +5.37 s  tests/cli/test_do_order_budget.py (0.00 -> 5.37)
-  +5.24 s  tests/cli/test_do_bounded_lane.py (0.00 -> 5.24)
-  +4.82 s  tests/orchestration/test_order_cancel.py (0.00 -> 4.82)
-  +4.43 s  tests/cli/test_do_pi_default.py (0.00 -> 4.43)
-  +4.09 s  tests/cli/test_do_verified_repair.py (0.00 -> 4.09)
+  +37.69 s  tests/cli/test_do_scale_matrix.py (0.00 -> 37.69)
+  +11.50 s  tests/cli/test_do_adversarial_orders.py (0.00 -> 11.50)
+  +9.85 s  tests/ui_server/test_public_api_lifecycle.py (0.00 -> 9.85)
+  +8.00 s  tests/orchestration/test_client_story.py (0.00 -> 8.00)
+  +6.66 s  tests/orchestration/test_serve_daemon.py (15.98 -> 22.64)
+  +6.13 s  tests/orchestration/test_event_name_coupling.py (13.13 -> 19.26)
+  +5.78 s  tests/cli/test_do_bounded_lane.py (0.00 -> 5.78)
+  +5.17 s  tests/cli/test_do_pi_default.py (0.00 -> 5.17)
+  +5.16 s  tests/cli/test_do_order_budget.py (0.00 -> 5.16)
+  +4.89 s  tests/orchestration/test_public_api_gate_paths.py (15.27 -> 20.16)
 ```
+
+Evidence job `f310r6e1001` (A2, exit 0 wall 1260.0):
+
+```
+head 899850b8dd6867d7d9683fb506bc0574454a7505
+ancestry-path count 33
+plain count 33
+collected node ids 8755, deselected 170
+red control: unsafe among the real ids 0 []
+red control: planted id -> a local absolute path
+pytest exit 0, {'passed': 8749, 'failed': 0, 'skipped': 6}, output_hash 9b7143a25da3966cfe602df5ad28f108f49a23264ce7260cdaec63d87722e009
+validate_verification_tests problems [] passed 8749
+is_valid_current_run True
+validation_errors []
+```
+
+Review package (A3, exit 0 wall 20.0):
+
+```
+PACKAGE_STATUS=READY_FOR_REVIEW
+REVIEW_SUBJECT_ALIGNMENT=PASS
+EVIDENCE_AUTHORITATIVE=true
+ZIP_PATH=~/Repos/remedy-history/zips/remedy-review-20261020-215917-READY_FOR_REVIEW.zip
+final_sha256 3e9da10ccd0289b57d036534442b6abedcf480b09bc729f1f00f05d91b4db056 (a Python sha256 over the file agrees)
+manifest committed_review_subject: base_commit ee53c20b3149fc64380bbf304c956e612ce0803d, head_commit 899850b8dd6867d7d9683fb506bc0574454a7505, commit_count 33
+zipfile.is_zipfile True, testzip() None
+```
+
+Package directory: `~/Repos/remedy-history/zips`. Accepted head: `899850b8dd6867d7d9683fb506bc0574454a7505`.
+
+## Staging reclaim
+
+A1 preview `python3 -m apps.cli.main data reclaim --orphans`: `Reclaimable: nothing`, `Would free 0 B in 0 paths`; no refused orphan path (only durable classes listed as not reclaimed). Apply skipped, the empty reading recorded.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | self-use run exit 0, SU-065 ran to its approval gate, never applied |
-| C5 | done | suite RED (one failed node), transcript committed as read |
-| C6 | done | this commit |
+| C1 | done | 554 insertions, declared below |
+| C2 | done | the one test passed alone once while written (`1 passed, 6 deselected`) |
+| C3 | done | suite exit 0, 21989 passed |
+| A1 | done | nothing reclaimable, apply skipped |
+| A2 | done | exit 0, all expected lines |
+| A3 | done | READY_FOR_REVIEW |
+| C4 | done | this commit |
 | Gate 1 | done | ALL True |
-| Gate 2 | done | ten files non-empty |
-| Gate 3 | done | exit 1, one bad node id |
-| Gate 4 | done | fail_count 1, the standing thirteen; open findings 86 |
+| Gate 2 | done | suite exit 0; A2 and A3 as expected |
+| Gate 3 | done | fail_count 1 on the standing thirteen; open findings 86 |
 
 ## Deviations & assumptions
 
-None. The suite was red; per the block it was committed as read and nothing was investigated or re-run. I did not read the diff of the byte-copy commits line by line, only their `--stat`, since `verify.py` proves them equal to their sources.
+- C1 has 554 insertions, over the 500 cap: declared with its inseparability reason, the block orders the byte copy of the 154-line block and the 391-line evidence script in the one commit. Only such commit of this feature's round.
+- C2's first assertion is wrapped over two lines instead of one (line length); the condition is the block's.
+- The transcript's `leftover processes` line differs from earlier transcripts: two `http.server` processes of an older session's test folder were alive; they are not from this run.
 
 ## For the operator, in plain sentences
 
-Before a feature closes, Remedy runs one real piece of work on itself with a paid model, and then runs its whole test collection once on the code that will ship. The paid run was asked to add a missing link to a guide in the documentation index, and it finished that in under a minute with its reviewer passing the change, which was left unapplied for approval. The test run passed 21,988 tests, skipped 11 and failed 1, so the code that will ship is not yet green. The run took about five minutes, and the cost reading said the computer time was about 6 percent lower than for the previous feature, within the allowed limit.
+One old test still expected two questions at a budget stop and expected a second call to resume the work; it now reads the one question and the run that resumes by itself. The whole test collection ran again on the repaired code and passed: 21,989 passed, 11 skipped, none failed. The evidence run and the review package were built; the package is ready for review and sits in the history folder under the home directory's Repos folder.
 
 ## Next
 
-In order: Phase 1 rule 1 (`.agent/STOP`); rule 2 (Open PR Gate; no pull request is open for this branch yet); the reviewer reviews round 5, books its verdict and registers every self-use run defect in the next round's first commit; a repair round naming every bad node id (`tests/orchestration/test_public_api_gate_paths.py::test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone`); the closing round: the rotation, the STATUS line, the README and the pull request.
-Operator questions open: 2. Open findings: 86 (gate 4, `open_finding_ids`, rule: the base's 89, less R-1370, R-1371, R-1373 and R-1374 resolved, plus R-1375; read at `56187b7b0`).
+In order: Phase 1 rule 1 (`.agent/STOP`); rule 2 (Open PR Gate; no pull request is open for this branch yet); the reviewer reviews round 6 and books its verdict in the next round's first commit; the closing round: the rotation, SU-065's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+Operator questions open: 2. Open findings: 86 (gate 3, `open_finding_ids`, read after A3).
