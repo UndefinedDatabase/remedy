@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 343.3s (the launcher's reading); pytest's own reported wall time: 342.48s (0:05:42)
+summary line: 22015 passed, 11 skipped, 1 warning in 342.48s (0:05:42)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: e04884674 (F312 R5 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, the feature file, the checklist page and the self-use queue
+reflog before: e04884674 HEAD@{2026-10-21 00:33:56 +0200}: commit: F312 R5 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: e04884674 HEAD@{2026-10-21 00:33:56 +0200}: commit: F312 R5 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F312 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1294.96 CPU seconds, 342.49 wall seconds, 22026 tests collected, exit status 0, recorded 2026-10-20T22:39:48Z
+This closure's suite used 1294.96 CPU seconds, 2.5 percent more than F310's 1263.08, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F310's closure run:
+  +4.45 s  tests/orchestration/test_review_zip_hygiene.py (34.66 -> 39.11)
+  +3.91 s  tests/orchestration/test_review_package_full_integration.py (4.25 -> 8.16)
+  +3.02 s  tests/cli/test_serve_client_parity.py (6.89 -> 9.91)
+  +2.99 s  tests/orchestration/test_run_manifest_integrity.py (5.97 -> 8.96)
+  +2.86 s  tests/runtimes/test_runtime_cli_process_boundary.py (8.88 -> 11.74)
+  +2.58 s  tests/orchestration/test_event_name_coupling.py (19.26 -> 21.84)
+  +2.57 s  tests/cli/test_do_scale_matrix.py (37.69 -> 40.26)
+  +2.35 s  tests/orchestration/test_run_manifest_zero_call_expectations.py (2.46 -> 4.81)
+  +2.26 s  tests/orchestration/test_subtree_rerun_prepare.py (12.44 -> 14.70)
+  +2.16 s  tests/orchestration/test_product_smoke.py (3.22 -> 5.38)
