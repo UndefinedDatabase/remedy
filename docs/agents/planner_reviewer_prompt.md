@@ -705,6 +705,19 @@ end the response with:
   reading of an ordered list of tests against the property it must establish; R-1374, a decision
   the product raised and then hid, was found by the worker while writing the test of it. The list
   stays at 34 items.
+  Consolidated again at F312's closure on 2026-10-21: nothing joined and no two items were merged,
+  because none of F312's lines in `.agent/prose_slips.md` names a lesson the list lacks. A block
+  that ordered a walk through an entry point that takes no arguments, a block whose new behaviour
+  turned an existing test red because that test's order was of the kind the block changed, and a
+  block that ordered a value replaced without naming the assertions written on the old value, are
+  item 34's reading of the guards that bind the file the order changes; a handback that miscounted
+  its own commit is a slip in following a block, which no item about a block's text can prevent.
+  Its authoring defects that left something unguarded were registered as findings and repaired
+  inside the feature: R-1379, a value the block ordered against its field's own type, is item 34's
+  reading of the file the order changes; R-1378 and R-1380, a record no ordered test read and two
+  guards one negative test removed at once, are item 18's reading of an ordered list of tests
+  against the property it must establish; R-1377, a comment that said more than its code, was
+  found by the reviewer reading the diff. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

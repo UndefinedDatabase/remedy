@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-147 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+148 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -38,7 +38,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 46 | 48 |
+| 2 | Minimal Self-Build Runtime | 47 | 48 |
 | 3 | Full Token Economy & Autonomy | 11 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
@@ -332,7 +332,14 @@ F308 the run's record survives a task split (when Remedy splits a task because
 its work does not fit, the job now writes down which task became which parts,
 when and why, and the job's record of what ran is written and stays valid instead
 of being lost; a task list changed in any other way after a run began is still
-refused).
+refused),
+F312 the scope guard knows orders without file names (an order that names no
+file and draws no fence, such as "Super, jetzt mach ein schickes design", now
+gets a plan whose files are the planner's instead of failing before any job; a
+milestone's outline no longer fences a job the person never fenced; when such an
+order's plan is refused twice, Remedy asks which files are meant instead of
+planning a third time, and the answer becomes the job's tasks; the guide
+`docs/guides/do-run-v1.md` describes it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

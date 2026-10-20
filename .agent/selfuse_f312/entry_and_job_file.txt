@@ -1,0 +1,5 @@
+Entry ID: SU-066
+Entry Title: Refresh the pinned toolchain
+Entry Provenance: generated (self-use-generator order tier, docs/orders/toolchain-refresh.md, 2026-10-21)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f312-r5-selfuse/SU-066.md

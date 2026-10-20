@@ -1,0 +1,236 @@
+$ git diff HEAD...remedy/job-24460560b40f4cd7  (exit 0)
+diff --git a/t001-findings.md b/t001-findings.md
+new file mode 100644
+index 000000000..72e78eec6
+--- /dev/null
++++ b/t001-findings.md
+@@ -0,0 +1,158 @@
++# T001 Findings: Pinned Toolchain — Tools with Newer Releases
++
++Sources read:
++- `pyproject.toml` (declared dependencies and dev extra)
++- `constraints.txt` (exact pins with hashes)
++- `.github/workflows/ci.yml` (Python matrix)
++
++Network-dependent lookups (PyPI newest versions, GitHub Python manifest) could not be
++performed — no HTTP tool is available in this environment. Every item that required a
++network query is explicitly marked **unknown — network unavailable**.
++
++---
++
++## 1. Directly pinned tools in `pyproject.toml`
++
++`pyproject.toml` pins two tools with `==` in the `dev` extra (DECISION F279 D1):
++
++| Tool | Pinned in pyproject.toml | PyPI newest |
++|------|--------------------------|-------------|
++| `ruff` | `0.15.17` | **unknown — network unavailable** |
++| `uv` | `0.12.18` | **unknown — network unavailable** |
++
++Both pins are also repeated verbatim in `constraints.txt`.
++
++---
++
++## 2. All tools tracked by `remedy doctor toolchain`
++
++`toolchain.py` reports every package declared in `pyproject.toml`'s `dependencies` and
++`optional-dependencies["dev"]`.  The ten tools, with their declared range, their
++`constraints.txt` pin, and the PyPI newest version:
++
++| Tool | pyproject.toml range | constraints.txt pin | PyPI newest |
++|------|----------------------|---------------------|-------------|
++| `pydantic` | `>=2.0,<3` | **2.13.5** | unknown — network unavailable |
++| `psutil` | `>=5.9,<8` | **7.2.2** | unknown — network unavailable |
++| `tomli` | `>=2.0,<3; python_version < '3.11'` | **2.4.1** | unknown — network unavailable |
++| `pytest` | (unbounded) | **9.1.1** | unknown — network unavailable |
++| `pytest-xdist` | (unbounded) | **3.8.0** | unknown — network unavailable |
++| `ruff` | `==0.15.17` | **0.15.17** | unknown — network unavailable |
++| `mypy` | (unbounded) | **2.3.1** | unknown — network unavailable |
++| `pytest-cov` | (unbounded) | **7.1.0** | unknown — network unavailable |
++| `coverage` | (unbounded) | **7.16.1** | unknown — network unavailable |
++| `uv` | `==0.12.18` | **0.12.18** | unknown — network unavailable |
++
++Because the "newest" column is unknown for every tool, no pin is confirmed movable or
++confirmed current from this run.  The `constraints.txt` regeneration command in its own
++header is the authoritative way to refresh all pins:
++
++```
++uv pip compile pyproject.toml --extra dev --extra ollama --universal \
++    --python-version 3.10 --generate-hashes --no-annotate \
++    --exclude-newer <DATE> -o constraints.txt
++```
++
++---
++
++## 3. All transitive packages in `constraints.txt`
++
++These are pinned as indirect dependencies and are not tracked by `remedy doctor toolchain`,
++but are listed here for completeness.  All "newest" values require network access.
++
++| Package | Pinned version | PyPI newest |
++|---------|---------------|-------------|
++| `annotated-types` | 0.8.0 | unknown — network unavailable |
++| `anyio` | 4.15.1 | unknown — network unavailable |
++| `ast-serialize` | 0.11.2 | unknown — network unavailable |
++| `certifi` | 2026.7.22 | unknown — network unavailable |
++| `colorama` | 0.4.6 | unknown — network unavailable |
++| `exceptiongroup` | 1.3.1 | unknown — network unavailable |
++| `execnet` | 2.1.2 | unknown — network unavailable |
++| `h11` | 0.16.0 | unknown — network unavailable |
++| `httpcore` | 1.0.9 | unknown — network unavailable |
++| `httpx` | 0.28.1 | unknown — network unavailable |
++| `idna` | 3.20 | unknown — network unavailable |
++| `iniconfig` | 2.3.0 | unknown — network unavailable |
++| `librt` | 0.15.0 | unknown — network unavailable |
++| `mypy-extensions` | 1.1.0 | unknown — network unavailable |
++| `ollama` | 0.6.2 | unknown — network unavailable |
++| `packaging` | 26.3 | unknown — network unavailable |
++| `pathspec` | 1.1.1 | unknown — network unavailable |
++| `pluggy` | 1.6.0 | unknown — network unavailable |
++| `pydantic-core` | 2.46.5 | unknown — network unavailable |
++| `pygments` | 2.21.0 | unknown — network unavailable |
++| `typing-extensions` | 4.16.0 | unknown — network unavailable |
++| `typing-inspection` | 0.4.4 | unknown — network unavailable |
++
++---
++
++## 4. Python versions in the CI matrix
++
++**Current matrix** (`.github/workflows/ci.yml` line 38):
++
++```yaml
++python-version: ['3.10', '3.12']
++```
++
++**Floor** (`pyproject.toml` line 8): `requires-python = ">=3.10"`
++
++### 3.10 (floor slot)
++
++Correct and should not move.  The CI comment at lines 31–34 states explicitly:
++> "pyproject.toml promises `requires-python = ">=3.10"`, so the floor AND a current
++> interpreter both run the whole suite"
++
++The floor slot must match the declared minimum.
++
++### 3.12 (current-interpreter slot)
++
++**Should move**, but the target version is unknown — network unavailable.
++
++Python releases one new stable version every October.  As of the task date (2026-10-21):
++- Python 3.13 reached stable: October 2024
++- Python 3.14 reached stable: October 2025
++- Python 3.15: October 2026 release window (may or may not yet be on hosted runners)
++
++The `3.12` slot has fallen at least two versions behind the newest stable.  It must be
++updated to the highest stable version available on GitHub's hosted `ubuntu-latest` runners.
++
++### Newest stable Python — source
++
++The authoritative source is:
++
++```
++https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
++```
++
++Take the highest version whose entry carries `"stable": true`.
++
++**This URL was not fetched** — no HTTP tool is available in this environment.  The newest
++stable Python version is therefore **unknown — network unavailable** in this run.
++
++### Recommendation (pending network confirmation)
++
++Once the manifest is fetched, update the matrix to:
++
++```yaml
++python-version: ['3.10', '<newest-stable>']
++```
++
++where `<newest-stable>` is the value read from the manifest.  The floor `3.10` stays.
++
++---
++
++## 5. Items that can move without network (file-readable only)
++
++None.  Every "can this pin move?" question requires comparing the pinned version to the
++PyPI newest release, which needs the network.  No pin can be confirmed movable or
++confirmed current from files alone.
++
++---
++
++## 6. Next step
++
++Run `remedy doctor toolchain` (or `remedy doctor toolchain --json`) on a machine with
++outbound network access to PyPI.  That command fetches the PyPI JSON API for each of the
++ten tracked tools and fills in the "newest" column.  Then fetch the Python manifest URL
++above to determine the target Python version for the matrix's current-interpreter slot.
+diff --git a/t002-findings.md b/t002-findings.md
+new file mode 100644
+index 000000000..a25e61453
+--- /dev/null
++++ b/t002-findings.md
+@@ -0,0 +1,65 @@
++# T002 Findings: Release Notes for Tools That Move
++
++## STATUS: BLOCKED — network fetch not possible in this environment
++
++This task requires fetching remote changelog content.  No fetch was possible.
++Evidence of the constraint and a proper escalation path follow.
++
++---
++
++## Evidence of environment constraint
++
++The tools available to this agent in this session are:
++
++| Tool | Can make HTTP requests? |
++|------|------------------------|
++| `Read` | No — reads local filesystem paths only |
++| `Write` | No — writes local filesystem paths only |
++| `Edit` | No — edits local filesystem paths only |
++| `Glob` | No — pattern-matches local filesystem only |
++| `Grep` | No — searches local filesystem only |
++
++No `Bash`, `Shell`, `HTTP`, `Fetch`, `WebSearch`, or equivalent tool is present.
++There is no mechanism in this session to issue an HTTP GET to any URL.
++
++Fetch attempts were not made because no tool capable of making them exists.
++This is not an assertion about general network reachability of the host; it is a
++statement about the agent's tool inventory.
++
++---
++
++## Formal task block
++
++**Blocker:** The primary acceptance criterion — "Every tool Task 1 found has its
++release notes quoted or summarized, with the address they were read from" — cannot
++be satisfied without reading remote changelog content.  The agent cannot read remote
++content.  This task must be re-run in an environment that provides an HTTP or shell
++tool, or a human operator must fetch the content and paste it into context.
++
++---
++
++## What a capable environment must fetch
++
++The following URLs are the authoritative changelogs.  The relevant version range for
++each tool is **pinned version (from `constraints.txt`) → newest version on PyPI**;
++the newest version must be determined first (see T001).
++
++| Tool | Pin | Changelog URL |
++|------|-----|---------------|
++| `ruff` | 0.15.17 | https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md |
++| `uv` | 0.12.18 | https://github.com/astral-sh/uv/blob/main/CHANGELOG.md |
++| `pydantic` | 2.13.5 | https://github.com/pydantic/pydantic/blob/main/HISTORY.md |
++| `mypy` | 2.3.1 | https://github.com/python/mypy/blob/master/CHANGELOG.md |
++| `pytest` | 9.1.1 | https://github.com/pytest-dev/pytest/blob/main/CHANGELOG.rst |
++| `pytest-xdist` | 3.8.0 | https://github.com/pytest-dev/pytest-xdist/blob/master/CHANGELOG.rst |
++| `pytest-cov` | 7.1.0 | https://github.com/pytest-dev/pytest-cov/blob/master/CHANGELOG.rst |
++| `coverage` | 7.16.1 | https://github.com/nedbat/coveragepy/blob/master/CHANGES.rst |
++| `psutil` | 7.2.2 | https://github.com/giampaolo/psutil/blob/master/HISTORY.rst |
++| `tomli` | 2.4.1 | https://github.com/hukkin/tomli/blob/master/CHANGELOG.md |
++| Python (CI matrix) | 3.12 | https://docs.python.org/3/whatsnew/index.html (3.13, 3.14, 3.15) |
++
++For each tool, the content to extract is:
++- Removed or renamed features, flags, or configuration keys
++- Changed default behaviours
++- New warnings or errors enabled by default
++- Data format changes (especially for `coverage`)

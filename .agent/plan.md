@@ -1,21 +1,19 @@
-# Plan — F310 Budgets that fit the provider, and one stop, one question
+# Plan — F312 The scope guard knows orders without file names
 
 ## Goal
-A job's default limits come from the profile of its provider class, its wall clock measures work
-and not waiting, and a budget stop asks the operator exactly one question
-(`docs/roadmap/features/T12_F310.md`). Accepted PASS_WITH_RISKS on 2026-10-20.
+The scope guard tells three kinds of order apart and refuses a plan only for the kind that drew a
+fence; an order that names no file gives a plan, not a failure
+(`docs/roadmap/features/T2_F312.md`). Accepted PASS_WITH_RISKS on 2026-10-21.
 
 ## Current Step
-Round 7 (session 1), the closing round: book round 6, register R-1376 with DECISION F310 D8
-(no rotation this closure), accept F310 in STATUS with the README sync and SU-065's
-`consumed_by`, and open the pull request, left unmerged.
+Round 7 (session 1), the closing round: book round 6, register and resolve R-1382, resolve
+R-1369, DECISION F312 D5 (no rotation this closure), accept F312 in STATUS with the README sync
+and SU-066's `consumed_by`, and open the pull request, left unmerged.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F310's pull
-   request; then Rule A5 proposes the next feature, F312.
-2. The next findings paydown, F307, books the twelve High findings R-1375 names and reconciles
-   the commit hook with the ledger rotation (R-1376).
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F312's pull
+   request; then Rule A5 proposes the next feature, F311.
+2. The next findings paydown, F307, takes R-1375, R-1376 and R-1381 with the rest of the open set.
 
 ## Risks
-- An order's own caps still bind its jobs (DECISION F310 D3, operator question Q19).
-- The integrity check fails on High findings F310 does not own (DECISION F310 D7, Q20).
+- The integrity check fails on High findings F312 does not own (DECISION F310 D7, Q20).

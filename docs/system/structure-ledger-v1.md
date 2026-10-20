@@ -126,8 +126,8 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `plan_order_job` (`packages/orchestration/do_sequence.py`). Boundary: the intake call, the
   first-pass task plan with its approval, the record a plan that cannot be parsed leaves, and the
   deterministic plan. Steps: (1) done by F297, the record of a plan that cannot be parsed is
-  `_record_unparsed_plan`; (2) the first-pass task plan with its approval becomes a function;
-  (3) the deterministic plan becomes a function.
+  `_record_unparsed_plan`; (2) done by F312, the first-pass task plan with its approval is
+  `_first_pass_task_plan`; (3) the deterministic plan becomes a function.
 - `continue_from_node` (`packages/orchestration/continue_from_node.py`). Boundary: the checks of
   the parent and the node, the child job's record, the link to the project, and the two timeline
   events. Steps: (1) done by F203, the link to the project is `_link_child_to_project`; (2) the
@@ -254,14 +254,15 @@ with the code that calls it.
   staying beside the code that calls it.
 - `packages/orchestration/do_sequence.py`: the context a walk carries, where its jobs go, the
   cockpit, the apply and push, and the walk's summaries, each to a module of its own; the step
-  table, the walker, `plan_order_job` and the plan, shape and run steps stay (the study step moved to
-  `packages/orchestration/do_study.py` on 2026-10-17, which took the file under its row), because a
-  test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
-  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`.
-  Step (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the
-  old face since (amend1015f D22) and `packages/orchestration/do_summary.py`.
-  Step (3), done by F205: the apply and push, `packages/orchestration/do_apply.py`, and the file
-  left the table.
+  table, the walker, `plan_order_job` and the plan, shape and run steps stay (the study step moved
+  to `packages/orchestration/do_study.py` on 2026-10-17, which took the file under its row), because
+  a test replaces `plan_order_job` on this module. Step (1), done by F205: the context and the
+  targets, `packages/orchestration/do_context.py` and `packages/orchestration/do_targets.py`. Step
+  (2), done by F205: the cockpit and the summaries, the cockpit's module deleted with the old face
+  since (amend1015f D22) and `packages/orchestration/do_summary.py`. Step (3), done by F205: the
+  apply and push, `packages/orchestration/do_apply.py`, and the file left the table. F312 moved
+  `do_job_task_listing`, the listing of the walk's jobs, to `packages/orchestration/do_summary.py`
+  under step (2).
 - `apps/cli/commands/do_cmd.py`: what `remedy do` reads before any step, then the `run`
   handlers, then the `job` handlers, each to a module of its own; `_cmd_do` and `_cmd_do_order`
   stay. Step (1), done by F205: `_order_repo` and the reading of the order file,
@@ -299,7 +300,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 249 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 165 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |

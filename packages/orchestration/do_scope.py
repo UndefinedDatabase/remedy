@@ -5,6 +5,11 @@ an order puts in scope are read from the order itself, and the files a planner's
 are compared with them. A plan that names a file outside the scope is not kept; the caller falls
 back to the deterministic one-milestone plan, which names only the order's own deliverables.
 
+F312 (DECISION F312 D1): `order_scope_kind` tells three kinds of order apart by their text alone —
+one that spells a file name, one that fences without spelling one, and an open one that does
+neither. An open order's planned files are its delivery, so the task-plan guard answers only a
+task that makes nothing but a checking artifact the order never asked for.
+
 The scope of an order is the files it names, plus the tracked files whose name it uses as a word
 ("Improve the README" puts `README.md` in scope). An order that names a file or uses such a name,
 or that carries a fence like "Change no other files", is bounded; an order that does neither
@@ -21,7 +26,13 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
-from packages.orchestration.order_scope import is_scope_fence, is_test_path, requests_test_files, split_order_scope
+from packages.orchestration.order_scope import (
+    is_checking_only,
+    is_scope_fence,
+    is_test_path,
+    requests_test_files,
+    split_order_scope,
+)
 from packages.orchestration.task_deliverables import explicit_order_paths
 
 #: A tracked file's stem is used as a word only when it is at least this long (`a`, `io` match anything).
@@ -36,6 +47,29 @@ def order_has_scope_fence(order: str) -> bool:
     """
     scope = split_order_scope(order)
     return any(is_scope_fence(unit) for unit in (*scope.deliverables, *scope.constraints))
+
+
+#: `order_scope_kind`: the order spells out a file path (DECISION F312 D1).
+ORDER_SCOPE_NAMES_FILES = "names_files"
+#: `order_scope_kind`: the order fences the work in words without spelling a path (DECISION F312 D1).
+ORDER_SCOPE_FENCED = "fenced"
+#: `order_scope_kind`: the order neither spells a path nor fences the work (DECISION F312 D1).
+ORDER_SCOPE_OPEN = "open"
+
+
+def order_scope_kind(order: str) -> str:
+    """The kind of *order*, read from its text alone (DECISION F312 D1).
+
+    `ORDER_SCOPE_NAMES_FILES` when `task_deliverables.explicit_order_paths` finds a spelled path
+    ("Fix src/parse.py"); else `ORDER_SCOPE_FENCED` when `order_has_scope_fence` is true ("Ändere
+    nur die README. Verändere sonst nichts."); else `ORDER_SCOPE_OPEN`, an order that names no file
+    and draws no fence ("Super, jetzt mach ein schickes design" is an open one).
+    """
+    if explicit_order_paths(order):
+        return ORDER_SCOPE_NAMES_FILES
+    if order_has_scope_fence(order):
+        return ORDER_SCOPE_FENCED
+    return ORDER_SCOPE_OPEN
 
 
 def order_scope_files(order: str, tracked_files: list[str]) -> list[str]:
@@ -83,7 +117,12 @@ def out_of_scope_task_ids(order: str, tasks: list[Any], tracked_files: list[str]
     scope. On 2026-10-17 a planner shown the wrong folder planned `test_command.txt` with the
     deliverable `order.md` for an order that said "Verändere sonst nichts"; the mission plan had this
     guard, the task plan did not. Only a FENCED order binds its tasks: "make the gate refuse … and
-    document it in docs/gate.md" names one file but leaves the planner to find the gate's code."""
+    document it in docs/gate.md" names one file but leaves the planner to find the gate's code.
+    DECISION F312 D1: for an OPEN order (`order_scope_kind`) the ids are instead the tasks that make
+    nothing but a checking artifact the order never asked for."""
+    if order_scope_kind(order) == ORDER_SCOPE_OPEN:
+        return [task.id for task in tasks
+                if is_checking_only(f"{task.title}. {task.goal}", requested=order)]
     if not order_has_scope_fence(order):
         return []
     hints = {task.id: str(task.files_hint[0]).strip() for task in tasks if task.files_hint}

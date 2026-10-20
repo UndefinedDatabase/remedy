@@ -207,6 +207,23 @@ as a named file such as `checksums.json`), is left out, and a plan of nothing el
 the deterministic one (amend1016p D2). A mission of one deliverable is one job: its checks run in
 that job's verification and are never a second job.
 
+Each job's task plan is held to the person's order, never to the outline the planner wrote for the
+job's milestone, and Remedy tells three kinds of order apart (F312). An order that spells a file
+name ("Fix `src/parse.py`") keeps the guard it had: when it also fences its files, a task that
+delivers another file is left out. An order that fences without spelling a file name ("Ändere nur
+die README. Verändere sonst nichts.") is held to the files its words name, as before. An order that
+names no file and draws no fence ("Super, jetzt mach ein schickes design") leaves the files to the
+planner: the files of its task plan are the delivery, and only a task that makes nothing but a
+checking artifact the order never asked for is left out. A milestone's outline still says what its
+job works on, but it never fences a job the order did not fence.
+
+When the plan for such an open order is refused, Remedy plans it once more. When the second plan
+is refused too, Remedy does not plan a third time: the walk stops and asks which files the order
+means, offering the files the planner proposed, and its last line is the command that answers.
+Answering with the file names, separated by commas, makes those files the job's tasks; the job then
+runs with `remedy job resume` and asks the planner nothing more. An answer that names no usable
+file is recorded and changes nothing, and the order can be given again with its files named.
+
 ## One cap for the whole order
 
 The caps an order carries (`--max-provider-calls`, `--max-total-tokens`, `--max-cost-usd`,

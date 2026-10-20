@@ -94,3 +94,48 @@ def test_a_planned_task_that_delivers_a_file_the_order_did_not_ask_for_is_named(
                SimpleNamespace(id="T003", files_hint=["README.md", "readme_baseline.txt"]),
                SimpleNamespace(id="T004", files_hint=[])]
     assert out_of_scope_task_ids(order, planned, ["README.md", "package.json"]) == ["T001"]
+
+
+# --- F312 T001 (DECISION F312 D1): the three kinds of order --------------------------------------
+
+# The second lab order of 2026-10-20 (R-1369): no file name, no fence.
+LAB_OPEN_ORDER = "Super, jetzt mach ein schickes design"
+
+
+def test_order_scope_kind_tells_the_three_kinds_apart():
+    from packages.orchestration.do_scope import (
+        ORDER_SCOPE_FENCED,
+        ORDER_SCOPE_NAMES_FILES,
+        ORDER_SCOPE_OPEN,
+        order_scope_kind,
+    )
+
+    assert order_scope_kind(LAB_OPEN_ORDER) == ORDER_SCOPE_OPEN
+    assert order_scope_kind(
+        "Bring die webseite auf prototyp niveau und füge funktionalität hinzu") == ORDER_SCOPE_OPEN
+    assert order_scope_kind("Improve the README") == ORDER_SCOPE_OPEN
+    assert order_scope_kind("Ändere nur die README. Verändere sonst nichts.") == ORDER_SCOPE_FENCED
+    assert order_scope_kind("Fix src/parse.py and change no other files") == ORDER_SCOPE_NAMES_FILES
+    assert order_scope_kind(
+        "Make the gate refuse an empty order and document it in docs/gate.md") == ORDER_SCOPE_NAMES_FILES
+
+
+def _site_task(tid: str, title: str, hint: str):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(id=tid, title=title, goal=title, files_hint=[hint])
+
+
+def test_an_open_order_only_excludes_a_task_that_makes_a_checking_artifact():
+    from packages.orchestration.do_scope import out_of_scope_task_ids
+
+    tracked = ["index.html", "style.css", "script.js", "README.md"]
+    t002 = _site_task("T002", "Add a modern colour scheme", "style.css")
+    t003 = _site_task("T003", "Restructure the page layout", "index.html")
+    assert out_of_scope_task_ids(LAB_OPEN_ORDER, [t002, t003], tracked) == []
+
+    t004 = _site_task("T004", "Write a checksum manifest of the site", "checksums.json")
+    assert out_of_scope_task_ids(LAB_OPEN_ORDER, [t002, t003, t004], tracked) == ["T004"]
+
+    fenced = "Ändere nur die README. Verändere sonst nichts."
+    assert out_of_scope_task_ids(fenced, [t002, t003], tracked) == ["T002", "T003"]
