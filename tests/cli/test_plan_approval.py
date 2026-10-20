@@ -322,7 +322,7 @@ class TestTaskPlanLabel:
         assert [t.inputs["deliverable"] for t in shaped.job.tasks] == ["Done"]
 
     def test_llm_plan_holding_an_inspection_task_is_rejected(self, tmp_path, monkeypatch):
-        """DECISION F268 D6: the one validator runs on the LLM plan too."""
+        """DECISION F268 D6: the one validator runs on the LLM plan too, for an order that names a file (an open order is planned twice and then asks, DECISION F312 D3)."""
         import pytest
 
         from packages.orchestration.do_sequence import OrderJobPlanError
@@ -353,7 +353,7 @@ class TestTaskPlanLabel:
         )
 
         with pytest.raises(OrderJobPlanError, match="is inspection"):
-            _shape_order(repo, "test mission")
+            _shape_order(repo, "Write notes.md about the repository")
         assert list_job_plans() == []
 
 
