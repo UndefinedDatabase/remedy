@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 305.8s (the launcher's reading); pytest's own reported wall time: 305.15s (0:05:05)
+summary line: 1 failed, 21988 passed, 11 skipped, 1 warning in 305.15s (0:05:05)
+bad node ids (failed + errors):
+  - tests/orchestration/test_public_api_gate_paths.py::test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone
+leftover processes: NONE
+tree it ran on: 9c072b916 (F310 R5 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, the feature file, the checklist page and the self-use queue
+reflog before: 9c072b916 HEAD@{2026-10-20 21:20:18 +0200}: commit: F310 R5 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 9c072b916 HEAD@{2026-10-20 21:20:18 +0200}: commit: F310 R5 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F310 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1201.66 CPU seconds, 305.16 wall seconds, 22000 tests collected, exit status 1, recorded 2026-10-20T19:25:26Z
+This closure's suite used 1201.66 CPU seconds, 6.1 percent less than F055's 1279.63, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F055's closure run:
+  +38.09 s  tests/cli/test_do_scale_matrix.py (0.00 -> 38.09)
+  +10.56 s  tests/cli/test_do_adversarial_orders.py (0.00 -> 10.56)
+  +7.75 s  tests/ui_server/test_public_api_lifecycle.py (0.00 -> 7.75)
+  +7.72 s  tests/orchestration/test_client_story.py (0.00 -> 7.72)
+  +7.29 s  tests/orchestration/test_event_name_coupling.py (13.13 -> 20.42)
+  +5.37 s  tests/cli/test_do_order_budget.py (0.00 -> 5.37)
+  +5.24 s  tests/cli/test_do_bounded_lane.py (0.00 -> 5.24)
+  +4.82 s  tests/orchestration/test_order_cancel.py (0.00 -> 4.82)
+  +4.43 s  tests/cli/test_do_pi_default.py (0.00 -> 4.43)
+  +4.09 s  tests/cli/test_do_verified_repair.py (0.00 -> 4.09)
