@@ -76,6 +76,7 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `_cmd_decision_resolve` (`apps/cli/commands/decision.py`). Boundary: the one branch per kind of
   decision id. Steps: (1) each branch becomes a function of its own that returns the exit code;
   (2) the command keeps only the dispatch, in the present order of its tests.
+  Step (1) for the budget branch, done by F310: `_resolve_budget_decision`.
 - `run_cycles` (`packages/orchestration/long_run_executor.py`). Boundary: the numbered steps its
   own comments give, and the resume of a parked job before the loop. Steps: (1) the resume becomes
   a function; (2) one batch of tasks becomes a function; (3) the decision by the job's shape
@@ -281,7 +282,7 @@ with the code that calls it.
 | 888 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
-| 428 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
+| 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
