@@ -1035,17 +1035,21 @@ def test_the_old_name_with_history_is_never_created(repo, capsys):
     assert "--with-history" in capsys.readouterr().err
 
 
-# ── F269 round 8: a budget stop with blockers raises the remainder (DECISION F269 D9) ──
+# ── F310 R4: a budget stop with blockers asks one question; the abandon raises the remainder (DECISION F310 D6) ──
 
 
-def test_a_job_its_budget_stops_with_blockers_raises_the_remainder_and_names_its_answer(
+def _open_decisions(capsys, job_id):
+    main(["decision", "list", job_id, "--json"])
+    return json.loads(capsys.readouterr().out)["decisions"]
+
+
+def test_a_job_its_budget_stops_with_blockers_asks_one_question_and_names_its_answer(
         repo, capsys):
-    """D9 (2): `run_job`'s own budget check stops the job — a deadline already
+    """DECISION F310 D6: `run_job`'s own budget check stops the job — a deadline already
     past, the budget the fake providers cannot dodge, since they report no
-    calls or tokens to count — while the contract has blockers, so one
-    remainder decision is raised and the Next lines name the command that
-    answers it `yes`."""
-    from packages.orchestration.escalation import find_task_decision
+    calls or tokens to count — while the contract has blockers, so the budget
+    decision is the job's one open question and the Next lines name the command
+    that answers it `extend`; the remainder decision is raised by `abandon`, once."""
     from packages.orchestration.mission_contract import CONTRACT_REMAINDER_MARKER
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
 
@@ -1060,13 +1064,24 @@ def test_a_job_its_budget_stops_with_blockers_raises_the_remainder_and_names_its
     assert job.state != JOB_COMPLETED
     assert (job.stop_source, job.stop_reason) == ("budget", "budget_exhausted:deadline")
     assert data["unmet_blocking_criteria"]
-    [decision_id] = re.findall(r"remainder decision (td:\S+) was raised",
-                               _step(data, "run")["detail"])
-    record = find_task_decision(job, decision_id)
-    assert record["question"].startswith(CONTRACT_REMAINDER_MARKER)
-    assert all(f"{ident}: " in record["question"]
-               for ident in data["unmet_blocking_criteria"])
-    assert f"remedy decision resolve {job_id} {decision_id} --reason yes" in data["next"]
+    assert "remainder decision" not in _step(data, "run")["detail"]
+    [budget] = _open_decisions(capsys, job_id)
+    assert budget["id"].startswith("budget")
+    assert sorted(text.split(": ", 1)[0] for text in budget["payload"]["blockers"]) == sorted(
+        data["unmet_blocking_criteria"])
+    assert f"remedy decision resolve {job_id} {budget['id']} --reason extend" in data["next"]
+
+    main(["decision", "resolve", job_id, budget["id"], "--reason", "abandon"])
+    out = capsys.readouterr().out
+    [remainder_id] = re.findall(r"Remainder decision (td:\S+) raised", out)
+    [remainder] = [d for d in _open_decisions(capsys, job_id) if d["id"] == remainder_id]
+    assert remainder["payload"]["question"].startswith(CONTRACT_REMAINDER_MARKER)
+    assert [d["id"] for d in _open_decisions(capsys, job_id)] == [remainder_id]
+
+    with pytest.raises(SystemExit):
+        main(["decision", "resolve", job_id, budget["id"], "--reason", "abandon", "--json"])
+    assert json.loads(capsys.readouterr().out)["error"] == "decision_already_answered"
+    assert [d["id"] for d in _open_decisions(capsys, job_id)] == [remainder_id]
 
 
 # ── F295 R11: a job `remedy do` plans records its order digest (R-1148, DECISION F295 D10) ──
@@ -1131,8 +1146,11 @@ def test_a_budget_stop_of_a_planned_do_job_ends_stopped(repo, capsys):
 
 
 def test_an_extend_answers_the_remainder_and_says_so_in_its_text(repo, capsys):
-    """D19: the operator at a terminal reads which remainder decision the extend answered."""
+    """D19: the operator at a terminal reads which remainder decision the extend answered; a stop
+    no longer raises it (DECISION F310 D6), so it is raised by hand, as a job stopped before that feature carries it."""
     from packages.orchestration.escalation import find_task_decision
+    from packages.orchestration.mission_contract import raise_contract_remainder_decision
+    from packages.orchestration.mission_state import mission_for_job
     from packages.orchestration.pingpong_job import load_job_plan
 
     with pytest.raises(SystemExit):
@@ -1140,8 +1158,9 @@ def test_an_extend_answers_the_remainder_and_says_so_in_its_text(repo, capsys):
             "--deadline", "2000-01-01T00:00:00+00:00")
     data = json.loads(capsys.readouterr().out)
     [job_id] = data["job_ids"]
-    [remainder_id] = re.findall(r"remainder decision (td:\S+) was raised",
-                                _step(data, "run")["detail"])
+    mission = mission_for_job(job_id)
+    remainder_id = raise_contract_remainder_decision(mission.project_id, mission.id)
+    assert remainder_id
     main(["decision", "list", job_id, "--json"])
     [budget_id] = [d["id"] for d in json.loads(capsys.readouterr().out)["decisions"]
                    if d["id"].startswith("budget")]

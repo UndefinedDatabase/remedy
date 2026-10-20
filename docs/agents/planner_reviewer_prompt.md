@@ -692,6 +692,19 @@ end the response with:
   of an ordered list of tests against the property it must establish, and R-1317 was a defect
   of the product the reviewer found while reading the path a rehearsed plan runs on. The list
   stays at 34 items.
+  Consolidated again at F310's closure on 2026-10-20: nothing joined and no two items were merged,
+  because none of F310's lines in `.agent/prose_slips.md` names a lesson the list lacks. A block
+  that carried this machine's absolute paths into the copy the agent-state check of the commit hook
+  reads, and blocks that named two of the three tests pinning a removed behaviour and not the pin
+  on the third test's bytes, are item 34's reading of the guards that bind the file the order
+  changes; a checker that looked on one line for a sentence the block ordered wrapped is item 18's
+  reading of an ordered recipe against the property it must establish; and a gate whose expected
+  value the base already contradicted is item 8's clause that a gate is run at its base before it
+  is ordered. Its authoring defects that left something unguarded were registered as findings and
+  repaired inside the feature: R-1372 and R-1373, values no ordered test read back, are item 18's
+  reading of an ordered list of tests against the property it must establish; R-1374, a decision
+  the product raised and then hid, was found by the worker while writing the test of it. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

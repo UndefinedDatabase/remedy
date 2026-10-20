@@ -47,9 +47,9 @@ DECISION F268 D11: run mirrors each job it ran into the F103 ledger, as `job run
 does, and `do_cost_summary` reads the measured tokens per role and cost back
 through `token_ledger.query_cost`.
 
-DECISION F269 D9 (2): a job the run step ran that its budget stopped while the
-mission's contract has blockers raises the remainder decision, and the Next
-lines name the command that answers it `yes`.
+DECISION F310 D6, continuing F269 D9 (2): a job the run step ran that its budget stopped names
+its budget decision as its one open question, the Next lines name the command that answers it
+`extend`, and the remainder decision waits until that stop is answered `abandon`.
 
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
@@ -72,6 +72,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     from packages.orchestration.project_registry import RemyProject
+
+from packages.orchestration.budget_stop import budget_stop_walk_note
 
 # DECISION F205 D3: the walk's context, its targets, its apply and push and its summaries
 # live in modules of their own; this module imports the names it uses, and every other
@@ -483,7 +485,6 @@ def plan_order_job(
 
     if plan_call_fn is not None:
         from packages.orchestration.job_plan import (
-            apply_plan_budgets,
             apply_plan_fences,
             compose_task_plan_prompt,
             make_task_plan_call_recorder,
@@ -515,9 +516,9 @@ def plan_order_job(
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
             config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
-            merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
+            # DECISION F310 D2: the plan's suggested budgets are its estimate, never a limit.
             merged_fences = apply_plan_fences(None, fp_result.plan.fences)
-            job_budgets, job_fences = order_job_limits(merged_budgets, merged_fences)
+            job_budgets, job_fences = order_job_limits(config_budgets_dict, merged_fences)
             job = JobPlan(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
                 job_file_sha256=job_file_sha256,
@@ -856,34 +857,6 @@ def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
     return listing
 
 
-def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
-    """Raise the remainder decision for a job its budget stopped; the detail's tail, or "".
-
-    DECISION F269 D9 (2): a job that did not complete and whose ``stop_source``
-    is budget, while the mission's contract has blockers, raises the remainder
-    decision, and the Next lines name it with the command that answers it.
-    The state is not read: a budget stop mid-run ends ``stopped``, while one
-    before any work (a deadline already past) leaves the job ``planned``, and
-    both are the budget ending the job.  Any other ending, no mission, no
-    blocker or an open remainder decision adds nothing.
-    """
-    from packages.orchestration.mission_contract import (
-        CONTRACT_REMAINDER_YES,
-        raise_contract_remainder_decision,
-    )
-
-    if job.stop_source != "budget" or not ctx.mission_id or ctx.project is None:
-        return ""
-    decision_id = raise_contract_remainder_decision(str(ctx.project.id), ctx.mission_id)
-    if decision_id is None:
-        return ""
-    # The full job id, as every other Next line of the walk names it.
-    ctx.next_lines.append(f"remedy decision resolve {job.job_id} {decision_id} "
-                          f"--reason {CONTRACT_REMAINDER_YES}")
-    return (f"; its budget stopped it with blocking contract criteria open, so "
-            f"remainder decision {decision_id} was raised")
-
-
 def _step_run(ctx: DoContext) -> tuple[str, str]:
     """Run the walk's jobs; without a commit flag only the first, and the rest wait (F268 D12).
 
@@ -972,7 +945,7 @@ def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
         if done.state != JOB_COMPLETED:
             reason = f": {done.error}" if done.error else ""
             return DO_STEP_FAILED, (f"job {job_id} ended {done.state.value}{reason}"
-                                    f"{do_budget_stop_remainder(ctx, done)}")
+                                    f"{budget_stop_walk_note(ctx, done)}")
         ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
         if chain and position < len(ctx.job_ids):
             failure = do_apply_one_job(ctx, job_id)

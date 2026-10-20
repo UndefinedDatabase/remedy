@@ -1,18 +1,21 @@
-# Plan — amend1020-orb-insight (operator docs round)
+# Plan — F310 Budgets that fit the provider, and one stop, one question
 
 ## Goal
-Register F310, F311, F312 and F313 (REGISTERED THIN) before F078, from the operator's three lab
-runs of 2026-10-20, with findings R-1369 to R-1371 and DECISION amend1020 D1. Docs only; the
-loop builds the features afterwards.
+A job's default limits come from the profile of its provider class, its wall clock measures work
+and not waiting, and a budget stop asks the operator exactly one question
+(`docs/roadmap/features/T12_F310.md`). Accepted PASS_WITH_RISKS on 2026-10-20.
 
 ## Current Step
-Done: feature files, STATUS block (F310, F312, F311, F313), README counters, docs-suite pin 313,
-findings, DECISION, handoff. Commit, push, PR, merge to main.
+Round 7 (session 1), the closing round: book round 6, register R-1376 with DECISION F310 D8
+(no rotation this closure), accept F310 in STATUS with the README sync and SU-065's
+`consumed_by`, and open the pull request, left unmerged.
 
 ## Next Steps
-- The operator starts the loop (`remedy-loop-feature`); Rule A5 proposes F310 first.
-- F310's first round fills F310 D1 to D5 before any code.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F310's pull
+   request; then Rule A5 proposes the next feature, F312.
+2. The next findings paydown, F307, books the twelve High findings R-1375 names and reconciles
+   the commit hook with the ledger rotation (R-1376).
 
 ## Risks
-- The 9-minute job limit's origin (the task plan's suggested budgets) is read from the code, not
-  yet from the job's record; F310's first round confirms it.
+- An order's own caps still bind its jobs (DECISION F310 D3, operator question Q19).
+- The integrity check fails on High findings F310 does not own (DECISION F310 D7, Q20).

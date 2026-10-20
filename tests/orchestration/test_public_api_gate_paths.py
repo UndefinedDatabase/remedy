@@ -265,7 +265,8 @@ def test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone(superv
     assert len(done["job_ids"]) == 1, ended
     [job_id] = done["job_ids"]
 
-    # 2. Read: the digest names the mission, the job stopped, the budget and the remainder.
+    # 2. Read: the digest names the mission, the job stopped and its one question, the budget
+    #    decision (DECISION F310 D6).
     digest = supervisor.digest()
     assert digest["version"] == 1, digest
     missions = [m for project in digest["projects"] for m in project["missions"]
@@ -281,9 +282,8 @@ def test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone(superv
               if d["job_id"] == job_id and d["type"] == "token_budget"]
     assert len(budget) == 1, digest
     assert budget[0]["options"] == ["extend", "abandon"], budget
-    remainder = [d for d in digest["decisions"]
-                 if d["job_id"] == job_id and d["type"] == "task_decision"]
-    assert len(remainder) == 1, digest
+    assert not [d for d in digest["decisions"]
+                if d["job_id"] == job_id and d["type"] == "task_decision"], digest
     assert job_id not in digest["awaiting_apply"], digest
 
     # 3. Answer: the budget decision, extended past the deadline that stopped it.
@@ -292,11 +292,12 @@ def test_f295s_gate_path_runs_from_the_order_to_the_proof_over_http_alone(superv
         {"reason": "extend", "answer": [f"deadline={LATER_DEADLINE}"]})
     assert status == 200, answered
     assert answered["outcome"] == "extended", answered
-    assert answered["closed_decisions"] == [remainder[0]["decision_id"]], answered
+    assert answered["closed_decisions"] == [], answered
+    # DECISION F310 D5 (4): the extend starts the job's run by itself.
+    assert answered["resumed"]["job_id"] == job_id, answered
     assert answered["budgets"]["max_cost_usd"] == 1.0, answered
 
-    # 4. Run: the answered job's run is started, and followed to its end before the digest is read.
-    supervisor.start_run(job_id)
+    # 4. Run: the extend's own run is followed to its end before the digest is read.
     supervisor.ended_run(job_id)
     supervisor.completed_job(job_id)
     digest = supervisor.digest()

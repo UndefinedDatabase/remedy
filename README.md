@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-146 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+147 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -48,7 +48,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 7 | 16 |
+| 12 | Observability & Operations | 8 | 16 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -888,6 +888,16 @@ rotated by size; `remedy doctor logs <job>` prints one job's lines in order, or 
 background service answers the same lines to a program on its local web interface; the terminal
 shows warnings and errors exactly as before; the page `docs/system/structured-logging-v1.md`
 describes it).
+
+F310 budgets that fit the provider (a job whose models all run on this machine through Ollama now runs
+with limits of eight hours, two hundred provider calls and one and a half million tokens, unless the
+job, the configuration or the order sets its own, and a job on a paid or remote model keeps the
+limits it had; the planner's own suggested limits are only an estimate; the wall clock counts the time
+a job worked and no longer the time it waited between two runs; a budget stop asks one question,
+which names the mission's open criteria, and answering it `extend` with no numbers doubles what ran
+out, the time to at least an hour, while over the public API the job then runs on by itself; the
+mission's follow-up question comes only after `abandon`; `GET /api/v1/execution` names both sets of
+limits; the page `docs/system/job-budget-enforcement-v0.md` describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line

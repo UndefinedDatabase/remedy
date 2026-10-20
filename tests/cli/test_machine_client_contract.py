@@ -108,7 +108,7 @@ def _digest_job(digest: dict, job_id: str) -> dict:
     return jobs[0]
 
 
-def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tmp_path):
+def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tmp_path, monkeypatch):
     repo = _scratch_repo(tmp_path)
     order_file = tmp_path / "order.md"
     order_file.write_text(ORDER_FILE_TEXT, encoding="utf-8")
@@ -145,9 +145,15 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
               if d["job_id"] == job_id and d["type"] == "token_budget"]
     assert len(budget) == 1
     assert budget[0]["options"] == ["extend", "abandon"]
-    remainder = [d for d in digest["decisions"]
-                 if d["job_id"] == job_id and d["type"] == "task_decision"]
-    assert len(remainder) == 1
+    # DECISION F310 D6: a budget stop puts ONE question in front of a client; the remainder decision
+    # waits for an abandon, and the budget decision carries the mission's blocking criteria.
+    assert not [d for d in digest["decisions"]
+                if d["job_id"] == job_id and d["type"] == "task_decision"]
+    from packages.orchestration.budget_stop import budget_stop_blockers
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    assert budget_stop_blockers(load_job_plan(job_id))
     assert job_id not in digest["awaiting_apply"]
 
     # 3. Answer: the budget decision, extended past the deadline that stopped it.
@@ -157,8 +163,8 @@ def test_a_program_drives_an_order_file_to_its_proof_through_the_command_line(tm
     assert code == 0, answered
     assert answered["outcome"] == "extended"
     assert answered["next_command"] == f"remedy job run {job_id} --json"
-    # The extend answered the remainder decision the same stop raised (DECISION F295 D19).
-    assert answered["closed_decisions"] == [remainder[0]["decision_id"]]
+    # The stop raised no remainder decision (DECISION F310 D6), so the extend closes none.
+    assert answered["closed_decisions"] == []
     # The order file's header cap is the job's own budget, kept beside the raised deadline.
     assert answered["budgets"]["max_cost_usd"] == 1.0
 

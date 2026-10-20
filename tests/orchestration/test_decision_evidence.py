@@ -601,7 +601,7 @@ def test_the_budget_stop_states_its_options_where_the_gate_reads_them():
         request_id="req-7f3a",
     ))
 
-    assert decision.payload == {"options": ["extend", "abandon"]}
+    assert decision.payload == {"options": ["extend", "abandon"], "blockers": []}
     assert decision.next_actions == ("extend", "abandon")
 
 

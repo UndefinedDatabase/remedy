@@ -648,7 +648,9 @@ class TestConfigBudgetPrecedence:
         # Config says 5000, plan says 99999 → config wins
         assert job_data["budgets"]["max_total_tokens"] == 5000
 
-    def test_plan_fills_unset_config_field(self, tmp_path, monkeypatch):
+    def test_a_plan_suggestion_never_fills_an_unset_config_field(self, tmp_path, monkeypatch):
+        # A task plan's suggested budgets are the planner's estimate and never a limit
+        # (DECISION F310 D2).
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         subprocess.run(
@@ -693,8 +695,9 @@ class TestConfigBudgetPrecedence:
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         job_data = json.loads(show.stdout)
-        # Plan fills max_provider_calls since config didn't set it
-        assert job_data["budgets"]["max_provider_calls"] == 42
+        # The plan's 42 calls are not a limit; the configured tokens stay
+        assert job_data["budgets"].get("max_provider_calls") is None
+        assert job_data["budgets"]["max_total_tokens"] == 5000
 
 
 class TestApprovalGoldenPathCLI:

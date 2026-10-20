@@ -1731,10 +1731,10 @@ Acceptance:
         actuals = result.budget_actuals
         assert actuals is not None
         assert actuals["provider_call_count"] == 3
-        # R-0753, R-0986: the job runner writes version 2, which carries the
+        # R-0753, R-0986, F310 D4: the job runner writes version 3, which carries the
         # run's own money with no cost limit too — none here: the fake reports no
         # cost, so its three calls are the three unpriced rows the ledger would get.
-        assert actuals["schema_version"] == "2.0.0"
+        assert actuals["schema_version"] == "3.0.0"
         assert actuals["measured_cost_usd"] is None
         assert (actuals["priced_call_count"], actuals["unpriced_call_count"]) == (0, 3)
         assert result.stop_source == "budget"

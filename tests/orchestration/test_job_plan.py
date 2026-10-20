@@ -6,7 +6,6 @@ import json
 
 from packages.core.models import RunState
 from packages.orchestration.job_plan import (
-    apply_plan_budgets,
     apply_plan_fences,
     map_task_plan_to_tasks,
     plan_job_llm,
@@ -124,28 +123,6 @@ class TestMapTaskPlanToTasks:
         assert tasks[0].inputs["plan"]["depends_on"] == []
         assert tasks[1].inputs["plan"]["depends_on"] == ["T001"]
         assert tasks[2].inputs["plan"]["depends_on"] == ["T002"]
-
-
-class TestBudgetPrecedence:
-
-    def test_config_set_budget_survives(self):
-        job_budgets = {"max_total_tokens": 100000, "max_provider_calls": 50}
-        plan_budgets = {"max_total_tokens": 200000, "max_wall_clock_minutes": 30}
-        merged = apply_plan_budgets(job_budgets, plan_budgets)
-        assert merged["max_total_tokens"] == 100000  # user wins
-        assert merged["max_provider_calls"] == 50    # user kept
-        assert merged["max_wall_clock_minutes"] == 30  # plan fills gap
-
-    def test_plan_budget_fills_unset(self):
-        merged = apply_plan_budgets(None, {"max_total_tokens": 50000})
-        assert merged == {"max_total_tokens": 50000}
-
-    def test_no_budgets_returns_none(self):
-        assert apply_plan_budgets(None, None) is None
-
-    def test_only_job_budgets(self):
-        merged = apply_plan_budgets({"max_total_tokens": 10}, None)
-        assert merged == {"max_total_tokens": 10}
 
 
 class TestFencePrecedence:

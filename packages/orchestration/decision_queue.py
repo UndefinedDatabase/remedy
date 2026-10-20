@@ -469,6 +469,7 @@ def list_decisions(
                 ),
             ),
         )
+        from packages.orchestration.budget_stop import budget_stop_blockers
         decisions.append(HumanDecision(
             id=_decision_id,
             type="token_budget",
@@ -482,11 +483,9 @@ def list_decisions(
             next_actions=("extend", "abandon"),
             created_at=_budget_created_at,
             resolved_at=None,
-            # DECISION F032 D6: the two choices are stated where the emit gate
-            # and the browser both already look.  `next_actions` is unchanged —
-            # `decisionCard.decisionAnswers` prefers `payload.options` and
-            # yields the same two answers in the same order.
-            payload={"options": ["extend", "abandon"]},
+            # DECISION F032 D6: the two choices beside next_actions; DECISION F310 D5: and the
+            # mission's open blocking criteria, so one question carries the whole stop.
+            payload={"options": ["extend", "abandon"], "blockers": budget_stop_blockers(job)},
             evidence=DecisionEvidenceTriple(
                 refs=tuple(_budget_refs),
                 outcomes=_budget_outcomes,
@@ -1031,14 +1030,14 @@ def list_decisions(
     except (ImportError, ValueError, OSError, AttributeError, TaskVetoError):
         pass
 
-    # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam
-    # every producer funnels through, so it is where an enforced decision type
-    # is refused for arriving without its receipts.  It enforces only the types
-    # in `TRIPLE_REQUIRED_TYPES`, which T002a made non-empty: `token_budget` is
-    # in it from the commit that gave the budget stop a real triple, and each
-    # remaining producer joins the same way, in its own upgrade commit. A cancelled job asks nothing.
+    # THE EMIT GATE (DECISION F032 D1): the one seam every producer funnels through, where an enforced type is
+    # refused for arriving without its receipts; it enforces only `TRIPLE_REQUIRED_TYPES`, which holds `token_budget`
+    # since the budget stop got a real triple, and each other producer joins in its own upgrade commit.
     enforce_decision_evidence(decisions)
-    return [] if str(getattr(job, "state", "")) == "cancelled" else decisions   # exec-1017c, job_cancel.py
+    from packages.orchestration.mission_contract import CONTRACT_REMAINDER_MARKER
+    if str(getattr(job, "state", "")) == "cancelled":   # exec-1017c; DECISION F310 D6: only its mission's remainder
+        return [d for d in decisions if str(d.payload.get("question", "")).startswith(CONTRACT_REMAINDER_MARKER)]
+    return decisions
 
 
 def get_decision(

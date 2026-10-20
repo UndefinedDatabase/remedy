@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 331.3s (the launcher's reading); pytest's own reported wall time: 330.52s (0:05:30)
+summary line: 21989 passed, 11 skipped, 1 warning in 330.52s (0:05:30)
+bad node ids (failed + errors):
+  - none
+leftover processes: none of the suite's own; two http.server processes of an earlier session's tmp folder (test_a_phone_outside_reaches_t0, pytest-11860) were already alive
+tree it ran on: cc9a109e6 (F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself)
+tree note: the run the operator amendment amend0921-operator-feedback rule 1 orders on the repaired tree; it replaces the run on 9c072b916
+reflog before: cc9a109e6 HEAD@{2026-10-20 21:32:02 +0200}: commit: F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself
+reflog after: cc9a109e6 HEAD@{2026-10-20 21:32:02 +0200}: commit: F310 R6 C2: F295's gate test over HTTP reads one question and a run that resumes by itself
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F310 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1263.08 CPU seconds, 330.53 wall seconds, 22000 tests collected, exit status 0, recorded 2026-10-20T19:37:36Z
+This closure's suite used 1263.08 CPU seconds, 1.3 percent less than F055's 1279.63, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F055's closure run:
+  +37.69 s  tests/cli/test_do_scale_matrix.py (0.00 -> 37.69)
+  +11.50 s  tests/cli/test_do_adversarial_orders.py (0.00 -> 11.50)
+  +9.85 s  tests/ui_server/test_public_api_lifecycle.py (0.00 -> 9.85)
+  +8.00 s  tests/orchestration/test_client_story.py (0.00 -> 8.00)
+  +6.66 s  tests/orchestration/test_serve_daemon.py (15.98 -> 22.64)
+  +6.13 s  tests/orchestration/test_event_name_coupling.py (13.13 -> 19.26)
+  +5.78 s  tests/cli/test_do_bounded_lane.py (0.00 -> 5.78)
+  +5.17 s  tests/cli/test_do_pi_default.py (0.00 -> 5.17)
+  +5.16 s  tests/cli/test_do_order_budget.py (0.00 -> 5.16)
+  +4.89 s  tests/orchestration/test_public_api_gate_paths.py (15.27 -> 20.16)

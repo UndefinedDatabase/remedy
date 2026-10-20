@@ -27,7 +27,6 @@ import time
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -529,15 +528,15 @@ def _redacted_tail(raw: bytes) -> str:
 
 def bind_job_clock(job: Any) -> None:
     """Let Pi calls made for *job* read its remaining wall-clock budget and deadline (R2), and its stop (D6)."""
-    from packages.core.models import JobBudgets
+    from packages.orchestration.budget_clock import job_work_start
     from packages.orchestration.budget_guard import job_time_remaining
+    from packages.orchestration.budget_profiles import effective_job_budgets
     from packages.orchestration.safe_points import stop_requested
 
     def left() -> tuple[float | None, str]:
         try:
-            budgets = job.budgets if isinstance(job.budgets, JobBudgets) else (
-                JobBudgets.model_validate(job.budgets) if job.budgets else None)
-            started = datetime.fromisoformat(job.first_running_at) if job.first_running_at else None
+            # DECISION F310 D2 and D4: the limits the run reads, measured from its working start
+            budgets, started = effective_job_budgets(job), job_work_start(job)
         except (ValueError, TypeError):
             return None, ""
         return job_time_remaining(budgets, started)

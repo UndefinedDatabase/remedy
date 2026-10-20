@@ -76,6 +76,7 @@ commit with no alias left behind, and changes the tests in their import lines on
 - `_cmd_decision_resolve` (`apps/cli/commands/decision.py`). Boundary: the one branch per kind of
   decision id. Steps: (1) each branch becomes a function of its own that returns the exit code;
   (2) the command keeps only the dispatch, in the present order of its tests.
+  Step (1) for the budget branch, done by F310: `_resolve_budget_decision`.
 - `run_cycles` (`packages/orchestration/long_run_executor.py`). Boundary: the numbered steps its
   own comments give, and the resume of a parked job before the loop. Steps: (1) the resume becomes
   a function; (2) one batch of tasks becomes a function; (3) the decision by the job's shape
@@ -164,6 +165,12 @@ commit with no alias left behind, and changes the tests in their import lines on
   pending stops become a function each; (2) the runtime's state becomes a function of its own;
   (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
   this function are line-neutral (DECISION F055 D3).
+- `decode_persisted_budget_actuals` (`packages/orchestration/budget_guard.py`). Boundary: the
+  closed field set and its version, the counts and how they agree, the sources, the start instant
+  and its agreement with the job's first run, and the money and clock fields of the versions that
+  carry them. Steps: (1) done by F310, the start instant's checks are
+  `decode_persisted_started_at` in `packages/orchestration/budget_clock.py`; (2) the counts and the
+  sources become a function of their own.
 
 ### Files
 Each step moves a cluster into a new module and re-exports its names by name from the old one, so
@@ -237,6 +244,7 @@ with the code that calls it.
   Step (3), done by F058: the model routing keys, `packages/orchestration/config_keys_model_routing.py`.
   Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
   Step (5), done by F203: the logging keys, `packages/orchestration/config_keys_logging.py`.
+  Step (6), done by F310: the budget keys, `packages/orchestration/config_keys_budget.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -269,12 +277,12 @@ with the code that calls it.
 
 | Lines | File | Function |
 |---|---|---|
-| 1442 | `packages/orchestration/pingpong_job.py` | `run_job` |
+| 1434 | `packages/orchestration/pingpong_job.py` | `run_job` |
 | 1314 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
-| 888 | `packages/orchestration/decision_queue.py` | `list_decisions` |
+| 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
-| 428 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
+| 352 | `apps/cli/commands/decision.py` | `_cmd_decision_resolve` |
 | 423 | `packages/orchestration/long_run_executor.py` | `run_cycles` |
 | 406 | `packages/orchestration/orchestrator_loop.py` | `run_mission` |
 | 355 | `apps/cli/commands/worker_facade_cmd.py` | `doctor_core_report` |
@@ -291,7 +299,7 @@ with the code that calls it.
 | 275 | `packages/orchestration/diff_parser.py` | `parse_unified_diff_to_view` |
 | 274 | `packages/orchestration/run_manifest.py` | `_collect_calls` |
 | 271 | `apps/cli/commands/job.py` | `_cmd_job_budget` |
-| 250 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
+| 249 | `packages/orchestration/do_sequence.py` | `plan_order_job` |
 | 247 | `packages/orchestration/token_truth.py` | `build_token_truth` |
 | 236 | `packages/orchestration/job_evidence.py` | `create_manual_completion_bundle` |
 | 235 | `apps/cli/commands/job.py` | `_cmd_resume` |
@@ -329,8 +337,8 @@ with the code that calls it.
 | 159 | `packages/orchestration/run_manifest.py` | `validate_input_snapshot` |
 | 159 | `packages/orchestration/self_use_runner.py` | `run_next_self_use_item` |
 | 158 | `packages/orchestration/file_provenance.py` | `build_file_provenance` |
-| 158 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
-| 156 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
+| 157 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
+| 155 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
 | 155 | `packages/orchestration/task_injection.py` | `answer_injection_shortfall` |
 | 152 | `scripts/build_observability_index.py` | `build_observability_index` |
 | 151 | `packages/orchestration/ownership_phrases.py` | `ownership_sentence` |
@@ -366,7 +374,7 @@ with the code that calls it.
 | 131 | `packages/orchestration/run_manifest.py` | `validate_index_and_tree` |
 | 130 | `packages/orchestration/budget_guard.py` | `evaluate_budget` |
 | 129 | `packages/orchestration/test_runner.py` | `run_tests_local` |
-| 128 | `packages/orchestration/budget_guard.py` | `decode_persisted_budget_actuals` |
+| 104 | `packages/orchestration/budget_guard.py` | `decode_persisted_budget_actuals` |
 | 128 | `packages/runtimes/dev_server.py` | `classify_state` |
 | 127 | `packages/orchestration/pingpong_loop.py` | `export_pingpong_json` |
 | 127 | `packages/orchestration/stream_evidence.py` | `capture_stream_evidence` |
@@ -426,7 +434,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5339 | `packages/orchestration/pingpong_job.py` |
+| 5331 | `packages/orchestration/pingpong_job.py` |
 | 5231 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
@@ -440,12 +448,12 @@ with the code that calls it.
 | 1964 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1695 | `packages/orchestration/config.py` |
+| 1595 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
 | 1349 | `packages/orchestration/task_injection.py` |
-| 1183 | `packages/orchestration/decision_queue.py` |
+| 1182 | `packages/orchestration/decision_queue.py` |
 | 1199 | `packages/orchestration/context_compiler.py` |
 | 1168 | `packages/orchestration/mission_dossier.py` |
 | 1158 | `packages/orchestration/project_brain.py` |

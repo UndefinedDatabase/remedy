@@ -25,7 +25,7 @@ import re
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -2626,39 +2626,29 @@ def run_job(
     _last_ledger_money = None
     # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume.
     # Invalid or timezone-naive values block — never silently become now().
-    _run_started_at = datetime.now(timezone.utc)
+    # DECISION F310 D4: a resume adds the gap since the job's last record to the seconds it waited.
+    from packages.orchestration.budget_clock import BudgetClockError, resume_job_clock
     _first_run_already_set = bool(getattr(job, "first_running_at", ""))
-    if _first_run_already_set:
-        _fra_raw = job.first_running_at
-        try:
-            _fra_parsed = datetime.fromisoformat(_fra_raw)
-        except (ValueError, TypeError) as _fra_exc:
-            job.state = JOB_BLOCKED
-            job.error = (
-                f"corrupt_first_running_at: cannot parse {_fra_raw!r}: {_fra_exc}")
-            _persist_job(job)
-            return job
-        if _fra_parsed.tzinfo is None:
-            job.state = JOB_BLOCKED
-            job.error = (
-                f"corrupt_first_running_at: timezone-naive value {_fra_raw!r}")
-            _persist_job(job)
-            return job
-        _run_started_at = _fra_parsed
+    try:
+        _run_started_at, _waited_s = resume_job_clock(job, _prior_validated)
+    except BudgetClockError as _fra_exc:
+        job.state = JOB_BLOCKED
+        job.error = f"corrupt_first_running_at: {_fra_exc}"
+        _persist_job(job)
+        return job
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     # A malformed persisted budget MUST block — never silently continue as unlimited.
-    _job_budgets = None
-    if job.budgets is not None:
-        from packages.core.models import JobBudgets as _JobBudgets
-        try:
-            _job_budgets = _JobBudgets.model_validate(job.budgets)
-        except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
-            job.state = JOB_BLOCKED
-            job.error = f"corrupt_budget_state: {_budget_exc}"
-            _write_job_postmortem_record(job, _budget_exc)
-            _persist_job(job)
-            return job
+    # DECISION F310 D2: a limit the job leaves unset comes from `budget.*`, then its class's profile.
+    from packages.orchestration.budget_profiles import effective_job_budgets
+    try:
+        _job_budgets = effective_job_budgets(job)
+    except Exception as _budget_exc:  # noqa: BLE001 — corrupt budget state blocks the job, not runs unlimited
+        job.state = JOB_BLOCKED
+        job.error = f"corrupt_budget_state: {_budget_exc}"
+        _write_job_postmortem_record(job, _budget_exc)
+        _persist_job(job)
+        return job
 
     # F015 T003, DECISION F015 D4: a job runs exactly the plan its approval covered. Checked
     # before any workspace exists, and at every start, because every door that starts a job
@@ -2830,7 +2820,7 @@ def run_job(
                         job_id=job.job_id, project_id=_ledger_project))
                     counters = collect_counters_from_actuals(
                         _actuals,
-                        started_at=_run_started_at,
+                        started_at=_run_started_at + timedelta(seconds=_waited_s),
                         actual_sources=_sources,
                         **_money_kwargs(always=True),
                     )
@@ -2849,7 +2839,7 @@ def run_job(
             # R-0986: with no ledger figure, the run's own tally prices the job.
             counters = collect_counters_from_actuals(
                 _actuals,
-                started_at=_run_started_at,
+                started_at=_run_started_at + timedelta(seconds=_waited_s),
                 actual_sources=_sources,
                 **_money_kwargs(),
             )
@@ -3055,6 +3045,8 @@ def run_job(
             "started_at": _run_started_at.isoformat(),
             "actual_sources": tuple(sorted(_sources)),
             "unmeasured_call_count": _accumulated_unmeasured,
+            "waited_s": _waited_s,
+            "active_until": datetime.now(timezone.utc).isoformat(),
             **_money,
         }
 

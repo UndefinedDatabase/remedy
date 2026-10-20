@@ -17,10 +17,15 @@ CLIENT_EXECUTION_ANSWER_KEYS: tuple[str, ...] = (
 #: The keys under them; under `roles` each key is a role name.
 CLIENT_EXECUTION_KEY_TREE: dict[str, Any] = {
     "roles": {"*": {"default_provider": {}, "default_model": {}, "selectable_over_http": {}, "providers": {
-        "id": {}, "available": {}, "offered_over_http": {}, "isolation": {}, "not_offered_reason": {},
-        "models": {}}}},
+        "id": {}, "available": {}, "offered_over_http": {}, "isolation": {}, "class": {},
+        "not_offered_reason": {}, "models": {}}}},
     "budgets": {"order_header_caps": {}, "body_strings": {}, "an_order_needs_one_cap": {},
-                "pi_per_call": {"max_turns": {}, "max_input_tokens": {}}},
+                "pi_per_call": {"max_turns": {}, "max_input_tokens": {}},
+                "profiles": {
+                    "local": {"max_total_tokens": {}, "max_provider_calls": {},
+                              "max_wall_clock_minutes": {}},
+                    "paid": {"max_total_tokens": {}, "max_provider_calls": {},
+                             "max_wall_clock_minutes": {}, "max_cost_usd": {}}}},
     "verification": {"statuses": {}, "command": {}, "command_over_http": {}},
     "review_report": {"body_flag": {}, "cli_flag": {}, "zip_newest": {}},
     "phases": {"do_steps": {}, "story_steps": {}},

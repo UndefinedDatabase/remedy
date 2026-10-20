@@ -1310,7 +1310,8 @@ def test_the_decision_answer_trees_name_exactly_what_their_code_builds():
     trees = ANSWER_KEY_TREES["decision.resolve"]
     resolve = _function_def(decision, "_cmd_decision_resolve")
     # The `sr:` branch is a function of its own since F297 (R-1196), and its answer is read with it.
-    branches = (resolve, _function_def(decision, "_resolve_stop_reason_decision"))
+    branches = (resolve, _function_def(decision, "_resolve_stop_reason_decision"),
+                _function_def(decision, "_resolve_budget_decision"))
     sources: dict[str, set[str]] = {}
     for node in (node for branch in branches for node in ast.walk(branch)):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "emit_ok":
@@ -1327,7 +1328,7 @@ def test_the_decision_answer_trees_name_exactly_what_their_code_builds():
     # An extend answers the job's budgets after it, and the limits it raised by their names.
     assert trees["budgets"] is trees["raised"] is JOB_BUDGETS_KEY_TREE
     assert JOB_BUDGETS_KEY_TREE == _model_tree(JobBudgets)
-    assert _bound_sources(decision, "_cmd_decision_resolve", "raised") == {"result['raised']"}
+    assert _bound_sources(decision, "_resolve_budget_decision", "raised") == {"result['raised']"}
     [extended] = [node.value for node in _function_def(budget, "answer_budget_decision").body
                   if isinstance(node, ast.Return)]
     values = {key.value: ast.unparse(value) for key, value in zip(extended.keys, extended.values)}
@@ -1700,7 +1701,7 @@ def test_the_writer_replaces_only_the_generated_section(tmp_path):
 #: The sha256 of `tests/cli/test_machine_client_contract.py`, F295's gate test, as F295 accepted it
 #: and as F298 keeps it (R-1179). A change to that file is deliberate: it updates this digest in the
 #: same commit and its DECISION says why.
-F295_GATE_TEST_SHA256 = "45f761a03eb4405a2e12eb4f24210c7c33eb3aa3a5740c16b8ac2f07321778e1"
+F295_GATE_TEST_SHA256 = "dfe3d5b0f1d8d720fc4a0d2ff64c6ff3eeb67b3f69f1e0d5e3e9b1af8d768423"
 
 
 def test_f295s_gate_test_is_unchanged():

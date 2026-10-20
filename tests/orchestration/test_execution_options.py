@@ -34,6 +34,25 @@ def test_the_offer_names_every_role_and_never_a_secret_or_the_home_directory(off
     assert offer["review_report"]["body_flag"] == "capture_review" and "capture_review" in offer["order_flags"]
 
 
+def test_the_offer_names_both_budget_profiles_and_each_providers_class(offline_ollama, monkeypatch, tmp_path):
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    for name in [n for n in os.environ if n.startswith("REMEDY_BUDGET_")]:
+        monkeypatch.delenv(name)
+    monkeypatch.setattr("packages.orchestration.config._DEFAULT_USER_PATH", tmp_path / "user.toml")
+    monkeypatch.setattr("packages.orchestration.config._DEFAULT_PROJECT_PATH", tmp_path / "remedy.toml")
+
+    offer = EO.execution_capabilities()
+
+    assert offer["budgets"]["profiles"] == {
+        "local": {"max_total_tokens": 1500000, "max_provider_calls": 200, "max_wall_clock_minutes": 480},
+        "paid": {"max_total_tokens": None, "max_provider_calls": None, "max_wall_clock_minutes": None,
+                 "max_cost_usd": None},
+    }
+    for role in offer["roles"].values():
+        for provider in role["providers"]:
+            assert provider["class"] == ("local" if provider["id"] in ("pi", "ollama") else "paid")
+
+
 def test_the_claude_code_cli_is_never_offered_over_http_and_says_why(offline_ollama, tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     for role in ("builder", "reviewer", "repair", "planner"):
