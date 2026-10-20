@@ -279,7 +279,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — The Orb's insight: orders without file names (operator amendment amend1020-orb-insight)
 
-- [~] F312 — The scope guard knows orders without file names
+- [x] F312 — The scope guard knows orders without file names (T001–T003 complete; R-1369, R-1377, R-1378, R-1379, R-1380 and R-1382 resolved; R-1381 open — owned by F307; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f312r6e1001 · package remedy-review-20261021-011120-READY_FOR_REVIEW.zip · SHA-256 6794d8c3eea4f31999f98681d9a1b080fd8b48ce427fcc101fbcff54fddcf3ac · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a667ae7c44fad44d84224d946b325d2fd168859e)
 
 ## Tier 12 — The Orb's insight and the local-model budgets, continued (operator amendment amend1020-orb-insight)
 
