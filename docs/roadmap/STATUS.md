@@ -279,7 +279,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — The Orb's insight: orders without file names (operator amendment amend1020-orb-insight)
 
-- [ ] F312 — The scope guard knows orders without file names
+- [~] F312 — The scope guard knows orders without file names
 
 ## Tier 12 — The Orb's insight and the local-model budgets, continued (operator amendment amend1020-orb-insight)
 

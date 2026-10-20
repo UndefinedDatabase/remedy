@@ -1,24 +1,29 @@
-# Live Review — F310 Budgets that fit the provider, and one stop, one question
+# Live Review — F312 The scope guard knows orders without file names
 
-> Round-by-round review record, re-headed at the F310 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F055, whose STATUS
-> line went `[x]` on its own branch; pull request 338 merged it into `main` as `e688b30f3`. F055's
+> Round-by-round review record, re-headed at the F312 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F310, whose STATUS
+> line went `[x]` on its own branch; pull request 369 merged it into `main` as `0eda402fe`. F310's
 > last round was its closure round, whose verdict lives in its handback and its pull request, as
-> §4 item 13 of that file says of every branch's last round, so nothing is booked for it here.
+> §4 item 13 of that file says of every branch's last round, so nothing is booked for it here; the
+> reviewer read that round's diff `da0ad517c..c0ceeeffb` at this session's start and found it as
+> its handback states. The operator's commit `1c6a7f137` recorded the answer to Q19 as DECISION
+> F310 D9 after F310's acceptance and changed only `.agent/decisions.md` and
+> `.agent/operator_questions.md`; the session merged without a second suite run, as the session
+> after F058's acceptance merged pull request 332 over the same kind of commit (`b359efbe7`, Q17).
 > Only the heading, this paragraph and the Steps section below are rewritten; everything from the
-> Findings heading to the end of the file as it stood at `ee53c20b3` is carried forward
+> Findings heading to the end of the file as it stood at `0eda402fe` is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `ee53c20b3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> holds 87 ids, the lowest R-1246 and the highest R-1371; F310 owns R-1370 and R-1371.
+> open set at `0eda402fe`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
+> holds 87 ids, the lowest R-1246 and the highest R-1376; F312 owns R-1369.
 
 ## Steps
 
-THE ORDER BELOW FOLLOWS THE FEATURE FILE'S TASK SLICING. The first round claims F310, re-heads this
-record, records DECISIONs F310 D1 to D3, moves the registry's budget keys to a module of their own,
-and lands T001: the provider class, the two profiles, the run's limits read through them, and the
-execution offer that names them. The second round lands T002, the working wall clock, under
-DECISION F310 D4. The third lands T003, one stop and one question, under DECISION F310 D5. The
-fourth lands T004, the rebuilt lab stop and the page. Then the closure.
+THE ORDER BELOW FOLLOWS THE FEATURE FILE'S TASK SLICING. The first round claims F312, re-heads this
+record, records DECISIONs F312 D1 and D2, takes step (2) of `plan_order_job`'s boundary on the
+structure ledger, and lands T001: the three kinds of order, the task-plan guard reading the kind of
+the person's order, and a milestone's outline that no longer draws a fence. The second round lands
+T002, the question after two refusals, under DECISION F312 D3, and T003, the three lab orders as a
+fixture through the real walk. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this

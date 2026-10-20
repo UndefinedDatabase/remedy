@@ -1,21 +1,22 @@
-# Plan — F310 Budgets that fit the provider, and one stop, one question
+# Plan — F312 The scope guard knows orders without file names
 
 ## Goal
-A job's default limits come from the profile of its provider class, its wall clock measures work
-and not waiting, and a budget stop asks the operator exactly one question
-(`docs/roadmap/features/T12_F310.md`). Accepted PASS_WITH_RISKS on 2026-10-20.
+The scope guard tells three kinds of order apart and refuses a plan only for the kind that drew a
+fence; an order that names no file gives a plan, not a failure
+(`docs/roadmap/features/T2_F312.md`). F312 owns finding R-1369.
 
 ## Current Step
-Round 7 (session 1), the closing round: book round 6, register R-1376 with DECISION F310 D8
-(no rotation this closure), accept F310 in STATUS with the README sync and SU-065's
-`consumed_by`, and open the pull request, left unmerged.
+Round 1 (session 1): claim F312, re-head the ledger, DECISIONs F312 D1 and D2, step (2) of
+`plan_order_job`'s boundary (`_first_pass_task_plan`), and T001: `do_scope.order_scope_kind`,
+the task-plan guard reading the kind of the person's order, and `_step_shape` passing
+`scope_order=ctx.order`.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F310's pull
-   request; then Rule A5 proposes the next feature, F312.
-2. The next findings paydown, F307, books the twelve High findings R-1375 names and reconciles
-   the commit hook with the ledger rotation (R-1376).
+1. Round 2: T002, the question after two refusals of an open order, under DECISION F312 D3, and
+   T003, the three lab order texts as a fixture through the real walk in the `milestones` shape.
+2. The closure: the one full suite, the evidence, R-1369's resolution line, STATUS, the PR.
 
 ## Risks
-- An order's own caps still bind its jobs (DECISION F310 D3, operator question Q19).
-- The integrity check fails on High findings F310 does not own (DECISION F310 D7, Q20).
+- The records of the failed lab job were not read (the data root is not readable here); the
+  finding's text and the code are the evidence (DECISION F312 D1).
+- `plan_order_job` is a listed function: after the structural step it may not grow.
