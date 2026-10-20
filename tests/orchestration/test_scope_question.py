@@ -200,8 +200,8 @@ def test_apply_scope_answer_plans_the_job_with_both_names_as_tasks_in_order():
 
     assert apply_scope_answer(job, record) is True
     assert job.state == RunState.PLANNED
-    assert job.stop_reason is None
-    assert job.finished_at is None
+    assert job.stop_reason == ""
+    assert job.finished_at == ""
     assert job.task_plan is None
     assert [task_deliverable(t) for t in job.tasks] == ["style.css", "index.html"]
 
@@ -221,7 +221,7 @@ def test_answering_through_answer_task_decision_plans_the_job_with_both_tasks_in
 
     assert record is not None and record["status"] == "answered"
     assert job.state == RunState.PLANNED
-    assert job.stop_reason is None
+    assert job.stop_reason == ""
     assert job.task_plan is None
     assert [task_deliverable(t) for t in job.tasks] == ["style.css", "index.html"]
 
@@ -319,3 +319,96 @@ def test_the_question_jobs_prompt_trace_holds_at_least_two_task_plan_rows(tmp_pa
     assert trace_path.exists()
     rows = [json.loads(line) for line in trace_path.read_text().splitlines() if line.strip()]
     assert len([r for r in rows if r.get("role") == "task_plan"]) >= 2
+
+
+# ---------------------------------------------------------------------------
+# F312 R4 C3 — R-1379: the saved and reloaded answered job reads empty strings, not `None`.
+# R-1380: each of `apply_scope_answer`'s two guards gets a test that fails exactly one condition.
+# ---------------------------------------------------------------------------
+
+
+def test_the_saved_and_reloaded_answered_job_reads_empty_strings_not_none(tmp_path, monkeypatch):
+    """R-1379: `apply_scope_answer` must leave `JobPlan`'s string fields a string, not `None`,
+    or the saved-and-reloaded record carries a value its own type does not allow."""
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    job, decision_id = _build_stopped_question_job(tmp_path, monkeypatch)
+
+    record = answer_task_decision(
+        job, decision_id, answer="style.css", now=datetime.now(timezone.utc))
+    assert record is not None and record["status"] == "answered"
+    save_job_plan(job)
+
+    reloaded = load_job_plan(job.job_id)
+    assert reloaded.stop_reason == ""
+    assert reloaded.finished_at == ""
+    assert reloaded.state == RunState.PLANNED
+    assert [task_deliverable(t) for t in reloaded.tasks] == ["style.css"]
+
+
+def test_the_stop_reason_guard_alone_leaves_a_non_scope_job_unchanged():
+    """R-1380: a job NOT stopped by the scope question, holding a task decision whose question
+    happens to start with the marker, is unchanged — only the stop-reason guard is exercised,
+    the marker guard holding true throughout."""
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.scope_question import SCOPE_QUESTION_MARKER
+
+    task = TaskEntry(title="Do a thing")
+    job = JobPlan(job_title="t", mission="m", state=RunState.STOPPED,
+                 stop_reason="budget_exhausted", tasks=[task])
+    record = enqueue_task_decision(
+        job, task_id=task.task_id,
+        question=f"{SCOPE_QUESTION_MARKER} the planner's last refusal.",
+        now=datetime.now(timezone.utc))
+
+    answered = answer_task_decision(
+        job, record["decision_id"], answer="style.css", now=datetime.now(timezone.utc))
+
+    assert answered is not None and answered["status"] == "answered"
+    assert job.state == RunState.STOPPED
+    assert job.stop_reason == "budget_exhausted"
+    assert [t.task_id for t in job.tasks] == [task.task_id]
+
+
+def test_the_marker_guard_alone_leaves_a_scope_stopped_job_unchanged():
+    """R-1380: a job stopped BY the scope question, holding a second task decision whose
+    question does NOT carry the marker, is unchanged — only the marker guard is exercised, the
+    stop-reason guard holding true throughout."""
+    from datetime import datetime, timezone
+
+    from packages.core.models import RunState
+    from packages.orchestration.escalation import answer_task_decision, enqueue_task_decision
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.scope_question import (
+        SCOPE_QUESTION_MARKER,
+        SCOPE_QUESTION_STOP_REASON,
+    )
+
+    task_one = TaskEntry(title="The scope question's own task")
+    task_two = TaskEntry(title="A second, unrelated task")
+    job = JobPlan(job_title="t", mission="m", state=RunState.STOPPED,
+                 stop_reason=SCOPE_QUESTION_STOP_REASON, tasks=[task_one, task_two])
+    enqueue_task_decision(
+        job, task_id=task_one.task_id,
+        question=f"{SCOPE_QUESTION_MARKER} the planner's last refusal.",
+        now=datetime.now(timezone.utc))
+    second = enqueue_task_decision(
+        job, task_id=task_two.task_id, question="Proceed with the risky approach?",
+        now=datetime.now(timezone.utc))
+
+    answered = answer_task_decision(
+        job, second["decision_id"], answer="style.css", now=datetime.now(timezone.utc))
+
+    assert answered is not None and answered["status"] == "answered"
+    assert job.state == RunState.STOPPED
+    assert job.stop_reason == SCOPE_QUESTION_STOP_REASON
+    assert [t.task_id for t in job.tasks] == [task_one.task_id, task_two.task_id]
