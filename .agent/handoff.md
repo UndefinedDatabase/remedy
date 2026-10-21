@@ -1,173 +1,124 @@
-# Handback — F311 round 6
+# Handback — F311 round 7 (closing round)
 
 ## Session
 
-SESSION 1 of feature F311 · round 6 · rounds so far 6
+SESSION 1 of feature F311 · round 7 · rounds so far 7
 
 Context self-assessment: this session verified every prepared file's digest before using it,
-executed C1, C2, A1 to A3 and C3 exactly as the block ordered, and all three gates passed on
-their first run, with no stop condition met.
+executed C1 and C3 exactly as the block ordered with C2 correctly skipped per DECISION F311 D7,
+and all four gates passed on their first run, with no stop condition met.
 
-Fortschritt: ~95 % (everything but the closing round is done) — Schätzung
+Fortschritt: 100 % (F311 is accepted; its pull request waits for the next session's Open PR Gate)
+— Schätzung
 
 ## Range
 
-Review of `f3dd90844`..HEAD (C1, C2 below, then this commit, C3, which also carries this
-handback).
+Review of `c2e1db984`..HEAD (C1, then this commit, C3, which also carries this handback).
 
 ## Commits
 
-### 091f301c9 F311 R6 C1: book round 5, resolve R-1389, the plan
-121 insertions, 7 deletions.
+### 2f1a5a170 F311 R7 C1: book round 6, DECISION F311 D7, the plan, the block and the PR body
+175 insertions, 6 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f311-r6.md` | +113 (new file) | byte copy of `block.md` |
-| `.agent/plan.md` | +8/-7 | byte copy of `dry-plan.md` |
-| `.agent/live_review.md` | +4 | byte copy appending `src-ledger.md` (round 5's PASS verdict, R-1389 resolved) |
+| `.agent/authored/f311-r7.md` | +92 (new file) | byte copy of `block.md` |
+| `.agent/authored/f311-r7-pr_body.md` | +64 (new file) | byte copy of `src-pr_body.md` |
+| `.agent/live_review.md` | +2 | byte copy appending `src-ledger.md` (round 6's PASS verdict) |
+| `.agent/decisions.md` | +10 | byte copy appending `src-decisions.md` (DECISION F311 D7) |
+| `.agent/plan.md` | +7/-6 | byte copy of `dry-plan.md` |
 
-### a71cb79ac F311 R6 C2: the evidence script
-426 insertions.
+### This commit F311 R7 C3: accept F311 in STATUS with its README sync and the self-use queue
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f311-r6-create_f311_evidence.py` | +426 (new file) | byte copy of `create_f311_evidence.py` |
-
-### This commit F311 R6 C3: handback
-| Path | +/- | Reason |
-|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `dry-STATUS.md`, flips F311 to accepted |
+| `README.md` | +11/-2 | byte copy of `dry-README.md`, counts and Tier 12 list synced |
+| `scripts/self_use_queue.json` | +1/-1 | byte copy of `dry-self_use_queue.json`, SU-067 `consumed_by` F311 |
 | `.agent/handoff.md` | rewritten | this handback (a handback cannot table the commit that writes it) |
 
 ## External actions
 
-`git branch --show-current` read `feature/f311-insight` before every commit. No `gh` command,
-no worktree add/remove, no pull request (forbidden this round; none is open for this branch).
-Push after C2: `git push -u origin feature/f311-insight` — succeeded on the first attempt, no
-HTTP 500, no retry needed (`f3dd90844..a71cb79ac`). `python3 .remedy-wt/f311-r6/prep/launch.py
-evidence .remedy-wt/f311-r6-worker` then `python3 .remedy-wt/f311-r6/prep/wait.py evidence
-.remedy-wt/f311-r6-worker 50` — ended on the first wait, `exit 0 wall 822.4`. `python3
-.remedy-wt/f311-r6/prep/launch.py zip .remedy-wt/f311-r6-worker` then `python3
-.remedy-wt/f311-r6/prep/wait.py zip .remedy-wt/f311-r6-worker 50` — ended on the first wait,
-`exit 0 wall 9.1`; no sandbox-default-directory refusal, so the fallback launch was not needed.
-The push after this commit (C3) is ordered to run after it, so its outcome is reported in the
-final reply only.
+`git branch --show-current` read `feature/f311-insight` before every commit. Push after this
+commit: `git push origin feature/f311-insight` (outcome reported in the final reply only, as
+ordered). `gh pr create --base main --head feature/f311-insight --title "F311: the insight, what
+runs now, what the worker does, why it hangs" --body-file .agent/authored/f311-r7-pr_body.md`
+(outcome reported in the final reply only). Never merged.
 
 ## Verification
 
-Gates run once each.
+Gates run once each, before this commit (gates 1-4), gate 5 after the pull request.
 
-1. After C2: `git status --porcelain` → empty. Then `python3 .remedy-wt/f311-r6/prep/verify.py
-   .`: every line `True` except `absent	C3` (not yet made), last line `ALL True`.
-2. A2 (the evidence job), `python3 .remedy-wt/f311-r6/prep/launch.py evidence
-   .remedy-wt/f311-r6-worker` / `wait.py ... 50`, verbatim decisive lines:
+1. `git status --porcelain` → exactly ` M README.md`, ` M docs/roadmap/STATUS.md`,
+   ` M scripts/self_use_queue.json`. Then `python3 .remedy-wt/f311-r7/prep/verify.py . --worktree`:
+   every line `True`, `absent	C3`, last line `ALL True`.
+2. `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`:
    ```
-   exit 0 wall 822.4
-   head a71cb79ac8bad33355a0e5862c9a07dbc2e48b25
-   ancestry-path count 29
-   plain count 29
-   collected node ids 9545, deselected 177
-   red control: unsafe among the real ids 0 []
-   red control: planted id -> a local absolute path
-   pytest exit 0, {'passed': 9539, 'failed': 0, 'skipped': 6}, output_hash fd0ff5895b7fbd87e06af6c9b6536d81e40aa2b9115e42fc6e585b93f43540bb
-   validate_verification_tests problems [] passed 9539
-   is_valid_current_run True
-   validation_errors []
+   11	2	README.md
+   1	1	docs/roadmap/STATUS.md
+   1	1	scripts/self_use_queue.json
    ```
-   `head` equals C2's full sha; both ancestry counts equal (29 = 29); collected node ids 9545,
-   deselected 177, matching the reviewer's precheck exactly; red control unsafe count 0, planted
-   id a local absolute path; pytest exit 0, `failed` 0; `validate_verification_tests` problems
-   `[]`; `is_valid_current_run` `True`; `validation_errors` `[]`; overall exit 0.
-   A3 (the review package), verbatim decisive lines:
+3. `python3 .remedy-wt/f311-r7/prep/run_selection.py . .remedy-wt/f311-r7-worker/selection-output.txt`:
+   `paths 75`, `exit 0`, `3449 passed, 2 skipped in 19.71s`, no FAILED or ERROR line, no
+   `process(es) behind` line. SKIPPED lines:
    ```
-   exit 0 wall 9.1
-   PACKAGE_STATUS=READY_FOR_REVIEW
-   REVIEW_SUBJECT_ALIGNMENT=PASS
-   EVIDENCE_AUTHORITATIVE=true
-   ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20261021-041253-READY_FOR_REVIEW.zip
+   SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
+   SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
    ```
-   `zipfile.is_zipfile` on the package: `True`; `testzip()`: `None`. `.review_zip_manifest.json`
-   inside the package: `committed_review_subject` base `321f130f09d0e938cfe3bbb7049524598c9c1917`,
-   head `a71cb79ac8bad33355a0e5862c9a07dbc2e48b25` (C2's full sha) — both match the block exactly.
-3. After A3, before C3: `python3 -m apps.cli.main integrity check --json` → exit 1, `fail_count`
-   1, the one failing check `high_blockers_open` naming exactly the twelve ids of DECISION F310
-   D7 (`R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361,
-   R-1362`) and no other; `python3 -c "import scripts.rotate_live_review as r;
-   print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` → `87`; `git status
-   --porcelain` → empty.
+4. `python3 -m apps.cli.main integrity check --json` → exit 1, `fail_count` 1, the one failing
+   check `high_blockers_open` naming exactly the twelve ids of DECISION F310 D7 (`R-1335, R-1336,
+   R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`) and no other.
+   `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` → `87`.
+5. Pending: reported in the final reply, after the push and the pull request.
 
 ## Authored-text proofs
 
-All eight prepared files (`block.md`, `verify.py`, `digests.txt`, `create_f311_evidence.py`,
-`launch.py`, `wait.py`, `dry-plan.md`, `src-ledger.md`) matched their stated/listed sha256
-digests before use. C1's two byte copies and the ledger append were each proved equal by a
+All five prepared files used this round (`block.md`, `verify.py`, `run_selection.py`,
+`selection.txt`, `digests.txt`) matched their stated sha256 digests before use; the seven files
+`digests.txt` itself lists (`dry-STATUS.md`, `dry-README.md`, `dry-self_use_queue.json`,
+`dry-live_review.md`, `dry-decisions.md`, `dry-plan.md`, `src-pr_body.md`) likewise matched
+before use. C1's five byte copies/appends and C3's three byte copies were each proved equal by a
 Python reader before commit, and `verify.py`'s own checks confirm the same equality again: "C1
-the block copy", "C1 the plan", "C1 `.agent/live_review.md` is the base plus `src-ledger.md`"
-all read `True`. C2's byte copy ("C2 the evidence script copy") is likewise confirmed `True` by
-`verify.py`.
-
-## Evidence and package
-
-Evidence job id `f311r6e1001`. A2's lines (tool: `wait.py`, quoted above): `exit 0 wall 822.4`;
-`head a71cb79ac8bad33355a0e5862c9a07dbc2e48b25`; `ancestry-path count 29` / `plain count 29`;
-`collected node ids 9545, deselected 177`; `red control: unsafe among the real ids 0 []`; `red
-control: planted id -> a local absolute path`; `pytest exit 0, {'passed': 9539, 'failed': 0,
-'skipped': 6}`; `validate_verification_tests problems [] passed 9539`; `is_valid_current_run
-True`; `validation_errors []`.
-
-Package (tool: `wait.py`'s zip run, quoted above): name
-`remedy-review-20261021-041253-READY_FOR_REVIEW.zip`; SHA-256 (Python `hashlib.sha256` over the
-file) `ce16ffda6c47e2f361c8efc2fe012a46c7f167a2f05fe26feafc5757d2871d57`; directory
-`~/Repos/remedy-history/zips`; accepted head `a71cb79ac8bad33355a0e5862c9a07dbc2e48b25` (C2's
-full sha, from `.review_zip_manifest.json`'s `committed_review_subject.head_commit` inside the
-package, quoted above). `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`,
-`EVIDENCE_AUTHORITATIVE=true`.
-
-## Staging reclaim
-
-A1 (tool: `python3 -m apps.cli.main data reclaim --orphans`), quoted: `Reclaimable: nothing`;
-every other path is `(durable)`, never a refused/ephemeral candidate (`api`, `control`, `crash`,
-`evidence_exports`, `job_apply_records`, `job_evidence_index`, `job_logs`, `jobs`, `logs`,
-`memory`, `missions`, `projects`, `review_reports`, `roadmap`, `runs`, `serve`); `Would free 0 B
-in 0 paths — nothing deleted; re-run with --apply`. The preview listed no candidate, so `--apply`
-was skipped per the block's own instruction.
+the block copy", "C1 the pr_body copy", "C1 live_review equals dry-live_review", "C1 decisions
+equals dry-decisions", "C1 the plan copy" all read `True`; the worktree checks for
+`docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` against their dry files
+also read `True`.
 
 ## Deviations & assumptions
 
-None. C1, C2, A1 to A3 and C3 landed exactly as the block ordered, with no deviation from the
-commit sequence, the paths per commit, or the gate order. The evidence job and the review
-package each ran exactly once through `launch.py`/`wait.py`, each ending on the first `wait.py`
-call. The push after C2 succeeded on the first attempt with no HTTP 500, so the retry path was
-not exercised. The zip build did not hit a sandbox-default-directory refusal, so the fallback
-launch (`...-worker-zip2` / `...-zips`) was not needed and not attempted.
+None. C1 and C3 landed exactly as the block ordered, in the order ordered; C2 was correctly
+skipped per DECISION F311 D7 (no rotation commit, appended by C1). No gate ran more than once. No
+production or test file was touched; no file outside the paths named per commit was touched.
 
 ## For the operator, in plain sentences
 
-Before this feature closes, Remedy collected and checked the evidence it needs to show this
-closure's work was actually done: it reran the feature's test scope, confirmed none of the test
-names leaked anything sensitive, and confirmed every check the evidence packaging step runs
-came back clean. It then built the review package for this feature and it is ready for review,
-sitting in the operator's archive folder for review packages.
+A program such as the Orb can now ask Remedy what runs right now and look into one job's worker,
+its stage, its task, how long it has been silent, whether it is stuck and why, and what the
+operator can do about it. The worker for the lab's local model now keeps its last lines and the
+time of its last output, so the answer survives a restart. A value Remedy cannot know shows as
+empty instead of a guess. The whole test collection ran on the code that ships and passed. The
+review package is `remedy-review-20261021-041253-READY_FOR_REVIEW.zip`, in
+`~/Repos/remedy-history/zips`. A pull request is open and will be merged at the start of the next
+session unless the operator merges it earlier. One question waits for the operator, already
+answered with the session's recommendation.
 
 ## Next
 
-In order: Phase 1 rule 1 (`.agent/STOP`) — absent, no action needed; rule 2, the Open PR Gate —
-no pull request is open for this branch yet; the reviewer reviews round 6 and books its verdict
-in the next round's first commit; the closing round: the rotation or its recorded skip,
-SU-067's `consumed_by`, the STATUS flip with the README sync, and the pull request, left
-unmerged. Operator questions open: 1. Open findings: 87 (gate 3, rule `open_finding_ids`, this
-commit).
+Phase 1 rule 1 (`.agent/STOP`) — absent, no action needed; the Open PR Gate, which merges F311's
+pull request in the NEXT session and never in this one; Rule A5, which proposes F313. Operator
+questions open: 1. Open findings: 87 (gate 4, rule `open_finding_ids`, commit `2f1a5a170`).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `091f301c9` |
-| C2 | done | `a71cb79ac` |
-| A1 | done | preview: nothing reclaimable, `--apply` skipped |
-| A2 | done | evidence job `f311r6e1001`, exit 0 |
-| A3 | done | `PACKAGE_STATUS=READY_FOR_REVIEW` |
+| C1 | done | `2f1a5a170` |
+| C2 | skipped | no rotation commit: DECISION F311 D7, appended by C1 |
 | C3 | done | this commit |
-| Gate 1 | done | every line `True`, last `ALL True` |
-| Gate 2 | done | A2 exit 0, A3 `READY_FOR_REVIEW` |
-| Gate 3 | done | `fail_count` 1 on the standing twelve; open findings `87` |
+| Gate 1 | done | every line `True`, `absent C3`, last `ALL True` |
+| Gate 2 | done | numstat reported above |
+| Gate 3 | done | exit 0, 3449 passed, 2 skipped, no FAILED/ERROR/behind |
+| Gate 4 | done | `fail_count` 1 on the standing twelve; open findings 87 |
+| Gate 5 | pending | reported in the final reply only |
 | Push | pending | reported in the final reply only |
+| Pull request | pending | reported in the final reply only |
