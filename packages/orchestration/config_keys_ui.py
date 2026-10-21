@@ -1,9 +1,11 @@
-"""The write door's key of the config registry (finding R-1264).
+"""The write door's key and the insight's stall threshold of the config registry.
 
 Moved unchanged out of `packages/orchestration/config.py`, whose `_CONFIG_KEY_SPECS` splices
 `UI_KEY_SPECS` in at the keys' own place, so the registry and the guide it renders keep their
 order. `ui.host` and `ui.port`, the old cockpit server's bind keys, were deleted with it
-(DECISION amend1015f D19); the door's rate limit stays under its old name.
+(DECISION amend1015f D19); the door's rate limit stays under its old name. `insight.stall_seconds`
+joined it for F311 (DECISION F311 D3), because `config.py` holds its structure row and the
+insight is read by the same clients as the door.
 """
 
 from __future__ import annotations
@@ -25,5 +27,18 @@ UI_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=int,
         default=30,
+    ),
+    ConfigKeySpec(
+        key="insight.stall_seconds",
+        env_var="REMEDY_INSIGHT_STALL_SECONDS",
+        description=(
+            "Seconds a running job's worker may stay silent before the answers "
+            "of `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` call it "
+            "stalled (DECISION F311 D3). 300 is the default because one answer "
+            "of a local model can take minutes on a laptop, while five minutes "
+            "without a single line from a live worker is worth a look."
+        ),
+        value_type=int,
+        default=300,
     ),
 )
