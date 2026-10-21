@@ -31003,3 +31003,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: no code path can create a new m
 ALTERNATIVES CONSIDERED: (a) routing the gauntlet now, REJECTED for the evidence layout above; (b) deleting the readers now, REJECTED because a legacy record the operator has not folded would then fail to read.
 
 HOW TO REVERSE: restore `create_mission`'s keyword and the tests from git history, and delete this paragraph.
+
+## DECISION F307 D13 — T005 opens with `pingpong_loop.py`'s structural step (3), the provider call to a module of its own, and R-1277 lands there (2026-10-21, R-1277)
+
+THE PROBLEM: T005's five findings sit in the provider call of `packages/orchestration/pingpong_loop.py`, a file the structure ledger lists at 5,192 lines, whose ratchet lets no edit add a line; R-1276 needs room to book one row per real invocation, and R-1277 changes the governor seam inside `_call_with_retry`, itself a listed function. The file's boundary in `docs/system/structure-ledger-v1.md` named no home for the provider call.
+
+THE DECISION: (1) The boundary gains "the provider call with its retry and its booking", and step (3) moves `ProviderAttempt`, `_begin_stream_call`, `_offer_stable_prefix`, `_record_attempt`, `_record_rate_limit_wait` and `_call_with_retry` verbatim to `packages/orchestration/pingpong_provider_call.py`, which the loop imports them from; no alias stays behind, every test imports them from the new module, and the backoff sleep's patch target moves with the code that sleeps. `provider_failure_status`, `shared_call_id`, `finalized_call_context`, `_record_call_failure` and `_stream_containment_root` stay, beside the run that calls them, so the commit stays one reviewable move. (2) R-1277: a retry observes the failed call's rate limit and waits on the provider that answered it, `out.provider`, falling back to the configured provider when an answer names none; the first call's pacing keeps the configured provider, because nothing has answered yet. Every provider Remedy creates answers under the same name a role configures, so a call with no backup link waits on the same slot as before.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: when a backup model is rate limited, Remedy now waits for that backup model's limit to pass, instead of booking the wait to the model it stood in for.
+
+ALTERNATIVES CONSIDERED: (a) moving the failure status, the call identity and the post-mortem as well, REJECTED for this commit because it would double the move for no finding that needs it; (b) waiting on both slots, REJECTED because the configured provider was never rate limited.
+
+HOW TO REVERSE: move the six names back into `pingpong_loop.py` from git history, restore the ledger rows and pins, pass `provider` to the observation and the wait again, and delete this paragraph.
