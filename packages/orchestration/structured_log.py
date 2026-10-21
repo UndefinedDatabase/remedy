@@ -49,6 +49,16 @@ DEFAULT_LOG_MAX_BYTES = 10_000_000
 # The rotated files kept when `logging.backup_count` does not read as an integer.
 DEFAULT_LOG_BACKUP_COUNT = 5
 
+# The smallest rotation size accepted: 0 would be a file that never rotates (R-1312, DECISION F307 D2).
+MIN_LOG_MAX_BYTES = 1024
+
+# The fewest rotated files kept: 0 would truncate the file at each rotation (R-1312).
+MIN_LOG_BACKUP_COUNT = 1
+
+# The loggers every Remedy module logs under; only these are lowered to the configured level,
+# so a library's INFO never reaches the file (R-1293, DECISION F307 D2).
+REMEDY_LOGGER_NAMES: tuple[str, ...] = ("packages", "apps")
+
 _KNOWN_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 # The marker on every handler this module installs, so a reset removes only its own.
@@ -69,8 +79,9 @@ _CONTEXT_VARS: dict[str, ContextVar[str | None]] = {
     "run_id": remedy_log_run_id,
 }
 
-# The root logger's level before the first configure since the last reset; None when not saved.
-_SAVED_ROOT_LEVEL: list[int] = []
+# The levels of `REMEDY_LOGGER_NAMES` before the first configure since the last reset; None when
+# not saved.
+_saved_logger_levels: dict[str, int] | None = None
 
 
 # Binds ids for the code inside the block; an argument left None leaves that id as it was.
@@ -232,9 +243,16 @@ def configure_structured_logging(
     as_json = bool(resolved.get("logging.json_lines"))
     max_bytes = _int_or_default(resolved.get("logging.max_bytes"), DEFAULT_LOG_MAX_BYTES)
     backup_count = _int_or_default(resolved.get("logging.backup_count"), DEFAULT_LOG_BACKUP_COUNT)
+    raised = [
+        (key, value, floor) for key, value, floor in (
+            ("logging.max_bytes", max_bytes, MIN_LOG_MAX_BYTES),
+            ("logging.backup_count", backup_count, MIN_LOG_BACKUP_COUNT),
+        ) if value < floor
+    ]
+    max_bytes = max(max_bytes, MIN_LOG_MAX_BYTES)
+    backup_count = max(backup_count, MIN_LOG_BACKUP_COUNT)
 
     root_logger = logging.getLogger()
-    _SAVED_ROOT_LEVEL.append(root_logger.level)
     _install_stream_handler(root_logger)
 
     path = logs_dir(root) / LOG_FILE_NAME
@@ -247,10 +265,21 @@ def configure_structured_logging(
     setattr(handler, _MARKER, True)
     root_logger.addHandler(handler)
 
-    root_logger.setLevel(min(level, logging.WARNING))
+    _lower_remedy_loggers(min(level, logging.WARNING))
     if unknown_name is not None:
         logging.getLogger(__name__).warning("unknown logging.level %r; INFO is used", unknown_name)
+    for key, value, floor in raised:
+        logging.getLogger(__name__).warning("%s %d is below its floor; %d is used", key, value, floor)
     return path
+
+
+# Saves the levels of Remedy's own loggers and lowers them; the root logger, and with it every
+# library's logger, keeps its level (R-1293). The terminal still gets WARNING at any file level.
+def _lower_remedy_loggers(level: int) -> None:
+    global _saved_logger_levels
+    _saved_logger_levels = {name: logging.getLogger(name).level for name in REMEDY_LOGGER_NAMES}
+    for name in REMEDY_LOGGER_NAMES:
+        logging.getLogger(name).setLevel(level)
 
 
 # The terminal's handler: the bare message at WARNING and above, file-only records left out.
@@ -267,21 +296,21 @@ def _install_stream_handler(root_logger: logging.Logger) -> None:
 # configuration itself cannot be read (operator amendment amend1014-luna-mission-fixes B.1).
 def configure_stream_logging_only() -> None:
     reset_structured_logging()
-    root_logger = logging.getLogger()
-    _SAVED_ROOT_LEVEL.append(root_logger.level)
-    _install_stream_handler(root_logger)
+    _install_stream_handler(logging.getLogger())
 
 
-# Removes and closes every handler this module installed and restores the root level it found.
+# Removes and closes every handler this module installed and restores the logger levels it found.
 def reset_structured_logging() -> None:
+    global _saved_logger_levels
     root_logger = logging.getLogger()
     for handler in list(root_logger.handlers):
         if getattr(handler, _MARKER, False):
             root_logger.removeHandler(handler)
             handler.close()
-    if _SAVED_ROOT_LEVEL:
-        root_logger.setLevel(_SAVED_ROOT_LEVEL[0])
-        _SAVED_ROOT_LEVEL.clear()
+    if _saved_logger_levels is not None:
+        for name, saved in _saved_logger_levels.items():
+            logging.getLogger(name).setLevel(saved)
+        _saved_logger_levels = None
 
 
 # The log files of the folder, oldest first: `remedy.log.<n>` by descending n, then `remedy.log`.

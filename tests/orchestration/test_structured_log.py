@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import logging.handlers
 import os
 import pathlib
 import re
@@ -11,6 +12,7 @@ import stat
 
 import pytest
 
+from packages.orchestration import structured_log as structured_log_module
 from packages.orchestration.config import load_config
 from packages.orchestration.run_log import RunLogWriter
 from packages.orchestration.structured_log import (
@@ -21,6 +23,9 @@ from packages.orchestration.structured_log import (
     LOG_CONTEXT_KEYS,
     LOG_FIELD_NAMES,
     LOG_FILE_NAME,
+    MIN_LOG_BACKUP_COUNT,
+    MIN_LOG_MAX_BYTES,
+    REMEDY_LOGGER_NAMES,
     bind_log_context,
     configure_structured_logging,
     current_log_context,
@@ -31,6 +36,8 @@ from packages.orchestration.structured_log import (
 )
 
 CHILD = logging.getLogger("packages.orchestration.fixture")
+APPS_CHILD = logging.getLogger("apps.cli.fixture")
+LIBRARY = logging.getLogger("fixture_library.client")
 TS_SHAPE = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
 SECRET_PARTS = (
     "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
@@ -224,20 +231,62 @@ def test_configuring_twice_leaves_two_handlers_and_one_line_per_record(tmp_path)
     assert len(_lines(path)) == 1
 
 
-def test_reset_removes_its_handlers_keeps_foreign_ones_and_restores_the_level(tmp_path):
+def test_reset_removes_its_handlers_keeps_foreign_ones_and_restores_the_levels(tmp_path):
+    """R-1293 and R-1312, DECISION F307 D2: the setup lowers Remedy's two loggers, never the
+    root, and a reset restores both and leaves nothing saved."""
     root_logger = logging.getLogger()
     foreign = logging.NullHandler()
     root_logger.addHandler(foreign)
-    before = root_logger.level
+    before = {name: logging.getLogger(name).level for name in ("", *REMEDY_LOGGER_NAMES)}
     try:
         _setup(tmp_path, 'level = "DEBUG"\n')
-        assert root_logger.level == logging.DEBUG
+        assert REMEDY_LOGGER_NAMES == ("packages", "apps")
+        assert [logging.getLogger(name).level for name in REMEDY_LOGGER_NAMES] == [logging.DEBUG] * 2
+        assert root_logger.level == before[""]
         reset_structured_logging()
         assert not [h for h in root_logger.handlers if getattr(h, "_remedy_structured_log", False)]
         assert foreign in root_logger.handlers
-        assert root_logger.level == before
+        assert {name: logging.getLogger(name).level for name in before} == before
+        assert structured_log_module._saved_logger_levels is None
     finally:
         root_logger.removeHandler(foreign)
+
+
+def test_a_library_info_stays_out_of_the_file_while_remedy_info_is_written(tmp_path):
+    """R-1293: a library's logger keeps the root's level, so only its warning reaches the file."""
+    root_logger = logging.getLogger()
+    before = root_logger.level
+    root_logger.setLevel(logging.WARNING)
+    try:
+        _, path = _setup(tmp_path)
+        LIBRARY.info("library chatter")
+        CHILD.info("packages line")
+        APPS_CHILD.info("apps line")
+        LIBRARY.warning("library warning")
+        messages = [json.loads(line)["message"] for line in _lines(path)]
+        assert messages == ["packages line", "apps line", "library warning"]
+    finally:
+        root_logger.setLevel(before)
+
+
+def test_an_error_level_keeps_a_remedy_warning_on_the_terminal_and_out_of_the_file(tmp_path, capsys):
+    _, path = _setup(tmp_path, 'level = "ERROR"\n')
+    CHILD.warning("shown, not written")
+    CHILD.error("shown and written")
+    assert capsys.readouterr().err.splitlines() == ["shown, not written", "shown and written"]
+    assert [json.loads(line)["message"] for line in _lines(path)] == ["shown and written"]
+
+
+def test_a_rotation_setting_below_its_floor_is_raised_with_one_warning_each(tmp_path, capsys):
+    """R-1312, DECISION F307 D2: 0 would be a file that never rotates, or one truncated."""
+    _setup(tmp_path, "max_bytes = 0\nbackup_count = 0\n")
+    (handler,) = [h for h in logging.getLogger().handlers
+                  if isinstance(h, logging.handlers.RotatingFileHandler)]
+    assert (handler.maxBytes, handler.backupCount) == (MIN_LOG_MAX_BYTES, MIN_LOG_BACKUP_COUNT) == (1024, 1)
+    assert capsys.readouterr().err.splitlines() == [
+        "logging.max_bytes 0 is below its floor; 1024 is used",
+        "logging.backup_count 0 is below its floor; 1 is used",
+    ]
 
 
 def test_a_root_that_cannot_be_written_drops_lines_silently_and_keeps_the_error_stream(
