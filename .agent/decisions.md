@@ -30907,3 +30907,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a backup model that answers wit
 ALTERNATIVES CONSIDERED: (a) walking on to the next link after a link that timed out, REJECTED because a timeout is the transport retries' to own, as DECISION F058 D2 states; (b) a stop check passed to `create_role_provider` in this round, REJECTED because every caller of it sits in a listed function of `pingpong_loop.py`; (c) keeping the old report sentence, REJECTED because "could be reached" is false of a backup that answered with a timeout.
 
 HOW TO REVERSE: restore `model_failover.py`'s two loops, its four properties and its key literals from git history, delete `provider_names.py` and restore `do_cmd.py`'s own set, and delete this paragraph.
+
+## DECISION F307 D5 — the slices that edit no listed function or file come first; R-1280 joins round 4 and also repairs the text log line (2026-10-21)
+
+THE PROBLEM: T005 needs a stop check and a per-link stream state inside `run_pingpong`, `_call_with_retry` and the `ClaudeCliProvider` constructor, all of which `docs/system/structure-ledger-v1.md` lists, so it cannot start before a structural step draws their boundary; the same holds for T006, T008, T009, T013 and T015 to T020, which edit `pingpong_job.py`, `grouped.py`, `ui_server.py`, `public_api.py`, `client_digest.py` or `pingpong_provider.py`. T014, T010, T011 and the module-local half of T007 edit no listed function or file. R-1280 names, besides the crash report, `TextLogFormatter` of `packages/orchestration/structured_log.py`, which collapses a whole log line the same way.
+
+CHOSEN: (1) The order from round 4 on is T014 with R-1280, then the rest of T007 (R-1290 and R-1292, then R-1291 once `doctor_core_report`'s boundary is drawn), T010, T011, T012, then the listed-file slices in their written order, each with its structural step first: T005, T006, T008, T009, T013, T015 to T020, then T021. (2) R-1280: the crash report redacts its command, its error and each entry of its traceback on its own, so a private key hides only the part it is in, and the time, version, command, digest and every other frame survive; `TextLogFormatter` redacts the message and the exception on their own, so the time, level, logger and ids of a line survive.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a crash report or a plain-text log line whose error mentions a private key now keeps everything except that error.
+
+ALTERNATIVES CONSIDERED: (a) keeping the written order and opening T005 with its structural step now, REJECTED because the module-local slices need no such step and pay down findings sooner; (b) redacting every line of the report on its own, REJECTED because a private key spans several lines and only its first one names it.
+
+HOW TO REVERSE: restore the order of DECISION F307 D1, redact the assembled report and line again, and delete this paragraph.
