@@ -22,6 +22,7 @@
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | autonomy levels | [autonomy-levels-v1.md](system/autonomy-levels-v1.md) | system |
+| permission matrix | [permission-matrix-v1.md](system/permission-matrix-v1.md) | system |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
@@ -49,7 +50,7 @@
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
 | public HTTP API | [public-http-api-v1.md](system/public-http-api-v1.md) | system |
-| API versions 1.17-1.23 | [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | system |
+| API versions 1.17-1.24 | [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | system |
 | recorded client answers | [client-answers-v1/](system/client-answers-v1/) | system |
 | mission upkeep | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | system |
 | missions panel | [missions-panel-user-guide-v1.md](archive/missions-panel-user-guide-v1.md) | archive |
@@ -119,7 +120,7 @@ Specifications and design documents for the built system.
 | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, what Remedy never does on a machine order, and `remedy client interface`, which prints the interface as data read from the code; the page's last section is that interface, generated |
 | [review-reports-v1.md](system/review-reports-v1.md) | Review reports: `remedy do run --capture-review` and the API's `capture_review` leave one JSON report per walk under the data root's `review_reports/`, written at the start and finished however the walk ends; `make_review_zip.sh` packages the newest ten with an index |
 | [public-http-api-v1.md](system/public-http-api-v1.md) | The public HTTP API: routes under `/api/v1` on the supervisor's socket and its TCP port, each answering what its twin command answers with `--json`, the bearer token, the version and deprecation rule, the exclusion list, and a route table generated from the registry |
-| [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | The public API and machine client interface from 1.17 to 1.23: every route, story key, story word, insight word and order phase with the version that added it, and each version's value changes of existing fields; `tests/orchestration/test_api_release_matrix.py` holds it to the code |
+| [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | The public API and machine client interface from 1.17 to 1.24: every route, story key, story word, insight word and order phase with the version that added it, and each version's value changes of existing fields; `tests/orchestration/test_api_release_matrix.py` holds it to the code |
 | [client-answers-v1/](system/client-answers-v1/) | Answers recorded from the real client commands (`GET /api/v1/now`, one job's insight and story) for a client's own tests, such as the universe's kit; `scripts/record_client_answers.py` records them and its `--check`, which a test runs, holds them current |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [mission-upkeep-v1.md](system/mission-upkeep-v1.md) | A mission's upkeep: the project's ledger of what its jobs left open, the cadence of an upkeep job after every fifth completed job, the fixed rules of what it carries, and the one recorded way to skip it |
@@ -127,6 +128,7 @@ Specifications and design documents for the built system.
 | [model-failover-v1.md](system/model-failover-v1.md) | Model failover: a role's backup models, the hard rules every link obeys, when a call fails over, the cooldown, the session guard, and what the run record and report show |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
+| [permission-matrix-v1.md](system/permission-matrix-v1.md) | What the work Remedy runs may do at each autonomy level: the eight actions by the levels L2 to L5, the one check every place asks, the push switch, the decision that approves a dependency change or a deletion, and the record of approvals |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
 | [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
 | [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |

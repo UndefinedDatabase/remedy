@@ -28,6 +28,7 @@ from packages.orchestration.autonomy_gate import (
 )
 from packages.orchestration.config import load_config
 from packages.orchestration.data_paths import data_class_dir
+from packages.orchestration.permission_matrix import permission_status_rows
 
 EXPECTED_MATRIX: dict[tuple[str, str], bool] = {
     ("manual", "L2"): True,
@@ -566,6 +567,7 @@ def test_summary_on_a_fresh_data_root_is_the_default_with_no_deferrals(tmp_path)
     root = tmp_path / "data"
     assert autonomy_status_summary(cfg, root=root) == {
         "level": "L2", "config_path": None, "error": None, "deferred_starts": 0,
+        "push_allowed": True, "permissions": permission_status_rows("L2", push_allowed=True),
     }
     assert not (root / "autonomy").exists()
 

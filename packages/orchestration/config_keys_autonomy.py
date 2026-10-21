@@ -128,4 +128,16 @@ AUTONOMY_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=1.0,
     ),
+    ConfigKeySpec(
+        key="autonomy.allow_push",
+        env_var="REMEDY_AUTONOMY_ALLOW_PUSH",
+        description=(
+            "Whether Remedy may push to a project's remote at all. When false, every push is refused "
+            "at every autonomy level; when true, every push still needs your approval of that one "
+            "push, such as the push flag of your own command. Set it in remedy.toml, never in the "
+            "environment (DECISION F141 D1)."
+        ),
+        value_type=bool,
+        default=True,
+    ),
 )

@@ -751,6 +751,17 @@ end the response with:
   resolved, is item 34's reading of the code the order reaches; and R-1391, a docstring that said
   more than its command does, is item 34's reading of the code a sentence describes. The list
   stays at 34 items.
+  Consolidated again at F141's closure on 2026-10-21: nothing joined and no two items were merged,
+  because none of F141's three lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  structural move ordered as a span that began before a `try:` and ended inside it is item 18's
+  reading of an ordered recipe against the property it must establish, here code that parses; a
+  keyword added to a function without searching the tests for a stand-in that replaces it is item
+  34's reading of the tests that already reach the code an order changes; and a reviewer's
+  `verify.py` that matched a file name as a substring of a longer one is item 18's again. Its seven
+  findings were each repaired inside the feature: R-1395 and R-1397, a field the block ordered as
+  citations and grants recorded beside a refusal, are item 34's reading of the code the order
+  reaches; and R-1396, R-1398, R-1399, R-1400 and R-1401 are wiring no test held, each found by the
+  reviewer's mutations as the review loop already requires. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

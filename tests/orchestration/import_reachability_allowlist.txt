@@ -99,6 +99,7 @@ packages.orchestration._symbols
 packages.orchestration.agent_loop
 packages.orchestration.agent_run_trace
 packages.orchestration.api_clients
+packages.orchestration.apply_permissions
 packages.orchestration.approval_queue
 packages.orchestration.archive_plan
 packages.orchestration.artifact_contract_gate
@@ -118,6 +119,7 @@ packages.orchestration.budget_profiles
 packages.orchestration.budget_resolution
 packages.orchestration.budget_stop
 packages.orchestration.builder_bridge
+packages.orchestration.builder_context
 packages.orchestration.builder_models
 packages.orchestration.burn_detector
 packages.orchestration.call_identity
@@ -277,6 +279,7 @@ packages.orchestration.patch_apply
 packages.orchestration.patch_intent
 packages.orchestration.path_utils
 packages.orchestration.pause_control
+packages.orchestration.permission_matrix
 packages.orchestration.permissions
 packages.orchestration.pi_events
 packages.orchestration.pi_loop_limits

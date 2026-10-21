@@ -1,21 +1,21 @@
-# Plan — F078 Autonomy levels
+# Plan — F141 Permission matrix per autonomy level
 
 ## Goal
-A configured autonomy level, `L2` to `L5`, states what Remedy may start on its own; one shared
-check answers every starting seam from a sixteen-cell matrix, a level of `L3` or higher needs the
-passed gauntlet, every level change needs a decision record, and the level is visible where it
-matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D9). Accepted PASS_WITH_RISKS on
-2026-10-21.
+What running work may DO becomes one enforced table: eight actions by F078's levels `L2` to `L5`,
+answered by one check in `packages/orchestration/permission_matrix.py` that every seam calls, with
+a test per cell, answers that cite their cell, audited approvals of an instance, a table rendered
+from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DECISIONs F141 D1
+to D8).
 
 ## Current Step
-Round 11 (session 2), the closing round: book round 10 and resolve R-1394, DECISION F078 D9 (no
-rotation this closure), the Built State brought current, accept F078 in STATUS with the README sync
-and SU-069's `consumed_by`, and open the pull request, left unmerged.
+Round 11 (session 2), the closing round (`docs/roadmap/STATUS_closure_protocol.md` steps 4 and 5):
+book round 10, the Built State brought current, no rotation (DECISION F141 D8), F141 accepted in
+STATUS with the README sync and `SU-070`'s `consumed_by`, and the pull request, left unmerged.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F078's pull
-   request; then Rule A5 proposes the next feature, F141.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F141's pull
+   request; Rule A5 proposes the next feature.
 
 ## Risks
-- The integrity check fails on High findings F078 does not own (DECISION F310 D7, Q20).
-- The first branch `feature/f078-autonomy-levels` stays on the remote until the operator deletes it.
+- The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
+- R-1403 is owned by F307 and stays open at F141's closure.

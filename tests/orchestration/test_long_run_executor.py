@@ -920,10 +920,13 @@ class TestJobRunCommand:
 
         seen: dict = {}
 
-        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name, json_output=False):
+        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name, json_output=False,
+                          job_id=None, yes_flag="--yes"):
             seen["estimate"] = estimate
             seen["yes"] = yes
             seen["command_name"] = command_name
+            seen["job_id"] = job_id
+            seen["yes_flag"] = yes_flag
             return True
 
         monkeypatch.setattr("apps.cli.cost_preview_confirm.confirm_cost_preview", fake_confirm)
@@ -933,6 +936,8 @@ class TestJobRunCommand:
         assert seen["estimate"].band_usd_high is None
         assert seen["yes"] is True
         assert seen["command_name"] == "job.resume"
+        assert seen["yes_flag"] == "--unattended"
+        assert seen["job_id"] == "abc12345"
         assert ran == ["abc12345"]
 
 

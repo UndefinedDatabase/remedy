@@ -292,7 +292,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 7 — Luna gate C: permissions (operator ruling amend1006-luna-control-plane)
 
-- [ ] F141 — Permission matrix per autonomy level
+- [x] F141 — Permission matrix per autonomy level (T001–T003 complete; R-1395, R-1396, R-1397, R-1398, R-1399, R-1400, R-1401 and R-1402 resolved; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f141r10e1001 · package remedy-review-20261021-131628-READY_FOR_REVIEW.zip · SHA-256 c8f302dbefe31863d6d3509858eb3d6fff2abe56c0648b3d78b03cd005611d26 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 23e8f8244bc15db7df28c0b1f28086c289a46fcb)
 
 ## Tier 3 — Luna gate C: the certificate (operator ruling amend1006-luna-control-plane)
 

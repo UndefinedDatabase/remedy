@@ -12,9 +12,25 @@ import pytest
 
 from apps.cli import cost_preview_confirm as cpc
 from packages.orchestration.cost_preview import CostBandEstimate
+from packages.orchestration.data_paths import job_dir, resolve_data_root
+from packages.orchestration.permission_matrix import JOB_LEVEL_FILENAME, PERMISSION_GRANTS_FILENAME
 
 AVAILABLE = CostBandEstimate(0.16, 2.40, "class defaults (low/high) x price=0.02", {})
 UNAVAILABLE = CostBandEstimate(None, None, "estimate_unavailable", {})
+
+
+def _pin_level(root, job_id: str, level: str) -> None:
+    """Pin ``job_id``'s autonomy level under ``root``, as `pin_job_level` would write it."""
+    folder = job_dir(job_id, root)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / JOB_LEVEL_FILENAME).write_text(json.dumps({"level": level}), encoding="utf-8")
+
+
+def _grant_lines(root) -> list[dict]:
+    path = root / "autonomy" / PERMISSION_GRANTS_FILENAME
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 class TestRenderEstimateLine:
@@ -109,6 +125,111 @@ class TestUnavailableIsTreatedAsExpensive:
         result = cpc.confirm_cost_preview(
             UNAVAILABLE, confirm_above_usd=999999.0, yes=True, command_name="do")
         assert result is True
+
+
+class TestAsksThePermissionMatrix:
+    """DECISION F141 D5 (2): a proceeding expensive estimate asks `expensive`, auditing the
+    approval that let it through. A data root under `tmp_path`, so nothing here touches the
+    real one."""
+
+    def test_yes_with_a_job_pinned_at_l2_records_one_flag_grant(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        root = resolve_data_root()
+        _pin_level(root, "job-l2", "L2")
+
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=True, command_name="job.resume",
+            job_id="job-l2")
+
+        assert result is True
+        lines = _grant_lines(root)
+        assert len(lines) == 1
+        line = lines[0]
+        assert line["action"] == "expensive"
+        assert line["approval_kind"] == "flag"
+        assert line["approval_ref"] == "--yes"
+        assert line["job_id"] == "job-l2"
+
+    def test_yes_flag_unattended_records_that_ref(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        root = resolve_data_root()
+        _pin_level(root, "job-l2", "L2")
+
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=True, command_name="job.resume",
+            job_id="job-l2", yes_flag="--unattended")
+
+        assert result is True
+        lines = _grant_lines(root)
+        assert len(lines) == 1
+        assert lines[0]["approval_ref"] == "--unattended"
+
+    def test_prompt_y_records_kind_prompt_and_the_command_name(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        root = resolve_data_root()
+        _pin_level(root, "job-l2", "L2")
+        monkeypatch.setattr(cpc, "_stdin_is_a_tty", lambda: True)
+        monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=False, command_name="job.resume",
+            job_id="job-l2")
+
+        assert result is True
+        lines = _grant_lines(root)
+        assert len(lines) == 1
+        line = lines[0]
+        assert line["action"] == "expensive"
+        assert line["approval_kind"] == "prompt"
+        assert line["approval_ref"] == "job.resume"
+        assert line["job_id"] == "job-l2"
+
+    def test_declined_prompt_cheap_estimate_and_missing_terminal_record_nothing(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        root = resolve_data_root()
+        _pin_level(root, "job-l2", "L2")
+
+        monkeypatch.setattr(cpc, "_stdin_is_a_tty", lambda: True)
+        monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+        declined = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=False, command_name="job.resume",
+            job_id="job-l2")
+        assert declined is False
+        assert _grant_lines(root) == []
+
+        cheap = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=10.0, yes=False, command_name="job.resume",
+            job_id="job-l2")
+        assert cheap is True
+        assert _grant_lines(root) == []
+
+        monkeypatch.setattr(cpc, "_stdin_is_a_tty", lambda: False)
+        with pytest.raises(SystemExit):
+            cpc.confirm_cost_preview(
+                AVAILABLE, confirm_above_usd=0.5, yes=False, command_name="job.resume",
+                job_id="job-l2")
+        assert _grant_lines(root) == []
+
+    def test_job_pinned_at_l5_proceeds_on_yes_and_records_nothing_but_still_prompts(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        root = resolve_data_root()
+        _pin_level(root, "job-l5", "L5")
+
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=True, command_name="job.resume",
+            job_id="job-l5")
+        assert result is True
+        assert _grant_lines(root) == []
+
+        monkeypatch.setattr(cpc, "_stdin_is_a_tty", lambda: True)
+        monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+        result = cpc.confirm_cost_preview(
+            AVAILABLE, confirm_above_usd=0.5, yes=False, command_name="job.resume",
+            job_id="job-l5")
+        assert result is True
+        assert _grant_lines(root) == []
 
 
 class TestJsonOutputKeepsStdoutTheOneParseableObject:

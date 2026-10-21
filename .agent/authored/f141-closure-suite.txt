@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 324.5s (the launcher's reading); pytest's own reported wall time: 323.73s (0:05:23)
+summary line: 22803 passed, 11 skipped, 1 warning in 323.73s (0:05:23)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 22bd1250c (F141 R9 C2: R-1402, the push subjects name remedy do run)
+tree note: the repaired tree of round 9; round 8's transcript stays in git history at 3e6095814
+reflog before: 22bd1250c HEAD@{2026-10-21 12:35:38 +0200}: commit: F141 R9 C2: R-1402, the push subjects name remedy do run
+reflog after: 22bd1250c HEAD@{2026-10-21 12:35:38 +0200}: commit: F141 R9 C2: R-1402, the push subjects name remedy do run
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F141 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1280.00 CPU seconds, 323.74 wall seconds, 22814 tests collected, exit status 0, recorded 2026-10-21T10:41:16Z
+This closure's suite used 1280.00 CPU seconds, 3.7 percent less than F078's 1328.90, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F078's closure run:
+  +2.94 s  tests/orchestration/test_self_use_generator.py (3.69 -> 6.63)
+  +2.56 s  tests/orchestration/test_job_worktree_handoff.py (7.50 -> 10.06)
+  +2.26 s  tests/orchestration/test_permission_matrix_guards.py (0.00 -> 2.26)
+  +2.09 s  tests/orchestration/test_apply_permissions.py (0.00 -> 2.09)
+  +1.90 s  tests/orchestration/test_event_name_coupling.py (16.59 -> 18.49)
+  +1.74 s  tests/orchestration/test_job_worktree_integrity.py (6.69 -> 8.43)
+  +1.67 s  tests/orchestration/test_run_manifest_runtime_truth.py (1.43 -> 3.10)
+  +1.30 s  tests/test_command_discovery.py (6.22 -> 7.52)
+  +1.29 s  tests/orchestration/test_token_ledger.py (9.03 -> 10.32)
+  +1.28 s  tests/cli/test_rehearsal.py (4.66 -> 5.94)

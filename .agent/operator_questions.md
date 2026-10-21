@@ -51,3 +51,30 @@ from August already counts as the proof, and you only need to add the written re
 
 **What happens if you say nothing.** The recommendation is already executed and stands until you
 say otherwise.
+
+### Q23 — What Remedy may do, by level (2026-10-21, F141, round 1)
+
+**What needs deciding.** Remedy is getting a table that says, for each autonomy level, what work it
+starts may then do: read your project, write a job's result into your files, commit, push, change a
+dependency, delete files or run a migration, spend above your cost threshold, and reach the network.
+Each place in the table says one of three things: Remedy may do it, it must ask you first for this
+one case, or it may not do it at all. I chose the table myself. At the default level Remedy may only
+read and reach the network for the builds it already does; writing into your files, committing,
+pushing, changing a dependency, deleting and spending above the threshold all need your approval of
+that one case, and the flags you already type, such as the approve, commit, push and yes flags, count
+as that approval. At the highest level Remedy may commit, change dependencies and spend on its own,
+but pushing and deleting still always ask you. I also departed from the plan in two places. The plan
+said deleting should be forbidden outright at the default level; I made it ask instead, so that your
+own command to merge a job's branch keeps working. The plan assumed Remedy never pushes; it does, on
+your push flag, so pushing asks at every level, and a new setting, which is on by default, lets you
+switch pushing off completely.
+
+**Why it matters.** Every later step of this feature enforces this table. From then on, applying a job
+whose change touches a dependency file or deletes a file will stop and ask you, even at the default
+level, until you approve that case.
+
+**My recommendation.** Keep the table as it is. It changes nothing you do today with your usual
+flags, and it adds a question only where a change reaches your dependencies or deletes something.
+
+**What happens if you say nothing.** The recommendation is already executed and stands until you
+say otherwise.

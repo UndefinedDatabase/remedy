@@ -4,6 +4,9 @@ The autonomy level says who may START work on Remedy's own initiative. It never 
 do once it runs: every approval, fence, budget and watchdog applies at every level. It lives in
 `packages/orchestration/autonomy_gate.py` (F078, DECISIONs F078 D1 to D3 and D5).
 
+What a job may do once it runs is the permission matrix's, `docs/system/permission-matrix-v1.md`
+(F141).
+
 Its levels are spelled `L2` to `L5`. They are not the 0 to 7 scale of
 `packages/orchestration/autonomy_readiness.py`, which measures infrastructure readiness.
 

@@ -1248,8 +1248,8 @@ def _cmd_job_run_cycles(
     if not confirm_cost_preview(
         estimate,
         confirm_above_usd=resolve_confirm_above_usd(),
-        yes=(yes or unattended),
-        command_name="job.resume",
+        yes=(yes or unattended), yes_flag="--yes" if yes else "--unattended",
+        command_name="job.resume", job_id=job_id_str,
         json_output=json_output,
     ):
         print("Cancelled. Nothing was run.")

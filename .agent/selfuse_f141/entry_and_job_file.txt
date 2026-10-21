@@ -1,0 +1,5 @@
+Entry ID: SU-070
+Entry Title: Address ledger finding R-1401
+Entry Provenance: generated (self-use-generator tier 1, ledger scan, R-1401)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f141-r8-selfuse/SU-070.md

@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from apps.cli.grouped import main
+from packages.orchestration.permission_matrix import permission_status_rows
 
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 ORDER = "Write a CONTRIBUTING.md"
@@ -470,4 +471,5 @@ def test_status_json_answers_the_autonomy_object(repo, capsys):
     data = _status_json(capsys)
     assert data["autonomy"] == {
         "level": "L2", "config_path": None, "error": None, "deferred_starts": 0,
+        "push_allowed": True, "permissions": permission_status_rows("L2", push_allowed=True),
     }

@@ -365,16 +365,13 @@ def _plan_rlimits(policy: ExecGuardPolicy) -> tuple[list[tuple[int, int, int]], 
 def plan_child_spawn(policy: ExecGuardPolicy) -> ChildSpawnPlan:
     """Resolve `policy` into the cwd, environment and `preexec_fn` a child needs.
 
-    Support for each rlimit is decided HERE, in the parent, so an unsupported
-    limit is reported rather than dropped in silence. The returned `preexec_fn`
-    runs between fork and exec and applies those limits and nothing else.
+    Support for each rlimit is decided HERE, in the parent, so an unsupported limit is reported rather than dropped in
+    silence. The returned `preexec_fn` runs between fork and exec and applies those limits and nothing else.
 
-    The environment follows the module's rule exactly: `policy.env` reaches the
-    child UNCHANGED — including `None`, which means "inherit" — while
-    `env_allowlist` is None, and is rebuilt by `scrub_child_env` when it is not.
-    `deny_network` then overlays `DENIED_NETWORK_ENV` on whatever that produced,
-    after the scrub and never before it, so a denied child inherits what its
-    policy allows PLUS the posture.
+    The environment follows the module's rule exactly: `policy.env` reaches the child UNCHANGED — including `None`,
+    which means "inherit" — while `env_allowlist` is None, and is rebuilt by `scrub_child_env` when it is not.
+    `deny_network` then overlays `DENIED_NETWORK_ENV` on whatever that produced, after the scrub and never before it, so
+    a denied child inherits what its policy allows PLUS the posture.
     """
     rlimit_calls, enforced, unsupported = _plan_rlimits(policy)
 
@@ -395,6 +392,9 @@ def plan_child_spawn(policy: ExecGuardPolicy) -> ChildSpawnPlan:
         child_env = dict(os.environ if child_env is None else child_env)
         child_env.update(DENIED_NETWORK_ENV)
 
+    if not policy.deny_network:  # DECISION F141 D5 (3): a child that keeps the network asks the matrix
+        from packages.orchestration.permission_matrix import PermissionRequest, pinned_job_level, require_permission
+        require_permission("external_call", PermissionRequest(pinned_job_level(None), "a networked child"))
     return ChildSpawnPlan(
         cwd=policy.cwd,
         env=child_env,

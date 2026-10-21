@@ -88,8 +88,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: that ends a planner call in flight, and order exec-1018b to `1.21` for the story's `end`, and
 #: F313 (DECISION F313 D1) to `1.22` for `GET /api/v1/now`, `GET /api/v1/jobs/{job}/insight` and
 #: the decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6)
-#: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP.
-PUBLIC_API_VERSION = "1.23"
+#: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP, and F141
+#: (DECISION F141 D7) to `1.24` for `autonomy`'s `push_allowed` and `permissions`, with none either.
+PUBLIC_API_VERSION = "1.24"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

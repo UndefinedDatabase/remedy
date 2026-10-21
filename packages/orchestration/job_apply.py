@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.apply_permissions import apply_permission_refusals
 from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.job_apply_again import already_applied_refusal, job_not_ready_reason
 from packages.orchestration.job_apply_baseline import (
@@ -951,12 +952,12 @@ def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list
     elif mode in ("message", "auto"):
         found = [f"{COMMIT_REFUSED}: {s}" for s in _commit_refusals(target, planned)]
     else:
-        return []
+        return apply_permission_refusals(job, result, planned, [])
     if result.push:
         refusals, result.push_open_criteria, result.push_unchecked_criteria = (
             _push_refusals(job, target))
         found += [f"{PUSH_REFUSED}: {s}" for s in refusals]
-    return found
+    return found + apply_permission_refusals(job, result, planned, found)
 
 
 def _commit_applied_files(job: Any, result: JobApplyResult, target: Path,
@@ -1018,8 +1019,7 @@ def _push_landed_commit(result: JobApplyResult, target: Path) -> None:
     """
     outcome = push_to_upstream(target, result.commit_sha, result.target_branch)
     result.pushed = outcome.pushed
-    result.push_remote, result.push_ref, result.push_error = (
-        outcome.remote, outcome.ref, outcome.error)
+    result.push_remote, result.push_ref, result.push_error = outcome.remote, outcome.ref, outcome.error
 
 
 @dataclass(frozen=True)
