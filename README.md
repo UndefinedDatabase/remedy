@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-149 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+150 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -48,7 +48,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 9 | 16 |
+| 12 | Observability & Operations | 10 | 16 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -914,6 +914,14 @@ whether the job is stalled and why, the worker's last lines, and what the operat
 closed words the interface lists; the local worker that runs the lab's models keeps its last lines
 and the time of its last output in the job's folder; a value Remedy cannot know reads empty instead
 of a guess; the guide `docs/guides/http-clients.md` describes it).
+
+F313 contract 1.22 for the Orb (the public HTTP API and the machine client interface are version
+1.22: they name what runs now and one job's insight, the budget profiles each provider's class
+reads, `extend` without an answer, the run that starts again by itself after it, and the one
+question of a budget stop, whose open blocking criteria every decision of the digest now carries
+under `blockers`; the release matrix lists every 1.22 addition and value change; the folder
+`docs/system/client-answers-v1/` holds answers recorded from the real commands for a client's own
+tests, which `scripts/record_client_answers.py` records and checks).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line
