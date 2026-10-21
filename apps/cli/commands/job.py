@@ -134,8 +134,8 @@ def _cmd_create_job(
 
 def _known_project_ids() -> set[str]:
     """Build set of existing project IDs (one registry read)."""
-    from packages.orchestration.project_registry import _list_projects_readonly
-    return {str(p.id) for p in _list_projects_readonly()}
+    from packages.orchestration.project_registry import list_projects_readonly
+    return {str(p.id) for p in list_projects_readonly()}
 
 
 def _cmd_list_jobs(

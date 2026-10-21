@@ -311,7 +311,7 @@ def list_projects() -> list[RemyProject]:
     return sorted(projects, key=lambda p: p.created_at, reverse=True)
 
 
-def _list_projects_readonly() -> list[RemyProject]:
+def list_projects_readonly() -> list[RemyProject]:
     """Load all projects read-only via deterministic projection, never write."""
     return sorted(_project_set_readonly(), key=lambda p: p.created_at, reverse=True)
 
@@ -531,7 +531,7 @@ def _managed_worktree_parent(root: Path) -> Path | None:
 def _find_project_by_repo_readonly(real_path: str) -> RemyProject | None:
     """Read-only repo lookup — never triggers migration writes."""
     matches: list[RemyProject] = []
-    for p in _list_projects_readonly():
+    for p in list_projects_readonly():
         if p.canonical_repo_path == real_path:
             matches.append(p)
         elif real_path in p.repo_paths:
@@ -626,7 +626,7 @@ def _lookup_by_slug_or_uuid_readonly(value: str) -> RemyProject:
     except ValueError:
         pass
     matches: list[RemyProject] = []
-    for p in _list_projects_readonly():
+    for p in list_projects_readonly():
         if p.slug == value:
             matches.append(p)
     if len(matches) == 1:

@@ -20,7 +20,7 @@ from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 from packages.orchestration.data_paths import data_class_dir
-from packages.orchestration.self_health import home_relative_text
+from packages.orchestration.paths_text import home_relative_text
 from packages.orchestration.stream_evidence import redact_text
 
 # How long a report keeps the `crash_reports` health check warning.
@@ -45,10 +45,10 @@ def remedy_version() -> str:
 
 # A digest of the resolved configuration, so two reports show whether the settings differed.
 def config_digest() -> str:
-    from packages.orchestration.run_manifest import _config_snapshot
+    from packages.orchestration.run_manifest import config_snapshot
 
     try:
-        text = json.dumps(_config_snapshot(), sort_keys=True, default=str)
+        text = json.dumps(config_snapshot(), sort_keys=True, default=str)
     except (OSError, ValueError):
         return "unavailable"
     return "sha256:" + sha256(text.encode("utf-8")).hexdigest()

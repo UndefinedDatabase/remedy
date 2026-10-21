@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 _MAX_FILE_BYTES: int = 500_000       # 500 KB per file
 _MAX_TOTAL_BYTES: int = 10_485_760   # 10 MiB total snapshot
-_SNAPSHOT_DIR_NAME: str = "repository_snapshots"
+SNAPSHOT_DIR_NAME: str = "repository_snapshots"
 _APPLY_RECORDS_DIR_NAME: str = "apply_records"
 
 _BLOB_PREFIX: str = "blob_"
@@ -259,7 +259,7 @@ def _normalize_path_set(paths: list[str]) -> list[str]:
 
 def _snapshot_dir(job_id: str, snapshot_id: str, data_dir: Path) -> Path:
     """Private snapshot directory. Contents never returned publicly."""
-    return data_dir / "workspaces" / job_id / _SNAPSHOT_DIR_NAME / snapshot_id
+    return data_dir / "workspaces" / job_id / SNAPSHOT_DIR_NAME / snapshot_id
 
 
 def _apply_record_dir(job_id: str, data_dir: Path) -> Path:
@@ -1066,7 +1066,7 @@ def update_apply_record_state(
 # ---------------------------------------------------------------------------
 
 
-def _check_snapshot_integrity(snap_dir: Path) -> dict[str, Any]:
+def check_snapshot_integrity(snap_dir: Path) -> dict[str, Any]:
     """Read-only integrity check of a snapshot directory.
 
     Does NOT mutate the manifest (unlike verify_snapshot, which rewrites state).
@@ -1247,7 +1247,7 @@ def build_snapshot_truth(
             blockers=blockers,
         )
 
-    integrity = _check_snapshot_integrity(snap_dir)  # type: ignore[arg-type]
+    integrity = check_snapshot_integrity(snap_dir)  # type: ignore[arg-type]
     manifest_exists = bool(integrity["manifest_exists"])
     recovery_material_available = bool(integrity["recovery_available"])
     snapshot_verified_now = bool(integrity["verified"])

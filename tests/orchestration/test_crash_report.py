@@ -96,7 +96,7 @@ def test_the_configuration_digest_is_unavailable_when_the_snapshot_fails(monkeyp
     def explode():
         raise ValueError("no configuration")
 
-    monkeypatch.setattr(run_manifest, "_config_snapshot", explode)
+    monkeypatch.setattr(run_manifest, "config_snapshot", explode)
     assert config_digest() == "unavailable"
 
 

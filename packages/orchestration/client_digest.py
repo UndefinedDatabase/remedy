@@ -44,7 +44,7 @@ from packages.orchestration.pingpong_job import (
     load_job_plan_safe,
 )
 from packages.orchestration.project_cockpit import project_cost_of_day
-from packages.orchestration.project_registry import _list_projects_readonly
+from packages.orchestration.project_registry import list_projects_readonly
 from packages.orchestration.serve_daemon import socket_answers
 from packages.orchestration.serve_paths import serve_paths
 from packages.orchestration.timeline import load_run_events
@@ -499,7 +499,7 @@ def build_client_digest(now: datetime | None = None, *, every_ended_job: bool = 
     skipped_files: list[str] = []
 
     # R-1144: the read-only projection, never `list_projects`, which migrates a legacy record on read.
-    projects = sorted(_list_projects_readonly(), key=lambda p: p.slug or "")
+    projects = sorted(list_projects_readonly(), key=lambda p: p.slug or "")
     reads = _read_projects(projects, day_moment, project_ids)
     degraded = degraded or reads.degraded
     skipped_files.extend(reads.skipped_files)

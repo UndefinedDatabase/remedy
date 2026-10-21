@@ -16,7 +16,6 @@ from packages.orchestration.project_registry import (
     ProjectNotFoundError,
     RemyProject,
     RepoOwnershipConflictError,
-    _list_projects_readonly,
     _load_project_readonly,
     _lookup_by_slug_or_uuid_readonly,
     _managed_worktree_parent,
@@ -25,6 +24,7 @@ from packages.orchestration.project_registry import (
     attach_repo_canonical,
     find_project_by_repo,
     list_projects,
+    list_projects_readonly,
     load_project,
     migrate_legacy_projects,
     register_project_repo,
@@ -1108,7 +1108,7 @@ class TestDeterministicReadonlyProjection:
         assert loaded2.slug == "dup-2"
 
     def test_list_readonly_sorted_newest_first(self, tmp_path, monkeypatch):
-        """_list_projects_readonly returns projects sorted by created_at descending."""
+        """list_projects_readonly returns projects sorted by created_at descending."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         d = tmp_path / "projects"
         d.mkdir(parents=True, exist_ok=True)
@@ -1119,7 +1119,7 @@ class TestDeterministicReadonlyProjection:
         save_project(p1)
         save_project(p2)
 
-        result = _list_projects_readonly()
+        result = list_projects_readonly()
         assert result[0].name == "New"
         assert result[1].name == "Old"
 

@@ -22,10 +22,11 @@ from packages.orchestration.budget_resolution import resolve_min_free_disk_bytes
 from packages.orchestration.config import RemedyConfig, get_config, validate_config
 from packages.orchestration.data_paths import projects_dir, resolve_data_root
 from packages.orchestration.data_reclaim import reclaim_preview_bytes
-from packages.orchestration.project_registry import _list_projects_readonly
+from packages.orchestration.paths_text import home_relative_text
+from packages.orchestration.project_registry import list_projects_readonly
 from packages.orchestration.repository_snapshot import (
-    _SNAPSHOT_DIR_NAME,
-    _check_snapshot_integrity,
+    SNAPSHOT_DIR_NAME,
+    check_snapshot_integrity,
 )
 from packages.orchestration.token_ledger import LEDGER_FILENAME
 from packages.orchestration.worktrees import WorktreeError, list_worktrees
@@ -52,14 +53,6 @@ class HealthCheckResult:
             "detail": self.detail,
             "hint": self.hint,
         }
-
-
-# A detail must not leak the operator's home folder into a pasted report.
-def home_relative_text(text: str, home: Path | None = None) -> str:
-    home_text = str(home if home is not None else Path.home())
-    if home_text == "/":
-        return text
-    return text.replace(home_text, "~")
 
 
 def _result(check: str, level: str, detail: str, hint: str = "") -> HealthCheckResult:
@@ -169,7 +162,7 @@ SNAPSHOT_HINT: str = (
 def _snapshot_problems(snapshot_dir: Path) -> str:
     """The hash problems of one snapshot folder, joined by ", "; "" when none."""
     try:
-        integrity = _check_snapshot_integrity(snapshot_dir)
+        integrity = check_snapshot_integrity(snapshot_dir)
     except (AttributeError, TypeError):
         # A manifest that is valid JSON but not an object (a list, a number).
         return "its manifest cannot be read"
@@ -193,7 +186,7 @@ def check_snapshot_manifests(
 ) -> HealthCheckResult:
     data_root = root if root is not None else resolve_data_root()
     manifests = sorted(
-        data_root.glob(f"workspaces/*/{_SNAPSHOT_DIR_NAME}/*/manifest.json"),
+        data_root.glob(f"workspaces/*/{SNAPSHOT_DIR_NAME}/*/manifest.json"),
         key=_manifest_sort_key, reverse=True)[:sample]
     if not manifests:
         return _result("snapshots", HEALTH_PASS, "no workspace snapshot exists yet")
@@ -224,7 +217,7 @@ WORKTREE_HINT: str = (
 def _registered_repositories() -> list[str]:
     """Every registered project's repository folders that exist, without duplicates."""
     repos: list[str] = []
-    for project in _list_projects_readonly():
+    for project in list_projects_readonly():
         candidates = (
             [project.canonical_repo_path] if project.canonical_repo_path
             else list(project.repo_paths))

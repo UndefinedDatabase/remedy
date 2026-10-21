@@ -64,9 +64,9 @@ def resolve_scope(
 
 def _project_count() -> int:
     """Return number of registered projects (read-only)."""
-    from packages.orchestration.project_registry import _list_projects_readonly
+    from packages.orchestration.project_registry import list_projects_readonly
 
-    return len(_list_projects_readonly())
+    return len(list_projects_readonly())
 
 
 def job_in_scope(

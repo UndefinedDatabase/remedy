@@ -42,8 +42,8 @@ def _cmd_list_projects(
     limit: str | None = None,
 ) -> None:
     from packages.orchestration.list_options import ListOptionError, apply_list_options
-    from packages.orchestration.project_registry import _list_projects_readonly
-    projects = _list_projects_readonly()
+    from packages.orchestration.project_registry import list_projects_readonly
+    projects = list_projects_readonly()
     try:
         projects = apply_list_options(
             projects,

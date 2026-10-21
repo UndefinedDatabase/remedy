@@ -583,7 +583,7 @@ def target_tree(repo_path: str) -> str:
     return wt.digest if wt.status == GIT_OK else UNAVAILABLE
 
 
-def _config_snapshot() -> list[dict[str, Any]]:
+def config_snapshot() -> list[dict[str, Any]]:
     from packages.orchestration.config import all_key_specs, get_config
 
     cfg = get_config()
@@ -843,7 +843,7 @@ def build_input_snapshot(job: Any, *, probe_versions: bool = True,
         job_input=build_job_input_definition(job),
         models=models,
         provider_versions=provider_versions,
-        config=_config_snapshot(),
+        config=config_snapshot(),
         environment=_environment_snapshot(),
         python_version=platform.python_version(),
         platform=platform.platform(),

@@ -121,7 +121,7 @@ class TestNoTracebackReachesTheOperator:
         self, monkeypatch, capsys
     ) -> None:
         from packages.orchestration.crash_report import crash_reports_dir
-        from packages.orchestration.self_health import home_relative_text
+        from packages.orchestration.paths_text import home_relative_text
 
         self._run(monkeypatch, ["job", "list"], KeyError("target_repo"))
         err = capsys.readouterr().err

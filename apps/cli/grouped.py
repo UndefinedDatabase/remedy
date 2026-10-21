@@ -607,7 +607,7 @@ def _dispatch(
         raise
     except Exception as exc:  # noqa: BLE001 — the whole point is the catch-all
         from packages.orchestration.crash_report import write_crash_report
-        from packages.orchestration.self_health import home_relative_text
+        from packages.orchestration.paths_text import home_relative_text
 
         logging.getLogger(__name__).error(
             "command %s ended on an unexpected error", command_id,

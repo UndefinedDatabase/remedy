@@ -40,7 +40,6 @@ from packages.orchestration.self_health import (
     check_worktrees,
     health_exit_code,
     health_verdict,
-    home_relative_text,
     run_health_checks,
 )
 from packages.orchestration.token_ledger import LEDGER_FILENAME, open_ledger
@@ -282,14 +281,6 @@ def test_disk_unreadable_warns(monkeypatch):
 
 
 # --- home folder ------------------------------------------------------------
-
-
-def test_home_relative_text_replaces_the_home_path(tmp_path):
-    assert home_relative_text(f"{tmp_path}/x", tmp_path) == "~/x"
-
-
-def test_home_relative_text_leaves_text_for_a_root_home():
-    assert home_relative_text("/x/y", pathlib.Path("/")) == "/x/y"
 
 
 def test_config_warning_with_the_home_path_reaches_the_detail_as_tilde(tmp_path):
