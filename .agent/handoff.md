@@ -1,88 +1,100 @@
-# Handback — F078 round 11: round 10 booked, F078's Built State current, F078 accepted, pull request opened
+# Handback — F141 round 1: claim, book F078 R11, the seam inventory, DECISION F141 D1, Q23 and T001
 
 ## Session
 
-SESSION 2 of feature F078 · round 11 · rounds so far 11
+SESSION 1 of feature F141 · round 1 · rounds so far 1
 
-Context self-assessment: this worker copied prepared files, ran the helpers and wrote text, and the context was far from exhausted.
+Context self-assessment: this worker verified every prepared digest, copied the eight prepared files, wrote the matrix module and its tests from the block's given sentences, ran all six gates, and the context was far from exhausted.
 
-Fortschritt: 100 % (F078 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~20 % (claim, inventory and T001 landed · the seams and T003 open) — Schätzung
 
 ## Range
 
-Review of `c8d3c1b8a`..`HEAD` on `feature/f078-autonomy-levels-2` (base: round 10's handback commit `c8d3c1b8a`).
+Review of `43e470560`..`HEAD` on `feature/f141-permission-matrix` (base: `main` at `43e470560`, the merge commit of pull request 373).
 
 ## Commits
 
-### 1b551d751 F078 R11 C1: book round 10, resolve R-1394, DECISION F078 D9, the plan, the block and the PR body
+### c42cc0c15 F141 R1 C1: claim F141, book F078 R11, the seam inventory, DECISION F141 D1 and Q23
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f078-r11.md` | +107/-0 | new: the block of this round |
-| `.agent/authored/f078-r11-pr_body.md` | +72/-0 | new: the pull request's body |
-| `.agent/decisions.md` | +10/-0 | DECISION F078 D9 |
-| `.agent/live_review.md` | +4/-0 | round 10 booked, R-1394 resolved |
-| `.agent/plan.md` | +7/-6 | the plan |
+| `.agent/authored/f141-r1.md` | +220/-0 | new: the block of this round |
+| `.agent/context.md` | +11/-12 | re-headed for F141 |
+| `.agent/decisions.md` | +32/-0 | DECISION F141 D1 |
+| `.agent/f141_inventory.md` | +114/-0 | new: the T001 seam inventory |
+| `.agent/live_review.md` | +17/-24 | re-headed for F141; F078 R11 booked |
+| `.agent/operator_questions.md` | +27/-0 | Q23 |
+| `.agent/plan.md` | +19/-13 | re-headed for F141 |
+| `docs/roadmap/STATUS.md` | +1/-1 | F141 `[ ]` to `[~]` |
 
-### de6b89241 F078 R11 C2: F078's Built State brought current
+### 4365a8b25 F141 R1 C2: the push switch and the permission matrix with its one check (T001)
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T3_F078.md` | +10/-3 | Built State names every finding and the suite's three runs |
+| `docs/guides/environment.md` | +1/-0 | regenerated: the new `REMEDY_AUTONOMY_ALLOW_PUSH` row |
+| `packages/orchestration/config_keys_autonomy.py` | +12/-0 | the `autonomy.allow_push` key |
+| `packages/orchestration/permission_matrix.py` | +318/-0 | new: the matrix, its check, the grants record |
+| `tests/test_no_orphan_modules.py` | +2/-0 | `ALLOWED_UNWIRED` entry for the new module |
 
-### (this commit) F078 R11 C3: accept F078 in STATUS with its README sync and the self-use queue
+### cc5ec51d9 F141 R1 C3: a test per cell and per answer of the permission matrix
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | F078 accepted |
-| `README.md` | +10/-2 | counts and the Tier 3 list synced |
-| `scripts/self_use_queue.json` | +1/-1 | SU-069 consumed by F078 |
-| `.agent/handoff.md` | full rewrite | this handback |
+| `tests/orchestration/test_permission_matrix.py` | +407/-0 | new: a test per cell and per answer |
+
+Exception (self-reference), per `docs/agents/handback_template.md`: this commit, which writes
+`.agent/handoff.md`, is not tabled here — its own diff never appears in this file.
 
 ## External actions
 
-- The push after this commit, the pull request creation and gate 5: results in the worker's final reply (the handoff cannot hold the result of the commit that writes it).
-- No provider call, no rotation, no worktree, no merge.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` at session start: `[]` (no open pull request; the Open PR Gate passed without a merge).
+- The push after this commit: result in the worker's final reply (the handoff cannot hold the result of the commit that writes it).
+- No provider call, no rotation, no worktree, no merge, no pull request created.
 
 ## Verification
 
-1. Preconditions: `git rev-parse --short=9 HEAD` `c8d3c1b8a`, equal to the remote branch tip; `git status --porcelain` empty; `.agent/STOP` absent. All prepared digests matched (`block.md` 107 lines, sha256 `e6ad057f...` as the prompt gave).
-2. Gate 1 before C3's commit: `git status --porcelain` showed exactly ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `verify.py .`: every line `True`, `absent	C3`, last line `ALL True`.
-3. Gate 2: `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`: `10 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
-4. Gate 3: `run_selection.py . .remedy-wt/f078-r11-worker/selection-output.txt`: `paths 75`, `exit 0`, `3449 passed, 2 skipped in 20.49s`, no FAILED or ERROR line, no `process(es) behind` line. SKIPPED: `tests/test_install_smoke.py:175` (install smoke is opt-in), `tests/test_agent_tooling.py:43` (D12 quarantine, F252).
-5. Gate 4: `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`. `open_finding_ids` count: `87`.
-6. Gate 5 and the push: in the worker's final reply.
+Preconditions: `git rev-parse HEAD` read `43e4705604bd33707db741bd1d5ec9679fc9df89` on `main`, clean `git status --porcelain`, before any write. `gh pr list --state open ...` read `[]`. Every prepared digest (`block.md` 220 lines, and `verify.py`, `run_selection.py`, `selection.txt`, `digests.txt`, each by its own sha256) matched the prompt before use; the eight `c1-*` files then matched `digests.txt` before being copied.
+
+1. `git status --porcelain` (before C4): empty. `python3 .remedy-wt/f141-r1/prep/verify.py .`: every line `True`, `absent	C4`, last line `ALL True`.
+2. `python3 -m ruff check packages/orchestration/config_keys_autonomy.py packages/orchestration/permission_matrix.py tests/test_no_orphan_modules.py tests/orchestration/test_permission_matrix.py`: `All checks passed!`.
+3. `python3 .remedy-wt/f141-r1/prep/run_selection.py . .remedy-wt/f141-r1-worker/selection-output.txt`: `paths 77`, `exit 0`, `3584 passed, 2 skipped in 43.14s`, no FAILED or ERROR line, no `process(es) behind` line. SKIPPED: `tests/test_agent_tooling.py:43` (D12 quarantine, F252), `tests/test_install_smoke.py:175` (install smoke is opt-in).
+4. `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362` — the same twelve as before this round.
+5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`: `87`.
+6. `python3 -c "from packages.orchestration.permission_matrix import PermissionRequest as P, require_permission as r; print(r('dependency_change', P(level='L2', subject='probe')))"`: outcome `ask`, reason `"Autonomy level L2 asks before Remedy may change your project's dependencies ((dependency_change, L2) = ask): approve this instance, or raise the level to L4 with its decision record."`, naming `L4`.
 
 ## Authored-text proofs
 
-C1, C2, C3: each prepared file is a byte copy, proven by a Python equality over bytes at copy time (all True) and again by `verify.py`. All prepared digests were checked before use and every one matched. This handoff is the worker's own text.
+C1: each of the eight prepared files (`c1-.agent__authored__f141-r1.md`, `c1-.agent__context.md`, `c1-.agent__decisions.md`, `c1-.agent__f141_inventory.md`, `c1-.agent__live_review.md`, `c1-.agent__operator_questions.md`, `c1-.agent__plan.md`, `c1-docs__roadmap__STATUS.md`) is a byte copy, proven by a Python sha256 equality at copy time (all `True`) and again by `verify.py`'s own byte comparison (all `True`). Every prepared digest was checked before use and every one matched.
+
+C2, C3: none applied. The block gave the exact sentences of the new config key's description, the module's docstring and WHY comments, and every refusal and reason string by its literal text — there was no prepared `.agent/authored/` file to byte-copy against, only the block's own prose, checked by hand against it while writing.
 
 ## Deviations & assumptions
 
-None. A first draft of the copy helper was named like a standard-library module and shadowed it for one run of the open-findings reader; it was renamed away before any result was taken, and no repository file was touched by it.
+None.
 
 ## For the operator, in plain sentences
 
-Remedy now has an autonomy level, set in its settings file, that says what it may start on its own. At the default level every start is yours, so a mission run starts one job and then waits to be run again. Raising the level needs the passed test campaign and a written reason, and approvals, budgets and the watchdog stay in force at every level. The status overview shows the level and any start that waits. The work moved to a second branch because the first one had fallen behind, and the first branch may be deleted. The whole test collection ran on the code that ships and passed. The review package is `remedy-review-20261021-080416-READY_FOR_REVIEW.zip` in `~/Repos/remedy-history/zips`. A pull request is open and will be merged at the start of the next session unless you merge it earlier. Two questions wait for you, each already answered with the session's recommendation.
+Remedy is starting work on a new table that says, for each level of how much it may do on its own, what the work it starts may then actually do: read your files, write a result into them, commit, push, change a dependency, delete something, spend above your cost limit, or reach the network. This round decided the table itself, asked you a question about it, and wrote the one piece of code that will answer every later check against it, together with a test for every square of the table. Nothing in your project behaves differently yet, because nothing calls the new check so far; that starts in the next few rounds, one group of actions at a time. The whole relevant test collection ran and passed. A question about the table waits for you, already answered with this session's recommendation, alongside two older questions from before this feature.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP`.
-2. Phase 1 rule 2: the Open PR Gate, which merges F078's pull request in the NEXT session and never in this one.
-3. Rule A5, which proposes F141.
+2. Phase 1 rule 2: the Open PR Gate.
+3. Book round 1's verdict in the next round's first commit.
+4. Round 2: the pinned level and the read seam.
 
-Operator questions open: 2.
-Open findings: 87 (rule: `scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, gate 4; commit: the tree of C2, unchanged by C3).
+Operator questions open: 3.
+Open findings: 87.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `1b551d751` |
-| C2 | done | `de6b89241` |
-| Rotation | skipped | DECISION F078 D9 |
-| C3 | done | this commit |
+| C0 | done | branch `feature/f141-permission-matrix` at `43e470560` |
+| C1 | done | `c42cc0c15` |
+| C2 | done | `4365a8b25` |
+| C3 | done | `cc5ec51d9` |
+| C4 | done | this commit |
 | Gate 1 | done | ALL True |
-| Gate 2 | done | numstat as above |
-| Gate 3 | done | exit 0, 3449 passed, 2 skipped |
+| Gate 2 | done | All checks passed! |
+| Gate 3 | done | exit 0, 3584 passed, 2 skipped |
 | Gate 4 | done | fail_count 1, the twelve findings; 87 open |
-| Gate 5 | pending | reported in the final reply |
-| Push | pending | reported in the final reply |
-| Pull request | pending | reported in the final reply |
+| Gate 5 | done | 87 |
+| Gate 6 | done | outcome ask, naming L4 |
