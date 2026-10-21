@@ -1,24 +1,22 @@
-# Context — F141 Permission matrix per autonomy level
+# Context — F060 Long-run certificate
 
 ## Active Branch
-`feature/f141-permission-matrix`, from `main` at `43e470560` (the merge commit of pull request
-373, which carried F078).
+`feature/f060-long-run-certificate`, from `main` at `646c4b1d7` (the merge commit of pull request
+374, which carried F141).
 
 ## Scope
-F141 (Tier 7), as `docs/roadmap/features/T7_F141.md` and DECISION F141 D1 state: the permission
-matrix, its one check, the push switch, the record of approved instances, the level a job keeps
-from its start, the seams that route through the check, the rendered table and the guard against
-bypass parameters.
+F060 (Tier 3), as `docs/roadmap/features/T3_F060.md` and DECISION F060 D1 state: the certificate
+profile with its manifest, claims and byte budget, the sources of a finished job, the verifier with
+its tamper fixtures, and the two commands `remedy job certificate` and `remedy verify`.
 
 ## Do not touch
-Fence semantics, level-change mechanics (F078) and role dimensions (F175). A cell of the matrix
-never replaces a gate a seam already has: fences, the apply's approval, budgets and the cost
-threshold apply at every level.
+Cryptographic signing (the manifest's `signature` field stays reserved and empty), publishing or
+hosting of certificates, and the review package's meaning for its existing users:
+`packages/orchestration/review_zip.py` is reused, never changed.
 
 ## Active assumptions
-- The levels are F078's `AUTONOMY_LEVELS`, imported from `packages/orchestration/autonomy_gate.py`.
-- Every behaviour lands with a test that is red without it, proved by the reviewer's mutation; a
-  structural step is proved by the unchanged tests.
+- The packer and the reopen check are `build_review_zip_from_snapshot` and `verify_review_zip`.
+- Every behaviour lands with a test that is red without it, proved by the reviewer's mutation.
 
 ## Constraints
 - One full pytest suite per feature, in the closure's integration-gate round; every round runs

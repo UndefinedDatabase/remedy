@@ -1,21 +1,24 @@
-# Plan — F141 Permission matrix per autonomy level
+# Plan — F060 Long-run certificate
 
 ## Goal
-What running work may DO becomes one enforced table: eight actions by F078's levels `L2` to `L5`,
-answered by one check in `packages/orchestration/permission_matrix.py` that every seam calls, with
-a test per cell, answers that cite their cell, audited approvals of an instance, a table rendered
-from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DECISIONs F141 D1
-to D8).
+A finished job can prove itself to someone who was not there: `remedy job certificate <id>` packs
+its report, token truth, verdicts, ownership, run manifest and a hash manifest with claims into one
+small bundle, and `remedy verify <bundle>` checks every member and every claim on any machine, with
+the failing member named (docs/roadmap/features/T3_F060.md; DECISION F060 D1).
 
 ## Current Step
-Round 11 (session 2), the closing round (`docs/roadmap/STATUS_closure_protocol.md` steps 4 and 5):
-book round 10, the Built State brought current, no rotation (DECISION F141 D8), F141 accepted in
-STATUS with the README sync and `SU-070`'s `consumed_by`, and the pull request, left unmerged.
+Round 1 (session 1): claim F060, book F141's round 11, record the inventory and DECISION F060 D1,
+and land T001: the certificate profile in `packages/orchestration/job_certificate.py`, its
+manifest, its byte budget that references large members, and goldens.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F141's pull
-   request; Rule A5 proposes the next feature.
+1. Round 2: a finished job's sources and claims, the issue counter and `certificate.max_bytes`.
+2. Round 3 (T002): the verifier, its claim cross-checks and one tamper fixture per member class.
+3. Round 4 (T003): `remedy job certificate`, `remedy verify`, the standalone check in a fresh
+   folder, and the page that says a certificate is not a signature.
+4. The closure sequence.
 
 ## Risks
-- The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
-- R-1403 is owned by F307 and stays open at F141's closure.
+- The integrity check fails on High findings F060 does not own (DECISION F310 D7, Q20).
+- `commands/job.py` and `command_catalog.py` are on the structure ledger; round 4's commands go
+  into new modules.

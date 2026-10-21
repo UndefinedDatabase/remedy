@@ -1,21 +1,21 @@
-# Live Review — F141 Permission matrix per autonomy level
+# Live Review — F060 Long-run certificate
 
-> Round-by-round review record, re-headed at the F141 claim per
-> docs/agents/planner_reviewer_prompt.md §1. F141 is claimed on `feature/f141-permission-matrix`,
-> from `main` at `43e470560`, the merge commit of pull request 373, which carried F078. Everything
+> Round-by-round review record, re-headed at the F060 claim per
+> docs/agents/planner_reviewer_prompt.md §1. F060 is claimed on `feature/f060-long-run-certificate`,
+> from `main` at `646c4b1d7`, the merge commit of pull request 374, which carried F141. Everything
 > from the Findings heading to the end of the file is carried forward byte-identical from that
-> commit, and round 1 appends the gate of F078's round 11 after it. Finding ids continue the
-> monotonic R-XXXX series. The open set at `43e470560`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, holds 87 ids, the lowest R-1246 and the highest R-1381; F141
+> commit, and round 1 appends the gate of F141's round 11 after it. Finding ids continue the
+> monotonic R-XXXX series. The open set at `646c4b1d7`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and the highest R-1403; F060
 > owns none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F141 D1's. Round 1 claims F141, books F078's round 11, records the seam
-inventory and the matrix, and lands the matrix with its one check and a test per cell (T001). The
-rounds after it wire the seams through the check, one group of seams per round (T002), then the
-decision path, the rendered table, the guard against bypass parameters and a fixture per level
-(T003). Then the closure.
+THE ORDER BELOW IS DECISION F060 D1's. Round 1 claims F060, books F141's round 11, records the
+inventory of the review package's layers, and lands the certificate profile: its manifest, its byte
+budget and its goldens (T001). Round 2 reads a finished job's sources and claims; round 3 lands the
+verifier and one tamper fixture per member class (T002); round 4 lands both commands, the standalone
+check and the page (T003). Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -554,3 +554,5 @@ Gate: F141 R9 — the F141 round 9 entry, the closure's first repair round, over
 Done: R-1402 — RESOLVED at F141 R9 by C2, `22bd1250c`: both subjects of `packages/orchestration/apply_permissions.py` read `"the push of a walk of remedy do run"`. RED BEFORE: round 8's committed transcript at `3e6095814` lists `tests/cli/test_advertised_commands.py::test_every_advertised_command_exists_in_the_catalog` failed on the old bytes; GREEN AFTER: that test passed in the reviewer's re-run at `f2ced46d9`, and round 9's full suite read no bad node.
 
 Gate: F141 R10 — the F141 round 10 entry, the closure's evidence round, over `f2ced46d9`..`7b2a64da9` (3 commits, each single-parent; insertions by `git show --numstat`: `605f5a1de` 127, `23e8f8244` 447, `7b2a64da9` 64). VERDICT PASS. The reviewer's `verify.py` read every parent, subject and path set as ordered, C1's three files and C2's evidence script byte-identical to the prepared ones, and C3 free of this machine's paths, `ALL True`. The round changed no code and ordered no test selection but the evidence job's. The reviewer's collect-only precheck at `f2ced46d9` read `10831/11013 tests collected (182 deselected)` and no node id the packaging scan refuses, and the evidence job `f141r10e1001` read the same: head `23e8f8244`, ancestry-path and first-parent counts both 45, pytest exit 0 with `10825 passed, 0 failed, 6 skipped`, `validate_verification_tests problems []`, `is_valid_current_run True`, `validation_errors []`. The staging reclaim's preview read nothing reclaimable, so no apply ran. The reviewer read the package itself: `remedy-review-20261021-131628-READY_FOR_REVIEW.zip` in `~/Repos/remedy-history/zips`, SHA-256 `c8f302dbefe31863d6d3509858eb3d6fff2abe56c0648b3d78b03cd005611d26` by its own sha256 reader, `zipfile.is_zipfile` True, `testzip()` None, 2026 members, `package_status` `READY_FOR_REVIEW`, `committed_review_subject` base `43e4705604bd33707db741bd1d5ec9679fc9df89` and head `23e8f8244bc15db7df28c0b1f28086c289a46fcb` over 45 commits; the build log reads `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. `python3 -m apps.cli.main integrity check --json` fails only `high_blockers_open`, on the twelve findings of DECISION F310 D7, none of them F141's. The worker declared no deviation.
+
+Gate: F141 R11 — the F141 round 11 entry, the closing round, over `7b2a64da9`..`b5145df73` (3 commits, each single-parent; insertions by `git show --numstat`: `1344b0cd7` 194, `3578bc0c6` 15, `b5145df73` 57), reviewed in F060's session 1 after pull request 374 merged it as `646c4b1d7`. VERDICT PASS, verified by the bytes. The reviewer re-ran round 11's own `verify.py` over the three commits, `ALL True`: every parent, subject and path set as ordered, C1's block copy, pull request body, decisions, ledger append and plan, C2's feature file and C3's STATUS line, README and self-use queue each equal to the prepared file, and C3's handoff free of this machine's paths. The merge commit's tree equals `b5145df73`'s (`git diff b5145df73 646c4b1d7` prints nothing). The worker's gates read as the handoff states them: the selection `3454 passed, 2 skipped`, exit 0, and the integrity check failing only on the twelve High findings F141 does not own (DECISION F310 D7). No hosted run exists for the pull request, which operator amendment amend1011-manual-hosted-ci makes no blocker. No deviation was declared.
