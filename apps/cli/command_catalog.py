@@ -37,6 +37,7 @@ from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
 from apps.cli.command_catalog_mission import MISSION_COMMANDS
 from apps.cli.command_catalog_project import PROJECT_COMMANDS
 from apps.cli.command_catalog_stats import STATS_COMMANDS
+from apps.cli.command_catalog_steer import JOB_STEER_COMMANDS
 from apps.cli.command_catalog_types import (
     _ALL_PROJECTS_FLAG,
     _ANSWER_OPT,
@@ -515,29 +516,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.pause", "job.plan-show", "decision.resolve"),
         exit_codes=(0, 1, 2, 3),
     ),
-    # ── job steer (F030 T002, DECISION F030 D2) ───────────────────────────
-    CommandEntry(
-        command_id="job.steer",
-        group_id="job",
-        subcommand="steer",
-        description="Address a steering note to one task of a running job; it is recorded as "
-                    "evidence and read at the start of that task's next build round, never "
-                    "inside a model call (F030).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("text", "The note, quoted as one argument"),
-            ArgDef("--task", "The task to address the note to: its id in the job, or its id "
-                   "in the job plan, as `remedy job plan-show` prints them",
-                   required=True, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("chat.send", "chat.show", "job.veto-task"),
-        exit_codes=(0, 1, 2, 3),
-    ),
+    *JOB_STEER_COMMANDS,
     # ── job ownership (F035 T003, DECISION F035 D4) ──────────────────────
     CommandEntry(
         command_id="job.ownership",

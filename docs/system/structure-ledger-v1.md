@@ -443,7 +443,7 @@ with the code that calls it.
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
-| 2314 | `apps/cli/command_catalog.py` |
+| 2293 | `apps/cli/command_catalog.py` |
 | 2541 | `packages/orchestration/job_apply.py` |
 | 2483 | `apps/cli/commands/job.py` |
 | 2255 | `packages/orchestration/orchestrator_loop.py` |

@@ -17,6 +17,7 @@ apps.cli.command_catalog_doctor
 apps.cli.command_catalog_mission
 apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
+apps.cli.command_catalog_steer
 apps.cli.command_catalog_types
 apps.cli.commands
 apps.cli.commands.absorb_cmd
