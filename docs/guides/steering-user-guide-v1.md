@@ -103,6 +103,18 @@ nothing is sent and the output says why. The supervisor must be running, because
 through the same checked entrance as every other command, and its record is the door's own audit
 line.
 
+## From a client, over the public API
+
+`POST /api/v1/jobs/{job}/note` addresses a note to one task of a job, exactly as `remedy job
+steer <job> <text> --task <task>` does on the command line (F030): the twin command runs with
+`--source=api`, so the note's channel reads `api`, the same way a decline or a stop made
+through that API names the door `api`. `remedy job steer` itself takes `--source`, naming
+which door the note came through, kept with the record (default `cli`); a value outside the
+known doors (`cli`, `cockpit`, `api`) is refused before the job is even read. The story a
+client reads over `GET /api/v1/jobs/{job}/story` carries `note_open`, true exactly when the
+job has not ended and a task could still take a note, so a client shows a note field only
+where one would be accepted.
+
 ## Exit codes
 
 `remedy chat send` exits 0 when the message was recorded, 2 when the message itself is

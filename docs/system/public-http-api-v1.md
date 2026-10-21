@@ -351,8 +351,9 @@ or `failed` when the job's tests ran (the tasks' own test runs and the job's DoD
 sandbox refused could not run (since 1.20; then never `passed`, even beside another task's passing
 test, and the story's reason is `sandbox_unavailable`), `not_required` when the order asked for
 none and none ran, and `pending` while the job runs; `required` says the order asked for the
-tests to run. An unexecuted test is never `passed`. `note_open` is always
-`false`, because no route of this API takes a steering note.
+tests to run. An unexecuted test is never `passed`. `note_open` (since 1.25) is `true` exactly
+when the job has not ended and at least one of its tasks could still take a note — the same two
+conditions `POST /api/v1/jobs/{job}/note` checks before it writes one.
 
 A `phrase` and a `reason` are `{key, args}`. Their keys are closed lists, and their arguments are
 numbers, paths relative to the repository and, for `provider`, a provider's id word; the story
