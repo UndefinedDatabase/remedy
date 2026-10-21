@@ -20,11 +20,13 @@ from packages.orchestration.config import (
     get_key_spec,
     validate_config,
 )
-from packages.orchestration.failure_postmortem import is_provider_connection_error
-from packages.orchestration.model_failover import (
+from packages.orchestration.config_keys_model_routing import (
     FAILOVER_CHAINS_CONFIG_KEY,
     FAILOVER_COOLDOWN_CONFIG_KEY,
     FAILOVER_COOLDOWN_DEFAULT_S,
+)
+from packages.orchestration.failure_postmortem import is_provider_connection_error
+from packages.orchestration.model_failover import (
     FAILOVER_LINK_KEYS,
     FAILOVER_LOCAL_ROLES,
     FAILOVER_REASON_PROVIDER_UNAVAILABLE,
@@ -788,7 +790,7 @@ class TestFailoverProviderWalk:
         assert out.error == "claude CLI timed out after 600s"
         assert out.failover_disclosure.used.position == 1
 
-    def test_name_supports_resume_primary_links_and_other_attrs_reach_the_primary(self):
+    def test_name_supports_resume_and_other_attrs_reach_the_primary(self):
         primary = _StubProvider("claude-cli", supports_resume=True)
         link = FailoverLink("claude-cli", "m1", "mid")
         fp = FailoverProvider(
@@ -797,8 +799,6 @@ class TestFailoverProviderWalk:
         )
         assert fp.name == "claude-cli"
         assert fp.supports_resume is True
-        assert fp.primary is primary
-        assert fp.links == (link,)
         assert fp.begin_stream_call == primary.begin_stream_call
 
     def test_supports_resume_is_false_when_the_primary_answers_false(self):
@@ -824,6 +824,11 @@ class _ListClock:
         return self.now
 
 
+def _held_until(fp: FailoverProvider) -> float:
+    """The clock reading until which `fp` holds its primary down; `-inf` when never held (R-1294)."""
+    return fp._held_until
+
+
 def _held_wrapper(primary, link_provider, clock, cooldown_s):
     return FailoverProvider(
         primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
@@ -847,7 +852,7 @@ class TestStickyWindow:
         assert len(primary.build_calls) == 1
         assert first.failover_disclosure.primary_skipped is False
         assert first.failover_disclosure.primary_error == _DOWN
-        assert fp.held_until == 60
+        assert _held_until(fp) == 60
 
         clock.now = 59
         second = fp.build("p2")
@@ -886,7 +891,7 @@ class TestStickyWindow:
         assert not hasattr(back, "failover_disclosure")
         assert [c.prompt for c in primary.build_calls] == ["p1", "p2"]
         assert [c.prompt for c in link_provider.build_calls] == ["p1", "p2"]
-        assert fp.held_until == float("-inf")
+        assert _held_until(fp) == float("-inf")
 
         clock.now = 11
         fp.build("p3")

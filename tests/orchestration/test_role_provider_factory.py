@@ -57,8 +57,8 @@ tier = "mid"
             "claude-cli", role="builder", staging_dir=str(tmp_path / "staging"),
         )
         assert isinstance(builder, FailoverProvider)
-        assert isinstance(builder.primary, ClaudeCliProvider)
-        assert builder.links == (FailoverLink("claude-cli", "mid-model", "mid"),)
+        assert isinstance(builder._primary, ClaudeCliProvider)
+        assert builder._links == (FailoverLink("claude-cli", "mid-model", "mid"),)
 
         reviewer = create_role_provider("claude-cli", role="reviewer", staging_dir=None)
         assert not isinstance(reviewer, FailoverProvider)
@@ -77,8 +77,8 @@ tier = "mid"
             write_mode="allowed-tools",
         )
         assert isinstance(builder, FailoverProvider)
-        link = builder.links[0]
-        link_provider = builder.build_link(link)
+        link = builder._links[0]
+        link_provider = builder._build_link(link)
         assert isinstance(link_provider, ClaudeCliProvider)
         assert not isinstance(link_provider, FailoverProvider)
         assert link_provider.write_mode == "allowed-tools"
@@ -120,13 +120,13 @@ tier = "mid"
             "primary", role="builder", staging_dir=None, make_provider=make_provider,
         )
         assert isinstance(builder, FailoverProvider)
-        # Read through the wrapper's read-only `held_until` property, bracketed by the clock
-        # the wrapper uses by default (time.monotonic).
+        # Read from the wrapper's own field (R-1294), bracketed by the clock the wrapper uses by
+        # default (time.monotonic).
         before = time.monotonic()
         out = builder.build("do it")
         after = time.monotonic()
         assert out.error == ""
-        assert before + 45 <= builder.held_until <= after + 45
+        assert before + 45 <= builder._held_until <= after + 45
 
 
 class TestRefusedChain:

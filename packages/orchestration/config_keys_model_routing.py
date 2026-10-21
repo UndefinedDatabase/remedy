@@ -9,6 +9,12 @@ from __future__ import annotations
 
 from packages.orchestration.config_key_spec import ConfigKeySpec
 
+# The failover chain table's key, the cooldown's key and its default, spelled once here and read
+# by packages/orchestration/model_failover.py (R-1310).
+FAILOVER_CHAINS_CONFIG_KEY: str = "model_failover.chains"
+FAILOVER_COOLDOWN_CONFIG_KEY: str = "model_failover.cooldown_s"
+FAILOVER_COOLDOWN_DEFAULT_S: int = 300
+
 MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # F110's per-project override map, and the first TABLE-VALUED key in this
     # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
@@ -57,7 +63,7 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # F058's per-role failover chains: parsed and hard-rule-checked by
     # packages/orchestration/model_failover.py, never here.
     ConfigKeySpec(
-        key="model_failover.chains",
+        key=FAILOVER_CHAINS_CONFIG_KEY,
         env_var="REMEDY_MODEL_FAILOVER_CHAINS",
         description=(
             "Per-role model failover chains (F058); each entry of the "
@@ -76,7 +82,7 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # WHY: the sticky window's length, so one failover does not retry the dead primary on every
     # call that follows (F058).
     ConfigKeySpec(
-        key="model_failover.cooldown_s",
+        key=FAILOVER_COOLDOWN_CONFIG_KEY,
         env_var="REMEDY_MODEL_FAILOVER_COOLDOWN_S",
         description=(
             "After a backup model serves a call because the role's usual provider could not be "
@@ -85,7 +91,7 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "never holds."
         ),
         value_type=int,
-        default=300,
+        default=FAILOVER_COOLDOWN_DEFAULT_S,
     ),
     # WHY here: the provider-execution keys live in this module; `config.py` may not grow.
     ConfigKeySpec(

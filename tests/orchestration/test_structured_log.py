@@ -21,19 +21,30 @@ from packages.orchestration.structured_log import (
     DEFAULT_LOG_MAX_BYTES,
     FILE_ONLY_ATTR,
     LOG_CONTEXT_KEYS,
-    LOG_FIELD_NAMES,
     LOG_FILE_NAME,
     MIN_LOG_BACKUP_COUNT,
     MIN_LOG_MAX_BYTES,
     REMEDY_LOGGER_NAMES,
     bind_log_context,
     configure_structured_logging,
-    current_log_context,
     log_files_oldest_first,
     logs_dir,
     read_log_entries,
+    remedy_log_job_id,
+    remedy_log_run_id,
+    remedy_log_task_id,
     reset_structured_logging,
 )
+
+# The keys of every JSON line, in order (R-1294: the tests' own copy, no production reader).
+LOG_FIELD_NAMES = ("ts", "level", "logger", "message", "job_id", "task_id", "run_id")
+
+
+def current_log_context() -> dict[str, str | None]:
+    """The three ids bound now, read from the public context variables (R-1294)."""
+    return {"job_id": remedy_log_job_id.get(), "task_id": remedy_log_task_id.get(),
+            "run_id": remedy_log_run_id.get()}
+
 
 CHILD = logging.getLogger("packages.orchestration.fixture")
 APPS_CHILD = logging.getLogger("apps.cli.fixture")

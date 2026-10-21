@@ -32,11 +32,6 @@ from packages.orchestration.stream_evidence import redact_text
 # The one file name of the operations log inside its folder.
 LOG_FILE_NAME = "remedy.log"
 
-# The keys of every JSON line, in order; the text line carries the same fields.
-LOG_FIELD_NAMES: tuple[str, ...] = (
-    "ts", "level", "logger", "message", "job_id", "task_id", "run_id",
-)
-
 # The three ids a record carries so one night's work can be looked up by job, task or run.
 LOG_CONTEXT_KEYS: tuple[str, ...] = ("job_id", "task_id", "run_id")
 
@@ -98,11 +93,6 @@ def bind_log_context(
     finally:
         for var, token in reversed(tokens):
             var.reset(token)
-
-
-# The three ids bound now, keyed in the order of `LOG_CONTEXT_KEYS`.
-def current_log_context() -> dict[str, str | None]:
-    return {key: _CONTEXT_VARS[key].get() for key in LOG_CONTEXT_KEYS}
 
 
 # Stamps the bound ids on a record; an id the record already carries (`extra=`) wins.
