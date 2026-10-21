@@ -37,6 +37,8 @@ def confirm_cost_preview(
     yes: bool,
     command_name: str,
     json_output: bool = False,
+    job_id: str | None = None,
+    yes_flag: str = "--yes",
 ) -> bool:
     """Show the estimate and decide whether the command may proceed.
 
@@ -58,6 +60,12 @@ def confirm_cost_preview(
     otherwise print to stdout — goes to stderr instead, byte for byte the
     same text, and the non-terminal refusal answers through ``fail()``
     rather than printing its own ``Error: `` line and exiting itself.
+
+    DECISION F141 D5 (2) — when the estimate is expensive and the command is
+    about to proceed, this asks the permission matrix's ``expensive`` action
+    at ``job_id``'s pinned level, with the approval being ``yes_flag`` on
+    ``yes`` and the prompt's own command name on a confirmed prompt; a cheap
+    estimate, a declined prompt and the missing-terminal refusal ask nothing.
     """
     line = render_estimate_line(estimate)
     is_expensive = estimate.band_usd_high is None or estimate.band_usd_high > confirm_above_usd
@@ -66,8 +74,24 @@ def confirm_cost_preview(
         print(line, file=human)
         return True
 
+    from packages.orchestration.permission_matrix import (
+        APPROVAL_KIND_FLAG,
+        APPROVAL_KIND_PROMPT,
+        InstanceApproval,
+        PermissionRequest,
+        pinned_job_level,
+        require_permission,
+    )
+
     if yes:
         print(f"{line} - proceeding without prompt (--yes)", file=human)
+        require_permission(
+            "expensive",
+            PermissionRequest(
+                level=pinned_job_level(job_id), subject=f"the cost of {command_name}",
+                job_id=job_id, approval=InstanceApproval(APPROVAL_KIND_FLAG, yes_flag),
+            ),
+        )
         return True
 
     if not _stdin_is_a_tty():
@@ -84,4 +108,13 @@ def confirm_cost_preview(
         answer = input()
     else:
         answer = input(prompt)
-    return answer.strip().lower() in ("y", "yes")
+    proceed = answer.strip().lower() in ("y", "yes")
+    if proceed:
+        require_permission(
+            "expensive",
+            PermissionRequest(
+                level=pinned_job_level(job_id), subject=f"the cost of {command_name}",
+                job_id=job_id, approval=InstanceApproval(APPROVAL_KIND_PROMPT, command_name),
+            ),
+        )
+    return proceed

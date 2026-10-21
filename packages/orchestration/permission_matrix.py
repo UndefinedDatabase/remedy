@@ -100,9 +100,12 @@ _ACTION_WORDS: dict[str, str] = {
     "external_call": "run a command that reaches the network",
 }
 
-# The two ways a person may approve one asked instance (DECISION F141 D1 (4)).
+# The three ways a person may approve one asked instance (DECISION F141 D1 (4);
+# DECISION F141 D5 (1) adds the prompt: the operator's `y` at a command's own prompt, approving
+# this one instance exactly as a flag does, its `ref` the command's name).
 APPROVAL_KIND_FLAG = "flag"
 APPROVAL_KIND_DECISION = "decision"
+APPROVAL_KIND_PROMPT = "prompt"
 
 
 # One person's approval of ONE instance of an asked action — a command flag or an answered
@@ -113,7 +116,7 @@ class InstanceApproval:
     ref: str
 
     def __post_init__(self) -> None:
-        if self.kind not in (APPROVAL_KIND_FLAG, APPROVAL_KIND_DECISION):
+        if self.kind not in (APPROVAL_KIND_FLAG, APPROVAL_KIND_DECISION, APPROVAL_KIND_PROMPT):
             raise ValueError(f"not a known approval kind: {self.kind!r}")
         if not self.ref:
             raise ValueError("an instance approval needs a non-empty ref")
@@ -245,6 +248,8 @@ def _approved_by(approval: InstanceApproval) -> str:
     """The phrase naming who approved an instance, for the allow-sentence of an asked action."""
     if approval.kind == APPROVAL_KIND_FLAG:
         return f"your flag {approval.ref}"
+    if approval.kind == APPROVAL_KIND_PROMPT:
+        return f"your answer at the prompt of {approval.ref}"
     return f"your answer to decision {approval.ref}"
 
 

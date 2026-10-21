@@ -95,7 +95,7 @@ def _cmd_rerun_subtree(job_id_str: str, task_arg: str, *, model: str = "",
 
     proceed = confirm_cost_preview(
         estimate, confirm_above_usd=resolve_confirm_above_usd(), yes=yes,
-        command_name="job.rerun-subtree", json_output=json_output)
+        command_name="job.rerun-subtree", json_output=json_output, job_id=job_id)
     if not proceed:
         print("Cancelled. Nothing was changed.", file=sys.stderr if json_output else sys.stdout)
         if json_output:
