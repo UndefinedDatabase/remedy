@@ -43,7 +43,7 @@ Who may do what with which token:
 | What Remedy offers | `GET /api/v1/interface` | `GET /v1/remedy` `cli` (new) | Job page: the command in small type | The Orb's summary |
 | Is Remedy there | `GET /api/v1/health`, every call's failure | `GET /v1/remedy` `state` and `sentence` (new) | «Remedy» tab, job page | One German sentence instead of a spinner |
 | What a change rests on | `GET /api/v1/jobs/{job}/proof` | not used in v1 | not shown in v1 | registered for Face v2 |
-| Steering note | none in `/api/v1` | none | none | registered as a finding for F307 |
+| Steering note | `POST /api/v1/jobs/{job}/note` | not used in v1 | not shown in v1 | built by F303 |
 
 ## What is deleted, and when
 

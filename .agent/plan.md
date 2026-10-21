@@ -1,19 +1,20 @@
-# Plan — F060 Long-run certificate
+# Plan — F303 The face on the public API
 
 ## Goal
-A finished job can prove itself to someone who was not there: `remedy job certificate <id>` packs
-its report, token truth, verdicts, ownership, run manifest and a hash manifest with claims into one
-small bundle, and `remedy verify <bundle>` checks every member and every claim on any machine, with
-the failing member named (docs/roadmap/features/T3_F060.md; DECISIONs F060 D1 to D5).
+Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
+outside the contract document is served; a steering note reaches a job through the API; and the
+public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
+closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D7).
 
 ## Current Step
-Round 7 (session 1), the closing round (`docs/roadmap/STATUS_closure_protocol.md` steps 4 and 5):
-book round 6, the Built State's closure facts, no rotation (DECISION F060 D5), F060 accepted in
-STATUS with the README sync and `SU-071`'s `consumed_by`, and the pull request, left unmerged.
+Round 9 (session 2), the closing round: book round 8, DECISION F303 D7 (no rotation), the Built
+State's closure facts, the STATUS flip with the README sync and SU-072's consumed_by, and the pull
+request, left unmerged.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F060's pull
-   request; Rule A5 proposes the next feature.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F303's pull request; Rule A5
+   proposes the next feature (F307, Findings paydown v9).
 
 ## Risks
-- The integrity check fails on High findings F060 does not own (DECISION F310 D7, Q20).
+- The integrity check fails on High findings F303 does not own (DECISION F310 D7).
+- The operator's live service writes the data root the guard watches (R-1411, owned by F307).

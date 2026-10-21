@@ -1,1 +1,1 @@
-{"jobs": [], "model_server": {"host": "http://127.0.0.1:43359", "loaded": ["qwen3:8b"], "provider": "ollama", "queue": null, "state": "reachable"}, "ok": true, "orders": [], "schema_version": 1, "stall_threshold_s": 300, "workers": {"free": null, "running": 0}}
+{"jobs": [], "model_server": {"host": "http://127.0.0.1:34603", "loaded": ["qwen3:8b"], "provider": "ollama", "queue": null, "state": "reachable"}, "ok": true, "orders": [], "schema_version": 1, "stall_threshold_s": 300, "workers": {"free": null, "running": 0}}

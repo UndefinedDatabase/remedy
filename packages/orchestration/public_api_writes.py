@@ -45,6 +45,15 @@ def _job_cancel_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str
             "--", segments["job"]]
 
 
+def _job_steer_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
+    """The command line `remedy job steer` is run with (DECISION F303 D3 (1)): `--task` as the
+    body gives it, `--source=api`, so the note names the door it came through; then `--json`,
+    `--`, the job and the note's text, `job steer`'s own positional argument, each passed on
+    as sent so the command itself refuses an empty one with `invalid_message`."""
+    return ["job", "steer", f"--task={body.get('task', '')}", "--source=api", "--json",
+            "--", segments["job"], body.get("text", "")]
+
+
 def _order_cancel_argv(segments: dict[str, str], body: dict[str, Any]) -> list[str]:
     """The command line `remedy client cancel-order` is run with (exec-1017c): `--reason`,
     `--source=api`, `--decline-results` when the body sets `decline_results`, `--json`, `--`, the order."""
@@ -110,6 +119,7 @@ _TWIN_ARGV: dict[str, Callable[[dict[str, str], dict[str, Any]], list[str]]] = {
     "job.stop": _job_stop_argv,
     "job.abandon": _job_cancel_argv,
     "client.cancel-order": _order_cancel_argv,
+    "job.steer": _job_steer_argv,
 }
 
 #: The flags of the order-create route's body, each passed as its `remedy do` option when

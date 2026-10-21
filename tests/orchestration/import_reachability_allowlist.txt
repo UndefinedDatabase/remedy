@@ -17,6 +17,7 @@ apps.cli.command_catalog_doctor
 apps.cli.command_catalog_mission
 apps.cli.command_catalog_project
 apps.cli.command_catalog_stats
+apps.cli.command_catalog_steer
 apps.cli.command_catalog_types
 apps.cli.commands
 apps.cli.commands.absorb_cmd
@@ -29,6 +30,7 @@ apps.cli.commands.change
 apps.cli.commands.chat_cmd
 apps.cli.commands.ci_cmd
 apps.cli.commands.client_cmd
+apps.cli.commands.client_mcp_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.contract_cmd
 apps.cli.commands.data_cmd
@@ -255,6 +257,8 @@ packages.orchestration.long_run_executor
 packages.orchestration.manifest_schema
 packages.orchestration.manual_attestation
 packages.orchestration.markdown_output_safety
+packages.orchestration.mcp_server
+packages.orchestration.mcp_tools
 packages.orchestration.memory_learn
 packages.orchestration.missing_tests_gate
 packages.orchestration.mission_compiler

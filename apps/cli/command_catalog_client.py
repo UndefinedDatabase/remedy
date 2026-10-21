@@ -177,4 +177,20 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         # A job that has not ended, or whose commits git no longer has, exits 3 (`not_ready`).
         exit_codes=(0, 1, 2, 3),
     ),
+    # F303 (DECISION F303 D5): the MCP server; not read_only, because every call starts a child
+    # `remedy` and `evidence_bundle` writes a certificate file, and it has no `--json` envelope.
+    CommandEntry(
+        command_id="client.mcp",
+        group_id="client",
+        subcommand="mcp",
+        description="Serve Remedy's verify check, gate status and evidence bundle as tools of the Model Context Protocol over standard input and output for an orchestrator that starts it, offering only the tools --allow names.",
+        action_class="local_state_change",
+        args=(
+            ArgDef("--allow", "A tool to offer: evidence_bundle, gate_status or verify; repeat it for each (default: none, so no tool is offered)",
+                   required=False, is_option=True, is_repeatable=True),
+        ),
+        supports_json=False,
+        may_execute_commands=True,
+        related=("client.interface", "verify.run", "job.certificate"),
+    ),
 )

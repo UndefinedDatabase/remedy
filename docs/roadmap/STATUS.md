@@ -300,7 +300,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
 
-- [ ] F303 — The face on the public API: what the remedy edition needs
+- [x] F303 — The face on the public API: what the remedy edition needs (T001–T003 and the MCP facet complete; R-1329, R-1407, R-1408, R-1409 and R-1410 resolved; R-1411 open — owned by F307; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f303r8e1001 · package remedy-review-20261021-190053-READY_FOR_REVIEW.zip · SHA-256 ceeee0c17538832f84c67beafeca5d53861c71a3713205efb27878d46e47d362 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5727408e0926857a7f24363015c1ea96da6dc1a7)
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

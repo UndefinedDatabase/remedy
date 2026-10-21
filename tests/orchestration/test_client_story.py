@@ -56,14 +56,19 @@ def _run(repo: Path, *, builder_error: str = "") -> str:
 
 
 def _story(job_id: str, data_root: Path) -> dict:
-    from packages.orchestration.pingpong_job import load_job_plan_safe
+    from packages.orchestration.pingpong_job import job_is_terminal, load_job_plan_safe
+    from packages.orchestration.steering import STEERABLE_TASK_STATUSES
     from packages.orchestration.timeline import load_run_events
 
     plan, _degraded = load_job_plan_safe(job_id)
     story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
     assert story_problems(story) == []
     assert [step["id"] for step in story["steps"]] == list(STORY_STEP_IDS)
-    assert story["note_open"] is False
+    # DECISION F303 D2 (4): open exactly when the job has not ended and a task could still take
+    # a note — read here straight from the record, independently of client_story's own helper.
+    steerable = any((task.status.value if hasattr(task.status, "value") else str(task.status))
+                    in STEERABLE_TASK_STATUSES for task in plan.tasks)
+    assert story["note_open"] == (not job_is_terminal(plan.state) and steerable)
     assert "$" not in json.dumps(story)
     return story
 
@@ -320,3 +325,55 @@ def test_an_applied_or_declined_result_has_no_way_out_left(data_root, repo):
     _persist_job(plan)
 
     assert _story(applied, data_root)["end"] is None and _story(declined, data_root)["end"] is None
+
+
+# -- note_open (DECISION F303 D2 (4)): the two conditions `steering.steer_task_command` checks --
+
+
+def test_note_open_is_true_for_a_running_job_with_a_pending_task(data_root, repo):
+    from packages.orchestration.pingpong_job import TASK_PENDING, _persist_job, load_job_plan_safe
+    from packages.orchestration.timeline import load_run_events
+
+    job_id = _run(repo)
+    _save(job_id, state=RunState.RUNNING)
+    plan, _degraded = load_job_plan_safe(job_id)
+    plan.tasks[0].status = TASK_PENDING
+    _persist_job(plan)
+    story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
+    assert story["note_open"] is True
+
+
+@pytest.mark.parametrize("state", [RunState.FAILED, RunState.CANCELLED])
+def test_note_open_is_false_for_an_ended_job_with_a_pending_task(data_root, repo, state):
+    """R-1408: the job's own ended state refuses a note before any task status is even read."""
+    from packages.orchestration.pingpong_job import TASK_PENDING, _persist_job, load_job_plan_safe
+    from packages.orchestration.timeline import load_run_events
+
+    job_id = _run(repo)
+    _save(job_id, state=state)
+    plan, _degraded = load_job_plan_safe(job_id)
+    plan.tasks[0].status = TASK_PENDING
+    _persist_job(plan)
+    story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
+    assert story["note_open"] is False
+
+
+def test_note_open_is_false_for_a_completed_job(data_root, repo):
+    job_id = _run(repo)
+    story = _story(job_id, data_root)
+    assert story["state"] == "done"
+    assert story["note_open"] is False
+
+
+def test_note_open_is_false_for_a_running_job_whose_every_task_is_done(data_root, repo):
+    from packages.orchestration.pingpong_job import TASK_PASSED, _persist_job, load_job_plan_safe
+    from packages.orchestration.timeline import load_run_events
+
+    job_id = _run(repo)
+    _save(job_id, state=RunState.RUNNING)
+    plan, _degraded = load_job_plan_safe(job_id)
+    for task in plan.tasks:
+        task.status = TASK_PASSED
+    _persist_job(plan)
+    story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
+    assert story["note_open"] is False

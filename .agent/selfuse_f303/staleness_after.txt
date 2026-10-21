@@ -1,0 +1,2 @@
+Read from: the job branch remedy/job-fa8071ff5aa24f46
+docs_index_guide_registration | docs/README.md | the Guides section has no link to `guides/http-clients.md` | `docs/guides/http-clients.md` ships

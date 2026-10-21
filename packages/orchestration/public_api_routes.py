@@ -47,6 +47,9 @@ class PublicApiRoute:
     #: supervisor's `RunLauncher`, rather than running its twin as a child of the command runner
     #: (DECISION F253 D18 (1), (3)); like a `starts_order` route it has no `refusal_default`.
     starts_run: bool = False
+    #: The body keys a write route passes as its twin's positional arguments, after `--` and in
+    #: this order (DECISION F303 D3 (1)); `()` for a route whose body keys are all options.
+    positional_body: tuple[str, ...] = ()
 
 
 #: Every route this registry publishes. A test pins each one by name, so an unpinned addition
@@ -325,6 +328,30 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "--json` prints them; `run` keeps the lines of one run of a task. A job id prefix is "
             "accepted when it names one job, a job with no line answers an empty list, and a "
             "client token reads only a job of one of its projects."
+        ),
+    ),
+    PublicApiRoute(
+        method="POST",
+        path="/api/v1/jobs/{job}/note",
+        twin="job.steer",
+        body=(("task", "string"), ("text", "string")),
+        positional_body=("text",),
+        refusal_default=409,
+        refusals=(
+            ("invalid_job_id", 404),
+            ("job_not_found", 404),
+            ("ambiguous_job_id", 400),
+            ("invalid_message", 400),
+            ("unknown_task", 404),
+        ),
+        description=(
+            "Addresses a steering note to one task of a job, as `remedy job steer <job> <text> "
+            "--task <task> --json` does, recorded as coming through `api`: the task reads it at "
+            "the start of its next round and nothing interrupts a model call in flight. An ended "
+            "job answers 409 `job_not_steerable`, a task that will not run again 409 "
+            "`task_not_steerable`, and a note that could not be written 409 "
+            "`steering_write_failed`. A job id prefix is accepted, and a client token steers "
+            "only a job of one of its projects (403 `api_client_policy_refused`)."
         ),
     ),
     PublicApiRoute(

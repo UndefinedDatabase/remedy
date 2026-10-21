@@ -49,8 +49,9 @@ SCHEMA = "remedy.steering_message.v1"
 RECORD_DIRNAME = "steering"
 #: A correction is usually one sentence; the bound keeps a message inside one prompt segment.
 STEERING_MAX_CHARS = 2000
-#: Where the message came from: the CLI today, the cockpit's input field once T003 wires it.
-STEERING_CHANNELS = frozenset({"cli", "cockpit"})
+#: Where the message came from: the CLI, the public API's note route (DECISION F303 D2 (2)), and
+#: the cockpit's input field once T003 wires it.
+STEERING_CHANNELS = frozenset({"api", "cli", "cockpit"})
 #: Record ids are numbered per job; this many attempts cover every concurrent sender.
 _MAX_ID_ATTEMPTS = 64
 

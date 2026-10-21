@@ -774,6 +774,19 @@ end the response with:
   stated rules that no ordered test could see broken, are item 18's reading of an ordered list of
   tests against the property it must establish, each found by the reviewer's mutations as the
   review loop already requires. The list stays at 34 items.
+  Consolidated again at F303's closure on 2026-10-21: nothing joined and no two items were merged,
+  because none of F303's four lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  route whose body key, refusal status and twin the route guard refuses, a catalog description that
+  the vocabulary guard refuses, and an orphan-list entry kept after the next commit's import reached
+  its module are each item 34's reading of the guards that bind the file the order changes; and a
+  handback without its item-status table is a slip in writing a handback, which no item about a
+  block's text can prevent. Its five findings were each repaired inside the feature: R-1329, moved
+  here from F307, is the feature's own scope; R-1407, an answer key the declared set left out, is
+  item 34's reading of the code the order reaches; R-1409, a request that ended the server, was
+  found by the reviewer's probe of the round's code; and R-1408 and R-1410, stated rules that no
+  ordered test could see broken, are item 18's reading of an ordered list of tests against the
+  property it must establish, each found by the reviewer's mutations as the review loop already
+  requires. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
