@@ -259,14 +259,15 @@ def write_template_contract(project_id: str, mission_id: str, name: str,
     A mission that already carries a contract is refused: the template is the
     floor a new contract starts from, never a rewrite of one.
     """
-    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.mission_state import load_mission, repo_mission_lock
 
-    template = load_contract_template(name, directory)
-    if read_mission_contract(load_mission(project_id, mission_id, root)) is not None:
-        raise ContractTemplateError(
-            f"mission {mission_id} already has a contract; template {name!r} "
-            f"was not written")
-    return write_mission_contract(
-        project_id, mission_id,
-        MissionContract(criteria=compile_contract_template(template), template=name),
-        root)
+    with repo_mission_lock(project_id, root):    # R-1300: the check and the write are one step
+        template = load_contract_template(name, directory)
+        if read_mission_contract(load_mission(project_id, mission_id, root)) is not None:
+            raise ContractTemplateError(
+                f"mission {mission_id} already has a contract; template {name!r} "
+                f"was not written")
+        return write_mission_contract(
+            project_id, mission_id,
+            MissionContract(criteria=compile_contract_template(template), template=name),
+            root)
