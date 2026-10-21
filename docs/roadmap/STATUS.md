@@ -300,7 +300,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
 
-- [ ] F303 — The face on the public API: what the remedy edition needs
+- [~] F303 — The face on the public API: what the remedy edition needs
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 

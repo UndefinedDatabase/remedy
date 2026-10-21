@@ -1,21 +1,22 @@
-# Live Review — F060 Long-run certificate
+# Live Review — F303 The face on the public API
 
-> Round-by-round review record, re-headed at the F060 claim per
-> docs/agents/planner_reviewer_prompt.md §1. F060 is claimed on `feature/f060-long-run-certificate`,
-> from `main` at `646c4b1d7`, the merge commit of pull request 374, which carried F141. Everything
+> Round-by-round review record, re-headed at the F303 claim per
+> docs/agents/planner_reviewer_prompt.md §1. F303 is claimed on `feature/f303-face-public-api`,
+> from `main` at `2621bbe2e`, the merge commit of pull request 375, which carried F060. Everything
 > from the Findings heading to the end of the file is carried forward byte-identical from that
-> commit, and round 1 appends the gate of F141's round 11 after it. Finding ids continue the
-> monotonic R-XXXX series. The open set at `646c4b1d7`, computed with `open_finding_ids` from
-> `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and the highest R-1403; F060
-> owns none of them.
+> commit, except one Owner line added under R-1329, and round 1 appends the gate of F060's round 7
+> after it. Finding ids continue the monotonic R-XXXX series. The open set at `2621bbe2e`, computed
+> with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and
+> the highest R-1403; F303 owns one of them, R-1329, re-assigned from F307 by DECISION F303 D1.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F060 D1's. Round 1 claims F060, books F141's round 11, records the
-inventory of the review package's layers, and lands the certificate profile: its manifest, its byte
-budget and its goldens (T001). Round 2 reads a finished job's sources and claims; round 3 lands the
-verifier and one tamper fixture per member class (T002); round 4 lands both commands, the standalone
-check and the page (T003). Then the closure.
+THE ORDER BELOW IS DECISION F303 D1's. Round 1 claims F303, books F060's round 7, records the
+inventory of what the public API already publishes, and lands the two proofs the contract still
+lacks: that nothing outside the contract document is served, and that the logs route answers oldest
+first. Round 2 lands the steering-note route (T002, R-1329). Rounds 3 and 4 land the MCP facet of
+DECISION F253 D1: a server closed by default that offers verify, gate status and the evidence bundle
+as tools. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -256,6 +257,7 @@ Gate: F055 R8 — the F055 round 8 entry, the repair of R-1320, the one full sui
 - R-1328 — Low, amend1015f: THE DIRTY-FILE SNAPSHOT IS NOT SHOWN TO THE PERSON. Raised by the helper session of amend1015-face-migration Phase 1 (DECISION amend1015f D18), at the amendment's order. SEARCHED BEFORE MINTING: the ledger and its archive for `dirty-file snapshot` and `dirty file`; R-0666 is about an alignment summary, not this. READ at `bb629b85c`: `packages/orchestration/dirty_baseline.py` captures the deliverables' bytes as the baseline and records only the names of every other dirty path, and `remedy do` names them after an apply ("left uncommitted and untouched"); neither the story nor the digest says before the run which files were dirty and taken as the start. THE REPAIR: the names of the captured and the preserved paths in the job's record, read by the story as a phrase with a count and the digest as a list of repository-relative paths. Owner: F307. OPEN.
 
 - R-1329 — Low, amend1015f: NO ROUTE OF THE PUBLIC API TAKES A STEERING NOTE. Raised by the helper session of amend1015-face-migration Phase 1 (DECISIONs amend1015f D5 and D18). SEARCHED BEFORE MINTING: the ledger and its archive for `steering note`; the two entries naming it concern the cockpit. READ at `bb629b85c`: `PUBLIC_API_ROUTES` has no route that sends a note to a running job, so the story's `note_open` is always false and the universe's face shows no steering field. THE REPAIR: a `POST /api/v1/jobs/{job}/note` route twinned with the command that records a steering note today, scoped to a client token's projects, after which `note_open` reads whether the job takes a note now. Owner: F307. OPEN.
+Owner: F303 — The face on the public API (re-assigned at F303's claim, 2026-10-21, DECISION F303 D1; this line supersedes any earlier Owner line in this paragraph).
 
 - R-1330 — Low, amend1015f: THE `ui_server` MODULES KEEP A NAME FROM WHEN REMEDY SERVED ITS OWN FACE. Raised by the helper session of amend1015-face-migration Phase 1 (DECISION amend1015f D18), at the amendment's order (Part 4.2: "Do not rename modules; register the rename as a finding for F307"). SEARCHED BEFORE MINTING: the ledger and its archive for `ui_server` together with `rename`; the entries found concern renames inside the module, not of it. READ at `bb629b85c`: `packages/orchestration/ui_server.py` and `ui_server_launch.py` serve the public API, its authentication and the JSON routes, and Phase 4 removes their static face. THE REPAIR: rename the modules for what they serve, with every import, test and document moved in one commit and no alias left behind. Owner: F307. OPEN.
 
@@ -580,3 +582,5 @@ Gate: F060 R5 — the F060 round 5 entry, the closure's integration-gate round, 
 Done: R-1406 — RESOLVED at F060 R5 by C3, `a0a76deab`: `test_a_relative_out_is_recorded_in_the_issue_record_as_an_absolute_path` in `tests/cli/test_certificate_cmd.py`. RED BEFORE: at `b237a1fe0` replacing `os.path.abspath(built["path"])` by `str(built["path"])` left the file at `16 passed`; GREEN AFTER: at `55e7873d7` the same replacement turns the new test red, and the unmutated file passes at `17 passed`.
 
 Gate: F060 R6 — the F060 round 6 entry, the closure's evidence round, over `55e7873d7`..`8c361bfac` (3 commits, each single-parent; insertions by `git show --numstat`: `ffa5c1cad` 127, `c9b3cbc4b` 452, `8c361bfac` 51). VERDICT PASS. The reviewer's `verify.py` read every parent, subject and path set as ordered, C1's three files and C2's evidence script byte-identical to the prepared ones, C3 free of this machine's paths and nothing outside `.agent/` changed, `ALL True`. The round changed no code and ordered no test selection but the evidence job's. The reviewer's collect-only precheck at `55e7873d7` read `10975/11157 tests collected (182 deselected)` and no node id the packaging scan refuses, and the evidence job `f060r6e1001` read the same: head `c9b3cbc4b`, ancestry-path and first-parent counts both 28, pytest exit 0 with `10969 passed, 0 failed, 6 skipped`, `validate_verification_tests problems []`, `is_valid_current_run True`, `validation_errors []`. The staging reclaim's preview read nothing reclaimable, so no apply ran. The reviewer read the package itself: `remedy-review-20261021-150936-READY_FOR_REVIEW.zip` in `~/Repos/remedy-history/zips`, SHA-256 `97f5c525bc0d5a06a9935df49fbc999ea26913d8789c047561ac86aff4569cec` by its own sha256 reader, `zipfile.is_zipfile` True, `testzip()` None, 2021 members, `package_status` `READY_FOR_REVIEW`, `committed_review_subject` base `646c4b1d7aebe171d9e8a14ea235161c192b286c` and head `c9b3cbc4b82312d9c3c2b5180ced6dbb45673a08`; the build log reads `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. `python3 -m apps.cli.main integrity check --json` fails only `high_blockers_open`, on the twelve findings of DECISION F310 D7, none of them F060's. The worker declared no deviation.
+
+Gate: F060 R7 — the F060 round 7 entry, the closing round, over `8c361bfac`..`30eebb4ba` (3 commits, each single-parent; insertions by `git show --numstat`: `d47fd4ecc` 187, `4bbac670f` 7, `30eebb4ba` 58), reviewed in F303's session 1 after pull request 375 merged it as `2621bbe2e`. VERDICT PASS, verified by the bytes. The reviewer re-ran round 7's own `verify.py` over the three commits: every parent, subject and path set as ordered, C1's block copy, pull request body, decisions, ledger append and plan, C2's feature file and C3's STATUS line, README and self-use queue each equal to the prepared file, and C3's handoff free of this machine's paths, all `True`; its three `False` lines name only the merge commit and the branch name, which lie outside the round. The merge commit's tree equals `30eebb4ba`'s (`git diff 30eebb4ba 2621bbe2e` prints nothing). The worker's gates read as the handoff states them: the selection `3419 passed, 2 skipped`, exit 0, and the integrity check failing only on the twelve High findings F060 does not own (DECISION F310 D7). No hosted run exists for the pull request, which operator amendment amend1011-manual-hosted-ci makes no blocker. No deviation was declared.

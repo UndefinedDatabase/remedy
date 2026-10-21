@@ -1,19 +1,22 @@
-# Plan — F060 Long-run certificate
+# Plan — F303 The face on the public API
 
 ## Goal
-A finished job can prove itself to someone who was not there: `remedy job certificate <id>` packs
-its report, token truth, verdicts, ownership, run manifest and a hash manifest with claims into one
-small bundle, and `remedy verify <bundle>` checks every member and every claim on any machine, with
-the failing member named (docs/roadmap/features/T3_F060.md; DECISIONs F060 D1 to D5).
+Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
+outside the contract document is served; a steering note reaches a job through the API; and the
+public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
+closed by default (docs/roadmap/features/T12_F303.md; DECISION F303 D1).
 
 ## Current Step
-Round 7 (session 1), the closing round (`docs/roadmap/STATUS_closure_protocol.md` steps 4 and 5):
-book round 6, the Built State's closure facts, no rotation (DECISION F060 D5), F060 accepted in
-STATUS with the README sync and `SU-071`'s `consumed_by`, and the pull request, left unmerged.
+Round 1 (session 1): claim F303, book F060's round 7, the inventory, R-1329 moved here, the
+contract section naming the socket's command door with its tests, and the logs route's order
+proved through the route.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F060's pull
-   request; Rule A5 proposes the next feature.
+1. Round 2: `POST /api/v1/jobs/{job}/note`, twinned with `remedy job steer`, and the story's
+   `note_open` (T002, R-1329).
+2. Rounds 3 and 4: the MCP facet — server, allowlist closed by default, three tools, page.
+3. The closure: integration gate, evidence, acceptance.
 
 ## Risks
-- The integrity check fails on High findings F060 does not own (DECISION F310 D7, Q20).
+- `ui_server.py` has no headroom on the structure ledger; new logic goes into other modules.
+- The integrity check fails on High findings F303 does not own (DECISION F310 D7).

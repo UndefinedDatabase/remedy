@@ -1,21 +1,19 @@
-# Context — F060 Long-run certificate
+# Context — F303 The face on the public API
 
 ## Active Branch
-`feature/f060-long-run-certificate`, from `main` at `646c4b1d7` (the merge commit of pull request
-374, which carried F141).
+`feature/f303-face-public-api`, from `main` at `2621bbe2e` (the merge commit of pull request 375,
+which carried F060).
 
 ## Scope
-F060 (Tier 3), as `docs/roadmap/features/T3_F060.md` and DECISION F060 D1 state: the certificate
-profile with its manifest, claims and byte budget, the sources of a finished job, the verifier with
-its tamper fixtures, and the two commands `remedy job certificate` and `remedy verify`.
+F303 (Tier 12), as `docs/roadmap/features/T12_F303.md`, narrowed by DECISION amend1016 D2 to the
+public API, and DECISION F303 D1 state it: the inventory, the contract's proofs, the steering-note
+route (R-1329), and the MCP facet of DECISION F253 D1.
 
 ## Do not touch
-Cryptographic signing (the manifest's `signature` field stays reserved and empty), publishing or
-hosting of certificates, and the review package's meaning for its existing users:
-`packages/orchestration/review_zip.py` is reused, never changed.
+F253's binding shape and security constraints. No page, bundle, static file or browser test is
+added to this repository (DECISION amend1016 D2). The socket's command door stays as it is.
 
 ## Active assumptions
-- The packer and the reopen check are `build_review_zip_from_snapshot` and `verify_review_zip`.
 - Every behaviour lands with a test that is red without it, proved by the reviewer's mutation.
 
 ## Constraints
