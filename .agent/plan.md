@@ -1,20 +1,21 @@
-# Plan — F303 The face on the public API
+# Plan — F307 Findings paydown v9
 
 ## Goal
-Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
-outside the contract document is served; a steering note reaches a job through the API; and the
-public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
-closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D7).
+Pay down the open findings F307 takes at its claim, each by the repair its own text names, with
+the evidence that discharged it, and carry R-1246, R-1351 and R-1353 by name to the next paydown
+(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 and D2).
 
 ## Current Step
-Round 9 (session 2), the closing round: book round 8, DECISION F303 D7 (no rotation), the Built
-State's closure facts, the STATUS flip with the README sync and SU-072's consumed_by, and the pull
-request, left unmerged.
+Round 1 (session 1): claim F307, re-head the finding record, book F303's round 9, write the slice
+list and the Acceptance lines (T001), and repair R-1293 and R-1312 in the operations log's setup
+(T002).
 
 ## Next Steps
-1. The next session: Phase 1 rule 1, then the Open PR Gate merges F303's pull request; Rule A5
-   proposes the next feature (F307, Findings paydown v9).
+1. Round 2: T003 — R-1375's 33 resolution paragraphs and the repair of R-1376.
+2. T004 to T020 in the slice list's order, one module at a time.
+3. T021, the closing structural step; then the closure sequence.
 
 ## Risks
-- The integrity check fails on High findings F303 does not own (DECISION F310 D7).
-- The operator's live service writes the data root the guard watches (R-1411, owned by F307).
+- Several slices edit functions or files the structure ledger lists; each draws that row's
+  boundary first, in a commit of its own.
+- The operator's live service writes the data root the test guard watches (R-1411, T019).

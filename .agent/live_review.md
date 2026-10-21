@@ -1,22 +1,25 @@
-# Live Review — F303 The face on the public API
+# Live Review — F307 Findings paydown v9
 
-> Round-by-round review record, re-headed at the F303 claim per
-> docs/agents/planner_reviewer_prompt.md §1. F303 is claimed on `feature/f303-face-public-api`,
-> from `main` at `2621bbe2e`, the merge commit of pull request 375, which carried F060. Everything
-> from the Findings heading to the end of the file is carried forward byte-identical from that
-> commit, except one Owner line added under R-1329, and round 1 appends the gate of F060's round 7
-> after it. Finding ids continue the monotonic R-XXXX series. The open set at `2621bbe2e`, computed
-> with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and
-> the highest R-1403; F303 owns one of them, R-1329, re-assigned from F307 by DECISION F303 D1.
+> Round-by-round review record, re-headed at the F307 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F303, whose STATUS
+> line went `[x]` on its own branch at `276cd7b34`; this session's Open PR Gate merged pull
+> request 376 into `main` as `eeed13064`. F303's round 9 was reviewed after its own handback, so
+> operator amendment amend0827-process-diet rule 1 books its verdict here, in the first commit of
+> the next round that is happening anyway; its gate entry is appended at the end of this record by
+> this claim. Only the heading, this paragraph and the Steps section below are rewritten;
+> everything else from the Findings heading to the end of the file as it stood at `eeed13064` is
+> carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the
+> re-head. The open set at `eeed13064`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 88 ids, the lowest R-1246 and the highest R-1411; F307
+> takes 85 of them and carries R-1246, R-1351 and R-1353 (DECISION F307 D1).
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F303 D1's. Round 1 claims F303, books F060's round 7, records the
-inventory of what the public API already publishes, and lands the two proofs the contract still
-lacks: that nothing outside the contract document is served, and that the logs route answers oldest
-first. Round 2 lands the steering-note route (T002, R-1329). Rounds 3 and 4 land the MCP facet of
-DECISION F253 D1: a server closed by default that offers verify, gate status and the evidence bundle
-as tools. Then the closure.
+THE ORDER BELOW IS DECISION F307 D1's, which also writes the feature file's slice list. The first
+round claims F307, re-heads this record, books F303's round 9, and repairs R-1293 and R-1312 in
+the operations log's setup. The second round books R-1375's 33 resolution paragraphs and repairs
+R-1376, so that a closure can rotate this record again. Then the slices T004 to T020 of the
+feature file, one module at a time, then the closing structural step, then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -620,3 +623,5 @@ Gate: F303 R7 — the F303 round 7 entry, the closure's evidence round, over `3d
 - R-1411 — Low, F303: THE DATA ROOT GUARD FAILS A TEST RUN WHEN A PROCESS OUTSIDE THE RUN WRITES THE OPERATOR'S DATA ROOT. Raised by the reviewer at F303's rounds 5 and 7. SEARCHED BEFORE MINTING (checklist item 30): the ledger for `R-0803` and `configured data root`; the entries name the guard's origin and its depth (R-1004), not this. MEASURED: the reviewer's selection run of round 5 printed `R-0803: the test run changed the configured data root ... (1 entries), first: ['api']` and exited 1 with `4591 passed`, and the evidence run of round 7 exited 1 with `failed` 0 while the test load record holds its `exit_status` as 0; the worker's run of round 5's same commits and the closure suite of round 6 read exit 0. `_data_root_fingerprint` in `tests/conftest.py` compares the configured root before and after the run, and on this machine the operator's installed supervisor and the universe edition write that root at any time, so a long run can go red on a write that is not its own. THE FIX: the guard tells a write of the run from a write of another process, or a run is given a data root no other process writes, as DECISION F303 D6 does for the evidence run; the owning paydown chooses. Owner: F307. OPEN.
 
 Gate: F303 R8 — the F303 round 8 entry, the closure's evidence round again, over `1c25b5e8d`..`5f714d166` (3 commits, each single-parent; insertions by `git show --numstat`: `289968b65` 142, `5727408e0` 481, `5f714d166` 40). VERDICT PASS. The reviewer's `verify.py` read every parent, subject and path set as ordered, C1's four files and C2's evidence script byte-identical to the prepared ones, the handoff free of this machine's paths and nothing outside `.agent/` changed, `ALL True`. Before delegating, the reviewer ran `tests/test_data_root_isolation.py`, `tests/test_data_paths.py` and `tests/regression/test_resource_safety.py` with `REMEDY_DATA_DIR` at a fresh folder: `95 passed`, exit 0, the folder empty afterwards. The staging reclaim's preview read nothing reclaimable, so no apply ran. The evidence job `f303r8e1001` read head `5727408e0`, ancestry-path and first-parent counts both 36, its data root `.remedy-wt/f303-r8-evidence-data`, `collected node ids 11122, deselected 203`, no unsafe id, `guard lines []`, pytest exit 0 with `11116 passed, 0 failed, 6 skipped`, `validate_verification_tests problems []`, `is_valid_current_run True`, `validation_errors []`, exit 0. The reviewer read the package itself: `remedy-review-20261021-190053-READY_FOR_REVIEW.zip` in `~/Repos/remedy-history/zips`, SHA-256 `ceeee0c17538832f84c67beafeca5d53861c71a3713205efb27878d46e47d362` by its own sha256 reader, `zipfile.is_zipfile` True, `testzip()` None, `package_status` `READY_FOR_REVIEW`, `committed_review_subject` base `2621bbe2ebf62c394750fee8b06cbdfd357d7f77`, head `5727408e0926857a7f24363015c1ea96da6dc1a7` and 36 commits; the build log reads `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. `python3 -m apps.cli.main integrity check --json` fails only `high_blockers_open`, on the twelve findings of DECISION F310 D7, none of them F303's, and the open-findings count is 88. The handback carries no item-status table, a slip recorded in `.agent/prose_slips.md`.
+
+Gate: F303 R9 — the F303 round 9 entry, the closing round, over `5f714d166`..`276cd7b34` (3 commits, each single-parent; insertions by `git show --shortstat`: `3f762adc0` 190, `18423dd80` 10, `276cd7b34` 61). VERDICT PASS, verified by dry run, bytes identical. The reviewer of F307's first session compared every file the three commits name, except the handback, with the round 9 reviewer's prepared snapshots: C1's six files, C2's feature file and C3's `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json`, all ten byte-identical, and each commit names exactly its ordered paths, C3 with `.agent/handoff.md` beside them. The round's selection had read `394 passed` in the dry tree on the same bytes, and the worker's one run read `3419 passed, 2 skipped` with exit 0 over its 74 paths, so no selection was re-run. The integrity check read `fail_count` 1, only `high_blockers_open` on the twelve findings of DECISION F310 D7, none of them F303's, and the open set held 88 ids. Pull request 376 had no hosted check, which operator amendment amend1011-manual-hosted-ci makes the normal state, and this session's Open PR Gate merged it into `main` as `eeed13064`, whose tree equals `276cd7b34`'s.

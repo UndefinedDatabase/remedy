@@ -304,7 +304,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)
 
-- [ ] F307 — Findings paydown v9
+- [~] F307 — Findings paydown v9
 
 ## Tier 3 — Routing v2: cheap first, evidence escalates (operator ruling amend1006-luna-control-plane)
 
