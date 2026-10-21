@@ -44,9 +44,11 @@ written, so a secret that reaches a message or a traceback is written as `[REDAC
 Every event the job timeline records is also written to this log as one INFO line on the logger
 `packages.orchestration.run_log`, carrying the event's job id, its task id and, as `run_id`, the
 id of the task's execution, which is the ping-pong run id under `<data root>/runs/`. A job's
-lines can therefore be found by its job id in the order they happened. Code that knows the ids
-may bind them for everything it logs with `bind_log_context`; an id a record already carries
-wins over a bound one.
+lines can therefore be found by its job id in the order they happened. A job binds its job id for
+everything it logs while it runs, and a ping-pong run binds its job id, task id and run id for
+everything it logs, a run started on its own included, so every line a run writes carries them.
+Other code that knows the ids may bind them with `bind_log_context`, or around a whole function
+with `bind_call_log_context`; an id a record already carries wins over a bound one.
 
 ## The terminal
 

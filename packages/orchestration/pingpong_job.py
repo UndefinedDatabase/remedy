@@ -1,9 +1,8 @@
 """Job Task Runner — sequential multi-task execution with review/repair gates.
 
-Parses a Markdown job file into ordered tasks, executes each through the
-existing ping-pong loop (Builder → tests → Reviewer → repair), and applies
-passed results into an isolated job workspace. The real target repo is never
-mutated. The job report lives in `packages/orchestration/job_report.py`.
+Parses a Markdown job file into ordered tasks, executes each through the existing ping-pong loop
+(Builder → tests → Reviewer → repair), and applies passed results into an isolated job workspace.
+The real target repo is never mutated. The job report lives in `packages/orchestration/job_report.py`.
 
 Public API:
     parse_job_file(text, repo_path) -> JobPlan
@@ -26,9 +25,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-# F272 T002: the closed types JobPlan's administrative fields carry. Imported at
-# module level and not under TYPE_CHECKING because `_import_job` reconstructs
-# them at runtime from the job record's plain JSON.
+# F272 T002: the closed types JobPlan's administrative fields carry. Imported at module level and not
+# under TYPE_CHECKING because `_import_job` reconstructs them at runtime from the job record's plain JSON.
 from packages.common.secure_fs import durable_write
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
@@ -45,6 +43,7 @@ from packages.orchestration.execution_config import (
     resolve_job_execution_config,
 )
 from packages.orchestration.job_run_ending import blocked_rerun_reason, job_task_ending
+from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.verified_repair import final_task_test_command
 
 if TYPE_CHECKING:
@@ -2440,6 +2439,7 @@ def _writes_ownership_ledger(fn):
 
 
 @_writes_ownership_ledger
+@bind_call_log_context(job_id="job_id")
 def run_job(
     job_id: str,
     *,

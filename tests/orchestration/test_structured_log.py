@@ -25,6 +25,7 @@ from packages.orchestration.structured_log import (
     MIN_LOG_BACKUP_COUNT,
     MIN_LOG_MAX_BYTES,
     REMEDY_LOGGER_NAMES,
+    bind_call_log_context,
     bind_log_context,
     configure_structured_logging,
     log_files_oldest_first,
@@ -111,6 +112,105 @@ def test_nested_bindings_restore_what_was_before(tmp_path):
             assert current_log_context() == {"job_id": "outer", "task_id": "inner", "run_id": None}
         assert current_log_context() == {"job_id": "outer", "task_id": None, "run_id": None}
     assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+
+
+def test_a_decorated_call_binds_the_ids_its_arguments_carry_for_the_whole_call():
+    seen = []
+
+    @bind_call_log_context(job_id="job", run_id="run")
+    def work(job, *, run="", other=""):
+        seen.append(current_log_context())
+
+    with bind_log_context(task_id="outer-task", run_id="outer-run"):
+        work("j1", run="r1")
+        work("j2")
+    assert seen == [{"job_id": "j1", "task_id": "outer-task", "run_id": "r1"},
+                    {"job_id": "j2", "task_id": "outer-task", "run_id": "outer-run"}]
+    assert current_log_context() == {"job_id": None, "task_id": None, "run_id": None}
+
+
+def test_a_call_given_no_run_id_is_given_a_fresh_one_it_also_receives():
+    received = []
+
+    @bind_call_log_context(run_id="run_id", mint_run_id=lambda: "minted")
+    def work(*, run_id=""):
+        received.append((run_id, current_log_context()["run_id"]))
+
+    work()
+    work(run_id="given")
+    assert received == [("minted", "minted"), ("given", "given")]
+
+
+class _ProbeProvider:
+    """A builder and reviewer stand-in that logs one line from inside the run, through a Remedy logger."""
+
+    name = "fake"
+    supports_resume = False
+
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        from packages.orchestration.pingpong_provider import BuilderOutput
+
+        CHILD.warning("probe from the builder")
+        return BuilderOutput(summary="ok", provider="fake")
+
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume=None):
+        from packages.orchestration.pingpong_provider import ReviewerOutput
+
+        return ReviewerOutput(verdict="pass", provider="fake")
+
+
+def _probe_lines(path: pathlib.Path) -> list[dict]:
+    return [entry for entry in map(json.loads, _lines(path)) if entry["message"] == "probe from the builder"]
+
+
+def test_a_line_a_run_logs_carries_its_job_task_and_run_ids(tmp_path, monkeypatch):
+    """R-1279: through `run_pingpong`, as `run_job` calls it, and on its own."""
+    from packages.orchestration.pingpong_loop import run_pingpong
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    _root, path = _setup(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n")
+    probe = _ProbeProvider()
+    given = run_pingpong("Fix README", str(repo), builder_provider=probe, reviewer_provider=probe,
+                         max_rounds=1, job_id="job-1", task_id="task-1", run_id="run-given")
+    alone = run_pingpong("Fix README", str(repo), builder_provider=probe, reviewer_provider=probe, max_rounds=1)
+
+    first, second = _probe_lines(path)
+    assert (first["job_id"], first["task_id"], first["run_id"]) == ("job-1", "task-1", "run-given")
+    assert given.run_id == "run-given"
+    assert (second["job_id"], second["task_id"], second["run_id"]) == (None, None, alone.run_id)
+    assert alone.run_id
+
+
+def test_a_line_a_job_logs_carries_its_job_id(tmp_path, monkeypatch):
+    """R-1279: `run_job` binds the job's id around everything the job does, outside its runs too."""
+    from packages.orchestration import pingpong_job
+    from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    _root, path = _setup(tmp_path)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Demo\n")
+    job = parse_job_file("# Job: Probe\n\n## Task 1\nFix the README.\n\nAcceptance:\n- README fixed\n", str(repo))
+    started = pingpong_job._log_task_started
+
+    def logged_start(*args, **kwargs):
+        CHILD.warning("probe from the job")
+        return started(*args, **kwargs)
+
+    monkeypatch.setattr(pingpong_job, "_log_task_started", logged_start)
+    probe = _ProbeProvider()
+    run_job(job.job_id, builder_provider=probe, reviewer_provider=probe, repair_rounds=0)
+
+    entries = [json.loads(line) for line in _lines(path)]
+    (job_line,) = [entry for entry in entries if entry["message"] == "probe from the job"]
+    (run_line,) = _probe_lines(path)
+    task = load_job_plan(job.job_id).tasks[0]
+    assert (job_line["job_id"], job_line["task_id"], job_line["run_id"]) == (job.job_id, None, None)
+    assert (run_line["job_id"], run_line["task_id"], run_line["run_id"]) == (job.job_id, task.task_id, task.run_id)
 
 
 def test_an_exception_in_a_block_resets_all_ids():

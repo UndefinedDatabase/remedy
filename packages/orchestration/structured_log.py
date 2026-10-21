@@ -13,17 +13,19 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import functools
+import inspect
 import json
 import logging
 import logging.handlers
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, TypeVar, cast
 
 from packages.orchestration.config import RemedyConfig, get_config
 from packages.orchestration.data_paths import data_class_dir
@@ -93,6 +95,38 @@ def bind_log_context(
     finally:
         for var, token in reversed(tokens):
             var.reset(token)
+
+
+# The function `bind_call_log_context` decorates, kept as its own type.
+_DecoratedCall = TypeVar("_DecoratedCall", bound=Callable[..., Any])
+
+
+# WHY: a whole call carries the ids its own arguments name, so every record it logs is found by them (R-1279).
+def bind_call_log_context(
+    *, job_id: str = "", task_id: str = "", run_id: str = "", mint_run_id: Callable[[], str] | None = None,
+) -> Callable[[_DecoratedCall], _DecoratedCall]:
+    """Decorate a function so each call binds, for the whole call, the ids its own arguments carry.
+
+    Each keyword names the parameter that carries that id; an id passed empty or not at all leaves the
+    binding as the caller made it. With ``mint_run_id``, a call given no run id is given a fresh one, so
+    the run and every record it logs carry the same id (DECISION F307 D16).
+    """
+
+    def decorate(fn: _DecoratedCall) -> _DecoratedCall:
+        signature = inspect.signature(fn)
+
+        @functools.wraps(fn)
+        def call(*args: Any, **kwargs: Any) -> Any:
+            if mint_run_id is not None and run_id and not signature.bind_partial(*args, **kwargs).arguments.get(run_id):
+                kwargs[run_id] = mint_run_id()
+            arguments = signature.bind_partial(*args, **kwargs).arguments
+            names = (("job_id", job_id), ("task_id", task_id), ("run_id", run_id))
+            with bind_log_context(**{key: arguments.get(name) or None for key, name in names if name}):
+                return fn(*args, **kwargs)
+
+        return cast(_DecoratedCall, call)
+
+    return decorate
 
 
 # Stamps the bound ids on a record; an id the record already carries (`extra=`) wins.

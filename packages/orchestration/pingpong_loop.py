@@ -60,13 +60,8 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
-from packages.orchestration.provider_timeouts import (
-    PROFILES as TIMEOUT_PROFILES,
-)
-from packages.orchestration.provider_timeouts import (
-    compute_timeout,
-    is_timeout_error,
-)
+from packages.orchestration.provider_timeouts import PROFILES as TIMEOUT_PROFILES
+from packages.orchestration.provider_timeouts import compute_timeout, is_timeout_error
 from packages.orchestration.rate_governor import ProviderRateGovernor
 from packages.orchestration.role_provider_factory import create_role_provider
 from packages.orchestration.session_sent_index import (
@@ -77,6 +72,7 @@ from packages.orchestration.session_sent_index import (
     record_finalized_call,
     should_dedupe_segment,
 )
+from packages.orchestration.structured_log import bind_call_log_context
 from packages.orchestration.verified_repair import review_test_evidence, with_test_failure_finding
 
 # ---------------------------------------------------------------------------
@@ -2668,6 +2664,7 @@ def _stream_containment_root(call_dir: Path) -> Path:
 # Core loop
 # ---------------------------------------------------------------------------
 
+@bind_call_log_context(job_id="job_id", task_id="task_id", run_id="run_id", mint_run_id=mint_run_id)
 def run_pingpong(
     goal: str,
     repo_path: str,
