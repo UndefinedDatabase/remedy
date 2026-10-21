@@ -7,14 +7,13 @@ passed gauntlet, every level change needs a decision record, and the level is vi
 matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D6).
 
 ## Current Step
-Round 6 (session 2): book round 5 and resolve R-1391; contract 1.23 for the status answer's
-`autonomy` key (DECISION F078 D6).
+Round 7 (session 2), the closure's integration-gate round: book round 6, F078's Built State, the
+checklist's consolidation pass, the self-use item run to its approval gate, and the one full suite
+with its cost reading.
 
 ## Next Steps
-1. The closure sequence, first round: the one full suite, the cost reading, the self-use run and
-   the consolidation pass of the checklist.
-2. The closure sequence, second round: the evidence and the package.
-3. The closure sequence, last round: the Built State, the STATUS line, the README sync and the
+1. The evidence bundle and the review package (the closure protocol's steps 1 and 2).
+2. The closing round: the STATUS line, the README sync, the self-use item's `consumed_by` and the
    pull request, left unmerged.
 
 ## Risks
