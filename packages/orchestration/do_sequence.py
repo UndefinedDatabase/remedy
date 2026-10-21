@@ -767,12 +767,12 @@ def _stop_unrun_shape_jobs(ctx: DoContext) -> str:
     """
     from datetime import datetime, timezone
 
-    from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan, save_job_plan
+    from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan_safe, save_job_plan
     from packages.orchestration.repo_mission import unlink_order_jobs
 
     stopped: list[str] = []
     for job_id in ctx.job_ids:
-        job = load_job_plan(job_id)
+        job, _damaged = load_job_plan_safe(job_id)    # R-1311: a damaged record is passed over
         if job is None:
             continue
         job.state = JOB_STOPPED

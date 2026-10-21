@@ -541,8 +541,8 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
     ``(None, False)`` when no record exists, ``(None, True)`` when one exists and
     cannot be read, ``(plan, False)`` on success. No input makes this raise:
     ``OSError``, ``JSONDecodeError`` and ``KeyError`` are what ``load_job_plan``
-    already catches, and ``ValueError`` and ``TypeError`` are what ``_import_job``
-    raises on a record whose JSON parses into the wrong shapes.
+    already catches, and ``ValueError``, ``TypeError`` and ``AttributeError`` what
+    ``_import_job`` raises on a record whose JSON parses into the wrong shapes (R-1413).
     """
     from packages.orchestration.data_paths import job_record_path
 
@@ -551,7 +551,7 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
         return (None, False)
     try:
         return (_import_job(_json.loads(job_file.read_text())), False)
-    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError):
         return (None, True)
 
 
