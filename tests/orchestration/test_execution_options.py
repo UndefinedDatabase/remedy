@@ -8,6 +8,7 @@ import pytest
 
 from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS
 from packages.orchestration import execution_options as EO
+from packages.orchestration.public_api_routes import PUBLIC_API_ROUTES
 
 
 @pytest.fixture()
@@ -83,3 +84,11 @@ def test_the_route_answers_the_command(offline_ollama, tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     status, body, _headers = answer_public_api_get("/api/v1/execution")[:3]
     assert status == 200 and body["ok"] is True and "roles" in body
+
+
+def test_the_observability_list_names_registered_get_routes(offline_ollama):
+    get_routes = {f"{r.method} {r.path}" for r in PUBLIC_API_ROUTES if r.method == "GET"}
+    for entry in EO.EXECUTION_OBSERVABILITY_ROUTES:
+        assert entry in get_routes
+    assert "GET /api/v1/now" in EO.EXECUTION_OBSERVABILITY_ROUTES
+    assert "GET /api/v1/jobs/{job}/insight" in EO.EXECUTION_OBSERVABILITY_ROUTES
