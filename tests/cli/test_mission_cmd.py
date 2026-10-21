@@ -1238,7 +1238,9 @@ class TestMissionRunInOrchestratorMode:
 
 
 class TestMissionRunShowsTheAutonomyLevel:
-    """F078 D3 (2): the level the run started at, read without writing (DECISION F078 D3 (2))."""
+    """The level the run starts at, loaded for the run, which records an accepted change of level
+    (DECISION F078 D2); only `remedy status` reads it without writing (DECISION F078 D3 (2), R-1391).
+    """
 
     def test_text_mode_prints_the_level_after_the_mission_id(self, project):
         data_root, project_id = project
