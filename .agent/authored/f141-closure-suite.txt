@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 1
+wall time: 316.1s (the launcher's reading); pytest's own reported wall time: 315.39s (0:05:15)
+summary line: 1 failed, 22802 passed, 11 skipped, 1 warning in 315.39s (0:05:15)
+bad node ids (failed + errors):
+  - tests/cli/test_advertised_commands.py::test_every_advertised_command_exists_in_the_catalog
+leftover processes: NONE
+tree it ran on: 46d66a2db (F141 R8 C5: the closure's self-use item run to its approval gate, never applied)
+tree note: C1, C3, C4 and C5 changed only .agent/ files, the feature file, the checklist page and the self-use queue; C2 added one test
+reflog before: 46d66a2db HEAD@{2026-10-21 12:20:59 +0200}: commit: F141 R8 C5: the closure's self-use item run to its approval gate, never applied
+reflog after: 46d66a2db HEAD@{2026-10-21 12:20:59 +0200}: commit: F141 R8 C5: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F141 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1228.41 CPU seconds, 315.40 wall seconds, 22814 tests collected, exit status 1, recorded 2026-10-21T10:26:26Z
+This closure's suite used 1228.41 CPU seconds, 7.6 percent less than F078's 1328.90, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F078's closure run:
+  +3.63 s  tests/orchestration/test_self_use_generator.py (3.69 -> 7.32)
+  +2.39 s  tests/orchestration/test_permission_matrix_guards.py (0.00 -> 2.39)
+  +1.95 s  tests/orchestration/test_apply_permissions.py (0.00 -> 1.95)
+  +1.01 s  tests/cli/test_status_cmd.py (5.76 -> 6.77)
+  +0.97 s  tests/cli/test_do_several_projects.py (8.23 -> 9.20)
+  +0.89 s  tests/orchestration/test_run_manifest_runtime_truth.py (1.43 -> 2.32)
+  +0.80 s  tests/orchestration/test_worktrees.py (1.37 -> 2.17)
+  +0.70 s  tests/runtimes/test_dev_server.py (1.10 -> 1.80)
+  +0.68 s  tests/cli/test_do_commit_flags.py (13.13 -> 13.81)
+  +0.68 s  tests/orchestration/test_job_worktree_handoff.py (7.50 -> 8.18)
