@@ -3,17 +3,17 @@
 ## Goal
 Pay down the open findings F307 takes at its claim, each by the repair its own text names, with
 the evidence that discharged it, and carry R-1246, R-1351 and R-1353 by name to the next paydown
-(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D19).
+(docs/roadmap/features/T2_F307.md; DECISIONs F307 D1 to D20).
 
 ## Current Step
-Round 19 (session 5): book round 18 with R-1303, R-1304, R-1305, R-1308 and R-1309 (T009 closed);
-T013: `plan_source` leaves the order batch and the interface (R-1311's rest), and the digest names
-each mission's orders and each job's order (R-1282), at 1.27 (DECISION F307 D19).
+Round 20 (session 5): book round 19 (FAIL, R-1417 registered) with R-1282 and R-1311 (T013
+closed); repair R-1417; `pingpong_provider.py`'s structural step (3), the fake provider to a module
+of its own; T015, R-1323: the fake reports fixed tokens and no cost (DECISION F307 D20).
 
 ## Next Steps
-1. Book round 19 with R-1282 and R-1311 (T013 closed); then T015, R-1323 (the fake provider
-   reports token usage).
-2. T016 to T020, each with its structural step first where a listed function or file is touched
+1. Book round 20 with R-1417 and R-1323 (T015 closed); then T016, R-1332 (a job that ends blocked
+   keeps its finish time), then R-1331.
+2. T017 to T020, each with its structural step first where a listed function or file is touched
    (DECISION F307 D5); R-1291 with `doctor_core_report`'s boundary.
 3. T021, the closing structural step; then the closure sequence, which carries R-1281's rest.
 
@@ -21,7 +21,7 @@ each mission's orders and each job's order (R-1282), at 1.27 (DECISION F307 D19)
 - Several slices edit functions or files the structure ledger lists; each draws that row's
   boundary first, in a commit of its own, and every edit of a listed file is line-neutral or
   shrinks it.
-- A move's consumers include module aliases, patch strings and code-reading path pins; a round's
-  selection is every test file that names a touched module by import or by path (R-1416).
+- A round's selection is every test file that names a touched module by import or by path, and
+  every test file that reads a changed page by its path (R-1416, R-1417).
 - `packages/orchestration/mission_contract.py` stands at 991 lines, nine below the file limit.
 - The operator's live service writes the data root the test guard watches (R-1411, T019).
