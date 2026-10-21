@@ -739,6 +739,18 @@ end the response with:
   decision carried and no answer a client reads passed on, is item 34's reading of the code the
   order reaches; the reviewer found it reading that code while authoring the page that describes
   the key, and it was repaired inside the feature. The list stays at 34 items.
+  Consolidated again at F078's closure on 2026-10-21: nothing joined and no two items were merged,
+  because none of F078's three lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  reviewer's `verify.py` that read an f-string's literal tail twice is item 18's reading of an
+  ordered recipe, here a check of authored sentences, against the property it must establish; the
+  previous round's selection run on a round's tree is item 12's clause that a dry run executes the
+  gate's exact command line; and a
+  state probe that missed an unmerged branch of the feature it was about to claim is a matter for
+  the Phase 0 of docs/agents/self_drive_protocol.md, not for the text of a block. Its two findings
+  were each repaired inside the feature: R-1321 (F078), a record keyed by a path the block ordered
+  resolved, is item 34's reading of the code the order reaches; and R-1391, a docstring that said
+  more than its command does, is item 34's reading of the code a sentence describes. The list
+  stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
