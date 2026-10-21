@@ -293,6 +293,18 @@
      "case": "PUT or DELETE under /api/v1",
      "before": "this server answers only GET under /api/v1; writes are answered by the supervisor that `remedy serve start` starts",
      "after": "<method> is not answered under /api/v1; its routes answer GET and POST (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "`api_query_invalid`'s message",
+     "case": "a query key a route takes, given twice, empty, or as a flag other than true or false",
+     "before": "'<key>' is not a valid query key for '<path>'; it accepts ...",
+     "after": "'<key>' in '<path>' takes one value, true or false; or: takes one value that is not empty (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "the status and the error of a GET",
+     "case": "a path value that begins with '-', or holds '/' or a NUL character once decoded",
+     "before": "the route's own answer",
+     "after": "400 `api_path_invalid`, as on a write (F307, DECISION F307 D18)"
     }
    ]
   }

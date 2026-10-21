@@ -349,7 +349,7 @@ with the code that calls it.
 | 159 | `packages/orchestration/run_manifest.py` | `validate_input_snapshot` |
 | 159 | `packages/orchestration/self_use_runner.py` | `run_next_self_use_item` |
 | 158 | `packages/orchestration/file_provenance.py` | `build_file_provenance` |
-| 157 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
+| 151 | `packages/orchestration/public_api.py` | `answer_public_api_post` |
 | 155 | `packages/orchestration/budget_decision.py` | `answer_budget_decision` |
 | 155 | `packages/orchestration/task_injection.py` | `answer_injection_shortfall` |
 | 152 | `scripts/build_observability_index.py` | `build_observability_index` |

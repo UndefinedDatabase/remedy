@@ -1015,6 +1015,29 @@ def test_every_answer_names_its_server_as_remedy_only(tcp_server):
         assert headers["Server"] == "Remedy", method
 
 
+# -- L3: a value a query key cannot take, and a path value on a GET (R-1308, R-1309) ------
+
+
+def test_a_query_key_given_empty_or_as_a_bad_flag_is_refused_with_its_own_sentence():
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/changes", "since=")
+    assert (status, body["error"]) == (400, "api_query_invalid")
+    assert body["message"] == "'since' in '/api/v1/changes' takes one value that is not empty"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/digest", "all_ended_jobs=maybe")
+    assert (status, body["error"]) == (400, "api_query_invalid")
+    assert body["message"] == "'all_ended_jobs' in '/api/v1/digest' takes one value, true or false"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/changes", "until=x")
+    assert body["message"] == "'until' is not a valid query key for '/api/v1/changes'; it accepts 'since'"
+
+
+def test_a_get_refuses_a_path_value_that_leaves_its_place(tcp_server):
+    status, body, _headers = _tcp_request(
+        tcp_server, "GET", "/api/v1/jobs/..%2F..%2Fetc/story", headers=_bearer(SERVER_TOKEN))
+    assert (status, body["error"]) == (400, "api_path_invalid"), body
+    assert body["message"] == "the job in '/api/v1/jobs/..%2F..%2Fetc/story' must not hold '/' or a NUL character"
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/-x/story")
+    assert (status, body["error"]) == (400, "api_path_invalid")
+
+
 # -- M: the write route that answers a decision (S4a, DECISION F253 D9) -----------
 
 DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"
@@ -1451,11 +1474,13 @@ def test_the_order_poll_route_refuses_an_unknown_well_formed_id(tcp_server):
 
 
 def test_the_order_poll_route_rejects_a_path_shaped_id(tcp_server):
-    """R-1198's own guard, read through the route: `../x` must never be read as a path."""
+    """R-1198's own guard, read through the route: `../x` must never be read as a path; since R-1309
+    the route refuses it before any id is read, as a write route does."""
     status, body, _headers = _tcp_request(
         tcp_server, "GET", "/api/v1/orders/..%2Fx", headers=_bearer(SERVER_TOKEN))
-    assert status == 404, body
-    assert body["error"] == "order_not_found"
+    assert status == 400, body
+    assert body == {"schema_version": 1, "ok": False, "error": "api_path_invalid",
+                    "message": "the order in '/api/v1/orders/..%2Fx' must not hold '/' or a NUL character"}
 
 
 # -- the write route that creates and starts an order (S5b, DECISION F253 D14) --
@@ -2554,11 +2579,13 @@ def test_the_run_poll_route_refuses_a_job_with_no_run_record(tcp_server):
 
 
 def test_the_run_poll_route_refuses_a_value_that_is_no_id(tcp_server):
+    """R-1309: a value no job id holds is refused before the twin is asked; R-1219's twin answer
+    holds for every value that reaches it."""
     status, body, _headers = _tcp_request(
         tcp_server, "GET", "/api/v1/jobs/..%2Fx/run", headers=_bearer(SERVER_TOKEN))
-    assert status == 404, body
-    assert body["error"] == "run_not_found"
-    assert body == _run_command_answer("../x", ok=False)  # R-1219
+    assert status == 400, body
+    assert body == {"schema_version": 1, "ok": False, "error": "api_path_invalid",
+                    "message": "the job in '/api/v1/jobs/..%2Fx/run' must not hold '/' or a NUL character"}
 
 
 # -- the refusals the two starts make before anything starts are the route's own (R-1219) --

@@ -62,7 +62,10 @@ query key in a route's table row is either a flag, whose value is `true` or `fal
 that takes one value, written `key=<value>` in the table; either kind is given at most once, and
 a value is never empty. A query key a route's table row does not list, a key given more than
 once, a flag's value other than `true`/`false`, or an empty value for a key that takes one,
-answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)); and every other refusal a
+answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)), whose message says either
+that the key is not one the route takes or what value a key it takes needs. On every route, a
+path value that begins with `-`, or that holds `/` or a NUL character once decoded, answers 400
+with `api_path_invalid`, because no job, order or decision id does; and every other refusal a
 route answers is one its table row's `Refusals` column names, sharing its HTTP status, its
 `error` token and its `message` sentence with the route's own twin command. The two routes that
 start work, `POST /api/v1/orders` and `POST /api/v1/jobs/{job}/run`, are the exception: what they
