@@ -457,6 +457,7 @@ class FailoverProvider:
         build_link: Callable[[FailoverLink], Any],
         cooldown_s: float = 0.0,
         clock: Callable[[], float] = time.monotonic,
+        stop_check: Callable[[], Any] | None = None,
     ) -> None:
         self._primary = primary
         self._role = role
@@ -466,6 +467,8 @@ class FailoverProvider:
         self._build_link = build_link
         self._cooldown_s = cooldown_s
         self._clock = clock
+        # WHY: the run's stop probe — non-None means stopped — consulted before each link (R-1287).
+        self._stop_check = stop_check
         # WHY: no hold exists yet, and never will unless a call below sets it (DECISION F058 D4).
         self._held_until: float = float("-inf")
         # WHY: the session guard — True for the rest of this wrapper's life once a link has
@@ -582,9 +585,12 @@ class FailoverProvider:
         timeout, a non-zero exit, a rate limit or a stream cap ends the walk with that failure, which
         the transport retries own, and neither holds the primary down nor turns resume off. A link
         that serves outside a hold opens one; a link that serves during a hold leaves it as it is.
-        Every link that was really called joins `calls` (R-1276).
+        Every link that was really called joins `calls` (R-1276). A stop signalled before a link ends
+        the walk there, as a chain that ran out (R-1287).
         """
         for position, link in enumerate(self._links, start=1):
+            if self._stop_check is not None and self._stop_check() is not None:
+                break
             link_out, attempt = self._call_link(
                 link, position, method, prompt,
                 timeout_sec=timeout_sec, max_output_chars=max_output_chars,

@@ -35,6 +35,7 @@ from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
+from packages.orchestration.model_failover import resolve_failover_chains
 from packages.orchestration.pingpong_call_record import _add_exit_detail, _session_fields
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
@@ -2919,11 +2920,10 @@ def run_pingpong(
         _persist_run(result)
         return result
 
-    # Create providers. The Builder's claude-cli gets cwd=staging; the Reviewer is read-only (prompt-only),
-    # but its cwd is pinned to the disposable staging dir too, so any stray cwd writes from the reviewer
-    # subprocess land in staging (discarded) instead of the repo root. Both calls share these options.
-    _provider_options = {"staging_dir": str(staging), "stream_evidence": stream_evidence,
-                         "stream_evidence_dir": stream_evidence_dir}
+    # Create providers. The Builder's claude-cli gets cwd=staging; the Reviewer's cwd is pinned to the disposable
+    # staging dir too, so its stray writes land there. Both share one failover table read (R-1289) and the stop (R-1287).
+    _provider_options = {"staging_dir": str(staging), "stream_evidence": stream_evidence, "stop_check": stop_check,
+                         "stream_evidence_dir": stream_evidence_dir, "chains": resolve_failover_chains()}
     try:
         if builder_provider is None:
             builder_provider = _create_provider_with_cwd(builder_name, role="builder", model=builder_model,

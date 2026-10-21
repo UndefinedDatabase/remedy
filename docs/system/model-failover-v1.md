@@ -58,7 +58,9 @@ failures ends the walk with it, which the transport retries then own: it serves 
 nothing and leaves the role's sessions as they were. When that failure is a rate limit, the retry
 waits it out on the backup's own provider, never on the usual provider's. A backup is built once per
 run and hears the round of each call, so a claude-cli backup's stream artifacts land in a directory
-of their own, numbered on from the usual provider's, and never over them.
+of their own, numbered on from the usual provider's, and never over them. A stop the run signals
+between two backups ends the chain before the next one is called, and a run reads the chains once
+and hands them to both roles.
 
 ## The cooldown
 

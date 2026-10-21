@@ -896,6 +896,82 @@ class TestEveryRealCallIsBooked:
         )
 
 
+class TestAStopBetweenLinksEndsTheChain:
+    """R-1287: the walk consults the run's stop probe before each link."""
+
+    def test_a_stop_signalled_after_the_first_link_calls_no_second(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link1 = _StubProvider("l1", build_error=_DOWN)
+        link2 = _StubProvider("l2")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "m1", "mid"), FailoverLink("claude-cli", "m2", "mid")),
+            build_link=lambda link: link1 if link.model == "m1" else link2,
+            stop_check=lambda: "stopped" if link1.build_calls else None,
+        )
+        out = fp.build("p1")
+        assert out is primary.last_build_output
+        assert len(link1.build_calls) == 1
+        assert link2.build_calls == []
+        assert [a.model for a in out.failover_disclosure.attempts] == ["m1"]
+        assert out.failover_disclosure.used is None
+
+    def test_the_role_factory_hands_the_walk_the_stop_and_the_runs_table(self, tmp_path):
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        primary = _StubProvider("stub", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = create_role_provider(
+            "stub", role="builder", staging_dir=str(tmp_path),
+            make_provider=lambda name, model="": primary if name == "stub" else link_provider,
+            chains={"builder": (FailoverLink("ollama", "small", "mid"),)},
+            stop_check=lambda: "stopped",
+        )
+        assert isinstance(fp, FailoverProvider)
+        assert fp.build("p1") is primary.last_build_output
+        assert link_provider.build_calls == []
+
+
+class TestTheRunReadsTheChainsOnce:
+    """R-1289 and R-1287: a run reads the failover table once and hands it, with its stop probe, to
+    the providers of both roles."""
+
+    def test_both_roles_get_one_table_read_and_the_runs_stop_probe(self, monkeypatch, tmp_path):
+        import packages.orchestration.pingpong_loop as loop
+        import packages.orchestration.role_provider_factory as factory
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        reads = []
+        table: dict = {}
+        monkeypatch.setattr(loop, "resolve_failover_chains", lambda: reads.append(1) or table)
+
+        def no_second_read():
+            raise AssertionError("the factory read the failover table again")
+
+        monkeypatch.setattr(factory, "resolve_failover_chains", no_second_read)
+        seen = []
+        original = loop._create_provider_with_cwd
+
+        def recording(name, *, role, **options):
+            seen.append((role, options.get("chains"), options.get("stop_check")))
+            return original(name, role=role, **options)
+
+        monkeypatch.setattr(loop, "_create_provider_with_cwd", recording)
+
+        def stop_check():
+            return None
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Demo\n")
+        loop.run_pingpong("Fix README", str(repo), builder_name="fake", reviewer_name="fake",
+                          stop_check=stop_check)
+
+        assert reads == [1]
+        assert [role for role, _chains, _check in seen] == ["builder", "reviewer"]
+        assert all(chains is table and check is stop_check for _role, chains, check in seen)
+
+
 class TestALinkIsBuiltOnceAndHearsEachCall:
     """R-1278: a link is built once per wrapper and hears the round, kind and prefix of each call."""
 
