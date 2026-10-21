@@ -55,7 +55,8 @@ The transport retries own the timeout and the non-zero exit, the rate governor w
 limit, and the single parse retry owns an unreadable answer; a backup would only hide those. A link that cannot be built counts
 as a failed attempt, and the walk goes on to the next one. A backup that answers with one of those
 failures ends the walk with it, which the transport retries then own: it serves nothing, holds
-nothing and leaves the role's sessions as they were.
+nothing and leaves the role's sessions as they were. When that failure is a rate limit, the retry
+waits it out on the backup's own provider, never on the usual provider's.
 
 ## The cooldown
 
@@ -97,6 +98,8 @@ tried."
 - `packages/orchestration/model_failover.py`: the chains, the rules, the trigger, the walk, the cooldown.
 - `packages/orchestration/role_provider_factory.py`: wraps a role's provider.
 - `packages/orchestration/pingpong_call_record.py`: the `failover` key and `parked_session_refs`.
+- `packages/orchestration/pingpong_provider_call.py`: the call's retry, which waits a backup's rate
+  limit out on that backup's provider.
 - `packages/orchestration/config_keys_model_routing.py`: the two config keys and the cooldown's default.
 - `packages/orchestration/provider_names.py`: the provider names a link may name.
 - `apps/cli/commands/run_report_cmd.py`: the `Failover:` line.

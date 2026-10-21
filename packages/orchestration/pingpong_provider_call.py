@@ -153,7 +153,8 @@ def _call_with_retry(
     ``rate_governor`` (F057) is the pacing seam. When one is given and ``provider``
     is non-empty, the governor waits out that provider's running cooldown before the
     first call and before every retry, and observes the failed call's own error so
-    the cooldown a rate limit announces is the one the next retry waits out. Every
+    the cooldown a rate limit announces is the one the next retry waits out; a retry
+    observes and waits on the provider that answered, ``out.provider`` (R-1277). Every
     wait that cost more than zero seconds is recorded on
     ``result.rate_limit_waits``. Before the FIRST call the wait only PACES — the call
     is made whatever the acquire outcome (DECISION F057 D3); before a RETRY a
@@ -233,14 +234,12 @@ def _call_with_retry(
         # counters below on purpose: a stop during the wait must leave them exactly where
         # the stop probe above leaves them, so no evidence claims a retry that never ran.
         if rate_governor is not None and provider:
-            _rate_signal = normalize_rate_limit_signal(
-                out.error,
-                provider=provider,
-                source=RATE_SIGNAL_SOURCE_RETRY_REASON,
-            )
+            _served = getattr(out, "provider", "") or provider  # R-1277: a backup link answers for itself
+            _rate_signal = normalize_rate_limit_signal(out.error, provider=_served,
+                                                       source=RATE_SIGNAL_SOURCE_RETRY_REASON)
             if _rate_signal is not None:
                 rate_governor.observe(_rate_signal)
-            _acquired = rate_governor.acquire(provider, role=role, stop_check=stop_check)
+            _acquired = rate_governor.acquire(_served, role=role, stop_check=stop_check)
             _record_rate_limit_wait(result, _acquired)
             if not _acquired.granted:
                 return out

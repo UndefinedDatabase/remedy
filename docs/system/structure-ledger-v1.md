@@ -356,7 +356,7 @@ with the code that calls it.
 | 145 | `packages/orchestration/context_coverage.py` | `derive_context_coverage` |
 | 103 | `apps/cli/commands/dev.py` | `_dev_status` |
 | 143 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
-| 143 | `packages/orchestration/pingpong_provider_call.py` | `_call_with_retry` |
+| 142 | `packages/orchestration/pingpong_provider_call.py` | `_call_with_retry` |
 | 143 | `packages/orchestration/token_authority.py` | `validate_token_truth` |
 | 142 | `packages/orchestration/repository_snapshot.py` | `build_snapshot_truth` |
 | 142 | `packages/orchestration/stream_evidence.py` | `run_streamed_command` |

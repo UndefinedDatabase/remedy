@@ -476,6 +476,34 @@ class TestRateGovernorSeam:
 
     @pytest.mark.unit
     @patch("packages.orchestration.pingpong_provider_call._time.sleep")
+    def test_a_backup_links_rate_limit_is_waited_out_on_that_links_slot(self, mock_sleep):
+        # R-1277: a backup link answered for the configured provider and was rate limited;
+        # the retry observes and waits on the link's own slot, never the configured one's.
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        calls = [0]
+
+        def call_fn():
+            calls[0] += 1
+            if calls[0] == 1:
+                return BuilderOutput(error=RATE_LIMITED_RETRYABLE_ERROR, provider="backup")
+            return BuilderOutput(summary="ok", provider="acme")
+
+        out = _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.summary == "ok"
+        assert calls[0] == 2
+        assert [event["provider"] for event in result.rate_limit_waits] == ["backup"]
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_stop_during_the_wait_ends_the_call_without_counting_a_retry(self, mock_sleep):
         clock = SeamFakeClock()
         governor = _seam_governor(clock)
