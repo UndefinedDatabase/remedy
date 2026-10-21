@@ -224,6 +224,51 @@ def test_lines_clamps_and_slices_the_stream():
     assert JI.job_insight(job, lines=-1, now=NOW)["stream"] == []
 
 
+@pytest.mark.parametrize("raw,expected", [("7", 7), ("abc", 40), ("", 40), (None, 40), ("-3", -3)])
+def test_insight_lines_reads_a_whole_number_else_the_default(raw, expected):
+    """DECISION F311 D6: `insight_lines` is the one reader of a `lines` value a person typed."""
+    assert JI.insight_lines(raw) == expected
+
+
+def test_insight_lines_of_a_negative_whole_number_job_insight_then_clamps_to_no_lines():
+    job = _job(state=RunState.RUNNING, task_status=TASK_RUNNING)
+    stream = [{"at": "t0", "role": "builder", "kind": "system", "text": "0"}]
+    _write_pulse(job.job_id, role="builder", provider="pi", model="m", round_no=1,
+                last_output_at=_ISO, stream=stream)
+
+    assert JI.job_insight(job, lines=JI.insight_lines("-3"), now=NOW)["stream"] == []
+
+
+# --- (e2): now_insight's project scope (DECISION F311 D6) -----------------------------------
+
+def test_now_insight_project_ids_keeps_as_job_and_order_and_drops_bs(monkeypatch):
+    import packages.orchestration.serve_runs as serve_runs_mod
+    from packages.orchestration.serve_paths import serve_paths
+
+    job_a = _job(state=RunState.RUNNING, task_status=TASK_RUNNING, project_id="A")
+    _job(state=RunState.RUNNING, task_status=TASK_RUNNING, project_id="B")
+    waiting_a = _job(state=RunState.PLANNED, project_id="A")
+    waiting_b = _job(state=RunState.PLANNED, project_id="B")
+
+    paths = serve_paths()
+    for order_id in ("ord-a", "ord-b"):
+        (paths.orders_dir / order_id).mkdir(parents=True)
+    payloads = {
+        "ord-a": {"phase": "planning", "jobs": [{"job_id": waiting_a.job_id, "phase": "planning"}]},
+        "ord-b": {"phase": "planning", "jobs": [{"job_id": waiting_b.job_id, "phase": "planning"}]},
+    }
+    monkeypatch.setattr(serve_runs_mod, "read_order_record",
+                        lambda paths_, order_id: SimpleNamespace(order_id=order_id))
+    monkeypatch.setattr(serve_runs_mod, "order_record_payload",
+                        lambda paths_, record: payloads[record.order_id])
+    # The running jobs name no order of their own; only the orders above matter to this test.
+    monkeypatch.setattr(serve_runs_mod, "order_record_for_job", lambda paths_, job_id: None)
+
+    answer = JI.now_insight(now=NOW, project_ids=frozenset({"A"}))
+    assert [j["job"] for j in answer["jobs"]] == [job_a.job_id]
+    assert [o["order"] for o in answer["orders"]] == ["ord-a"]
+
+
 # --- (f): model_server_state ------------------------------------------------------------------
 
 def test_model_server_state_reachable_with_two_loaded_models(monkeypatch):
