@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-10d9f2f2d7c344ab  (exit 0)
+diff --git a/tests/cli/test_certificate_cmd.py b/tests/cli/test_certificate_cmd.py
+index c3ad1b528..1ce5f1f2f 100644
+--- a/tests/cli/test_certificate_cmd.py
++++ b/tests/cli/test_certificate_cmd.py
+@@ -151,6 +151,21 @@ class TestJobCertificateWrites:
+         assert body["referenced"] == []
+         assert body["manifest_sha256"] == _issue_lines(jid)[0]["manifest_sha256"]
+ 
++    def test_a_relative_out_records_an_absolute_path_in_the_issue_line(
++            self, tmp_path, monkeypatch, capsys):
++        job = _ended_job()
++        jid = str(job.job_id)
++        here = tmp_path / "work"
++        here.mkdir()
++        monkeypatch.chdir(here)
++        code, _text = _run(["job", "certificate", jid, "--out", "cert.zip"], capsys)
++        assert code == 0
++        expected_abs = str(here / "cert.zip")
++        assert (here / "cert.zip").is_file()
++        lines = _issue_lines(jid)
++        assert lines[0]["path"] == expected_abs
++        assert os.path.isabs(lines[0]["path"])
++
+     def test_without_out_the_file_is_named_after_the_job_and_the_issue(
+             self, tmp_path, monkeypatch, capsys):
+         job = _ended_job()
