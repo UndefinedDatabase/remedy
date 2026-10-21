@@ -26,3 +26,6 @@ changes no behaviour.
   its own selection once (operator amendments amend0917-throughput and amend0930-test-load).
 - The structure ratchet: no listed function or file grows; new logic goes into new modules.
 - No file under `.agent/` gains this machine's absolute paths; the commit hook refuses them.
+
+## Steps
+The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
