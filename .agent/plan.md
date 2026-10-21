@@ -7,13 +7,15 @@ public API's verify, gate status and evidence bundle are offered as MCP tools be
 closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D3).
 
 ## Current Step
-Round 3 (session 1): book round 2, then the note route completed under DECISION F303 D3 — the
-`api` channel, `job steer --source`, `job.steer` as a client operation, `positional_body` and its
+Round 3 (session 1) landed: the note route completed under DECISION F303 D3 — the `api`
+channel, `job steer --source`, `job.steer` as a client operation, `positional_body` and its
 guard, `POST /api/v1/jobs/{job}/note`, the story's `note_open`, tests and docs (T002, R-1329).
+All six gates green; pushed. R-1329 is resolved at the closure, not here.
 
 ## Next Steps
-1. Rounds 4 and 5: the MCP facet — server, allowlist closed by default, three tools, page.
-2. The closure: integration gate, evidence, acceptance; R-1329 resolved there.
+1. Round 4: book round 3's verdict in its first commit, then start the MCP facet.
+2. Rounds 4 and 5: the MCP facet — server, allowlist closed by default, three tools, page.
+3. The closure: integration gate, evidence, acceptance.
 
 ## Risks
 - `ui_server.py` has no headroom on the structure ledger; new logic goes into other modules.
