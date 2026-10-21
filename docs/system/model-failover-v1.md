@@ -56,7 +56,9 @@ limit, and the single parse retry owns an unreadable answer; a backup would only
 as a failed attempt, and the walk goes on to the next one. A backup that answers with one of those
 failures ends the walk with it, which the transport retries then own: it serves nothing, holds
 nothing and leaves the role's sessions as they were. When that failure is a rate limit, the retry
-waits it out on the backup's own provider, never on the usual provider's.
+waits it out on the backup's own provider, never on the usual provider's. A backup is built once per
+run and hears the round of each call, so a claude-cli backup's stream artifacts land in a directory
+of their own, numbered on from the usual provider's, and never over them.
 
 ## The cooldown
 

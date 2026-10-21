@@ -1088,6 +1088,7 @@ class ClaudeCliProvider:
         stream_evidence_dir: str | None = None,
         stream_rel_prefix: str = "",
         stream_max_bytes: int | None = None,
+        stream_counters: dict[tuple[int, str], int] | None = None,
     ) -> None:
         self._cwd = cwd
         self._write_mode = write_mode
@@ -1102,12 +1103,11 @@ class ClaudeCliProvider:
         self._stream_rel_prefix = stream_rel_prefix
         self._stream_max_bytes = stream_max_bytes
         self._last_stream_capture: Any = None
-        # Every provider call gets its own directory, so an F001 retry, a
-        # reviewer parse retry or a repair-round call can never overwrite an
-        # earlier stream.
+        # Every provider call gets its own directory, so an F001 retry, a reviewer parse retry or a
+        # repair-round call never overwrites an earlier stream; a role's backup links share it (R-1278).
         self._stream_round = 1
         self._stream_kind = "attempt"
-        self._stream_counters: dict[tuple[int, str], int] = {}
+        self._stream_counters: dict[tuple[int, str], int] = {} if stream_counters is None else stream_counters
         self._last_stream_call_id = ""
         self._last_stream_refs: list[str] = []
 

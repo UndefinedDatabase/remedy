@@ -411,6 +411,14 @@ class FailoverDisclosure:
         }
 
 
+# WHY: a stream hint or a stable prefix is duck-typed — a provider that has no such method needs none.
+def _hand_hint(provider: Any, method: str, *args: Any) -> None:
+    """Call ``provider.<method>(*args)`` when the provider has that method, the loop's own hint shape."""
+    hint = getattr(provider, method, None)
+    if callable(hint):
+        hint(*args)
+
+
 # WHY: the walk itself — wraps a role's provider and, on a trigger, tries each link in order
 # before letting the primary's own failure stand (DECISION F058 D2).
 class FailoverProvider:
@@ -441,6 +449,11 @@ class FailoverProvider:
         # WHY: the session guard — True for the rest of this wrapper's life once a link has
         # served a call, so a backup's session is never handed to the primary (DECISION F058 D4).
         self._resume_disabled = False
+        # WHY: each link is built once and kept, so its stream directories number on (R-1278).
+        self._built_links: dict[int, Any] = {}
+        # WHY: the stream hint and the stable prefix the loop gave the next call; a link hears them too.
+        self._stream_call: tuple[int, str] | None = None
+        self._stable_prefix: Any = None
 
     @property
     def name(self) -> str:
@@ -451,6 +464,16 @@ class FailoverProvider:
         if self._resume_disabled:
             return False
         return bool(getattr(self._primary, "supports_resume", False))
+
+    def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
+        """Declare the next call's round and kind to the primary and to every link that call reaches (R-1278)."""
+        self._stream_call = (round_no, kind)
+        _hand_hint(self._primary, "begin_stream_call", round_no, kind)
+
+    def offer_stable_prefix(self, prefix: Any) -> None:
+        """Offer the next prompt's stable prefix to the primary and to every link that call reaches (R-1278)."""
+        self._stable_prefix = prefix
+        _hand_hint(self._primary, "offer_stable_prefix", prefix)
 
     def __getattr__(self, item: str) -> Any:
         if item.startswith("_"):
@@ -467,16 +490,28 @@ class FailoverProvider:
         timeout_sec: int,
         max_output_chars: int,
     ) -> tuple[Any | None, FailoverLinkAttempt]:
-        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed."""
-        try:
-            provider = self._build_link(link)
-        except RuntimeError as exc:
-            return None, FailoverLinkAttempt(
-                position=position,
-                provider=link.provider,
-                model=link.model,
-                error=f"provider_error: {type(exc).__name__}: {exc}",
-            )
+        """Call one link with no session (DECISION F058 D4 (3)); `None` output means build failed.
+
+        A link is built on its first call and kept (R-1278); one that cannot be built is tried
+        again on the next call that reaches it. Before it is called it hears the round, the kind
+        and the stable prefix the loop gave this call.
+        """
+        provider = self._built_links.get(position)
+        if provider is None:
+            try:
+                provider = self._build_link(link)
+            except RuntimeError as exc:
+                return None, FailoverLinkAttempt(
+                    position=position,
+                    provider=link.provider,
+                    model=link.model,
+                    error=f"provider_error: {type(exc).__name__}: {exc}",
+                )
+            self._built_links[position] = provider
+        if self._stream_call is not None:
+            _hand_hint(provider, "begin_stream_call", *self._stream_call)
+        if self._stable_prefix is not None:
+            _hand_hint(provider, "offer_stable_prefix", self._stable_prefix)
         link_out = getattr(provider, method)(
             prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=None
         )

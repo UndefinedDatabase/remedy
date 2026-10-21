@@ -575,7 +575,7 @@ class _StubProvider:
         self.last_review_output: ReviewerOutput | None = None
         # An attribute besides name/supports_resume/build/review, for the test that a
         # FailoverProvider hands an arbitrary attribute through to its primary.
-        self.begin_stream_call = "primary-stream-hook"
+        self.extra_hook = "primary-hook"
 
     @property
     def name(self) -> str:
@@ -803,7 +803,7 @@ class TestFailoverProviderWalk:
         )
         assert fp.name == "claude-cli"
         assert fp.supports_resume is True
-        assert fp.begin_stream_call == primary.begin_stream_call
+        assert fp.extra_hook == primary.extra_hook
 
     def test_supports_resume_is_false_when_the_primary_answers_false(self):
         primary = _StubProvider("claude-cli", supports_resume=False)
@@ -816,6 +816,121 @@ class TestFailoverProviderWalk:
 
 
 _DOWN = "provider_error: ConnectionError: connection refused"
+
+
+class _HintedStub(_StubProvider):
+    """A stub that records the stream hints and stable prefixes it is handed (R-1278)."""
+
+    def __init__(self, name, **kwargs) -> None:
+        super().__init__(name, **kwargs)
+        self.stream_calls: list[tuple[int, str]] = []
+        self.prefixes: list[str] = []
+
+    def begin_stream_call(self, round_no, kind="attempt"):
+        self.stream_calls.append((round_no, kind))
+
+    def offer_stable_prefix(self, prefix):
+        self.prefixes.append(prefix)
+
+
+class TestALinkIsBuiltOnceAndHearsEachCall:
+    """R-1278: a link is built once per wrapper and hears the round, kind and prefix of each call."""
+
+    def test_a_link_is_built_once_and_hears_every_hint_the_primary_hears(self):
+        primary = _HintedStub("claude-cli", build_error=_DOWN)
+        link_provider = _HintedStub("l1")
+        builds: list[FailoverLink] = []
+
+        def build_link(link):
+            builds.append(link)
+            return link_provider
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        fp.begin_stream_call(1, "attempt")
+        fp.offer_stable_prefix("prefix-1")
+        fp.build("p1")
+        fp.begin_stream_call(2, "attempt")
+        fp.offer_stable_prefix("prefix-2")
+        fp.build("p2")
+
+        assert len(builds) == 1
+        assert primary.stream_calls == [(1, "attempt"), (2, "attempt")]
+        assert link_provider.stream_calls == [(1, "attempt"), (2, "attempt")]
+        assert primary.prefixes == ["prefix-1", "prefix-2"]
+        assert link_provider.prefixes == ["prefix-1", "prefix-2"]
+
+    def test_a_link_that_could_not_be_built_is_built_again_on_the_next_call(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        tries = [0]
+
+        def build_link(link):
+            tries[0] += 1
+            if tries[0] == 1:
+                raise RuntimeError("not yet")
+            return link_provider
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("claude-cli", "opus", "top"),), build_link=build_link,
+        )
+        assert fp.build("p1") is primary.last_build_output
+        assert fp.build("p2") is link_provider.last_build_output
+        assert tries[0] == 2
+
+
+def _outage_or_stream_claude(tmp_path):
+    """A fake `claude` on PATH: an outage for the model `primary-model`, a served stream otherwise."""
+    import json as _json
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    result = _json.dumps({"type": "result", "subtype": "success", "is_error": False, "session_id": "s",
+                          "result": "Builder made changes", "usage": {"input_tokens": 3, "output_tokens": 2}})
+    fake = bin_dir / "claude"
+    fake.write_text(
+        "#!/bin/sh\ncat > /dev/null\n"
+        'case " $* " in *" primary-model "*) echo "All connection attempts failed" >&2; exit 1;; esac\n'
+        f"printf '%s\\n' '{result}'\n"
+    )
+    fake.chmod(0o755)
+    return bin_dir
+
+
+class TestABackupClaudeCliWritesBesideThePrimary:
+    """R-1278: a claude-cli backup's stream artifacts land in a directory of their own, numbered on
+    from the primary's, in the round the loop declared, through the real role factory and CLI."""
+
+    def test_the_backups_stream_continues_the_primarys_numbering(self, monkeypatch, tmp_path):
+        import os
+
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        monkeypatch.setenv("PATH", f"{_outage_or_stream_claude(tmp_path)}{os.pathsep}{os.environ['PATH']}")
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "backup-model"
+tier = "mid"
+''')
+        evidence = tmp_path / "evidence"
+        fp = create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path), model="primary-model",
+            stream_evidence=True, stream_evidence_dir=str(evidence),
+        )
+        fp.begin_stream_call(2, "attempt")
+        out = fp.build("do it")
+
+        assert not out.error
+        assert out.failover_disclosure.used.model == "backup-model"
+        assert out.stream_call_id == "streams/builder/round-02/attempt-02"
+        streams = evidence / "streams" / "builder" / "round-02"
+        assert sorted(p.name for p in streams.iterdir()) == ["attempt-01", "attempt-02"]
+        assert "Builder made changes" in (streams / "attempt-02" / "raw_stream.jsonl").read_text()
+        assert "Builder made changes" not in (streams / "attempt-01" / "raw_stream.jsonl").read_text()
 
 
 class _ListClock:
