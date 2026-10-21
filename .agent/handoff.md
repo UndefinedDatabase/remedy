@@ -1,99 +1,91 @@
-# Handback — F078 round 4: the first branch merged onto main, round 3 booked, the L5 caps refused when not a number
+# Handback — F078 round 5: each level end to end, every gate of a mission at L5, R-1391's docstring, the page
 
 ## Session
 
-SESSION 2 of feature F078 · round 4 · rounds so far 4
+SESSION 2 of feature F078 · round 5 · rounds so far 5
 
 Context self-assessment: this worker applied prepared files only and wrote no code, and the context was far from exhausted.
 
-Fortschritt: ~80 % (T001, T002 and most of T003 landed, F078 merged onto main · the end-to-end proof per level, the contract question and the closure open) — Schätzung
+Fortschritt: ~85 % (T001 to T003 landed and proven end to end · contract 1.23 and the closure open) — Schätzung
 
 ## Range
 
-Review of `ff309f737`..`HEAD` on `feature/f078-autonomy-levels-2` (base: `main` at `ff309f737`, the merge of pull request 372). The second parent of C1 is `9d3187143`, the end of session 1's branch.
+Review of `c85895930`..`HEAD` on `feature/f078-autonomy-levels-2` (base: round 4's handback commit `c85895930`).
 
 ## Commits
 
-### ec9812cdf F078 R4 C1: merge the F078 branch onto main, its block copies free of this machine's paths
-Merge commit; parents `ff309f737` and `9d3187143`; tree `0e5df856096409002b9622062da3e4c381f550c1`. The merge stopped on conflicts in `.agent/context.md`, `.agent/decisions.md`, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/operator_questions.md`, `.agent/plan.md`, `.agent/prose_slips.md`, `docs/roadmap/STATUS.md`, `docs/system/structure-ledger-v1.md`, `packages/orchestration/config.py`, `tests/orchestration/import_reachability_allowlist.txt` and `tests/test_structure_ratchet.py`; the reviewer's tree replaced the working tree and index. Paths whose content differs from both parents (`git diff-tree --cc --name-only`, as run at C1):
-
+### 17b41ba53 F078 R5 C1: book round 4, register R-1391, DECISION F078 D5 and the plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f078-r1.md`, `f078-r2.md`, `f078-r3.md` | redacted | block copies free of machine paths |
-| `.agent/decisions.md`, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/operator_questions.md`, `.agent/prose_slips.md` | resolved | conflict resolution by the prepared tree |
-| `apps/cli/client_interface.py`, `docs/README.md`, `docs/guides/environment.md`, `docs/roadmap/STATUS.md`, `docs/system/machine-client-contract-v1.md`, `docs/system/structure-ledger-v1.md` | resolved | main and the first branch both changed them |
-| `packages/orchestration/config.py`, `packages/orchestration/data_paths.py`, `tests/cli/test_mission_cmd.py`, `tests/cli/test_status_cmd.py`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/test_structure_ratchet.py` | resolved | main and the first branch both changed them |
+| `.agent/authored/f078-r5.md` | +115/-0 | new: the block of this round |
+| `.agent/decisions.md` | +10/-0 | DECISION F078 D5 |
+| `.agent/live_review.md` | +4/-0 | round 4's verdict booked, R-1391 registered |
+| `.agent/plan.md` | +7/-8 | rewritten |
 
-Oversize declaration: this merge commit adds more than 500 lines against its first parent. It is the feature's one oversize commit; reason: a merge commit is one indivisible object; its lines are session 1's commits, each reviewed in its own round.
-
-### 6b7d084a1 F078 R4 C2: book round 3, DECISION F078 D4, the plan and the context
+### c0cf7e434 F078 R5 C2: each autonomy level end to end, every gate of a mission at L5, R-1391's docstring
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f078-r4.md` | +124/-0 | new: the block of this round |
-| `.agent/context.md` | +10/-13 | rewritten |
-| `.agent/decisions.md` | +10/-0 | DECISION F078 D4 |
-| `.agent/live_review.md` | +23/-16 | round 3's verdict booked |
-| `.agent/plan.md` | +12/-6 | rewritten |
-| `.agent/prose_slips.md` | +2/-0 | two prose-slip lines |
+| `tests/orchestration/test_autonomy_levels.py` | +181/-0 | new module: each level from a real config drives both seams; six existing gate tests re-run at L5 |
+| `tests/cli/test_mission_cmd.py` | +3/-1 | one docstring rewritten (R-1391's repair) |
 
-### 8b5806da0 F078 R4 C3: an L5 cap that is not a number of at least 0 is refused
+### 00e36b808 F078 R5 C3: the autonomy levels page and the files of F063 and F068
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/autonomy_gate.py` | +14/-2 | new `_idea_cap_number`; the two cap reads call it |
-| `tests/orchestration/test_autonomy_gate.py` | +36/-0 | seven new cases before the environment test |
+| `docs/system/autonomy-levels-v1.md` | +49/-2 | names D3 and D5; your own commands do not ask the check; three L5 keys; sections "Seeing the level", "The caps of L5", "What the proof covers" |
+| `docs/roadmap/features/T3_F063.md` | +3/-0 | one paragraph before Design: the idea start goes through the gate |
+| `docs/roadmap/features/T3_F068.md` | +3/-0 | one paragraph before Design: snapshots carry the level |
 
-### (this commit) F078 R4 C4: handback
+### (this commit) F078 R5 C4: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | full rewrite | this handback |
 
 ## External actions
 
-- `git checkout -b feature/f078-autonomy-levels-2` from `main` at `ff309f737`; no pull. No pull request is open and none was created.
-- `git push -u origin feature/f078-autonomy-levels-2` after this commit: result in the worker's final reply.
+- No branch was created, no pull request is open and none was created.
+- `git push origin feature/f078-autonomy-levels-2` after this commit: result in the worker's final reply.
 
 ## Verification
 
-1. `git status --porcelain` printed nothing; `verify.py` on the checkout: every line `True`, C4 `absent`, last line `ALL True`.
-2. `python3 -m ruff check` on the four named files: exit 0, `All checks passed!`.
-3. `run_selection.py`: `paths 92`, `exit 0`, `4551 passed, 3 skipped in 48.91s`; no FAILED or ERROR line and no "process(es) behind" line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252), `tests/regression/test_f293_acceptance.py:195` (main holds F293), `tests/test_install_smoke.py:175` (install smoke is opt-in).
+1. `git status --porcelain` printed nothing; `verify.py` on the checkout: every line `True`, C4 `absent`, last line `ALL True` (C1 insertions 136, C2 184, C3 55).
+2. `python3 -m ruff check` on the two named test files: exit 0, `All checks passed!`.
+3. `run_selection.py`: `paths 80`, `exit 0`, `3855 passed, 2 skipped in 67.90s`; no FAILED or ERROR line and no "process(es) behind" line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252), `tests/test_install_smoke.py:175` (install smoke is opt-in).
 4. `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`.
-5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`: `87`.
+5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`: `88`.
 
 ## Authored-text proofs
 
-C2: each of the six prepared files is a byte copy; sha256 of copy equals sha256 of source for all six. `.agent/authored/f078-r4.md` is 124 lines with sha256 `ea3cb94d1c87d0f9a1335dbc3c0436f905b6feb38bce041b4d5a54bb67e9ab12`. C3: both prepared files are byte copies, sha256 equal. C1's tree equals the prepared `0e5df856096409002b9622062da3e4c381f550c1`. All prepared digests were checked before use.
+C1: each of the four prepared files is a byte copy; sha256 of copy equals sha256 of source for all four. `.agent/authored/f078-r5.md` is 115 lines with sha256 `c11f49358d76b4b44ec9773228a3f60215378877130bfeac7fef18ded7f151c9`. C2: both prepared files are byte copies, sha256 equal. C3: all three prepared files are byte copies, sha256 equal. All prepared digests were checked before use, and every one matched.
 
 ## Deviations & assumptions
 
 - None in the commit sequence. Gate 4 exits 1 by design (the one expected failing check).
-- C4's changed-files table for C1 lists paths as `git diff-tree --cc --name-only` printed them at C1; the count is the same at C4.
+- The prepared files were copied by a small script that writes the bytes and compares digests; commands were run with absolute paths, so the gates ran with the checkout as working directory.
 
 ## For the operator, in plain sentences
 
-The autonomy work has moved onto a second branch, because the first one had fallen behind the main line and had to be merged with it. The first branch may now be deleted. The merge is done, and the notes of the first branch no longer carry paths from this machine. The highest level's daily limits are now checked more strictly: a limit that is written as text, as true or false, or as a negative number is refused with a clear message instead of failing in the middle of a comparison. Nothing starts work on its own yet at that level. Two questions for you remain open. The next round will prove each level from start to finish.
+Each autonomy level is now proven from a real configuration file, from the lowest to the highest: every level allows exactly the starts its row adds, and the fourth level behaves like the third because the thing it adds has no starter yet. The checks a mission meets on its way, such as the pause, the iteration limit, your stop, the escalation after repeated blocked completions and the approval of a waiting plan, were re-run with the highest level on and each one still fires. One wrong sentence about what the mission command does with the level was corrected. The page about the levels now describes the status view, the daily limits of the highest level and what the proof covers, and the two older feature notes each gained a line pointing at the gate. Two questions for you remain open. The next round books this round's verdict and takes up the status answer's new key.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP`.
 2. Phase 1 rule 2: the Open PR Gate.
-3. Book round 4's verdict in the next round's first commit.
-4. Round 5: each level's increment end to end, every gate at L5, the status key's contract question, the page and the files of F063 and F068.
+3. Book round 5's verdict and R-1391's resolution in the next round's first commit.
+4. Contract 1.23 for the status answer's `autonomy` key.
 
 Operator questions open: 2.
-Open findings: 87 (rule: `scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, gate 5 at commit `8b5806da0`).
+Open findings: 88 (rule: `scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, gate 5 at commit `00e36b808`).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | branch created from `ff309f737` |
-| C1 | done | merge `ec9812cdf`, tree as prepared |
-| C2 | done | `6b7d084a1` |
-| C3 | done | `8b5806da0` |
+| C1 | done | `17b41ba53` |
+| C2 | done | `c0cf7e434` |
+| C3 | done | `00e36b808` |
 | C4 | done | this commit |
 | Gate 1 | done | ALL True |
 | Gate 2 | done | All checks passed |
-| Gate 3 | done | 4551 passed, 3 skipped |
+| Gate 3 | done | 3855 passed, 2 skipped |
 | Gate 4 | done | fail_count 1, the twelve findings |
-| Gate 5 | done | 87 |
+| Gate 5 | done | 88 |
