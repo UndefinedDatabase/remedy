@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 350.6s (the launcher's reading); pytest's own reported wall time: 349.69s (0:05:49)
+summary line: 23044 passed, 11 skipped, 1 warning in 349.69s (0:05:49)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+data root guard: NONE
+tree it ran on: 9595d5607 (F303 R6 C5: the checklist's consolidation pass for F303)
+tree note: C1, C2, C4 and C5 changed only .agent/ files, the self-use queue, the feature file and the checklist page; C3 added one test
+reflog before: 9595d5607 HEAD@{2026-10-21 17:59:55 +0200}: commit: F303 R6 C5: the checklist's consolidation pass for F303
+reflog after: 9595d5607 HEAD@{2026-10-21 17:59:55 +0200}: commit: F303 R6 C5: the checklist's consolidation pass for F303
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F303 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1319.51 CPU seconds, 349.70 wall seconds, 23055 tests collected, exit status 0, recorded 2026-10-21T16:05:47Z
+This closure's suite used 1319.51 CPU seconds, 0.6 percent more than F060's 1311.49, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F060's closure run:
+  +2.86 s  tests/ui_server/test_public_api.py (13.97 -> 16.83)
+  +2.28 s  tests/cli/test_client_mcp_cmd.py (0.00 -> 2.28)
+  +2.23 s  tests/runtimes/test_supervisor_portability.py (46.97 -> 49.20)
+  +2.19 s  tests/orchestration/test_serve_daemon.py (21.35 -> 23.54)
+  +2.06 s  tests/cli/test_do_several_projects.py (8.72 -> 10.78)
+  +1.76 s  tests/orchestration/test_run_manifest_integrity.py (4.49 -> 6.25)
+  +1.74 s  tests/cli/test_do_scale_matrix.py (37.43 -> 39.17)
+  +1.70 s  tests/orchestration/test_review_zip_hygiene.py (36.72 -> 38.42)
+  +1.29 s  tests/orchestration/test_review_single_publication.py (3.82 -> 5.11)
+  +1.22 s  tests/cli/test_do_evidence_package.py (4.59 -> 5.81)
