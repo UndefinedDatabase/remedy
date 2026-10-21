@@ -22,6 +22,7 @@
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | autonomy levels | [autonomy-levels-v1.md](system/autonomy-levels-v1.md) | system |
+| permission matrix | [permission-matrix-v1.md](system/permission-matrix-v1.md) | system |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
@@ -127,6 +128,7 @@ Specifications and design documents for the built system.
 | [model-failover-v1.md](system/model-failover-v1.md) | Model failover: a role's backup models, the hard rules every link obeys, when a call fails over, the cooldown, the session guard, and what the run record and report show |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
+| [permission-matrix-v1.md](system/permission-matrix-v1.md) | What the work Remedy runs may do at each autonomy level: the eight actions by the levels L2 to L5, the one check every place asks, the push switch, the decision that approves a dependency change or a deletion, and the record of approvals |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
 | [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
 | [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |
