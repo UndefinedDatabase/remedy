@@ -247,3 +247,24 @@ def test_signature_is_none_and_the_constants_are_stated(tmp_path):
     assert manifest["bundle_v"] == CERTIFICATE_BUNDLE_V
     assert manifest["issue"] == 7
     assert set(manifest["claims"]) == set(CERTIFICATE_CLAIM_KEYS)
+
+
+def test_a_budget_that_exactly_fits_embeds_the_diff(tmp_path):
+    always = sum(len(s.data) for s in _sources() if s.member_class != "diff")
+    diff = next(s for s in _sources() if s.member_class == "diff")
+    manifest = _build(tmp_path / "cert.zip", size_budget_bytes=always + len(diff.data))["manifest"]
+    assert diff.path in [row["path"] for row in manifest["members"]]
+    assert manifest["referenced"] == []
+
+
+def test_an_existing_out_path_is_refused_before_anything_is_packed(tmp_path, monkeypatch):
+    def _must_not_pack(*args, **kwargs):
+        pytest.fail("the packer was called although the certificate already exists")
+
+    monkeypatch.setattr(jc, "build_review_zip_from_snapshot", _must_not_pack)
+    out = tmp_path / "cert.zip"
+    out.write_bytes(b"precious")
+    with pytest.raises(CertificateError) as exc:
+        _build(out)
+    assert str(exc.value) == f"A certificate already exists at {out}; Remedy never overwrites one."
+    assert out.read_bytes() == b"precious"
