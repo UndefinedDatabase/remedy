@@ -1,0 +1,5 @@
+Entry ID: SU-068
+Entry Title: Narrow the excused handler at apps/cli/commands/test_cmds.py:108
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/test_cmds.py:1:except Exception as exc:  # noqa: BLE001 — job lookup failure is reported, not raised, from a read command)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f313-r4-selfuse/SU-068.md

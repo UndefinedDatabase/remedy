@@ -138,11 +138,16 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
    client keeps the newest copy by its id. Without `--since` the answer carries only a `cursor`,
    with every list empty.
 3. **Answer.** `remedy decision resolve <job> <decision> --reason <option> --json` answers a
-   decision. A budget decision is answered `extend` with `--answer <limit>=<value>` for each
-   raised limit, or `abandon`. After `extend`, `remedy job run <job> --json` runs the job on with
-   the builder and reviewer it started with. An `extend` also answers `no` to the contract
-   remainder decision the same budget stop raised, because the job runs on instead of a
-   follow-up mission, and names it under `closed_decisions`. A run that ends `blocked`,
+   decision. A budget decision is the one question its stop asks, and it names the mission's
+   open blocking criteria under `blockers`. It is answered `extend`, with
+   `--answer <limit>=<value>` for each limit to set or, since 1.22, with no answer, which
+   doubles every limit the stop exhausted and the wall clock to at least 60 minutes; or
+   `abandon`, which raises the mission's remainder decision once while blocking criteria stay
+   open. After `extend`, `remedy job run <job> --json` runs the job on with the builder and
+   reviewer it started with; over HTTP the decision route starts that run itself. An `extend`
+   also answers `no` to a contract remainder decision still open for the job, because the job
+   runs on instead of a follow-up mission, and names it under `closed_decisions`. A run that
+   ends `blocked`,
    `failed` or stopped by its budget answers `ok` false with `job_blocked`, `job_failed` or
    `job_stopped_by_budget`, still carries every key of the job's report, and exits 1; a run
    that completes, pauses at the operator's request or at `--tasks`, or stops at the operator's
@@ -184,7 +189,7 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `--reviewer-provider` | `remedy do` | the reviewer, here `fake` |
 | `--deadline` | `remedy do` | the job's deadline, UTC, ISO 8601 |
 | `--reason` | `remedy decision resolve` | the option chosen, here `extend` |
-| `--answer` | `remedy decision resolve` | one raised limit, `<limit>=<value>`, repeatable |
+| `--answer` | `remedy decision resolve` | one raised limit, `<limit>=<value>`, repeatable; without it, `extend` doubles every limit the stop exhausted (since 1.22) |
 | `--approve` | `remedy job apply` | the approval; without it nothing is applied |
 
 ### JSON keys
@@ -212,7 +217,7 @@ provider, which spends nothing, although the digest's `harness_invocations` stil
 | `type` | digest decisions | the kind of decision, `token_budget` for a budget stop |
 | `options` | digest decisions | the answers it accepts, `extend` and `abandon` for a budget stop |
 | `outcome` | `remedy decision resolve` | what the answer did, `extended` for an extend |
-| `closed_decisions` | `remedy decision resolve` | the decisions an `extend` answered with it: the contract remainder decision of the same budget stop |
+| `closed_decisions` | `remedy decision resolve` | the decisions an `extend` answered with it: a contract remainder decision still open for the job, which a budget stop no longer raises (since 1.22) |
 | `budgets` | `remedy decision resolve` | the job's limits after the answer, the order file's cap among them |
 | `max_cost_usd` | `budgets` | the cost cap in USD |
 | `next_command` | `remedy decision resolve` | the command that runs the job on |
@@ -242,7 +247,7 @@ table "Exit codes of every command" of the generated section at the end of this 
 |---|---|
 | `task_plan_approval` | `remedy decision resolve <job> plan:approval --reason approve` or `reject`, with `--answer <question>=<text>` for its bundled questions |
 | `task_decision` | `remedy decision resolve <job> <decision> --reason <answer>` |
-| `token_budget` | `remedy decision resolve <job> <decision> --reason extend --answer <limit>=<value>`, or `--reason abandon`; listed exactly while the job's current stop is a budget stop with no answer since, so every listed one takes both answers |
+| `token_budget` | `remedy decision resolve <job> <decision> --reason extend`, with `--answer <limit>=<value>` for each limit to set or none to double every limit the stop exhausted, or `--reason abandon`; listed exactly while the job's current stop is a budget stop with no answer since, so every listed one takes both answers |
 | `proposal` | `remedy decision resolve <job> <decision> --reason approve`, `reject` or `defer` |
 | `replan_proposal` | `remedy decision resolve <job> <decision> --reason replan_follow_up` or `accept_reduced_scope` |
 | `stop_reason` | `remedy decision resolve <job> <decision>` |
@@ -254,6 +259,19 @@ diff. For a job `remedy do` ran, `remedy job evidence <job> --json` first export
 evidence; then `remedy patch hunks <job> --json` reads the hunk ids and the decision recorded
 for them, and `remedy patch approve-hunks <job> --approve-hunk <id> --reject-hunk <id>=<reason>
 --json` records a decision.
+
+## Watching what runs
+
+Since interface 1.22 a client can watch work without reading the whole digest.
+`remedy client now --json` names every running job with its phase, task, round, worker, budget
+used against its limits and the seconds since the worker last wrote anything, says whether it is
+stalled and why, and lists the orders that wait with no running job and the local model server's
+state. `remedy client insight <job> --json --lines <n>` answers one job's entry with its worker's
+last stream lines and the closed words for what the operator can do. The words are the interface's
+`insight` key, below; `docs/system/public-http-api-v1.md` ("What runs now, and why a job hangs")
+says when each reads. `remedy client execution --json` names each provider's `class`, `local` or
+`paid`, and under `budgets.profiles` the default limits of each class, which fill only the limits
+an order, the configuration and a budget answer leave unset.
 
 ## What Remedy never does on a machine order
 
@@ -278,7 +296,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.21`.
+Interface version: `1.22`.
 
 ### Envelope
 
@@ -461,7 +479,7 @@ Answer keys: `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime
 Keys under the answer keys: see below.
 
 - `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
-  - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+  - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
   - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
@@ -907,7 +925,7 @@ Keys under the answer keys: see below.
 
 - `applies`: `finished_at`, `job_apply_id`, `job_id`, `status`
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
-- `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+- `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
@@ -1112,7 +1130,7 @@ The keys of the `client` object of `remedy status --json`.
 
 Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
 
-- `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+- `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
 - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`

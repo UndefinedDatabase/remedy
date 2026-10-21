@@ -13,6 +13,7 @@ import pytest
 
 from packages.orchestration.budget_decision import answer_budget_decision
 from packages.orchestration.budget_stop import doubled_limit_answers, raise_remainder_for_final_job
+from packages.orchestration.client_digest import _decision_entry
 from packages.orchestration.decision_queue import budget_decision_id, list_decisions
 from packages.orchestration.execution_config import ExecutionConfig
 from packages.orchestration.mission_contract import (
@@ -96,3 +97,21 @@ def test_the_lab_stop_abandoned_raises_one_remainder_decision_once():
     assert _open_ids(reloaded) == [remainder_id]
     [decision] = list_decisions(reloaded, [_stop_event(reloaded)])
     assert decision.payload["question"].startswith(CONTRACT_REMAINDER_MARKER)
+
+
+def test_the_lab_stops_question_names_its_blocker_to_a_machine_client():
+    """R-1390, DECISION F313 D1 addendum: the digest's entry of the budget decision carries the
+    mission's open blocking criteria under `blockers`, and the remainder decision raised after an
+    `abandon` carries an empty list."""
+    job = _lab_stop()
+    [decision] = list_decisions(job, [_stop_event(job)])
+    entry = _decision_entry(str(job.job_id), PROJECT, decision, STOPPED)
+    assert entry["type"] == "token_budget"
+    assert entry["blockers"] == ["C001: the suite passes"]
+
+    answer_budget_decision(job, budget_decision_id("lab1"), "abandon", [], now=STOPPED)
+    save_job_plan(job)
+    assert raise_remainder_for_final_job(load_job_plan(job.job_id))
+    reloaded = load_job_plan(job.job_id)
+    [remainder] = list_decisions(reloaded, [_stop_event(reloaded)])
+    assert _decision_entry(str(job.job_id), PROJECT, remainder, STOPPED)["blockers"] == []

@@ -284,7 +284,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 ## Tier 12 — The Orb's insight and the local-model budgets, continued (operator amendment amend1020-orb-insight)
 
 - [x] F311 — The insight: what runs now, what the worker does, why it hangs (T001–T004 complete; R-1383, R-1384, R-1385, R-1386, R-1387, R-1388 and R-1389 resolved; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f311r6e1001 · package remedy-review-20261021-041253-READY_FOR_REVIEW.zip · SHA-256 ce16ffda6c47e2f361c8efc2fe012a46c7f167a2f05fe26feafc5757d2871d57 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a71cb79ac8bad33355a0e5862c9a07dbc2e48b25)
-- [ ] F313 — Contract 1.22 for the Orb
+- [x] F313 — Contract 1.22 for the Orb (T001–T003 complete; R-1390 resolved; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f313r5e1001 · package remedy-review-20261021-053728-READY_FOR_REVIEW.zip · SHA-256 31eee0bfb465651bc3c04ca6c383fd230ba7c1d8ace53fcff3250a7d2fad4848 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD da2e6ebe8e2d53f6f36f13527b259481fdf16029)
 
 ## Tier 3 — Luna gate C: controlled autonomy, continued (operator ruling amend1006-luna-control-plane)
 

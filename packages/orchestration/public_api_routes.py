@@ -153,8 +153,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "Answers one decision of a job, as `remedy decision resolve <job> <decision> --json` "
             "does: `reason` is given as `--reason` and each `answer` as one `--answer`; a job id "
             "prefix is accepted, as on the command line, and `--as-mission` is not offered over "
-            "HTTP. A budget decision answered `extend` starts the job's run at once, and the answer "
-            "names that run under `resumed`, or why it could not start under `resume_refused`."
+            "HTTP. Since 1.22 a budget decision answered `extend` starts the job's run at once, and "
+            "the answer names that run under `resumed`, or why it could not start under "
+            "`resume_refused`; `extend` with no `answer` doubles every limit the stop exhausted."
         ),
     ),
     PublicApiRoute(
@@ -348,7 +349,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         twin="client.now",
         description=(
             "What runs right now, in closed words a client translates, as `remedy client now "
-            "--json` prints it (F311): `jobs`, one entry per running job with its `order`, "
+            "--json` prints it (since 1.22): `jobs`, one entry per running job with its `order`, "
             "`project`, `state`, `phase`, `task`, `round`, `worker`, `budget` (`used` and "
             "`limits`), `last_output_s`, `stalled` with its `stall_reason`, and `waiting_on`; "
             "`orders`, the orders that wait with no running job; `model_server`, the local model "
@@ -366,7 +367,7 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
         refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
         description=(
             "One job's worker seen from outside, as `remedy client insight <job> --json` prints "
-            "it (F311): the job's entry of `GET /api/v1/now`, plus `stream`, the worker's last "
+            "it (since 1.22): the job's entry of `GET /api/v1/now`, plus `stream`, the worker's last "
             "`lines` stream lines (default 40, at most 200, already redacted), and `advice`, the "
             "closed words for what the operator can do. Every word is in the `insight` key of "
             "`GET /api/v1/interface`. A job id prefix is accepted, and a client token reads only "

@@ -731,6 +731,14 @@ end the response with:
   reaches; and R-1384, R-1386 and R-1387, a guard the block ordered and the code lacked, a comment
   above the wrong function and a test that left its bindings behind, were found by the reviewer
   reading the diff. The list stays at 34 items.
+  Consolidated again at F313's closure on 2026-10-21: nothing joined and no two items were merged,
+  because F313's one line in `.agent/prose_slips.md` names no lesson the list lacks. A line of JSON
+  the reviewer typed into a file a serialiser writes, so that its indentation differed from its
+  neighbours', is item 12's clause that a value a block ships is printed by the run that measured
+  it, here written by the tool that writes the rest of the file. Its one finding, R-1390, a key a
+  decision carried and no answer a client reads passed on, is item 34's reading of the code the
+  order reaches; the reviewer found it reading that code while authoring the page that describes
+  the key, and it was repaired inside the feature. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
