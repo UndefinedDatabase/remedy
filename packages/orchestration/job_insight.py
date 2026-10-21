@@ -7,7 +7,8 @@ DECISION F311 D1): one JOB ENTRY shape, read from the job record, the worker pul
 effective budgets, the order that lists the job and the job's open decision
 (`client_story.job_story_open_decision`). `phase` and the stall reading follow DECISION F311 D3
 exactly, with the addendum's two further phases (`halted`, `ended`) for a job that does not run
-and its narrower stall reading for one. `model_server_state()` is the one Ollama probe DECISION
+and its narrower stall reading for one, and its second addendum: `apply_wait` is read from the
+job's own result alone. `model_server_state()` is the one Ollama probe DECISION
 F311 D4 orders; `fetch_ollama_json` is this module's one network read, so a test fakes it alone
 and reaches no real model server. Nothing here writes a file.
 
@@ -145,7 +146,7 @@ def _stall_reading(state: str, pulse: dict[str, Any] | None, model_server: dict[
     return False, "none"
 
 
-# WHY: the story, the diff's apply guard and the insight (DECISION F311 D1) read one open decision.
+# WHY one builder: `now` and `insight` answer one job entry shape (DECISION F311 D1).
 def job_insight_entry(plan: Any, *, now: datetime, model_server: dict[str, Any], threshold_s: int,
                       events: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """The JOB ENTRY of PLAN (DECISION F311 D1): one shape shared by `job_insight` and `now_insight`."""
@@ -158,7 +159,7 @@ def job_insight_entry(plan: Any, *, now: datetime, model_server: dict[str, Any],
     from packages.orchestration.job_apply_pending import job_apply_pending_fields
     from packages.orchestration.pingpong_job import TASK_RUNNING
     from packages.orchestration.serve_paths import serve_paths
-    from packages.orchestration.serve_runs import order_record_for_job, order_record_payload
+    from packages.orchestration.serve_runs import order_record_for_job
     from packages.orchestration.timeline import load_run_events
     from packages.orchestration.worker_pulse import read_worker_pulse
 
@@ -169,12 +170,11 @@ def job_insight_entry(plan: Any, *, now: datetime, model_server: dict[str, Any],
     paths = serve_paths()
     order_record = order_record_for_job(paths, job_id)
     order_id = order_record.order_id if order_record is not None else None
-    order_phase = (order_record_payload(paths, order_record)["phase"]
-                  if order_record is not None else None)
 
     state = str(getattr(plan.state, "value", plan.state))
+    # R-1385, D3's second addendum: the job's own result decides, not a sibling's order phase.
     pending = job_apply_pending_fields(plan)
-    apply_wait = order_phase == "awaiting_apply" or pending["result_applied"] is False
+    apply_wait = pending["result_applied"] is False
 
     task = next((t for t in getattr(plan, "tasks", ()) or () if t.status == TASK_RUNNING), None)
     task_entry = {"id": task.task_id, "title": task.title} if task is not None else None
@@ -211,7 +211,11 @@ def job_insight_entry(plan: Any, *, now: datetime, model_server: dict[str, Any],
             used_minutes = int(budget_work_seconds(actuals, now) // 60)
             used_waited = actuals["waited_s"]
 
-    budgets = effective_job_budgets(plan)
+    try:
+        # R-1384: a job whose own `budgets` do not validate must not fail the whole answer.
+        budgets = effective_job_budgets(plan)
+    except (ValueError, TypeError):
+        budgets = None
 
     stalled, stall_reason = _stall_reading(state, pulse, model_server, threshold_s, last_output_s, waiting_on)
 
