@@ -43,6 +43,14 @@ from typing import Any
 
 from apps.cli.client_interface_digest import DIGEST_KEY_TREE
 from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS, CLIENT_EXECUTION_KEY_TREE
+from apps.cli.client_interface_insight import (
+    CLIENT_INSIGHT_ANSWER_KEYS,
+    CLIENT_INSIGHT_KEY_TREE,
+    CLIENT_NOW_ANSWER_KEYS,
+    CLIENT_NOW_KEY_TREE,
+    INSIGHT_WORDS_KEY_TREE,
+    render_insight_words_lines,
+)
 from apps.cli.client_interface_story import (
     CLIENT_STORY_ANSWER_KEYS,
     CLIENT_STORY_KEY_TREE,
@@ -94,6 +102,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "patch.reject",
     "mission.abandon",
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
+    "client.now", "client.insight",
     "client.diff", "client.cancel-order",
     "doctor.health",
     "doctor.logs",
@@ -160,6 +169,8 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
+    "client.now": (),
+    "client.insight": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.diff": ("ambiguous_job_id", "diff_not_ready", "diff_unavailable", "invalid_job_id",
                     "job_not_found"),
     "doctor.health": ("health_failed",),
@@ -236,8 +247,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "mission.abandon": ("mission", "unmet_blocking_criteria", "version"),
     "client.interface": (
         "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
-        "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
-        "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
+        "contract_templates", "digest", "envelope", "exit_codes", "insight", "interface_version",
+        "job_states", "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
     ),
     "client.changes": (
         "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
@@ -251,6 +262,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "state",
     ),
     "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
+    "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
@@ -656,6 +668,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "answers": {"*": {}},
         "answer_trees": {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}},
         "story": STORY_WORDS_KEY_TREE,
+        "insight": INSIGHT_WORDS_KEY_TREE,
     },
     "client.changes": {
         # F253 S3a (DECISION F253 D4 (3)): `jobs` and `decisions` are the digest's own trees,
@@ -671,6 +684,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,
+    "client.now": CLIENT_NOW_KEY_TREE, "client.insight": CLIENT_INSIGHT_KEY_TREE,
     "client.diff": {"files": {key: {} for key in (
         "path", "change", "added", "removed", "patch", "truncated")}},
     "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},
@@ -738,6 +752,7 @@ def build_client_interface() -> dict[str, Any]:
     from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
     from packages.orchestration.client_story_words import story_words
     from packages.orchestration.contract_templates import list_contract_templates
+    from packages.orchestration.job_insight import insight_words
     from packages.orchestration.mission_state import MISSION_STATUSES
 
     return {
@@ -763,6 +778,7 @@ def build_client_interface() -> dict[str, Any]:
         "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
         "answer_trees": copy.deepcopy(ANSWER_KEY_TREES),
         "story": story_words(),
+        "insight": insight_words(),
     }
 
 
@@ -856,6 +872,7 @@ def render_client_interface_markdown(interface: dict[str, Any]) -> str:
         f"Approval recommendations: {_listed(interface['approval_recommendations'])}.",
         f"Approval risks: {_listed(interface['approval_risks'])}.",
         *render_story_words_lines(interface["story"]),
+        *render_insight_words_lines(interface["insight"]),
         "",
         "### Operations",
     ]

@@ -1,4 +1,4 @@
-"""The reader of what runs now and one job's insight (DECISIONs F311 D1, D3 and its addendum, D4).
+"""The reader of what runs now and one job's insight (DECISIONs F311 D1, D3 and its addendum, D4, D5).
 
 `now_insight()` and `job_insight()` build the answers `GET /api/v1/now` and
 `GET /api/v1/jobs/{job}/insight` publish (their routes and twins land in a later round,
@@ -17,6 +17,7 @@ Public API::
     insight_stall_seconds() -> int
     fetch_ollama_json(host, path, timeout) -> Any
     model_server_state() -> dict
+    insight_words() -> dict
     job_insight_entry(plan, *, now, model_server, threshold_s, events=None) -> dict
     insight_advice(entry) -> list[str]
     job_insight(plan, *, lines=INSIGHT_LINES_DEFAULT, now=None) -> dict
@@ -46,6 +47,8 @@ INSIGHT_LINES_MAX = 200
 INSIGHT_STALL_SECONDS_DEFAULT = 300
 #: The timeout of one probe to the model server (DECISION F311 D4).
 MODEL_SERVER_PROBE_TIMEOUT_S = 2.0
+#: The words `model_server.state` may read (DECISION F311 D4).
+INSIGHT_MODEL_SERVER_STATES = ("reachable", "unreachable")
 
 #: The order's own phases `now_insight` keeps a waiting order for (DECISION F311 D1).
 _WAITING_ORDER_PHASES = ("planning", "needs_plan_approval", "waiting", "ready", "awaiting_apply")
@@ -76,11 +79,12 @@ def fetch_ollama_json(host: str, path: str, timeout: float) -> Any:
 
 def model_server_state() -> dict[str, Any]:
     """The model server's state, as far as Ollama's own endpoints say (DECISION F311 D4)."""
+    reachable, unreachable = INSIGHT_MODEL_SERVER_STATES
     host = ollama_host()
     try:
         fetch_ollama_json(host, "/api/tags", MODEL_SERVER_PROBE_TIMEOUT_S)
     except (OSError, ValueError):
-        return {"provider": "ollama", "host": host, "state": "unreachable", "loaded": [], "queue": None}
+        return {"provider": "ollama", "host": host, "state": unreachable, "loaded": [], "queue": None}
     loaded: list[str] = []
     try:
         ps = fetch_ollama_json(host, "/api/ps", MODEL_SERVER_PROBE_TIMEOUT_S)
@@ -89,7 +93,21 @@ def model_server_state() -> dict[str, Any]:
             loaded = [m["name"] for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)]
     except (OSError, ValueError):
         loaded = []
-    return {"provider": "ollama", "host": host, "state": "reachable", "loaded": loaded, "queue": None}
+    return {"provider": "ollama", "host": host, "state": reachable, "loaded": loaded, "queue": None}
+
+
+# WHY: the interface's `insight` key (DECISION F311 D5), one key as `story` is today.
+def insight_words() -> dict[str, list[str]]:
+    """Every closed word the two answers carry, the interface's `insight` key."""
+    from packages.orchestration.worker_pulse import PULSE_STREAM_KINDS
+
+    return {
+        "phases": list(INSIGHT_PHASES),
+        "stall_reasons": list(INSIGHT_STALL_REASONS),
+        "stream_kinds": list(PULSE_STREAM_KINDS),
+        "advice": list(INSIGHT_ADVICE),
+        "model_server_states": list(INSIGHT_MODEL_SERVER_STATES),
+    }
 
 
 def _pulse_moment(value: Any) -> datetime | None:

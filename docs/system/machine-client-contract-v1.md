@@ -347,6 +347,16 @@ Story reason `stopped`: none.
 Story reason `sandbox_unavailable`: none.
 Story reason `project_rules_too_large`: none.
 
+### Insight words
+
+The closed words of `remedy client now`, `remedy client insight` and `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight`.
+
+Insight phases: `plan`, `build`, `review`, `repair`, `apply_wait`, `halted`, `ended`, `unknown`.
+Insight stall reasons: `waiting_decision`, `waiting_lock`, `model_unreachable`, `model_slow`, `no_output`, `unmeasured`, `none`.
+Insight stream kinds: `model_text`, `tool_call`, `tool_result`, `system`.
+Insight advice: `extend_budget`, `answer_decision`, `wait`, `stop`, `apply`, `nothing`.
+Insight model server states: `reachable`, `unreachable`.
+
 ### Operations
 
 #### `remedy project register`
@@ -837,7 +847,7 @@ Description: Show what a program that drives Remedy can rely on: its commands, a
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `order_job_phases`, `order_phases`, `story`.
+Answer keys: `answer_trees`, `answers`, `approval_recommendations`, `approval_risks`, `budget_kinds`, `contract_templates`, `digest`, `envelope`, `exit_codes`, `insight`, `interface_version`, `job_states`, `mission_statuses`, `operations`, `order_job_phases`, `order_phases`, `story`.
 Keys under the answer keys: see below.
 
 - `answer_trees`: `*`
@@ -847,6 +857,7 @@ Keys under the answer keys: see below.
 - `digest`: `*` (repeats the object that holds it)
 - `envelope`: `error_keys`, `reserved_keys`, `schema_version`
 - `exit_codes`: `code`, `meaning`, `name`
+- `insight`: `advice`, `model_server_states`, `phases`, `stall_reasons`, `stream_kinds`
 - `operations`: `arguments`, `command`, `command_id`, `description`, `exit_codes`, `refusal_tokens`
   - `arguments`: `help`, `name`, `option`, `repeatable`, `required`, `takes_value`
 - `story`: `end_actions`, `next_actions`, `phrases`, `questions`, `reasons`, `states`, `step_ids`, `step_statuses`, `verification_statuses`
@@ -971,6 +982,57 @@ Keys under the answer keys: see below.
   - `tasks`: `files`, `rounds`, `status`, `title`
   - `tokens`: `in`, `out`
 - `verification`: `required`, `status`
+
+#### `remedy client now`
+
+Command id: `client.now`.
+Description: Read what runs now in closed words a client translates: every running Job with its phase (plan, build, review, repair), task, round, worker, budget and how long its worker's model has been silent, the orders that wait, and the local model server's state (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: none.
+Answer keys: `jobs`, `model_server`, `orders`, `stall_threshold_s`, `workers`.
+Keys under the answer keys: see below.
+
+- `jobs`: `budget`, `round`, `task`, `waiting_on`, `worker`
+  - `budget`: `limits`, `used`
+    - `limits`: `calls`, `minutes`, `tokens`
+    - `used`: `calls`, `minutes`, `tokens`, `waited_s`
+  - `round`: `max`, `n`
+  - `task`: `id`, `title`
+  - `waiting_on`: `decision`, `type`
+  - `worker`: `model`, `provider`, `role`
+- `model_server`: `host`, `loaded`, `provider`, `queue`, `state`
+- `orders`: `jobs`, `order`, `phase`, `project`
+- `workers`: `free`, `running`
+
+#### `remedy client insight`
+
+Command id: `client.insight`.
+Description: Read one Job's insight in closed words a client translates: its phase (plan, build, review, repair), the task it runs, its round, its worker's role and model, and its budget, whether the worker is stalled and why, what the operator can do, and the last lines the worker's model wrote (read-only).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job` | no | yes | yes | no | The id of the job, or a prefix of it, whose running task's worker model is read |
+| `--lines` | yes | no | yes | no | How many of the worker model's last stream lines to show, at most 200 (default 40; a value that is not a whole number reads 40) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`.
+Refusal tokens: `ambiguous_job_id`, `invalid_job_id`, `job_not_found`.
+Answer keys: `advice`, `budget`, `job`, `last_output_s`, `matches`, `order`, `phase`, `project`, `round`, `stall_reason`, `stalled`, `state`, `stream`, `task`, `waiting_on`, `worker`.
+Keys under the answer keys: see below.
+
+- `budget`: `limits`, `used`
+  - `limits`: `calls`, `minutes`, `tokens`
+  - `used`: `calls`, `minutes`, `tokens`, `waited_s`
+- `round`: `max`, `n`
+- `stream`: `at`, `kind`, `length`, `role`, `text`, `tool`
+- `task`: `id`, `title`
+- `waiting_on`: `decision`, `type`
+- `worker`: `model`, `provider`, `role`
 
 #### `remedy client diff`
 

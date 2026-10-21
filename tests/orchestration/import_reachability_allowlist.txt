@@ -6,6 +6,7 @@
 apps.cli.client_interface
 apps.cli.client_interface_digest
 apps.cli.client_interface_execution
+apps.cli.client_interface_insight
 apps.cli.client_interface_story
 apps.cli.command_catalog
 apps.cli.command_catalog_cancel
@@ -231,6 +232,7 @@ packages.orchestration.job_cancel
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_input_definition
+packages.orchestration.job_insight
 packages.orchestration.job_plan
 packages.orchestration.job_run_ending
 packages.orchestration.job_runner
