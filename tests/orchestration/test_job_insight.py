@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -315,3 +315,58 @@ def test_the_job_entry_and_now_insight_answer_keys():
 
     answer = JI.now_insight(now=NOW)
     assert set(answer) == {"jobs", "orders", "model_server", "workers", "stall_threshold_s"}
+
+
+# --- (j): R-1384, R-1385 and R-1388, repaired in round 3 -----------------------------------------
+
+def test_a_job_whose_own_budgets_do_not_validate_reads_every_limit_none():
+    """R-1384: `effective_job_budgets` raising on a bad `budgets` must not fail the whole answer."""
+    job = _job(state=RunState.RUNNING, task_status=TASK_RUNNING)
+    job.budgets = {"max_total_tokens": "lots"}
+    save_job_plan(job)
+
+    entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
+    assert entry["budget"]["limits"] == {"tokens": None, "calls": None, "minutes": None}
+
+    jobs = JI.now_insight(now=NOW)["jobs"]
+    assert [j["job"] for j in jobs] == [job.job_id]
+    assert jobs[0]["budget"]["limits"] == {"tokens": None, "calls": None, "minutes": None}
+
+
+def test_a_job_pending_behind_its_orders_apply_reads_plan_not_apply_wait(monkeypatch):
+    """R-1385, D3's second addendum: `apply_wait` is read from the job's own result alone, not a
+    sibling job's order phase."""
+    import packages.orchestration.serve_runs as serve_runs_mod
+
+    job = _job(state=RunState.PENDING, task_status="pending")
+    monkeypatch.setattr(serve_runs_mod, "order_record_for_job",
+                        lambda paths, job_id: SimpleNamespace(order_id="ord-1"))
+    monkeypatch.setattr(serve_runs_mod, "order_record_payload",
+                        lambda paths, record: {"phase": "awaiting_apply"})
+
+    entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
+    assert entry["phase"] == "plan"
+    assert JI.insight_advice(entry) == ["nothing"]
+
+    # A job whose own result still waits for an apply reads apply_wait regardless.
+    own_result_job = _job(state=RunState.COMPLETED, task_status=TASK_APPLIED)
+    own_entry = JI.job_insight_entry(own_result_job, now=NOW, model_server=_REACHABLE,
+                                     threshold_s=300, events=[])
+    assert own_entry["phase"] == "apply_wait"
+
+
+def test_the_budget_used_reads_the_decoded_actuals_exactly():
+    """R-1388: `budget.used` is read from the decoded persisted actuals, not a raw field."""
+    job = _job(state=RunState.RUNNING, task_status=TASK_RUNNING)
+    job.budget_actuals = {
+        "schema_version": "3.0.0",
+        "provider_call_count": 7, "actual_call_count": 7, "unmeasured_call_count": 0,
+        "total_tokens": 1200, "actual_sources": ["pingpong_live"],
+        "started_at": (NOW - timedelta(minutes=10, seconds=30)).isoformat(),
+        "waited_s": 90, "active_until": NOW.isoformat(),
+        "measured_cost_usd": None, "priced_call_count": 0, "unpriced_call_count": 7,
+    }
+    save_job_plan(job)
+
+    entry = JI.job_insight_entry(job, now=NOW, model_server=_REACHABLE, threshold_s=300, events=[])
+    assert entry["budget"]["used"] == {"tokens": 1200, "calls": 7, "minutes": 9, "waited_s": 90}

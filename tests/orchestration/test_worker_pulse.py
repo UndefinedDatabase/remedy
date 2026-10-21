@@ -278,7 +278,24 @@ def test_a_write_that_raises_oserror_leaves_add_pi_record_returning_normally(pul
 
 # --- R-1383: `bind_job_clock` binds the pulse too, for a job with an id -----------------------
 
-def test_bind_job_clock_also_binds_a_fresh_worker_pulse(tmp_path, monkeypatch):
+@pytest.fixture
+def _restore_job_clock_bindings():
+    """R-1387: `bind_job_clock` binds four ContextVars (the pulse's, the job clock's, the stop
+    request's and the tokens-left one); this fixture saves each with a `.set(...)` token before
+    the test runs and resets every one after, so a later test in the same process does not
+    inherit this test's pulse, clock, stop-request or token-budget closures."""
+    from packages.orchestration import pi_loop_limits, pi_provider
+    from packages.orchestration import worker_pulse as worker_pulse_mod
+
+    variables = (pi_provider._JOB_TIME_LEFT, pi_provider._JOB_STOP_REQUESTED,
+                pi_loop_limits._JOB_TOKENS_LEFT, worker_pulse_mod._CURRENT_PULSE)
+    tokens = [variable.set(variable.get()) for variable in variables]
+    yield
+    for variable, token in zip(variables, tokens):
+        variable.reset(token)
+
+
+def test_bind_job_clock_also_binds_a_fresh_worker_pulse(tmp_path, monkeypatch, _restore_job_clock_bindings):
     """R-1383: a run's own `bind_job_clock` leaves `read_worker_pulse` answering a fresh pulse,
     not only the direct `bind_worker_pulse` the other tests of this file call."""
     from packages.orchestration import pi_provider
