@@ -762,6 +762,18 @@ end the response with:
   citations and grants recorded beside a refusal, are item 34's reading of the code the order
   reaches; and R-1396, R-1398, R-1399, R-1400 and R-1401 are wiring no test held, each found by the
   reviewer's mutations as the review loop already requires. The list stays at 34 items.
+  Consolidated again at F060's closure on 2026-10-21: nothing joined and no two items were merged,
+  because none of F060's four lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  block that ordered a second entry in the orphan list while the new module's import made the first
+  one reached is item 34's reading of the guards that bind the file the order changes; a block that
+  expected a decision count of zero without reading the derivation that adds one, and a gate that
+  expected a group's help to name a subcommand's argument, are item 8's reading of the code that
+  produces the value a gate asserts; and a handback that told the operator the whole test
+  collection had run is a slip in writing a handback, which no item about a block's text can
+  prevent. Its three findings were each repaired inside the feature: R-1404, R-1405 and R-1406,
+  stated rules that no ordered test could see broken, are item 18's reading of an ordered list of
+  tests against the property it must establish, each found by the reviewer's mutations as the
+  review loop already requires. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
