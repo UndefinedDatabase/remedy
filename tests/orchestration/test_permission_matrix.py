@@ -24,6 +24,7 @@ from packages.orchestration.data_paths import job_dir
 from packages.orchestration.permission_matrix import (
     APPROVAL_KIND_DECISION,
     APPROVAL_KIND_FLAG,
+    APPROVAL_KIND_PROMPT,
     JOB_LEVEL_FILENAME,
     PERMISSION_ACTIONS,
     PERMISSION_ALLOW,
@@ -244,6 +245,26 @@ def test_commit_at_l2_with_decision_approval_allows_and_names_it(tmp_path):
     assert lines[0]["approval_ref"] == "D-42"
 
 
+def test_expensive_at_l2_with_prompt_approval_allows_and_names_the_command(tmp_path):
+    """DECISION F141 D5 (1): the prompt kind approves one instance like a flag does, its ref
+    the command's own name."""
+    cfg = _load(tmp_path)
+    root = tmp_path / "data"
+    approval = InstanceApproval(kind=APPROVAL_KIND_PROMPT, ref="job.resume")
+    verdict = require_permission(
+        "expensive", PermissionRequest(level="L2", subject="probe", approval=approval),
+        config=cfg, root=root,
+    )
+    assert verdict.outcome == PERMISSION_ALLOW
+    assert verdict.reason.endswith(
+        "and this instance was approved by your answer at the prompt of job.resume."
+    )
+    lines = _grant_lines(root)
+    assert len(lines) == 1
+    assert lines[0]["approval_kind"] == APPROVAL_KIND_PROMPT
+    assert lines[0]["approval_ref"] == "job.resume"
+
+
 # ---------------------------------------------------------------------------
 # (e) the push switch
 # ---------------------------------------------------------------------------
@@ -413,6 +434,12 @@ def test_require_permissions_rejects_an_unknown_level():
 def test_instance_approval_rejects_an_unknown_kind():
     with pytest.raises(ValueError):
         InstanceApproval(kind="not-a-kind", ref="x")
+
+
+def test_instance_approval_accepts_the_prompt_kind():
+    approval = InstanceApproval(kind=APPROVAL_KIND_PROMPT, ref="job.resume")
+    assert approval.kind == APPROVAL_KIND_PROMPT
+    assert approval.ref == "job.resume"
 
 
 def test_instance_approval_rejects_an_empty_ref():

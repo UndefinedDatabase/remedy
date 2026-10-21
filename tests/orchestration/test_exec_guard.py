@@ -429,6 +429,41 @@ def test_plan_child_spawn_hands_the_environment_over_unchanged_without_an_allowl
     assert plan_child_spawn(ExecGuardPolicy(env=None)).env is None
 
 
+def test_plan_child_spawn_asks_external_call_once_when_the_policy_keeps_the_network(monkeypatch):
+    """DECISION F141 D5 (3): a child that keeps the network asks the matrix, exactly once."""
+    from packages.orchestration import permission_matrix
+
+    calls: list[str] = []
+    original = permission_matrix.require_permission
+
+    def spy(action, request, **kwargs):
+        calls.append(action)
+        return original(action, request, **kwargs)
+
+    monkeypatch.setattr(permission_matrix, "require_permission", spy)
+    plan_child_spawn(ExecGuardPolicy())
+    assert calls == ["external_call"]
+
+
+def test_plan_child_spawn_never_asks_when_the_policy_denies_the_network(monkeypatch):
+    from packages.orchestration import permission_matrix
+
+    monkeypatch.setattr(permission_matrix, "require_permission", lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("must not be called when the network is denied")))
+    plan_child_spawn(ExecGuardPolicy(deny_network=True))
+
+
+def test_plan_child_spawn_raises_when_a_deny_cell_is_put_in_for_external_call(monkeypatch):
+    """A future `deny` cell for `external_call` raises here, exactly as any other cell does."""
+    from packages.orchestration import permission_matrix
+
+    monkeypatch.setitem(
+        permission_matrix.PERMISSION_MATRIX, ("external_call", "L2"), permission_matrix.PERMISSION_DENY,
+    )
+    with pytest.raises(permission_matrix.PermissionRefusedError):
+        plan_child_spawn(ExecGuardPolicy())
+
+
 @pytest.mark.subprocess
 def test_plan_child_spawn_preexec_really_lowers_the_core_limit_in_the_child():
     """Proved in a REAL child, never by calling `preexec_fn` in the test process.

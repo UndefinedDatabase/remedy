@@ -61,6 +61,7 @@ from packages.orchestration.permission_matrix import (
 from tests.orchestration.test_job_apply_commit import _bare_upstream
 from tests.orchestration.test_job_apply_history import (  # noqa: F401  (autouse fixture)
     _completed,
+    _one_task_job,
     _state,
     data_root,
 )
@@ -534,3 +535,63 @@ def test_u_r1398_a_switch_turned_off_after_the_preflight_fails_naming_the_senten
     assert ctx.push_outcome is not None
     assert "autonomy.allow_push is false" in ctx.push_outcome["error"]
     assert push_calls == []
+
+
+# ---------------------------------------------------------------------------
+# (v)-(x): R-1399 — `_flag_refusals` hands the apply's planned paths and its own
+# refusals to the matrix, through the real paths (`apply_job`, `_flag_refusals`).
+# ---------------------------------------------------------------------------
+
+
+def test_v_r1399_a_plain_approved_apply_of_a_dependency_change_blocks_apply_failed(
+    repo, monkeypatch,
+):
+    job = _one_task_job(repo, monkeypatch, "pyproject.toml")
+    before = _state(repo)
+
+    result = apply_job(job.job_id, str(repo), approve=True)
+
+    assert result.status == "blocked", result.blocked_reason
+    token, sentence = apply_refusal(result)
+    assert token == "apply_failed"
+    assert "(dependency_change, L2) = ask" in sentence
+    reloaded = pingpong_job_module.load_job_plan(job.job_id)
+    record = escalation_records(reloaded)[-1]
+    assert record["decision_id"] in sentence
+    assert _state(repo) == before
+
+
+def test_w_r1399_the_same_with_a_commit_message_also_blocks_apply_failed(repo, monkeypatch):
+    job = _one_task_job(repo, monkeypatch, "pyproject.toml")
+    before = _state(repo)
+
+    result = apply_job(job.job_id, str(repo), approve=True, commit_message="Add a dependency")
+
+    assert result.status == "blocked", result.blocked_reason
+    token, sentence = apply_refusal(result)
+    assert token == "apply_failed"
+    assert "(dependency_change, L2) = ask" in sentence
+    reloaded = pingpong_job_module.load_job_plan(job.job_id)
+    record = escalation_records(reloaded)[-1]
+    assert record["decision_id"] in sentence
+    assert _state(repo) == before
+
+
+def test_x_r1399_the_late_call_over_a_dirty_tracked_target_refuses_and_grants_nothing(
+    repo, monkeypatch,
+):
+    """`_flag_refusals` at the late call (`status == "approved_apply_started"`), directly,
+    over a target whose own tracked file (`base.txt`) is dirty: history mode's checkout
+    refusal fires, and `apply_permission_refusals` grants nothing while it stands
+    (DECISION F141 D4 (3))."""
+    job = _completed(repo, monkeypatch)
+    (repo / "base.txt").write_text("dirtied by hand\n")
+
+    refusals = job_apply_module._flag_refusals(
+        job, _result(commit_message_mode="history", status="approved_apply_started"),
+        repo, ["one.txt", "two.txt"], skip_blocked=False, skipped=[])
+
+    assert len(refusals) == 1
+    assert refusals[0].startswith(f"{HISTORY_REFUSED}: ")
+    assert "uncommitted changes in base.txt" in refusals[0]
+    assert _grants() == []
