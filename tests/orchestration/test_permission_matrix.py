@@ -582,3 +582,11 @@ def test_permission_status_rows_with_push_allowed_none_the_push_row_now_is_none(
 def test_permission_status_rows_with_level_none_every_now_is_none():
     rows = permission_status_rows(None, push_allowed=True)
     assert all(row["now"] is None for row in rows)
+
+
+def test_permission_status_rows_cells_match_expected_matrix_for_every_action():
+    """R-1401: the status answer's per-level cells, held to this test's own literal table."""
+    rows = permission_status_rows("L2", push_allowed=True)
+    for row in rows:
+        for level in ("L2", "L3", "L4", "L5"):
+            assert row[level] == EXPECTED_MATRIX[(row["action"], level)]
