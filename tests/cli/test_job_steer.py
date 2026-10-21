@@ -81,6 +81,44 @@ class TestSteerTextAndJSON:
         assert f"for task {t1} of job {job.job_id}." in out
 
 
+class TestSteerSource:
+    """`--source`, DECISION F303 D2 (2), D3 (2): which door the note came through."""
+
+    def test_source_api_records_the_api_channel(self, job, capsys):
+        from packages.orchestration import steering as ST
+
+        t1 = _task_id(job, "T1")
+        code, out = _run(
+            ["job", "steer", str(job.job_id), "--task", t1, "Use the smaller fixture.",
+             "--source", "api", "--json"], capsys)
+        assert code == 0
+        assert json.loads(out)["outcome"] == "accepted"
+        [record] = ST.list_steering_messages(str(job.job_id))
+        assert record["channel"] == "api"
+
+    def test_an_unknown_source_exits_2_and_writes_nothing(self, job, capsys):
+        from packages.orchestration import steering as ST
+
+        t1 = _task_id(job, "T1")
+        code, out = _run(
+            ["job", "steer", str(job.job_id), "--task", t1, "Keep it small.",
+             "--source", "nope", "--json"], capsys)
+        assert code == 2
+        assert json.loads(out)["error"] == "invalid_argument"
+        assert ST.list_steering_messages(str(job.job_id)) == []
+
+    def test_the_default_source_records_the_cli_channel(self, job, capsys):
+        from packages.orchestration import steering as ST
+
+        t1 = _task_id(job, "T1")
+        code, out = _run(
+            ["job", "steer", str(job.job_id), "--task", t1, "Keep it small.", "--json"], capsys)
+        assert code == 0
+        assert json.loads(out)["outcome"] == "accepted"
+        [record] = ST.list_steering_messages(str(job.job_id))
+        assert record["channel"] == "cli"
+
+
 class TestSteerRefusalExitCodes:
     """Each refusal's exit code, per DECISION F030 D2: 2 for a usage refusal, 3 for a
     not-ready refusal."""

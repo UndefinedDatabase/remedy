@@ -73,6 +73,7 @@ from apps.cli.client_interface_insight import INSIGHT_WORD_LABELS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
+from apps.cli.commands.job_steer_cmd import JOB_STEER_ANSWER_KEYS
 from apps.cli.exit_codes import CLI_EXIT_CODES
 from apps.cli.grouped import _DEFAULT_COMMAND, build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
@@ -96,7 +97,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_the_document_carries_its_own_version():
-    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.24"
+    assert build_client_interface()["interface_version"] == CLIENT_INTERFACE_VERSION == "1.25"
 
 
 def _command_parser_actions(command_id: str) -> dict[str, argparse.Action]:
@@ -320,6 +321,11 @@ UNRESOLVED_TOKEN_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the token apply_refusal in packages/orchestration/job_apply.py returns, one of its "
         "APPLY_REFUSAL_TOKENS, which tests/cli/test_job_apply_refusals.py drives to every one "
         "(DECISION F304 D4)",
+    ),
+    "apps.cli.commands.job_steer_cmd:_cmd_job_steer:code": (
+        frozenset({"invalid_message", "job_not_steerable", "task_not_steerable", "unknown_task"}),
+        "steer_task_command's own refusal code in packages/orchestration/steering.py; its four "
+        "`{\"outcome\": \"refused\", \"code\": ...}` sites name these, in the order it checks them",
     ),
 }
 
@@ -608,6 +614,13 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         }),
         "the keys job_insight in packages/orchestration/job_insight.py returns, shared with "
         "GET /api/v1/jobs/{job}/insight (DECISION F311 D1)",
+    ),
+    "apps.cli.commands.job_steer_cmd:_cmd_job_steer:**result": (
+        frozenset(JOB_STEER_ANSWER_KEYS),
+        "the accepted envelope's keys from steer_task_command in "
+        "packages/orchestration/steering.py, read with job_id; its `outcome` key is always "
+        "`accepted` on this branch, already implied by the envelope's own `ok`, so it is not "
+        "declared as a separate answer key (DECISION F303 D3 (2))",
     ),
 }
 
@@ -1454,6 +1467,10 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     # A completed job has nothing left to stop (exec-1017b: the stop route's 409).
     unstoppable = answer("job.stop", ["job", "stop", job_id, "--reason", "not needed"], 1)
     assert unstoppable["error"] == "job_not_stoppable"
+    # Nor can it take a steering note any more (DECISION F303 D3): job.steer's refusal coverage.
+    steered = answer("job.steer", ["job", "steer", job_id, "please look again", "--task",
+                                   ran["tasks"][0]["task_id"]], 3)
+    assert steered["error"] == "job_not_steerable"
     proved = answer("change.proof", ["change", "proof", job_id], 0)
     exported = answer("job.evidence", ["job", "evidence", job_id], 0)
     hunks = answer("patch.hunks", ["patch", "hunks", job_id], 0)
