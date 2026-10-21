@@ -91,11 +91,11 @@ def _latest_apply_record(job_id: str) -> dict[str, Any] | None:
 def _asks_a_question(plan: Any) -> bool:
     """Whether PLAN has an open decision, so its story reads `waiting`: a job its budget stopped
     with a question has not ended (found by the kit's recording, which first read `failed`)."""
-    from packages.orchestration.client_story import _open_decision
+    from packages.orchestration.client_story import job_story_open_decision
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.timeline import load_run_events
 
-    return _open_decision(plan, load_run_events(resolve_data_root(), str(plan.job_id))) is not None
+    return job_story_open_decision(plan, load_run_events(resolve_data_root(), str(plan.job_id))) is not None
 
 
 def _state_and_range(plan: Any) -> tuple[str, str, str]:
