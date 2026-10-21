@@ -181,6 +181,10 @@ class MissionOrderBatch:
     single current-order slots held for this order, so a later order never overwrites them.
     Jobs are not listed here: a job link names its batch by ``order_id``, so the chain stays the
     one record of which jobs exist. Outcomes and spend are read from the jobs and the ledger.
+
+    ``repo_path`` (DECISION F307 D11) is the repository root ``accept_order`` was given, ADDITIVE
+    and OPTIONAL on ``plan_source``'s terms: the key is written only when it is not empty, so
+    every batch written before this decision stays byte-identical.
     """
 
     order_id: str
@@ -194,6 +198,7 @@ class MissionOrderBatch:
     correlation_id: str = ""
     plan_source: str = ""
     reopened_from: str = ""
+    repo_path: str = ""
     sealed: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
@@ -205,7 +210,7 @@ class MissionOrderBatch:
         for key in ("budgets", "sealed"):
             if getattr(self, key) is not None:
                 body[key] = getattr(self, key)
-        for key in ("correlation_id", "plan_source", "reopened_from"):
+        for key in ("correlation_id", "plan_source", "reopened_from", "repo_path"):
             if getattr(self, key):
                 body[key] = getattr(self, key)
         return body
@@ -226,7 +231,8 @@ class MissionOrderBatch:
             kind=str(body.get("kind", "build")), budgets=body.get("budgets"),
             correlation_id=str(body.get("correlation_id", "")),
             plan_source=str(body.get("plan_source", "")),
-            reopened_from=str(body.get("reopened_from", "")), sealed=body.get("sealed"))
+            reopened_from=str(body.get("reopened_from", "")),
+            repo_path=str(body.get("repo_path", "")), sealed=body.get("sealed"))
 
 
 @dataclass(frozen=True)
@@ -387,6 +393,13 @@ class Mission:
         """Every project this mission's jobs may work in, its own project first."""
         return self.project_ids or (self.project_id,)
 
+    def order_repo_path(self) -> str:
+        """The repository the newest batch that records one names, else "" (DECISION F307 D11)."""
+        for batch in reversed(self.orders):
+            if batch.repo_path:
+                return batch.repo_path
+        return ""
+
 
 def check_spanned_project_ids(lead: str, project_ids: tuple[str, ...]) -> None:
     """Raise ValueError unless *project_ids* is at least two projects, *lead* first, each once.
@@ -407,18 +420,28 @@ def follow_up_target(mission: Mission, previous_job: Any) -> dict[str, str]:
 
     A mission over several projects continues in the project and repository of the job its
     chain ends with, so the next job's verify-first task re-checks that job where it worked
-    (DECISION F205 D5); the next job's record carries both. ``{}`` for a mission of one project,
-    or one with no job yet, whose next job is planned as before. Raises
-    :class:`MissionProjectError` when the previous job names no repository, or a project the
-    mission does not span.
+    (DECISION F205 D5); the next job's record carries both. ``{}`` for a mission of one project
+    with no job yet, whose next job is planned as before. Raises :class:`MissionProjectError`
+    when the previous job names no repository, or a project the mission does not span.
+
+    A mission with no ``project_ids`` whose ``repo`` is set and is not its own ``project_id`` is
+    keyed to a project's second repository (DECISION F307 D11): it answers that project and
+    :meth:`Mission.order_repo_path`, when that is not empty, so its next job continues there too.
+    Every other case of a one-project mission keeps answering ``{}``.
     """
-    if not mission.project_ids or previous_job is None:
-        return {}
-    project = str(getattr(previous_job, "project_id", "") or "")
-    repo = str(getattr(previous_job, "repo_path", "") or "")
-    if not repo or project not in mission.project_ids:
-        raise MissionProjectError(
-            f"the previous job {getattr(previous_job, 'job_id', '')} works in project "
-            f"{project or '(none)'} and repository {repo or '(none)'}, so mission {mission.id}, "
-            f"which spans several projects, cannot tell where its next job works")
-    return {"project_id": project, "repo_path": repo}
+    if mission.project_ids:
+        if previous_job is None:
+            return {}
+        project = str(getattr(previous_job, "project_id", "") or "")
+        repo = str(getattr(previous_job, "repo_path", "") or "")
+        if not repo or project not in mission.project_ids:
+            raise MissionProjectError(
+                f"the previous job {getattr(previous_job, 'job_id', '')} works in project "
+                f"{project or '(none)'} and repository {repo or '(none)'}, so mission {mission.id}, "
+                f"which spans several projects, cannot tell where its next job works")
+        return {"project_id": project, "repo_path": repo}
+    if mission.repo and mission.repo != mission.project_id:
+        repo_path = mission.order_repo_path()
+        if repo_path:
+            return {"project_id": mission.project_id, "repo_path": repo_path}
+    return {}

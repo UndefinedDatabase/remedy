@@ -240,8 +240,10 @@ def _create_mission_for_job(job: Any, *, json_output: bool = False) -> str:
 
     try:
         # DECISION amend1011b D5: the approved goal is an order of the repository's one mission.
+        # DECISION F307 D11: the job's own repository, when it has one, else the project's.
         owner = project_by_id(project_id)
-        mission, batch = accept_order(owner, project_repo_root(owner), MissionOrder(text=goal))
+        repo_root = str(getattr(job, "repo_path", "") or "") or project_repo_root(owner)
+        mission, batch = accept_order(owner, repo_root, MissionOrder(text=goal))
         mission = link_order_job(project_id, mission.id, batch.order_id, str(job.job_id))
     except MissionError as exc:
         fail("mission_error", f"could not start the mission: {exc}", json_output=json_output)

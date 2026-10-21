@@ -79,9 +79,11 @@ from packages.orchestration.mission_contract import (
     render_contract_lines,
     write_mission_contract,
 )
+from packages.orchestration.mission_record import MissionOrderBatch
 from packages.orchestration.mission_state import (
     create_mission,
     load_mission,
+    save_mission,
     set_mission_contract,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
@@ -1130,6 +1132,30 @@ class TestTheRemainderAnswer:
         assert amendment["id"] == "A001"
         assert amendment["criteria"] == ["C001", "C002"]
         assert "C002, C003 as C001, C002" in amendment["understood"]
+
+    def test_the_remainder_of_a_second_repositorys_mission_is_accepted_into_that_repository(
+            self, tmp_path, monkeypatch):
+        """DECISION F307 D11: the remainder continues in the mission's own repository, not the
+        project's canonical one."""
+        import packages.orchestration.repo_mission as repo_mission
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        second_repo = str(tmp_path / "second-repo")
+        Path(second_repo).mkdir()
+        project = SimpleNamespace(id=PROJECT, slug=PROJECT, name=PROJECT,
+                                  canonical_repo_path="", repo_paths=[second_repo])
+        monkeypatch.setattr(repo_mission, "project_by_id", lambda project_id: project)
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        mission = load_mission(PROJECT, mission_id, tmp_path)
+        save_mission(replace(mission, orders=(MissionOrderBatch(
+            order_id="o0", repo_path=second_repo),)), tmp_path)
+        record = _answer(job_id, decision_id, "yes")
+
+        follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
+
+        follow_up = load_mission(PROJECT, follow_up_id, tmp_path)
+        assert follow_up.orders[-1].repo_path == second_repo
 
     def test_no_creates_nothing(self, tmp_path, monkeypatch):
         from packages.orchestration.mission_contract import start_remainder_follow_up_mission

@@ -57,6 +57,10 @@ and replaced files of that project's jobs. A mission written before amend1011b t
 several projects counts the jobs of every project it spans, and its upkeep job works where its
 chain ends.
 
+An order records the repository it was accepted for (DECISION F307 D11), and a mission of a
+project's second repository plans its next job, its upkeep job, the remainder of its contract and
+a goal approved from one of its jobs in that repository, rather than the project's canonical one.
+
 ## The command line
 `remedy mission continue <mission> "<step>"` records the jobs that have ended first. When upkeep is
 due, it makes the upkeep job in place of the step, says so with the step's text, and the step can

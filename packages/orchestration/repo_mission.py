@@ -238,7 +238,7 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
             order_id=uuid4().hex, text=order.text, source_path=order.source_path,
             source_sha256=order.source_sha256, created_at=_utc_now(),
             target_commit=_target_commit(repo_root), kind=kind, budgets=budgets,
-            correlation_id=correlation_id, reopened_from=reopened)
+            correlation_id=correlation_id, reopened_from=reopened, repo_path=str(repo_root))
         orders, links = seal_current_order_batch(mission)
         mission = replace(
             mission, repo=key, status=MISSION_STATUS_ACTIVE, order=order, contract=None,
@@ -333,6 +333,14 @@ def order_batch_view(mission: Mission) -> list[dict[str, Any]]:
 def project_repo_root(project: Any) -> str:
     """The repository a project's one mission is for: its canonical one, else its first, else ""."""
     return str(project.canonical_repo_path or (project.repo_paths[0] if project.repo_paths else ""))
+
+
+# WHY: a mission of a project's second repository continues its work there, not in the project's
+# canonical one (DECISION F307 D11).
+def mission_repo_root(mission: Mission) -> str:
+    """The repository *mission*'s own work continues in: its newest recorded order, else the
+    project's repository as :func:`project_repo_root` reads it."""
+    return mission.order_repo_path() or project_repo_root(project_by_id(mission.project_id))
 
 
 def ensure_project_mission(project_id: str, *, root: Path | None = None) -> tuple[Mission, bool]:

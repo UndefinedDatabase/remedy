@@ -12,7 +12,12 @@ import json
 import pytest
 
 from packages.orchestration.mission_followup import continue_mission
-from packages.orchestration.mission_record import Mission, MissionJobLink
+from packages.orchestration.mission_record import (
+    Mission,
+    MissionJobLink,
+    MissionOrderBatch,
+    follow_up_target,
+)
 from packages.orchestration.mission_state import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
@@ -176,3 +181,17 @@ class TestTheNextJobContinuesWhereTheChainIs:
         following = continue_mission(_LEAD, mission.id, "next", root=tmp_path)
 
         assert (following.project_id, following.repo_path) == (_LEAD, "")
+
+
+class TestFollowUpTargetOfASecondRepository:
+    """DECISION F307 D11: a one-project mission keyed to a second repository continues there."""
+
+    def test_a_second_repositorys_mission_answers_it_and_a_canonical_one_answers_nothing(self):
+        batch = MissionOrderBatch(order_id="o1", repo_path="/repos/second")
+        second = Mission(id="m1", project_id=_LEAD, goal="g",
+                         repo=f"{_LEAD}:abc123def456", orders=(batch,))
+        assert follow_up_target(second, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/second"}
+
+        canonical = Mission(id="m2", project_id=_LEAD, goal="g", repo=_LEAD, orders=(batch,))
+        assert follow_up_target(canonical, None) == {}

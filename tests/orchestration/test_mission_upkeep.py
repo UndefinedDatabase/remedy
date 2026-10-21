@@ -12,6 +12,7 @@ import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_dir, run_dir
+from packages.orchestration.mission_record import Mission, MissionOrderBatch
 from packages.orchestration.mission_state import create_mission, link_job_to_mission
 from packages.orchestration.mission_upkeep import (
     LINE_JOB_CLOSED,
@@ -43,6 +44,7 @@ from packages.orchestration.mission_upkeep import (
     upkeep_has_work,
     upkeep_ledger_path,
     upkeep_preview,
+    upkeep_target,
 )
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
@@ -771,3 +773,13 @@ class TestTheUpkeepOfAMissionOverSeveralProjects:
         assert outcome.plan["repository"] == str(repos[self.OTHER])
         assert outcome.plan["findings"] == [finding_key(str(jobs[3].job_id), "T001", "F-TASK-001")]
         assert str(jobs[0].job_id) not in compile_upkeep_step(outcome.plan)
+
+
+def test_upkeep_target_of_a_mission_keyed_to_a_second_repository_answers_that_repository():
+    """DECISION F307 D11: `upkeep_target` reuses `follow_up_target`'s answer for a one-project
+    mission keyed to a second repository, the same as for a mission over several projects."""
+    batch = MissionOrderBatch(order_id="o1", repo_path="/repos/second")
+    mission = Mission(id="m1", project_id=PROJECT, goal="g",
+                      repo=f"{PROJECT}:abc123def456", orders=(batch,))
+
+    assert upkeep_target(mission) == (PROJECT, "/repos/second")

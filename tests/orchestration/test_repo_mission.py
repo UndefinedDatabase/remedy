@@ -115,6 +115,23 @@ def test_a_repository_the_project_does_not_hold_is_refused(tmp_path):
         accept_order(project, _repo(tmp_path, "other"), _order("x"), root=tmp_path)
 
 
+def test_a_batch_accepted_for_a_second_repository_records_its_root_and_one_with_none_writes_no_key(tmp_path):
+    """DECISION F307 D11: `accept_order` records the repository root it was given, and omits the
+    key entirely for a batch accepted with none."""
+    a, b = _repo(tmp_path, "a"), _repo(tmp_path, "b")
+    project = SimpleNamespace(id=uuid4(), slug="p", name="p", canonical_repo_path=str(a),
+                              repo_paths=[str(a), str(b)])
+
+    _, batch = accept_order(project, b, _order("x"), root=tmp_path)
+    assert batch.repo_path == str(b)
+    assert batch.to_json()["repo_path"] == str(b)
+
+    bare = SimpleNamespace(id=uuid4(), slug="q", name="q", canonical_repo_path=None, repo_paths=[])
+    _, none_batch = accept_order(bare, "", _order("y"), root=tmp_path)
+    assert none_batch.repo_path == ""
+    assert "repo_path" not in none_batch.to_json()
+
+
 def test_two_clones_with_one_remote_are_two_identities(tmp_path):
     a, b = _repo(tmp_path, "a"), _repo(tmp_path, "b")
     for repo in (a, b):

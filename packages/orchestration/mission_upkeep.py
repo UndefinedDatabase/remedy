@@ -325,7 +325,8 @@ def upkeep_target(mission: Any, root: Path | None = None) -> tuple[str, str]:
     """The project and repository an upkeep job of *mission* works in (DECISION F205 D7).
 
     Where the mission's next job works: for a mission over several projects, the project and
-    repository of the job its chain ends with (``follow_up_target``, DECISION F205 D5); else the
+    repository of the job its chain ends with (``follow_up_target``, DECISION F205 D5); for a
+    mission of a project's second repository, that repository too (DECISION F307 D11); else the
     mission's own project and its registered repository.
     """
     from packages.orchestration.data_paths import normalize_job_id
@@ -333,14 +334,15 @@ def upkeep_target(mission: Any, root: Path | None = None) -> tuple[str, str]:
     from packages.orchestration.pingpong_job import load_job_plan_safe
 
     last = mission.latest_link()
+    job = None
     if mission.project_ids and last is not None:
         try:
             job, _unreadable = load_job_plan_safe(normalize_job_id(last.job_id), root)
         except ValueError:
             job = None
-        target = follow_up_target(mission, job)
-        if target:
-            return target["project_id"], target["repo_path"]
+    target = follow_up_target(mission, job)
+    if target:
+        return target["project_id"], target["repo_path"]
     return str(mission.project_id), project_repository(mission.project_id)
 
 
