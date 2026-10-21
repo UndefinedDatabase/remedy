@@ -30753,3 +30753,13 @@ CHOSEN: (1) A new catalog module, `apps/cli/command_catalog_certificate.py`, hol
 ALTERNATIVES CONSIDERED: (a) `remedy job verify-certificate` in the job group — rejected: the feature file names `remedy verify <bundle>`, and a check that needs no job does not belong to the job group; (b) a visible group — rejected: the visible order is a reviewed product surface pinned by its test, and a certificate is a tool for the person who receives one, not a step of the daily path; (c) the certificate written into the data folder by default — rejected: a certificate is made to be handed on, and the current folder is where the person who asked for it looks.
 
 HOW TO REVERSE: delete the two modules, their splice, import and group lines (restoring the default lines they paid with), the `_DEFAULT_COMMAND` entry, the exit-code row, the page and its index rows, the tests, and this paragraph; restore the orphan entry and the reachability list.
+
+## DECISION F060 D5 — F060's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/`, `scripts/rotate_live_review.py` nor `scripts/check_agent_hygiene.py` has changed since F313's closure (`git log ff309f737..8c361bfac` names none of them).
+
+CHOSEN: F060's closure skips the rotation commit, as the closures of F310 to F313, F078 and F141 did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
