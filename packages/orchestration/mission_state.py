@@ -47,8 +47,12 @@ building the plan that way and validating it, never by asking a model nicely.
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -150,6 +154,26 @@ def project_ids_with_missions(root: Path | None = None) -> list[str]:
     if not base.is_dir():
         return []
     return sorted(p.name for p in base.iterdir() if p.is_dir())
+
+
+# ---------------------------------------------------------------------------
+# The per-project lock (moved from repo_mission.py, R-1300, DECISION F307 D7)
+# ---------------------------------------------------------------------------
+
+LOCK_FILENAME = ".repo-mission.lock"
+
+
+@contextmanager
+def repo_mission_lock(project_id: str, root: Path | None = None) -> Iterator[None]:
+    """Hold the exclusive per-project lock that makes lookup, create and enqueue one step."""
+    directory = mission_dir_for_project(project_id, root)
+    directory.mkdir(parents=True, exist_ok=True)
+    fd = os.open(directory / LOCK_FILENAME, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 # ---------------------------------------------------------------------------

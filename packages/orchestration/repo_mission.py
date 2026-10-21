@@ -22,12 +22,9 @@ The lock is advisory (`fcntl.flock`), as the worktree locks beside it are.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import os
 import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,13 +53,11 @@ from packages.orchestration.mission_state import (
     list_missions,
     list_missions_safe,
     load_mission,
-    mission_dir_for_project,
     mission_job_state_label,
     project_ids_with_missions,
+    repo_mission_lock,
     save_mission,
 )
-
-LOCK_FILENAME = ".repo-mission.lock"
 
 #: The kinds of order a batch records: one that builds, and one that only reads (DECISION
 #: amend1011b D7); a read-only order adds no build job.
@@ -116,19 +111,6 @@ def repo_key(project: Any, repo_root: str | Path) -> str:
     raise RepoMissionError(
         f"{repo_root} is not a repository of project {getattr(project, 'slug', project_id)}; "
         f"register it before giving it an order")
-
-
-@contextmanager
-def repo_mission_lock(project_id: str, root: Path | None = None) -> Iterator[None]:
-    """Hold the exclusive per-project lock that makes lookup, create and enqueue one step."""
-    directory = mission_dir_for_project(project_id, root)
-    directory.mkdir(parents=True, exist_ok=True)
-    fd = os.open(directory / LOCK_FILENAME, os.O_RDWR | os.O_CREAT, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
 
 
 def canonical_candidates(project_id: str, key: str, root: Path | None = None) -> list[Mission]:

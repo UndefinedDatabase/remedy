@@ -50,10 +50,11 @@ from packages.orchestration.mission_state import (
     mission_job_state_label,
     mission_root,
     project_ids_with_missions,
+    repo_mission_lock,
     save_mission,
 )
 from packages.orchestration.pingpong_job import JOB_TERMINAL_STATES
-from packages.orchestration.repo_mission import canonical_candidates, repo_mission_lock
+from packages.orchestration.repo_mission import canonical_candidates
 
 BACKUP_DIRNAME = "reconcile-backups"
 #: The labels of a job a fold may move: one that ended, and one whose record is gone. Anything
