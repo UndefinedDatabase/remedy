@@ -4,20 +4,17 @@
 Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
 outside the contract document is served; a steering note reaches a job through the API; and the
 public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
-closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D3).
+closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D4).
 
 ## Current Step
-Round 3 (session 1) landed: the note route completed under DECISION F303 D3 — the `api`
-channel, `job steer --source`, `job.steer` as a client operation, `positional_body` and its
-guard, `POST /api/v1/jobs/{job}/note`, the story's `note_open`, tests and docs (T002, R-1329).
-All six gates green; pushed. R-1329 is resolved at the closure, not here.
+Round 4 (session 1): book round 3 and register R-1407 and R-1408, repair both, and land the MCP
+protocol core `packages/orchestration/mcp_server.py` with its tests (DECISION F303 D4 (1), (2)).
 
 ## Next Steps
-1. Round 4: book round 3's verdict in its first commit, then start the MCP facet.
-2. Rounds 4 and 5: the MCP facet — server, allowlist closed by default, three tools, page.
-3. The closure: integration gate, evidence, acceptance.
+1. Round 5: the three MCP tools, `remedy client mcp --allow`, the page, a real stdio session.
+2. The closure: integration gate, evidence, acceptance; R-1329, R-1407, R-1408 resolved there.
 
 ## Risks
-- `ui_server.py` has no headroom on the structure ledger; new logic goes into other modules.
-- `client_interface.py` is 934 lines; it must stay under 1,000 (no ledger row).
+- `ui_server.py` and `command_catalog.py` have no headroom on the structure ledger.
+- `client_interface.py` is 940 lines; it must stay under 1,000 (no ledger row).
 - The integrity check fails on High findings F303 does not own (DECISION F310 D7).
