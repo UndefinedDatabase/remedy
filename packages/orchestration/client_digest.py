@@ -33,6 +33,7 @@ from packages.orchestration.mission_contract import (
     ContractError,
     read_mission_contract,
 )
+from packages.orchestration.mission_record import MissionOrderBatch
 from packages.orchestration.mission_state import MISSION_STATUS_ABANDONED, Mission, list_missions_safe
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -297,6 +298,18 @@ def _decision_entry(
     }
 
 
+def _order_batch_entry(batch: MissionOrderBatch, mission: Mission) -> dict[str, Any]:
+    """One order batch's digest entry: its own fields plus the jobs whose link names it."""
+    return {
+        "order_id": batch.order_id,
+        "kind": batch.kind,
+        "created_at": batch.created_at,
+        "source_path": batch.source_path,
+        "source_sha256": batch.source_sha256,
+        "job_ids": [link.job_id for link in mission.job_links if link.order_id == batch.order_id],
+    }
+
+
 def _mission_entry(mission: Mission) -> dict[str, Any]:
     """One mission's DECISION F295 D4 (2) shape; an order given as text leaves two keys empty.
 
@@ -304,6 +317,8 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
     the next upkeep job, and the open findings it would carry, each ``None`` when unreadable.
     DECISION F205 D6 adds the projects the mission spans, its own first, as references. R-1238 adds
     the step its latest upkeep job was made in place of, while that job is still its latest.
+    R-1282, DECISION F307 D19, adds ``orders``: every order batch the mission was given, oldest
+    first, each with the jobs it asked for.
     """
     from packages.orchestration.mission_upkeep import upkeep_deferred_step, upkeep_digest_counts
 
@@ -317,6 +332,7 @@ def _mission_entry(mission: Mission) -> dict[str, Any]:
         "project_ids": list(mission.spanned_project_ids()),
         "order_source_path": order.source_path if order is not None else "",
         "order_source_sha256": order.source_sha256 if order is not None else "",
+        "orders": [_order_batch_entry(batch, mission) for batch in mission.orders],
         "upkeep_every": upkeep["every"],
         "upkeep_jobs_left": upkeep["jobs_left"],
         "upkeep_open_findings": upkeep["open_findings"],
@@ -332,6 +348,17 @@ def _pi_model_turns(run_ids: list[str]) -> int | None:
     return sum(figures["model_turns"] for figures in per_role.values()) if per_role else None
 
 
+def _job_order_id(plan: Any, mission: Mission | None) -> str | None:
+    """The order_id of the mission link naming this job, or None when there is none."""
+    if mission is None:
+        return None
+    job_id = str(plan.job_id)
+    for link in mission.job_links:
+        if link.job_id == job_id:
+            return link.order_id or None
+    return None
+
+
 def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
                cost: dict[str, Any] | None, calls: int | None, usage: CostRow | None,
                approval_card: dict[str, Any] | None) -> dict[str, Any]:
@@ -345,6 +372,7 @@ def _job_entry(plan: Any, mission: Mission | None, waits_for_apply: bool,
         "project_id": plan.project_id,
         "repo_path": plan.repo_path,
         "mission_id": mission.id if mission is not None else None,
+        "order_id": _job_order_id(plan, mission),
         "title": plan.job_title,
         "state": plan.state.value,
         "waits_for_apply": waits_for_apply,

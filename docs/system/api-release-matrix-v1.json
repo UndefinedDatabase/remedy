@@ -274,7 +274,9 @@
    "version": "1.27",
    "pr": null,
    "branch": "feature/f307-findings-paydown-v9",
-   "added": [],
+   "added": [
+    "digest and changes mission key `orders` (`order_id`, `kind`, `created_at`, `source_path`, `source_sha256`, `job_ids`) and job key `order_id` (F307, DECISION F307 D19)"
+   ],
    "value_changes": [
     {
      "field": "the envelope's `error`, the exit code and `exit_codes`' meaning of code 2",
