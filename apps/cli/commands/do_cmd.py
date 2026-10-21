@@ -30,6 +30,7 @@ from apps.cli.commands.run_invocation import (
 from apps.cli.commands.run_report_cmd import _cmd_run_list, _cmd_run_show
 from apps.cli.json_envelope import emit_ok, fail
 from packages.orchestration.do_role_guards import non_writing_provider_refusal, unrepresentable_baseline
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 
 if TYPE_CHECKING:
     import argparse
@@ -42,8 +43,7 @@ _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 # CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
 # builder, reviewer, and repair roles. Values are validated at the CLI layer
 # before being passed through to role_config.resolve_role_config.
-# Exactly the names create_provider (packages/orchestration/pingpong_provider.py) builds.
-_VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake", "pi"})
+# The provider names are ROLE_PROVIDER_NAMES, spelled once in provider_names.py (R-1288).
 _VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
 _ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
 
@@ -58,8 +58,8 @@ def _validate_role_override(role: str, field: str, value: object) -> None:
     if value is None:
         return
     if field == "provider" and (why := (
-            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(_VALID_ROLE_PROVIDERS))}."
-            if value not in _VALID_ROLE_PROVIDERS else non_writing_provider_refusal(role, str(value)))):
+            f"invalid --{role}-provider: {value!r}. Allowed: {', '.join(sorted(ROLE_PROVIDER_NAMES))}."
+            if value not in ROLE_PROVIDER_NAMES else non_writing_provider_refusal(role, str(value)))):
         fail("invalid_argument", why, json_output=False, exit_code=2)
     if field == "effort" and value not in _VALID_ROLE_EFFORTS:
         fail(

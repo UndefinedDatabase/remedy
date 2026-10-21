@@ -7,8 +7,8 @@
 
 A role (for example `builder`) may name backup models in `remedy.toml`. When a call to the role's
 provider cannot be reached, even after the transport retries, Remedy sends the call to the backups
-in the order they are written, and the first one that answers serves it. A role with no chain
-behaves as it always did. Nothing fails over unless the operator configures it.
+in the order they are written, and the first one that answers without an error serves it. A role
+with no chain behaves as it always did. Nothing fails over unless the operator configures it.
 
 ## Configuring a chain
 
@@ -28,7 +28,8 @@ cooldown_s = 300
 ```
 
 A link holds exactly `provider`, `model` and `tier`; any other key, a repeated provider and model
-pair, or a role Remedy does not know is refused. A link names its tier because the hard rules below
+pair, a role Remedy does not know, or a provider other than `claude`, `claude-cli`, `fake`, `ollama`
+and `pi` is refused. A link names its tier because the hard rules below
 are about tiers, and Remedy checks the tier you declare, not a guess from the model name. An
 environment variable cannot carry the chains (a table); the cooldown's variable is
 `REMEDY_MODEL_FAILOVER_COOLDOWN_S`. Both keys are listed in `docs/guides/environment.md`.
@@ -52,7 +53,9 @@ last lines it wrote to its error stream say one of those things, once the transp
 spent. A timeout, any other non-zero exit, a rate limit and an unreadable answer never fail over.
 The transport retries own the timeout and the non-zero exit, the rate governor waits out a rate
 limit, and the single parse retry owns an unreadable answer; a backup would only hide those. A link that cannot be built counts
-as a failed attempt, and the walk goes on to the next one.
+as a failed attempt, and the walk goes on to the next one. A backup that answers with one of those
+failures ends the walk with it, which the transport retries then own: it serves nothing, holds
+nothing and leaves the role's sessions as they were.
 
 ## The cooldown
 
@@ -73,13 +76,14 @@ serving link.
 
 A round's builder or reviewer entry carries a `failover` key when the walk reached the call:
 `reason` (`failover:provider_unavailable`), `role`, `intended` (provider and model), `used` (the
-link that served, or `null` when the chain ran out), `primary_error`, `primary_skipped`, and
+link that served, or `null` when the chain ran out or a backup answered with a failure),
+`primary_error`, `primary_skipped`, and
 `attempts` (position, provider, model and error of each link tried). `remedy run show` prints one
 line, `Failover:`, built of these sentences: "1 call was served by a backup model because its usual
 provider could not be reached." (or "N calls were served by backup models because their usual
-provider could not be reached."), "1 call found no backup model that could be reached." (or "N
-calls found no backup model that could be reached."), and always "The run's record names every
-model tried."
+provider could not be reached."), "1 call found no backup model that served it." (or "N calls
+found no backup model that served them."), and always "The run's record names every model
+tried."
 
 ## What it deliberately does not do
 
@@ -93,7 +97,8 @@ model tried."
 - `packages/orchestration/model_failover.py`: the chains, the rules, the trigger, the walk, the cooldown.
 - `packages/orchestration/role_provider_factory.py`: wraps a role's provider.
 - `packages/orchestration/pingpong_call_record.py`: the `failover` key and `parked_session_refs`.
-- `packages/orchestration/config_keys_model_routing.py`: the two config keys.
+- `packages/orchestration/config_keys_model_routing.py`: the two config keys and the cooldown's default.
+- `packages/orchestration/provider_names.py`: the provider names a link may name.
 - `apps/cli/commands/run_report_cmd.py`: the `Failover:` line.
 - Tests: `tests/orchestration/test_model_failover.py`, `tests/orchestration/test_role_provider_factory.py`,
   `tests/orchestration/test_pingpong_call_record.py`, `tests/cli/test_run_report_cmd.py`.

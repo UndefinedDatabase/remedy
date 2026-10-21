@@ -57,6 +57,7 @@ from packages.orchestration.model_routing import (
     TASK_CLASS_TIERS,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
 from packages.orchestration.rate_governor import is_rate_limit_error
 from packages.orchestration.role_config import KNOWN_ROLES
@@ -775,7 +776,7 @@ class TestFailoverProviderWalk:
         assert out.failover_disclosure.used is None
         assert [attempt.model for attempt in out.failover_disclosure.attempts] == ["m1", "m2"]
 
-    def test_review_walks_the_same_way_and_a_timed_out_link_is_returned_as_is(self):
+    def test_review_walks_the_same_way_and_a_timed_out_link_is_returned_serving_nothing(self):
         primary = _StubProvider(
             "claude-cli", review_error="provider_error: ConnectionError: connection refused",
         )
@@ -788,7 +789,10 @@ class TestFailoverProviderWalk:
         out = fp.review("look at it")
         assert out is link1.last_review_output
         assert out.error == "claude CLI timed out after 600s"
-        assert out.failover_disclosure.used.position == 1
+        # R-1286: a link whose answer is itself a failure serves nothing, holds nothing.
+        assert out.failover_disclosure.used is None
+        assert [a.error for a in out.failover_disclosure.attempts] == ["claude CLI timed out after 600s"]
+        assert _held_until(fp) == float("-inf")
 
     def test_name_supports_resume_and_other_attrs_reach_the_primary(self):
         primary = _StubProvider("claude-cli", supports_resume=True)
@@ -977,7 +981,7 @@ class TestFailoverReportLine:
     def test_one_call_that_ran_out(self):
         run_record = {"rounds": [{"builder": {"failover": {"used": None}}}]}
         assert failover_report_line(run_record) == (
-            "Failover: 1 call found no backup model that could be reached. "
+            "Failover: 1 call found no backup model that served it. "
             "The run's record names every model tried."
         )
 
@@ -995,7 +999,7 @@ class TestFailoverReportLine:
         }
         assert failover_report_line(run_record) == (
             "Failover: 2 calls were served by backup models because their usual provider "
-            "could not be reached. 1 call found no backup model that could be reached. "
+            "could not be reached. 1 call found no backup model that served it. "
             "The run's record names every model tried."
         )
 
@@ -1250,3 +1254,65 @@ tier = "mid"
         failover = export_pingpong_json(result)["rounds"][0]["builder"]["failover"]
         assert failover["intended"] == {"provider": "claude-cli", "model": "primary-model"}
         assert failover["used"]["provider"] == "fake"
+
+
+class TestALinkThatFailsServesNothing:
+    """R-1286, DECISION F307 D4: a link serves only when its answer carries no error."""
+
+    def test_a_link_that_times_out_during_a_hold_is_returned_and_leaves_the_hold_alone(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+        assert _held_until(fp) == 60
+
+        link_provider._build_error = "claude CLI timed out after 600s"
+        clock.now = 10
+        out = fp.build("p2")
+        assert out is link_provider.last_build_output
+        assert out.failover_disclosure.used is None
+        assert out.failover_disclosure.primary_skipped is True
+        assert [a.error for a in out.failover_disclosure.attempts] == ["claude CLI timed out after 600s"]
+        assert _held_until(fp) == 60
+        assert [c.prompt for c in primary.build_calls] == ["p1"]
+
+    def test_a_rate_limited_link_neither_holds_the_primary_nor_turns_resume_off(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", supports_resume=True, build_error=_DOWN)
+        link_provider = _StubProvider("l1", build_error="claude CLI exited 1: HTTP 429 rate limit exceeded")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        out = fp.build("p1")
+        assert out is link_provider.last_build_output
+        assert out.failover_disclosure.used is None
+        assert out.failover_disclosure.primary_error == _DOWN
+        assert _held_until(fp) == float("-inf")
+        assert fp.supports_resume is True
+
+    def test_the_report_counts_two_calls_no_backup_served(self):
+        run_record = {"rounds": [{"builder": {"failover": {"used": None}}},
+                                 {"builder": {"failover": {"used": None}}}]}
+        assert failover_report_line(run_record) == (
+            "Failover: 2 calls found no backup model that served them. "
+            "The run's record names every model tried."
+        )
+
+
+class TestALinkNamesAProviderRemedyCanCreate:
+    """R-1288, DECISION F307 D4: a misspelt provider is refused when the table is read."""
+
+    def test_a_misspelt_provider_is_refused_naming_the_known_ones(self):
+        with pytest.raises(FailoverChainError) as caught:
+            parse_failover_chains({"builder": [{"provider": "claude_cli", "model": "sonnet", "tier": "mid"}]})
+        assert str(caught.value) == (
+            "model_failover.chains: 'builder' link 1 names provider 'claude_cli', which Remedy cannot "
+            "create; known providers: claude, claude-cli, fake, ollama, pi"
+        )
+
+    @pytest.mark.parametrize("provider", sorted(ROLE_PROVIDER_NAMES))
+    def test_every_provider_a_role_can_run_on_parses(self, provider):
+        chains = parse_failover_chains({"study": [{"provider": provider, "model": "m", "tier": "cheap"}]})
+        assert chains == {"study": (FailoverLink(provider, "m", "cheap"),)}
+
+    def test_the_names_are_the_ones_create_provider_and_the_role_factory_build(self):
+        assert ROLE_PROVIDER_NAMES == frozenset({"fake", "claude", "claude-cli", "ollama", "pi"})

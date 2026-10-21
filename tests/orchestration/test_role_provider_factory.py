@@ -107,7 +107,7 @@ class TestCooldownIsConfigured:
 cooldown_s = 45
 
 [[remedy.model_failover.chains.builder]]
-provider = "backup"
+provider = "claude"
 model = "mid-model"
 tier = "mid"
 ''')

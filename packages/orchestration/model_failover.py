@@ -39,6 +39,7 @@ from packages.orchestration.model_routing import (
     model_tier_rank,
     resolve_task_class_tier_with_overrides,
 )
+from packages.orchestration.provider_names import ROLE_PROVIDER_NAMES
 from packages.orchestration.provider_timeouts import is_timeout_error
 from packages.orchestration.rate_governor import (
     RATE_LIMIT_REASON_OVERLOADED,
@@ -163,6 +164,13 @@ def parse_failover_chains(raw: Mapping[str, Any]) -> dict[str, tuple[FailoverLin
                 raise FailoverChainError(
                     f"model_failover.chains: {role!r} link {position} must set provider to a "
                     f"non-empty string"
+                )
+            # R-1288: a name no provider answers to is refused here, not when the failover fires.
+            if provider not in ROLE_PROVIDER_NAMES:
+                raise FailoverChainError(
+                    f"model_failover.chains: {role!r} link {position} names provider {provider!r}, "
+                    f"which Remedy cannot create; known providers: "
+                    f"{', '.join(sorted(ROLE_PROVIDER_NAMES))}"
                 )
             model = link.get("model")
             if not isinstance(model, str) or not model:
@@ -512,7 +520,10 @@ class FailoverProvider:
     ) -> Any | None:
         """The one link loop: the first link that answers ends the walk, disclosed; None when all trigger.
 
-        A link that serves outside a hold opens one; one that serves during a hold leaves it alone.
+        A link serves only when its answer carries no error (R-1286): a link that answers with a
+        timeout, a non-zero exit, a rate limit or a stream cap ends the walk with that failure, which
+        the transport retries own, and neither holds the primary down nor turns resume off. A link
+        that serves outside a hold opens one; a link that serves during a hold leaves it as it is.
         """
         for position, link in enumerate(self._links, start=1):
             link_out, attempt = self._call_link(
@@ -522,11 +533,13 @@ class FailoverProvider:
             attempts.append(attempt)
             if link_out is None or is_failover_trigger(link_out):
                 continue
-            self._resume_disabled = True
-            if not primary_skipped:
-                self._held_until = self._clock() + self._cooldown_s
+            served = not attempt.error
+            if served:
+                self._resume_disabled = True
+                if not primary_skipped:
+                    self._held_until = self._clock() + self._cooldown_s
             link_out.failover_disclosure = self._disclosure(
-                primary_error, attempts, attempt, primary_skipped=primary_skipped,
+                primary_error, attempts, attempt if served else None, primary_skipped=primary_skipped,
             )
             return link_out
         return None
@@ -635,8 +648,8 @@ def failover_report_line(run_record: Mapping[str, Any]) -> str | None:
             f"not be reached."
         )
     if ran_out == 1:
-        sentences.append("1 call found no backup model that could be reached.")
+        sentences.append("1 call found no backup model that served it.")
     elif ran_out > 1:
-        sentences.append(f"{ran_out} calls found no backup model that could be reached.")
+        sentences.append(f"{ran_out} calls found no backup model that served them.")
     sentences.append("The run's record names every model tried.")
     return "Failover: " + " ".join(sentences)
