@@ -50,6 +50,7 @@
 | job certificate | [job-certificate-v1.md](system/job-certificate-v1.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
+| MCP / Model Context Protocol | [mcp-server-v1.md](system/mcp-server-v1.md) | system |
 | public HTTP API | [public-http-api-v1.md](system/public-http-api-v1.md) | system |
 | API versions 1.17-1.24 | [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | system |
 | recorded client answers | [client-answers-v1/](system/client-answers-v1/) | system |
@@ -121,6 +122,7 @@ Specifications and design documents for the built system.
 | [job-certificate-v1.md](system/job-certificate-v1.md) | A job's certificate: what `remedy job certificate` packs from a job that has ended, what `remedy verify` checks on any machine, and why a certificate proves integrity and is not a signature |
 | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, what Remedy never does on a machine order, and `remedy client interface`, which prints the interface as data read from the code; the page's last section is that interface, generated |
 | [review-reports-v1.md](system/review-reports-v1.md) | Review reports: `remedy do run --capture-review` and the API's `capture_review` leave one JSON report per walk under the data root's `review_reports/`, written at the start and finished however the walk ends; `make_review_zip.sh` packages the newest ten with an index |
+| [mcp-server-v1.md](system/mcp-server-v1.md) | The MCP server: `remedy client mcp --allow <tool>` speaks the Model Context Protocol over standard input and output to an orchestrator that starts it, closed by default, with three tools (`verify`, `gate_status`, `evidence_bundle`) that each run their twin command; how to start it, what each tool takes and answers, and what it deliberately does not do |
 | [public-http-api-v1.md](system/public-http-api-v1.md) | The public HTTP API: routes under `/api/v1` on the supervisor's socket and its TCP port, each answering what its twin command answers with `--json`, the bearer token, the version and deprecation rule, the exclusion list, and a route table generated from the registry |
 | [api-release-matrix-v1.json](system/api-release-matrix-v1.json) | The public API and machine client interface from 1.17 to 1.24: every route, story key, story word, insight word and order phase with the version that added it, and each version's value changes of existing fields; `tests/orchestration/test_api_release_matrix.py` holds it to the code |
 | [client-answers-v1/](system/client-answers-v1/) | Answers recorded from the real client commands (`GET /api/v1/now`, one job's insight and story) for a client's own tests, such as the universe's kit; `scripts/record_client_answers.py` records them and its `--check`, which a test runs, holds them current |
