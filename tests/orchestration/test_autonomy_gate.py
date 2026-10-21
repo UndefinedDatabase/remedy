@@ -750,6 +750,42 @@ def test_claim_idea_start_a_cap_word_outside_the_bands_raises_autonomy_config_er
                          config=cfg, root=root)
 
 
+@pytest.mark.parametrize(("toml_line", "message"), [
+    ('autonomy.idea_starts_per_day = "2"',
+     "autonomy.idea_starts_per_day is '2', and it must be a whole number of at least 0."),
+    ("autonomy.idea_starts_per_day = 1.5",
+     "autonomy.idea_starts_per_day is 1.5, and it must be a whole number of at least 0."),
+    ("autonomy.idea_starts_per_day = true",
+     "autonomy.idea_starts_per_day is True, and it must be a whole number of at least 0."),
+    ("autonomy.idea_starts_per_day = -1",
+     "autonomy.idea_starts_per_day is -1, and it must be a whole number of at least 0."),
+    ('autonomy.idea_usd_per_day = "1.5"',
+     "autonomy.idea_usd_per_day is '1.5', and it must be a number of at least 0."),
+    ("autonomy.idea_usd_per_day = -0.5",
+     "autonomy.idea_usd_per_day is -0.5, and it must be a number of at least 0."),
+])
+def test_claim_idea_start_a_cap_that_is_not_a_number_of_at_least_0_is_refused(tmp_path, toml_line, message):
+    cfg = _load(tmp_path, project=f"[remedy]\n{toml_line}\n")
+    root = tmp_path / "data"
+    policy = AutonomyPolicy("L5", None, None, None, None)
+
+    with pytest.raises(AutonomyConfigError, match=re.escape(message)):
+        claim_idea_start(policy, "idea-1", effort_band="low", estimated_usd=0.0,
+                         config=cfg, root=root)
+    assert _idea_lines(root) == []
+
+
+def test_claim_idea_start_a_whole_dollar_cap_is_a_number(tmp_path):
+    cfg = _load(tmp_path, project="[remedy]\nautonomy.idea_usd_per_day = 2\n")
+    root = tmp_path / "data"
+    policy = AutonomyPolicy("L5", None, None, None, None)
+
+    verdict = claim_idea_start(policy, "idea-1", effort_band="low", estimated_usd=1.5,
+                               config=cfg, root=root)
+
+    assert verdict.allowed is True
+
+
 def test_claim_idea_start_env_sourced_starts_per_day_is_refused(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_AUTONOMY_IDEA_STARTS_PER_DAY", "5")
     cfg = _load(tmp_path)

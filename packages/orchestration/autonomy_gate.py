@@ -527,6 +527,18 @@ def _idea_start_records(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+# A cap read from `remedy.toml` keeps its TOML type, so a quoted, true or negative cap is refused here
+# rather than failing inside a comparison (session 1's note on round 3, booked at F078 R4).
+def _idea_cap_number(cfg: RemedyConfig, key: str, *, whole: bool) -> float:
+    """The L5 cap KEY as read, or `AutonomyConfigError` unless it is a number of at least 0."""
+    value = cfg.get_value(key).value
+    kinds: tuple[type, ...] = (int,) if whole else (int, float)
+    if isinstance(value, bool) or not isinstance(value, kinds) or value < 0:
+        kind = "a whole number" if whole else "a number"
+        raise AutonomyConfigError(f"{key} is {value!r}, and it must be {kind} of at least 0.")
+    return value
+
+
 def claim_idea_start(
     policy: AutonomyPolicy, idea_id: str, *, effort_band: str, estimated_usd: float,
     config: RemedyConfig | None = None, root: Path | None = None, now: datetime | None = None,
@@ -553,8 +565,8 @@ def claim_idea_start(
         raise AutonomyConfigError(
             f"autonomy.idea_max_effort is {max_effort!r}, and it must be low, medium or high."
         )
-    starts_cap = cfg.get_value("autonomy.idea_starts_per_day").value
-    usd_cap = cfg.get_value("autonomy.idea_usd_per_day").value
+    starts_cap = _idea_cap_number(cfg, "autonomy.idea_starts_per_day", whole=True)
+    usd_cap = _idea_cap_number(cfg, "autonomy.idea_usd_per_day", whole=False)
 
     when = now if now is not None else datetime.now(timezone.utc)
     today = when.date().isoformat()
