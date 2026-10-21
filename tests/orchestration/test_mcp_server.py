@@ -117,6 +117,9 @@ def test_a_calls_result_carries_content_structured_content_and_is_error():
     pytest.param(json.dumps({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
                             "params": {"name": "nope"}}),
                 MCP_INVALID_PARAMS, 9, id="an_unknown_tool"),
+    pytest.param(json.dumps({"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+                            "params": {"name": ["echo"]}}),
+                MCP_INVALID_PARAMS, 10, id="a_tool_name_that_is_a_list"),
 ])
 def test_a_refusal_carries_its_code_and_the_requests_id_where_it_had_one(line, expected_code, expected_id):
     code, answers = _serve([line], [ECHO, FAILS], {"echo", "fails"})

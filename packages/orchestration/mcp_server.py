@@ -131,7 +131,7 @@ def serve_mcp(reader: TextIO, writer: TextIO, tools: Sequence[McpTool], allowed:
             ]}))
         elif method == "tools/call":
             tool_name = params.get("name") if isinstance(params, dict) else None
-            if tool_name not in allowed_names:
+            if not isinstance(tool_name, str) or tool_name not in allowed_names:
                 _write(writer, _error_response(
                     message_id, MCP_INVALID_PARAMS,
                     f"the tool {tool_name!r} is not offered by this server"))
