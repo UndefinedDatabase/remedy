@@ -1,75 +1,73 @@
-# Handback — F303 round 7: book round 6, resolve five findings, the evidence job (RED), no review package
+# Handback — F303 round 8: book round 7, R-1411, DECISION F303 D6, the evidence job with its own data root, the review package
 
 ## Session
 
-SESSION 2 of feature F303 · round 7 · rounds so far 7
+SESSION 2 of feature F303 · round 8 · rounds so far 8
 
 Context self-assessment: this worker verified every prepared digest, byte-copied the prepared files, ran each long command once through the launch and wait helpers and wrote this handback from what it read; context is ample and nothing was lost.
 
-Fortschritt: ~88 % (the evidence job ended red, so there is no review package; the cause of the red pytest exit is not yet read) — Schätzung
+Fortschritt: ~97 % (everything but the closing round is done) — Schätzung
 
 ## Range
 
-Review of `3d37e322d`..`HEAD` on `feature/f303-face-public-api`.
+Review of `1c25b5e8d`..`HEAD` on `feature/f303-face-public-api`.
 
 ## Commits
 
-### fd2d5fc54 F303 R7 C1: book round 6, resolve five findings, the plan and the block
+### 289968b65 F303 R8 C1: book round 7, register R-1411, DECISION F303 D6, the plan and the block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f303-r7.md` | 119/0 | this round's block, byte copy (119 lines, sha256 `4d0d88a8a3500fad2235f8ac71f0c2c34d5c9561f4998c9ac7114d30f3a482d9`, equal to `block.md`) |
-| `.agent/live_review.md` | 12/0 | prepared file, byte copy |
-| `.agent/plan.md` | 4/5 | prepared file, byte copy |
+| `.agent/authored/f303-r8.md` | 123/0 | NEW FILE, this round's block, byte copy (123 lines, sha256 `1f763c3e50ab3e94e451b3223bfa112b3fef4cc6884f890b2ff4f0594dcb8ac4`, equal to `block.md`) |
+| `.agent/live_review.md` | 4/0 | prepared file, byte copy |
+| `.agent/decisions.md` | 10/0 | prepared file, byte copy |
+| `.agent/plan.md` | 5/5 | prepared file, byte copy |
 
-### 04b19d236 F303 R7 C2: the evidence script
+### 5727408e0 F303 R8 C2: the evidence script with a data root of its own (DECISION F303 D6)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f303-r7-create_f303_evidence.py` | 460/0 | NEW FILE, prepared file, byte copy |
+| `.agent/authored/f303-r8-create_f303_evidence.py` | NEW FILE | prepared file, byte copy (24304 bytes) |
 
-### (this commit) F303 R7 C3: handback
+### (this commit) F303 R8 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this handback |
 
 ## External actions
 
-- `git push -u origin feature/f303-face-public-api` after C2: `3d37e322d..04b19d236`, no HTTP error, first try.
+- `git push -u origin feature/f303-face-public-api` after C2: `1c25b5e8d..5727408e0`, no HTTP error, first try.
 - `git push origin feature/f303-face-public-api` follows this commit; its outcome is in the session reply.
 - No pull request, no merge, no `gh` command, no worktree of my own, no provider call.
 
 ## Verification
 
-Preconditions: the nine prepared digests matched; `HEAD` was `3d37e322d`, equal to `origin/feature/f303-face-public-api`, the tree was clean, `.agent/STOP` absent.
+Preconditions: the ten prepared digests matched; `HEAD` was `1c25b5e8d`, equal to `origin/feature/f303-face-public-api`, the tree was clean, `.agent/STOP` absent.
 
-1. Gate 1: `git status --porcelain` empty; `python3 .remedy-wt/f303-r7/prep/verify.py .` — every line `True`, `absent` for C3, last line `ALL True`.
+1. Gate 1: after C2 `git status --porcelain` empty; `python3 .remedy-wt/f303-r8/prep/verify.py .` — every line `True`, `absent` for C3, last line `ALL True`.
 2. A1: `python3 -m apps.cli.main data reclaim --orphans` — `Reclaimable: nothing`, `Would free 0 B in 0 paths`; no refused path (only durable classes listed as not reclaimed). Apply skipped.
-3. A2: `git reflog -n 3 --date=iso` before: C2 at 18:11:19, C1 at 18:11:15, `3d37e322d` at 18:06:59. `launch.py evidence` then `wait.py evidence ... 50`: `exit 1 wall 1299.0`. Verbatim:
+3. A2: `git reflog -n 3 --date=iso` before: C2 at 18:37:43, C1 at 18:37:40, `1c25b5e8d` at 18:33:41. `launch.py evidence` then `wait.py evidence ... 50`: `.exit` file reads `exit 0 wall 1373.8`. Verbatim:
 
 ```
-head 04b19d23641e62577f39554854d368a793a177fd
-ancestry-path count 33
-first-parent count 33
+head 5727408e0926857a7f24363015c1ea96da6dc1a7
+ancestry-path count 36
+first-parent count 36
+data root for the run: .remedy-wt/f303-r8-evidence-data (fresh, empty)
 collected node ids 11122, deselected 203
 red control: unsafe among the real ids 0 []
 red control: planted id -> a local absolute path
-pytest exit 1, {'passed': 11116, 'failed': 0, 'skipped': 6}, output_hash 261fec2fcf4dd9018807cf83ed466b739b8ff55809aef36d943b1e581573fb2b
-Traceback (most recent call last):
-  File ".agent/authored/f303-r7-create_f303_evidence.py", line 460, in <module>
-    sys.exit(main())
-  File ".agent/authored/f303-r7-create_f303_evidence.py", line 432, in main
-    summary = create_manual_completion_bundle(
-  File "packages/orchestration/job_evidence.py", line 2826, in create_manual_completion_bundle
-    raise ValueError("a recorded verification command failed; refusing to build a clean bundle")
-ValueError: a recorded verification command failed; refusing to build a clean bundle
+guard lines []
+pytest exit 0, {'passed': 11116, 'failed': 0, 'skipped': 6}, output_hash ea0fc00ffa5be411bda07b0ef827c494b8b3bf9c598c8d939652f6e2a7ef8750
+validate_verification_tests problems [] passed 11116
+is_valid_current_run True
+validation_errors []
 ```
 
-   Expected were pytest exit 0, `validate_verification_tests problems []`, `is_valid_current_run True`, `validation_errors []`, exit 0; none of the last four lines was printed. Pytest reported 11116 passed, 0 failed, 6 skipped (11122 collected) yet exit 1; I did not investigate why (the block says stop). Not re-run.
-4. A3: skipped (A2 non-zero), per the block. No package.
-5. Gate 3: `python3 -m apps.cli.main integrity check --json` exit 1 — `fail_count` 1, the one failing check `high_blockers_open`: "12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362", the other five pass. `open_finding_ids` over `.agent/live_review.md` prints `87`. `git status --porcelain` empty.
+   Summary: job_id `f303r8e1001`, head_commit `5727408e0926857a7f24363015c1ea96da6dc1a7`, authority_count 42, commit_count 36, verdict `PASS_WITH_RISKS`, manual_completion true, total_passed 11116.
+4. A3: `launch.py zip` then `wait.py zip ... 50`: `.exit` file reads `exit 0 wall 14.1`. `REVIEW_PACKAGE_CREATED=true`, `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS`, `EVIDENCE_AUTHORITATIVE=true`, 2038 files, 8.1M. No second attempt was needed.
+5. Gate 3: `python3 -m apps.cli.main integrity check --json` exit 1 — `fail_count` 1, the one failing check `high_blockers_open`: "12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362", the other five pass. `open_finding_ids` over `.agent/live_review.md` prints `88` (round 7's 87 and R-1411). `git status --porcelain` empty.
 
 ## Authored-text proofs
 
-C1's three files and C2's file are byte copies of the prepared files; each was proved equal by a Python equality over bytes right after the copy and `verify.py` re-proved them (`True`). `.agent/authored/f303-r7.md` equals `block.md` (119 lines, sha256 above).
+C1's four files and C2's file are byte copies of the prepared files; each was proved equal by a Python equality over bytes right after the copy and `verify.py` re-proved them (`True`). `.agent/authored/f303-r8.md` equals `block.md` (123 lines, sha256 above).
 
 ## Staging reclaim
 
@@ -77,37 +75,23 @@ A1 previewed nothing to reclaim: `Reclaimable: nothing`, 0 B in 0 paths, no refu
 
 ## Evidence and package
 
-Evidence job id `f303r7e1001`: ended RED at pytest (exit 1, 0 failed, 11116 passed, 6 skipped), no bundle built. Head reading `04b19d23641e62577f39554854d368a793a177fd`; ancestry-path count 33 equals first-parent count 33; collected node ids 11122, deselected 203; red control unsafe 0, planted id `a local absolute path`. Review package: none built (A3 skipped).
+Evidence job id `f303r8e1001`: `head 5727408e0926857a7f24363015c1ea96da6dc1a7`; `data root for the run: .remedy-wt/f303-r8-evidence-data (fresh, empty)`; `pytest exit 0, {'passed': 11116, 'failed': 0, 'skipped': 6}`; `is_valid_current_run True`; `validation_errors []`; exit 0.
 
-## Item-status table
-
-| Item | Status | Reason |
-|---|---|---|
-| C1 | done | |
-| C2 | done | pushed |
-| A1 | done | empty reading, apply skipped |
-| A2 | deviated | exit 1: pytest exit 1 with failed 0; bundle refused |
-| A3 | skipped | A2 non-zero, per the block |
-| C3 | done | this handback |
-| Gate 1 | done | ALL True |
-| Gate 2 | deviated | A2 red, A3 skipped |
-| Gate 3 | done | fail_count 1 (twelve high blockers), 87 open, tree clean |
+Review package: name `remedy-review-20261021-190053-READY_FOR_REVIEW.zip`; SHA-256 `ceeee0c17538832f84c67beafeca5d53861c71a3713205efb27878d46e47d362` (Python sha256 over the file; the builder's `final_sha256` agrees); directory `~/Repos/remedy-history/zips`; `PACKAGE_STATUS=READY_FOR_REVIEW`; accepted head `5727408e0926857a7f24363015c1ea96da6dc1a7` and base `2621bbe2ebf62c394750fee8b06cbdfd357d7f77` from `committed_review_subject` in `.review_zip_manifest.json` inside the package (commit_count 36, base_is_ancestor true); `zipfile.is_zipfile` True, `testzip()` None.
 
 ## Deviations & assumptions
 
-- A2 exited 1 (see Verification 3); A3 was skipped and the handoff written, as the block orders. The cause of pytest's exit 1 with zero failures is unread; the log is `.remedy-wt/f303-r7-worker/evidence.log` and the exit file beside it.
-- Otherwise none.
-
-## Next
-
-1. Phase 1 rule 1: `.agent/STOP`.
-2. Rule 2: Open PR Gate; no pull request is open for this branch yet.
-3. The reviewer reads the evidence log, classifies why pytest exited 1 with no failed node, and plans round 8 (repair, then evidence and package again); it books round 7's verdict in the next round's first commit.
-4. The closing round: the rotation or its recorded skip, SU-072's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
-
-Operator questions open: 0
-Open findings: 87 (gate 3: `open_finding_ids` over `.agent/live_review.md`, at commit 04b19d236)
+None.
 
 ## For the operator, in plain sentences
 
-The evidence for this feature was collected but did not pass its check: the test run reported no failing test, yet it ended with an error status, so the evidence bundle was refused and no review package was built. The cause has not been read yet; the next round will look at it.
+The evidence of this feature was collected and checked: every test ran, none failed, and the checks on the result all came out as expected. It had to be collected twice because a background program of your own wrote into the data folder that a safety check watches, while the check was watching; this time the run used a data folder of its own. The review package was built and is ready for review, in the history folder under your home directory, in its zips subfolder, named remedy-review-20261021-190053-READY_FOR_REVIEW.zip.
+
+## Next
+
+1. Phase 1 rule 1: `.agent/STOP` is absent.
+2. Phase 1 rule 2: no pull request is open for this branch yet.
+3. The reviewer reviews round 8 and books its verdict in the next round's first commit.
+4. The closing round: the rotation or its recorded skip, SU-072's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+
+Operator questions open: 0. Open findings count gate 3 reads: 88 (`scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, at the commit before this handback, `5727408e0`).
