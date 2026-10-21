@@ -4,15 +4,16 @@
 Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
 outside the contract document is served; a steering note reaches a job through the API; and the
 public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
-closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D6).
+closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D7).
 
 ## Current Step
-Round 8 (session 2), the closure's evidence round again: book round 7, register R-1411, DECISION
-F303 D6, and the evidence job `f303r8e1001` with a data root of its own, then the review package.
+Round 9 (session 2), the closing round: book round 8, DECISION F303 D7 (no rotation), the Built
+State's closure facts, the STATUS flip with the README sync and SU-072's consumed_by, and the pull
+request, left unmerged.
 
 ## Next Steps
-1. Round 9, the closing round: the rotation, SU-072's consumed_by, the STATUS flip with the README
-   sync, and the pull request, left unmerged.
+1. The next session: Phase 1 rule 1, then the Open PR Gate merges F303's pull request; Rule A5
+   proposes the next feature (F307, Findings paydown v9).
 
 ## Risks
 - The integrity check fails on High findings F303 does not own (DECISION F310 D7).

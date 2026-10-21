@@ -30849,3 +30849,13 @@ CHOSEN: the evidence script of round 8, `.agent/authored/f303-r8-create_f303_evi
 ALTERNATIVES CONSIDERED: (a) running the evidence job again unchanged — rejected: a run of twenty minutes is as exposed as the one that failed, and a second red would cost another round; (b) stopping the operator's service for the run — rejected: a session never stops the operator's processes; (c) changing the guard in `tests/conftest.py` — rejected for a closure: it is a change to a gate of every run, which belongs to the paydown that owns R-1411.
 
 HOW TO REVERSE: drop the variable from the next evidence script, and delete this paragraph.
+
+## DECISION F303 D7 — F303's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/`, `scripts/rotate_live_review.py` nor `scripts/check_agent_hygiene.py` has changed since F313's closure (`git log ff309f737..5f714d166` names none of them).
+
+CHOSEN: F303's closure skips the rotation commit, as the closures of F310 to F313, F078, F141 and F060 did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
