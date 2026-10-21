@@ -30468,3 +30468,13 @@ CHOSEN: (1) The answers are kept in this repository, in the folder `docs/system/
 ALTERNATIVES CONSIDERED: (a) writing the answers into the universe's repository — rejected: this repository writes no file of another one; (b) answers written by hand — rejected: the feature file asks for answers recorded from the real command, and a hand-written answer drifts unseen; (c) comparing every value, the clock's included — rejected: a recording made a second later would differ, so the check could never pass.
 
 HOW TO REVERSE: delete the folder, the script, its test and the two documents' lines, and rewrite this paragraph.
+
+## DECISION F313 D1 — addendum: the digest's decisions carry `blockers` (2026-10-21, R-1390)
+
+THE PROBLEM: finding R-1390. The budget decision names the mission's open blocking criteria in its payload under `blockers` (DECISION F310 D5), and no answer a machine client reads carries them.
+
+CHOSEN: every entry of the digest's `decisions`, and so of `remedy client changes` and the public API's digest, gains `blockers`: for a decision of type `token_budget` the payload's list, each `<id>: <text>`, in contract order; for any other decision an empty list, as `clarifications` is for a decision that is not a plan approval. `DIGEST_KEY_TREE` names the key after `clarifications`, and the release matrix's 1.22 entry adds the line "digest and changes decisions[] key `blockers` (a budget stop's open blocking criteria)". The documents of D1 (3) name it.
+
+ALTERNATIVES CONSIDERED: (a) the key only on a budget decision — rejected: a key that comes and goes by type makes every client test for it, and the digest's other per-type keys are always present; (b) the blockers inside `question` as text — rejected: a client would have to parse a sentence Remedy wrote.
+
+HOW TO REVERSE: delete the key from `_decision_entry` and the tree, the test and the matrix line, and rewrite this paragraph.
