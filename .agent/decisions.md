@@ -30696,3 +30696,13 @@ CHOSEN: (1) `autonomy` gains two keys. `push_allowed` is the push switch, or Non
 ALTERNATIVES CONSIDERED: (a) a top-level status key `permissions` — rejected: `_cmd_status` cannot grow, and the matrix belongs to the autonomy level it is read at; (b) a new route and client read for the matrix alone — rejected: a client that already reads the status answer would need a second call for a table of eight rows; (c) the rows with the switch applied in the cells — rejected: the cells are the constant's, and the switch belongs to `now`.
 
 HOW TO REVERSE: drop the two keys and `permission_status_rows`, set both versions and the matrix back to `1.23`, delete the 1.24 entry and the paragraph, regenerate both sections, and restore the two assertions and the pins.
+
+## DECISION F141 D8 — F141's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/`, `scripts/rotate_live_review.py` nor `scripts/check_agent_hygiene.py` has changed since F313's closure (`git log ff309f737..7b2a64da9` names none of them).
+
+CHOSEN: F141's closure skips the rotation commit, as the closures of F310 to F313 and F078 did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
