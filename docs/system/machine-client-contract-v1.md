@@ -730,7 +730,7 @@ Description: Address a steering note to one task of a running job; it is recorde
 
 Exit codes: `0`, `1`, `2`, `3`.
 Refusal tokens: `ambiguous_job_id`, `invalid_argument`, `invalid_job_id`, `invalid_message`, `job_not_found`, `job_not_steerable`, `steering_write_failed`, `task_not_steerable`, `unknown_task`.
-Answer keys: `job_id`, `matches`, `message_id`, `received_at`, `record_sha256`, `request_id`, `task_id`.
+Answer keys: `job_id`, `matches`, `message_id`, `outcome`, `received_at`, `record_sha256`, `request_id`, `task_id`.
 Keys under the answer keys: none.
 
 #### `remedy change proof`

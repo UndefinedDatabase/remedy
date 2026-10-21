@@ -45,8 +45,8 @@ JOB_STEER_REFUSAL_TOKENS = (
     "ambiguous_job_id", "invalid_argument", "invalid_job_id", "invalid_message", "job_not_found",
     "job_not_steerable", "steering_write_failed", "task_not_steerable", "unknown_task",
 )
-JOB_STEER_ANSWER_KEYS = ("job_id", "matches", "message_id", "received_at", "record_sha256",
-                        "request_id", "task_id")
+JOB_STEER_ANSWER_KEYS = ("job_id", "matches", "message_id", "outcome", "received_at",
+                        "record_sha256", "request_id", "task_id")
 #: No key of the accepted answer holds further keys, unlike `job.stop`'s `stop`/`pending`/`archived`.
 JOB_STEER_ANSWER_TREE: dict = {}
 

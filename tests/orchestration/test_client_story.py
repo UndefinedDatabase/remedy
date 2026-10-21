@@ -343,6 +343,21 @@ def test_note_open_is_true_for_a_running_job_with_a_pending_task(data_root, repo
     assert story["note_open"] is True
 
 
+@pytest.mark.parametrize("state", [RunState.FAILED, RunState.CANCELLED])
+def test_note_open_is_false_for_an_ended_job_with_a_pending_task(data_root, repo, state):
+    """R-1408: the job's own ended state refuses a note before any task status is even read."""
+    from packages.orchestration.pingpong_job import TASK_PENDING, _persist_job, load_job_plan_safe
+    from packages.orchestration.timeline import load_run_events
+
+    job_id = _run(repo)
+    _save(job_id, state=state)
+    plan, _degraded = load_job_plan_safe(job_id)
+    plan.tasks[0].status = TASK_PENDING
+    _persist_job(plan)
+    story = build_client_story(plan, events=load_run_events(data_root, job_id), now=_NOW)
+    assert story["note_open"] is False
+
+
 def test_note_open_is_false_for_a_completed_job(data_root, repo):
     job_id = _run(repo)
     story = _story(job_id, data_root)

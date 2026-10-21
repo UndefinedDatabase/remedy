@@ -73,7 +73,6 @@ from apps.cli.client_interface_insight import INSIGHT_WORD_LABELS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
-from apps.cli.commands.job_steer_cmd import JOB_STEER_ANSWER_KEYS
 from apps.cli.exit_codes import CLI_EXIT_CODES
 from apps.cli.grouped import _DEFAULT_COMMAND, build_parser, main
 from apps.cli.json_envelope import RESERVED_KEYS, SCHEMA_VERSION
@@ -616,11 +615,11 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "GET /api/v1/jobs/{job}/insight (DECISION F311 D1)",
     ),
     "apps.cli.commands.job_steer_cmd:_cmd_job_steer:**result": (
-        frozenset(JOB_STEER_ANSWER_KEYS),
-        "the accepted envelope's keys from steer_task_command in "
-        "packages/orchestration/steering.py, read with job_id; its `outcome` key is always "
-        "`accepted` on this branch, already implied by the envelope's own `ok`, so it is not "
-        "declared as a separate answer key (DECISION F303 D3 (2))",
+        frozenset({
+            "message_id", "outcome", "received_at", "record_sha256", "request_id", "task_id",
+        }),
+        "the accepted envelope's keys steer_task_command in packages/orchestration/steering.py "
+        "returns; job_id is a separate literal keyword of the same emit_ok call (R-1407)",
     ),
 }
 
