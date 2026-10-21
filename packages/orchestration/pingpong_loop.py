@@ -31,6 +31,7 @@ from typing import Any
 
 from packages.orchestration import data_paths
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
+from packages.orchestration.builder_context import build_builder_context
 from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.empty_diff_gate import reject_verdict_on_empty_diff
 from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
@@ -3189,54 +3190,14 @@ def run_pingpong(
         resume_sessions, builder=builder_provider, reviewer=reviewer_provider)
 
     # Build context
-    # F107: the COMPILED context replaces the whole-file context pack's SELECTION —
-    # never its formatting — and only when the caller hands in BOTH the task's fenced
-    # scope and the repo's candidate listing; one list alone is a caller mistake and
-    # must not silently half-compile, so it stays on the default path.
-    # Deliberately absent here: ``run_pingpong`` does NOT list the repo itself and does
-    # NOT read a task's ``files_hint``. Both are the caller's, which is what keeps this
-    # path opt-in and keeps ``packages/`` free of a second tree walk.
-    use_compiled_context = bool(compiled_context_paths) and bool(compiled_context_candidates)
     try:
-        if use_compiled_context:
-            # Imported inside the branch, so the default path's import cost does not change.
-            from packages.orchestration.context_compiler import (
-                COMPILED_CONTEXT_SEGMENT_NAME,
-                CONTEXT_SIZE_FILENAME,
-                OMITTED_CONTEXT_FILENAME,
-                compare_context_size,
-                compile_task_context,
-                render_compiled_context_text,
-                write_context_size_comparison_json,
-                write_omitted_context_json,
-            )
-
-            compiled_root = Path(repo_path)
-            # F112 T003b2a: only override the compiler's default token budget
-            # when the caller supplies one, so no existing caller's behavior
-            # changes (compile_task_context's own default stays in force).
-            compile_kwargs: dict[str, int] = {}
-            if compiled_context_token_budget is not None:
-                compile_kwargs["token_budget"] = compiled_context_token_budget
-            compiled = compile_task_context(
-                compiled_root, compiled_context_paths, compiled_context_candidates,
-                **compile_kwargs,
-            )
-            context = render_compiled_context_text(compiled_root, compiled)
-            categories = [COMPILED_CONTEXT_SEGMENT_NAME]
-            if context_record_dir:
-                record_dir = Path(context_record_dir)
-                write_omitted_context_json(compiled, record_dir / OMITTED_CONTEXT_FILENAME)
-                write_context_size_comparison_json(
-                    compare_context_size(
-                        compiled_root, compiled_context_candidates, compiled,
-                    ),
-                    record_dir / CONTEXT_SIZE_FILENAME,
-                )
-        else:
-            context, categories = build_repo_context(
-                repo_path, goal, mentioned_files=mentioned_files,
-            )
+        context, categories = build_builder_context(
+            repo_path=repo_path, goal=goal, mentioned_files=mentioned_files,
+            compiled_context_paths=compiled_context_paths,
+            compiled_context_candidates=compiled_context_candidates,
+            compiled_context_token_budget=compiled_context_token_budget,
+            context_record_dir=context_record_dir,
+        )
     except Exception as exc:
         # Context construction owns no result, but it DOES own a live worktree.
         result.final_status = "context_error"
