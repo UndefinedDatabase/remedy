@@ -651,7 +651,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "repo": {},
             "orders": {"order_id": {}, "text": {}, "source_path": {}, "source_sha256": {},
                        "created_at": {}, "target_commit": {}, "kind": {}, "budgets": {"*": {}},
-                       "correlation_id": {}, "plan_source": {}, "reopened_from": {},
+                       "correlation_id": {}, "reopened_from": {},
                        "sealed": {"*": {}}, "repo_path": {}},
             "alias_of": {},
         },

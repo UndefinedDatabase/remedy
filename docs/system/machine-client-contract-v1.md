@@ -888,7 +888,7 @@ Keys under the answer keys: see below.
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
   - `order`: `source_path`, `source_sha256`, `text`
-  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `plan_source`, `reopened_from`, `repo_path`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
+  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `reopened_from`, `repo_path`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
     - `budgets`: `*`
     - `sealed`: `*`
 

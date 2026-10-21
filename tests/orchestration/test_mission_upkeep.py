@@ -787,3 +787,17 @@ def test_upkeep_target_of_a_mission_keyed_to_a_second_repository_answers_that_re
                       repo=f"{PROJECT}:abc123def456", orders=(batch,))
 
     assert upkeep_target(mission) == (PROJECT, "/repos/second")
+
+
+def test_an_order_batch_has_no_plan_source_and_reads_a_record_that_held_one():
+    """R-1311, DECISION F307 D19: `plan_source` is gone from `MissionOrderBatch`; a record a
+    pre-repair batch wrote with the key still reads, because the reader ignores an unknown key."""
+    batch = MissionOrderBatch(order_id="o1")
+
+    assert "plan_source" not in batch.to_json()
+    assert not hasattr(batch, "plan_source")
+
+    loaded = MissionOrderBatch.from_json({"order_id": "o1", "plan_source": "x"})
+
+    assert "plan_source" not in loaded.to_json()
+    assert not hasattr(loaded, "plan_source")

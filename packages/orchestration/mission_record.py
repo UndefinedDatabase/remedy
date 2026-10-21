@@ -183,7 +183,7 @@ class MissionOrderBatch:
     one record of which jobs exist. Outcomes and spend are read from the jobs and the ledger.
 
     ``repo_path`` (DECISION F307 D11) is the repository root ``accept_order`` was given, ADDITIVE
-    and OPTIONAL on ``plan_source``'s terms: the key is written only when it is not empty, so
+    and OPTIONAL on ``correlation_id``'s terms: the key is written only when it is not empty, so
     every batch written before this decision stays byte-identical.
     """
 
@@ -196,7 +196,6 @@ class MissionOrderBatch:
     kind: str = "build"
     budgets: dict[str, Any] | None = None
     correlation_id: str = ""
-    plan_source: str = ""
     reopened_from: str = ""
     repo_path: str = ""
     sealed: dict[str, Any] | None = None
@@ -210,7 +209,7 @@ class MissionOrderBatch:
         for key in ("budgets", "sealed"):
             if getattr(self, key) is not None:
                 body[key] = getattr(self, key)
-        for key in ("correlation_id", "plan_source", "reopened_from", "repo_path"):
+        for key in ("correlation_id", "reopened_from", "repo_path"):
             if getattr(self, key):
                 body[key] = getattr(self, key)
         return body
@@ -230,7 +229,6 @@ class MissionOrderBatch:
             target_commit=str(body.get("target_commit", "")),
             kind=str(body.get("kind", "build")), budgets=body.get("budgets"),
             correlation_id=str(body.get("correlation_id", "")),
-            plan_source=str(body.get("plan_source", "")),
             reopened_from=str(body.get("reopened_from", "")),
             repo_path=str(body.get("repo_path", "")), sealed=body.get("sealed"))
 
