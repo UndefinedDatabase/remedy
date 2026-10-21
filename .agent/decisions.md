@@ -30574,3 +30574,13 @@ CHOSEN: (1) Both constants read `1.23`, and each one's comment of version histor
 ALTERNATIVES CONSIDERED: (a) staying at 1.22 — rejected: a client written against 1.22 would meet a key 1.22 never listed; (b) adding the key to the 1.22 entry — rejected: 1.22 is published, merged by pull request 372; (c) moving the interface's version alone — rejected: the matrix test holds both versions to one `current`.
 
 HOW TO REVERSE: set both constants and the matrix's `current` back to `1.22`, delete the 1.23 entry, the paragraph and the pins' change, regenerate both sections, and rewrite this paragraph.
+
+## DECISION F078 D7 — the autonomy records' three names join the event vocabulary, and the closure's one suite is taken again on the repaired tree (2026-10-21, R-1392, R-1393)
+
+THE PROBLEM: the closure suite of F078's round 7 read three bad nodes, all F078's own (findings R-1392 and R-1393). `tests/orchestration/test_event_names.py` treats every name written or read under the key `event` anywhere in `packages` and `apps` as part of one declared vocabulary, `EVENT_NAMES` of `packages/orchestration/event_names.py`; `packages/orchestration/autonomy_gate.py` keys its records of deferred, taken and started starts that way.
+
+CHOSEN: (1) `deferred`, `taken` and `started` are added to `EVENT_NAMES` in their alphabetical places, with one comment naming the records of `<data root>/autonomy/` that carry them; the records keep their key, so no record already written and no test fixture changes. (2) `.agent/context.md` regains its `## Steps` section. (3) Under operator amendments amend0917-throughput rule 2 and amend0921-operator-feedback rule 1, round 8 is the first repair round: it runs the one full suite again on the repaired tree, replaces `.agent/authored/f078-closure-suite.txt` at the same path, and its bad set must be strictly smaller than round 7's with no node newly bad.
+
+ALTERNATIVES CONSIDERED: (a) renaming the records' key from `event` to another word — rejected: it changes a data shape and every fixture that writes such a record, to escape a vocabulary the repository applies to the key on purpose; (b) a separate declaration for records outside the run ledger — rejected: the test reads one vocabulary, and a second table would be a second place to forget.
+
+HOW TO REVERSE: delete the three names and their comment, and rename the records' key in the same commit so the vocabulary test stays green; delete this paragraph.
