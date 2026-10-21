@@ -7,15 +7,14 @@ public API's verify, gate status and evidence bundle are offered as MCP tools be
 closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D5).
 
 ## Current Step
-Round 5 (session 2): book round 4 and register R-1409, repair it, then the three MCP tools
-(`mcp_tools.py`), the command `remedy client mcp --allow <tool>`, a real stdio session through
-it, and the page `docs/system/mcp-server-v1.md` (DECISIONs F303 D4 (3) and D5).
+Round 6 (session 2), the closure's integration gate: book round 5 and register R-1410, the
+self-use run, R-1410's test, the Built State, the consolidation pass, and the one full suite.
 
 ## Next Steps
-1. The closure: integration gate (the one full suite), evidence, acceptance; R-1329, R-1407,
-   R-1408 and R-1409 resolved there.
+1. Round 7: book round 6, resolve R-1329 and R-1407 to R-1410, the evidence bundle and the review
+   package (or a repair round naming every bad node id, if the suite is red).
+2. Round 8: the STATUS line, the README and the pull request.
 
 ## Risks
-- `ui_server.py` and `command_catalog.py` have no headroom on the structure ledger.
-- `client_interface.py` is 940 lines; it must stay under 1,000 (no ledger row).
 - The integrity check fails on High findings F303 does not own (DECISION F310 D7).
+- The operator's live service writes the data root the suite's guard watches (Gate F303 R5).
