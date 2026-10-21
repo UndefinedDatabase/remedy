@@ -31051,3 +31051,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: every line Remedy's operations 
 ALTERNATIVES CONSIDERED: (a) a binding inside each body, REJECTED because it re-indents both functions and grows both files; (b) binding at every caller, REJECTED because the callers are many and a new one would forget it; (c) minting the run id at the binding without handing it to the call, REJECTED because the run would then record a different id from the one its lines carry.
 
 HOW TO REVERSE: delete the two decorators, `bind_call_log_context` and its tests, move the job report back into `pingpong_job.py` with its consumers' imports, restore the ledger rows and pins and the rewrapped lines from git history, and delete this paragraph.
+
+## DECISION F307 D17 — a `remedy.toml` that cannot be read is answered `config_invalid` with exit code 2 and no crash report, exit code 2's meaning names it, and the interface and the public API go to 1.27 (2026-10-22, R-1313)
+
+THE PROBLEM: since operator amendment amend1014-luna-mission-fixes B.1 the logging setup reads the configuration inside `_dispatch`'s boundary in `apps/cli/grouped.py`, so a `remedy.toml` that does not parse reaches the catch-all, which answers `unhandled_command_error`, exits 1 and writes a crash report, as if Remedy had failed. The file is the operator's. `_dispatch` is not a listed function and `grouped.py` is not a listed file, so no structural step is owed.
+
+THE DECISION: (1) `_dispatch` answers the `BudgetConfigError` the configuration loader raises for a file that does not parse, or that names an unknown budget key, with `fail("config_invalid", <the loader's sentence>, exit_code=2)`, after the stream-only logging setup, and writes no crash report; every other error of the setup still reaches the catch-all. (2) Exit code 2's meaning in `apps/cli/exit_codes.py`, and the guide that equals it, name "a remedy.toml that cannot be read" beside the wrong arguments, so the code a script reads keeps one meaning: the invocation as given cannot be acted on, and nothing was attempted. (3) The machine client interface and the public API go to 1.27, because the error token and the exit code a client receives for such a file change; the release matrix records it as a value change, and the two generated pages are rewritten by their own writers.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: when the settings file cannot be read, Remedy now says the settings file is broken and exits with the code for a wrong invocation, instead of reporting a crash of its own and leaving a crash report behind.
+
+ALTERNATIVES CONSIDERED: (a) a new exit code for configuration, REJECTED because the finding names 2 and the CLI table keeps one code per kind of failure; (b) leaving exit code 2's meaning as it was, REJECTED because the guide would then not say what the code now covers; (c) no version bump, REJECTED because a client reading the token or the exit code sees a different answer.
+
+HOW TO REVERSE: delete the `BudgetConfigError` branch in `_dispatch`, restore exit code 2's meaning, the two versions, the matrix entry and the pages from git history, and delete this paragraph.
