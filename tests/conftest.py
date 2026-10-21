@@ -404,24 +404,34 @@ def _no_live_pi_reach(request):
     provider construction, as a missing Ollama does on the hosted runner. A test that wants a Pi
     chain installs a fake ``pi`` on PATH and patches ``_ollama_models`` itself, in its body, after
     this fixture; the ``real_ollama`` marker opts out. Hand-saved, no ``monkeypatch``, for the
-    ordering reason ``_no_live_ollama_reach`` states.
+    ordering reason ``_no_live_ollama_reach`` states. It also replaces
+    ``job_insight.fetch_ollama_json`` (DECISIONs F311 D3 and D4), the insight's one network read,
+    so a test of it reaches no real model server either.
     """
     if request.node.get_closest_marker("real_ollama"):
         yield
         return
-    from packages.orchestration import pi_provider
+    from packages.orchestration import job_insight, pi_provider
 
     def _refused(host):
         raise pi_provider.PiUnavailable(
             "live Ollama access is refused for tests without the real_ollama marker "
             "(tests/conftest.py::_no_live_pi_reach)")
 
+    def _refused_json(host, path, timeout):
+        raise OSError(
+            "live Ollama access is refused for tests without the real_ollama marker "
+            "(tests/conftest.py::_no_live_pi_reach)")
+
     original = pi_provider._ollama_models
+    original_fetch = job_insight.fetch_ollama_json
     pi_provider._ollama_models = _refused
+    job_insight.fetch_ollama_json = _refused_json
     try:
         yield
     finally:
         pi_provider._ollama_models = original
+        job_insight.fetch_ollama_json = original_fetch
 
 
 @pytest.fixture(autouse=True)

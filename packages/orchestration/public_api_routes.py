@@ -344,6 +344,37 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
     ),
     PublicApiRoute(
         method="GET",
+        path="/api/v1/now",
+        twin="client.now",
+        description=(
+            "What runs right now, in closed words a client translates, as `remedy client now "
+            "--json` prints it (F311): `jobs`, one entry per running job with its `order`, "
+            "`project`, `state`, `phase`, `task`, `round`, `worker`, `budget` (`used` and "
+            "`limits`), `last_output_s`, `stalled` with its `stall_reason`, and `waiting_on`; "
+            "`orders`, the orders that wait with no running job; `model_server`, the local model "
+            "server's `state`, its `loaded` models and its `queue`; `workers`; and "
+            "`stall_threshold_s`. A value Remedy cannot know is null. Every word is in the "
+            "`insight` key of `GET /api/v1/interface`. A client token reads only its own projects' "
+            "jobs and orders."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
+        path="/api/v1/jobs/{job}/insight",
+        twin="client.insight",
+        query_values=("lines",),
+        refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)),
+        description=(
+            "One job's worker seen from outside, as `remedy client insight <job> --json` prints "
+            "it (F311): the job's entry of `GET /api/v1/now`, plus `stream`, the worker's last "
+            "`lines` stream lines (default 40, at most 200, already redacted), and `advice`, the "
+            "closed words for what the operator can do. Every word is in the `insight` key of "
+            "`GET /api/v1/interface`. A job id prefix is accepted, and a client token reads only "
+            "a job of one of its projects (403 `api_client_policy_refused`)."
+        ),
+    ),
+    PublicApiRoute(
+        method="GET",
         path="/api/v1/jobs/{job}/diff",
         twin="client.diff",
         refusals=(("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400),

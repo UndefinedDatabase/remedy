@@ -131,6 +131,36 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         related=("client.interface", "client.run"),
     ),
     CommandEntry(
+        command_id="client.now",
+        group_id="client",
+        subcommand="now",
+        # F311 (DECISION F311 D1): what runs now, in closed words; every word of it is in
+        # `remedy client interface`'s `insight` key (DECISION F311 D5).
+        description="Read what runs now in closed words a client translates: every running Job with its phase (plan, build, review, repair), task, round, worker, budget and how long its worker's model has been silent, the orders that wait, and the local model server's state (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("client.interface", "client.insight"),
+    ),
+    CommandEntry(
+        command_id="client.insight",
+        group_id="client",
+        subcommand="insight",
+        # F311 (DECISION F311 D1): one Job's worker, seen from outside; every word of it is in
+        # `remedy client interface`'s `insight` key (DECISION F311 D5).
+        description="Read one Job's insight in closed words a client translates: its phase (plan, build, review, repair), the task it runs, its round, its worker's role and model, and its budget, whether the worker is stalled and why, what the operator can do, and the last lines the worker's model wrote (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("job", "The id of the job, or a prefix of it, whose running task's worker model is read"),
+            ArgDef("--lines", "How many of the worker model's last stream lines to show, at most 200 "
+                   "(default 40; a value that is not a whole number reads 40)", required=False,
+                   is_option=True, default="40"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("client.interface", "client.now", "client.story"),
+    ),
+    CommandEntry(
         command_id="client.diff",
         group_id="client",
         subcommand="diff",

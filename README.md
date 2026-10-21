@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-148 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+149 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -48,7 +48,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 8 | 16 |
+| 12 | Observability & Operations | 9 | 16 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -905,6 +905,15 @@ which names the mission's open criteria, and answering it `extend` with no numbe
 out, the time to at least an hour, while over the public API the job then runs on by itself; the
 mission's follow-up question comes only after `abandon`; `GET /api/v1/execution` names both sets of
 limits; the page `docs/system/job-budget-enforcement-v0.md` describes it).
+
+F311 the insight: what runs now (a program can now ask Remedy what runs right now and what each
+running job's worker is doing, through `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` or
+`remedy client now` and `remedy client insight <job>`: the job's phase, task and round, the worker's
+role and model, the budget used against its limits, how many seconds the worker has been silent,
+whether the job is stalled and why, the worker's last lines, and what the operator can do, all in
+closed words the interface lists; the local worker that runs the lab's models keeps its last lines
+and the time of its last output in the job's folder; a value Remedy cannot know reads empty instead
+of a guess; the guide `docs/guides/http-clients.md` describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line

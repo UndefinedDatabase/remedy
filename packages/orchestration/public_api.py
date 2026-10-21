@@ -345,6 +345,31 @@ def _client_diff_answer(*, job: str) -> dict[str, Any]:
         return build_error(exc.token, str(exc))
 
 
+def _client_now_answer(*, project_ids: frozenset[str] | None = None) -> dict[str, Any]:
+    """The answer `GET /api/v1/now` sends: what `remedy client now --json` prints (DECISIONs
+    F311 D1 and D6). A client token's `project_ids` filters it to its own projects' jobs and
+    orders, as `GET /api/v1/digest` is filtered."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.job_insight import now_insight
+
+    return build_ok(**now_insight(project_ids=project_ids))
+
+
+def _client_insight_answer(*, job: str, lines: str | None = None) -> dict[str, Any]:
+    """The answer `GET /api/v1/jobs/{job}/insight` sends: what `remedy client insight <job>
+    --json` prints (DECISIONs F311 D1 and D6). The job is resolved as its twin resolves it, and
+    the two share `job_insight`."""
+    from apps.cli.json_envelope import build_ok
+    from packages.orchestration.job_insight import INSIGHT_LINES_DEFAULT, insight_lines, job_insight
+
+    resolved, refusal = _resolved_job_plan(job)
+    if resolved is None:
+        return refusal or {}
+    _job_id, plan = resolved
+    return build_ok(**job_insight(
+        plan, lines=insight_lines(lines) if lines is not None else INSIGHT_LINES_DEFAULT))
+
+
 def _client_read_refusal(client: Any, job: str) -> str | None:
     """One sentence when a client token may not read JOB, which is not a job of one of its
     projects, else None; a value that names no one job is left to the route's own refusal."""
@@ -420,6 +445,8 @@ _TWIN_ANSWERS: dict[str, Any] = {
     "client.run": _run_answer,
     "client.story": _client_story_answer,
     "client.diff": _client_diff_answer,
+    "client.now": _client_now_answer,
+    "client.insight": _client_insight_answer,
 }
 
 
@@ -427,12 +454,14 @@ _TWIN_ANSWERS: dict[str, Any] = {
 #: token reads every job (operator amendment amend1014-luna-mission-fixes B.3), and so does the
 #: story (DECISION amend1015f D14). The proof and the run poll joined them (DECISION amend1015c
 #: D2), when the check of operator order amend1015-final-closure found them answering a client
-#: about another project's job, and the diff was born among them (DECISION amend1015c D5).
+#: about another project's job, and the diff was born among them (DECISION amend1015c D5); the
+#: insight joined them under F311 (DECISION F311 D6).
 _CLIENT_SCOPED_TWINS = frozenset({"doctor.logs", "client.story", "change.proof", "client.run",
-                                  "client.diff"})
+                                  "client.diff", "client.insight"})
 #: The read routes whose answer lists many projects' records: for a client token they list only
-#: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2).
-_CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes"})
+#: its own projects' (`client_scope.client_project_ids`, DECISION amend1015c D2); `client.now`
+#: joined them under F311 (DECISION F311 D6).
+_CLIENT_FILTERED_TWINS = frozenset({"status.run", "client.changes", "client.now"})
 
 
 def answer_public_api_get(

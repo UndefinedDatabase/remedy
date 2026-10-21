@@ -131,6 +131,42 @@ def test_a_client_of_no_registered_project_sees_no_job(tmp_path):
     assert status == 200 and body["jobs"] == [] and body["projects"] == []
 
 
+def test_the_now_route_lists_only_the_clients_projects_jobs(tmp_path):
+    """F311 D6: `client.now` joined `_CLIENT_FILTERED_TWINS`, as the digest is filtered."""
+    from packages.orchestration.pingpong_job import JOB_RUNNING, JobPlan, TaskEntry, save_job_plan
+
+    mine, theirs, _own, _other = _two_projects(tmp_path)
+
+    def _running(project_id: str, title: str) -> str:
+        job = JobPlan(job_title=title, tasks=[TaskEntry(title="t")], state=JOB_RUNNING,
+                     project_id=project_id)
+        save_job_plan(job)
+        return str(job.job_id)
+
+    own = _running(str(mine.id), "own-running")
+    other = _running(str(theirs.id), "other-running")
+
+    status, body, _headers = public_api.answer_public_api_get(
+        "/api/v1/now", client=_client(mine.slug))
+    assert status == 200, body
+    assert [j["job"] for j in body["jobs"]] == [own]
+    assert other not in json.dumps(body)
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/now")
+    assert {j["job"] for j in body["jobs"]} == {own, other}
+
+
+def test_the_insight_route_holds_a_client_to_its_projects(tmp_path):
+    """F311 D6: `client.insight` joined `_CLIENT_SCOPED_TWINS`."""
+    mine, _theirs, own, other = _two_projects(tmp_path)
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{other}/insight", client=_client(mine.slug))
+    assert (status, body["error"]) == (403, "api_client_policy_refused")
+    assert other in body["message"]
+    status, body, _headers = public_api.answer_public_api_get(
+        f"/api/v1/jobs/{own}/insight", client=_client(mine.slug))
+    assert status != 403, body
+
+
 def test_the_cancel_routes_hold_a_client_to_its_projects(tmp_path):
     """exec-1017c: a client cancels only its own projects' jobs and orders; nothing runs otherwise."""
     mine, theirs, own, other = _two_projects(tmp_path)

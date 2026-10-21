@@ -72,6 +72,8 @@ PINNED_ROUTES: dict[tuple[str, str], str] = {
         "test_the_order_create_route_is_pinned_with_its_body_and_its_statuses",
     ("GET", "/api/v1/jobs/{job}/logs"): "test_the_logs_route_answers_the_doctor_logs_command",
     ("GET", "/api/v1/jobs/{job}/story"): "test_the_story_route_answers_the_client_story_command",
+    ("GET", "/api/v1/now"): "test_the_now_route_answers_the_running_jobs_entry_and_workers",
+    ("GET", "/api/v1/jobs/{job}/insight"): "test_the_insight_route_answers_the_stream_and_advice",
     ("GET", "/api/v1/jobs/{job}/diff"): "test_the_diff_route_answers_the_client_diff_command",
     ("GET", "/api/v1/jobs/{job}/run"):
         "test_the_run_poll_route_is_pinned_with_its_statuses",
@@ -2716,6 +2718,94 @@ def test_the_story_route_holds_a_client_token_to_its_projects(tmp_path):
     status, body, _headers = public_api.answer_public_api_get(
         f"/api/v1/jobs/{own}/story", client=client)
     assert status == 200 and body["job_id"] == own and body["order"] == "Client policy prompt"
+
+
+def _running_job_with_id(job_id: str) -> str:
+    """A saved RUNNING job with one running task, for the `now` and `insight` route tests."""
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import TASK_RUNNING, JobPlan, TaskEntry, save_job_plan
+
+    job = JobPlan(job_id=job_id, job_title="insight-route-job", user_prompt="p",
+                 tasks=[TaskEntry(title="t", status=TASK_RUNNING)], state=RunState.RUNNING)
+    save_job_plan(job)
+    return str(job.job_id)
+
+
+def _write_insight_pulse(job_id: str, *, stream: list | None = None) -> None:
+    """A bound worker pulse for JOB_ID (DECISION F311 D2's shape): `worker` reads set."""
+    from datetime import datetime, timezone
+
+    from packages.common.secure_fs import durable_write_json
+    from packages.orchestration.data_paths import worker_pulse_path
+    from packages.orchestration.worker_pulse import WORKER_PULSE_VERSION
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    path = worker_pulse_path(job_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    durable_write_json(path, {
+        "version": WORKER_PULSE_VERSION, "job_id": job_id, "bound_at": now,
+        "role": "builder", "provider": "pi", "model": "m", "round": 1,
+        "call_kind": "attempt", "call_started_at": None, "call_ended_at": None,
+        "last_output_at": now, "stream": stream or [],
+    })
+
+
+def test_the_now_route_answers_the_running_jobs_entry_and_workers(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/now")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.now", (), (), ())
+    assert public_api.PUBLIC_API_VERSION == "1.21"
+    job_id = _running_job_with_id("abc1234444444444")
+    _write_insight_pulse(job_id)
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask("/api/v1/now", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        [entry] = body["jobs"]
+        assert entry["job"] == job_id and entry["worker"] is not None
+        assert body["workers"] == {"running": 1, "free": None}
+    for status, body, _headers in ask("/api/v1/now"):
+        assert status == 401, body
+
+
+def test_the_insight_route_answers_the_stream_and_advice(tcp_server, unix_server):
+    route = next(r for r in public_api.PUBLIC_API_ROUTES
+                if r.path == "/api/v1/jobs/{job}/insight")
+    assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (
+        "GET", "client.insight",
+        (("invalid_job_id", 404), ("job_not_found", 404), ("ambiguous_job_id", 400)), (),
+        ("lines",))
+    stream = [{"at": f"t{n}", "role": "builder", "kind": "system", "text": str(n)} for n in range(5)]
+    job_id = _running_job_with_id("abcdef0000000000")
+    _write_insight_pulse(job_id, stream=stream)
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id[:8]}/insight?lines=2", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [e["text"] for e in body["stream"]] == ["3", "4"]
+        assert body["advice"]
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id}/insight?lines=abc", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert len(body["stream"]) == 5     # not a whole number: the default slice
+    for status, body, _headers in ask(
+        f"/api/v1/jobs/{job_id}/insight?lines=", _bearer(SERVER_TOKEN)):
+        assert (status, body["error"]) == (400, "api_query_invalid")
+    for status, body, _headers in ask("/api/v1/jobs/feed99/insight", _bearer(SERVER_TOKEN)):
+        assert status == 404
+    status, body, _headers = public_api.answer_public_api_get(f"/api/v1/jobs/{uuid4()}/insight")
+    assert (status, body["error"]) == (404, "job_not_found")
+    _saved_job_with_id("aaaa990000000000")
+    _saved_job_with_id("aaaa990000000001")
+    status, body, _headers = public_api.answer_public_api_get("/api/v1/jobs/aaaa99/insight")
+    assert (status, body["error"]) == (400, "ambiguous_job_id")
 
 
 def test_the_diff_route_answers_the_client_diff_command(tcp_server, unix_server, tmp_path):

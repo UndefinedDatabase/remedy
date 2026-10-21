@@ -12,6 +12,7 @@ import os
 import stat
 import textwrap
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -185,6 +186,53 @@ def test_every_model_turn_is_counted_and_the_evidence_names_the_chain(fake_pi, w
     assert (ev["provider"], ev["inner_provider"], ev["model"]) == ("pi", "ollama", "muse-glimmer:latest")
     assert ev["pi_version"] == "9.9.9" and ev["tool_calls"] == ["edit"] and ev["exit_code"] == 0
     assert out.files_changed == [] and out.prepared_input.mode == "pi-json"
+
+
+# --- 3b. the worker pulse (DECISION F311 D2) -------------------------------------------------
+
+@pytest.fixture
+def _no_pulse_leak():
+    """Reset the worker pulse's binding ContextVar before and after a test.
+
+    `_CURRENT_PULSE` is process-wide state set by `bind_worker_pulse`; without a reset here a
+    pulse bound by one test would still be current when the next, unrelated test calls a
+    provider in the same worker process.
+    """
+    from packages.orchestration import worker_pulse as WP
+    token = WP._CURRENT_PULSE.set(None)
+    yield
+    WP._CURRENT_PULSE.reset(token)
+
+
+def test_a_bound_worker_pulse_records_the_call_s_role_round_and_stream(fake_pi, workspace, _no_pulse_leak):
+    from packages.orchestration import data_paths
+    from packages.orchestration.worker_pulse import bind_worker_pulse, read_worker_pulse
+
+    data_paths.job_dir("job-with-pulse").mkdir(parents=True, exist_ok=True)
+    fake_pi.behave(stdout=[
+        _event({"type": "tool_execution_start", "toolName": "edit"}),
+        _event({"type": "tool_execution_end", "toolName": "edit", "isError": False}),
+        _event({"type": "message_end", "message": {
+            "role": "assistant", "content": [{"type": "text", "text": "done"}], "stopReason": "stop",
+            "usage": {"input": 10, "output": 5, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 15}}}),
+    ])
+    bind_worker_pulse(SimpleNamespace(job_id="job-with-pulse"))
+    provider = PiProvider(role="builder", cwd=str(workspace))
+    provider.begin_stream_call(2, "attempt")
+
+    provider.build("x")
+
+    pulse = read_worker_pulse("job-with-pulse")
+    assert (pulse["role"], pulse["provider"], pulse["model"], pulse["round"]) == (
+        "builder", "pi", PI_DEFAULT_MODEL, 2)
+    assert pulse["call_ended_at"] is not None
+    assert [entry["kind"] for entry in pulse["stream"]] == ["tool_call", "tool_result", "model_text"]
+
+
+def test_with_no_pulse_bound_no_worker_pulse_file_is_written(fake_pi, workspace, tmp_path, _no_pulse_leak):
+    PiProvider(role="builder", cwd=str(workspace)).build("x")
+
+    assert not list((tmp_path / "data").rglob("worker_pulse.json"))
 
 
 # --- 4. failures ----------------------------------------------------------------------------

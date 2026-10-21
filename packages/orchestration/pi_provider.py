@@ -545,6 +545,9 @@ def bind_job_clock(job: Any) -> None:
     job_id = getattr(job, "job_id", None)
     _JOB_STOP_REQUESTED.set((lambda: stop_requested(job_id) is not None) if job_id else None)
     bind_job_token_budget(job)    # exec-1017 D4: the job's tokens left cap a call's agent loop too
+    from packages.orchestration.worker_pulse import bind_worker_pulse
+    # DECISION F311 D2: every run of a job starts its worker pulse here.
+    bind_worker_pulse(job)
 
 
 def effective_pi_timeout(configured_sec: int) -> tuple[float, dict[str, Any]]:
@@ -619,6 +622,15 @@ class PiProvider:
         self._model = model or PI_DEFAULT_MODEL
         self.last_evidence: dict[str, Any] = {}
         self._project_rules_evidence: list[dict[str, Any]] = []
+        #: The round and kind `_call` reports to the worker pulse for its NEXT call (DECISION F311 D2).
+        self._stream_round = 1
+        self._stream_kind = "attempt"
+
+    def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
+        """Tell this provider which round and kind its next call belongs to (DECISION F311 D2):
+        the shape `pingpong_loop._begin_stream_call` already calls on any provider that has it."""
+        self._stream_round = round_no
+        self._stream_kind = kind
 
     @property
     def name(self) -> str:
@@ -655,21 +667,36 @@ class PiProvider:
         if not self._cwd:
             return PiCallOutcome(None, {"role": self._role},
                                  "provider_error: pi_unavailable: a Pi call needs its job workspace", 0)
+        from packages.orchestration.worker_pulse import current_worker_pulse
+        pulse = current_worker_pulse()
+        if pulse is not None:
+            pulse.begin_call(role=self._role, provider=PI_PROVIDER_NAME, model=self._model,
+                             round_no=self._stream_round, kind=self._stream_kind)
         argv = build_pi_argv(info["pi_path"], model=self._model, tools=tools, prompt=prompt)
         tool_limit = min(pi_tool_timeout_sec(), max(int(wall), 1))
         files = {"agent/models.json": pi_models_json(model=self._model),
                  "agent/settings.json": json.dumps({"shellPath": f"{SANDBOX_RUN_DIR}/tool-shell.sh"}),
                  "tool-shell.sh": _TOOL_SHELL.format(limit=tool_limit)}
-        watch = PiLoopWatch(pi_loop_limits())
-        with provider_sandbox(self._cwd, info["host"], files=files, writable=("agent",)) as (
-                sandbox, relay_argv):
-            guarded = run_guarded([*relay_argv, *argv], ExecGuardPolicy(
-                wall_timeout_seconds=wall, cwd=self._cwd, core_file_bytes=0,
-                output_cap_bytes=PI_STDOUT_CAP_BYTES, env=pi_child_env(),
-                env_allowlist=_PI_ENV_ALLOWLIST + (
-                    "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"),
-                sandbox=sandbox, cancel_check=watch.cancel_check(_JOB_STOP_REQUESTED.get()),
-                stdout_observer=watch.feed))
+        watch = PiLoopWatch(pi_loop_limits(), on_record=pulse.add_pi_record if pulse is not None else None)
+
+        def _stdout_observer(chunk: bytes) -> None:
+            watch.feed(chunk)
+            if pulse is not None:
+                pulse.observe_output()
+
+        try:
+            with provider_sandbox(self._cwd, info["host"], files=files, writable=("agent",)) as (
+                    sandbox, relay_argv):
+                guarded = run_guarded([*relay_argv, *argv], ExecGuardPolicy(
+                    wall_timeout_seconds=wall, cwd=self._cwd, core_file_bytes=0,
+                    output_cap_bytes=PI_STDOUT_CAP_BYTES, env=pi_child_env(),
+                    env_allowlist=_PI_ENV_ALLOWLIST + (
+                        "PI_CODING_AGENT_DIR", "PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "PI_TELEMETRY"),
+                    sandbox=sandbox, cancel_check=watch.cancel_check(_JOB_STOP_REQUESTED.get()),
+                    stdout_observer=_stdout_observer))
+        finally:
+            if pulse is not None:
+                pulse.end_call()
         stream_error, summary = "", None
         try:
             summary = summarize_pi_events(parse_pi_events(guarded.stdout))

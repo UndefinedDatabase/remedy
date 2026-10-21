@@ -41,7 +41,16 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from apps.cli.client_interface_digest import DIGEST_KEY_TREE
 from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS, CLIENT_EXECUTION_KEY_TREE
+from apps.cli.client_interface_insight import (
+    CLIENT_INSIGHT_ANSWER_KEYS,
+    CLIENT_INSIGHT_KEY_TREE,
+    CLIENT_NOW_ANSWER_KEYS,
+    CLIENT_NOW_KEY_TREE,
+    INSIGHT_WORDS_KEY_TREE,
+    render_insight_words_lines,
+)
 from apps.cli.client_interface_story import (
     CLIENT_STORY_ANSWER_KEYS,
     CLIENT_STORY_KEY_TREE,
@@ -93,6 +102,7 @@ CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "patch.reject",
     "mission.abandon",
     "client.interface", "client.execution", "client.changes", "client.order", "client.run", "client.story",
+    "client.now", "client.insight",
     "client.diff", "client.cancel-order",
     "doctor.health",
     "doctor.logs",
@@ -159,6 +169,8 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
     "client.order": ("order_not_found",),
     "client.run": ("run_not_found",),
     "client.story": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
+    "client.now": (),
+    "client.insight": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
     "client.diff": ("ambiguous_job_id", "diff_not_ready", "diff_unavailable", "invalid_job_id",
                     "job_not_found"),
     "doctor.health": ("health_failed",),
@@ -235,8 +247,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     "mission.abandon": ("mission", "unmet_blocking_criteria", "version"),
     "client.interface": (
         "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
-        "contract_templates", "digest", "envelope", "exit_codes", "interface_version", "job_states",
-        "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
+        "contract_templates", "digest", "envelope", "exit_codes", "insight", "interface_version",
+        "job_states", "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
     ),
     "client.changes": (
         "applies", "closed_decisions", "cursor", "decisions", "degraded", "jobs", "missions",
@@ -250,100 +262,10 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "state",
     ),
     "client.story": CLIENT_STORY_ANSWER_KEYS, "client.execution": CLIENT_EXECUTION_ANSWER_KEYS,
+    "client.now": CLIENT_NOW_ANSWER_KEYS, "client.insight": CLIENT_INSIGHT_ANSWER_KEYS,
     "client.diff": ("files", "job", "matches", "state", "truncated"),
     "doctor.health": ("checks", "verdict"),
     "doctor.logs": ("entries", "files", "job_id", "matches", "run_id", "unreadable"),
-}
-
-#: The tokens by kind a project ledger holds, a tree the digest carries for each job and each
-#: project's day (DECISION F304 D13).
-TOKENS_BY_KIND_KEY_TREE: dict[str, Any] = {key: {} for key in (
-    "input", "output", "cache_read", "cache_creation",
-)}
-
-#: The keys of the `client` object in `remedy status --json` (DECISION F295 D4, D5, D7; DECISION
-#: F304 D10 adds a job's `approval_card`, D11 its mission's blocking criteria, D12 its two words,
-#: D13 the calls and tokens of each job and each project's day, D16 the `job_window`), as a tree:
-#: each key maps to the tree of the object under it, or of every element of the list under it,
-#: and a key with no keys under it maps to an empty tree (DECISION F298 D3).
-DIGEST_KEY_TREE: dict[str, Any] = {
-    "version": {},
-    "read_at": {},
-    "supervisor": {"answers": {}},
-    "projects": {
-        "project_id": {},
-        "slug": {},
-        "missions": {
-            "mission_id": {},
-            "status": {},
-            "goal": {},
-            "job_ids": {},
-            "project_ids": {},
-            "order_source_path": {},
-            "order_source_sha256": {},
-            "upkeep_every": {},
-            "upkeep_jobs_left": {},
-            "upkeep_open_findings": {},
-            "upkeep_deferred_step": {},
-        },
-        "cost_today": {"day": {}, "value_usd": {}, "basis": {}, "harness_invocations": {},
-                       "tokens": TOKENS_BY_KIND_KEY_TREE},
-    },
-    "jobs": {
-        "job_id": {},
-        "project_id": {},
-        "repo_path": {},
-        "mission_id": {},
-        "title": {},
-        "state": {},
-        "waits_for_apply": {},
-        "cost": {"value_usd": {}, "basis": {}},
-        "harness_invocations": {},
-        "model_turns": {},
-        "tokens": TOKENS_BY_KIND_KEY_TREE,
-        "evidence": {
-            "evidence_dir": {},
-            "run_ids": {},
-            "postmortem_path": {},
-            "run_manifest_path": {},
-            "result_diff_path": {},
-            "result_diff_sha256": {},
-        },
-        "approval_card": {
-            "changed_file_count": {},
-            "changed_files": {},
-            "test_command": {},
-            "tasks": {
-                "task_id": {},
-                "title": {},
-                "reviewer_verdict": {},
-                "repair_rounds_used": {},
-                "test_ran": {},
-                "test_passed": {},
-            },
-            "blocking_criteria": {"id": {}, "text": {}, "status": {}},
-            "checks_ran": {},
-            "recommendation": {},
-            "risk": {},
-        },
-    },
-    "job_window": {"ended_limit": {}, "left_out": {}},
-    "awaiting_apply": {},
-    "decisions": {
-        "job_id": {},
-        "project_id": {},
-        "decision_id": {},
-        "type": {},
-        "severity": {},
-        "question": {},
-        "default": {},
-        "options": {},
-        "clarifications": {"id": {}, "question": {}, "default": {}},
-        "created_at": {},
-        "age_seconds": {},
-    },
-    "degraded": {},
-    "skipped_files": {},
 }
 
 #: The keys of a job's execution configuration as its record exports them, a tree several answers
@@ -746,6 +668,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
         "answers": {"*": {}},
         "answer_trees": {"*": {"*": {"*": KEY_TREE_REPEAT_MARK}}},
         "story": STORY_WORDS_KEY_TREE,
+        "insight": INSIGHT_WORDS_KEY_TREE,
     },
     "client.changes": {
         # F253 S3a (DECISION F253 D4 (3)): `jobs` and `decisions` are the digest's own trees,
@@ -761,6 +684,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     # F253 D20: `answer` is the envelope `remedy job run` printed once the run ended; no tree under it.
     "client.run": {},
     "client.story": CLIENT_STORY_KEY_TREE, "client.execution": CLIENT_EXECUTION_KEY_TREE,
+    "client.now": CLIENT_NOW_KEY_TREE, "client.insight": CLIENT_INSIGHT_KEY_TREE,
     "client.diff": {"files": {key: {} for key in (
         "path", "change", "added", "removed", "patch", "truncated")}},
     "doctor.health": {"checks": {"check": {}, "detail": {}, "hint": {}, "level": {}}},
@@ -828,6 +752,7 @@ def build_client_interface() -> dict[str, Any]:
     from packages.orchestration.client_digest import APPROVAL_RECOMMENDATIONS, APPROVAL_RISKS
     from packages.orchestration.client_story_words import story_words
     from packages.orchestration.contract_templates import list_contract_templates
+    from packages.orchestration.job_insight import insight_words
     from packages.orchestration.mission_state import MISSION_STATUSES
 
     return {
@@ -853,6 +778,7 @@ def build_client_interface() -> dict[str, Any]:
         "answers": {command_id: list(keys) for command_id, keys in OPERATION_ANSWER_KEYS.items()},
         "answer_trees": copy.deepcopy(ANSWER_KEY_TREES),
         "story": story_words(),
+        "insight": insight_words(),
     }
 
 
@@ -946,6 +872,7 @@ def render_client_interface_markdown(interface: dict[str, Any]) -> str:
         f"Approval recommendations: {_listed(interface['approval_recommendations'])}.",
         f"Approval risks: {_listed(interface['approval_risks'])}.",
         *render_story_words_lines(interface["story"]),
+        *render_insight_words_lines(interface["insight"]),
         "",
         "### Operations",
     ]

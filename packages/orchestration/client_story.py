@@ -399,7 +399,8 @@ def _times(plan: Any, state: str, events: list[dict[str, Any]], declined: dict[s
     return started, ended, max(known) if known else None
 
 
-def _open_decision(plan: Any, events: list[dict[str, Any]]) -> Any:
+# WHY public: the story, the diff's apply guard and the insight (DECISION F311 D1) read one open decision.
+def job_story_open_decision(plan: Any, events: list[dict[str, Any]]) -> Any:
     from packages.orchestration.decision_queue import list_decisions
 
     try:
@@ -421,7 +422,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
     rounds, last = _task_events(events)
     pending = job_apply_pending_fields(plan)
     declined = job_result_decline(plan)
-    state, detail = _story_state(plan, _open_decision(plan, events), pending, declined is not None,
+    state, detail = _story_state(plan, job_story_open_decision(plan, events), pending, declined is not None,
                                  _open_task(plan, last), rounds)
     changes = _changes(plan)
     if state in ("done", "done_applied"):

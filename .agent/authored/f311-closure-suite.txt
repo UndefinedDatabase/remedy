@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 353.9s (the launcher's reading); pytest's own reported wall time: 353.08s (0:05:53)
+summary line: 22092 passed, 11 skipped, 1 warning in 353.08s (0:05:53)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: 8e0b5c5da (F311 R5 C5: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C5 changed only .agent/ files, one test file, the feature file, the checklist page and the self-use queue
+reflog before: 8e0b5c5da HEAD@{2026-10-21 03:42:54 +0200}: commit: F311 R5 C5: the closure's self-use item run to its approval gate, never applied
+reflog after: 8e0b5c5da HEAD@{2026-10-21 03:42:54 +0200}: commit: F311 R5 C5: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F311 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1310.31 CPU seconds, 353.09 wall seconds, 22103 tests collected, exit status 0, recorded 2026-10-21T01:48:53Z
+This closure's suite used 1310.31 CPU seconds, 1.2 percent more than F312's 1294.96, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F312's closure run:
+  +4.55 s  tests/runtimes/test_supervisor_portability.py (45.04 -> 49.59)
+  +3.90 s  tests/ui_server/test_public_api.py (11.96 -> 15.86)
+  +2.20 s  tests/orchestration/test_job_worktree_integrity.py (10.35 -> 12.55)
+  +1.91 s  tests/cli/test_mission_cmd.py (43.99 -> 45.90)
+  +1.88 s  tests/orchestration/test_self_use_runner.py (3.76 -> 5.64)
+  +1.87 s  tests/orchestration/test_run_manifest_call_task_binding.py (3.48 -> 5.35)
+  +1.81 s  tests/orchestration/test_review_manual_completion_shapes.py (1.79 -> 3.60)
+  +1.73 s  tests/cli/test_client_insight_cmd.py (0.00 -> 1.73)
+  +1.40 s  tests/orchestration/test_legacy_manifest_presence.py (3.57 -> 4.97)
+  +1.37 s  tests/cli/test_do_order_file.py (8.82 -> 10.19)

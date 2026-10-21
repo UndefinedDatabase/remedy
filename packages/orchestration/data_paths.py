@@ -344,6 +344,15 @@ def job_record_path(job_id: str, root: Path | None = None) -> Path:
     return job_dir(job_id, root) / "job.json"
 
 
+def worker_pulse_path(job_id: str, root: Path | None = None) -> Path:
+    """The job's worker pulse — its running call's role, model, round and short stream.
+
+    DECISION F311 D2: written by ``worker_pulse.WorkerPulse`` alone, beside the job's own record,
+    so the active role and round survive a restart without competing with the job record's writer.
+    """
+    return job_dir(job_id, root) / "worker_pulse.json"
+
+
 # The SHAPE of the job store — one directory per job, the record inside it named
 # ``job.json`` — is a layout fact, and DECISION F260 D1 puts every layout fact in this
 # module, so a caller that globbed for itself would be the second place a layout change

@@ -4,7 +4,9 @@
 # A deletion round removes an entry in the same commit that removes its module.
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.client_interface
+apps.cli.client_interface_digest
 apps.cli.client_interface_execution
+apps.cli.client_interface_insight
 apps.cli.client_interface_story
 apps.cli.command_catalog
 apps.cli.command_catalog_cancel
@@ -230,6 +232,7 @@ packages.orchestration.job_cancel
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_input_definition
+packages.orchestration.job_insight
 packages.orchestration.job_plan
 packages.orchestration.job_run_ending
 packages.orchestration.job_runner
@@ -404,6 +407,7 @@ packages.orchestration.verifier_profiles
 packages.orchestration.veto_proposal
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
+packages.orchestration.worker_pulse
 packages.orchestration.workspace
 packages.orchestration.workspace_identity
 packages.orchestration.worktree_resume

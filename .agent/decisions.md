@@ -30359,3 +30359,92 @@ CHOSEN: F312's closure skips the rotation commit, as F310's did. Nothing is lost
 ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
 
 HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
+
+## DECISION F311 D1 — the answers' keys, their sources, and the twins `remedy client now` and `remedy client insight` (2026-10-21)
+
+THE PROBLEM: `docs/roadmap/features/T12_F311.md` names the keys of `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` and leaves their exact shape and sources to this decision. Read at `321f130f0`: no live record says which role works now, in which round, or when it last wrote anything; the job record, the order record, the budget actuals and the decision queue say the rest.
+
+CHOSEN: one JOB ENTRY shape, shared by both answers, with exactly these keys: `job` (the job id), `order` (the id of the order that lists the job, `order_record_for_job`, or null), `project` (the job record's `project_id`, or null), `state` (the job record's `RunState` value), `phase` (D3's closed word), `task` (`{"id", "title"}` of the task whose status is `running`, or null), `round` (`{"n", "max"}`: `n` from the worker pulse of D2, `max` from the job's `ExecutionConfig.max_rounds`; null without a pulse), `worker` (`{"role", "provider", "model"}` from the pulse, or null), `budget` (`{"used": {"tokens", "calls", "minutes", "waited_s"}, "limits": {"tokens", "calls", "minutes"}}`: used from `budget_actuals` and `budget_stop`'s worked seconds, limits from `budget_profiles.effective_job_budgets`, a missing limit null), `last_output_s` (whole seconds since the pulse's `last_output_at`, or null without a pulse), `stalled` (bool), `stall_reason` (D3's closed word) and `waiting_on` (`{"decision", "type"}` of the job's open decision as `client_story` picks it, or null).
+`GET /api/v1/now` answers `jobs` (one entry per job whose state is `running`, newest first), `orders` (one `{"order", "project", "phase", "jobs"}` per order whose phase is `planning`, `needs_plan_approval`, `waiting`, `ready` or `awaiting_apply` and which lists no running job), `model_server` (D4), `workers` (D4) and `stall_threshold_s` (D3's threshold). `GET /api/v1/jobs/{job}/insight` answers one job entry for any job, running or not, plus `stream` (the last `lines` entries of the pulse's stream, D2; the query value `lines` defaults to 40 and is cut to at most 200) and `advice` (D3).
+The twins are `client.now` (`remedy client now --json`) and `client.insight` (`remedy client insight <job> --json --lines <n>`), not the `remedy now` and `remedy job insight` the feature file names: a new top-level group moves the pinned group count and its partition sets, and the machine client's other reads, `client.story` first, already live in the `client` group.
+
+ALTERNATIVES CONSIDERED: (a) the spellings of the feature file — rejected for the reasons above; (b) waiting orders as job entries with a null job — rejected: an order without a running job has no task, round, worker or budget to report.
+
+HOW TO REVERSE: rename the two catalog entries and their routes' twins, and rewrite this paragraph.
+
+## DECISION F311 D2 — the worker pulse: one small file per job, written by the Pi provider (2026-10-21)
+
+THE PROBLEM: the feature file allows one new record, the time of the worker's last output, written "into the job record". Read at `321f130f0`: the runner holds the job in memory and rewrites `job.json` whole at its safe points, so a stamp written into it from the thread that reads the worker's stream is overwritten at the next safe point; the active role and round exist only in memory; and Pi, Remedy's default local worker, keeps its stream records in memory and writes one summary line per call, so nothing on disk can answer `stream`.
+
+CHOSEN: a WORKER PULSE, the file `worker_pulse.json` in the job's own folder (`data_paths.worker_pulse_path`), owned by `packages/orchestration/worker_pulse.py`. It holds `version` 1, `job_id`, `bound_at`, `role`, `provider`, `model`, `round`, `call_kind`, `call_started_at`, `call_ended_at`, `last_output_at` and `stream`, a list of at most 200 entries, oldest first, each `{"at", "role", "kind"}` with `kind` one of `model_text`, `tool_call`, `tool_result` and `system`, plus `text` (redacted with `stream_evidence.redact_text` and cut to 200 characters) for `model_text`, `tool_call` and `system`, `tool` for `tool_call` and `tool_result`, and `length` for `tool_result`. Binding a job for a run (`pi_provider.bind_job_clock`, which every run of a job already calls) writes a fresh pulse whose `last_output_at` is the bind time, so a run that has not yet written anything counts its silence from its own start. Each Pi call records its role, model, round and kind at its start; every chunk of its standard output moves `last_output_at`; each parsed record of kind `message_end` (assistant), `tool_execution_start`, `tool_execution_end`, `auto_retry_start` or `agent_settled` adds one stream entry. The file is written with `secure_fs.durable_write_json`, at most once per two seconds while a call runs and once when it ends. It is on disk, so it survives a restart of the daemon. It is never exported, imported or read by anything that changes a job.
+Remedy deliberately writes no pulse for providers other than Pi in this feature: their calls run through `pingpong_provider.py` and `pingpong_loop.py`, which the structure ledger holds at their rows, and the operator's lab runs use Pi. Their jobs answer with a null `worker`, `round` and `last_output_s` (D3 says what that reads).
+
+ALTERNATIVES CONSIDERED: (a) the stamp in `job.json` — rejected: overwritten by the runner's next safe point; (b) every stream record on disk — rejected: unbounded, and the file exists to answer the last 200 lines.
+
+HOW TO REVERSE: delete `worker_pulse.py`, its path helper, its two calls in `pi_provider.py` and the record callback of `PiLoopWatch`, their tests, and this paragraph.
+
+## DECISION F311 D3 — the phase, the stall reading and the advice, in closed words (2026-10-21)
+
+THE PROBLEM: the feature file names the words and leaves their order and threshold to this decision.
+
+CHOSEN: `phase` is `plan` for a job whose state is `pending` or `planned`; `apply_wait` for a job whose order phase is `awaiting_apply` or whose result waits for an apply; for a `running` job with a pulse, `review` when the pulse's role is the reviewer, `repair` when its role is the builder in a round above 1, `build` otherwise; and `unknown` for a `running` job without a pulse, because guessing the role would be a false live indicator. The stall reading takes the first reason that holds, in this order: `waiting_decision` (an open decision), `waiting_lock`, `model_unreachable` (the pulse's provider is Pi and D4's probe reads the model server unreachable), `model_slow` (no output for at least the threshold while a call is open and the model server reads reachable), `no_output` (no output for at least the threshold otherwise), `unmeasured` (a running job without a pulse) and `none`; `stalled` is true for the first five. `waiting_lock` stays a word of the vocabulary and no reading produces it: every lock in Remedy refuses at once rather than waiting, so there is no wait to see. The threshold is the configuration key `insight.stall_seconds` (environment variable `REMEDY_INSIGHT_STALL_SECONDS`), default 300. `advice` is a list: `answer_decision` for `waiting_decision`, with `extend_budget` before it when the open decision is a budget decision; `wait` then `stop` for `model_unreachable`, `model_slow` and `no_output`; `apply` for `apply_wait`; `nothing` otherwise.
+
+ALTERNATIVES CONSIDERED: (a) dropping `waiting_lock` — rejected: the feature file names it and a client meets no new word if a waiting lock is ever built; (b) reading `none` for a job without a pulse — rejected: it says "not stalled" about something nobody measured.
+
+HOW TO REVERSE: rewrite the reading in `packages/orchestration/job_insight.py` and this paragraph.
+
+## DECISION F311 D4 — the model server and the workers, as far as Remedy can know them (2026-10-21)
+
+THE PROBLEM: the feature file asks for the model server's state "as far as the provider says" and the number of free workers. Read at `321f130f0`: Remedy probes Ollama only with `GET /api/tags`, never asks which model is loaded, and its supervisor starts one process per run or order with no pool and no cap.
+
+CHOSEN: `model_server` is `{"provider", "host", "state", "loaded", "queue"}`. For Ollama (`pi_provider.ollama_host`) one probe per answer, with a two-second timeout: `GET /api/tags` gives `state` `reachable` or `unreachable`, and `GET /api/ps` gives `loaded`, the names of the models it holds in memory (empty when unreachable). `queue` is null, because Ollama reports none. `workers` is `{"running", "free"}`: `running` counts the entries of `jobs`, and `free` is null, because Remedy has no pool of workers to count. A client reads null as "Remedy cannot know".
+
+ALTERNATIVES CONSIDERED: (a) counting free workers against a configured cap — rejected: no such cap exists to count against; (b) no probe at all — rejected: `model_unreachable` needs it.
+
+HOW TO REVERSE: delete the probe in `packages/orchestration/job_insight.py`, the two keys, and this paragraph.
+
+## DECISION F311 D3 — addendum: the phase of a job that does not run, and which reasons a job that does not run can read (2026-10-21)
+
+THE PROBLEM: DECISION F311 D3 names the phase of a job that waits to be planned, runs, or waits for an apply, and `GET /api/v1/jobs/{job}/insight` answers for any job, so a job that is paused, blocked, stopped, completed, failed or cancelled has no phase. D3's later stall reasons also read the pulse and the model server, which say nothing about a job that no longer runs: a finished job whose last call was Pi would read `model_unreachable` whenever the model server is down.
+
+CHOSEN: two more phases. `halted` for a job whose state is `paused`, `blocked` or `stopped`, which a person can resume; `ended` for a job whose state is `completed`, `failed` or `cancelled` and whose result waits for no apply. `apply_wait` still wins over both. The stall reading of a job whose state is not `running` reads `waiting_decision` when an open decision exists and `none` otherwise; every other reason is read only for a `running` job.
+
+HOW TO REVERSE: delete the two phases from `INSIGHT_PHASES` and their branches in `packages/orchestration/job_insight.py`, and this paragraph.
+
+## DECISION F311 D3 — second addendum: `apply_wait` is read from the job's own result (2026-10-21, R-1385)
+
+THE PROBLEM: DECISION F311 D3 gives `apply_wait` to "a job whose order phase is `awaiting_apply`". An order reads `awaiting_apply` when any one of its jobs holds a result waiting for an apply, so the job that waits behind it read `apply_wait` too, and its advice told the operator to apply a job with nothing to apply (finding R-1385).
+
+CHOSEN: `apply_wait` is read from the job's own result alone, as `job_apply_pending.job_apply_pending_fields` says it; the order-phase clause of D3 is deleted. A waiting order keeps its own phase in the `orders` list of `GET /api/v1/now`.
+
+HOW TO REVERSE: restore the order-phase clause in `packages/orchestration/job_insight.py` and delete this paragraph.
+
+## DECISION F311 D5 — the insight's words in the interface: one key `insight`, as the story's are one key `story` (2026-10-21)
+
+THE PROBLEM: the feature file names the interface keys `now`, `insight`, `phases`, `stall_reasons`, `stream_kinds` and `advice` "as `story` is today", and `story` is one key of `GET /api/v1/interface` whose value holds its word lists by category.
+
+CHOSEN: one new key, `insight`, whose value is `job_insight.insight_words()`: `phases`, `stall_reasons`, `stream_kinds`, `advice` and `model_server_states` (`reachable`, `unreachable`), each the tuple the code reads, as a list. There is no separate `now` key: the `now` answer uses only these words, and the two operations `client.now` and `client.insight` are listed under `operations` with their answer keys as every twin is. A client finds every word the two answers can carry in one place.
+
+ALTERNATIVES CONSIDERED: six top-level keys — rejected: four of them would be lists beside the story's single key, and a `now` key would repeat the operation's own entry.
+
+HOW TO REVERSE: replace the key with the six keys, and rewrite this paragraph.
+
+## DECISION F311 D6 — the two routes are listed `since 1.21` until F313 raises the version, and `lines` is read once (2026-10-21)
+
+THE PROBLEM: `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` join the public API while its version stays `1.21` (the feature file's Do-not-touch: F313 raises it), and `tests/orchestration/test_api_release_matrix.py` requires every route in the matrix with a version no later than the current one. The route and the command line also both read a `lines` value a person typed.
+
+CHOSEN: `docs/system/api-release-matrix-v1.json` lists both routes `since 1.21`; F313, which raises the version to `1.22`, moves them to `1.22` with the rest of its contract. `job_insight.insight_lines(raw)` reads a `lines` value for both: a whole number as typed, anything else `INSIGHT_LINES_DEFAULT`; `job_insight` then clamps it to 0 to 200. A client token reads `GET /api/v1/now` filtered to its own projects' jobs and orders, as `GET /api/v1/digest` is filtered, and `GET /api/v1/jobs/{job}/insight` refuses another project's job with 403, as the story does.
+
+ALTERNATIVES CONSIDERED: (a) listing them `since 1.22` now — rejected: the matrix test refuses a version later than the current one, and raising it is F313's; (b) refusing a `lines` that is not a whole number — rejected: a refusal token of its own for a display length buys a client nothing.
+
+HOW TO REVERSE: date the two routes otherwise in the matrix, or add the refusal, and rewrite this paragraph.
+
+## DECISION F311 D7 — F311's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/` nor `scripts/rotate_live_review.py` has changed since F310's closure.
+
+CHOSEN: F311's closure skips the rotation commit, as F310's and F312's did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.

@@ -1,0 +1,5 @@
+Entry ID: SU-067
+Entry Title: Narrow the excused handler at apps/cli/commands/status_cmd.py:115
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/status_cmd.py:1:except Exception:  # noqa: BLE001 — runtime-state read failure leaves status as unknown)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f311-r5-selfuse/SU-067.md

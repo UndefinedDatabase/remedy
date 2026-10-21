@@ -23,6 +23,11 @@ run record, is refused `run_not_found`, exit 3.
 (`packages.orchestration.client_story.job_client_story`, operator amendment
 amend1015-face-migration, DECISION amend1015f D14), the answer `GET /api/v1/jobs/{job}/story`
 sends. The job is resolved as `remedy doctor logs` resolves it.
+
+`remedy client now` and `remedy client insight <job>` are the twins of F311's insight
+(`packages.orchestration.job_insight.now_insight` and `.job_insight`, DECISION F311 D1): what runs
+now, and one job's worker seen from outside, in the closed words `remedy client interface`'s
+`insight` key names.
 """
 
 from __future__ import annotations
@@ -31,6 +36,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.job_insight import insight_lines
 
 if TYPE_CHECKING:
     import argparse
@@ -175,6 +181,40 @@ def _cmd_client_story(job: str, *, json_output: bool = False) -> None:
     print(f"Job {job_id}: {story['state']}, next {story['next']['action']}")
 
 
+def _cmd_client_now(*, json_output: bool = False) -> None:
+    from packages.orchestration.job_insight import now_insight
+
+    # A call, hand-verified in tests/cli/test_client_interface.py
+    # (`apps.cli.commands.client_cmd:_cmd_client_now:**answer`).
+    answer = now_insight()
+    if json_output:
+        emit_ok(**answer)
+        return
+    print(f"{len(answer['jobs'])} job(s) running, {len(answer['orders'])} order(s) waiting, "
+         f"model server {answer['model_server']['state']}")
+
+
+def _cmd_client_insight(job: str, *, lines: int, json_output: bool = False) -> None:
+    from apps.cli.job_id_arg import resolve_job_id_or_fail
+    from packages.orchestration.job_insight import job_insight
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+
+    job_id = resolve_job_id_or_fail(job, json_output=json_output)
+    try:
+        plan = require_job_plan(job_id)
+    except JobNotFoundError as exc:
+        fail("job_not_found", str(exc), json_output=json_output)
+    # A call, hand-verified in tests/cli/test_client_interface.py
+    # (`apps.cli.commands.client_cmd:_cmd_client_insight:**answer`).
+    answer = job_insight(plan, lines=lines)
+    if json_output:
+        emit_ok(**answer)
+        return
+    print(f"Job {job_id}: {answer['phase']}, "
+         f"{'stalled (' + answer['stall_reason'] + ')' if answer['stalled'] else 'not stalled'}, "
+         f"advice: {', '.join(answer['advice'])}")
+
+
 def _cmd_client_diff(job: str, *, json_output: bool = False) -> None:
     from apps.cli.job_id_arg import resolve_job_id_or_fail
     from packages.orchestration.client_diff import ClientDiffRefusal, job_client_diff
@@ -212,6 +252,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job, json_output=getattr(args, "json", False)),
     "client.story": lambda args: _cmd_client_story(
         args.job, json_output=getattr(args, "json", False)),
+    "client.now": lambda args: _cmd_client_now(json_output=getattr(args, "json", False)),
+    "client.insight": lambda args: _cmd_client_insight(
+        args.job, lines=insight_lines(getattr(args, "lines", None)),
+        json_output=getattr(args, "json", False)),
     "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
 }

@@ -718,6 +718,19 @@ end the response with:
   guards one negative test removed at once, are item 18's reading of an ordered list of tests
   against the property it must establish; R-1377, a comment that said more than its code, was
   found by the reviewer reading the diff. The list stays at 34 items.
+  Consolidated again at F311's closure on 2026-10-21: nothing joined and no two items were merged,
+  because neither of F311's two lines in `.agent/prose_slips.md` names a lesson the list lacks. A
+  block that named its base by a full SHA the reviewer typed instead of printing is item 12's clause
+  that a value a block ships is printed by the run that measured it; and a reviewer's check that
+  counted a word over a whole module, so that a docstring made it fail over code that met the
+  property, is item 18's reading of an ordered recipe against the property it must establish. Its
+  findings were each repaired inside the feature: R-1383, R-1388 and R-1389, promises of a decision
+  or a block that no ordered test could see broken, are item 18's reading of an ordered list of
+  tests against the property it must establish; R-1385, a phase the decision read from the order
+  while the order's phase speaks for every job of it, is item 34's reading of the code the order
+  reaches; and R-1384, R-1386 and R-1387, a guard the block ordered and the code lacked, a comment
+  above the wrong function and a test that left its bindings behind, were found by the reviewer
+  reading the diff. The list stays at 34 items.
   The next consolidation measures against 34.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or

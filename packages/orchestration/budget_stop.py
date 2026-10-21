@@ -70,7 +70,8 @@ def raise_remainder_for_final_job(job: Any) -> str | None:
         return None
 
 
-def _work_seconds(actuals: dict[str, Any], now: datetime) -> float:
+# WHY public: the budget stop and the insight (DECISION F311 D1) measure worked time alike.
+def budget_work_seconds(actuals: dict[str, Any], now: datetime) -> float:
     """The seconds of work a decoded record holds: the moment it was last active, less the start and the waiting."""
     return ((actuals["active_until"] or now) - actuals["started_at"]).total_seconds() - actuals["waited_s"]
 
@@ -92,7 +93,7 @@ def _exhausted_limits(job: Any, limits: Any, now: datetime) -> set[str]:
     used = {
         "max_total_tokens": actuals["total_tokens"],
         "max_provider_calls": actuals["provider_call_count"],
-        "max_wall_clock_minutes": _work_seconds(actuals, now),
+        "max_wall_clock_minutes": budget_work_seconds(actuals, now),
         "max_cost_usd": actuals["measured_cost_usd"],
     }
     scale = {"max_wall_clock_minutes": 60}

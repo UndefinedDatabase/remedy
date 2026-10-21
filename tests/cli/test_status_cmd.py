@@ -121,7 +121,7 @@ def test_a_full_do_without_apply_completes_the_job_and_it_awaits_apply(repo, cap
 
 
 def test_a_full_dos_completed_job_carries_its_approval_card_from_its_record(repo, capsys):
-    from apps.cli.client_interface import DIGEST_KEY_TREE
+    from apps.cli.client_interface_digest import DIGEST_KEY_TREE
     from packages.orchestration.pingpong_job import load_job_plan
 
     done = _do_json(capsys, ORDER)
