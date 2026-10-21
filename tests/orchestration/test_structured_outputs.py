@@ -485,7 +485,8 @@ def _run_loop(tmp_path, outputs, monkeypatch):
     """Run one pingpong round with a scripted, prompt-recording reviewer."""
     monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
     import packages.orchestration.pingpong_loop as pl
-    monkeypatch.setattr(pl._time, "sleep", lambda *_a, **_k: None)  # no backoff wait
+    import packages.orchestration.pingpong_provider_call as provider_call
+    monkeypatch.setattr(provider_call._time, "sleep", lambda *_a, **_k: None)  # no backoff wait
     reviewer = _RecordingReviewer(outputs)
     result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
                              reviewer_name="fake", reviewer_provider=reviewer,
