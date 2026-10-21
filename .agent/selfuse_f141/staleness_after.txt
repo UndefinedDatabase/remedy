@@ -1,0 +1,2 @@
+Read from: the job workspace ~/Repos/remedy/.remedy-wt/job-674e963b94ee45a6
+docs_index_guide_registration | docs/README.md | the Guides section has no link to `guides/http-clients.md` | `docs/guides/http-clients.md` ships

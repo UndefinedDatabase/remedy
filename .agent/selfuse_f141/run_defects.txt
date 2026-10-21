@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job 674e963b94ee45a6 (blocked): task_T001_gate_failed: final_status=staged_blocked; no_file_changed; reviewer_verdict=blocked
+2. T001 (blocked): completion_gate_failed: final_status=staged_blocked; no_file_changed; reviewer_verdict=blocked

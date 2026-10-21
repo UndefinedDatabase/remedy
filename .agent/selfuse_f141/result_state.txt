@@ -1,0 +1,12 @@
+Job ID: 674e963b94ee45a6
+Job State: blocked
+Stop Reason: 
+Stop Source: 
+Error: task_T001_gate_failed: final_status=staged_blocked; no_file_changed; reviewer_verdict=blocked
+Run Manifest Error: 
+Budgets: {"deadline": null, "max_cost_usd": 6.0, "max_provider_calls": 8, "max_total_tokens": null, "max_wall_clock_minutes": null, "min_free_disk_bytes": null}
+Budget Actuals: {"active_until": "2026-10-21T10:20:29.896906+00:00", "actual_call_count": 6, "actual_sources": ["pingpong_live"], "measured_cost_usd": 1.0867635, "priced_call_count": 6, "provider_call_count": 6, "schema_version": "3.0.0", "started_at": "2026-10-21T10:18:24.420767+00:00", "total_tokens": 6566, "unmeasured_call_count": 0, "unpriced_call_count": 0, "waited_s": 0.0}
+Job Workspace: ~/Repos/remedy/.remedy-wt/job-674e963b94ee45a6
+
+Task States:
+  T001: blocked (verdict: blocked; final_status: staged_blocked; repair_rounds_used: 2; run_id: 809edf168f6343ec)
