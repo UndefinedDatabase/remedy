@@ -87,8 +87,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: `sandbox_unavailable` and `project_rules_too_large`, an order job's phase `checked`, and a cancel
 #: that ends a planner call in flight, and order exec-1018b to `1.21` for the story's `end`, and
 #: F313 (DECISION F313 D1) to `1.22` for `GET /api/v1/now`, `GET /api/v1/jobs/{job}/insight` and
-#: the decision route's `resumed` and `resume_refused` after an `extend`.
-PUBLIC_API_VERSION = "1.22"
+#: the decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6)
+#: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP.
+PUBLIC_API_VERSION = "1.23"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.

@@ -1237,6 +1237,31 @@ class TestMissionRunInOrchestratorMode:
         assert "no_provider" not in proc.stdout
 
 
+class TestMissionRunShowsTheAutonomyLevel:
+    """The level the run starts at, loaded for the run, which records an accepted change of level
+    (DECISION F078 D2); only `remedy status` reads it without writing (DECISION F078 D3 (2), R-1391).
+    """
+
+    def test_text_mode_prints_the_level_after_the_mission_id(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        out = _run(["mission", "run", mission_id, "--project", project_id,
+                    "--no-llm"], data_root).stdout
+        assert "  Autonomy level: L2" in out.splitlines()
+
+    def test_json_mode_answers_the_level(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        body = json.loads(_run(["mission", "run", mission_id, "--project",
+                                project_id, "--no-llm", "--json"],
+                               data_root).stdout)
+        assert body["autonomy_level"] == "L2"
+
+
 class TestHandoffCommand:
     """`remedy mission handoff <id>` — F079's explicit boundary trigger."""
 

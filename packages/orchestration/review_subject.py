@@ -493,10 +493,10 @@ def commit_patch_bytes(repo_root: str | Path, sha: str) -> bytes:
     """The EXACT bytes whose sha256 the commit chain records.
 
     One helper, so the recorded hash, the packaged file and the packager's recomputation can
-    never be three slightly different things. `git diff-tree -p` with the same flags
-    `resolve_commit_chain` uses — no `--color`, no pager, no locale-dependent decoration.
+    never be three slightly different things: `git diff-tree -p` with `resolve_commit_chain`'s flags,
+    no colour or pager, and `--diff-merges=1`, which reads a merge against its first parent (R-1394).
     """
-    r = _git(repo_root, ["diff-tree", "-p", "--no-color", sha], binary=True)
+    r = _git(repo_root, ["diff-tree", "--diff-merges=1", "-p", "--no-color", sha], binary=True)
     if r.returncode != 0:
         raise ReviewSubjectError(f"cannot read the patch for commit {sha[:12]}")
     return r.stdout or b""
@@ -1120,9 +1120,9 @@ def resolve_commit_chain(repo_root: str | Path, base: str,
         if len(parts) < 4:
             raise ReviewSubjectError(f"cannot read commit {sha[:12]} metadata")
         commit, parents_raw, tree, subject = parts[0], parts[1], parts[2], parts[3].strip()
-        names = _git(repo_root, ["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", sha])
+        names = _git(repo_root, ["diff-tree", "--diff-merges=1", "--no-commit-id", "--name-only", "-r", "-z", sha])
         changed = tuple(sorted(_split_nul(names.stdout))) if names.returncode == 0 else ()
-        patch = _git(repo_root, ["diff-tree", "-p", "--no-color", sha], binary=True)
+        patch = _git(repo_root, ["diff-tree", "--diff-merges=1", "-p", "--no-color", sha], binary=True)
         patch_sha = hashlib.sha256(patch.stdout if patch.returncode == 0 else b"").hexdigest()
         out.append(ReviewCommitV1(
             commit=commit, parents=tuple(p for p in parents_raw.split() if p), tree=tree,

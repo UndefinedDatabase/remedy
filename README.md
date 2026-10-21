@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-150 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+151 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -39,7 +39,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 47 | 48 |
-| 3 | Full Token Economy & Autonomy | 11 | 29 |
+| 3 | Full Token Economy & Autonomy | 12 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -449,6 +449,14 @@ running the rehearsed plan for real is approving it and running the job, which p
 and warns when the repository moved since the rehearsal; `remedy job run` now refuses a job whose
 plan still waits for approval or was rejected, and a check of the definition of done no longer
 passes when the application it started died; the guide `docs/guides/do-run-v1.md` describes it).
+
+F078 autonomy levels (a level from L2 to L5, set in `remedy.toml`, says what Remedy may start on
+its own: at L2, the default, every start is yours, so a mission run starts one job and then waits
+for you to run it again; from L3 the mission loop starts its jobs by itself, which needs the passed
+test campaign and a written record of why the level was raised; L4 and L5 add recurring order files
+and idea drafts, which nothing starts yet; approvals, budgets, fences and the watchdog apply at
+every level; `remedy status` shows the level and any start that waits; the page
+`docs/system/autonomy-levels-v1.md` describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —

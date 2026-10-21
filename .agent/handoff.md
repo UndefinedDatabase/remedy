@@ -1,78 +1,88 @@
-# Handback — F313 round 6
+# Handback — F078 round 11: round 10 booked, F078's Built State current, F078 accepted, pull request opened
 
 ## Session
 
-SESSION 1 of feature F313 · round 6 · rounds so far 6
+SESSION 2 of feature F078 · round 11 · rounds so far 11
 
-Context self-assessment: this session verified every prepared file's digest before use, applied the prepared files as proved byte copies and ran the one test selection once; no stop condition was met.
+Context self-assessment: this worker copied prepared files, ran the helpers and wrote text, and the context was far from exhausted.
 
-Fortschritt: 100 % (F313 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: 100 % (F078 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `957398a5b`..HEAD (C1, then this commit C3, which carries this handback; C2 was deliberately none).
+Review of `c8d3c1b8a`..`HEAD` on `feature/f078-autonomy-levels-2` (base: round 10's handback commit `c8d3c1b8a`).
 
 ## Commits
 
-### fea6f9519 F313 R6 C1: book round 5, DECISION F313 D3, the plan, the block and the PR body
+### 1b551d751 F078 R11 C1: book round 10, resolve R-1394, DECISION F078 D9, the plan, the block and the PR body
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f313-r6.md` | +98 (new) | byte copy of `block.md` |
-| `.agent/authored/f313-r6-pr_body.md` | +66 (new) | byte copy of `src-pr_body.md` |
-| `.agent/live_review.md` | +2 | byte copy of `dry-live_review.md`, round 5's verdict |
-| `.agent/decisions.md` | +10 | byte copy of `dry-decisions.md`, DECISION F313 D3 |
-| `.agent/plan.md` | +7/-5 | byte copy of `src-plan.md` |
+| `.agent/authored/f078-r11.md` | +107/-0 | new: the block of this round |
+| `.agent/authored/f078-r11-pr_body.md` | +72/-0 | new: the pull request's body |
+| `.agent/decisions.md` | +10/-0 | DECISION F078 D9 |
+| `.agent/live_review.md` | +4/-0 | round 10 booked, R-1394 resolved |
+| `.agent/plan.md` | +7/-6 | the plan |
 
-### C3 (this commit) F313 R6 C3: accept F313 in STATUS with its README sync and the self-use queue
+### de6b89241 F078 R11 C2: F078's Built State brought current
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | byte copy of `dry-STATUS.md`, F313 accepted |
-| `README.md` | +10/-2 | byte copy of `dry-README.md`, counts and Tier 12 list |
-| `scripts/self_use_queue.json` | +1/-1 | byte copy of `dry-self_use_queue.json`, SU-068 consumed by F313 |
-| `.agent/handoff.md` | rewritten | this handback |
+| `docs/roadmap/features/T3_F078.md` | +10/-3 | Built State names every finding and the suite's three runs |
+
+### (this commit) F078 R11 C3: accept F078 in STATUS with its README sync and the self-use queue
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/STATUS.md` | +1/-1 | F078 accepted |
+| `README.md` | +10/-2 | counts and the Tier 3 list synced |
+| `scripts/self_use_queue.json` | +1/-1 | SU-069 consumed by F078 |
+| `.agent/handoff.md` | full rewrite | this handback |
 
 ## External actions
 
-- No commit of this round was pushed before C3. The push of C3, the pull request creation and gate 5 follow this commit and are reported in the final reply (item table: `pending`). The pull request is never merged in this session.
+- The push after this commit, the pull request creation and gate 5: results in the worker's final reply (the handoff cannot hold the result of the commit that writes it).
+- No provider call, no rotation, no worktree, no merge.
 
 ## Verification
 
-1. Gate 1 (before C3): `git status --porcelain` showed exactly ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `python3 .remedy-wt/f313-r6/prep/verify.py . --worktree` every line `True`, `absent	C3`, last line `ALL True`.
-2. Gate 2: `git diff --numstat` printed `10 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
-3. Gate 3: `run_selection.py` printed `paths 75`, `exit 0`, `3449 passed, 2 skipped in 20.86s`; no FAILED or ERROR line, no `process(es) behind` line. SKIPPED: `tests/test_install_smoke.py:175` (install smoke is opt-in, REMEDY_INSTALL_SMOKE=1 with network) and `tests/test_agent_tooling.py:43` (D12 quarantine F252, the deleted reviewer agent file).
-4. Gate 4: `python3 -m apps.cli.main integrity check --json` exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`; `open_finding_ids` count 87.
+1. Preconditions: `git rev-parse --short=9 HEAD` `c8d3c1b8a`, equal to the remote branch tip; `git status --porcelain` empty; `.agent/STOP` absent. All prepared digests matched (`block.md` 107 lines, sha256 `e6ad057f...` as the prompt gave).
+2. Gate 1 before C3's commit: `git status --porcelain` showed exactly ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `verify.py .`: every line `True`, `absent	C3`, last line `ALL True`.
+3. Gate 2: `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`: `10 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
+4. Gate 3: `run_selection.py . .remedy-wt/f078-r11-worker/selection-output.txt`: `paths 75`, `exit 0`, `3449 passed, 2 skipped in 20.49s`, no FAILED or ERROR line, no `process(es) behind` line. SKIPPED: `tests/test_install_smoke.py:175` (install smoke is opt-in), `tests/test_agent_tooling.py:43` (D12 quarantine, F252).
+5. Gate 4: `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`. `open_finding_ids` count: `87`.
+6. Gate 5 and the push: in the worker's final reply.
 
 ## Authored-text proofs
 
-Python byte equality against the prepared file, all true: `.agent/authored/f313-r6.md`, `.agent/authored/f313-r6-pr_body.md`, `.agent/live_review.md`, `.agent/decisions.md`, `.agent/plan.md` (C1); `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json` (C3). Digests of `block.md`, `verify.py`, `run_selection.py`, `selection.txt`, `digests.txt` and every file listed in `digests.txt` matched before use.
+C1, C2, C3: each prepared file is a byte copy, proven by a Python equality over bytes at copy time (all True) and again by `verify.py`. All prepared digests were checked before use and every one matched. This handoff is the worker's own text.
+
+## Deviations & assumptions
+
+None. A first draft of the copy helper was named like a standard-library module and shadowed it for one run of the open-findings reader; it was renamed away before any result was taken, and no repository file was touched by it.
+
+## For the operator, in plain sentences
+
+Remedy now has an autonomy level, set in its settings file, that says what it may start on its own. At the default level every start is yours, so a mission run starts one job and then waits to be run again. Raising the level needs the passed test campaign and a written reason, and approvals, budgets and the watchdog stay in force at every level. The status overview shows the level and any start that waits. The work moved to a second branch because the first one had fallen behind, and the first branch may be deleted. The whole test collection ran on the code that ships and passed. The review package is `remedy-review-20261021-080416-READY_FOR_REVIEW.zip` in `~/Repos/remedy-history/zips`. A pull request is open and will be merged at the start of the next session unless you merge it earlier. Two questions wait for you, each already answered with the session's recommendation.
+
+## Next
+
+1. Phase 1 rule 1: `.agent/STOP`.
+2. Phase 1 rule 2: the Open PR Gate, which merges F078's pull request in the NEXT session and never in this one.
+3. Rule A5, which proposes F141.
+
+Operator questions open: 2.
+Open findings: 87 (rule: `scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, gate 4; commit: the tree of C2, unchanged by C3).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | |
-| C2 | skipped | no rotation commit, DECISION F313 D3 |
+| C1 | done | `1b551d751` |
+| C2 | done | `de6b89241` |
+| Rotation | skipped | DECISION F078 D9 |
 | C3 | done | this commit |
 | Gate 1 | done | ALL True |
-| Gate 2 | done | numstat reported |
-| Gate 3 | done | exit 0 |
-| Gate 4 | done | fail_count 1, 87 open |
-| Gate 5 | pending | after the pull request; reported in the final reply |
-| Push | pending | after this commit; reported in the final reply |
-| Pull request | pending | after the push; reported in the final reply |
-
-## Deviations & assumptions
-
-None. (Copies and checks ran as small scripts under `.remedy-wt/f313-r6-worker/`.)
-
-## Next
-
-1. Phase 1 rule 1: check `.agent/STOP`.
-2. The Open PR Gate, which merges F313's pull request in the NEXT session and never in this one.
-3. Rule A5, which proposes F078.
-
-Operator questions open: 1. Open findings count gate 4 printed: 87 (rule: `open_finding_ids` over `.agent/live_review.md`, commit C3).
-
-## For the operator, in plain sentences
-
-The programs that drive Remedy, the Orb among them, now get the new answers of the last three features as one published release of Remedy's interface, version 1.22, with every addition and every changed behaviour listed. A budget stop's one question now also tells such a program what is still left open. A folder of answers recorded from the real commands lets the universe's kit test the Orb against the real thing. The whole test collection ran on the code that ships and passed. The review package is remedy-review-20261021-053728-READY_FOR_REVIEW.zip in the folder ~/Repos/remedy-history/zips. A pull request is open and will be merged at the start of the next session unless the operator merges it earlier. One question waits for the operator, already answered with the session's recommendation.
+| Gate 2 | done | numstat as above |
+| Gate 3 | done | exit 0, 3449 passed, 2 skipped |
+| Gate 4 | done | fail_count 1, the twelve findings; 87 open |
+| Gate 5 | pending | reported in the final reply |
+| Push | pending | reported in the final reply |
+| Pull request | pending | reported in the final reply |

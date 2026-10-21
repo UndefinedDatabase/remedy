@@ -432,3 +432,42 @@ def test_the_digest_names_the_jobs_left_until_the_next_upkeep_job(repo, capsys):
 
     assert (mission["upkeep_every"], mission["upkeep_jobs_left"], mission["upkeep_open_findings"]) == (5, 5, 0)
     assert mission["upkeep_deferred_step"] == ""
+
+
+# ── 10: the autonomy level, read without writing (F078, DECISION F078 D3 (2)) ───
+
+
+def test_status_text_ends_with_the_default_autonomy_level_on_a_fresh_data_root(repo, capsys):
+    main(["status"])
+    lines = capsys.readouterr().out.rstrip("\n").splitlines()
+    assert lines[-1] == "Autonomy: level L2, the default"
+
+
+def test_status_text_with_one_open_deferral_adds_the_count_and_next_lines(repo, capsys):
+    from datetime import datetime, timezone
+
+    from packages.orchestration.autonomy_gate import AUTONOMY_DEFERRED_FILENAME
+    from packages.orchestration.data_paths import data_class_dir, resolve_data_root
+
+    deferred_dir = data_class_dir("autonomy", resolve_data_root())
+    deferred_dir.mkdir(parents=True, exist_ok=True)
+    record = {
+        "event": "deferred", "at": datetime.now(timezone.utc).isoformat(),
+        "origin": "orchestrator", "level": "L2",
+        "project_id": "proj-1", "mission_id": "mission-1", "milestone_id": "m1",
+    }
+    (deferred_dir / AUTONOMY_DEFERRED_FILENAME).write_text(
+        json.dumps(record) + "\n", encoding="utf-8")
+
+    main(["status"])
+    lines = capsys.readouterr().out.rstrip("\n").splitlines()
+    assert lines[-3] == "Autonomy: level L2, the default"
+    assert lines[-2] == "  1 start deferred by the autonomy level"
+    assert lines[-1] == "  Next: remedy mission run mission-1 --project proj-1"
+
+
+def test_status_json_answers_the_autonomy_object(repo, capsys):
+    data = _status_json(capsys)
+    assert data["autonomy"] == {
+        "level": "L2", "config_path": None, "error": None, "deferred_starts": 0,
+    }

@@ -83,8 +83,9 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: amend1015-final-closure to `1.16` for a client token's read scope (DECISION amend1015c D2) and
 #: `client.diff` (DECISION amend1015c D5), exec-1017 to `1.17` (verification, turns), exec-1017b to `1.18` (job.stop, jobs),
 #: exec-1017c to `1.19` (`job.abandon`, `client.cancel-order`, order `phase`, `cancel`), exec-1018 to `1.20` (new story reasons, phase `checked`), exec-1018b to `1.21` (story `end`),
-#: F313 (DECISION F313 D1) to `1.22` (`client.now`, `client.insight` and the `insight` words).
-CLIENT_INTERFACE_VERSION = "1.22"
+#: F313 (DECISION F313 D1) to `1.22` (`client.now`, `client.insight` and the `insight` words),
+#: F078 (DECISION F078 D6) to `1.23` (`status.run`'s `autonomy`).
+CLIENT_INTERFACE_VERSION = "1.23"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -189,8 +190,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
     ),
     "status.run": (
-        "client", "decisions_open", "degraded", "jobs", "project", "runtime", "runtime_warning",
-        "scope", "skipped_files", "stops_pending",
+        "autonomy", "client", "decisions_open", "degraded", "jobs", "project", "runtime",
+        "runtime_warning", "scope", "skipped_files", "stops_pending",
     ),
     "decision.resolve": (
         "answer", "answers", "assumption_log", "budgets", "closed_decisions", "cross_references",
@@ -466,6 +467,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "status.run": {
         "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}, "rehearsed": {}}},
         "client": DIGEST_KEY_TREE,
+        "autonomy": {"level": {}, "config_path": {}, "error": {}, "deferred_starts": {}},
     },
     "job.run": JOB_REPORT_KEY_TREES,
     "job.resume": {

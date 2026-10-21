@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 358.0s (the launcher's reading); pytest's own reported wall time: 357.29s (0:05:57)
+summary line: 22190 passed, 11 skipped, 1 warning in 357.29s (0:05:57)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 25f0a4135 (F078 R10 C2: the review package reads a merge against its first parent (R-1394))
+tree note: the repaired tree of round 10; round 8's transcript stays in git history at 82f53a225
+reflog before: 25f0a4135 HEAD@{2026-10-21 07:33:20 +0200}: commit: F078 R10 C2: the review package reads a merge against its first parent (R-1394)
+reflog after: 25f0a4135 HEAD@{2026-10-21 07:33:20 +0200}: commit: F078 R10 C2: the review package reads a merge against its first parent (R-1394)
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F078 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1328.90 CPU seconds, 357.30 wall seconds, 22201 tests collected, exit status 0, recorded 2026-10-21T05:39:22Z
+This closure's suite used 1328.90 CPU seconds, 1.8 percent more than F313's 1304.91, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F313's closure run:
+  +5.89 s  tests/cli/test_do_scale_matrix.py (37.13 -> 43.02)
+  +4.81 s  tests/cli/test_scoped_listings.py (10.09 -> 14.90)
+  +2.07 s  tests/orchestration/test_relaunch_session_resume.py (2.02 -> 4.09)
+  +2.02 s  tests/orchestration/test_product_smoke.py (2.96 -> 4.98)
+  +1.97 s  tests/orchestration/test_pingpong_cli.py (1.88 -> 3.85)
+  +1.86 s  tests/orchestration/test_autonomy_seams.py (0.00 -> 1.86)
+  +1.85 s  tests/orchestration/test_review_complete_staged_byte_map.py (2.65 -> 4.50)
+  +1.76 s  tests/orchestration/test_task_deliverables.py (3.05 -> 4.81)
+  +1.74 s  tests/cli/test_serve_client_parity.py (8.67 -> 10.41)
+  +1.65 s  tests/orchestration/test_persisted_run_call_schema.py (1.86 -> 3.51)

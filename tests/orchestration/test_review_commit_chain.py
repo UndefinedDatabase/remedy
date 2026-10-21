@@ -13,12 +13,14 @@ is not part of the path from the base to HEAD, and must not appear in a package'
 """
 from __future__ import annotations
 
+import hashlib
 import subprocess
 
 import pytest
 
 from packages.orchestration.review_subject import (
     ReviewSubjectError,
+    commit_patch_bytes,
     resolve_commit_chain,
     resolve_review_subject,
     validate_commit_chain,
@@ -259,6 +261,49 @@ class TestThePackagerVerifiesTheArtifact:
         r, _base = repo
         monkeypatch.chdir(r)
         assert _verify_commit_chain(str(tmp_path / "empty"), set()) == []
+
+
+# --------------------------------------------------------------------------- a merged-in branch
+
+
+class TestABranchThatMergesWorkFromBeforeItsBase:
+    """R-1394 (F078): a branch made from `main` whose first commit merges an older branch carries
+    that branch's work through the merge commit alone, because the older commits do not descend
+    from the base. The chain reads a merge against its first parent, so the merge names what it
+    brought and its patch is that change."""
+
+    @pytest.fixture
+    def merged(self, tmp_path):
+        r = tmp_path / "merged"
+        r.mkdir()
+        _sh(r, "git init -q -b main && git config user.email t@t && git config user.name t")
+        _sh(r, "echo root > root.py && git add -A && git commit -qm root")
+        _sh(r, "git checkout -q -b old && echo old > old.py && git add -A && git commit -qm 'old work'")
+        _sh(r, "git checkout -q main && echo main > main.py && git add -A && git commit -qm 'main moves'")
+        base = _rev(r)
+        _sh(r, "git checkout -q -b feature && git merge -q --no-ff -m 'merge old' old")
+        _sh(r, "echo later > later.py && git add -A && git commit -qm later")
+        return r, base
+
+    def test_the_merge_names_what_it_brought_against_its_first_parent(self, merged):
+        r, base = merged
+        chain = resolve_commit_chain(r, base, _rev(r))
+        assert [c.subject for c in chain] == ["merge old", "later"]
+        assert chain[0].parents[0] == base
+        assert chain[0].changed_files == ("old.py",)
+        patch = commit_patch_bytes(r, chain[0].commit)
+        assert b"+old" in patch
+        assert chain[0].patch_sha256 == hashlib.sha256(patch).hexdigest()
+
+    def test_the_packager_accepts_the_branch(self, merged, tmp_path, monkeypatch):
+        from scripts.build_review_manifest import _verify_commit_chain
+        r, base = merged
+        s = resolve_review_subject(r, base)
+        assert s.paths() == ["later.py", "old.py"]
+        ev = tmp_path / "ev-merge"
+        TestThePackagerVerifiesTheArtifact()._write(ev, s, r)
+        monkeypatch.chdir(r)
+        assert _verify_commit_chain(str(ev), set(s.paths())) == []
 
 
 # --------------------------------------------------------------------------- errors

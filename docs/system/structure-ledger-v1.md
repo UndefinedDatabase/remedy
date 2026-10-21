@@ -165,6 +165,7 @@ commit with no alias left behind, and changes the tests in their import lines on
   pending stops become a function each; (2) the runtime's state becomes a function of its own;
   (3) the text lines become a function of their own. Until a step is taken, a feature's edits of
   this function are line-neutral (DECISION F055 D3).
+  Step (3), done by F078: the text lines, `_print_status_text` in the same file.
 - `decode_persisted_budget_actuals` (`packages/orchestration/budget_guard.py`). Boundary: the
   closed field set and its version, the counts and how they agree, the sources, the start instant
   and its agreement with the job's first run, and the money and clock fields of the versions that
@@ -245,6 +246,7 @@ with the code that calls it.
   Step (4), done by F058 (finding R-1264): the UI server's first keys, `packages/orchestration/config_keys_ui.py`.
   Step (5), done by F203: the logging keys, `packages/orchestration/config_keys_logging.py`.
   Step (6), done by F310: the budget keys, `packages/orchestration/config_keys_budget.py`.
+  Step (7), done by F078: the watchdog's keys, `packages/orchestration/config_keys_autonomy.py`.
 - `packages/orchestration/mission_state.py`: the record — its constants, its errors and the
   three types a mission is stored as — then the verify-first follow-up path, each to a module of
   its own; the locations, the store and the links stay. Step (1), done by F205: the record,
@@ -323,7 +325,7 @@ with the code that calls it.
 | 186 | `packages/orchestration/source_apply.py` | `apply_structured_patch` |
 | 184 | `packages/orchestration/pingpong_loop.py` | `compose_reviewer_prompt` |
 | 183 | `packages/orchestration/task_edit_runtime.py` | `edit_task_at_runtime` |
-| 179 | `apps/cli/commands/status_cmd.py` | `_cmd_status` |
+| 155 | `apps/cli/commands/status_cmd.py` | `_cmd_status` |
 | 179 | `scripts/build_review_manifest.py` | `validate_evidence_candidate` |
 | 178 | `packages/orchestration/subtree_rerun.py` | `prepare_subtree_rerun` |
 | 177 | `apps/cli/commands/job.py` | `_cmd_job_resume` |
@@ -449,7 +451,7 @@ with the code that calls it.
 | 1964 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
-| 1595 | `packages/orchestration/config.py` |
+| 1545 | `packages/orchestration/config.py` |
 | 1650 | `packages/orchestration/brain_detail.py` |
 | 1650 | `packages/orchestration/repository_snapshot.py` |
 | 1442 | `packages/orchestration/model_routing.py` |
