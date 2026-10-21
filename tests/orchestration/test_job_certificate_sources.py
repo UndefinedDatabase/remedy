@@ -81,7 +81,7 @@ def test_a_completed_worktree_job_with_every_file_yields_every_member():
         "token/token_truth.json": ("token_truth", _put(export / "token_truth.json", b'{"t": 1}\n')),
         "verdicts/dod_result.json": ("verdicts", _put(evidence / "dod_result.json", json.dumps({
             "released": True,
-            "checks": [{"status": "passed"}, {"status": "failed"}]}).encode())),
+            "checks": [{"status": "passed"}, {"status": "passed"}, {"status": "failed"}]}).encode())),
         "verdicts/final_verifier_report.json": ("verdicts", _put(
             export / "final_verifier_report.json", b'{"test_status": "passed"}\n')),
         "ownership/ownership.json": ("ownership", _put(export / "ownership.json", b'{"o": 1}\n')),
@@ -111,7 +111,7 @@ def test_a_completed_worktree_job_with_every_file_yields_every_member():
     assert inputs.issue == 1
     assert inputs.claims == {
         "terminal_state": "completed",
-        "dod_summary": {"released": True, "check_count": 2, "passed_count": 1},
+        "dod_summary": {"released": True, "check_count": 3, "passed_count": 2},
         "cost": "$0.5000", "cost_basis": ["pingpong_actuals"],
         "decisions_count": 0, "regression_status": "passed"}
 

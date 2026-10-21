@@ -23,6 +23,11 @@ from packages.orchestration.data_paths import (
     run_log_dir,
 )
 from packages.orchestration.job_certificate import CertificateError, CertificateSource
+from packages.orchestration.job_certificate_claims import (
+    cost_claims_from_member,
+    dod_summary_from_member,
+    regression_status_from_member,
+)
 
 # WHY: the states in which a job has ended; a resumable blocked or stopped run still gets one.
 CERTIFICATE_TERMINAL_STATES = ("blocked", "cancelled", "completed", "failed", "stopped")
@@ -77,47 +82,12 @@ def _report_bytes(plan, state: str, evidence: Path) -> bytes:
     return rendered.encode("utf-8")
 
 
-def _budget_member_and_claims(plan) -> tuple[bytes | None, object, list]:
-    from packages.orchestration.budget_guard import (
-        BudgetCounterError,
-        counters_from_persisted,
-        decode_persisted_budget_actuals,
-    )
-
+def _budget_member(plan) -> bytes | None:
     if plan.budget_actuals is None:
-        return None, None, []
+        return None
     first = plan.first_running_at or None
-    member = (json.dumps({"budget_actuals": plan.budget_actuals, "first_running_at": first},
-                         indent=2, sort_keys=True) + "\n").encode("utf-8")
-    try:
-        counters = counters_from_persisted(
-            decode_persisted_budget_actuals(plan.budget_actuals, first_running_at=first))
-    except BudgetCounterError:
-        return member, None, []
-    return member, counters.cost_description(), list(counters.actual_sources)
-
-
-def _dod_summary(job_id: str):
-    from packages.orchestration.dod_gate import load_gate_result
-    from packages.orchestration.dod_runners import STATUS_PASSED
-
-    result = load_gate_result(job_id)
-    if result is None:
-        return None
-    checks = result.get("checks") or []
-    passed = [c for c in checks if isinstance(c, dict) and c.get("status") == STATUS_PASSED]
-    return {"released": bool(result.get("released")), "check_count": len(checks),
-            "passed_count": len(passed)}
-
-
-def _regression_status(report_bytes: bytes | None):
-    if report_bytes is None:
-        return None
-    try:
-        data = json.loads(report_bytes.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    return data.get("test_status") if isinstance(data, dict) else None
+    return (json.dumps({"budget_actuals": plan.budget_actuals, "first_running_at": first},
+                       indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
 # WHY: the one place that reads a finished job's files, so the claims and the members agree.
@@ -142,7 +112,7 @@ def collect_certificate_inputs(job_id: str) -> CertificateInputs:
     sources: list[CertificateSource] = [
         CertificateSource("report.md", "report", _report_bytes(plan, state, evidence))]
 
-    budget_member, cost, cost_basis = _budget_member_and_claims(plan)
+    budget_member = _budget_member(plan)
     if budget_member is not None:
         sources.append(CertificateSource("token/budget_actuals.json", "token_truth",
                                          budget_member))
@@ -180,14 +150,16 @@ def collect_certificate_inputs(job_id: str) -> CertificateInputs:
                     obtain=f"Fetch job_logs/{job_id}/{log.name} from the Remedy data folder "
                            f"that ran this job; its sha256 is in this manifest."))
 
+    built = {s.path: s.data for s in sources}
+    cost, cost_basis = cost_claims_from_member(built.get("token/budget_actuals.json"))
     claims = {
         "terminal_state": state,
-        "dod_summary": _dod_summary(job_id),
+        "dod_summary": dod_summary_from_member(built.get("verdicts/dod_result.json")),
         "cost": cost,
         "cost_basis": cost_basis,
         "decisions_count": len(list_decisions(plan, [])),
-        "regression_status": _regression_status(
-            _read_regular(export / "final_verifier_report.json")),
+        "regression_status": regression_status_from_member(
+            built.get("verdicts/final_verifier_report.json")),
     }
     return CertificateInputs(job_id=job_id, project_id=plan.project_id or "",
                              sources=tuple(sources), claims=claims,
