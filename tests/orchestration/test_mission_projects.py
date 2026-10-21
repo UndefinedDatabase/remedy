@@ -195,3 +195,20 @@ class TestFollowUpTargetOfASecondRepository:
 
         canonical = Mission(id="m2", project_id=_LEAD, goal="g", repo=_LEAD, orders=(batch,))
         assert follow_up_target(canonical, None) == {}
+
+    def test_the_newest_of_two_recorded_repositories_is_answered(self):
+        """R-1415: `Mission.order_repo_path` reads the newest batch that records one, not the
+        oldest, and skips a newest batch that records none."""
+        older = MissionOrderBatch(order_id="o1", repo_path="/repos/older")
+        newer = MissionOrderBatch(order_id="o2", repo_path="/repos/newer")
+        mission = Mission(id="m1", project_id=_LEAD, goal="g",
+                         repo=f"{_LEAD}:abc123def456", orders=(older, newer))
+        assert follow_up_target(mission, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/newer"}
+
+        newest_recorded_none = MissionOrderBatch(order_id="o2")
+        mission_newest_none = Mission(id="m2", project_id=_LEAD, goal="g",
+                                      repo=f"{_LEAD}:abc123def456",
+                                      orders=(older, newest_recorded_none))
+        assert follow_up_target(mission_newest_none, None) == {
+            "project_id": _LEAD, "repo_path": "/repos/older"}
