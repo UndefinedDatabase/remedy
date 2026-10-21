@@ -453,6 +453,25 @@ costs nothing and needs no key. This repository's own test of it, which drives a
 proof, an apply with its history and a push, an order of two jobs, an order that names its project,
 a declined result, and an order sent twice with one key over this API alone, is `tests/orchestration/test_public_api_gate_paths.py`.
 
+## Recorded answers
+
+The folder `docs/system/client-answers-v1/` holds answers recorded from the real commands (since
+1.22), so a client such as the universe's kit can test against the real thing without a running
+Remedy: `client-now-idle.json` and `client-now-running.json`, what `GET /api/v1/now` answers with
+no running job and with two; `client-insight-working.json` and `client-insight-silent.json`, what
+`GET /api/v1/jobs/{job}/insight` answers for a worker that wrote five seconds ago and for one
+silent for ten minutes inside an open call; and `client-story-working.json`, what
+`GET /api/v1/jobs/{job}/story` answers for the first of them. Each file holds what the twin
+command, such as `remedy client now --json`, printed, byte for byte.
+
+`python3 scripts/record_client_answers.py` records them. It seeds a scratch data root with two
+running Pi jobs, serves a stub of the local model server that holds the one model `qwen3:8b`, and
+runs the commands with no model and with none of this machine's data or configuration.
+`python3 scripts/record_client_answers.py --check` records them again and compares, and a test
+runs that check, so the folder is recorded again whenever an answer changes. Times, seconds read
+from the clock and the stub's address differ in every recording, and the check compares those by
+their JSON type alone.
+
 ## Staying current
 
 A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with its `since` query

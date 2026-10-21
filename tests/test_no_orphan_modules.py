@@ -95,6 +95,9 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
     ("scripts/closure_suite_cost.py",
      "run by hand in every closure's integration-gate round, docs/agents/integration_gate.md step 1 (F293 T003)"),
+    ("scripts/record_client_answers.py",
+     "run by hand when a recorded client answer changes, docs/system/public-http-api-v1.md \"Recorded "
+     "answers\" (DECISION F313 D2)"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
     ("scripts/self_run_gauntlet.py",
