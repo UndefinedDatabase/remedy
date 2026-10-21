@@ -8,17 +8,17 @@ from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DE
 to D7).
 
 ## Current Step
-Round 8 (session 1), the closure's integration-gate round: book round 7 and register R-1401,
-R-1401's test, the Built State, the checklist's consolidation pass, the self-use item run to its
-approval gate, and the feature's one full suite with its cost reading.
+Round 9 (session 1), the closure's first repair round (operator amendments amend0917-throughput
+rule 2 and amend0921-operator-feedback rule 1): book round 8, resolve R-1401, register R-1402 and
+R-1403, repair R-1402, and run the feature's one full suite again on the repaired tree, whose
+transcript replaces round 8's at the same path.
 
 ## Next Steps
-1. The next round: book round 8, resolve R-1401, register every self-use run defect; then a repair
-   round naming every bad node id (a red suite) or the evidence bundle and the review package (a
-   green one).
-2. The closing round: the STATUS line, the README sync, the self-use queue's `consumed_by` and the
-   pull request.
+1. The next session: review round 9 and book its verdict; then the evidence bundle and the review
+   package (a green suite), or the second repair round (a red one, at most three).
+2. The closing round: the STATUS line, the README sync, `SU-070`'s `consumed_by` and the pull
+   request.
 
 ## Risks
 - The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
-- The self-use run makes real provider calls within its role's budget.
+- R-1403 is owned by F307 and stays open at F141's closure.
