@@ -144,7 +144,7 @@ CASES: list[dict[str, Any]] = [
 def _walk(case: dict[str, Any], root: Path) -> dict[str, Any]:
     from apps.cli.grouped import main
     from packages.orchestration import pingpong_loop
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     files = {**REPO, **filler_files(case.get("extra_files", 0), suffix=".txt")}
     repo = commit_repository(root / "work", files)

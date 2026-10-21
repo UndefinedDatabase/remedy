@@ -41,7 +41,7 @@ def _walk(tmp_path: Path, *, repair_fixes: bool = True, extra_argv: tuple[str, .
     """One `remedy do` walk of the lab add order; the answer, the job, its rounds and builder prompts."""
     from apps.cli.grouped import main
     from packages.orchestration import pingpong_loop
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     repo = commit_repository(tmp_path / "work", LAB)
     prompts: list[str] = []

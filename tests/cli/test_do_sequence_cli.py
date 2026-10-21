@@ -349,7 +349,7 @@ def _answer_every_halt(monkeypatch, answer):
 
 def _count_fake_provider_calls(monkeypatch) -> dict[str, int]:
     """Count every fake builder and reviewer call, across every provider instance."""
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     calls = {"n": 0}
     for method in ("build", "review"):
@@ -550,7 +550,7 @@ def test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_w
     only job 1 runs, so only job 1's file is applied; the rest wait unrun."""
     from packages.core.models import RunState
     from packages.orchestration.pingpong_job import load_job_plan
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     tracked = [f"docs/job_{n:02d}.md" for n in range(20)]
     _track(repo, *tracked)

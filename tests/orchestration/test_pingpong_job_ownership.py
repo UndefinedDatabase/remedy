@@ -29,7 +29,7 @@ from packages.orchestration.pingpong_job import (
     load_job_plan,
     run_job,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from tests.orchestration.test_task_edit_runtime import _save_job, _task, _task_id_of
 
 

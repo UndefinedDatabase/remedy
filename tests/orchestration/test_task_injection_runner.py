@@ -7,7 +7,7 @@ again, a corrupt control area blocking the job, and an inert fold recording its 
 
 Built on the fixtures and fake builders of ``tests/orchestration/test_task_veto_runner.py``:
 planned jobs as ``test_task_edit_runtime.py``'s own ``_save_job`` builds them, and runs go
-through the real ``run_job`` with ``pingpong_provider.FakeProvider`` or a small custom fake.
+through the real ``run_job`` with ``pingpong_provider_fake.FakeProvider`` or a small custom fake.
 """
 from __future__ import annotations
 
@@ -30,7 +30,8 @@ from packages.orchestration.pingpong_job import (
     run_job,
     save_job_plan,
 )
-from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
+from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.run_report import render_report
 from tests.orchestration.test_task_edit_runtime import _by_planned, _save_job, _task
 

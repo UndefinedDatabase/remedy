@@ -185,7 +185,7 @@ class TestProductionBuildsTheStateFromTheRun:
             run_job,
         )
         from packages.orchestration.pingpong_loop import load_run
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.run_manifest import (
             EpisodeInputSnapshotV1,
             build_input_snapshot,
@@ -221,7 +221,7 @@ class TestProductionBuildsTheStateFromTheRun:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.run_manifest import (
             EpisodeInputSnapshotV1,
             build_input_snapshot,

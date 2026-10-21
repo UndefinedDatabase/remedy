@@ -303,6 +303,7 @@ packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop
 packages.orchestration.pingpong_provider
 packages.orchestration.pingpong_provider_call
+packages.orchestration.pingpong_provider_fake
 packages.orchestration.pingpong_provider_ollama
 packages.orchestration.plan_editing
 packages.orchestration.planner_cancel

@@ -214,7 +214,7 @@ class TestProductionUsesTheNewRunIdModel:
         """The rule is production's, not an invention: a resumed job repeats the finished run's
         ledger unchanged and gives its NEW work a NEW run id."""
         from packages.orchestration.pingpong_job import job_evidence_dir, parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.run_manifest import (
             load_episode_manifest_verified,
             read_canonical_episode_order,

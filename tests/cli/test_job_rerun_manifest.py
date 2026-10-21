@@ -66,7 +66,7 @@ def repo(tmp_path):
 
 
 def _prov():
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 
@@ -83,7 +83,7 @@ class TestEpisodes:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.run_manifest import read_index
         from packages.orchestration.safe_points import request_stop
 
@@ -215,7 +215,7 @@ class TestSharedFinalizedCallContext:
             finalized_call_context,
             load_run,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file(_JOB, str(repo))
         res = run_job(job.job_id,
@@ -245,7 +245,7 @@ class TestEpisodeIsolation:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.run_manifest import (
             load_latest_manifest_verified,
             read_index,

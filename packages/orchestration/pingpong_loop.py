@@ -40,7 +40,6 @@ from packages.orchestration.pingpong_call_record import _add_exit_detail, _sessi
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
-    FakeProvider,
     PingPongProvider,
     ReviewerOutput,
     ReviewFinding,
@@ -52,6 +51,7 @@ from packages.orchestration.pingpong_provider_call import (
     _call_with_retry,
     _offer_stable_prefix,
 )
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
     PromptSegment,

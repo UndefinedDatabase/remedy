@@ -63,7 +63,7 @@ def test_without_the_flag_no_report_is_written(tmp_path, monkeypatch):
 
 
 def test_a_failed_walk_still_leaves_a_report_saying_it_failed(tmp_path, monkeypatch):
-    monkeypatch.setattr("packages.orchestration.pingpong_provider.FakeProvider.build",
+    monkeypatch.setattr("packages.orchestration.pingpong_provider_fake.FakeProvider.build",
                         lambda self, *a, **k: __import__("packages.orchestration.pingpong_provider",
                                                          fromlist=["BuilderOutput"]).BuilderOutput(
                             error="provider_error: fake builder down", provider="fake"))

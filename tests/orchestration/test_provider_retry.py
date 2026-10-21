@@ -21,10 +21,10 @@ from packages.orchestration.pingpong_loop import (
 )
 from packages.orchestration.pingpong_provider import (
     BuilderOutput,
-    FakeProvider,
     ReviewerOutput,
 )
 from packages.orchestration.pingpong_provider_call import _call_with_retry
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.provider_timeouts import (
     PROFILES,
 )

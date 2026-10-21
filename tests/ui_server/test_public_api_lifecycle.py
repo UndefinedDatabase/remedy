@@ -105,7 +105,7 @@ def _planned(api: Api, **metadata: str) -> str:
 def _ran(api: Api) -> str:
     """A job the real runner ran to its end with fake providers: completed, its result waiting."""
     from packages.orchestration.pingpong_job import run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job_id = _planned(api)
     run_job(job_id, builder_provider=FakeProvider(), reviewer_provider=FakeProvider(), repair_rounds=1)

@@ -68,7 +68,7 @@ from pathlib import Path
 sys.path.insert(0, {repo!r})
 from packages.orchestration.pause_control import PAUSE_REQUEST_FILENAME
 from packages.orchestration.pingpong_job import parse_job_file, run_job
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.safe_points import job_control_dir
 
 #: R-1159: the build call (counted from 1) held open until a job pause request
@@ -300,7 +300,7 @@ class TestJobScopeLiveDoor:
 
             # "Running that command" — the same run_job() `remedy job run` itself calls.
             from packages.orchestration.pingpong_job import JOB_COMPLETED, run_job
-            from packages.orchestration.pingpong_provider import FakeProvider
+            from packages.orchestration.pingpong_provider_fake import FakeProvider
 
             resumed = run_job(
                 job_id,
@@ -394,7 +394,7 @@ class TestTaskScopeLiveDoor:
             assert len(_events(data_dir, job_id, "task_resumed")) == 1
 
             from packages.orchestration.pingpong_job import JOB_COMPLETED, run_job
-            from packages.orchestration.pingpong_provider import FakeProvider
+            from packages.orchestration.pingpong_provider_fake import FakeProvider
 
             resumed = run_job(
                 job_id,
@@ -476,7 +476,7 @@ class TestWithdrawLiveDoor:
             run_job,
             save_job_plan,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         # R-1072: a target of its own — without it the runner builds a git
         # worktree of the whole live checkout, which fails under load.

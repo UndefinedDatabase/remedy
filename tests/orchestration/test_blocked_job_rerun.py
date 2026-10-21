@@ -36,14 +36,14 @@ def repo(tmp_path) -> Path:
 
 
 def _passing():
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 
 def test_a_run_of_a_job_whose_task_ended_blocked_ends_blocked(data_root, repo):
     from packages.orchestration.pingpong_job import load_job_plan_safe, parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job = parse_job_file(_JOB, str(repo))
     first = run_job(job.job_id, builder_provider=FakeProvider(builder_error="provider_unavailable: down"),

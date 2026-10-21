@@ -261,7 +261,7 @@ class TestGuardTripReachesTheTaskRollup:
     def _run_and_export(self, demo_repo, tmp_path, test_command, timeout_sec):
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.pingpong_job import parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file(self._JOB, str(demo_repo))
         run = run_job(
@@ -317,7 +317,7 @@ class TestASandboxRefusedTestCommandIsNoFailedTest:
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.order_verification import job_verification
         from packages.orchestration.pingpong_job import parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         bindir = tmp_path / "fakebin"
         bindir.mkdir()

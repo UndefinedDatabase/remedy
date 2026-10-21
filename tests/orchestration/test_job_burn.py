@@ -43,7 +43,7 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_PAUSED,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 _AT = datetime(2026, 9, 1, tzinfo=timezone.utc)
 

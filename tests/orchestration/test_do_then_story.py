@@ -36,7 +36,7 @@ JOB_ID = re.compile(r"remedy job apply ([0-9a-f]{16}) --repo")
 CLIENT_TOKEN = "story-gate-client-token-0123456789abcdef"
 #: The test-only failure: every FakeProvider built in the child has an unavailable builder.
 FAILING_SITECUSTOMIZE = '''\
-import packages.orchestration.pingpong_provider as _provider
+import packages.orchestration.pingpong_provider_fake as _provider
 
 _init = _provider.FakeProvider.__init__
 

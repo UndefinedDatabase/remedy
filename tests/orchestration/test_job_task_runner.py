@@ -46,7 +46,7 @@ from packages.orchestration.pingpong_job import (
     task_entry_to_planned_task,
     validate_job_task_result,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 # ---------------------------------------------------------------------------
 # Fixtures

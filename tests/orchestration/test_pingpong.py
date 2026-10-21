@@ -17,9 +17,9 @@ from packages.orchestration.pingpong_loop import (
 )
 from packages.orchestration.pingpong_provider import (
     ClaudeProvider,
-    FakeProvider,
     create_provider,
 )
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 # ---------------------------------------------------------------------------
 # Fixtures

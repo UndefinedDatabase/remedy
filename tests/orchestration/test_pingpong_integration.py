@@ -21,7 +21,7 @@ from packages.orchestration.pingpong_job import (
 from packages.orchestration.pingpong_loop import (
     run_pingpong,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 _TWO_TASK_JOB = """\
 # Job: Integration Test

@@ -632,7 +632,7 @@ class TestAReplacementThroughARun:
     def test_the_chain_from_the_round_to_the_upkeep_plan(self, data_root, tmp_path):
         from packages.orchestration.config import reset_config
         from packages.orchestration.pingpong_job import parse_job_file, run_job
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         from packages.orchestration.project_registry import RemyProject, save_project
 
         repo = tmp_path / "importer-repo"

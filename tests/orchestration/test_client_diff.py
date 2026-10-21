@@ -39,7 +39,7 @@ def repo(tmp_path) -> Path:
 
 def _run(repo: Path, *, builder_error: str = "") -> str:
     from packages.orchestration.pingpong_job import parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job = parse_job_file(_JOB, str(repo))
     builder = FakeProvider(builder_error=builder_error) if builder_error else FakeProvider()

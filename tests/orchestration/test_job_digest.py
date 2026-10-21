@@ -529,7 +529,7 @@ Acceptance:
 def _run_and_mirror(repo, *, measured: bool, runs: int = 2, budgets=None, mirror=True):
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     from packages.orchestration.pingpong_job import load_job_plan, parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     from tests.orchestration.test_token_ledger import _MeasuredStubProvider
 
     plan = parse_job_file(_TWO_TASK_JOB, str(repo))

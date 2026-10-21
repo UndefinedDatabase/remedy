@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 #: The line `task_deliverables.deliverable_task` writes into a task's body, and so into its prompt.
 _DELIVERABLE_LINE = re.compile(r"^This task's deliverable: (\S+)[ \t]*$", re.MULTILINE)

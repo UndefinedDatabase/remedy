@@ -34,7 +34,7 @@ def repo(tmp_path) -> Path:
 
 def _completed_job(repo: Path) -> str:
     from packages.orchestration.pingpong_job import parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job = parse_job_file(_JOB, str(repo))
     run_job(job.job_id, builder_provider=FakeProvider(), reviewer_provider=FakeProvider(),

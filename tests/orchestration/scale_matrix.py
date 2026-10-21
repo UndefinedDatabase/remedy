@@ -266,7 +266,7 @@ def _run_case(case: dict[str, Any], root: Path) -> dict[str, Any]:
     import pytest
 
     from apps.cli.grouped import main
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     repo = commit_repository(root / case["id"] / "work", case["files"])
     builds = {"builder": 0, "reviewer": 0}

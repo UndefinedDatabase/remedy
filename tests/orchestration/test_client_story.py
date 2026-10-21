@@ -41,7 +41,7 @@ def repo(tmp_path) -> Path:
 
 
 def _fake(**kw):
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     return FakeProvider(**kw)
 

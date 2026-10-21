@@ -9,7 +9,8 @@ import time
 import warnings
 
 from packages.orchestration.model_failover import FailoverLink, FailoverProvider
-from packages.orchestration.pingpong_provider import BuilderOutput, ClaudeCliProvider, FakeProvider
+from packages.orchestration.pingpong_provider import BuilderOutput, ClaudeCliProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.role_provider_factory import create_role_provider
 
 

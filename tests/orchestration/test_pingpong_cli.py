@@ -40,13 +40,13 @@ from packages.orchestration.pingpong_loop import (
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     ClaudeCliProvider,
-    FakeProvider,
     ReviewFinding,
     _parse_reviewer_json,
     _unwrap_envelope,
     build_claude_cli_args,
     create_provider,
 )
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -3138,7 +3138,7 @@ def test_the_diff_route_answers_the_client_diff_command(tcp_server, unix_server,
     """Operator order amend1015-final-closure E3 (DECISION amend1015c D5): one job's change, from git."""
     from packages.orchestration.client_diff import job_client_diff
     from packages.orchestration.pingpong_job import parse_job_file, require_job_plan, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/jobs/{job}/diff")
     assert (route.method, route.twin, route.refusals, route.query, route.query_values) == (

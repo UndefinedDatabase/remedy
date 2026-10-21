@@ -43,7 +43,7 @@ from packages.orchestration.pingpong_job import (
     task_is_done,
 )
 from packages.orchestration.pingpong_loop import load_run
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.result_tour import render_tour_lines, tour_path, write_result_tour
 from packages.orchestration.run_log import RunLogWriter
 

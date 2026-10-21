@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from apps.cli.grouped import main
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 FAKE_ROLES = ("--builder-provider", "fake", "--reviewer-provider", "fake")
 

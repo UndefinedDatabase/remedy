@@ -154,7 +154,7 @@ def test_run_job_still_blocks_a_job_whose_budgets_hold_an_unknown_field():
 def test_run_job_judges_a_local_job_against_the_local_profile(monkeypatch, tmp_path):
     from packages.orchestration import safe_points
     from packages.orchestration.pingpong_job import _persist_job, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job = _git_repo_with_a_task(tmp_path)
     job.execution_config = ExecutionConfig(builder="pi", reviewer="pi")

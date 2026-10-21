@@ -1354,7 +1354,7 @@ def live_job_repo(tmp_path):
 def _run_fake_provider_job(repo):
     """Run a real job end to end with the fake provider — no network, no real model."""
     from packages.orchestration.pingpong_job import parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     plan = parse_job_file(_LIVE_JOB_FILE, str(repo))
     return run_job(
@@ -2186,7 +2186,7 @@ class TestQuerySegmentShares:
 # ---------------------------------------------------------------------------
 
 
-from packages.orchestration.pingpong_provider import FakeProvider  # noqa: E402
+from packages.orchestration.pingpong_provider_fake import FakeProvider  # noqa: E402
 
 
 class _MeasuredStubProvider(FakeProvider):

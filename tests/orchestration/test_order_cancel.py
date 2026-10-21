@@ -125,7 +125,7 @@ def test_a_job_saved_after_the_clients_listing_is_still_cancelled_and_never_runs
 
 def test_a_cancel_while_the_builder_runs_ends_the_job_cancelled_and_applies_nothing(order, monkeypatch):
     from packages.orchestration.job_apply import job_apply_landed
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     original, answers = FakeProvider.build, []
 

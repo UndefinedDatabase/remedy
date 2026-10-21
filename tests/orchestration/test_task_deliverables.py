@@ -286,7 +286,7 @@ def _two_file_job(tmp_path, monkeypatch, *, planner_task: bool = False):
 def test_a_named_file_the_change_left_unchanged_blocks_the_task(tmp_path, monkeypatch, changed,
                                                                  planner_task, blocked):
     from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     job_id = _two_file_job(tmp_path, monkeypatch, planner_task=planner_task)
     fake = FakeProvider(builder_files=changed, pass_on_round=1, fail_on_round=99)
@@ -310,7 +310,7 @@ def test_only_the_files_an_order_asks_to_change_are_held_to_it(tmp_path, monkeyp
     """exec-1018 (R-1348), through a REAL job run and its real diff: a file the order names only as
     context passes unchanged, and a file it says to leave unchanged blocks the task when touched."""
     from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job, save_job_plan
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     from packages.orchestration.task_deliverables import deliverable_task
 
     job_id = _two_file_job(tmp_path, monkeypatch)
@@ -352,7 +352,7 @@ def test_an_order_that_fences_its_files_refuses_a_change_to_any_other(tmp_path, 
     every round of the task to the files the order names, a repair round's too; a test-run cache is
     no change, and an order without the fence leaves the builder free as before."""
     from packages.orchestration.pingpong_job import JOB_BLOCKED, JOB_COMPLETED, load_job_plan, run_job, save_job_plan
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     from packages.orchestration.task_deliverables import deliverable_task
 
     job_id = _two_file_job(tmp_path, monkeypatch)

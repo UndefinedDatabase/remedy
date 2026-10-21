@@ -37,7 +37,7 @@ def _make_run(tmp_path, monkeypatch, *, test_command="", repo_arg=None):
     """Create a FakeProvider run and return (result, export_data)."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
     p = FakeProvider()
     demo = tmp_path / "repo"
     demo.mkdir(exist_ok=True)
@@ -375,7 +375,7 @@ class TestTokenAccounting:
         """Claude CLI tokens_used=0 means unavailable, not actual zero."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -398,7 +398,7 @@ class TestTokenAccounting:
         """When provider returns 0 tokens, kind is estimated."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -600,7 +600,7 @@ class TestTextReportTokenProof:
     def test_text_report_shows_provider_evidence(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -616,7 +616,7 @@ class TestTextReportTokenProof:
     def test_text_report_shows_token_accounting(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -648,7 +648,7 @@ class TestTextReportTokenProof:
     def test_text_report_shows_savings(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -666,7 +666,7 @@ class TestTextReportTokenProof:
     def test_text_report_no_raw_prompts(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -689,7 +689,7 @@ class TestConciseTextReport:
     def test_text_report_concise(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -712,7 +712,7 @@ class TestExistingFlowsSmoke:
     def test_staged_run_still_passes(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         p = FakeProvider()
         demo = tmp_path / "repo"
         demo.mkdir()
@@ -806,7 +806,7 @@ class TestRunList:
     def _one_run(self, tmp_path, monkeypatch, goal):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
         demo = tmp_path / "repo"
         demo.mkdir(exist_ok=True)
         (demo / "README.md").write_text("# Test\n")

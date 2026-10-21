@@ -11,7 +11,7 @@ import pytest
 
 from packages.orchestration import steering as ST
 from packages.orchestration.pingpong_loop import compose_builder_prompt, run_pingpong
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.prompt_segments import SegmentStabilityRank
 from packages.orchestration.timeline import load_run_events
 

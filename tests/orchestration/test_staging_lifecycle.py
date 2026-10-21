@@ -357,7 +357,7 @@ def copy_job(root, tmp_path):
     from pathlib import Path
 
     from packages.orchestration.pingpong_job import parse_job_file, run_job
-    from packages.orchestration.pingpong_provider import FakeProvider
+    from packages.orchestration.pingpong_provider_fake import FakeProvider
 
     target = tmp_path / "target"
     target.mkdir()

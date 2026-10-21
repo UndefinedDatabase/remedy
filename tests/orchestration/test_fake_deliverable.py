@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.fake_deliverable import DeliverableFakeProvider, prompt_deliverable_file
-from packages.orchestration.pingpong_provider import FakeProvider, create_provider
+from packages.orchestration.pingpong_provider import create_provider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

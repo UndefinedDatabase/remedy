@@ -94,7 +94,7 @@ class TestFullExportCopiesNothingWhenDirty:
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_provider import FakeProvider
+        from packages.orchestration.pingpong_provider_fake import FakeProvider
 
         job = parse_job_file("# Job: e\n\n## Task 1\nx\n\nAcceptance:\n- y\n", str(repo))
         run_job(job.job_id, builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),

@@ -9,7 +9,7 @@ Planned jobs are built as ``tests/orchestration/test_task_edit_runtime.py``'s ow
 ``_save_job`` builds them (an approved plan, a plain directory as the repository for a
 copy job); vetoes are recorded through ``task_veto.veto_task_command`` against the control
 root ``safe_points.control_root()`` resolves under ``REMEDY_DATA_DIR``; runs go through the
-real ``run_job`` with ``pingpong_provider.FakeProvider`` or a small custom fake.
+real ``run_job`` with ``pingpong_provider_fake.FakeProvider`` or a small custom fake.
 """
 from __future__ import annotations
 
@@ -35,7 +35,8 @@ from packages.orchestration.pingpong_job import (
     run_job,
     save_job_plan,
 )
-from packages.orchestration.pingpong_provider import BuilderOutput, FakeProvider, ReviewerOutput
+from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.run_manifest import (
     MODE_PUBLISHED_REFERENCE,
     load_episode_manifest_verified,

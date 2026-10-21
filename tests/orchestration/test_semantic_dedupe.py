@@ -33,7 +33,7 @@ from packages.orchestration.pingpong_loop import (
     compose_reviewer_prompt,
     run_pingpong,
 )
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
     SegmentStabilityRank,

@@ -21,7 +21,7 @@ import pytest
 from packages.orchestration.artifact_contract_gate import build_artifact_contract_gate
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.pingpong_job import parse_job_file, run_job
-from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.pingpong_provider_fake import FakeProvider
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAKE_REVIEW_ZIP = REPO_ROOT / "scripts" / "make_review_zip.sh"
