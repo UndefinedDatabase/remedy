@@ -288,6 +288,9 @@ each cell means.
 Since interface 1.26 each of a mission's `orders` may carry `repo_path`, the repository root the
 order was accepted for; an order accepted before 1.26 carries none.
 
+Since interface 1.27 a command whose `remedy.toml` cannot be read answers `config_invalid` with exit
+code 2 and writes no crash report; before, it answered `unhandled_command_error` with exit code 1.
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -311,7 +314,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.26`.
+Interface version: `1.27`.
 
 ### Envelope
 
@@ -325,7 +328,7 @@ Refusal keys: `error`, `message`.
 |---|---|---|
 | `0` | `ok` | The command did what it was asked, including finding nothing to do or honouring a pending stop request. |
 | `1` | `failed` | The command ran and did not do what was asked — a refusal, a failed operation, a red check, drift found; the general failure and the code of every refusal no narrower meaning claims. |
-| `2` | `usage` | The invocation itself is wrong — an unknown command, or a missing, invalid, unrecognised or conflicting argument — and nothing was attempted. |
+| `2` | `usage` | The invocation itself is wrong — an unknown command, a missing, invalid, unrecognised or conflicting argument, or a remedy.toml that cannot be read — and nothing was attempted. |
 | `3` | `not_ready` | The invocation is well formed, but what it names is absent or not in a state the command can act on. |
 | `4` | `environment` | The machine lacks a prerequisite the command cannot supply, such as a git repository. |
 

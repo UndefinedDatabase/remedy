@@ -381,22 +381,51 @@ class TestRawJSONDocumentSitesRatchet:
         assert sum(self.RAW_SITES_BY_MODULE.values()) == 1
 
 
+def _no_crash_report() -> bool:
+    from packages.orchestration.crash_report import crash_reports_dir
+
+    folder = crash_reports_dir()
+    return not folder.exists() or not any(folder.iterdir())
+
+
 def test_a_malformed_remedy_toml_answers_one_json_error_and_no_traceback(tmp_path, monkeypatch, capsys):
     """Operator amendment amend1014-luna-mission-fixes B.1: the logging setup reads the
-    configuration, so it runs inside the F277 boundary and a broken file is answered there."""
+    configuration, so it runs inside the F277 boundary and a broken file is answered there; and
+    R-1313: the file is the operator's, so the answer is `config_invalid`, exit code 2, no crash report."""
     import json as _json
 
     from apps.cli.grouped import main as grouped_main
 
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     (tmp_path / "remedy.toml").write_text("[remedy\nthis is = not toml\n")
 
     with pytest.raises(SystemExit) as ended:
         grouped_main(["doctor", "health", "--json"])
 
-    assert ended.value.code not in (0, None)
+    assert ended.value.code == 2
     captured = capsys.readouterr()
     [line] = [line for line in captured.out.splitlines() if line.strip()]
     answer = _json.loads(line)
-    assert answer["ok"] is False and answer["error"]
+    assert answer["ok"] is False and answer["error"] == "config_invalid"
+    assert "Malformed TOML" in answer["message"]
     assert "Traceback" not in captured.err
+    assert _no_crash_report()
+
+
+def test_a_malformed_remedy_toml_in_text_names_the_file_and_exits_2(tmp_path, monkeypatch, capsys):
+    """R-1313: the text answer names the file's fault and promises no crash report."""
+    from apps.cli.grouped import main as grouped_main
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "remedy.toml").write_text("[remedy\nthis is = not toml\n")
+
+    with pytest.raises(SystemExit) as ended:
+        grouped_main(["doctor", "health"])
+
+    assert ended.value.code == 2
+    err = capsys.readouterr().err
+    assert err.startswith("Error: Malformed TOML in ")
+    assert "crash report" not in err and "Traceback" not in err
+    assert _no_crash_report()
