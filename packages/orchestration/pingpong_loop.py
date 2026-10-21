@@ -3196,7 +3196,7 @@ def run_pingpong(
             compiled_context_paths=compiled_context_paths,
             compiled_context_candidates=compiled_context_candidates,
             compiled_context_token_budget=compiled_context_token_budget,
-            context_record_dir=context_record_dir,
+            context_record_dir=context_record_dir, job_id=job_id,
         )
     except Exception as exc:
         # Context construction owns no result, but it DOES own a live worktree.

@@ -20,8 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from packages.orchestration.autonomy_gate import AUTONOMY_LEVELS, AutonomyConfigError
-from packages.orchestration.data_paths import data_class_dir, resolve_data_root
+from packages.common.secure_fs import durable_write_json
+from packages.orchestration.autonomy_gate import AUTONOMY_DEFAULT_LEVEL, AUTONOMY_LEVELS, AutonomyConfigError
+from packages.orchestration.data_paths import data_class_dir, job_dir, resolve_data_root
 
 if TYPE_CHECKING:  # import-light at runtime: config.py's types are only named here
     from packages.orchestration.config import RemedyConfig
@@ -152,6 +153,10 @@ class PermissionRefusedError(Exception):
 # Where every satisfied `ask` is audited, under F078's durable "autonomy" data class.
 PERMISSION_GRANTS_FILENAME = "permission_grants.jsonl"
 
+# Where a job's pinned level lives, inside that job's own directory (DECISION F141 D2 (2)): a
+# job's own folder, never the durable "autonomy" class, so the pin dies with the job it pinned.
+JOB_LEVEL_FILENAME = "autonomy_level.json"
+
 
 # DECISION F141 D1 (3): the one key that can only ever make the `push` cell stricter than the
 # table says, never looser.
@@ -181,6 +186,51 @@ def permission_cell(action: str, level: str, *, push_allowed: bool) -> str:
     if action == "push" and not push_allowed:
         return PERMISSION_DENY
     return PERMISSION_MATRIX[(action, level)]
+
+
+# The level pinned to a job's first context, read back on every later one (DECISION F141 D2
+# (2)): a config change mid-run must not change what an already-running job may do.
+def pinned_job_level(job_id: str | None, *, root: Path | None = None) -> str:
+    if not job_id:
+        return AUTONOMY_DEFAULT_LEVEL
+    path = job_dir(job_id, root if root is not None else resolve_data_root()) / JOB_LEVEL_FILENAME
+    if not path.is_file():
+        return AUTONOMY_DEFAULT_LEVEL
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        parsed = None
+    level = parsed.get("level") if isinstance(parsed, dict) else None
+    if not isinstance(level, str) or level not in AUTONOMY_LEVELS:
+        raise AutonomyConfigError(
+            f"The level recorded for job {job_id} in {path} is not one of L2, L3, L4 or L5."
+        )
+    return level
+
+
+# Pins a job's level on its FIRST context, from the policy in force at that moment, so every
+# later read of this same job (`pinned_job_level`) answers unchanged (DECISION F141 D2 (2)).
+def pin_job_level(
+    job_id: str | None, *, config: RemedyConfig | None = None, root: Path | None = None,
+    now: datetime | None = None,
+) -> str:
+    if not job_id:
+        return AUTONOMY_DEFAULT_LEVEL
+    data_root = root if root is not None else resolve_data_root()
+    folder = job_dir(job_id, data_root)
+    path = folder / JOB_LEVEL_FILENAME
+    if path.is_file():
+        return pinned_job_level(job_id, root=data_root)
+    from packages.orchestration.autonomy_gate import load_autonomy_policy
+
+    policy = load_autonomy_policy(config, root=data_root, record=False)
+    if not folder.is_dir():
+        return policy.level
+    when = now if now is not None else datetime.now(timezone.utc)
+    durable_write_json(path, {
+        "level": policy.level, "pinned_at": when.isoformat(), "config_path": policy.config_path,
+    })
+    return policy.level
 
 
 def _lowest_allowing_level(action: str) -> str | None:
@@ -277,7 +327,7 @@ def require_permissions(
                 f"this instance, or {lift}."
             )
         return PermissionVerdict(
-            outcome=PERMISSION_ASK, actions=ordered, level=level, cells=cells,
+            outcome=PERMISSION_ASK, actions=ordered, level=level, cells=citations,
             reason=" ".join(sentences),
         )
 
@@ -301,7 +351,7 @@ def require_permissions(
         )
 
     return PermissionVerdict(
-        outcome=PERMISSION_ALLOW, actions=ordered, level=level, cells=cells,
+        outcome=PERMISSION_ALLOW, actions=ordered, level=level, cells=citations,
         reason=" ".join(sentences),
     )
 

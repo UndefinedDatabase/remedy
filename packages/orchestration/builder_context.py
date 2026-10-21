@@ -5,6 +5,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from packages.orchestration.permission_matrix import (
+    PermissionRequest,
+    pin_job_level,
+    require_permission,
+)
+
 
 def build_builder_context(
     *,
@@ -15,7 +21,14 @@ def build_builder_context(
     compiled_context_candidates: list[str] | None,
     compiled_context_token_budget: int | None,
     context_record_dir: str | Path | None,
+    job_id: str = "",
 ) -> tuple[str, list[str]]:
+    # DECISION F141 D2 (3): the `read` seam, checked against the level pinned to this job's
+    # first context — before anything else, so a denied read never touches the repo.
+    subject = f"the builder's context of job {job_id}" if job_id else "the builder's context"
+    require_permission(
+        "read", PermissionRequest(level=pin_job_level(job_id), subject=subject, job_id=job_id or None),
+    )
     # F107: the COMPILED context replaces the whole-file context pack's SELECTION —
     # never its formatting — and only when the caller hands in BOTH the task's fenced
     # scope and the repo's candidate listing; one list alone is a caller mistake and
