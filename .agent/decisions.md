@@ -30402,3 +30402,11 @@ CHOSEN: `model_server` is `{"provider", "host", "state", "loaded", "queue"}`. Fo
 ALTERNATIVES CONSIDERED: (a) counting free workers against a configured cap — rejected: no such cap exists to count against; (b) no probe at all — rejected: `model_unreachable` needs it.
 
 HOW TO REVERSE: delete the probe in `packages/orchestration/job_insight.py`, the two keys, and this paragraph.
+
+## DECISION F311 D3 — addendum: the phase of a job that does not run, and which reasons a job that does not run can read (2026-10-21)
+
+THE PROBLEM: DECISION F311 D3 names the phase of a job that waits to be planned, runs, or waits for an apply, and `GET /api/v1/jobs/{job}/insight` answers for any job, so a job that is paused, blocked, stopped, completed, failed or cancelled has no phase. D3's later stall reasons also read the pulse and the model server, which say nothing about a job that no longer runs: a finished job whose last call was Pi would read `model_unreachable` whenever the model server is down.
+
+CHOSEN: two more phases. `halted` for a job whose state is `paused`, `blocked` or `stopped`, which a person can resume; `ended` for a job whose state is `completed`, `failed` or `cancelled` and whose result waits for no apply. `apply_wait` still wins over both. The stall reading of a job whose state is not `running` reads `waiting_decision` when an open decision exists and `none` otherwise; every other reason is read only for a `running` job.
+
+HOW TO REVERSE: delete the two phases from `INSIGHT_PHASES` and their branches in `packages/orchestration/job_insight.py`, and this paragraph.
