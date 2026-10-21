@@ -281,6 +281,18 @@
      "case": "any command run with a remedy.toml that cannot be read",
      "before": "`unhandled_command_error`, exit code 1, and a crash report written",
      "after": "`config_invalid`, exit code 2, no crash report; code 2's meaning names the file (F307, DECISION F307 D17)"
+    },
+    {
+     "field": "the status, the body and the ledger line of a request",
+     "case": "PATCH, HEAD or OPTIONS under /api/v1",
+     "before": "501 as an HTML page, no ledger line, and a `Server` header naming the Python version",
+     "after": "401 `api_token_invalid` without the token, 405 `api_method_not_allowed` with it, one ledger line, and `Server: Remedy` (F307, DECISION F307 D18)"
+    },
+    {
+     "field": "`api_method_not_allowed`'s message",
+     "case": "PUT or DELETE under /api/v1",
+     "before": "this server answers only GET under /api/v1; writes are answered by the supervisor that `remedy serve start` starts",
+     "after": "<method> is not answered under /api/v1; its routes answer GET and POST (F307, DECISION F307 D18)"
     }
    ]
   }

@@ -985,6 +985,36 @@ def test_post_put_and_delete_each_write_their_own_ledger_line(tcp_server):
         assert record["path"] == "/api/v1/interface"
 
 
+# -- L2: PATCH, HEAD and OPTIONS, the method named, and the Server header (R-1303, R-1304) ----
+
+
+@pytest.mark.parametrize("method", ["PUT", "PATCH", "OPTIONS"])
+def test_a_refused_method_is_named_and_never_sent_to_the_supervisor(tcp_server, method):
+    status, body, _headers = _tcp_request(
+        tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+    assert status == 405, body
+    assert body["error"] == "api_method_not_allowed"
+    assert body["message"] == f"{method} is not answered under /api/v1; its routes answer GET and POST"
+
+
+def test_patch_head_and_options_are_refused_and_each_writes_its_ledger_line(tcp_server):
+    data_root = Path(os.environ["REMEDY_DATA_DIR"])
+    statuses = [_tcp_request(tcp_server, method, "/api/v1/interface")[0]
+                for method in ("PATCH", "HEAD", "OPTIONS")]
+    statuses.append(_tcp_request(tcp_server, "HEAD", "/api/v1/interface", headers=_bearer(SERVER_TOKEN))[0])
+    assert statuses == [401, 401, 401, 405]
+    lines = (data_root / "api" / "calls.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [(json.loads(line)["method"], json.loads(line)["status"]) for line in lines] == [
+        ("PATCH", 401), ("HEAD", 401), ("OPTIONS", 401), ("HEAD", 405)]
+
+
+def test_every_answer_names_its_server_as_remedy_only(tcp_server):
+    for method in ("GET", "HEAD", "OPTIONS"):
+        _status, _body, headers = _tcp_request(
+            tcp_server, method, "/api/v1/interface", headers=_bearer(SERVER_TOKEN))
+        assert headers["Server"] == "Remedy", method
+
+
 # -- M: the write route that answers a decision (S4a, DECISION F253 D9) -----------
 
 DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"

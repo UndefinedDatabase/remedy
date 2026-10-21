@@ -448,7 +448,7 @@ with the code that calls it.
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 4943 | `packages/orchestration/pingpong_job.py` |
 | 4921 | `packages/orchestration/pingpong_loop.py` |
-| 1826 | `packages/orchestration/ui_server.py` |
+| 1824 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
 | 2293 | `apps/cli/command_catalog.py` |

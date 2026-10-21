@@ -1632,8 +1632,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                                      client_name=client.name if client else "")
 
     def _send_public_api_refused_method(self, method: str, path: str) -> None:
-        """Answer POST, PUT or DELETE under the public HTTP API namespace (R-1188, DECISION
-        F253 D3 (4)).
+        """Answer a method no route takes under the public HTTP API namespace: a POST with no runner,
+        PUT, DELETE, PATCH, HEAD or OPTIONS (R-1188, R-1303, DECISION F253 D3 (4)).
 
         The token is decided first (401 `api_token_invalid`), the same order
         `_send_public_api_get` uses, so an unauthenticated caller learns nothing before
@@ -1649,7 +1649,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if not accepted:
             status, body = public_api_token_refusal()
         else:
-            status, body = public_api_method_refusal()
+            status, body = public_api_method_refusal(method)
         self._send_public_api_answer(method, path, status, body, {},
                                      client_name=client.name if client else "")
 
@@ -1795,23 +1795,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return None, _command_field_error("expected_version", COMMAND_TASK_VERSION_MESSAGE)
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
-    def do_PUT(self) -> None:  # noqa: N802
-        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
+    def _refuse_public_api_method(self) -> None:
+        # `path` is read defensively, the way `do_POST` reads it, for the same reason; no route under
+        # /api/v1 answers PUT, DELETE, PATCH, HEAD or OPTIONS, so each is refused alike (R-1188, R-1303).
         parsed = urlparse(getattr(self, "path", ""))
         path = parsed.path.rstrip("/") or "/"
-        if is_public_api_path(path):  # F253 R-1188
-            self._send_public_api_refused_method("PUT", path)
+        if is_public_api_path(path):
+            self._send_public_api_refused_method(self.command, path)
             return
         self._send_json(*_safe_error(405, "method not allowed"))
 
-    def do_DELETE(self) -> None:  # noqa: N802
-        # `path` is read defensively, the way `do_POST` reads it, for the same reason.
-        parsed = urlparse(getattr(self, "path", ""))
-        path = parsed.path.rstrip("/") or "/"
-        if is_public_api_path(path):  # F253 R-1188
-            self._send_public_api_refused_method("DELETE", path)
-            return
-        self._send_json(*_safe_error(405, "method not allowed"))
+    do_PUT = do_DELETE = do_PATCH = do_HEAD = do_OPTIONS = _refuse_public_api_method  # noqa: N815
+
+    def version_string(self) -> str:
+        """The `Server` header: one fixed name, never the Python version (R-1303)."""
+        return "Remedy"
 
     def _send_json(self, code: int, data: dict[str, Any],
                    headers: dict[str, str] | None = None) -> None:

@@ -91,8 +91,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP, and F141
 #: (DECISION F141 D7) to `1.24` for `autonomy`'s `push_allowed` and `permissions`, with none either,
 #: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`, and F307
-#: (DECISION F307 D11) to `1.26` for an order's `repo_path`, and F307 (DECISION F307 D17) to `1.27`
-#: for exit code 2 on a `remedy.toml` that cannot be read, each with no change over HTTP.
+#: (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over HTTP, and F307
+#: (DECISION F307 D17, D18) to `1.27` for exit code 2 on a `remedy.toml` that cannot be read and,
+#: over HTTP, the refusals of the methods, the query values and the path values no route takes.
 PUBLIC_API_VERSION = "1.27"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
@@ -167,15 +168,17 @@ def public_api_token_refusal() -> tuple[int, dict[str, Any]]:
     )
 
 
-def public_api_method_refusal() -> tuple[int, dict[str, Any]]:
-    """The 405 a caller gets for a method this server does not answer under this namespace."""
+def public_api_method_refusal(method: str = "POST") -> tuple[int, dict[str, Any]]:
+    """The 405 a caller gets for a method this server does not answer under this namespace: a write,
+    POST, where this server has no supervisor's runner, or a method no route answers, named (R-1304)."""
     from apps.cli.json_envelope import build_error
 
-    return 405, build_error(
-        "api_method_not_allowed",
-        "this server answers only GET under /api/v1; writes are answered by the supervisor "
-        "that `remedy serve start` starts",
-    )
+    if method == "POST":
+        message = ("this server answers only GET under /api/v1; writes are answered by the supervisor "
+                   "that `remedy serve start` starts")
+    else:
+        message = f"{method} is not answered under /api/v1; its routes answer GET and POST"
+    return 405, build_error("api_method_not_allowed", message)
 
 
 def _client_interface_answer() -> dict[str, Any]:

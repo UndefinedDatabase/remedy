@@ -428,7 +428,7 @@ def test_the_api_port_without_the_token_is_401(root, running_with_api):
 
 @pytest.mark.parametrize("method,path", [
     (method, path)
-    for method in ("GET", "POST", "PUT", "DELETE")
+    for method in ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
     for path in ("/", "/api", "/api/state", "/index.html",
                  "/api/jobs/any-job/commands", "/api/v2/health")
 ])

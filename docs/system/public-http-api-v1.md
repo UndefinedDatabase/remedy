@@ -66,10 +66,12 @@ answers 400 with `api_query_invalid` (DECISION F253 D2 (2), D5 (1)); and every o
 route answers is one its table row's `Refusals` column names, sharing its HTTP status, its
 `error` token and its `message` sentence with the route's own twin command. The two routes that
 start work, `POST /api/v1/orders` and `POST /api/v1/jobs/{job}/run`, are the exception: what they
-refuse before anything starts is their own, as the sections Orders and Runs say. `PUT` and `DELETE`
-under `/api/v1` answer 401 with `api_token_invalid` without the token, and 405 with
-`api_method_not_allowed` with it; each such request is written to the ledger below like any
-other. A `POST` is a write, and the next section says how a write is answered.
+refuse before anything starts is their own, as the sections Orders and Runs say. `PUT`, `DELETE`,
+`PATCH`, `HEAD` and `OPTIONS` under `/api/v1` answer 401 with `api_token_invalid` without the
+token, and 405 with `api_method_not_allowed` with it, whose message names the method; each such
+request is written to the ledger below like any other. Every answer names its server as `Remedy`
+in its `Server` header, never the Python version behind it. A `POST` is a write, and the next
+section says how a write is answered.
 
 ## Writes
 
@@ -89,8 +91,8 @@ begins with `-`, or that holds `/` or a NUL character once decoded, answers 400 
 repository answers 409 with `api_job_repository_unknown`, because the API applies only to the
 repository a job's own record names and never to one the caller chooses; and a command that
 prints no answer within 120 seconds answers 500 with `api_command_failed`. The supervisor runs one
-command for a job at a time, so a second write for that job waits for the first. `PUT` and
-`DELETE` still answer 405.
+command for a job at a time, so a second write for that job waits for the first. `PUT`, `DELETE`,
+`PATCH`, `HEAD` and `OPTIONS` still answer 405.
 
 A client token (see "The token") is refused with 403 and `api_client_policy_refused` when an order
 names a project outside the client's projects, when an order's header does not name a
