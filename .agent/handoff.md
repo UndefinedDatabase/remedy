@@ -1,87 +1,123 @@
-# Handback — F060 round 7: the closing round
+# Handback — F303 round 1: claim, the inventory and the contract's two missing proofs
 
 ## Session
 
-SESSION 1 of feature F060 · round 7 · rounds so far 7
+SESSION 1 of feature F303 · round 1 · rounds so far 1
 
-Context self-assessment: this worker verified every prepared digest, copied each prepared file by byte copy, ran the round's one selection once, and wrote this handback with ample context margin left.
+Context self-assessment: this worker verified every prepared digest, byte-copied the nine C1
+files, wrote the two new contract proofs and widened the 404 parametrization from the block's
+own specification, ran every gate once, and wrote this handback with ample context margin left.
 
-Fortschritt: 100 % (F060 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~15 % (claim, inventory and the contract's proofs landed · note route and MCP facet open) — Schätzung
 
 ## Range
 
-Review of `8c361bfac`..`HEAD` on `feature/f060-long-run-certificate`.
+Review of `2621bbe2e`..`HEAD` on `feature/f303-face-public-api`.
 
 ## Commits
 
-### d47fd4ecc F060 R7 C1: book round 6, DECISION F060 D5, the plan, the block and the PR body
+### ef978b9c6 F303 R1 C1: claim F303, book F060 R7, the inventory and DECISION F303 D1
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f060-r7.md` | 109/0 | this round's block, byte-saved (109 lines, sha256 `7fbfb38c897733828f1d26ed535ba138a602cfae92f22609759eef2ae2a5a4f8`, equal to `block.md`) |
-| `.agent/authored/f060-r7-pr_body.md` | 60/0 | the pull request's body, prepared file, byte copy |
-| `.agent/live_review.md` | 2/0 | round 6 booked (prepared file, byte copy) |
-| `.agent/decisions.md` | 10/0 | DECISION F060 D5 appended (prepared file, byte copy) |
-| `.agent/plan.md` | 6/6 | rewritten (prepared file, byte copy) |
+| `.agent/authored/f303-r1.md` | 142/0 | this round's block, byte copy (142 lines, sha256 `52ad16a12b355e0a07c2583a2dcddca5529a05cc3b25cf501869a6626450cd71`, equal to `block.md`) |
+| `.agent/f303_inventory.md` | 60/0 | T001's inventory of what the public API already publishes (prepared file, byte copy) |
+| `docs/roadmap/STATUS.md` | 1/1 | F303 claimed, `[ ]` to `[~]` (prepared file, byte copy) |
+| `docs/roadmap/features/T12_F303.md` | 4/0 | Acceptance line for R-1329, moved here by DECISION F303 D1 (prepared file, byte copy) |
+| `docs/roadmap/features/T2_F307.md` | 1/1 | names R-1329's move to F303 (prepared file, byte copy) |
+| `.agent/live_review.md` | 17/13 | re-headed at F303's claim, the Owner line moving R-1329, F060 round 7's gate booked (prepared file, byte copy) |
+| `.agent/decisions.md` | 14/0 | DECISION F303 D1 appended (prepared file, byte copy) |
+| `.agent/plan.md` | 14/11 | rewritten for F303 round 1 (prepared file, byte copy) |
+| `.agent/context.md` | 8/10 | rewritten for F303 (prepared file, byte copy) |
 
-### 4bbac670f F060 R7 C2: F060's Built State brought current
+### 6fbbfab16 F303 R1 C2: the route served outside the public API is named, and the contract's served set and the logs order are proved
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T3_F060.md` | 7/1 | Built State names the closure (prepared file, byte copy) |
+| `docs/system/public-http-api-v1.md` | 9/0 | hand-written section "Served outside the public API" naming the socket's command door (DECISION F303 D1 (3)) |
+| `tests/ui_server/test_public_api.py` | 75/0 | three new tests: the logs route's order over one run proved through the route, not only below it (DECISION F303 D1 (4)); the contract page's served-outside-the-API set pinned to the one door; the socket's refusal set over eight method/path pairs plus a sibling case proving the door itself refuses an unauthenticated caller |
+| `tests/orchestration/test_serve_daemon.py` | 4/3 | `test_the_api_port_answers_every_cockpit_only_path_404` widened to every pair of the four methods and six paths the block names (its own name and body unchanged) |
 
-### C3 F060 R7 C3: accept F060 in STATUS with its README sync and the self-use queue (this commit)
+### C3 F303 R1 C3: handback (this commit)
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | 1/1 | F060 accepted (prepared file, byte copy) |
-| `README.md` | 11/2 | counts and Tier 3 list synced (prepared file, byte copy) |
-| `scripts/self_use_queue.json` | 1/1 | SU-071 consumed by F060 (prepared file, byte copy) |
-| `.agent/handoff.md` | edited | this handback |
+| `.agent/handoff.md` | new | this handback |
 
 ## External actions
 
-- `git push origin feature/f060-long-run-certificate` and `gh pr create` follow this commit; their outcomes (push result, pull request number and address) are reported in the session reply.
+- `git push -u origin feature/f303-face-public-api` follows this commit; its outcome is reported
+  in the session reply.
+- No pull request is opened this round (the block orders none).
 - No merge. No worktree was added or removed. No provider call.
 
 ## Verification
 
-Preconditions: `block.md` (109 lines), `verify.py`, `run_selection.py`, `selection.txt`, `digests.txt` matched the digests in the prompt; the nine `c1-`/`c2-`/`c3-` files matched `digests.txt`. Before the first write `HEAD` read `8c361bfac`, equal to `origin/feature/f060-long-run-certificate`, the tree was clean and `.agent/STOP` absent.
+Preconditions: `block.md` (142 lines), `verify.py`, `run_selection.py`, `selection.txt` and
+`digests.txt` matched the digests given in the prompt; the nine `c1-` files matched the digests
+in `digests.txt`. Before the first write, `HEAD` read `2621bbe2e`, the tree was clean,
+`.agent/STOP` was absent, and `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+answered `[]`.
 
-1. Gate 1: `git status --porcelain` showed exactly ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `python3 .remedy-wt/f060-r7/prep/verify.py .` — every line `True`, `absent	C3`, last line `ALL True`.
-2. Gate 2: `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json` — `11 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
-3. Gate 3: `python3 .remedy-wt/f060-r7/prep/run_selection.py . .remedy-wt/f060-r7-worker/selection-output.txt` — `paths 74`, `exit 0`, `3419 passed, 2 skipped in 24.62s`; no FAILED or ERROR line, no `process(es) behind` line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine F252, reviewer agent file deleted deliberately); `tests/test_install_smoke.py:175` (install smoke is opt-in, needs REMEDY_INSTALL_SMOKE=1 and network).
-4. Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 1, `fail_count` 1, only `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`; `open_finding_ids` of `scripts/rotate_live_review.py` over `.agent/live_review.md` — `88`.
-5. Gate 5: pending, reported in the session reply.
+1. Gate 1: `git status --porcelain` — empty. `python3 .remedy-wt/f303-r1/prep/verify.py .` — every
+   line `True` (17 checks), `absent	C3`, last line `ALL True`.
+2. Gate 2: `python3 -m ruff check tests/ui_server/test_public_api.py tests/orchestration/test_serve_daemon.py`
+   — `All checks passed!`
+3. Gate 3: `python3 .remedy-wt/f303-r1/prep/run_selection.py . .remedy-wt/f303-r1-worker/selection-output.txt`
+   — `paths 77`, `exit 0`, `3832 passed, 2 skipped in 81.79s`; no FAILED or ERROR line, no
+   `process(es) behind` line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine F252,
+   the reviewer agent file deleted deliberately); `tests/test_install_smoke.py:175` (install smoke
+   is opt-in, needs REMEDY_INSTALL_SMOKE=1 and network).
+4. Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 1, `fail_count` 1, only
+   `high_blockers_open`, naming the same twelve findings as before this round: `R-1335, R-1336,
+   R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`.
+5. Gate 5: `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`
+   — `88`.
+6. Gate 6: `git -C . diff --stat 2621bbe2e HEAD -- packages apps` — prints nothing.
 
 ## Authored-text proofs
 
-C1 (five paths), C2 and C3 (three paths): the prepared files are byte copies, proven equal over bytes at copy time and by `verify.py` (every `equals` line `True`).
+C1's `.agent/authored/f303-r1.md`: byte copy of `c1-.agent__authored__f303-r1.md`, itself
+byte-equal to `block.md` (142 lines, sha256
+`52ad16a12b355e0a07c2583a2dcddca5529a05cc3b25cf501869a6626450cd71`), both readings matching before
+the commit. The other eight C1 paths: prepared files, proven equal over bytes at copy time and
+again by `verify.py` (every `equals` line `True`). C2 applied no reviewer-authored text; its two
+tests and the contract section are this worker's own, written from the block's specification in
+`## Change set — C2` of `block.md`.
 
 ## Deviations & assumptions
 
-None.
+None. The change set, the paths touched per commit and the gate order all follow the block
+exactly.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
+| C0 | done | branch created at `2621bbe2e` |
 | C1 | done | |
 | C2 | done | |
-| Rotation commit | skipped | DECISION F060 D5: no rotation this feature |
 | C3 | done | this commit |
 | Gate 1 | done | ALL True |
-| Gate 2 | done | numstat reported |
-| Gate 3 | done | exit 0, 3419 passed, 2 skipped |
-| Gate 4 | done | fail_count 1, 88 open |
-| Gate 5 | pending | reported in the session reply |
+| Gate 2 | done | All checks passed! |
+| Gate 3 | done | exit 0, 3832 passed, 2 skipped |
+| Gate 4 | done | fail_count 1, high_blockers_open only |
+| Gate 5 | done | 88 |
+| Gate 6 | done | prints nothing |
 | Push | pending | reported in the session reply |
-| Pull request | pending | reported in the session reply |
 
 ## Next
 
-In order: Phase 1 rule 1 (`.agent/STOP`); the Open PR Gate, which merges F060's pull request in the NEXT session and never in this one; Rule A5, which proposes the next feature.
+In order: Phase 1 rule 1 (`.agent/STOP`); the Open PR Gate; book round 1's verdict in the next
+round's first commit; round 2: the steering-note route.
 
 Operator questions open: 3
-Open findings: 88 (gate 4: `open_finding_ids` over `.agent/live_review.md`, at commit C3 of this round; the integrity check names only the twelve findings of DECISION F310 D7)
+Open findings: 88
 
 ## For the operator, in plain sentences
 
-Remedy can now write a certificate for a job that has ended: one small file holding the job's report, cost record, checks, ownership record and run manifest, each named by its fingerprint, together with what the job claims about itself. Anyone with Remedy installed can check that file on another machine without the job's data. The check says first how the run ended and then whether every file and every claim is intact, and it names the file that is not. A certificate of a failed run is as valid as one of a successful run and says plainly that it failed. A certificate proves the files are intact; it is not a signature. The whole test collection ran once on the code that ships and passed. The review package is `remedy-review-20261021-150936-READY_FOR_REVIEW.zip`, in the zips folder of the history repository under your home directory. A pull request is open and will be merged at the start of the next session unless you merge it earlier. Three questions wait for you, each already answered with the session's recommendation.
+This round claims the feature that makes sure everything the edition needs is already published,
+with nothing else answered outside what is written down. It records what the interface already
+offers today, and then closes two small gaps in the written description rather than in the
+running system: it names the one local channel that still answers something outside the
+published list, and it proves that a job's log lines come back in the order they really
+happened, not the order they happened to land on disk. Nothing that runs a command changed this
+round; only the written description and its tests did. Three questions are still waiting for a
+decision, each with a recommendation already attached.
