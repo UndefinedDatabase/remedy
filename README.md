@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-153 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+154 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -48,7 +48,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 10 | 16 |
+| 12 | Observability & Operations | 11 | 16 |
 | 13 | Multi-Repo & Organization | 3 | 9 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |
@@ -948,6 +948,14 @@ question of a budget stop, whose open blocking criteria every decision of the di
 under `blockers`; the release matrix lists every 1.22 addition and value change; the folder
 `docs/system/client-answers-v1/` holds answers recorded from the real commands for a client's own
 tests, which `scripts/record_client_answers.py` records and checks).
+
+F303 the face on the public API (everything the universe's edition `remedy` shows is now published
+under `/api/v1`, every route is pinned by a test, and nothing outside the contract page is served; a
+program can send a steering note to one task of a running job through `POST /api/v1/jobs/{job}/note`,
+the twin of `remedy job steer`, and a job's story says whether a note would be accepted now; and
+`remedy client mcp --allow <tool>` serves Remedy's verify check, gate status and evidence bundle as
+tools of the Model Context Protocol to an orchestrator that starts it, offering no tool unless one is
+named; the page `docs/system/mcp-server-v1.md` describes it).
 
 Accepted in Tier 13 so far:
 F205 multi-repo missions (one order can now name several registered projects, one `project:` line
