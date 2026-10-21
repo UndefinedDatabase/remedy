@@ -1,105 +1,87 @@
-# Handback — F060 round 6: the evidence job and the review package
+# Handback — F060 round 7: the closing round
 
 ## Session
 
-SESSION 1 of feature F060 · round 6 · rounds so far 6
+SESSION 1 of feature F060 · round 7 · rounds so far 7
 
-Context self-assessment: this worker verified every prepared digest, copied C1 and C2 by byte copy, ran the evidence job and the package build through the launcher once each, and wrote this handback with ample context margin left.
+Context self-assessment: this worker verified every prepared digest, copied each prepared file by byte copy, ran the round's one selection once, and wrote this handback with ample context margin left.
 
-Fortschritt: ~97 % (everything but the closing round is done) — Schätzung
+Fortschritt: 100 % (F060 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
 
 ## Range
 
-Review of `55e7873d7`..`HEAD` on `feature/f060-long-run-certificate`.
+Review of `8c361bfac`..`HEAD` on `feature/f060-long-run-certificate`.
 
 ## Commits
 
-### ffa5c1cad F060 R6 C1: book round 5, resolve R-1406, the plan and the block
+### d47fd4ecc F060 R7 C1: book round 6, DECISION F060 D5, the plan, the block and the PR body
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f060-r6.md` | 118/0 | this round's block, byte-saved (118 lines, sha256 `88dd8878e11fe0ecbab846c1056f3715811ef57e7fb8df25d5721a7e05a8ae3e`, equal to `block.md`) |
-| `.agent/live_review.md` | 4/0 | round 5 booked, R-1406 resolved (prepared file, byte copy) |
-| `.agent/plan.md` | 5/7 | rewritten (prepared file, byte copy) |
+| `.agent/authored/f060-r7.md` | 109/0 | this round's block, byte-saved (109 lines, sha256 `7fbfb38c897733828f1d26ed535ba138a602cfae92f22609759eef2ae2a5a4f8`, equal to `block.md`) |
+| `.agent/authored/f060-r7-pr_body.md` | 60/0 | the pull request's body, prepared file, byte copy |
+| `.agent/live_review.md` | 2/0 | round 6 booked (prepared file, byte copy) |
+| `.agent/decisions.md` | 10/0 | DECISION F060 D5 appended (prepared file, byte copy) |
+| `.agent/plan.md` | 6/6 | rewritten (prepared file, byte copy) |
 
-### c9b3cbc4b F060 R6 C2: the evidence script
+### 4bbac670f F060 R7 C2: F060's Built State brought current
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f060-r6-create_f060_evidence.py` | 452/0 | the evidence script, prepared file, byte copy |
+| `docs/roadmap/features/T3_F060.md` | 7/1 | Built State names the closure (prepared file, byte copy) |
 
-### C3 F060 R6 C3: handback (this commit)
+### C3 F060 R7 C3: accept F060 in STATUS with its README sync and the self-use queue (this commit)
 | Path | +/- | Reason |
 |---|---|---|
+| `docs/roadmap/STATUS.md` | 1/1 | F060 accepted (prepared file, byte copy) |
+| `README.md` | 11/2 | counts and Tier 3 list synced (prepared file, byte copy) |
+| `scripts/self_use_queue.json` | 1/1 | SU-071 consumed by F060 (prepared file, byte copy) |
 | `.agent/handoff.md` | edited | this handback |
 
 ## External actions
 
-- `git push -u origin feature/f060-long-run-certificate` after C2: `55e7873d7..c9b3cbc4b`, no retry needed.
-- `git push origin feature/f060-long-run-certificate` follows this commit; its outcome is reported in the session reply.
-- No pull request was opened. No worktree was added or removed. No provider call.
+- `git push origin feature/f060-long-run-certificate` and `gh pr create` follow this commit; their outcomes (push result, pull request number and address) are reported in the session reply.
+- No merge. No worktree was added or removed. No provider call.
 
 ## Verification
 
-Preconditions: `block.md` (118 lines), `verify.py`, `launch.py`, `wait.py`, `digests.txt` matched the digests in the prompt; the four `c1-`/`c2-` files matched `digests.txt`. Before the first write `HEAD` read `55e7873d7`, equal to `origin/feature/f060-long-run-certificate`, the tree was clean and `.agent/STOP` absent.
+Preconditions: `block.md` (109 lines), `verify.py`, `run_selection.py`, `selection.txt`, `digests.txt` matched the digests in the prompt; the nine `c1-`/`c2-`/`c3-` files matched `digests.txt`. Before the first write `HEAD` read `8c361bfac`, equal to `origin/feature/f060-long-run-certificate`, the tree was clean and `.agent/STOP` absent.
 
-1. Gate 1: after C2 `git status --porcelain` empty; `python3 .remedy-wt/f060-r6/prep/verify.py .` — every line `True`, C3 `absent`, last line `ALL True`.
-2. Gate 2: A2 and A3 readings below, as ordered.
-3. Gate 3: `python3 -m apps.cli.main integrity check --json` — exit 1, `fail_count` 1, only `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`; `open_finding_ids` over `.agent/live_review.md` — `88`; `git status --porcelain` empty.
+1. Gate 1: `git status --porcelain` showed exactly ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `python3 .remedy-wt/f060-r7/prep/verify.py .` — every line `True`, `absent	C3`, last line `ALL True`.
+2. Gate 2: `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json` — `11 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
+3. Gate 3: `python3 .remedy-wt/f060-r7/prep/run_selection.py . .remedy-wt/f060-r7-worker/selection-output.txt` — `paths 74`, `exit 0`, `3419 passed, 2 skipped in 24.62s`; no FAILED or ERROR line, no `process(es) behind` line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine F252, reviewer agent file deleted deliberately); `tests/test_install_smoke.py:175` (install smoke is opt-in, needs REMEDY_INSTALL_SMOKE=1 and network).
+4. Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 1, `fail_count` 1, only `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`; `open_finding_ids` of `scripts/rotate_live_review.py` over `.agent/live_review.md` — `88`.
+5. Gate 5: pending, reported in the session reply.
 
 ## Authored-text proofs
 
-C1 (three paths) and C2: the prepared files are byte copies, proven equal over bytes at copy time and again by `verify.py` (every `equals` line `True`).
-
-## Evidence and package
-
-Evidence job id: `f060r6e1001`. `git reflog -n 3 --date=iso` before the job: `c9b3cbc4b` C2, `ffa5c1cad` C1, `55e7873d7` R5 C7 (the job did not move HEAD).
-
-A2, quoted from the log (exit line `exit 0 wall 1503.3`):
-
-```
-head c9b3cbc4b82312d9c3c2b5180ced6dbb45673a08
-ancestry-path count 28
-first-parent count 28
-collected node ids 10975, deselected 182
-red control: unsafe among the real ids 0 []
-red control: planted id -> a local absolute path
-pytest exit 0, {'passed': 10969, 'failed': 0, 'skipped': 6}, output_hash a90df590dc89bf793c441db472cd8e97ceb4ba4af1a25d4c5ea432b95515cbdb
-validate_verification_tests problems [] passed 10969
-is_valid_current_run True
-validation_errors []
-```
-
-Summary JSON: `verdict` PASS_WITH_RISKS, `authority_count` 23, `commit_count` 28, `manual_completion` true, `total_passed` 10969.
-
-A3, quoted from the package build (exit line `exit 0 wall 15.5`):
-
-```
-PACKAGE_STATUS=READY_FOR_REVIEW
-REVIEW_SUBJECT_ALIGNMENT=PASS
-EVIDENCE_AUTHORITATIVE=true
-REVIEW_PACKAGE_DIR=~/Repos/remedy-history/zips
-ZIP_PATH=~/Repos/remedy-history/zips/remedy-review-20261021-150936-READY_FOR_REVIEW.zip
-```
-
-- Package name: `remedy-review-20261021-150936-READY_FOR_REVIEW.zip`; directory `~/Repos/remedy-history/zips`.
-- SHA-256 (Python over the file): `97f5c525bc0d5a06a9935df49fbc999ea26913d8789c047561ac86aff4569cec`.
-- `.review_zip_manifest.json` inside the package, `committed_review_subject`: base `646c4b1d7aebe171d9e8a14ea235161c192b286c`, head `c9b3cbc4b82312d9c3c2b5180ced6dbb45673a08` (C2), `commit_count` 28, `base_is_ancestor` true.
-- `zipfile.is_zipfile` True; `testzip()` None. The first build attempt in the default directory succeeded; no second attempt was needed.
-
-## Staging reclaim
-
-A1 preview (`data reclaim --orphans`): `Reclaimable: nothing`; `Would free 0 B in 0 paths`; no candidate and no refused path (the listed classes are all durable and not addressed by reclaim). The apply step was skipped as ordered; the empty reading is recorded.
+C1 (five paths), C2 and C3 (three paths): the prepared files are byte copies, proven equal over bytes at copy time and by `verify.py` (every `equals` line `True`).
 
 ## Deviations & assumptions
 
 None.
 
+## Item status
+
+| Item | Status | Reason |
+|---|---|---|
+| C1 | done | |
+| C2 | done | |
+| Rotation commit | skipped | DECISION F060 D5: no rotation this feature |
+| C3 | done | this commit |
+| Gate 1 | done | ALL True |
+| Gate 2 | done | numstat reported |
+| Gate 3 | done | exit 0, 3419 passed, 2 skipped |
+| Gate 4 | done | fail_count 1, 88 open |
+| Gate 5 | pending | reported in the session reply |
+| Push | pending | reported in the session reply |
+| Pull request | pending | reported in the session reply |
+
 ## Next
 
-In order: Phase 1 rule 1 (`.agent/STOP`); rule 2 (Open PR Gate; no pull request is open for this branch yet); the reviewer reviews round 6 and books its verdict in the next round's first commit; the closing round: the Built State's closure facts, the rotation or its recorded skip, SU-071's consumed_by, the STATUS flip with the README sync, and the pull request, left unmerged.
+In order: Phase 1 rule 1 (`.agent/STOP`); the Open PR Gate, which merges F060's pull request in the NEXT session and never in this one; Rule A5, which proposes the next feature.
 
 Operator questions open: 3
-Open findings: 88 (gate 3: `open_finding_ids` over `.agent/live_review.md`, at commit `c9b3cbc4b`; the integrity check names only the twelve findings of DECISION F310 D7)
+Open findings: 88 (gate 4: `open_finding_ids` over `.agent/live_review.md`, at commit C3 of this round; the integrity check names only the twelve findings of DECISION F310 D7)
 
 ## For the operator, in plain sentences
 
-The evidence for this feature was collected and checked: the test run behind it passed in full, with none failing, and the checks on that evidence came back clean. The review package was built, it is marked ready for review, and it sits in the review folder under your home directory, in the zips folder of the history repository.
+Remedy can now write a certificate for a job that has ended: one small file holding the job's report, cost record, checks, ownership record and run manifest, each named by its fingerprint, together with what the job claims about itself. Anyone with Remedy installed can check that file on another machine without the job's data. The check says first how the run ended and then whether every file and every claim is intact, and it names the file that is not. A certificate of a failed run is as valid as one of a successful run and says plainly that it failed. A certificate proves the files are intact; it is not a signature. The whole test collection ran once on the code that ships and passed. The review package is `remedy-review-20261021-150936-READY_FOR_REVIEW.zip`, in the zips folder of the history repository under your home directory. A pull request is open and will be merged at the start of the next session unless you merge it earlier. Three questions wait for you, each already answered with the session's recommendation.

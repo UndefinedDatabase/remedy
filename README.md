@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-152 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+153 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -39,7 +39,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 47 | 48 |
-| 3 | Full Token Economy & Autonomy | 12 | 29 |
+| 3 | Full Token Economy & Autonomy | 13 | 29 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -457,6 +457,15 @@ test campaign and a written record of why the level was raised; L4 and L5 add re
 and idea drafts, which nothing starts yet; approvals, budgets, fences and the watchdog apply at
 every level; `remedy status` shows the level and any start that waits; the page
 `docs/system/autonomy-levels-v1.md` describes it).
+
+F060 job certificate (`remedy job certificate <job-id>` writes one small file that lets a job that
+has ended prove itself to someone who was not there: its report, its cost record, its checks, its
+ownership record and its run manifest, each named by its fingerprint and size, with what the job
+claims about itself; a large diff or run log is named by its fingerprint instead of included;
+`remedy verify <bundle>` checks the file on any machine, without the job's data folder, says first
+how the run ended and then whether every file and every claim is intact, and names the file that is
+not; a certificate proves integrity, not who made it; the page `docs/system/job-certificate-v1.md`
+describes it).
 
 Accepted in Tier 4 so far:
 F266 remedy study (a bounded, read-only repository comprehension pass —
