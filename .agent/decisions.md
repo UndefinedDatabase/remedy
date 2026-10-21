@@ -31027,3 +31027,15 @@ WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: when a backup model stands in, 
 ALTERNATIVES CONSIDERED: (a) a stream prefix per link, as R-1278's text proposes, REJECTED because the call-reference grammar refuses it; (b) landing R-1276 or R-1278 alone, REJECTED for the artifact gate above; (c) counting a failed-over call as one call, REJECTED because every invocation costs and the budget must see it.
 
 HOW TO REVERSE: restore `model_failover.py`, `role_provider_factory.py`, `pingpong_provider_call.py` and the `ClaudeCliProvider` constructor from git history, move the Ollama provider back, restore the ledger rows and pins, and delete this paragraph.
+
+## DECISION F307 D15 — `run_pingpong`'s structural step (6) builds both role providers in one block; the run reads the failover table once and hands it, with its stop probe, to the walk, which stops between links (2026-10-22, R-1287, R-1289)
+
+THE PROBLEM: R-1289 asks that the failover table be read once per run and handed down; R-1287 asks that the walk consult the run's stop before each link. Both arrive where `run_pingpong` builds its two role providers, inside a function the structure ledger lists at 1,274 lines in a file it lists at 4,953, and none of whose four written steps is that construction.
+
+THE DECISION: (1) Step (6) joins `run_pingpong`'s boundary and is taken in a commit of its own that changes no behaviour: the two constructions become one block whose two calls share their options, and `_create_provider_with_cwd` hands every keyword on to `create_role_provider` unchanged, so a test that replaces either still sees each call. (2) R-1289: the block reads `resolve_failover_chains()` once and hands the table to both roles; `create_role_provider` reads the table itself only when no table is given. (3) R-1287: the block hands the run's own `stop_check` to both roles, and `FailoverProvider` consults it before each link; a stop ends the walk there as a chain that ran out, so the call answers with the failure it already has. While the primary is held down and the stop comes before the first link, the primary is still called once, as it would be with no chain at all.
+
+WHAT THIS CHANGES BEHAVIOURALLY, STATED PLAINLY: a stop or a spent budget now ends a chain of backup models before the next one is tried, and a run reads its backup table once instead of once for each role.
+
+ALTERNATIVES CONSIDERED: (a) stopping the held primary's call too, REJECTED because the walk would then answer with no output at all, which no caller handles; (b) one of the four written steps first, REJECTED because none of them reaches the construction, and moving code into a function of its own in the same file would grow the file the ratchet holds.
+
+HOW TO REVERSE: restore the two constructions, `_create_provider_with_cwd`'s parameters, the factory's own table read and the walk's loop from git history, restore the ledger rows and pins, and delete this paragraph.
