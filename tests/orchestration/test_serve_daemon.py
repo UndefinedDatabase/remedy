@@ -427,9 +427,10 @@ def test_the_api_port_without_the_token_is_401(root, running_with_api):
 
 
 @pytest.mark.parametrize("method,path", [
-    ("GET", "/api/state"),
-    ("GET", "/"),
-    ("POST", "/api/jobs/any-job/commands"),
+    (method, path)
+    for method in ("GET", "POST", "PUT", "DELETE")
+    for path in ("/", "/api", "/api/state", "/index.html",
+                 "/api/jobs/any-job/commands", "/api/v2/health")
 ])
 def test_the_api_port_answers_every_cockpit_only_path_404(root, running_with_api, method, path):
     token = serve_paths(root).token_file.read_text(encoding="utf-8").strip()

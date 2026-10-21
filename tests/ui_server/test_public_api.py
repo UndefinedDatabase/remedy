@@ -749,6 +749,81 @@ def test_the_logs_route_answers_the_doctor_logs_command(tcp_server, unix_server)
         assert status == 401, body
 
 
+def test_the_logs_route_answers_one_runs_lines_oldest_first(tcp_server, unix_server):
+    """DECISION F303 D1 (4): the order is proved through the route, not only below it."""
+    job_id = _saved_job_with_id("abc1240000000000")
+
+    def line(run_id: str, message: str, ts: str) -> str:
+        return json.dumps({
+            "ts": ts, "level": "INFO", "logger": "pkg.mod",
+            "message": message, "job_id": job_id, "task_id": "T001", "run_id": run_id,
+        })
+
+    folder = logs_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = [
+        line("r1", "third", "2026-10-13T08:05:09.300Z"),
+        line("r1", "first", "2026-10-13T08:05:09.100Z"),
+        line("r1", "second", "2026-10-13T08:05:09.200Z"),
+        line("r2", "elsewhere", "2026-10-13T08:05:09.400Z"),
+    ]
+    (folder / LOG_FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def ask(path: str, headers: dict[str, str] | None = None) -> list[tuple]:
+        return [_tcp_request(tcp_server, "GET", path, headers=headers),
+                _unix_request(unix_server, "GET", path, headers=headers)]
+
+    for status, body, _headers in ask(f"/api/v1/jobs/{job_id}/logs?run=r1", _bearer(SERVER_TOKEN)):
+        assert status == 200, body
+        assert [entry["message"] for entry in body["entries"]] == ["first", "second", "third"]
+        assert [entry["ts"] for entry in body["entries"]] == sorted(
+            entry["ts"] for entry in body["entries"])
+
+
+def test_the_contract_page_names_the_one_route_served_outside_the_api():
+    """DECISION F303 D1 (3): the hand-written section names the socket's command door."""
+    import re
+
+    page = (REPO_ROOT / public_api.PUBLIC_API_PAGE_PATH).read_text(encoding="utf-8")
+    start = page.index("## Served outside the public API")
+    end = page.index("\n## ", start + 1)
+    section = page[start:end]
+    tokens = {
+        (m.group(1), m.group(2))
+        for m in re.finditer(r"`(GET|POST|PUT|DELETE) (/[^`]*)`", section)
+    }
+    assert tokens == {("POST", "/api/jobs/{job}/commands")}
+
+
+@pytest.mark.parametrize("method, path", [
+    ("GET", "/"),
+    ("GET", "/api/state"),
+    ("GET", "/index.html"),
+    ("GET", "/api/jobs/any-job/commands"),
+    ("POST", "/api/state"),
+    ("POST", "/api/v2/jobs/any-job/note"),
+    ("PUT", "/api/jobs/any-job/commands"),
+    ("DELETE", "/api/jobs/any-job/commands"),
+], ids=[
+    "get-root", "get-api-state", "get-index-html", "get-commands-door-wrong-method",
+    "post-api-state", "post-v2-note", "put-commands-door", "delete-commands-door",
+])
+def test_the_socket_serves_nothing_outside_the_contract_and_its_door(unix_server, method, path):
+    """DECISION F303 D1 (3): the socket serves nothing beyond the contract and the one door."""
+    url = f"{path}?token={SERVER_TOKEN}"
+    status, body, _headers = _unix_request(
+        unix_server, method, url, headers=_bearer(SERVER_TOKEN))
+    assert status in (403, 404, 405), (method, path, status, body)
+
+
+def test_the_socket_serves_the_command_door_but_refuses_no_token(unix_server):
+    """The door is served (not 404/405) and refuses an unauthenticated caller."""
+    status, body, _headers = _unix_request(
+        unix_server, "POST", "/api/jobs/any-job/commands")
+    assert status not in (404, 405) and status >= 400, (status, body)
+    assert (status, body["error"]) == (403, "invalid token")
+
+
 # -- I: query refusals ----------------------------------------------------------
 
 

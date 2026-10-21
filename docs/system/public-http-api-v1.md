@@ -478,6 +478,15 @@ A client reads `/api/v1/digest` once and then follows `/api/v1/changes`, with it
 key set to the `cursor` each answer gives, to stay current without reading the whole digest
 again.
 
+## Served outside the public API
+
+One route is served that is not part of this API: `POST /api/jobs/{job}/commands`, the local
+command door through which `remedy chat send` and the supervisor socket's other clients send a
+command to a job. It is answered on the supervisor's local socket only, with its own token and
+checks, and never on the TCP port, which answers every path outside `/api/v1` with 404
+`api_route_not_found`. `docs/system/serve-daemon-v1.md` describes it. No other route outside the
+table below is served.
+
 ## Why some commands are never published
 
 The exclusion list below names operator-console commands: commands that change or recover this
