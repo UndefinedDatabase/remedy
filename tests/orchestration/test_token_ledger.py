@@ -2383,14 +2383,14 @@ class TestJobRunActuallyCallsTheMirror:
 
     def test_the_job_run_command_mirrors_the_job_it_just_ran(self, monkeypatch):
         from apps.cli.commands import do_cmd
-        from packages.orchestration import job_evidence, pingpong_job
+        from packages.orchestration import job_evidence, job_report, pingpong_job
 
         class _StubJob:
             job_id = "jid-under-test"
 
         monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
         monkeypatch.setattr(
-            pingpong_job, "format_job_report_text", lambda job: "report",
+            job_report, "format_job_report_text", lambda job: "report",
         )
 
         seen: list[str] = []
@@ -2410,14 +2410,14 @@ class TestJobRunActuallyCallsTheMirror:
 
     def test_a_mirror_failure_does_not_crash_the_command(self, monkeypatch, capsys):
         from apps.cli.commands import do_cmd
-        from packages.orchestration import job_evidence, pingpong_job
+        from packages.orchestration import job_evidence, job_report, pingpong_job
 
         class _StubJob:
             job_id = "jid-under-test"
 
         monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
         monkeypatch.setattr(
-            pingpong_job, "format_job_report_text", lambda job: "report",
+            job_report, "format_job_report_text", lambda job: "report",
         )
         monkeypatch.setattr(
             job_evidence, "mirror_job_run_into_ledger",

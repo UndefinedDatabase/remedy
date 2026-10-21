@@ -401,7 +401,7 @@ class TestSteeringNoteNotTakenInLive:
 
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
-            from packages.orchestration.pingpong_job import export_job_report, format_job_report_text
+            from packages.orchestration.job_report import export_job_report, format_job_report_text
             report = export_job_report(job)
             report_text = format_job_report_text(job)
         finally:

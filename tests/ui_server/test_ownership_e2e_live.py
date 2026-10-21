@@ -288,12 +288,10 @@ class TestOwnershipE2ELive:
         # ------------------------------------------------------------------------
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
+            from packages.orchestration.job_report import format_job_report_text
             from packages.orchestration.ownership import build_ownership_ledger
             from packages.orchestration.ownership_phrases import ownership_view
-            from packages.orchestration.pingpong_job import (
-                format_job_report_text,
-                load_job_plan,
-            )
+            from packages.orchestration.pingpong_job import load_job_plan
             job = load_job_plan(job_id)
             assert job is not None
             rebuilt = build_ownership_ledger(job)

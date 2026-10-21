@@ -201,7 +201,8 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
 
 def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
                   json_output: bool = False) -> None:
-    from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
+    from packages.orchestration.job_report import collect_blocked_task_findings
+    from packages.orchestration.pingpong_job import _export_job
 
     job_id = resolve_job_id_or_fail(job_id_str, json_output=json_output)
     try:
@@ -210,8 +211,7 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False, tour: bool = False,
         # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
         fail("job_store_error", str(exc), json_output=json_output)
     shown = _export_job(job)
-    # R-0806: why a task blocked is readable here, without opening evidence JSON.
-    # The key is appended, so every key the JSON carried before keeps its place.
+    # R-0806: why a task blocked is readable here, without evidence JSON; appended, so no key moves.
     shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)
     section_text: list[str] = []
     if full:

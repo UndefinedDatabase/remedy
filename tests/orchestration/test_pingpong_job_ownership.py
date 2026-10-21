@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration import job_report, safe_points
 from packages.orchestration import ownership as own
 from packages.orchestration import pingpong_job as pj
-from packages.orchestration import safe_points
 from packages.orchestration import task_veto as tv
 from packages.orchestration.data_paths import job_evidence_export_dir
 from packages.orchestration.ownership_phrases import ownership_sentences
@@ -128,7 +128,7 @@ class TestReportOwnershipSection:
         titles = {t.task_id: t.title for t in reloaded.tasks}
         expected = ownership_sentences(ledger, titles=titles)
 
-        text = pj.format_job_report_text(reloaded)
+        text = job_report.format_job_report_text(reloaded)
         assert "Ownership:" in text
         start = text.index("Ownership:") + len("Ownership:\n")
         end = text.index("\n\n", start)
@@ -142,7 +142,7 @@ class TestReportOwnershipSection:
         ledger = own.build_ownership_ledger(job)
         assert ledger["entries"] == []
 
-        text = pj.format_job_report_text(job)
+        text = job_report.format_job_report_text(job)
         assert "Ownership:" not in text
 
     def test_an_unreadable_ledger_prints_the_error_line(self, root, repo, monkeypatch):
@@ -155,7 +155,7 @@ class TestReportOwnershipSection:
         monkeypatch.setattr(
             "packages.orchestration.ownership.build_ownership_ledger", _raise)
 
-        text = pj.format_job_report_text(job)
+        text = job_report.format_job_report_text(job)
         assert "Ownership: the ledger could not be read — boom" in text
         assert "Ownership:\n" not in text
 
@@ -169,6 +169,6 @@ class TestReportOwnershipSection:
         assert veto["outcome"] == "vetoed"
 
         reloaded = load_job_plan(job_id, root)
-        text = pj.format_job_report_text(reloaded)
+        text = job_report.format_job_report_text(reloaded)
         assert "Vetoed by" not in text
         assert "vetoed task" in text

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration import job_report
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import steering as ST
 from packages.orchestration.mission_contract import read_mission_contract
@@ -273,14 +274,14 @@ class TestTheReport:
             JOB, "ship it", job_state="running", channel="cli", task_id=TASK)
         job = _job({TASK: PJ.TASK_PASSED})
 
-        report = PJ.export_job_report(job)
+        report = job_report.export_job_report(job)
         [t1] = report["tasks"]
         assert t1["steering_not_consumed"] == [{
             "message_id": record["message_id"], "text": "ship it",
             "received_at": record["received_at"],
         }]
 
-        text = PJ.format_job_report_text(job)
+        text = job_report.format_job_report_text(job)
         assert "Steering not consumed: “ship it”" in text
 
     def test_a_pending_tasks_note_and_a_consumed_note_give_no_key(self, tmp_path, monkeypatch):
@@ -292,16 +293,16 @@ class TestTheReport:
         ST.consume_pending_steering(JOB, task_id=OTHER_TASK, round_number=1)
 
         job = _job({TASK: PJ.TASK_PENDING, OTHER_TASK: PJ.TASK_PASSED})
-        report = PJ.export_job_report(job)
+        report = job_report.export_job_report(job)
         assert all("steering_not_consumed" not in t for t in report["tasks"])
 
-        text = PJ.format_job_report_text(job)
+        text = job_report.format_job_report_text(job)
         assert "Steering not consumed" not in text
 
     def test_a_job_with_no_note_exports_the_same_keys_as_before(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = _job({TASK: PJ.TASK_PASSED})
-        report = PJ.export_job_report(job)
+        report = job_report.export_job_report(job)
         [t1] = report["tasks"]
         assert "steering_not_consumed" not in t1
         assert "veto" not in t1

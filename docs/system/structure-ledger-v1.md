@@ -197,6 +197,7 @@ with the code that calls it.
 - `packages/orchestration/pingpong_job.py`: the job model and its store, the job report, and the
   stop and park path, each to a module of its own; `run_job` stays. Step (1), done by F306: the
   execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
+  Step (2), done by F307: the job report, `packages/orchestration/job_report.py`.
   Outside those steps, F308 moved the split of a task whose context exceeds its class cap to
   `split_task_over_class_cap` in `packages/orchestration/run_task_list.py`.
 - `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the provider
@@ -397,13 +398,13 @@ with the code that calls it.
 | 125 | `packages/orchestration/run_manifest.py` | `write_run_manifest` |
 | 124 | `packages/orchestration/pingpong_job.py` | `_write_run_manifest_record` |
 | 124 | `packages/orchestration/task_injection.py` | `apply_injection_to_job` |
-| 123 | `packages/orchestration/pingpong_job.py` | `export_job_report` |
+| 123 | `packages/orchestration/job_report.py` | `export_job_report` |
 | 123 | `packages/orchestration/pingpong_loop.py` | `_build_provider_evidence` |
 | 123 | `scripts/build_review_manifest.py` | `evaluate_ready_gate_matrix` |
 | 122 | `packages/orchestration/artifact_contract_gate.py` | `check_stream_artifacts` |
 | 122 | `packages/orchestration/pingpong_job.py` | `_import_job` |
 | 121 | `packages/orchestration/project_summary.py` | `build_project_summary` |
-| 120 | `packages/orchestration/pingpong_job.py` | `format_job_report_text` |
+| 120 | `packages/orchestration/job_report.py` | `format_job_report_text` |
 | 120 | `packages/orchestration/scope_fences.py` | `_load_fence_spec_effective` |
 | 120 | `packages/orchestration/spec_compliance.py` | `build_spec_compliance_checklist` |
 | 120 | `packages/orchestration/study.py` | `run_study` |
@@ -445,7 +446,7 @@ with the code that calls it.
 | Lines | File |
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
-| 5331 | `packages/orchestration/pingpong_job.py` |
+| 4943 | `packages/orchestration/pingpong_job.py` |
 | 4924 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |

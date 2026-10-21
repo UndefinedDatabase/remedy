@@ -112,7 +112,7 @@ def _final_review_findings(job_id: str, root: Path | None) -> list[dict[str, Any
 def job_open_findings(job: Any, root: Path | None = None) -> list[dict[str, Any]]:
     """The findings a job left open, by DECISION F301 D1 (3): its final review's, then its
     blocked tasks' last-round reviewer findings, in task order."""
-    from packages.orchestration.pingpong_job import collect_blocked_task_findings
+    from packages.orchestration.job_report import collect_blocked_task_findings
 
     job_id = str(job.job_id)
     findings = _final_review_findings(job_id, root)

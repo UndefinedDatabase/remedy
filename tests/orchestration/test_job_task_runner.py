@@ -16,6 +16,11 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.job_report import (
+    _suggest_next_command,
+    export_job_report,
+    format_job_report_text,
+)
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -32,9 +37,6 @@ from packages.orchestration.pingpong_job import (
     _build_task_prompt,
     _is_unsafe_path,
     _strict_apply_to_workspace,
-    _suggest_next_command,
-    export_job_report,
-    format_job_report_text,
     load_job_plan,
     parse_job_file,
     plan_job_from_file,

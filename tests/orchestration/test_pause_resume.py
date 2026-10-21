@@ -21,6 +21,7 @@ import pytest
 from packages.orchestration import pause_control as pc
 from packages.orchestration import pingpong_job as pj
 from packages.orchestration.job_plan import APPROVED_PLAN_HASH_KEY
+from packages.orchestration.job_report import format_job_report_text
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -28,7 +29,6 @@ from packages.orchestration.pingpong_job import (
     JOB_STOPPED,
     TASK_APPLIED,
     TASK_PENDING,
-    format_job_report_text,
     load_job_plan,
     parse_job_file,
     run_job,

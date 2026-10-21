@@ -576,8 +576,8 @@ def _cmd_job_run(
             fail("invalid_budget", str(exc), json_output=json_output, exit_code=2)
         budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
+    from packages.orchestration.job_report import export_job_report
     from packages.orchestration.pingpong_job import (
-        export_job_report,
         job_resume_refusal,
         load_job_plan,
         run_job,
@@ -657,7 +657,7 @@ def _cmd_job_run(
     if json_output:
         report["cost_mirror"] = cost_mirror
     else:
-        from packages.orchestration.pingpong_job import format_job_report_text
+        from packages.orchestration.job_report import format_job_report_text
         print(format_job_report_text(job))
         if cost_mirror["ledger_mirrored"]:
             print("Cost recorded to the ledger. See: remedy stats cost")

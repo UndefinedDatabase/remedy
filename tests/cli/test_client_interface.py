@@ -470,7 +470,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
             "repair_rounds_allowed", "repair_rounds_source", "repo_path", "result_diff", "status",
             "target_guard", "tasks", "warning", "worktree",
         }),
-        "the keys export_job_report in packages/orchestration/pingpong_job.py returns, and the "
+        "the keys export_job_report in packages/orchestration/job_report.py returns, and the "
         "cost_mirror _cmd_job_run stores into that report",
     ),
     "apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)": (
@@ -739,7 +739,7 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
 
     sites = {site: keys for site, (keys, _why) in UNRESOLVED_ANSWER_SITES.items()}
     assert sites["apps.cli.commands.do_cmd:_cmd_job_run:**report"] == (
-        _returned_dict_keys("packages/orchestration/pingpong_job.py", "export_job_report")
+        _returned_dict_keys("packages/orchestration/job_report.py", "export_job_report")
         | _stored_keys("apps/cli/commands/do_cmd.py", "_cmd_job_run", "report"))
     assert sites["apps.cli.commands.do_cmd:_cmd_job_apply:**export_job_apply_json(result)"] == (
         _returned_dict_keys("packages/orchestration/job_apply.py", "export_job_apply_json"))
@@ -906,19 +906,20 @@ def _dict_value_keys(path: str, function: str, key: str) -> set[str]:
 
 def test_the_job_run_answer_trees_name_exactly_what_their_code_builds():
     pingpong = "packages/orchestration/pingpong_job.py"
+    report = "packages/orchestration/job_report.py"
     trees = ANSWER_KEY_TREES["job.run"]
     assert trees is JOB_REPORT_KEY_TREES
     tasks = trees["tasks"]
-    assert set(tasks) == _bound_dict_keys(_function_def(pingpong, "export_job_report"), "report")
+    assert set(tasks) == _bound_dict_keys(_function_def(report, "export_job_report"), "report")
     assert set(tasks["apply_manifest"]) == _returned_dict_keys(pingpong, "_export_apply_manifest")
     assert set(tasks["apply_manifest"]["applied_file_proofs"]) == (
         _returned_dict_keys(pingpong, "_export_file_proof"))
     assert set(tasks["proof_summary"]) == _returned_dict_keys(pingpong, "_export_proof_summary")
-    assert set(tasks["veto"]) == _dict_value_keys(pingpong, "export_job_report", "veto")
+    assert set(tasks["veto"]) == _dict_value_keys(report, "export_job_report", "veto")
     assert set(tasks["steering_not_consumed"]) == _dict_literal_keys(
-        _REPO_ROOT / pingpong, "_task_steering_not_consumed_map")
+        _REPO_ROOT / report, "_task_steering_not_consumed_map")
     for key in ("worktree", "result_diff", "postmortem", "context_strategy"):
-        assert set(trees[key]) == _dict_value_keys(pingpong, "export_job_report", key), key
+        assert set(trees[key]) == _dict_value_keys(report, "export_job_report", key), key
     assert trees["execution_config"] is EXECUTION_CONFIG_KEY_TREE
     assert set(EXECUTION_CONFIG_KEY_TREE) == _returned_dict_keys(
         "packages/orchestration/execution_config.py", "_export_execution_config")

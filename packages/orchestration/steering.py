@@ -421,7 +421,7 @@ def consumed_task_notes(job_id: str, task_id: str, root: Path | None = None) -> 
 def unconsumed_task_notes(job_id: str, task_id: str, root: Path | None = None) -> list[dict[str, Any]]:
     """The records addressed to ``task_id`` with no consumption marker yet, oldest first.
 
-    This is what the job report lists (`pingpong_job._task_steering_not_consumed_map`): a note
+    This is what the job report lists (`job_report._task_steering_not_consumed_map`): a note
     the task's status went terminal without ever taking in.
     """
     markers = list_steering_consumptions(job_id, root)

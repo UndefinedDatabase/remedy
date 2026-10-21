@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration import job_report, safe_points
 from packages.orchestration import pingpong_job as pj
-from packages.orchestration import safe_points
 from packages.orchestration import task_veto as tv
 from packages.orchestration import veto_proposal as vp
 from packages.orchestration import worktrees as W
@@ -868,7 +868,7 @@ class TestReportCarriesTheVeto:
                        reviewer_provider=_pass_provider(), max_rounds=1, repair_rounds=0)
         assert done.state == JOB_BLOCKED
 
-        text = pj.format_job_report_text(done)
+        text = job_report.format_job_report_text(done)
         assert (
             f"You (recorded as alice) vetoed task {b_id} (Build B: goal of B) — reason: "
             "“known-bad approach for B”."
@@ -876,7 +876,7 @@ class TestReportCarriesTheVeto:
         b_line = next(line for line in text.splitlines() if b_id in line and "[" in line)
         assert b_line.startswith("  [/]")
 
-        report = pj.export_job_report(done)
+        report = job_report.export_job_report(done)
         b_report = next(t for t in report["tasks"] if t["task_id"] == b_id)
         b_veto = b_report["veto"]
         assert b_veto["reason"] == "known-bad approach for B"
@@ -901,13 +901,13 @@ class TestReportCarriesTheVeto:
         a_task = _by_planned(reloaded, "A")[1]
         assert a_task.status == pj.TASK_PENDING          # no run has folded it yet
 
-        text = pj.format_job_report_text(reloaded)
+        text = job_report.format_job_report_text(reloaded)
         assert (
             f"You (recorded as bob) vetoed task {a_id} (Build A: goal of A) — reason: "
             "“stop A before it starts”."
         ) in text
 
-        report = pj.export_job_report(reloaded)
+        report = job_report.export_job_report(reloaded)
         a_report = next(t for t in report["tasks"] if t["task_id"] == a_id)
         assert a_report["veto"]["reason"] == "stop A before it starts"
         assert a_report["veto"]["actor"] == "bob"
@@ -917,8 +917,8 @@ class TestReportCarriesTheVeto:
         job_id = _save_job(root, tasks, repo_path=str(repo))
         job = load_job_plan(job_id, root)
 
-        text = pj.format_job_report_text(job)
+        text = job_report.format_job_report_text(job)
         assert "Vetoed by" not in text
 
-        report = pj.export_job_report(job)
+        report = job_report.export_job_report(job)
         assert all("veto" not in t for t in report["tasks"])
