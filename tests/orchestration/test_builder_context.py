@@ -122,6 +122,26 @@ def test_run_pingpong_with_a_denied_read_ends_context_error(git_repo, monkeypatc
     assert str(excinfo.value) in record["error"]
 
 
+def test_run_pingpong_with_a_pinned_l4_job_and_a_denied_read_cites_l4(git_repo, monkeypatch):
+    """R-1396: a job's OWN pinned level gates its `read` seam, not just the default L2
+    (mirrors test_run_pingpong_with_a_denied_read_ends_context_error)."""
+    seen = _capture_worktree(monkeypatch)
+    job_id = "job-r1396"
+    folder = job_dir(job_id)
+    folder.mkdir(parents=True)
+    (folder / JOB_LEVEL_FILENAME).write_text(json.dumps({"level": "L4"}), encoding="utf-8")
+    monkeypatch.setitem(PERMISSION_MATRIX, ("read", "L4"), PERMISSION_DENY)
+
+    with pytest.raises(PermissionRefusedError) as excinfo:
+        run_pingpong("goal", str(git_repo), max_rounds=1, job_id=job_id)
+
+    run_id = seen["handle"].job_id
+    record = load_run(run_id)
+    assert record["final_status"] == "context_error"
+    assert "(read, L4) = deny" in str(excinfo.value)
+    assert str(excinfo.value) in record["error"]
+
+
 def test_without_a_job_id_nothing_is_written_and_the_context_is_answered(repo):
     context, categories = build_builder_context(
         repo_path=str(repo), goal="goal", mentioned_files=None,
