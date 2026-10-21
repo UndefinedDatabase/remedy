@@ -179,7 +179,8 @@
     "GET /api/v1/jobs/{job}/insight (client.insight), query `lines`",
     "client.interface key `insight`: phases, stall_reasons, stream_kinds, advice, model_server_states",
     "execution: each provider's `class` (`local` or `paid`) and `budgets.profiles` (`local`, `paid`)",
-    "decision route answer keys `resumed` and `resume_refused` after an `extend`"
+    "decision route answer keys `resumed` and `resume_refused` after an `extend`",
+   "digest and changes decisions[] key `blockers` (a budget stop's open blocking criteria)"
    ],
    "value_changes": [
     {

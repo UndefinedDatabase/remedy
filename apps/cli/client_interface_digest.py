@@ -93,6 +93,7 @@ DIGEST_KEY_TREE: dict[str, Any] = {
         "default": {},
         "options": {},
         "clarifications": {"id": {}, "question": {}, "default": {}},
+        "blockers": {},
         "created_at": {},
         "age_seconds": {},
     },

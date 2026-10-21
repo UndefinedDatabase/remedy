@@ -256,6 +256,8 @@ def _decision_entry(
     question = str(payload.get("question", "")) if is_task_decision else decision.safe_summary
     safe_default = str(payload.get("safe_default", "") or "") if is_task_decision else ""
     options = [str(o) for o in (payload.get("options") or [])]
+    # R-1390, DECISION F313 D1 addendum: a budget stop's one question names what is left.
+    blockers = [str(b) for b in (payload.get("blockers") or [])] if decision.type == "token_budget" else []
 
     clarifications: list[dict[str, Any]] = []
     if decision.type == "task_plan_approval":
@@ -289,6 +291,7 @@ def _decision_entry(
         "default": safe_default or None,
         "options": options,
         "clarifications": clarifications,
+        "blockers": blockers,
         "created_at": created_at,
         "age_seconds": age_seconds,
     }

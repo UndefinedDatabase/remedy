@@ -193,6 +193,7 @@ def test_a_task_decision_with_a_default_is_listed_as_the_whole_d5_object(root):
         "default": "8080",
         "options": ["8080", "9090"],
         "clarifications": [],
+        "blockers": [],
         "created_at": record["created_at"],
         "age_seconds": int((NOW - created).total_seconds()),
     }]
@@ -240,6 +241,7 @@ def test_a_pending_task_plan_approval_carries_its_clarification_and_no_default(r
         "clarifications": [
             {"id": "q1", "question": "Which database?", "default": "sqlite"},
         ],
+        "blockers": [],
         "created_at": "",
         "age_seconds": None,
     }]

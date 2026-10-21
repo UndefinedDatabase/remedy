@@ -461,7 +461,7 @@ Answer keys: `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime
 Keys under the answer keys: see below.
 
 - `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
-  - `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+  - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
   - `job_window`: `ended_limit`, `left_out`
   - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
@@ -907,7 +907,7 @@ Keys under the answer keys: see below.
 
 - `applies`: `finished_at`, `job_apply_id`, `job_id`, `status`
 - `closed_decisions`: `decision_id`, `job_id`, `resolved_at`
-- `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+- `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
   - `approval_card`: `blocking_criteria`, `changed_file_count`, `changed_files`, `checks_ran`, `recommendation`, `risk`, `tasks`, `test_command`
@@ -1112,7 +1112,7 @@ The keys of the `client` object of `remedy status --json`.
 
 Keys: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`.
 
-- `decisions`: `age_seconds`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
+- `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
   - `clarifications`: `default`, `id`, `question`
 - `job_window`: `ended_limit`, `left_out`
 - `jobs`: `approval_card`, `cost`, `evidence`, `harness_invocations`, `job_id`, `mission_id`, `model_turns`, `project_id`, `repo_path`, `state`, `title`, `tokens`, `waits_for_apply`
