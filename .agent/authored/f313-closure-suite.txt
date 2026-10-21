@@ -1,0 +1,28 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 374.2s (the launcher's reading); pytest's own reported wall time: 373.36s (0:06:13)
+summary line: 22100 passed, 11 skipped, 1 warning in 373.36s (0:06:13)
+bad node ids (failed + errors):
+  - NONE
+leftover processes: NONE
+tree it ran on: 64249f32b (F313 R4 C4: the closure's self-use item run to its approval gate, never applied)
+tree note: C1 to C4 changed only .agent/ files, the feature file, the checklist page and the self-use queue
+reflog before: 64249f32b HEAD@{2026-10-21 05:03:38 +0200}: commit: F313 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog after: 64249f32b HEAD@{2026-10-21 05:03:38 +0200}: commit: F313 R4 C4: the closure's self-use item run to its approval gate, never applied
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F313 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1304.91 CPU seconds, 373.37 wall seconds, 22111 tests collected, exit status 0, recorded 2026-10-21T03:09:54Z
+This closure's suite used 1304.91 CPU seconds, 0.4 percent less than F311's 1310.31, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F311's closure run:
+  +8.08 s  tests/runtimes/test_supervisor_portability.py (49.59 -> 57.67)
+  +3.96 s  tests/test_grouped_cli.py (24.04 -> 28.00)
+  +3.45 s  tests/orchestration/test_subtree_rerun_prepare.py (10.79 -> 14.24)
+  +2.76 s  tests/orchestration/test_record_client_answers.py (0.00 -> 2.76)
+  +2.07 s  tests/orchestration/test_serve_daemon.py (19.92 -> 21.99)
+  +1.74 s  tests/orchestration/test_stream_export_e2e.py (3.57 -> 5.31)
+  +1.73 s  tests/runtimes/test_runtime_cli_process_boundary.py (9.93 -> 11.66)
+  +1.48 s  tests/orchestration/test_public_api_gate_paths.py (19.07 -> 20.55)
+  +1.47 s  tests/orchestration/test_job_worktree_integration.py (6.22 -> 7.69)
+  +1.47 s  tests/orchestration/test_token_ledger.py (8.81 -> 10.28)
