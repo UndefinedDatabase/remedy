@@ -1,53 +1,46 @@
-# Handback — F313 round 2
+# Handback — F313 round 3
 
 ## Session
 
-SESSION 1 of feature F313 · round 2 · rounds so far 2
+SESSION 1 of feature F313 · round 3 · rounds so far 3
 
 Context self-assessment: this session verified every prepared file's digest before use and applied
 each one as a byte copy proved equal; all five gates passed on their first run, with no stop
 condition met.
 
-Fortschritt: ~55 % (contract 1.22, its pages and R-1390 landed · the recorded answers open) — Schätzung
+Fortschritt: ~70 % (T001 to T003 landed · the closure open) — Schätzung
 
 ## Range
 
-Review of `dd419b84e`..HEAD (C1, C2, C3, then this commit C4, which carries this handback).
+Review of `046ec1ec1`..HEAD (C1, C2, then this commit C3, which carries this handback).
 
 ## Commits
 
-### ff41ad35d F313 R2 C1: book round 1, register R-1390, DECISION F313 D1 addendum, the plan
-139 insertions.
+### 94ed12faa F313 R3 C1: book round 2, resolve R-1390, DECISION F313 D2 addendum, the plan
+134 insertions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f313-r2.md` | +119 (new file) | byte copy of `block.md` |
-| `.agent/live_review.md` | +4 | byte copy, round 1's verdict and the registered finding |
-| `.agent/decisions.md` | +10 | byte copy, DECISION F313 D1's addendum |
+| `.agent/authored/f313-r3.md` | +112 (new file) | byte copy of `block.md` |
+| `.agent/live_review.md` | +4 | byte copy, round 2's verdict and R-1390's resolution |
+| `.agent/prose_slips.md` | +1 | byte copy, the one line for the matrix indentation |
+| `.agent/decisions.md` | +11 | byte copy, DECISION F313 D2's addendum |
 | `.agent/plan.md` | +6/-7 | byte copy of the prepared plan |
 
-### 008836c95 F313 R2 C2: the digest's decisions carry a budget stop's blockers (R-1390)
-30 insertions.
+### 4616cdb6c F313 R3 C2: the recorded answers for the universe's kit and the command that records them
+372 insertions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/client_digest.py` | +3 | `_decision_entry` reads `blockers` from a `token_budget` decision's payload, an empty list for any other |
-| `apps/cli/client_interface_digest.py` | +1 | `DIGEST_KEY_TREE` names `blockers` after `clarifications` |
-| `tests/orchestration/test_client_digest.py` | +2 | the two whole-entry assertions gain `"blockers": []` |
-| `tests/orchestration/test_lab_stop_20261020.py` | +19 | one new test reads the lab stop's entry and the remainder decision's entry |
-| `docs/system/api-release-matrix-v1.json` | +2/-1 | the 1.22 `added` gains one line |
-| `docs/system/machine-client-contract-v1.md` | +3/-3 | the generated section names `blockers` under `decisions` (three places) |
+| `scripts/record_client_answers.py` | +241 (new file) | the recorder and its `--check` |
+| `tests/orchestration/test_record_client_answers.py` | +101 (new file) | the test that runs the recorder's check |
+| `docs/system/client-answers-v1/*.json` (5 files) | +1 each (new files) | the five recorded answers, applied as bytes |
+| `docs/system/public-http-api-v1.md` | +19 | section "Recorded answers" before "Staying current" |
+| `docs/README.md` | +2 | two rows for the folder |
+| `docs/system/api-release-matrix-v1.json` | +1/-1 | the `blockers` line re-indented from three spaces to four, nothing else |
+| `tests/test_no_orphan_modules.py` | +3 | one `ALLOWED_UNWIRED` entry naming the script |
 
-### aa77653b7 F313 R2 C3: the two pages describe contract 1.22
-117 insertions.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/public_api_routes.py` | +5/-4 | the decision route's sentence on `extend`, and "since 1.22" for the two new routes |
-| `docs/system/public-http-api-v1.md` | +86/-3 | sections "Budget stops" and "What runs now, and why a job hangs", the "Budget profiles (since 1.22)" paragraph, the generated route table |
-| `docs/system/machine-client-contract-v1.md` | +26/-8 | step 3, the `--answer` and `closed_decisions` rows, the `token_budget` row, section "Watching what runs" |
-
-### This commit F313 R2 C4: handback
+### This commit F313 R3 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewritten | this handback (a handback cannot table the commit that writes it) |
@@ -60,11 +53,12 @@ pull request opened, nothing merged.
 
 ## Verification
 
-1. `git status --porcelain` empty; `python3 .remedy-wt/f313-r2/prep/verify.py .` → every line
-   `True`, `absent C4`, last line `ALL True` (C1 insertions 139, C2 30, C3 117).
-2. `python3 -m ruff check` over the five named files → `All checks passed!`
-3. `python3 .remedy-wt/f313-r2/prep/run_selection.py . .remedy-wt/f313-r2-worker/selection-output.txt`
-   → `paths 84`, `exit 0`, `3892 passed, 2 skipped in 31.32s`, no FAILED, ERROR or
+1. `git status --porcelain` empty; `python3 .remedy-wt/f313-r3/prep/verify.py .` → every line
+   `True`, `absent C3`, last line `ALL True` (C1 insertions 134, C2 372).
+2. `python3 -m ruff check scripts/record_client_answers.py tests/orchestration/test_record_client_answers.py tests/test_no_orphan_modules.py`
+   → `All checks passed!`
+3. `python3 .remedy-wt/f313-r3/prep/run_selection.py . .remedy-wt/f313-r3-worker/selection-output.txt`
+   → `paths 80`, `exit 0`, `3689 passed, 2 skipped in 33.22s`, no FAILED, ERROR or
    `process(es) behind` line. SKIPPED lines:
    ```
    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
@@ -73,53 +67,53 @@ pull request opened, nothing merged.
 4. `python3 -m apps.cli.main integrity check --json` → exit 1, `fail_count` 1, the one failing
    check `high_blockers_open` naming exactly the twelve ids of DECISION F310 D7 (`R-1335, R-1336,
    R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`) and no other.
-5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` → `88`.
+5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` → `87`.
 
 ## Authored-text proofs
 
-All five prepared files named in the prompt and the thirteen files `digests.txt` lists matched
-their sha256 digests before use (`block.md` 119 lines, sha256 `587135c7…1b38`, equal to the
-prompt's). Each of C1's four, C2's six and C3's three byte copies was proved equal by a Python
-reader at copy time, and `verify.py` re-proved every pair against the committed bytes.
+All five prepared files named in the prompt matched their sha256 digests before use, and every
+file `digests.txt` lists matched at copy time. `block.md` (112 lines, sha256 `65c31dd7…ba24`,
+equal to the prompt's) was committed as `.agent/authored/f313-r3.md`. Each of C1's five and C2's
+eleven byte copies was proved equal by a Python reader at copy time, and `verify.py` re-proved
+every pair against the committed bytes. The recorder was not run; the five answers are applied as
+bytes.
 
 ## Deviations & assumptions
 
-None. The commits landed in the ordered sequence, no gate ran more than once, and no file outside
-the paths named per commit was touched. Every one of C2's and C3's diffs read as the block's
-reviewer reading. One observation, not a deviation: the new line in the release matrix's 1.22
-`added` list is indented by three spaces where its neighbours use four; the prepared bytes were
-committed unchanged. One slip of mine: a first ruff attempt ran in the worker scratch directory
-(a `cd` I should not have used) and failed with E902 on every path; the gate was then run once
-from the repository root and passed, so no gate result was read from the failed attempt. The
-worker's copy script lives under `.remedy-wt/f313-r2-worker/` (gitignored scratch).
+One slip of mine: my first command, the digest check, began with a `cd` into the repository root
+(the block forbids any `cd`); nothing was written by it and every later command used absolute
+paths or `git -C`. Two compound shell commands were refused by the sandbox before they ran and
+were split into separate calls; no gate ran more than once and no result was read from a refused
+call. The commits landed in the ordered sequence and no file outside the paths named per commit
+was touched. The C2 diff read as the block's reviewer reading. The worker's scripts live under
+`.remedy-wt/f313-r3-worker/` (gitignored scratch).
 
 ## For the operator, in plain sentences
 
-The status view that programs read now tells them, for a job that stopped on its budget, what is
-still blocking the mission, so a client can show the one question together with what is left. The
-two documentation pages for version 1.22 are written: they explain what a budget stop is and how
-it is answered, how to see what runs right now, and why a job can seem to hang. The earlier
-review round's verdict is booked and the one defect it found is repaired. The relevant tests ran
-on the code as it stands and passed. The recorded answers are still to be written.
+The documentation now carries answers recorded from the real commands that show what is running
+and what one job is doing, for a client such as the universe's kit to test against without a
+running system. A small command records them again and a test checks that the recorded files still
+match, so they cannot drift unnoticed. The page for the programs' interface has a new section that
+says where they are and how to refresh them. The earlier review round's verdict is booked and its
+one defect is closed. The relevant tests ran on the code as it stands and passed. What remains is
+the closure of this feature.
 
 ## Next
 
-Phase 1 rule 1 (`.agent/STOP`), then rule 2 (Open PR Gate), then book round 2's verdict and
-resolve R-1390 in the next round's first commit, then T003, the recorded answers. Operator
-questions open: 1. Open findings: 88 (gate 5, rule `open_finding_ids`, commit `aa77653b7`).
+Phase 1 rule 1 (`.agent/STOP`), then rule 2 (Open PR Gate), then book round 3's verdict in the
+next round's first commit, then the closure's integration-gate round. Operator questions open: 1.
+Open findings: 87 (gate 5, rule `open_finding_ids`, commit `4616cdb6c`).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 | done | base `dd419b84e`, clean tree |
-| C1 | done | `ff41ad35d` |
-| C2 | done | `008836c95` |
-| C3 | done | `aa77653b7` |
-| C4 | done | this commit |
+| C0 | done | base `046ec1ec1`, clean tree |
+| C1 | done | `94ed12faa` |
+| C2 | done | `4616cdb6c` |
+| C3 | done | this commit |
 | Gate 1 | done | `ALL True` |
 | Gate 2 | done | `All checks passed!` |
-| Gate 3 | done | exit 0, 3892 passed, 2 skipped |
+| Gate 3 | done | exit 0, 3689 passed, 2 skipped |
 | Gate 4 | done | `fail_count` 1 on the standing twelve |
-| Gate 5 | done | 88 |
-| R-1390 | done | repaired in C2, documented in C3; to be resolved in the next round's first commit |
+| Gate 5 | done | 87 |
