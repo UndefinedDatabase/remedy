@@ -118,7 +118,9 @@ PUBLIC_API_ROUTES: tuple[PublicApiRoute, ...] = (
             "decisions answered, the missions and the applies, with the cursor for the next "
             "read, as `remedy client changes --since <cursor> --json` prints it; without "
             "`since` only a cursor is given. For a client token it lists only what belongs to the "
-            "client's own projects."
+            "client's own projects. A job's `cost`, `calls` and `tokens` come from the cost ledger, "
+            "which this read does not watch: they refresh when the job itself is listed again, and "
+            "the digest always has them (R-1305)."
         ),
     ),
     PublicApiRoute(

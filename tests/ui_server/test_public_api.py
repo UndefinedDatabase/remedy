@@ -1038,6 +1038,14 @@ def test_a_get_refuses_a_path_value_that_leaves_its_place(tcp_server):
     assert (status, body["error"]) == (400, "api_path_invalid")
 
 
+def test_the_changes_route_says_when_a_jobs_cost_fields_refresh():
+    """R-1305: the route and the page it is rendered on say the cost ledger is not watched."""
+    route = next(r for r in public_api.PUBLIC_API_ROUTES if r.path == "/api/v1/changes")
+    assert route.description.endswith(
+        "A job's `cost`, `calls` and `tokens` come from the cost ledger, which this read does not watch: they refresh when the job itself is listed again, and the digest always has them (R-1305).")
+    assert "the digest always has them (R-1305)." in public_api.render_public_api_markdown()
+
+
 # -- M: the write route that answers a decision (S4a, DECISION F253 D9) -----------
 
 DECISION_PATH = "/api/v1/jobs/{job}/decisions/{decision}"

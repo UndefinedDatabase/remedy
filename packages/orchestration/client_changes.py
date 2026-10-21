@@ -9,6 +9,11 @@ changed, or when the record of a mission it belongs to changed, because that rec
 contract the job's approval card reads (R-1240); a mission when its own record changed. The
 overlap covers a write that lands between two reads at the same second. This module reads only
 and never writes.
+
+Remedy deliberately does not watch the cost ledger (R-1305): it is one file per project whose rows
+carry each call's own time, not the time they were written, so it cannot say which job a late
+write changed. A job's `cost`, `calls` and `tokens` therefore refresh when the job itself is listed
+again, and the digest always has them; the changes route says so.
 """
 from __future__ import annotations
 
