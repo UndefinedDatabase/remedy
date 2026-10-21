@@ -7,6 +7,8 @@ commands that touch no model and no network.
 """
 from __future__ import annotations
 
+import subprocess
+
 import pytest
 
 from packages.orchestration.mcp_tools import (
@@ -113,3 +115,14 @@ def test_run_remedy_json_answers_mcp_tool_failed_naming_the_timeout():
     assert answer["ok"] is False
     assert answer["error"] == "mcp_tool_failed"
     assert "outlived" in answer["message"]
+
+
+# R-1410: a last line that is a JSON object without `ok` is no envelope.
+def test_run_remedy_json_answers_mcp_tool_failed_when_the_last_line_has_no_ok(monkeypatch):
+    def _fake_subprocess_run(args, *_args, **_kwargs):
+        return subprocess.CompletedProcess(args, 0, stdout='{"x": 1}\n', stderr="")
+
+    monkeypatch.setattr("packages.orchestration.mcp_tools.subprocess.run", _fake_subprocess_run)
+    answer = run_remedy_json(["client", "interface", "--json"])
+    assert answer["ok"] is False
+    assert answer["error"] == "mcp_tool_failed"
