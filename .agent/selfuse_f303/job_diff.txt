@@ -1,0 +1,14 @@
+$ git diff HEAD...remedy/job-fa8071ff5aa24f46  (exit 0)
+diff --git a/tests/cli/test_client_interface.py b/tests/cli/test_client_interface.py
+index 2d4fe0599..fb43446a1 100644
+--- a/tests/cli/test_client_interface.py
++++ b/tests/cli/test_client_interface.py
+@@ -768,6 +768,8 @@ def test_the_hand_verified_answer_key_sets_still_equal_what_their_code_names():
+         | _stored_keys("apps/cli/commands/job.py", "_cmd_resume", "_payload"))
+     assert sites["apps.cli.commands.job:_cmd_resume:**export_dry_run_json(dr)"] == (
+         _returned_dict_keys("packages/orchestration/event_replay.py", "export_dry_run_json"))
++    assert sites["apps.cli.commands.job_steer_cmd:_cmd_job_steer:**result"] == (
++        _returned_dict_keys("packages/orchestration/steering.py", "steer_task_command"))
+ 
+ 
+ # The keys under the answers' top-level keys (DECISION F298 D8).
