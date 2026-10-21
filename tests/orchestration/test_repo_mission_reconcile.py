@@ -185,3 +185,126 @@ class TestAFoldedDuplicateKeepsItsCurrentOrder:
         assert live.id == first.id and live.job_ids() == ("j1", "j2")
         sealed = next(b for b in live.orders if b.order_id == batch.order_id).sealed
         assert sealed["plan"] == {"milestones": ["m1"]} and sealed["contract"] == {"goal": "second"}
+
+
+class TestReconcileBackupsAreAClassOfTheirOwn:
+    """R-1283: a backup holds only the projects a step writes, in a registered class it prunes."""
+
+    def test_a_fold_backs_up_only_its_own_project_into_the_registered_class(self, tmp_path):
+        from packages.orchestration.data_paths import classify_data_child, reconcile_backups_dir
+
+        project_id, bystander = str(uuid4()), str(uuid4())
+        _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        _legacy(bystander, tmp_path, "alone", ["j3"], 0)
+
+        backup = Path(reconcile_repo_missions(apply=True, root=tmp_path)["projects"][0]["backup"])
+
+        assert backup.parent == reconcile_backups_dir(tmp_path)
+        assert classify_data_child(backup.parent.name) == "durable"
+        assert sorted(p.name for p in backup.iterdir()) == [project_id]
+
+    def test_a_new_backup_removes_the_backups_older_than_the_kept_span(self, tmp_path):
+        from packages.orchestration.data_paths import reconcile_backups_dir
+
+        folder = reconcile_backups_dir(tmp_path)
+        made = datetime.now(timezone.utc)
+        old, young, foreign = (folder / (made - timedelta(days=31)).strftime("%Y%m%dT%H%M%S%fZ"),
+                               folder / (made - timedelta(days=1)).strftime("%Y%m%dT%H%M%S%fZ"),
+                               folder / "kept-by-hand")
+        for path in (old, young, foreign):
+            path.mkdir(parents=True)
+        project_id = str(uuid4())
+        _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        _legacy(project_id, tmp_path, "second", ["j2"], 5)
+
+        reconcile_repo_missions(apply=True, root=tmp_path)
+
+        assert not old.exists() and young.is_dir() and foreign.is_dir()
+
+    def test_a_restore_puts_back_the_projects_it_holds_and_leaves_the_others(self, tmp_path):
+        project_id, bystander = str(uuid4()), str(uuid4())
+        _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        backup = reconcile_repo_missions(apply=True, root=tmp_path)["projects"][0]["backup"]
+        _legacy(bystander, tmp_path, "made after the fold", ["j3"], 0)
+
+        restore_reconcile(Path(backup), tmp_path)
+
+        assert len(list_missions(project_id, tmp_path)) == 2
+        assert [m.goal for m in list_missions(bystander, tmp_path)] == ["made after the fold"]
+
+    def test_a_backup_holding_a_name_that_is_no_project_is_refused(self, tmp_path):
+        from packages.orchestration.data_paths import reconcile_backups_dir
+
+        project_id = str(uuid4())
+        _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        backup = reconcile_backups_dir(tmp_path) / "20260101T000000000000Z"
+        (backup / "not a project").mkdir(parents=True)
+        (backup / "not a project" / "x.json").write_text("{}")
+
+        with pytest.raises(MissionError, match="which is not a project's mission directory"):
+            restore_reconcile(backup, tmp_path)
+
+        assert len(list_missions(project_id, tmp_path)) == 1
+
+
+def _umbrella(tmp_path):
+    """A lead project with a mission of its own and a legacy umbrella over it and one other."""
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+
+    lead, other = str(uuid4()), str(uuid4())
+    _legacy(lead, tmp_path, "lead own", ["l0"], 0)
+    umbrella = create_mission(lead, "both", project_ids=[lead, other], root=tmp_path)
+    for job_id, project in (("a" * 16, lead), ("b" * 16, other)):
+        save_job_plan(JobPlan(job_id=job_id, job_title="t", project_id=project), tmp_path)
+    link_job_to_mission(lead, umbrella.id, "a" * 16, "initial", root=tmp_path)
+    link_job_to_mission(lead, umbrella.id, "b" * 16, "follow_up", root=tmp_path)
+    return lead, other, umbrella
+
+
+class TestAHandOverWritesTheTargetUnderItsOwnLock:
+    """R-1296: the job of a legacy umbrella goes to its project's one mission, under that project's
+    lock, and a mission made for it is named after the project."""
+
+    def test_the_target_mission_is_named_after_the_project_and_saved_under_its_lock(
+            self, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+
+        from packages.orchestration import repo_mission, repo_mission_reconcile
+        from packages.orchestration.mission_state import (
+            LOCK_FILENAME,
+            _held_mission_lock_paths,
+            mission_dir_for_project,
+        )
+
+        lead, other, _umbrella_mission = _umbrella(tmp_path)
+        monkeypatch.setattr(repo_mission, "project_by_id", lambda project_id: SimpleNamespace(
+            id=project_id, slug=f"slug-{project_id[:8]}", name="n", canonical_repo_path=None,
+            repo_paths=[]))
+        held: dict[str, bool] = {}
+        real_save = repo_mission_reconcile.save_mission
+
+        def save(mission, root=None):
+            lock = str(mission_dir_for_project(mission.project_id, root) / LOCK_FILENAME)
+            held[mission.project_id] = held.get(mission.project_id, True) and lock in _held_mission_lock_paths()
+            return real_save(mission, root)
+
+        monkeypatch.setattr(repo_mission_reconcile, "save_mission", save)
+
+        reconcile_repo_missions(apply=True, root=tmp_path)
+
+        [mission_other] = list_missions(other, tmp_path)
+        assert mission_other.goal == f"Maintain slug-{other[:8]}"
+        assert mission_other.job_ids() == ("b" * 16,)
+        assert held == {lead: True, other: True}
+
+    def test_a_restore_of_a_hand_over_takes_back_the_mission_it_made(self, tmp_path):
+        lead, other, umbrella = _umbrella(tmp_path)
+        backup = reconcile_repo_missions(apply=True, root=tmp_path)["projects"][0]["backup"]
+        assert len(list_missions(other, tmp_path)) == 1
+
+        restore_reconcile(Path(backup), tmp_path)
+
+        assert list_missions(other, tmp_path) == []
+        assert umbrella.id in {m.id for m in list_missions(lead, tmp_path)}

@@ -303,8 +303,8 @@ def create_mission(project_id: str, goal: str, *,
                    root: Path | None = None) -> Mission:
     """Create and persist a mission.  This is the ONLY way one comes into being.
 
-    Called through ``repo_mission`` when a repository gets its one mission, by the
-    reconcile and by the gauntlet.  *project_ids*, which only a legacy umbrella
+    Called through ``repo_mission`` when a repository gets its one mission, and by
+    the gauntlet.  *project_ids*, which only a legacy umbrella
     mission carries (DECISION amend1011b D4), names every project it spans,
     *project_id* first (DECISION F205 D2).
     """

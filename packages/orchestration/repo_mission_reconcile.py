@@ -14,12 +14,13 @@ module reads them, says what folding them would do (`reconcile_repo_missions` wi
 * a legacy mission that spans several projects gives each of its jobs to the mission of the
   project that job works in, so no job has two owners and no umbrella mission remains.
 
-Nothing is changed before the whole project area is copied to a backup directory next to the
-missions (``restore_reconcile`` puts it back), nothing is folded while a job of the group is
-not ended or a record in the area cannot be read, and a run that finds a job without exactly one
-owner afterwards restores the backup itself. The run is idempotent: batch ids are derived from
-the folded mission's id, a job already linked in the canonical mission is not linked twice, and
-a second run finds nothing to fold.
+Nothing is changed before the mission directory of every project a step writes is copied to a
+backup in the data root's ``reconcile-backups`` class (``restore_reconcile`` puts those
+directories back, and each new backup removes the ones older than 30 days), nothing is folded
+while a job of the group is not ended or a record in the area cannot be read, and a run that
+finds a job without exactly one owner afterwards restores the backup itself. The run is
+idempotent: batch ids are derived from the folded mission's id, a job already linked in the
+canonical mission is not linked twice, and a second run finds nothing to fold.
 """
 
 from __future__ import annotations
@@ -28,10 +29,11 @@ import json
 import os
 import shutil
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.data_paths import reconcile_backups_dir
 from packages.orchestration.mission_record import (
     MISSION_ROLE_FOLLOW_UP,
     MISSION_ROLE_INITIAL,
@@ -46,6 +48,7 @@ from packages.orchestration.mission_record import (
 from packages.orchestration.mission_state import (
     MISSING_JOB_LABEL,
     list_missions_safe,
+    mission_dir_for_project,
     mission_evidence_dir,
     mission_job_state_label,
     mission_root,
@@ -54,9 +57,15 @@ from packages.orchestration.mission_state import (
     save_mission,
 )
 from packages.orchestration.pingpong_job import JOB_TERMINAL_STATES
-from packages.orchestration.repo_mission import canonical_candidates, seal_current_order_batch
+from packages.orchestration.repo_mission import (
+    canonical_candidates,
+    ensure_project_mission,
+    seal_current_order_batch,
+)
 
-BACKUP_DIRNAME = "reconcile-backups"
+#: How long a backup is kept; each new one removes those older (R-1283).
+RECONCILE_BACKUP_KEEP_DAYS = 30
+_STAMP_FORMAT = "%Y%m%dT%H%M%S%fZ"
 #: The labels of a job a fold may move: one that ended, and one whose record is gone. Anything
 #: else, a paused job or one whose plan cannot be read included, refuses the fold (operator
 #: amendment amend1014-luna-mission-fixes A.5).
@@ -181,9 +190,10 @@ def _record_bytes(mission: Mission) -> int:
 
 
 def _flatten_plan_versions(*, apply: bool, root: Path | None) -> list[dict[str, Any]]:
-    """Report, or with *apply* write, every live mission whose plan chain nests; one backup first."""
+    """Report, or with *apply* write, every live mission whose plan chain nests; each project is
+    backed up before its first write."""
     rows: list[dict[str, Any]] = []
-    backup: Path | None = None
+    backups: dict[str, Path] = {}
     for project_id in project_ids_with_missions(root):
         for mission in list_missions_safe(project_id, root)[0]:
             flat = _flattened(mission)
@@ -192,31 +202,48 @@ def _flatten_plan_versions(*, apply: bool, root: Path | None) -> list[dict[str, 
             row = {"project_id": project_id, "mission": mission.id,
                    "bytes_before": _record_bytes(mission), "bytes_after": _record_bytes(flat)}
             if apply:
-                if backup is None:
-                    backup = _backup_area(root)
+                if project_id not in backups:
+                    backups[project_id] = _backup_projects([project_id], root)
                 with repo_mission_lock(project_id, root):
                     from packages.orchestration.mission_state import load_mission
 
                     fresh = _flattened(load_mission(project_id, mission.id, root))
                     if fresh is not None:
                         save_mission(fresh, root)
-                row["backup"] = str(backup)
+                row["backup"] = str(backups[project_id])
             rows.append(row)
     return rows
 
 
-def _backup_area(root: Path | None) -> Path:
-    """Copy the whole mission area beside it, before anything is written."""
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    area = mission_root(root)
-    backup = area.parent / BACKUP_DIRNAME / stamp
-    shutil.copytree(area, backup)
+def _backup_projects(project_ids: list[str], root: Path | None) -> Path:
+    """Copy the mission directory of each project a step will write, before anything is written,
+    and remove the backups older than the kept span (R-1283). A project with no directory yet is
+    kept as an empty one, so a restore takes back what the step made for it."""
+    now = datetime.now(timezone.utc)
+    folder = reconcile_backups_dir(root)
+    backup = folder / now.strftime(_STAMP_FORMAT)
+    for project_id in dict.fromkeys(project_ids):
+        live = mission_dir_for_project(project_id, root)
+        if live.is_dir():
+            shutil.copytree(live, backup / project_id)
+        else:
+            (backup / project_id).mkdir(parents=True)
+    for old in folder.iterdir():
+        try:
+            made = datetime.strptime(old.name, _STAMP_FORMAT).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue      # not a backup this module named; never removed
+        if (not old.is_symlink() and old.is_dir()
+                and now - made > timedelta(days=RECONCILE_BACKUP_KEEP_DAYS)):
+            shutil.rmtree(old)
     return backup
 
 
 def _fold_project(project_id: str, groups: list[tuple[Mission, list[Mission]]],
                   root: Path | None) -> Path:
-    backup = _backup_area(root)
+    handed = sorted({link.project_id for canonical, dups in groups for m in (canonical, *dups)
+                     for link in m.job_links if link.project_id and link.project_id != project_id})
+    backup = _backup_projects([project_id, *handed], root)
     owned_before = _owned_jobs(root)
     try:
         with repo_mission_lock(project_id, root):
@@ -302,9 +329,9 @@ class ReconcileBackupInvalidError(MissionError):
     """A restore was asked for from something that is not one of reconcile's own backups."""
 
 
-def _check_backup(backup: Path, area: Path) -> None:
+def _check_backup(backup: Path, root: Path | None) -> None:
     """Refuse, before anything is written, a *backup* that reconcile did not make."""
-    folder = (area.parent / BACKUP_DIRNAME).resolve()
+    folder = reconcile_backups_dir(root).resolve()
     if not backup.is_dir():
         raise ReconcileBackupInvalidError(f"{backup} is not a directory; nothing was restored")
     if backup.resolve().parent != folder:
@@ -313,27 +340,41 @@ def _check_backup(backup: Path, area: Path) -> None:
     if next(backup.rglob("*.json"), None) is None:
         raise ReconcileBackupInvalidError(
             f"{backup} holds no mission file; nothing was restored")
+    for saved in backup.iterdir():
+        try:
+            if saved.is_symlink() or not saved.is_dir():
+                raise MissionError("not a directory")
+            mission_dir_for_project(saved.name, root)
+        except MissionError:
+            raise ReconcileBackupInvalidError(
+                f"{backup} holds {saved.name!r}, which is not a project's mission directory; "
+                f"nothing was restored") from None
 
 
 def restore_reconcile(backup: Path | str, root: Path | None = None) -> Path:
-    """Put the whole mission area back as the *backup* holds it; the rollback path.
+    """Put back each project's mission directory the *backup* holds; the rollback path.
 
     Operator amendment amend1014-luna-mission-fixes A.2: the backup is checked before anything
-    is touched, then copied beside the area and swapped in with two renames, and the replaced
-    area (a copy of data the backup already holds) is removed only after the swap succeeded.
+    is touched, then copied beside the area, and each project's copy is swapped in with two
+    renames; the replaced directories (copies of data the backup already holds) are removed
+    only after every swap succeeded. A project the backup does not hold is left as it is (R-1283).
     """
     area = mission_root(root)
     backup = Path(backup)
-    _check_backup(backup, area)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    _check_backup(backup, root)
+    stamp = datetime.now(timezone.utc).strftime(_STAMP_FORMAT)
     staged = area.with_name(f"{area.name}.restoring-{stamp}")
     replaced = area.with_name(f"{area.name}.replaced-{stamp}")
     shutil.copytree(backup, staged)
-    if area.is_dir():
-        os.replace(area, replaced)
-    os.replace(staged, area)
-    if replaced.is_dir():
-        shutil.rmtree(replaced)
+    replaced.mkdir(parents=True)
+    for saved in sorted(staged.iterdir()):
+        live = mission_dir_for_project(saved.name, root)
+        if live.is_dir():
+            os.replace(live, replaced / saved.name)
+        live.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(saved, live)
+    shutil.rmtree(staged)
+    shutil.rmtree(replaced)
     return area
 
 
@@ -341,18 +382,26 @@ def _hand_to_project_mission(link: MissionJobLink, umbrella: Mission, legacy_id:
                              root: Path | None) -> None:
     """Give one job of a legacy cross-repository mission to its own project's mission.
 
-    The target is that project's canonical mission, made when it has none; the job joins it
-    under a legacy batch named after the umbrella, and the umbrella's role is kept there.
+    The target is that project's one mission, found or made by `ensure_project_mission` and so
+    named after the project, and it is read, changed and saved under that project's own lock
+    (R-1296); the job joins it under a legacy batch named after the umbrella, and the
+    umbrella's role is kept there.
     """
-    from packages.orchestration.mission_state import create_mission, load_mission
+    from packages.orchestration.mission_state import load_mission
 
     target_project = link.project_id
-    found = canonical_candidates(target_project, target_project, root)
-    target = found[0] if found else create_mission(
-        target_project, f"Maintain {target_project}", root=root)
-    target = load_mission(target_project, target.id, root)
-    if link.job_id in target.job_ids():
-        return
+    with repo_mission_lock(target_project, root):
+        found, _created = ensure_project_mission(target_project, root=root)
+        target = load_mission(target_project, found.id, root)
+        if link.job_id in target.job_ids():
+            return
+        _join_legacy_batch(target, link, umbrella, legacy_id, root)
+
+
+def _join_legacy_batch(target: Mission, link: MissionJobLink, umbrella: Mission, legacy_id: str,
+                       root: Path | None) -> None:
+    """Save *target* with the job of *link* under the umbrella's legacy batch; the caller holds
+    the target project's lock."""
     batch = next((b for b in target.orders if b.order_id == legacy_id), None)
     if batch is None:
         batch = replace(_legacy_batch(umbrella, {}), sealed={
@@ -364,6 +413,6 @@ def _hand_to_project_mission(link: MissionJobLink, umbrella: Mission, legacy_id:
     orders = (*[b for b in target.orders if b.order_id != legacy_id], batch)
     role = MISSION_ROLE_FOLLOW_UP if target.job_links else MISSION_ROLE_INITIAL
     save_mission(replace(
-        target, repo=target.repo or target_project, orders=orders,
+        target, orders=orders,
         job_links=(*target.job_links, replace(link, role=role, order_id=legacy_id,
                                               project_id=""))), root)

@@ -94,10 +94,14 @@ carries the pair once both files are in the project's repository.
 ## Folding duplicate missions: `remedy mission reconcile`
 A repository has one lasting mission, and every order is a batch in it. Records written before
 that rule may hold several missions for one repository. `remedy mission reconcile` reports how it
-would fold them into the oldest one, and `--apply` does it after copying the whole mission area to
-`reconcile-backups/<stamp>` beside it. It refuses to fold while a job of the group has not ended.
+would fold them into the oldest one, each repository's duplicates into that repository's own
+mission, and `--apply` does it after copying the mission directory of every project it writes to
+`reconcile-backups/<stamp>/<project>` in the data root, a class of its own. Each new backup
+removes the backups older than 30 days. It refuses to fold while a job of the group has not ended.
 The same run flattens a plan chain that an older version wrote nested, so that each mission keeps
 one flat list of earlier plan versions. `--restore <dir>` puts a backup back: it refuses, with
 `reconcile_backup_invalid` and exit code 2 and before it changes anything, a path that is not a
-directory directly under `reconcile-backups/` or that holds no mission file, and it swaps the
-restored copy in with two renames, so a failed restore leaves the current area in place.
+directory directly under `reconcile-backups/`, that holds no mission file or that holds anything
+but project directories, and it swaps each project's restored copy in with two renames, so a
+failed restore leaves the current directories in place; a project the backup does not hold is
+left as it is.

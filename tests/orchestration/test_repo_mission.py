@@ -327,7 +327,6 @@ def test_no_production_code_creates_a_mission_except_through_the_repository_miss
 
     root = Path(__file__).resolve().parents[2]
     allowed = {"packages/orchestration/mission_state.py", "packages/orchestration/repo_mission.py",
-               "packages/orchestration/repo_mission_reconcile.py",
                "packages/orchestration/gauntlet_runner.py"}   # a throwaway data root of its own
     found = {path.relative_to(root).as_posix()
              for base in ("packages", "apps") for path in (root / base).rglob("*.py")
