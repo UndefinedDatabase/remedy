@@ -2919,31 +2919,20 @@ def run_pingpong(
         _persist_run(result)
         return result
 
-    # Create providers — ClaudeCliProvider Builder gets cwd=staging
-    if builder_provider is None:
-        try:
-            builder_provider = _create_provider_with_cwd(
-                builder_name, role="builder", staging_dir=str(staging),
-                write_mode=claude_cli_write_mode, model=builder_model,
-                stream_evidence=stream_evidence,
-                stream_evidence_dir=stream_evidence_dir,
-            )
-        except RuntimeError as exc:
-            return _fail_early(exc)
-
-    # Reviewer: read-only (prompt-only), but cwd is still pinned to the
-    # disposable staging dir so any stray cwd writes from the reviewer
-    # subprocess land in staging (discarded) instead of the repo root.
-    if reviewer_provider is None:
-        try:
-            reviewer_provider = _create_provider_with_cwd(
-                reviewer_name, role="reviewer", staging_dir=str(staging),
-                model=reviewer_model,
-                stream_evidence=stream_evidence,
-                stream_evidence_dir=stream_evidence_dir,
-            )
-        except RuntimeError as exc:
-            return _fail_early(exc)
+    # Create providers. The Builder's claude-cli gets cwd=staging; the Reviewer is read-only (prompt-only),
+    # but its cwd is pinned to the disposable staging dir too, so any stray cwd writes from the reviewer
+    # subprocess land in staging (discarded) instead of the repo root. Both calls share these options.
+    _provider_options = {"staging_dir": str(staging), "stream_evidence": stream_evidence,
+                         "stream_evidence_dir": stream_evidence_dir}
+    try:
+        if builder_provider is None:
+            builder_provider = _create_provider_with_cwd(builder_name, role="builder", model=builder_model,
+                                                         write_mode=claude_cli_write_mode, **_provider_options)
+        if reviewer_provider is None:
+            reviewer_provider = _create_provider_with_cwd(reviewer_name, role="reviewer", model=reviewer_model,
+                                                          **_provider_options)
+    except RuntimeError as exc:
+        return _fail_early(exc)
 
     # F287 T003 (DECISION F287 D7): name, once, why a role's offered parked
     # session was not resumed by a provider that cannot resume one.
@@ -3943,33 +3932,15 @@ def run_pingpong(
     return result
 
 
-def _create_provider_with_cwd(
-    name: str,
-    *,
-    role: str,
-    staging_dir: str | None,
-    write_mode: str = "none",
-    model: str = "",
-    stream_evidence: bool = False,
-    stream_evidence_dir: str | None = None,
-) -> PingPongProvider:
+def _create_provider_with_cwd(name: str, *, role: str, **options: Any) -> PingPongProvider:
     """Create provider with role-appropriate cwd and write mode.
 
-    The body lives in `packages/orchestration/role_provider_factory.py`; this shim passes this
-    module's own `create_provider` at every call, so a test that replaces
-    `pingpong_loop.create_provider` still reaches every provider this module builds
-    (DECISION F058 D2).
+    The body lives in `packages/orchestration/role_provider_factory.py`, and every keyword this shim
+    takes goes to `create_role_provider` unchanged; the shim passes this module's own `create_provider`
+    at every call, so a test that replaces `pingpong_loop.create_provider` still reaches every provider
+    this module builds (DECISION F058 D2).
     """
-    return create_role_provider(
-        name,
-        role=role,
-        staging_dir=staging_dir,
-        write_mode=write_mode,
-        model=model,
-        stream_evidence=stream_evidence,
-        stream_evidence_dir=stream_evidence_dir,
-        make_provider=create_provider,
-    )
+    return create_role_provider(name, role=role, make_provider=create_provider, **options)
 
 
 # ---------------------------------------------------------------------------

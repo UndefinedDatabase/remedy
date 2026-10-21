@@ -60,7 +60,8 @@ commit with no alias left behind, and changes the tests in their import lines on
   from the loop; (2) the two retries without a resumed session become one function; (3) the
   builder's and the reviewer's prompt composition become a function each; (4) the closing record
   of the run becomes a function of its own. Step (5), done by F141: the builder's context,
-  `build_builder_context` in `packages/orchestration/builder_context.py`.
+  `build_builder_context` in `packages/orchestration/builder_context.py`. Step (6), done by F307:
+  the construction of the two role providers is one block whose two calls share their options.
 - `list_decisions` (`packages/orchestration/decision_queue.py`). Boundary: its nine numbered
   sections, one per source of decisions. Steps: (1) the three largest sections — plan approvals,
   escalations and budget stops — become a function each that returns its decisions; (2) the other
@@ -288,7 +289,7 @@ with the code that calls it.
 | Lines | File | Function |
 |---|---|---|
 | 1434 | `packages/orchestration/pingpong_job.py` | `run_job` |
-| 1274 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
+| 1263 | `packages/orchestration/pingpong_loop.py` | `run_pingpong` |
 | 887 | `packages/orchestration/decision_queue.py` | `list_decisions` |
 | 718 | `packages/orchestration/job_evidence.py` | `export_job_evidence` |
 | 455 | `packages/orchestration/ui_server.py` | `_RemedyHandler._handle_command_submission` |
@@ -445,7 +446,7 @@ with the code that calls it.
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 5331 | `packages/orchestration/pingpong_job.py` |
-| 4953 | `packages/orchestration/pingpong_loop.py` |
+| 4924 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |
