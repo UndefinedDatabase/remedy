@@ -1,30 +1,21 @@
-# Live Review — F078 Autonomy levels
+# Live Review — F141 Permission matrix per autonomy level
 
-> Round-by-round review record, re-headed at the F078 claim per
-> docs/agents/planner_reviewer_prompt.md §1, and re-headed again in session 2 after the merge
-> that carries F078 onto `main` (DECISION F078 D4). Session 1 claimed F078 on
-> `feature/f078-autonomy-levels`, forked from `main` at `e688b30f3`, and ended at an operator stop
-> after three reviewed rounds; `main` meanwhile re-headed its own copy of this record for F310 to
-> F313, the last of which pull request 372 merged as `ff309f737`. Session 2 continues on
-> `feature/f078-autonomy-levels-2`, whose first commit merges the first branch at `9d3187143` into
-> `main` at `ff309f737`. That merge keeps everything from the Findings heading to the end of the
-> file as it stood at `ff309f737` BYTE-IDENTICAL and appends after it, byte-identical, what the
-> first branch had appended to its own copy: the gate of F055's round 9, the gates of F078's rounds
-> 1 and 2, and F078's R-1321 with its resolution. Finding ids continue the monotonic R-XXXX series,
-> with one collision DECISION F078 D4 records: F078's R-1321 of 2026-10-14 and the different
-> R-1321 the operator session of amend1015 minted on `main` the next day, both resolved, so F078's
-> is written "R-1321 (F078)" wherever the two must be told apart. The open set at `ff309f737`,
-> computed with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 87 ids, the lowest
-> R-1246 and the highest R-1381; F078 owns none of them.
+> Round-by-round review record, re-headed at the F141 claim per
+> docs/agents/planner_reviewer_prompt.md §1. F141 is claimed on `feature/f141-permission-matrix`,
+> from `main` at `43e470560`, the merge commit of pull request 373, which carried F078. Everything
+> from the Findings heading to the end of the file is carried forward byte-identical from that
+> commit, and round 1 appends the gate of F078's round 11 after it. Finding ids continue the
+> monotonic R-XXXX series. The open set at `43e470560`, computed with `open_finding_ids` from
+> `scripts/rotate_live_review.py`, holds 87 ids, the lowest R-1246 and the highest R-1381; F141
+> owns none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISIONS F078 D1 TO D4's. Session 1 claimed F078 and landed T001, T002, and
-of T003 the level shown and the caps of L5, in three reviewed rounds. Session 2's first round,
-round 4, merges the first branch onto `main`, books round 3 and refuses an L5 cap that is not a
-number. The next round proves each level's increment end to end and every existing gate at L5,
-settles whether the status answer's new key is a contract change, and brings the page and two
-feature files up to date. Then the closure.
+THE ORDER BELOW IS DECISION F141 D1's. Round 1 claims F141, books F078's round 11, records the seam
+inventory and the matrix, and lands the matrix with its one check and a test per cell (T001). The
+rounds after it wire the seams through the check, one group of seams per round (T002), then the
+decision path, the rendered table, the guard against bypass parameters and a fixture per level
+(T003). Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -507,3 +498,5 @@ Gate: F078 R9 — the F078 round 9 entry, the closure's evidence round, over `86
 Gate: F078 R10 — the F078 round 10 entry, the second repair round and the evidence round again, over `9760c3aff`..`c8d3c1b8a` (5 commits, each single-parent; insertions by `git show --numstat`: `788b685ed` 157, `25f0a4135` 50, `e8bc53a70` 18, `a1f56d467` 442, `c8d3c1b8a` 98). VERDICT PASS, verified by dry run, bytes identical. The reviewer's `verify.py` read every parent, subject and path set as ordered, C1's four files and C2's `packages/orchestration/review_subject.py` and `tests/orchestration/test_review_commit_chain.py` byte-identical to the reviewer's dry-run commits on the same base, C3 a transcript naming C2 as its tree with no path of this machine, C4 the evidence script's copy and C5's handoff free of machine paths, `ALL True`. The reviewer's dry run of the same bytes read `4333 passed, 2 skipped` over the 125 paths of every test that reads the review subject, the reachability guard, the golden path, the docs guards and every `tests/test_*.py`, the structure ratchet among them; three mutations in a disposable worktree, removed afterwards, each red beside an unmutated control at `22 passed`, before and after: the chain's names without the first parent (2 failed), the chain's patch without it (2) and the packaged patch bytes without it (2); and a probe bundle built with the repaired code no longer reported the commit chain. The one full suite on `25f0a4135` read exit 0, `22190 passed, 11 skipped, 1 warning in 357.29s (0:05:57)`, no bad node, the reflog unchanged, and the cost script exit 0 at 1328.90 CPU seconds, 1.8 percent above F313's. The evidence job `f078r10e1001` at `a1f56d467` read both counts 29, `collected node ids 10070, deselected 177`, no unsafe id, `10064` passed and `0` failed, `is_valid_current_run True` and `validation_errors []`; the package `remedy-review-20261021-080416-READY_FOR_REVIEW.zip` reads `READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`, its SHA-256 `954c7dd0df514ddb72e534dd85b5f893fa1e5a0c762850f1e30b630c8459a6da` by the worker's reading, its committed review subject from `ff309f737996a63b48c17b78d8a1a5a789c0293e` to `a1f56d46701274ccda6a8b2431967a9160417f48`, in `~/Repos/remedy-history/zips`, which this session's sandbox does not let the reviewer read. No deviation was declared.
 
 Done: R-1394 — RESOLVED at F078 R10 by C2, `25f0a4135`: `resolve_commit_chain` and `commit_patch_bytes` in `packages/orchestration/review_subject.py` pass `--diff-merges=1` to `git diff-tree`, so a merge commit's changed files and patch are its change against its first parent, and a commit with one parent reads exactly as before (DECISION F078 D8). MEASURED BY THE REVIEWER in the disposable worktree: each of the three arguments removed turned the new tests of `tests/orchestration/test_review_commit_chain.py` red (2 failed each), green again without the change; the evidence job of round 10 then validated and its package built `READY_FOR_REVIEW`.
+
+Gate: F078 R11 — the F078 round 11 entry, the closing round, over `c8d3c1b8a`..`409ab8c1a` (3 commits, each single-parent: `1b551d751`, `de6b89241`, `409ab8c1a`), reviewed in F141's session 1 after pull request 373 merged it as `43e470560`. VERDICT PASS, verified by the bytes. The reviewer compared every file of the three commits with the prepared files of round 11 on the same base, `ALL True`: C1's block copy, pull request body, decisions, ledger append and plan, C2's feature file and C3's STATUS line, README and self-use queue; C3's handoff holds no path of this machine. The merge commit's tree equals `409ab8c1a`'s (`git diff 409ab8c1a 43e470560` prints nothing). The worker's gates read as the handoff states them: the selection `3449 passed, 2 skipped`, exit 0, and the integrity check failing only on the twelve High findings F078 does not own (DECISION F310 D7). No deviation was declared.

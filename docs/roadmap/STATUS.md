@@ -292,7 +292,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 7 — Luna gate C: permissions (operator ruling amend1006-luna-control-plane)
 
-- [ ] F141 — Permission matrix per autonomy level
+- [~] F141 — Permission matrix per autonomy level
 
 ## Tier 3 — Luna gate C: the certificate (operator ruling amend1006-luna-control-plane)
 
