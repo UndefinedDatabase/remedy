@@ -60,10 +60,8 @@ from packages.orchestration.mission_state import (
     save_mission,
 )
 
-#: The kinds of order a batch records: one that builds, and one that only reads (DECISION
-#: amend1011b D7); a read-only order adds no build job.
+#: The kind of order a batch records; every order accepted today builds.
 ORDER_KIND_BUILD = "build"
-ORDER_KIND_READ_ONLY = "read_only"
 
 
 class RepoMissionError(MissionError):
@@ -175,14 +173,15 @@ def _target_commit(repo_root: str | Path) -> str:
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
-def _find_or_create(project: Any, key: str, root: Path | None) -> Mission:
-    """The repository's mission, created only when it has none; the caller holds the lock."""
+def _find_or_create(project: Any, key: str, root: Path | None) -> tuple[Mission, bool]:
+    """The repository's mission and whether this call created it, which it does only when
+    there is none; the caller holds the lock."""
     project_id = str(project.id)
     candidates = canonical_candidates(project_id, key, root)
     if candidates:
-        return candidates[0]
+        return candidates[0], False
     return create_mission(
-        project_id, f"Maintain {getattr(project, 'slug', None) or project.name}", root=root)
+        project_id, f"Maintain {getattr(project, 'slug', None) or project.name}", root=root), True
 
 
 def ensure_repo_mission(project: Any, repo_root: str | Path, *,
@@ -190,12 +189,11 @@ def ensure_repo_mission(project: Any, repo_root: str | Path, *,
     """The repository's one mission and whether this call created it; no order is added."""
     key = repo_key(project, repo_root)
     with repo_mission_lock(str(project.id), root):
-        existing = canonical_candidates(str(project.id), key, root)
-        mission = _find_or_create(project, key, root)
+        mission, created = _find_or_create(project, key, root)
         if mission.repo != key:
             mission = replace(mission, repo=key)
             save_mission(mission, root)
-    return mission, not existing
+    return mission, created
 
 
 def _refusal(mission: Mission | None) -> str:
@@ -226,9 +224,9 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
     project_id = str(project.id)
     key = repo_key(project, repo_root)
     with repo_mission_lock(project_id, root):
-        mission = _find_or_create(project, key, root)
-        if _refusal(mission):
-            raise RepoMissionError(_refusal(mission))
+        mission, _created = _find_or_create(project, key, root)
+        if refusal := _refusal(mission):
+            raise RepoMissionError(refusal)
         reopened = mission.status if mission.status == MISSION_STATUS_ACHIEVED else ""
         batch = MissionOrderBatch(
             order_id=uuid4().hex, text=order.text, source_path=order.source_path,
@@ -253,8 +251,8 @@ def accept_order_in_each(targets: list[tuple[Any, str]], order: MissionOrder, *,
     (DECISION amend1011b D4). Answers each project id's (mission id, order id).
     """
     for project, repo_root in targets:
-        if order_refusal(project, repo_root, root):
-            raise RepoMissionError(order_refusal(project, repo_root, root))
+        if refusal := order_refusal(project, repo_root, root):
+            raise RepoMissionError(refusal)
     correlation = uuid4().hex if len(targets) > 1 else ""
     accepted: dict[str, tuple[str, str]] = {}
     for project, repo_root in targets:

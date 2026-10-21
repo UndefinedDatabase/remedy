@@ -8,10 +8,10 @@ evidence and no results — those stay on the jobs, where they already live.
 
 What a mission deliberately is NOT:
 
-* It is not created for you.  Nothing in this module ever creates a mission as
-  a side effect of running work.  A mission exists because a human ran
-  ``remedy mission start`` or answered the plan-approval opt-in with yes — the
-  opt-in defaults to NO (P2).  A plain do-flow leaves no mission behind.
+* It is not created per run.  A repository has ONE lasting mission (DECISION
+  amend1011b D1 to D3): the first order given to the repository (``remedy do``,
+  ``remedy mission start``, the public API) creates it through
+  ``repo_mission.accept_order``, and every later order is a batch under it.
 * It is not a second job store.  A link is a job id and a role, nothing more.
   ``mission show`` reads each job's terminal state from the job store at read
   time, so a mission can never disagree with the jobs it points at.
@@ -303,10 +303,10 @@ def create_mission(project_id: str, goal: str, *,
                    root: Path | None = None) -> Mission:
     """Create and persist a mission.  This is the ONLY way one comes into being.
 
-    Called by ``remedy mission start`` and by the plan-approval opt-in — never
-    as a side effect of running work.  *project_ids* names every project a mission
-    over several repositories spans, *project_id* first (DECISION F205 D2); one
-    project, or none given, makes the record every mission had before.
+    Called through ``repo_mission`` when a repository gets its one mission, by the
+    reconcile and by the gauntlet.  *project_ids*, which only a legacy umbrella
+    mission carries (DECISION amend1011b D4), names every project it spans,
+    *project_id* first (DECISION F205 D2).
     """
     text = str(goal).strip()
     if not text:
@@ -357,13 +357,6 @@ def mission_for_job(job_id: str, root: Path | None = None) -> Mission | None:
 
 #: The statuses of a mission that has ended; a mission in any other status still runs.
 MISSION_ENDED_STATUSES = (MISSION_STATUS_ACHIEVED, MISSION_STATUS_ABANDONED)
-
-
-def running_mission_for_order_file(source_path: str, root: Path | None = None) -> Mission | None:
-    """See `repo_mission.running_mission_for_order_file` (DECISION amend1011b D5)."""
-    from packages.orchestration.repo_mission import running_mission_for_order_file as running
-
-    return running(source_path, root)
 
 
 def link_job_to_mission(project_id: str, mission_id: str, job_id: str,

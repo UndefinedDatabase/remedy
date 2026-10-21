@@ -13,7 +13,7 @@ key, a missing or duplicate ``pid``, a dependency on a ``pid`` the catalog does 
 a dependency cycle each refuse to parse rather than guess; a cycle's refusal shows the exact
 path, ``a -> b -> a``. :func:`repo_catalog_order` is this slice's other half: given a list of
 ``pid``s, it returns them in the order the catalog's ``depends_on`` edges require, citing
-each edge, for the planner coupling T002 lands next.
+each edge, which :func:`repo_catalog_project_order` applies to an order's projects (T002).
 """
 
 from __future__ import annotations
@@ -239,7 +239,7 @@ def load_repo_catalog(path: Path | None = None) -> RepoCatalog | None:
     return parse_repo_catalog(path.read_text(encoding="utf-8"), str(path))
 
 
-def _reachable_pids(catalog: RepoCatalog, pid: str) -> frozenset[str]:
+def reachable_catalog_pids(catalog: RepoCatalog, pid: str) -> frozenset[str]:
     """Every catalog pid reachable from `pid` through `depends_on`, transitively."""
     entry = catalog.entry(pid)
     if entry is None:
@@ -298,7 +298,7 @@ def repo_catalog_order(catalog: RepoCatalog, pids: Sequence[str]) -> RepoCatalog
         raise ValueError(f"pid given more than once: {', '.join(dupes)}")
 
     given_set = set(given)
-    reach = {pid: _reachable_pids(catalog, pid) for pid in given}
+    reach = {pid: reachable_catalog_pids(catalog, pid) for pid in given}
     required = {pid: frozenset(q for q in given_set if q != pid and q in reach[pid]) for pid in given}
 
     placed: list[str] = []

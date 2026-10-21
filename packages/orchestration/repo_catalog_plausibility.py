@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from packages.orchestration.project_registry import list_projects
-from packages.orchestration.repo_catalog import RepoCatalog, RepoCatalogEntry
+from packages.orchestration.repo_catalog import RepoCatalog, RepoCatalogEntry, reachable_catalog_pids
 
 try:                                   # Python >= 3.11
     import tomllib
@@ -145,24 +145,6 @@ class RepoCatalogPlausibility(NamedTuple):
     skipped: tuple[RepoCatalogSkip, ...]
 
 
-def _reachable_pids(catalog: RepoCatalog, pid: str) -> frozenset[str]:
-    """Every catalog pid reachable from `pid` through `depends_on`, transitively."""
-    entry = catalog.entry(pid)
-    if entry is None:
-        return frozenset()
-    seen: set[str] = set()
-    stack = list(entry.depends_on)
-    while stack:
-        dep = stack.pop()
-        if dep in seen:
-            continue
-        seen.add(dep)
-        dep_entry = catalog.entry(dep)
-        if dep_entry is not None:
-            stack.extend(dep_entry.depends_on)
-    return frozenset(seen)
-
-
 def _resolve_entry_root(
         entry: RepoCatalogEntry, project_roots: Mapping[str, Path] | None) -> Path | None:
     """DECISION F206 D3 (3): the entry's own `root`, then `project_roots`, then the registry."""
@@ -214,7 +196,7 @@ def check_repo_catalog_plausibility(
             publishers.setdefault(normalize_package_name(published_name), []).append(
                 (entry.pid, published_name))
 
-    reach = {entry.pid: _reachable_pids(catalog, entry.pid) for entry in catalog.entries}
+    reach = {entry.pid: reachable_catalog_pids(catalog, entry.pid) for entry in catalog.entries}
 
     for entry in catalog.entries:
         root = _resolve_entry_root(entry, project_roots)

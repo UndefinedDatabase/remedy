@@ -11,9 +11,11 @@ The module sits under `packages/` rather than `apps/cli/commands/` because its
 steps call package functions and must be testable without the CLI.
 
 Scope: init registers and ignores and writes no file into the repository
-(D2); study runs once, on a non-empty repository only (D3); plan creates the
-mission record for the order, writes the contract template forced or proposed
-onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
+(D2); study runs once, on a non-empty repository only (D3); plan accepts the
+order as a batch of the one lasting mission of each repository it touches,
+creating that mission only once (DECISION amend1011b D1 to D4), writes the
+contract template forced or proposed onto its current order (DECISION F269 D1
+(4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); the ui
 step that opened the old cockpit is gone and `--no-ui` does nothing (operator amendment

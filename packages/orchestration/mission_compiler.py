@@ -768,8 +768,8 @@ def plan_mission(
             f"{len(in_progress)} milestone(s) are already in progress "
             f"({', '.join(in_progress)}) because "
             f"{len(current_order_links(mission))} job(s) are linked to its current order. "
-            f"Start a new mission for a different route, or achieve/abandon "
-            f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
+            f"A different route is a new order, which this mission plans afresh: "
+            f"remedy do \"<order>\" (mission {mission.id[:12]}).")
 
     prompt_traces: list[Any] = []
     goal = mission.orders[-1].text if mission.orders else mission.goal

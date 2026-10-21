@@ -1611,7 +1611,7 @@ def _keyed_order_starter(record: SR.OrderRecord):
 def _stand_in_running_mission(monkeypatch, mission):
     """Replace `running_mission_for_order_file` (the route imports it at each call) with a
     stand-in that records the path it is asked and returns MISSION."""
-    from packages.orchestration import mission_state
+    from packages.orchestration import repo_mission
 
     asked: list[str] = []
 
@@ -1619,7 +1619,7 @@ def _stand_in_running_mission(monkeypatch, mission):
         asked.append(source_path)
         return mission
 
-    monkeypatch.setattr(mission_state, "running_mission_for_order_file",
+    monkeypatch.setattr(repo_mission, "running_mission_for_order_file",
                         running_mission_for_order_file)
     return asked
 

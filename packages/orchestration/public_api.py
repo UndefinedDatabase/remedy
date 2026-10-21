@@ -740,7 +740,7 @@ def answer_public_api_post(
             except PublicApiWriteRefusal as refusal:
                 return refusal.status, build_error(refusal.error, refusal.message), {}
             if order_key is not None and not checked.get("new_mission"):
-                from packages.orchestration.mission_state import running_mission_for_order_file
+                from packages.orchestration.repo_mission import running_mission_for_order_file
 
                 mission = running_mission_for_order_file(
                     str(keyed_order_file_path(serve_paths(), order_key).resolve()))

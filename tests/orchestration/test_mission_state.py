@@ -66,13 +66,13 @@ from packages.orchestration.mission_state import (
     resolve_mission_id,
     resolve_verify_command,
     run_verify_task,
-    running_mission_for_order_file,
     save_mission,
     set_mission_contract,
     set_mission_order,
     set_mission_status,
 )
 from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
+from packages.orchestration.repo_mission import running_mission_for_order_file
 from packages.orchestration.schemas.models import JobIntake
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)

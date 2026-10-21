@@ -453,7 +453,7 @@ def _cmd_do(
                  json_output=json_output, exit_code=2)
     # DECISION F304 D6: one order file is run by one mission at a time, unless a new one is asked.
     if order_source_kwargs and not new_mission:
-        from packages.orchestration.mission_state import running_mission_for_order_file
+        from packages.orchestration.repo_mission import running_mission_for_order_file
 
         source_path = order_source_kwargs["order_source_path"]
         running = running_mission_for_order_file(source_path)
