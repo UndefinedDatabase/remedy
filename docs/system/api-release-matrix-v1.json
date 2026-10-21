@@ -313,6 +313,12 @@
      "case": "every answer that carries a mission",
      "before": "listed in the answer's key tree, never written",
      "after": "gone from the key tree; no record ever carried it (F307, DECISION F307 D19)"
+    },
+    {
+     "field": "the story's `numbers.tokens_in` and `numbers.tokens_out`, a step's `tokens`, and the digest's `tokens`",
+     "case": "a run on the fake providers",
+     "before": "null: the fake reported no tokens",
+     "after": "the fake's fixed figures; its cost stays unmeasured (F307, DECISION F307 D20)"
     }
    ]
   }

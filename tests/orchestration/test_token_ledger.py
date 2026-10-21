@@ -1450,10 +1450,10 @@ class TestLiveMirrorOnTheProductionPath:
             ):
                 assert row[field] == getattr(expected, field), field
 
-            # A fake-provider call reports no price, and an unreported counter
-            # must not have become a zero on the way in (the P6 rule).
+            # A fake-provider call reports its fixed tokens and no price, and the
+            # unreported price must not have become a zero on the way in (the P6 rule).
             assert row["cost_usd"] is None
-            assert row["tokens_in"] is None
+            assert row["tokens_in"] == {"builder": 1200, "reviewer": 800}[row["role"]]
             assert row["cost_basis"] == COST_BASIS_UNKNOWN
 
     def test_the_live_row_is_the_row_backfill_would_have_written(
@@ -2306,7 +2306,7 @@ class TestCostTruthOnTheJobRunPath:
         from packages.orchestration.project_registry import register_project_repo
 
         project = register_project_repo("cost-truth", str(live_job_repo))
-        job = _run_fake_provider_job(live_job_repo)   # reports no usage at all
+        job = _run_fake_provider_job(live_job_repo)   # reports tokens, never a cost
 
         mirror = mirror_job_run_into_ledger(job.job_id)
         assert mirror["ledger_mirrored"] is True, mirror["error"]

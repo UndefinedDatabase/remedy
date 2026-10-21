@@ -198,7 +198,7 @@ def _builder_context_by_round(job: Any) -> list[dict[str, Any]]:
     exports — and nothing else: the round's `builder.tokens_used`, and the task
     run's builder totals the runner aggregated into
     `token_accounting.usage_actuals.by_role.builder`, which stay None when no
-    builder call reported usage (the fake provider reports none). A task that
+    builder call reported usage (the fake provider's are not counted). A task that
     never ran has no entry.
     """
     from packages.orchestration.pingpong_loop import load_run

@@ -199,6 +199,9 @@ def test_a_done_run_reads_done_and_its_apply_lands_once(gate: Gate) -> None:
     assert story["next"] == {"action": "apply", "route": {
         "method": "POST", "path": f"/api/v1/jobs/{gate.done_job}/apply"}}
     assert story["numbers"]["rounds"] >= 1
+    # R-1323: the fake reports tokens, so the story's figures are measured, never empty.
+    assert story["numbers"]["tokens_in"] > 0 and story["numbers"]["tokens_out"] > 0
+    assert building["tokens"] is not None
     assert story["note_open"] is False
 
     route = story["next"]["route"]

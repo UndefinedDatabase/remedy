@@ -346,7 +346,8 @@ order, each `{id, status, phrase, tokens}` with `status` one of `waiting`, `runn
 `skipped` and `failed`; `building` adds `tasks`, each `{title, status, rounds, files}`. `changes`
 lists the job's result as `{path, added, removed}`. `numbers` holds `duration_s`, `tokens_in`,
 `tokens_out`, `calls`, `model_turns` and `rounds`, each `null` where nothing was measured, never 0
-for "unknown": the fake providers report no tokens, so a fake run's tokens read `null`. `tokens_in`
+for "unknown": the fake providers report fixed tokens and no cost, so a fake run's tokens are
+numbers and its cost stays unmeasured (since 1.27). `tokens_in`
 and `tokens_out` are the provider's measured totals over every model turn of every call; `calls`
 counts harness invocations and `model_turns` the model responses inside them (a Pi call runs an agent
 loop of many turns). A task's `proof_summary.tokens_estimated` in a job report is the size of the

@@ -4506,7 +4506,7 @@ def _build_token_accounting(result: PingPongResult) -> dict[str, Any]:
     """
     # Actual availability is based on whether usage_actuals exist, not on
     # tokens_used > 0. A call with input_tokens > 0 and output_tokens = 0 is
-    # still real measured usage. FakeProvider never sets usage_actuals.
+    # still real measured usage. FakeProvider's attempts are skipped below.
     # Role totals come from every recorded real ProviderAttempt (initial calls,
     # transport retries, parse retries, repair rounds) — never from the final
     # stored round result alone, which would drop retried calls. Manual

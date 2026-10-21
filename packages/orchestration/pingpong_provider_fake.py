@@ -6,8 +6,24 @@ F307 moved it here from ``pingpong_provider.py`` as that file's structural step 
 """
 from __future__ import annotations
 
+from typing import Any
+
 from packages.orchestration.call_identity import prepare_call_input
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput, ReviewFinding
+
+#: The tokens each fake build and each fake review reports (R-1323, DECISION F307 D20): fixed
+#: numbers in the claude CLI's usage keys, so a fake run's ledger rows carry tokens as a real run's
+#: do. The fake reports no cost, so its calls stay unpriced.
+FAKE_BUILD_USAGE = {"input_tokens": 1200, "output_tokens": 300, "cache_read": 0, "cache_creation": 0}
+FAKE_REVIEW_USAGE = {"input_tokens": 800, "output_tokens": 200, "cache_read": 0, "cache_creation": 0}
+
+
+def fake_usage_actuals(usage: dict[str, int], session_id: str) -> dict[str, Any]:
+    """One fake call's usage block: USAGE, a null cost, and SESSION_ID when the fake has one."""
+    actuals: dict[str, Any] = {**usage, "total_cost_usd": None}
+    if session_id:
+        actuals["session_id"] = session_id
+    return actuals
 
 
 class FakeProvider:
@@ -84,9 +100,7 @@ class FakeProvider:
         # constructed to support it — an unsupported provider's output is
         # byte-identical whether or not a caller passes ``resume``.
         resume_used = bool(resume) and self._supports_resume
-        usage_actuals = (
-            {"session_id": self._fake_session_id} if self._fake_session_id else None
-        )
+        usage_actuals = fake_usage_actuals(FAKE_BUILD_USAGE, self._fake_session_id)
         return BuilderOutput(
             summary=f"{'Repair' if is_repair else 'Initial'} changes (round {self._build_count})",
             files_changed=list(self._builder_files),
@@ -127,7 +141,9 @@ class FakeProvider:
         # was constructed to support it — mirrors FakeProvider.build (T002a).
         out.resume_used = bool(resume) and self._supports_resume
         out.resume_session_ref = resume if out.resume_used else ""
-        if self._fake_session_id:
+        if not out.error:
+            out.usage_actuals = fake_usage_actuals(FAKE_REVIEW_USAGE, self._fake_session_id)
+        elif self._fake_session_id:
             out.usage_actuals = {"session_id": self._fake_session_id}
         out.prepared_input = prepare_call_input(
             prompt=prompt, model="fake", mode="fake",
