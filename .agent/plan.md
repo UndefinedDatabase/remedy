@@ -4,18 +4,17 @@
 A configured autonomy level, `L2` to `L5`, states what Remedy may start on its own; one shared
 check answers every starting seam from a sixteen-cell matrix, a level of `L3` or higher needs the
 passed gauntlet, every level change needs a decision record, and the level is visible where it
-matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D4).
+matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D5).
 
 ## Current Step
-Round 4 (session 2) on `feature/f078-autonomy-levels-2`: merge the first branch onto `main`
-(DECISION F078 D4), book round 3, and refuse an L5 cap of `claim_idea_start` that is not a
-number of at least 0.
+Round 5 (session 2): book round 4, register R-1391 and repair it, DECISION F078 D5 and its test
+module (each level end to end, every gate of a mission run at L5), the page brought up to date
+with DECISION F078 D3, and one line each in the files of F063 and F068.
 
 ## Next Steps
-1. Prove each level's increment end to end and every existing gate at `L5`; decide whether the
-   new `autonomy` key of `remedy status`'s answer is a contract change after 1.22 (DECISION
-   F313 D1's rule for a grown answer); bring `docs/system/autonomy-levels-v1.md` up to date; add
-   one line each to the files of F063 and F068.
+1. Contract 1.23: `remedy status`'s answer gained `autonomy` after 1.22 was published, and the
+   release matrix holds both versions equal to its `current` (DECISION F313 D1's rule for a grown
+   answer): both versions, the matrix's 1.23 entry, the test pins and both pages.
 2. The closure sequence: the one full suite, the consolidation pass, the self-use run, the
    evidence and the package, the Built State, the STATUS line and the pull request.
 
