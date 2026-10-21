@@ -29,7 +29,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-151 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+152 of 313 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 Since 2026-10-15 Remedy is a backend: a command line and a public HTTP API. Its face is the universe's
 edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v1.md)).
@@ -43,7 +43,7 @@ edition `remedy`, not a page of its own ([face-v1.md](docs/roadmap/design/face-v
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 38 | 39 |
 | 6 | Design-to-Code | 0 | 16 |
-| 7 | Quality & Trust | 2 | 17 |
+| 7 | Quality & Trust | 3 | 17 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
@@ -828,7 +828,16 @@ above the size limits, and the files that were replaced but never deleted; the n
 setting `mission.upkeep_every`; skipping a cleanup job needs `--skip-upkeep` with a reason, which
 is recorded, and the orchestrator never skips one; `remedy mission show` and the client digest say
 how many jobs are left before the next one and what it will carry; the rule's page is
-`docs/system/mission-upkeep-v1.md`).
+`docs/system/mission-upkeep-v1.md`),
+F141 permission matrix (what the work Remedy runs may do is now one table: reading your project,
+writing a job's result into your files, committing, pushing, changing a dependency, deleting files
+or running a migration, starting work above your cost threshold and reaching the network are each
+allowed or asked at every autonomy level from L2 to L5, through one check that every place doing
+such an action calls; an action that is asked goes ahead only with your approval of that one case,
+the flag you already type, your `y` at a prompt or your answer to a decision, and every approval is
+written down; the setting `autonomy.allow_push` can forbid every push; no flag skips the check;
+`remedy status --json` lists each action and the answer in force; the page
+`docs/system/permission-matrix-v1.md` is generated from the table).
 
 Accepted in Tier 12 so far:
 F200 daemon mode (`remedy serve start` runs one long-lived supervisor for a data root, and
