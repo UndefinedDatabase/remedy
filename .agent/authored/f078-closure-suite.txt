@@ -1,30 +1,27 @@
 command: python3 -m pytest -n auto -q
-real exit code: 1
-wall time: 360.7s (the launcher's reading); pytest's own reported wall time: 360.08s (0:06:00)
-summary line: 3 failed, 22185 passed, 11 skipped, 1 warning in 360.08s (0:06:00)
-bad node ids (failed + errors):
-  - tests/orchestration/test_agent_state_and_readiness.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
-  - tests/orchestration/test_event_names.py::TestTheEventVocabularyIsDeclared::test_every_written_event_name_is_declared
-  - tests/orchestration/test_event_names.py::TestTheEventVocabularyIsDeclared::test_every_read_event_name_is_declared
+real exit code: 0
+wall time: 362.2s (the launcher's reading); pytest's own reported wall time: 361.45s (0:06:01)
+summary line: 22188 passed, 11 skipped, 1 warning in 361.45s (0:06:01)
+bad node ids (failed + errors): NONE
 leftover processes: NONE
-tree it ran on: 239bfc93b (F078 R7 C4: the closure's self-use item run to its approval gate, never applied)
-tree note: C1 to C4 changed only .agent/ files, the feature file, the checklist page and the self-use queue
-reflog before: 239bfc93b HEAD@{2026-10-21 06:37:37 +0200}: commit: F078 R7 C4: the closure's self-use item run to its approval gate, never applied
-reflog after: 239bfc93b HEAD@{2026-10-21 06:37:37 +0200}: commit: F078 R7 C4: the closure's self-use item run to its approval gate, never applied
+tree it ran on: 0d7044307 (F078 R8 C3: the context names its steps again (R-1392))
+tree note: the repaired tree of round 8; round 7's transcript stays in git history at 1287824bc
+reflog before: 0d7044307 HEAD@{2026-10-21 06:49:57 +0200}: commit: F078 R8 C3: the context names its steps again (R-1392)
+reflog after: 0d7044307 HEAD@{2026-10-21 06:49:57 +0200}: commit: F078 R8 C3: the context names its steps again (R-1392)
 reflog unchanged during the run: yes
 cost command: python3 scripts/closure_suite_cost.py --feature F078 --record ~/.remedy-loop/test_load.jsonl
 cost exit code: 0
-Test load: 1319.47 CPU seconds, 360.09 wall seconds, 22199 tests collected, exit status 1, recorded 2026-10-21T04:43:40Z
-This closure's suite used 1319.47 CPU seconds, 1.1 percent more than F313's 1304.91, within the 10 percent limit.
+Test load: 1304.28 CPU seconds, 361.46 wall seconds, 22199 tests collected, exit status 0, recorded 2026-10-21T04:56:02Z
+This closure's suite used 1304.28 CPU seconds, 0.0 percent less than F313's 1304.91, within the 10 percent limit.
 The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
 The test modules whose CPU time rose most since F313's closure run:
-  +5.57 s  tests/cli/test_do_scale_matrix.py (37.13 -> 42.70)
-  +5.10 s  tests/cli/test_scoped_listings.py (10.09 -> 15.19)
-  +3.33 s  tests/orchestration/test_self_use_generator.py (3.60 -> 6.93)
-  +2.91 s  tests/orchestration/test_review_subject_artifact_integrity.py (1.96 -> 4.87)
-  +2.71 s  tests/orchestration/test_run_manifest_call_task_binding.py (4.71 -> 7.42)
-  +2.26 s  tests/orchestration/test_review_commit_chain.py (1.36 -> 3.62)
-  +2.13 s  tests/orchestration/test_product_smoke.py (2.96 -> 5.09)
-  +1.84 s  tests/orchestration/test_autonomy_seams.py (0.00 -> 1.84)
-  +1.81 s  tests/orchestration/test_review_reports.py (2.14 -> 3.95)
-  +1.77 s  tests/cli/test_do_several_projects.py (7.82 -> 9.59)
+  +3.72 s  tests/cli/test_do_scale_matrix.py (37.13 -> 40.85)
+  +2.74 s  tests/orchestration/test_self_use_runner.py (6.09 -> 8.83)
+  +2.37 s  tests/cli/test_scoped_listings.py (10.09 -> 12.46)
+  +2.07 s  tests/orchestration/test_worktrees.py (1.65 -> 3.72)
+  +1.92 s  tests/orchestration/test_review_zip_hygiene.py (37.85 -> 39.77)
+  +1.82 s  tests/orchestration/test_autonomy_seams.py (0.00 -> 1.82)
+  +1.39 s  tests/orchestration/test_persisted_run_call_schema.py (1.86 -> 3.25)
+  +1.19 s  tests/runtimes/test_runtime_lifecycle_safety.py (2.88 -> 4.07)
+  +1.17 s  tests/orchestration/test_task_deliverables.py (3.05 -> 4.22)
+  +1.05 s  tests/cli/test_golden_path.py (18.57 -> 19.62)
