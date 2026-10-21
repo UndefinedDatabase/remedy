@@ -276,6 +276,29 @@ def test_a_write_that_raises_oserror_leaves_add_pi_record_returning_normally(pul
     assert pulse.snapshot()["stream"][-1]["tool"] == "edit"
 
 
+# --- R-1383: `bind_job_clock` binds the pulse too, for a job with an id -----------------------
+
+def test_bind_job_clock_also_binds_a_fresh_worker_pulse(tmp_path, monkeypatch):
+    """R-1383: a run's own `bind_job_clock` leaves `read_worker_pulse` answering a fresh pulse,
+    not only the direct `bind_worker_pulse` the other tests of this file call."""
+    from packages.orchestration import pi_provider
+    from packages.orchestration.pingpong_job import JobPlan
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    job_id = "job-bind-clock-1"
+    data_paths.worker_pulse_path(job_id).parent.mkdir(parents=True, exist_ok=True)   # a saved record's own folder
+
+    # A real JobPlan, not a bare SimpleNamespace: `bind_job_clock` binds lazy closures
+    # (`pi_loop_limits`'s `_JOB_TOKENS_LEFT`) that read `job.budgets` etc. on their NEXT call,
+    # possibly from a later test, so the job object must carry every attribute they read.
+    pi_provider.bind_job_clock(JobPlan(job_id=job_id))
+
+    back = read_worker_pulse(job_id)
+    assert back is not None and back["bound_at"] is not None and back["stream"] == []
+    for field in ("role", "provider", "model", "round", "call_kind", "call_started_at", "call_ended_at"):
+        assert back[field] is None
+
+
 # --- (i): the binding ContextVar --------------------------------------------------------------
 
 def test_bind_worker_pulse_binds_for_a_job_with_an_id_and_unbinds_without_one(tmp_path, monkeypatch):
