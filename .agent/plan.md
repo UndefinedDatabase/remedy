@@ -7,14 +7,12 @@ passed gauntlet, every level change needs a decision record, and the level is vi
 matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D7).
 
 ## Current Step
-Round 8 (session 2), the first repair round of the closure (amend0917-throughput rule 2): book
-round 7, register and repair R-1392 and R-1393, and take the one full suite again on the repaired
-tree.
+Round 9 (session 2), the closure's evidence round: book round 8 and resolve R-1392 and R-1393;
+the staging reclaim, the evidence job and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package (the closure protocol's steps 1 and 2).
-2. The closing round: the STATUS line, the README sync, SU-069's `consumed_by` and the pull
-   request, left unmerged.
+1. The closing round: the ledger rotation or its recorded skip, SU-069's `consumed_by`, the STATUS
+   line with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F078 does not own (DECISION F310 D7, Q20).
