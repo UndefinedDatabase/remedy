@@ -1,88 +1,87 @@
-# Handback — F303 round 9: book round 8, DECISION F303 D7, the Built State, accept F303, open the pull request
+# Handback — F307 round 1: claim F307, book F303 R9, re-head the ledger, repair R-1293 and R-1312
 
 ## Session
 
-SESSION 2 of feature F303 · round 9 · rounds so far 9
+SESSION 1 of feature F307 · round 1 · rounds so far 1
 
 Context self-assessment: this worker verified every prepared digest, byte-copied the prepared files, ran each gate once and wrote this handback from what it read; context is ample and nothing was lost.
 
-Fortschritt: 100 % (F303 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~5 % (T001 and T002 landed · T003 to T021 open) — Schätzung
 
 ## Range
 
-Review of `5f714d166`..`HEAD` on `feature/f303-face-public-api`.
+Review of `eeed13064`..`HEAD` on `feature/f307-findings-paydown-v9`.
 
 ## Commits
 
-### 3f762adc0 F303 R9 C1: book round 8, DECISION F303 D7, the plan, the block and the PR body
+### f8b0111e9 F307 R1 C1: claim F307, book F303 R9, re-head the ledger, DECISIONs F307 D1 and D2, the slice list
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f303-r9.md` | 111/0 | NEW FILE, this round's block, byte copy (111 lines, sha256 `f3cc0c4cedd34ae0151a7e14bb321c0072466f373ead281dfa259c3ded8aead5`, equal to `block.md`) |
-| `.agent/authored/f303-r9-pr_body.md` | 59/0 | NEW FILE, the pull request body, byte copy |
-| `.agent/live_review.md` | 2/0 | prepared file, byte copy |
-| `.agent/prose_slips.md` | 2/0 | prepared file, byte copy |
-| `.agent/decisions.md` | 10/0 | prepared file, byte copy (DECISION F303 D7) |
-| `.agent/plan.md` | 6/5 | prepared file, byte copy |
+| `.agent/authored/f307-r1.md` | 95/0 | NEW FILE, this round's block, byte copy (95 lines, sha256 `f1a2c5e3f3258c64d954c02665fbea7a32c8f8c04e9f7b78de08fbc83f47c1cb`, equal to `block.md`) |
+| `.agent/context.md` | 6/8 | prepared file, byte copy |
+| `.agent/decisions.md` | 24/0 | prepared file, byte copy (DECISIONs F307 D1 and D2) |
+| `.agent/live_review.md` | 21/16 | prepared file, byte copy (re-head, F303 R9 booked) |
+| `.agent/plan.md` | 13/12 | prepared file, byte copy |
+| `docs/roadmap/STATUS.md` | 1/1 | prepared file, byte copy (F307 claimed, `[ ]` to `[~]`) |
+| `docs/roadmap/features/T2_F307.md` | 101/0 | prepared file, byte copy (slice list, Acceptance lines) |
 
-### 18423dd80 F303 R9 C2: F303's Built State brought current
+### 592075285 F307 R1 C2: the operations log lowers only Remedy's loggers and floors its rotation settings (R-1293, R-1312)
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T12_F303.md` | 10/1 | prepared file, byte copy |
+| `docs/system/structured-logging-v1.md` | 6/2 | prepared file, byte copy |
+| `packages/orchestration/structured_log.py` | 40/11 | prepared file, byte copy |
+| `tests/orchestration/test_structured_log.py` | 53/4 | prepared file, byte copy |
 
-### (this commit) F303 R9 C3: accept F303 in STATUS with its README sync and the self-use queue
+### (this commit) F307 R1 C3: handback
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | 1/1 | prepared file, byte copy; F303 accepted |
-| `README.md` | 10/2 | prepared file, byte copy; counts and Tier 12 list synced |
-| `scripts/self_use_queue.json` | 1/1 | prepared file, byte copy; SU-072 consumed by F303 |
 | `.agent/handoff.md` | rewritten | this handback |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | records commit 3f762adc0 |
-| C2 | done | Built State commit 18423dd80 |
-| Rotation | skipped | DECISION F303 D7 records that no rotation is made in this closing round |
-| C3 | done | closure commit carrying this handback |
-| Gate 1 | done | status showed exactly the three modified files; verify.py printed ALL True |
-| Gate 2 | done | numstat: README.md 10/2, STATUS.md 1/1, self_use_queue.json 1/1 |
-| Gate 3 | done | 74 paths, exit 0, 3419 passed, 2 skipped, no FAILED, ERROR or process(es) behind line |
-| Gate 4 | done | fail_count 1, only high_blockers_open (the twelve ids of DECISION F310 D7); open findings 88 |
-| Gate 5 | pending | runs after the pull request; reported in the session reply |
+| C0 | done | branch `feature/f307-findings-paydown-v9` created at `eeed13064` |
+| C1 | done | records commit `f8b0111e9` |
+| C2 | done | repair commit `592075285` |
+| C3 | done | this handback commit |
+| Gate 1 | done | `git status --porcelain` empty; `verify.py` printed `True` on every counted line, `absent C3` (not yet counted), last line `ALL True` |
+| Gate 2 | done | `ruff check` printed `All checks passed!` |
+| Gate 3 | done | 77 paths, exit 0, `3697 passed, 2 skipped in 46.37s`, two SKIPPED lines, no FAILED, ERROR or `process(es) behind` line |
+| Gate 4 | done | `fail_count` 1, only `high_blockers_open` failing |
+| Gate 5 | done | open findings count printed `88` |
 | Push | pending | runs after this commit; reported in the session reply |
-| Pull request | pending | opened after the push; reported in the session reply |
 
 ## External actions
 
-- No push, pull request or `gh` command before this commit; the push, the pull request (never merged) and gate 5 follow it and are reported in the session reply.
-- No worktree of my own, no provider call, no rotation, no self-use run.
+No push, PR or `gh` command before this commit; the push follows it and is reported in the session reply. No worktree of my own, no provider call, no rotation.
 
 ## Verification
 
-Preconditions: the fifteen prepared digests matched; `HEAD` was `5f714d166`, equal to `origin/feature/f303-face-public-api`, the tree was clean, `.agent/STOP` absent.
-
-1. Gate 1: `git status --porcelain` printed ` M README.md`, ` M docs/roadmap/STATUS.md`, ` M scripts/self_use_queue.json`; `python3 .remedy-wt/f303-r9/prep/verify.py .` — every line `True`, `absent	C3`, last line `ALL True`.
-2. Gate 2: `git diff --numstat -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json` — `10 2 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
-3. Gate 3: `python3 .remedy-wt/f303-r9/prep/run_selection.py . .remedy-wt/f303-r9-worker/selection-output.txt` — `paths 74`, `exit 0`, `3419 passed, 2 skipped in 25.37s`. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252) and `tests/test_install_smoke.py:175` (install smoke is opt-in). No FAILED, no ERROR, no `process(es) behind`.
-4. Gate 4: `python3 -m apps.cli.main integrity check --json` exit 1 — `fail_count` 1, the one failing check `high_blockers_open`: "12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362", the other five pass. `open_finding_ids` over `.agent/live_review.md` prints `88`.
+1. Digests: `python3 .remedy-wt/f307-r1-worker/check_digests.py` over the 14 lines of `digests.txt` — every line `OK`, last line `ALL_OK`.
+2. Gate 1: `git status --porcelain` (through `git -C`) — empty. `python3 .remedy-wt/f307-r1/prep/verify.py .` — every counted line `True` (single-parent checks on both commits, the Cn-subject count 2 of 2, the branch check, every C1 and C2 path-set and per-path equality check, and "the saved block equals block.md"); one line `absent C3` (not yet counted, C3 did not exist when the gate ran); last line `ALL True`.
+3. Gate 2: `python3 -m ruff check packages/orchestration/structured_log.py tests/orchestration/test_structured_log.py` — `All checks passed!`.
+4. Gate 3: `python3 .remedy-wt/f307-r1/prep/run_selection.py . .remedy-wt/f307-r1-worker/selection-output.txt` — `paths 77`, `exit 0`, `3697 passed, 2 skipped in 46.37s`. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252) and `tests/test_install_smoke.py:175` (install smoke is opt-in). No FAILED, no ERROR, no `process(es) behind` (grepped the saved transcript and confirmed zero matches for both patterns).
+5. Gate 4: `python3 -m apps.cli.main integrity check --json` exit 1 — `fail_count` 1, the one failing check `high_blockers_open`: "12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362"; the other five checks (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`, `repo_root_hygiene`) pass.
+6. Gate 5: `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"` — `88`.
 
 ## Authored-text proofs
 
-C1's six files, C2's file and C3's three files are byte copies of the prepared files; each was proved equal by a Python equality over bytes right after the copy and `verify.py` re-proved them (`True`). `.agent/authored/f303-r9.md` equals `block.md` (111 lines, sha256 above).
+C1's six prepared files and C2's three prepared files are byte copies of the prepared files; each was proved equal by a Python `filecmp.cmp(..., shallow=False)` right after the copy, before staging, and `verify.py` re-proved every one of them (`True`). `.agent/authored/f307-r1.md` equals `block.md`: 95 lines, sha256 `f1a2c5e3f3258c64d954c02665fbea7a32c8f8c04e9f7b78de08fbc83f47c1cb` on both sides.
 
 ## Deviations & assumptions
 
-None.
+None. The commit sequence, paths and gate commands followed the block exactly; no file outside the named paths per commit was touched.
 
 ## For the operator, in plain sentences
 
-The public web interface now publishes everything the universe's own Remedy screen needs, and serves nothing that is not written in its contract. A program can now send a steering note to one task of a running job through that interface, as the command line could already. An orchestrator, a program that runs coding tools for a person, can now start Remedy as a helper and ask it to check a certificate, read a job's checks or write a job's certificate, and this helper offers nothing unless the person starting it names each of the three. The whole test collection ran once on the code that ships and passed. The evidence had to be collected twice, because a background program of your own wrote into the data folder a safety check was watching. The review package is named remedy-review-20261021-190053-READY_FOR_REVIEW.zip and sits in the zips folder of the history folder under your home directory. A pull request is open and will be merged at the start of the next session unless you merge it earlier. No question waits for you.
+This round claimed the ninth rolling findings paydown and wrote down, in one place, which of the open items it will repair and in what order, along with the reasoning for that order. It also carried forward last round's closing verdict for the previous feature into the new record, so nothing about that earlier work is lost. Separately, this round fixed a real defect in how Remedy's own operations log is set up: until now, turning up the detail level could also fill that log with chatter from the libraries Remedy depends on, rather than only from Remedy's own code, and a rotation size or file count of zero could silently leave the log either growing without bound or losing its history on the next write. Both are now fixed, with a plain warning printed when a setting that low is raised to a safe floor instead. All five required checks ran once each and came back as expected for this stage; one known, already-tracked gap remains open and is unrelated to this round's work. No question waits for the operator.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
-2. The Open PR Gate, which merges F303's pull request in the NEXT session and never in this one.
-3. Rule A5, which proposes the next feature.
+2. Rule 2: the Open PR Gate.
+3. Book round 1's verdict in the next round's first commit.
+4. T003: R-1375 and R-1376.
 
-Operator questions open: 0. Open findings count gate 4 printed: 88 (`scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, at the commit before this handback, `18423dd80`).
+Operator questions open: 0. Open findings count gate 5 printed: 88.
