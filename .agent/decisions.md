@@ -30410,3 +30410,21 @@ THE PROBLEM: DECISION F311 D3 names the phase of a job that waits to be planned,
 CHOSEN: two more phases. `halted` for a job whose state is `paused`, `blocked` or `stopped`, which a person can resume; `ended` for a job whose state is `completed`, `failed` or `cancelled` and whose result waits for no apply. `apply_wait` still wins over both. The stall reading of a job whose state is not `running` reads `waiting_decision` when an open decision exists and `none` otherwise; every other reason is read only for a `running` job.
 
 HOW TO REVERSE: delete the two phases from `INSIGHT_PHASES` and their branches in `packages/orchestration/job_insight.py`, and this paragraph.
+
+## DECISION F311 D3 — second addendum: `apply_wait` is read from the job's own result (2026-10-21, R-1385)
+
+THE PROBLEM: DECISION F311 D3 gives `apply_wait` to "a job whose order phase is `awaiting_apply`". An order reads `awaiting_apply` when any one of its jobs holds a result waiting for an apply, so the job that waits behind it read `apply_wait` too, and its advice told the operator to apply a job with nothing to apply (finding R-1385).
+
+CHOSEN: `apply_wait` is read from the job's own result alone, as `job_apply_pending.job_apply_pending_fields` says it; the order-phase clause of D3 is deleted. A waiting order keeps its own phase in the `orders` list of `GET /api/v1/now`.
+
+HOW TO REVERSE: restore the order-phase clause in `packages/orchestration/job_insight.py` and delete this paragraph.
+
+## DECISION F311 D5 — the insight's words in the interface: one key `insight`, as the story's are one key `story` (2026-10-21)
+
+THE PROBLEM: the feature file names the interface keys `now`, `insight`, `phases`, `stall_reasons`, `stream_kinds` and `advice` "as `story` is today", and `story` is one key of `GET /api/v1/interface` whose value holds its word lists by category.
+
+CHOSEN: one new key, `insight`, whose value is `job_insight.insight_words()`: `phases`, `stall_reasons`, `stream_kinds`, `advice` and `model_server_states` (`reachable`, `unreachable`), each the tuple the code reads, as a list. There is no separate `now` key: the `now` answer uses only these words, and the two operations `client.now` and `client.insight` are listed under `operations` with their answer keys as every twin is. A client finds every word the two answers can carry in one place.
+
+ALTERNATIVES CONSIDERED: six top-level keys — rejected: four of them would be lists beside the story's single key, and a `now` key would repeat the operation's own entry.
+
+HOW TO REVERSE: replace the key with the six keys, and rewrite this paragraph.

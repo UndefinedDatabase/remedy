@@ -3,24 +3,22 @@
 ## Goal
 A client asks Remedy over HTTP what runs now, looks into one job's worker, and learns why it hangs
 and what the operator can do, in closed words (`docs/roadmap/features/T12_F311.md`, DECISIONs
-F311 D1 to D4).
+F311 D1 to D5).
 
 ## Current Step
-Round 2 (session 1): book round 1, register R-1383; two private helpers become public for the
-reader (structural); the reader `packages/orchestration/job_insight.py` with the `now` and
-`insight` answers of D1, the phase, stall reading and advice of D3, the threshold key
-`insight.stall_seconds`, and the model server probe of D4; and R-1383's test.
+Round 3 (session 1): book round 2, resolve R-1383, register R-1384 to R-1388, D3's second addendum
+and D5; repair R-1384 to R-1388; move `DIGEST_KEY_TREE` out of `apps/cli/client_interface.py`
+(structure step); and the first half of T003: the twins `client.now` and `client.insight`, their
+answer keys and the interface's `insight` key, with T004's proofs for them.
 
 ## Next Steps
-1. T003, first half: the twins `client.now` and `client.insight` in the catalog and the machine
-   client interface, with their answer keys and the new words; the reader's unwired entry goes.
-2. T003, second half: the two routes, the client token's project scope, the release matrix and
-   the generated pages.
-3. The closure: the one full suite, the self-use run, the evidence, STATUS, the PR.
+1. T003, second half: the routes `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight`, the
+   client token's project scope, the release matrix and the generated pages.
+2. The closure: the one full suite, the self-use run, the evidence, STATUS, the PR.
 
 ## Risks
 - `pingpong_job.py`, `pingpong_loop.py`, `pingpong_provider.py` and `config.py` sit at their
   structure rows: every hook and key lives outside them (DECISION F311 D2).
-- `apps/cli/client_interface.py` sits at the 1,000-line file limit: new interface constants go to a
-  module of their own.
+- `apps/cli/client_interface.py` sits at the 1,000-line file limit: the structure step makes room
+  and every new constant goes to a module of its own.
 - No test may reach the operator's model server: the probe's one fetcher is refused in tests.
