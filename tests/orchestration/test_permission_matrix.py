@@ -13,11 +13,18 @@ from datetime import datetime, timezone
 
 import pytest
 
-from packages.orchestration.autonomy_gate import AUTONOMY_LEVELS, AutonomyConfigError
+from packages.orchestration.autonomy_gate import (
+    AUTONOMY_DEFAULT_LEVEL,
+    AUTONOMY_LEVELS,
+    AutonomyConfigError,
+    load_autonomy_policy,
+)
 from packages.orchestration.config import load_config
+from packages.orchestration.data_paths import job_dir
 from packages.orchestration.permission_matrix import (
     APPROVAL_KIND_DECISION,
     APPROVAL_KIND_FLAG,
+    JOB_LEVEL_FILENAME,
     PERMISSION_ACTIONS,
     PERMISSION_ALLOW,
     PERMISSION_ASK,
@@ -28,6 +35,8 @@ from packages.orchestration.permission_matrix import (
     InstanceApproval,
     PermissionRefusedError,
     PermissionRequest,
+    pin_job_level,
+    pinned_job_level,
     push_allowed_by_config,
     require_permission,
     require_permissions,
@@ -143,8 +152,8 @@ def test_read_at_l2_allows_without_asking_and_writes_nothing(tmp_path):
     )
     assert verdict.outcome == PERMISSION_ALLOW
     assert verdict.actions == ("read",)
-    assert verdict.cells == (PERMISSION_ALLOW,)
     citation = _citation("read", "L2", PERMISSION_ALLOW)
+    assert verdict.cells == (citation,)
     assert verdict.reason == (
         f"Autonomy level L2 lets Remedy {WORDS['read']} without asking ({citation})."
     )
@@ -317,6 +326,10 @@ def test_conjunction_at_l4_with_no_approval_asks_naming_only_commit(tmp_path):
     )
     assert verdict.outcome == PERMISSION_ASK
     assert verdict.actions == ("commit", "dependency_change")
+    assert verdict.cells == (
+        _citation("commit", "L4", PERMISSION_ASK),
+        _citation("dependency_change", "L4", PERMISSION_ALLOW),
+    )
     assert WORDS["commit"] in verdict.reason
     assert WORDS["dependency_change"] not in verdict.reason
     assert not (root / "autonomy").exists()
@@ -405,3 +418,98 @@ def test_instance_approval_rejects_an_unknown_kind():
 def test_instance_approval_rejects_an_empty_ref():
     with pytest.raises(ValueError):
         InstanceApproval(kind=APPROVAL_KIND_FLAG, ref="")
+
+
+# ---------------------------------------------------------------------------
+# (j) the level a job keeps from its first context (DECISION F141 D2 (2))
+# ---------------------------------------------------------------------------
+
+
+def test_pinned_job_level_answers_the_default_for_no_id_or_no_file(tmp_path):
+    root = tmp_path / "data"
+    assert pinned_job_level("", root=root) == AUTONOMY_DEFAULT_LEVEL
+    assert pinned_job_level(None, root=root) == AUTONOMY_DEFAULT_LEVEL
+    assert pinned_job_level("job-1", root=root) == AUTONOMY_DEFAULT_LEVEL
+
+
+def test_pinned_job_level_reads_a_pinned_l4(tmp_path):
+    root = tmp_path / "data"
+    folder = job_dir("job-1", root)
+    folder.mkdir(parents=True)
+    (folder / JOB_LEVEL_FILENAME).write_text(json.dumps({"level": "L4"}), encoding="utf-8")
+    assert pinned_job_level("job-1", root=root) == "L4"
+
+
+def test_pinned_job_level_refuses_an_unknown_level(tmp_path):
+    root = tmp_path / "data"
+    folder = job_dir("job-1", root)
+    folder.mkdir(parents=True)
+    path = folder / JOB_LEVEL_FILENAME
+    path.write_text(json.dumps({"level": "L9"}), encoding="utf-8")
+    with pytest.raises(AutonomyConfigError, match=re.escape(
+        f"The level recorded for job job-1 in {path} is not one of L2, L3, L4 or L5."
+    )):
+        pinned_job_level("job-1", root=root)
+
+
+def test_pinned_job_level_refuses_text_that_is_not_json(tmp_path):
+    root = tmp_path / "data"
+    folder = job_dir("job-1", root)
+    folder.mkdir(parents=True)
+    path = folder / JOB_LEVEL_FILENAME
+    path.write_text("not json at all", encoding="utf-8")
+    with pytest.raises(AutonomyConfigError, match=re.escape(
+        f"The level recorded for job job-1 in {path} is not one of L2, L3, L4 or L5."
+    )):
+        pinned_job_level("job-1", root=root)
+
+
+def test_pin_job_level_writes_l2_with_exactly_three_keys_under_a_default_config(tmp_path):
+    cfg = _load(tmp_path)
+    root = tmp_path / "data"
+    folder = job_dir("job-1", root)
+    folder.mkdir(parents=True)
+    assert pin_job_level("job-1", config=cfg, root=root) == "L2"
+    path = folder / JOB_LEVEL_FILENAME
+    record = json.loads(path.read_text(encoding="utf-8"))
+    assert set(record) == {"level", "pinned_at", "config_path"}
+    assert record["level"] == "L2"
+    assert pinned_job_level("job-1", root=root) == "L2"
+
+
+def test_pin_job_level_writes_l3_and_outlives_a_later_move_back_to_l2(tmp_path):
+    evidence = tmp_path / "matrix.json"
+    evidence.write_text(json.dumps({"passed": True}), encoding="utf-8")
+    adr = tmp_path / "adr.md"
+    adr.write_text("why", encoding="utf-8")
+    cfg_l3 = _load(tmp_path, project=(
+        '[remedy]\nautonomy.level = "L3"\nautonomy.gauntlet_evidence = "matrix.json"\n'
+        'autonomy.change_adr = "adr.md"\n'
+    ))
+    root = tmp_path / "data"
+    folder = job_dir("job-1", root)
+    folder.mkdir(parents=True)
+
+    assert pin_job_level("job-1", config=cfg_l3, root=root) == "L3"
+    path = folder / JOB_LEVEL_FILENAME
+    before = path.read_bytes()
+
+    cfg_l2 = _load(tmp_path, project='[remedy]\nautonomy.level = "L2"\nautonomy.change_adr = "adr.md"\n')
+    policy = load_autonomy_policy(cfg_l2, root=root)
+    assert policy.level == "L2"
+
+    assert pin_job_level("job-1", config=cfg_l2, root=root) == "L3"
+    assert path.read_bytes() == before
+
+
+def test_pin_job_level_with_no_job_folder_answers_the_level_and_writes_nothing(tmp_path):
+    cfg = _load(tmp_path)
+    root = tmp_path / "data"
+    assert pin_job_level("job-ghost", config=cfg, root=root) == "L2"
+    assert not job_dir("job-ghost", root).exists()
+
+
+def test_pin_job_level_with_an_empty_id_writes_nothing(tmp_path):
+    root = tmp_path / "data"
+    assert pin_job_level("", root=root) == AUTONOMY_DEFAULT_LEVEL
+    assert not root.exists()
