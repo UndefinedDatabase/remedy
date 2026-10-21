@@ -183,7 +183,7 @@ CLIENT_COMMANDS: tuple[CommandEntry, ...] = (
         command_id="client.mcp",
         group_id="client",
         subcommand="mcp",
-        description="Serve Remedy's verify, gate status and evidence bundle as tools of the Model Context Protocol over standard input and output for an orchestrator that starts it, offering only the tools --allow names.",
+        description="Serve Remedy's verify check, gate status and evidence bundle as tools of the Model Context Protocol over standard input and output for an orchestrator that starts it, offering only the tools --allow names.",
         action_class="local_state_change",
         args=(
             ArgDef("--allow", "A tool to offer: evidence_bundle, gate_status or verify; repeat it for each (default: none, so no tool is offered)",
