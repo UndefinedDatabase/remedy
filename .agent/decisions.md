@@ -30478,3 +30478,14 @@ CHOSEN: every entry of the digest's `decisions`, and so of `remedy client change
 ALTERNATIVES CONSIDERED: (a) the key only on a budget decision — rejected: a key that comes and goes by type makes every client test for it, and the digest's other per-type keys are always present; (b) the blockers inside `question` as text — rejected: a client would have to parse a sentence Remedy wrote.
 
 HOW TO REVERSE: delete the key from `_decision_entry` and the tree, the test and the matrix line, and rewrite this paragraph.
+
+## DECISION F313 D2 — addendum: a stub of the local model server, the cases, and the keys compared by type (2026-10-21)
+
+THE PROBLEM: D2 (2) pointed the local model server's address at a closed port. Read at `046ec1ec1`: `job_insight._stall_reading` answers `model_unreachable` for every Pi worker whose model server does not answer, so at a closed port neither a working nor a silent worker could be recorded; and `now`'s `model_server.host` names the address, whose port changes with every recording. A scratch home folder, which hides the operator's configuration, also hides the packages Python installed for this user.
+
+CHOSEN: (1) The recorder serves a stub of the local model server on a free port of `127.0.0.1` for the time of the recording; it answers `/api/tags` and `/api/ps` with the one model `qwen3:8b` and nothing else, so the server reads `reachable`. (2) The cases, each a file `<case>.json`: `client-now-idle`, before any job exists; `client-now-running`, with two running Pi jobs of the project `p-kit` whose ids are fixed, one whose worker wrote five seconds ago and one silent for ten minutes inside an open call; `client-insight-working` and `client-insight-silent`, one per job; and `client-story-working`. The insight of the silent job reads `model_slow` with the advice `wait` and `stop`. (3) The children run with a scratch `HOME`, `PYTHONUSERBASE` set to this user's package folder, the scratch data root and the stub's address, and nothing else of the environment but `PATH` and a
+`LANG` of `C.UTF-8`. (4) `--check` compares by JSON type alone at the keys `age_seconds`, `at`, `created_at`, `duration_s`, `ended_at`, `host`, `last_output_s`, `minutes`, `started_at` and `updated_at`, whose values come from the clock or the stub's port. (5) The recorder refuses an answer that names its scratch folder and writes nothing then.
+
+ALTERNATIVES CONSIDERED: (a) the closed port of D2 (2) — rejected for the reason above; (b) freezing the clock of the children — rejected: no seam of the command line takes a clock, and adding one for a recording changes the product.
+
+HOW TO REVERSE: point the recorder at a closed port, drop the stub, and rewrite this paragraph.
