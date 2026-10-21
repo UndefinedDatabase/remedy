@@ -1,16 +1,18 @@
-"""The reader of what runs now and one job's insight (DECISIONs F311 D1, D3 and its addendum, D4, D5).
+"""The reader of what runs now and one job's insight (DECISIONs F311 D1, D3 and its addendum, D4,
+D5, D6).
 
 `now_insight()` and `job_insight()` build the answers `GET /api/v1/now` and
-`GET /api/v1/jobs/{job}/insight` publish (their routes and twins land in a later round,
-DECISION F311 D1): one JOB ENTRY shape, read from the job record, the worker pulse
-(`worker_pulse.read_worker_pulse`, DECISION F311 D2), the decoded budget actuals, the job's
-effective budgets, the order that lists the job and the job's open decision
-(`client_story.job_story_open_decision`). `phase` and the stall reading follow DECISION F311 D3
-exactly, with the addendum's two further phases (`halted`, `ended`) for a job that does not run
-and its narrower stall reading for one, and its second addendum: `apply_wait` is read from the
+`GET /api/v1/jobs/{job}/insight` publish, answered by `public_api._client_now_answer` and
+`public_api._client_insight_answer` (DECISIONs F311 D1 and D6): one JOB ENTRY shape, read from the
+job record, the worker pulse (`worker_pulse.read_worker_pulse`, DECISION F311 D2), the decoded
+budget actuals, the job's effective budgets, the order that lists the job and the job's open
+decision (`client_story.job_story_open_decision`). `phase` and the stall reading follow DECISION
+F311 D3 exactly, with the addendum's two further phases (`halted`, `ended`) for a job that does not
+run and its narrower stall reading for one, and its second addendum: `apply_wait` is read from the
 job's own result alone. `model_server_state()` is the one Ollama probe DECISION
 F311 D4 orders; `fetch_ollama_json` is this module's one network read, so a test fakes it alone
-and reaches no real model server. Nothing here writes a file.
+and reaches no real model server. A client token's `project_ids` filters `now_insight` to its own
+projects' jobs and orders (DECISION F311 D6). Nothing here writes a file.
 
 Public API::
 
@@ -18,10 +20,11 @@ Public API::
     fetch_ollama_json(host, path, timeout) -> Any
     model_server_state() -> dict
     insight_words() -> dict
+    insight_lines(raw) -> int
     job_insight_entry(plan, *, now, model_server, threshold_s, events=None) -> dict
     insight_advice(entry) -> list[str]
     job_insight(plan, *, lines=INSIGHT_LINES_DEFAULT, now=None) -> dict
-    now_insight(*, now=None) -> dict
+    now_insight(*, now=None, project_ids=None) -> dict
 """
 from __future__ import annotations
 
@@ -108,6 +111,16 @@ def insight_words() -> dict[str, list[str]]:
         "advice": list(INSIGHT_ADVICE),
         "model_server_states": list(INSIGHT_MODEL_SERVER_STATES),
     }
+
+
+# WHY: the route and the command line both read a `lines` value a person typed (DECISION F311 D6).
+def insight_lines(raw: object) -> int:
+    """RAW's text as a whole number, else `INSIGHT_LINES_DEFAULT`; `job_insight` clamps the
+    result to `[0, INSIGHT_LINES_MAX]`."""
+    try:
+        return int(str(raw))
+    except (TypeError, ValueError):
+        return INSIGHT_LINES_DEFAULT
 
 
 def _pulse_moment(value: Any) -> datetime | None:
@@ -298,8 +311,14 @@ def job_insight(plan: Any, *, lines: int = INSIGHT_LINES_DEFAULT, now: datetime 
     return result
 
 
-def now_insight(*, now: datetime | None = None) -> dict[str, Any]:
-    """Every living job, every waiting order, the model server and the workers. One probe."""
+def now_insight(*, now: datetime | None = None,
+               project_ids: frozenset[str] | None = None) -> dict[str, Any]:
+    """Every living job, every waiting order, the model server and the workers. One probe.
+
+    With PROJECT_IDS not None (a client token's own projects, DECISION F311 D6), `jobs` keeps
+    only the running jobs whose `project_id` is one of them and `orders` only the orders whose
+    `project` is one of them.
+    """
     from packages.orchestration.pingpong_job import JOB_RUNNING, list_job_plans_safe, load_job_plan
     from packages.orchestration.serve_paths import serve_paths
     from packages.orchestration.serve_runs import order_record_payload, read_order_record
@@ -310,6 +329,8 @@ def now_insight(*, now: datetime | None = None) -> dict[str, Any]:
 
     plans, _degraded, _skipped = list_job_plans_safe()
     running = [p for p in plans if str(getattr(p.state, "value", p.state)) == str(JOB_RUNNING)]
+    if project_ids is not None:
+        running = [p for p in running if str(getattr(p, "project_id", "") or "") in project_ids]
     jobs = [job_insight_entry(p, now=moment, model_server=server, threshold_s=threshold_s) for p in running]
 
     orders: list[dict[str, Any]] = []
@@ -333,6 +354,8 @@ def now_insight(*, now: datetime | None = None) -> dict[str, Any]:
                 if project_id:
                     project = project_id
                     break
+            if project_ids is not None and (project is None or project not in project_ids):
+                continue
             orders.append({"order": record.order_id, "project": project,
                           "phase": payload["phase"], "jobs": job_ids})
 

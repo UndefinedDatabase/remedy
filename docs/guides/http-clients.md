@@ -96,6 +96,29 @@ it offers `apply`, and says so when a file's or the answer's `truncated` is `tru
 not ended, or waits for an answer, answers 409 `diff_not_ready`. The page `docs/system/public-http-api-v1.md` ("Diffs")
 names the limits.
 
+## 4b. See what runs now, and why a job hangs
+
+```
+curl -s http://127.0.0.1:<port>/api/v1/now -H "Authorization: Bearer <token>"
+curl -s "http://127.0.0.1:<port>/api/v1/jobs/<job>/insight?lines=40" -H "Authorization: Bearer <token>"
+```
+
+The first answer lists every running job with its `phase` (`plan`, `build`, `review`, `repair`,
+`apply_wait`, and for a job that does not run `halted` or `ended`), its task, its round, the
+worker's role and model, its budget used against its limits, and `last_output_s`, the seconds since
+the worker last wrote anything. `stalled` is true when the job waits for a decision, when the local
+model server cannot be reached, or when the worker has been silent for `stall_threshold_s`
+seconds; `stall_reason` says which. The answer also lists the orders that wait with no running
+job, and the model server's `state` and the models it holds in memory. A value Remedy cannot know
+is `null`, and a job whose worker records no pulse reads `phase` `unknown` and `stall_reason`
+`unmeasured` rather than a guess.
+
+The second answer looks into one job: the same entry, the worker's last `lines` stream lines
+(already redacted, at most 200), and `advice`, the closed words for what the operator can do:
+`answer_decision`, `extend_budget`, `wait`, `stop`, `apply` or `nothing`. Every word of both answers
+is in the `insight` key of `GET /api/v1/interface`. A client token sees only its own projects'
+jobs, and a job of another project answers 403 `api_client_policy_refused`.
+
 ## 5. Apply or decline
 
 Apply, when the story's `next.action` is `apply` and the token has `may_apply`:

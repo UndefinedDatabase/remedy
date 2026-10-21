@@ -67,6 +67,7 @@ _PROVIDER_ISOLATION: dict[str, str] = {
 EXECUTION_OBSERVABILITY_ROUTES: tuple[str, ...] = (
     "GET /api/v1/orders/{order}", "GET /api/v1/jobs/{job}/run", "GET /api/v1/jobs/{job}/story",
     "GET /api/v1/jobs/{job}/logs", "GET /api/v1/jobs/{job}/diff", "GET /api/v1/jobs/{job}/proof",
+    "GET /api/v1/now", "GET /api/v1/jobs/{job}/insight",
 )
 
 

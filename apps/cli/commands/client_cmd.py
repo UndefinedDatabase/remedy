@@ -36,6 +36,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from apps.cli.json_envelope import emit_ok, fail
+from packages.orchestration.job_insight import insight_lines
 
 if TYPE_CHECKING:
     import argparse
@@ -180,17 +181,6 @@ def _cmd_client_story(job: str, *, json_output: bool = False) -> None:
     print(f"Job {job_id}: {story['state']}, next {story['next']['action']}")
 
 
-def _client_insight_lines(raw: object) -> int:
-    """`--lines`'s text as a whole number, else `job_insight.INSIGHT_LINES_DEFAULT` (DECISION
-    F311 D1: "a value that is not a whole number reads 40")."""
-    from packages.orchestration.job_insight import INSIGHT_LINES_DEFAULT
-
-    try:
-        return int(str(raw))
-    except (TypeError, ValueError):
-        return INSIGHT_LINES_DEFAULT
-
-
 def _cmd_client_now(*, json_output: bool = False) -> None:
     from packages.orchestration.job_insight import now_insight
 
@@ -264,7 +254,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job, json_output=getattr(args, "json", False)),
     "client.now": lambda args: _cmd_client_now(json_output=getattr(args, "json", False)),
     "client.insight": lambda args: _cmd_client_insight(
-        args.job, lines=_client_insight_lines(getattr(args, "lines", None)),
+        args.job, lines=insight_lines(getattr(args, "lines", None)),
         json_output=getattr(args, "json", False)),
     "client.diff": lambda args: _cmd_client_diff(
         args.job, json_output=getattr(args, "json", False)),
