@@ -7,15 +7,13 @@ small bundle, and `remedy verify <bundle>` checks every member and every claim o
 the failing member named (docs/roadmap/features/T3_F060.md; DECISIONs F060 D1 to D4).
 
 ## Current Step
-Round 5 (session 1), the closure's integration-gate round: book round 4 and register R-1406, run
-the closure's self-use item to its approval gate, repair R-1406, write the Built State, add F060's
-consolidation paragraph to the checklist, and run the feature's one full suite.
+Round 6 (session 1), the closure's evidence round (`docs/roadmap/STATUS_closure_protocol.md` steps
+1 and 2): book round 5 and resolve R-1406, commit the evidence script, run the staging reclaim, the
+evidence job `f060r6e1001` and the review package.
 
 ## Next Steps
-1. The evidence bundle and the review package, or a repair round naming every bad node id.
-2. The closing round: the Built State's closure facts, the STATUS line, the README and the pull
-   request, left unmerged.
+1. The closing round: the Built State's closure facts, the rotation or its recorded skip, SU-071's
+   `consumed_by`, the STATUS flip with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F060 does not own (DECISION F310 D7, Q20).
-- The self-use run makes real provider calls within the self-use role's budget.
