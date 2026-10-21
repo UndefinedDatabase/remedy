@@ -8,18 +8,17 @@ from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DE
 to D7).
 
 ## Current Step
-Round 7 (session 1) landed: contract 1.24 (the status answer's `autonomy` carries the permission
-matrix) and the fixture per level through the real seams (T003's last items). T001 to T003 are now
-all landed.
+Round 8 (session 1), the closure's integration-gate round: book round 7 and register R-1401,
+R-1401's test, the Built State, the checklist's consolidation pass, the self-use item run to its
+approval gate, and the feature's one full suite with its cost reading.
 
 ## Next Steps
-1. The closure sequence, per `docs/roadmap/STATUS_closure_protocol.md`: the Built State, the
-   integration gate's one full suite, the evidence job and review package, the STATUS acceptance
-   with its README sync, and the pull request.
+1. The next round: book round 8, resolve R-1401, register every self-use run defect; then a repair
+   round naming every bad node id (a red suite) or the evidence bundle and the review package (a
+   green one).
+2. The closing round: the STATUS line, the README sync, the self-use queue's `consumed_by` and the
+   pull request.
 
 ## Risks
-- `job_apply.py`, `job.py`, `exec_guard.py` and `_cmd_status` are at or above the structure
-  ledger's limits; every edit there stays line-neutral.
 - The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
-- Round 7's own gate 1 run disagreed with itself over one line unrelated to this round's files;
-  the next round's first commit should look at that checker's own wording before trusting it again.
+- The self-use run makes real provider calls within its role's budget.
