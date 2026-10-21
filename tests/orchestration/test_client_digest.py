@@ -645,18 +645,23 @@ def test_a_job_of_an_abandoned_mission_no_longer_waits_for_its_apply(root, tmp_p
 def test_a_mission_over_two_projects_names_both_and_each_job_its_repository(root, tmp_path):
     """DECISION F205 D6: the mission, listed under its first project, names both projects, and
     each job names its repository, the second project's job naming the mission too."""
+    from uuid import uuid4
+
+    from packages.orchestration.mission_record import Mission
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
-        create_mission,
         link_job_to_mission,
+        save_mission,
     )
     from packages.orchestration.project_registry import register_project_repo
 
     toolbox, brain = (register_project_repo(name, _git_folder(tmp_path / name))
                       for name in ("toolbox", "brain"))
     lead, other = str(toolbox.id), str(brain.id)
-    mission = create_mission(lead, "Two repositories", project_ids=(lead, other))
+    mission = Mission(id=uuid4().hex, project_id=lead, goal="Two repositories",
+                      created_at="2026-01-01T00:00:00+00:00", project_ids=(lead, other))
+    save_mission(mission)
     first = JobPlan(job_title="toolbox part", project_id=lead, repo_path=str(tmp_path / "toolbox"))
     second = JobPlan(job_title="brain part", project_id=other, repo_path=str(tmp_path / "brain"))
     for job, role in ((first, MISSION_ROLE_INITIAL), (second, MISSION_ROLE_FOLLOW_UP)):

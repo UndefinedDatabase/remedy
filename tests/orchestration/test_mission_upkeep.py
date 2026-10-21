@@ -7,13 +7,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import RunState
 from packages.orchestration.data_paths import job_dir, run_dir
 from packages.orchestration.mission_record import Mission, MissionOrderBatch
-from packages.orchestration.mission_state import create_mission, link_job_to_mission
+from packages.orchestration.mission_state import create_mission, link_job_to_mission, save_mission
 from packages.orchestration.mission_upkeep import (
     LINE_JOB_CLOSED,
     LINE_UPKEEP_NOT_NEEDED,
@@ -742,8 +743,11 @@ class TestTheUpkeepOfAMissionOverSeveralProjects:
         """Five completed jobs, three in the first project and two in the second, the second last;
         a finding open in one job of each project."""
         repos = {PROJECT: tmp_path / "first-repo", self.OTHER: tmp_path / "second-repo"}
-        mission = create_mission(PROJECT, "Keep both repositories working",
-                                 project_ids=(PROJECT, self.OTHER))
+        mission = Mission(id=uuid4().hex, project_id=PROJECT,
+                          goal="Keep both repositories working",
+                          created_at="2026-01-01T00:00:00+00:00",
+                          project_ids=(PROJECT, self.OTHER))
+        save_mission(mission)
         jobs = []
         for index, project in enumerate((PROJECT, PROJECT, PROJECT, self.OTHER, self.OTHER)):
             job = JobPlan(job_title=f"job {index}", state=RunState.COMPLETED, project_id=project,

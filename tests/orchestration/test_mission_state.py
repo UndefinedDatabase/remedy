@@ -139,6 +139,14 @@ class TestMissionRecord:
         with pytest.raises(MissionError):
             create_mission("../../etc", "Ship the importer", root=tmp_path)
 
+    def test_a_project_ids_keyword_is_refused_and_writes_nothing(self, tmp_path):
+        """DECISION F307 D12: `create_mission` lost the keyword; a mission over several projects
+        is only ever a legacy record read back, never one this function writes."""
+        legacy_kwargs = {"project_ids": (_PROJECT, "other")}
+        with pytest.raises(TypeError):
+            create_mission(_PROJECT, "Ship the importer", root=tmp_path, **legacy_kwargs)
+        assert mission_dir_for_project(_PROJECT, root=tmp_path).exists() is False
+
 
 class TestMissionLoading:
 

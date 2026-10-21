@@ -85,7 +85,6 @@ from packages.orchestration.mission_record import (
     MissionOrder,
     MissionProjectError,
     MissionVerifyFirstError,
-    check_spanned_project_ids,
 )
 
 #: A goal is operator input: it is small, or it is not a goal.
@@ -298,15 +297,14 @@ def list_missions(project_id: str, root: Path | None = None) -> list[Mission]:
 
 
 def create_mission(project_id: str, goal: str, *,
-                   project_ids: tuple[str, ...] | list[str] = (),
                    now: datetime | None = None,
                    root: Path | None = None) -> Mission:
-    """Create and persist a mission.  This is the ONLY way one comes into being.
+    """Create and persist a mission of ONE project.  This is the ONLY way one comes into being.
 
     Called through ``repo_mission`` when a repository gets its one mission, and by
-    the gauntlet.  *project_ids*, which only a legacy umbrella
-    mission carries (DECISION amend1011b D4), names every project it spans,
-    *project_id* first (DECISION F205 D2).
+    the gauntlet.  A mission spanning several projects is, since DECISION F307 D12,
+    never created here — it is only ever a legacy record read back
+    (DECISION amend1011b D4), through ``Mission.from_json``.
     """
     text = str(goal).strip()
     if not text:
@@ -316,21 +314,12 @@ def create_mission(project_id: str, goal: str, *,
             f"mission goal exceeds {MAX_MISSION_GOAL_CHARS} characters "
             f"(got {len(text)})")
     lead = _validate_path_id(project_id, "project id")
-    spanned = tuple(_validate_path_id(project, "project id") for project in project_ids)
-    if spanned == (lead,):
-        spanned = ()
-    if spanned:
-        try:
-            check_spanned_project_ids(lead, spanned)
-        except ValueError as exc:
-            raise MissionProjectError(str(exc)) from exc
     mission = Mission(
         id=uuid4().hex,
         project_id=lead,
         goal=text,
         status=MISSION_STATUS_ACTIVE,
         created_at=_utc_now_iso(now),
-        project_ids=spanned,
     )
     save_mission(mission, root)
     return mission

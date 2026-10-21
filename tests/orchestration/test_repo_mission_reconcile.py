@@ -9,11 +9,12 @@ from uuid import uuid4
 
 import pytest
 
-from packages.orchestration.mission_record import MissionError
+from packages.orchestration.mission_record import Mission, MissionError
 from packages.orchestration.mission_state import (
     create_mission,
     link_job_to_mission,
     list_missions,
+    save_mission,
 )
 from packages.orchestration.repo_mission_reconcile import (
     reconcile_repo_missions,
@@ -255,7 +256,9 @@ def _umbrella(tmp_path):
 
     lead, other = str(uuid4()), str(uuid4())
     _legacy(lead, tmp_path, "lead own", ["l0"], 0)
-    umbrella = create_mission(lead, "both", project_ids=[lead, other], root=tmp_path)
+    umbrella = Mission(id=uuid4().hex, project_id=lead, goal="both",
+                       created_at="2026-01-01T00:00:00+00:00", project_ids=(lead, other))
+    save_mission(umbrella, tmp_path)
     for job_id, project in (("a" * 16, lead), ("b" * 16, other)):
         save_job_plan(JobPlan(job_id=job_id, job_title="t", project_id=project), tmp_path)
     link_job_to_mission(lead, umbrella.id, "a" * 16, "initial", root=tmp_path)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
@@ -15,7 +16,13 @@ from packages.core.models import RunState
 from packages.orchestration import mission_contract
 from packages.orchestration import orchestrator_loop as loop
 from packages.orchestration.data_paths import job_dir
-from packages.orchestration.mission_state import create_mission, link_job_to_mission, load_mission
+from packages.orchestration.mission_record import Mission
+from packages.orchestration.mission_state import (
+    create_mission,
+    link_job_to_mission,
+    load_mission,
+    save_mission,
+)
 from packages.orchestration.mission_upkeep import UPKEEP_METADATA_KEY, read_upkeep_ledger
 from packages.orchestration.orchestrator_loop import JobExecution, blocked_completion, execute_move
 from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
@@ -170,8 +177,9 @@ class TestADispatchOverSeveralProjects:
 
     def test_the_dispatched_job_runs_in_the_last_jobs_repository(self, data_root, recorder):
         other = "c" * 32
-        mission = create_mission(PROJECT, "Two repositories", project_ids=(PROJECT, other),
-                                 root=data_root)
+        mission = Mission(id=uuid4().hex, project_id=PROJECT, goal="Two repositories",
+                          created_at="2026-01-01T00:00:00+00:00", project_ids=(PROJECT, other))
+        save_mission(mission, data_root)
         for index, (project, repo) in enumerate(((PROJECT, "/repos/toolbox"), (other, "/repos/brain"))):
             job = JobPlan(job_title=f"job {index}", state=RunState.COMPLETED, project_id=project,
                           repo_path=repo)

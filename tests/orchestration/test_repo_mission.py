@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.orchestration.mission_record import MISSION_STATUS_PAUSED
+from packages.orchestration.mission_record import MISSION_STATUS_PAUSED, Mission
 from packages.orchestration.mission_state import (
     MISSION_STATUS_ABANDONED,
     MISSION_STATUS_ACHIEVED,
@@ -321,7 +321,9 @@ def test_reconcile_refuses_an_unreadable_record(tmp_path):
 def test_reconcile_gives_each_job_of_a_cross_repository_mission_to_its_own_project(tmp_path):
     lead, other = str(uuid4()), str(uuid4())
     _legacy(lead, tmp_path, "lead own", ["l0"], 0)
-    umbrella = create_mission(lead, "both", project_ids=[lead, other], root=tmp_path)
+    umbrella = Mission(id=uuid4().hex, project_id=lead, goal="both",
+                       created_at="2026-01-01T00:00:00+00:00", project_ids=(lead, other))
+    save_mission(umbrella, tmp_path)
     from packages.orchestration.mission_state import link_job_to_mission
     from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
