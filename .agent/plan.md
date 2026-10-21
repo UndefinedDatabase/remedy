@@ -2,16 +2,17 @@
 
 ## Goal
 A client asks Remedy over HTTP what runs now, looks into one job's worker, and learns why it hangs
-and what the operator can do, in closed words (`docs/roadmap/features/T12_F311.md`, DECISIONs
-F311 D1 to D6).
+and what the operator can do, in closed words (`docs/roadmap/features/T12_F311.md`). Accepted
+PASS_WITH_RISKS on 2026-10-21.
 
 ## Current Step
-Round 6 (session 1), the closure's evidence round: book round 5, resolve R-1389, the staging
-reclaim, the evidence job `f311r6e1001` and the review package.
+Round 7 (session 1), the closing round: book round 6, DECISION F311 D7 (no rotation this closure),
+accept F311 in STATUS with the README sync and SU-067's `consumed_by`, and open the pull request,
+left unmerged.
 
 ## Next Steps
-1. The closing round: the rotation or its recorded skip, SU-067's `consumed_by`, the STATUS line
-   with the README sync, and the pull request, left unmerged.
+1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F311's pull
+   request; then Rule A5 proposes the next feature, F313.
 
 ## Risks
 - The integrity check fails on High findings F311 does not own (DECISION F310 D7, Q20).

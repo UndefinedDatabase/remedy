@@ -30438,3 +30438,13 @@ CHOSEN: `docs/system/api-release-matrix-v1.json` lists both routes `since 1.21`;
 ALTERNATIVES CONSIDERED: (a) listing them `since 1.22` now — rejected: the matrix test refuses a version later than the current one, and raising it is F313's; (b) refusing a `lines` that is not a whole number — rejected: a refusal token of its own for a display length buys a client nothing.
 
 HOW TO REVERSE: date the two routes otherwise in the matrix, or add the refusal, and rewrite this paragraph.
+
+## DECISION F311 D7 — F311's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/` nor `scripts/rotate_live_review.py` has changed since F310's closure.
+
+CHOSEN: F311's closure skips the rotation commit, as F310's and F312's did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
