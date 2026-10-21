@@ -6,17 +6,15 @@ and what the operator can do, in closed words (`docs/roadmap/features/T12_F311.m
 F311 D1 to D6).
 
 ## Current Step
-Round 4 (session 1): book round 3, resolve R-1384 to R-1388, DECISION F311 D6; and the second half
-of T003: the routes `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` with the client
-token's project scope, `job_insight.insight_lines`, the release matrix, the generated API page and
-the guide's section, with T004's proofs for the routes.
+Round 5 (session 1), the closure's integration-gate round: book round 4, register R-1389 and add
+its test; F311's Built State; the checklist's consolidation pass; the closure's self-use item run
+to its approval gate; and the feature's one full suite with its CPU cost.
 
 ## Next Steps
-1. The closure: the one full suite, the self-use run, the Built State, the evidence, STATUS, the
-   PR.
+1. The evidence round: book round 5, resolve R-1389, register every self-use run defect, the
+   evidence bundle and the review package.
+2. The closing round: the STATUS line, the README, the self-use queue's `consumed_by`, the PR.
 
 ## Risks
-- `pingpong_job.py`, `pingpong_loop.py`, `pingpong_provider.py` and `config.py` sit at their
-  structure rows: every hook and key lives outside them (DECISION F311 D2).
-- No test may reach the operator's model server: the probe's one fetcher is refused in tests.
-- The public API's version stays `1.21` until F313 (DECISION F311 D6).
+- The integrity check fails on High findings F311 does not own (DECISION F310 D7, Q20).
+- The self-use run spends real provider calls, within the `self_use` role's budget.
