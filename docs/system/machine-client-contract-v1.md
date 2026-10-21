@@ -308,7 +308,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.24`.
+Interface version: `1.25`.
 
 ### Envelope
 
@@ -714,6 +714,24 @@ Answer keys: `already_cancelled`, `cancel`, `cancel_pending`, `job_id`, `job_sta
 Keys under the answer keys: see below.
 
 - `cancel`: `job_id`, `reason`, `requested_at`, `source`
+
+#### `remedy job steer`
+
+Command id: `job.steer`.
+Description: Address a steering note to one task of a running job; it is recorded as evidence and read at the start of that task's next build round, never inside a model call (F030).
+
+| Argument | Option | Required | Takes a value | Repeatable | Help |
+|---|---|---|---|---|---|
+| `job_id` | no | yes | yes | no | UUID of the job (under its mission) |
+| `text` | no | yes | yes | no | The note, quoted as one argument |
+| `--task` | yes | yes | yes | no | The task to address the note to: its id in the job, or its id in the job plan, as `remedy job plan-show` prints them |
+| `--source` | yes | no | yes | no | Which door the note came through, kept with it (default: cli) |
+| `--json` | yes | no | no | no | Output as JSON |
+
+Exit codes: `0`, `1`, `2`, `3`.
+Refusal tokens: `ambiguous_job_id`, `invalid_argument`, `invalid_job_id`, `invalid_message`, `job_not_found`, `job_not_steerable`, `steering_write_failed`, `task_not_steerable`, `unknown_task`.
+Answer keys: `job_id`, `matches`, `message_id`, `received_at`, `record_sha256`, `request_id`, `task_id`.
+Keys under the answer keys: none.
 
 #### `remedy change proof`
 

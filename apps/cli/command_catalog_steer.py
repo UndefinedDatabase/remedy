@@ -1,6 +1,6 @@
 """The `job steer` entry of the command catalog, moved out unchanged (DECISION F303 D2 (1)):
 `apps/cli/command_catalog.py` sits exactly at its row on `docs/system/structure-ledger-v1.md`,
-with no room left for the `--source` option this round adds. `_BASE_CATALOG` splices
+with no room left for the `--source` option this round added. `_BASE_CATALOG` splices
 `JOB_STEER_COMMANDS` back in right after `job.veto-task`, the same place, so the help keeps its
 order.
 """
@@ -25,6 +25,8 @@ JOB_STEER_COMMANDS: tuple[CommandEntry, ...] = (
             ArgDef("--task", "The task to address the note to: its id in the job, or its id "
                    "in the job plan, as `remedy job plan-show` prints them",
                    required=True, is_option=True),
+            ArgDef("--source", "Which door the note came through, kept with it (default: cli)",
+                   required=False, is_option=True, default="cli"),
             _JSON_OPT,
         ),
         supports_json=True,

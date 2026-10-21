@@ -60,6 +60,7 @@ from apps.cli.client_interface_story import (
     render_story_words_lines,
 )
 from apps.cli.commands.cancel_cmd import CANCEL_ANSWER_KEYS, CANCEL_ANSWER_TREES, CANCEL_REFUSAL_TOKENS
+from apps.cli.commands.job_steer_cmd import JOB_STEER_ANSWER_KEYS, JOB_STEER_ANSWER_TREE, JOB_STEER_REFUSAL_TOKENS
 from apps.cli.commands.job_stop_cmd import JOB_STOP_ANSWER_KEYS, JOB_STOP_ANSWER_TREE, JOB_STOP_REFUSAL_TOKENS
 from packages.orchestration.order_cancel import ORDER_PHASES
 from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_TREE
@@ -85,18 +86,20 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: exec-1017c to `1.19` (`job.abandon`, `client.cancel-order`, order `phase`, `cancel`), exec-1018 to `1.20` (new story reasons, phase `checked`), exec-1018b to `1.21` (story `end`),
 #: F313 (DECISION F313 D1) to `1.22` (`client.now`, `client.insight` and the `insight` words),
 #: F078 (DECISION F078 D6) to `1.23` (`status.run`'s `autonomy`),
-#: F141 (DECISION F141 D7) to `1.24` (`autonomy`'s `push_allowed` and `permissions`).
-CLIENT_INTERFACE_VERSION = "1.24"
+#: F141 (DECISION F141 D7) to `1.24` (`autonomy`'s `push_allowed` and `permissions`), and
+#: F303 (DECISION F303 D3) to `1.25` (`job.steer`).
+CLIENT_INTERFACE_VERSION = "1.25"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
 #: budget refusal of `job resume`, declining a result, abandoning a mission, this document's own
-#: command, what changed since a cursor (F253 S3a, DECISION F253 D4 (3)), and Remedy's own
-#: health (DECISION F199 D3), and one job's operations-log lines (DECISION F203 D5).
+#: command, what changed since a cursor (F253 S3a, DECISION F253 D4 (3)), Remedy's own
+#: health (DECISION F199 D3), one job's operations-log lines (DECISION F203 D5), and a steering
+#: note addressed to one task (DECISION F303 D3 (2)).
 CLIENT_OPERATION_IDS: tuple[str, ...] = (
     "project.register", "do.run", "status.run", "decision.resolve",
     "job.run", "job.resume", "job.apply",
-    "job.decline", "job.stop", "job.abandon",
+    "job.decline", "job.stop", "job.abandon", "job.steer",
     "change.proof",
     "job.evidence",
     "patch.hunks",
@@ -156,6 +159,7 @@ OPERATION_REFUSAL_TOKENS: dict[str, tuple[str, ...]] = {
         "job_not_found", "missing_argument",
     ),
     "job.stop": JOB_STOP_REFUSAL_TOKENS, **CANCEL_REFUSAL_TOKENS,
+    "job.steer": JOB_STEER_REFUSAL_TOKENS,
     "change.proof": ("ambiguous_job_id", "invalid_job_id", "invalid_path", "job_not_found"),
     "job.evidence": ("job_not_found", "unsafe_task_id"),
     "patch.hunks": ("ambiguous_job_id", "invalid_job_id", "job_not_found"),
@@ -238,6 +242,7 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
     ),
     "job.decline": ("already_declined", "declined_at", "job_id", "matches", "reason", "source"),
     "job.stop": JOB_STOP_ANSWER_KEYS, **CANCEL_ANSWER_KEYS,
+    "job.steer": JOB_STEER_ANSWER_KEYS,
     "change.proof": (
         "changes", "generated_at", "goal", "job_applies", "job_id", "matches", "missing_links",
         "next_safe_action", "next_safe_action_obj", "overall_status", "path_filter", "version",
@@ -518,6 +523,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     },
     "job.decline": {},
     "job.stop": JOB_STOP_ANSWER_TREE, **CANCEL_ANSWER_TREES,
+    "job.steer": JOB_STEER_ANSWER_TREE,
     "change.proof": {
         "next_safe_action_obj": {"label": {}, "command": {}, "reason": {}, "available": {}},
         "changes": {

@@ -12,8 +12,10 @@ D8), so the story never maps a persisted word a second way.
 
 Every word in the answer is one of `client_story_words`' closed lists; arguments are numbers and
 paths relative to the repository. The story carries no prose Remedy wrote, no secret, no path
-outside the repository, no shell command and no money figure. `note_open` is always false,
-because no route of the public API takes a steering note (DECISION amend1015f D5).
+outside the repository, no shell command and no money figure. `note_open` is true exactly when
+the job has not ended and at least one of its tasks can still take a note — the same two
+conditions `steering.steer_task_command` checks — since `POST /api/v1/jobs/{job}/note` takes
+one (DECISION F303 D2 (4)).
 
 Public API::
 
@@ -411,6 +413,18 @@ def job_story_open_decision(plan: Any, events: list[dict[str, Any]]) -> Any:
     return min(open_ones, key=lambda d: str(d.id)) if open_ones else None
 
 
+# WHY: a client shows a note field only where a note would really be accepted (DECISION F303 D2 (4)).
+def _note_open(plan: Any) -> bool:
+    """True when `steering.steer_task_command` would still accept a note for one of PLAN's tasks."""
+    from packages.orchestration.pingpong_job import job_is_terminal
+    from packages.orchestration.steering import STEERABLE_TASK_STATUSES
+
+    if job_is_terminal(plan.state):
+        return False
+    return any((task.status.value if hasattr(task.status, "value") else str(task.status))
+              in STEERABLE_TASK_STATUSES for task in plan.tasks)
+
+
 # WHY: the one builder of the story, so the route, its twin command and every test read one shape.
 def build_client_story(plan: Any, *, events: list[dict[str, Any]],
                        now: datetime | None = None) -> dict[str, Any]:
@@ -456,7 +470,7 @@ def build_client_story(plan: Any, *, events: list[dict[str, Any]],
             "model_turns": summary["model_turns"],
             "rounds": sum(rounds.values()) if rounds else None,
         },
-        "note_open": False,
+        "note_open": _note_open(plan),
     }
 
 
