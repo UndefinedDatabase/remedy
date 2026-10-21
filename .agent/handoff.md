@@ -1,89 +1,99 @@
-# Handback — F141 round 11: the closing round, F141 accepted, pull request opened
+# Handback — F060 round 1: F060 claimed, F141 round 11 booked, T001 the certificate profile landed
 
 ## Session
 
-SESSION 2 of feature F141 · round 11 · rounds so far 11
+SESSION 1 of feature F060 · round 1 · rounds so far 1
 
-Context self-assessment: this worker verified every prepared digest, made C1 and C2 and the C3 file copies by byte copy, ran the one test run once, and wrote this handback with ample context margin left.
+Context self-assessment: this worker verified every prepared digest, made C1 by byte copy, wrote the profile and its tests itself, ran the one test run once, and wrote this handback with ample context margin left.
 
-Fortschritt: 100 % (F141 is accepted; its pull request waits for the next session's Open PR Gate) — Schätzung
+Fortschritt: ~20 % (claim, inventory and T001 landed · sources, verifier and commands open) — Schätzung
 
 ## Range
 
-Review of `7b2a64da9`..`HEAD` on `feature/f141-permission-matrix` (base: round 10's handback).
+Review of `646c4b1d7`..`HEAD` on `feature/f060-long-run-certificate` (base: the merge commit of pull request 374 on `main`).
 
 ## Commits
 
-### 1344b0cd7 F141 R11 C1: book round 10, DECISION F141 D8, the plan, the block and the PR body
+### 840be0cbf F060 R1 C1: claim F060, book F141 R11, the inventory and DECISION F060 D1
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f141-r11.md` | new | this round's block, byte-saved for the authored-text proof |
-| `.agent/authored/f141-r11-pr_body.md` | new | the pull request's body |
-| `.agent/live_review.md` | edited | round 10 booked |
-| `.agent/decisions.md` | edited | DECISION F141 D8 appended |
-| `.agent/plan.md` | edited | re-headed for round 11 |
+| `.agent/authored/f060-r1.md` | 174/0 | this round's block, byte-saved for the authored-text proof |
+| `.agent/f060_inventory.md` | 70/0 | the inventory of what F060 reuses and what it adds |
+| `docs/roadmap/STATUS.md` | 1/1 | F060 claimed (`[ ]` to `[~]`) |
+| `.agent/live_review.md` | 14/12 | re-headed; F141 round 11 booked |
+| `.agent/decisions.md` | 17/0 | DECISION F060 D1 appended |
+| `.agent/plan.md` | 16/13 | rewritten for F060 |
+| `.agent/context.md` | 11/13 | rewritten for F060 |
 
-### 3578bc0c6 F141 R11 C2: F141's Built State brought current
+### 14365874c F060 R1 C2: the job certificate profile, its manifest and its byte budget (T001)
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T7_F141.md` | edited | Built State names the findings, the reachability lines and the closure |
+| `packages/orchestration/job_certificate.py` | 199/0 | new: constants, `CertificateSource`, `plan_certificate_members`, `render_certificate_manifest`, `build_job_certificate` |
+| `tests/test_no_orphan_modules.py` | 2/0 | `ALLOWED_UNWIRED` entry for the new module |
 
-### C3 F141 R11 C3: accept F141 in STATUS with its README sync and the self-use queue (this commit)
+### 6feff114c F060 R1 C3: goldens and the budget, overwrite and refusal tests of the certificate profile
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | edited | F141 accepted (1/1) |
-| `README.md` | edited | counts and Tier 7 list synced (12/3) |
-| `scripts/self_use_queue.json` | edited | SU-070 marked consumed by F141 (1/1) |
+| `tests/orchestration/test_job_certificate.py` | 249/0 | new: golden, determinism, budget, overwrite, 18 refusal cases, reopen problem, constants |
+
+### C4 F060 R1 C4: handback (this commit)
+| Path | +/- | Reason |
+|---|---|---|
 | `.agent/handoff.md` | edited | this handback |
 
 ## External actions
 
-- `git push origin feature/f141-permission-matrix` after C3 and `gh pr create --base main --head feature/f141-permission-matrix --title "F141: permission matrix per autonomy level" --body-file .agent/authored/f141-r11-pr_body.md` follow this commit; their outcomes, the pull request's number and address are reported in the session reply. The pull request is not merged.
-- No worktree was added or removed.
+- `git checkout -b feature/f060-long-run-certificate` on a clean `main` at `646c4b1d7`; the Open PR Gate had already run (no pull request open).
+- `git push -u origin feature/f060-long-run-certificate` follows this commit; its outcome is reported in the session reply. No pull request was opened. No worktree was added or removed.
 
 ## Verification
 
-Preconditions: `block.md` (109 lines, sha256 `5b185dee...372525`), `verify.py` and `digests.txt` matched the prompt's sha256; every file `digests.txt` listed matched. Start state: HEAD `7b2a64da9` equal to origin, `git status --porcelain` empty, no `.agent/STOP`.
+Preconditions: `block.md` (174 lines, sha256 `1c801d47...ac1795`), `verify.py`, `run_selection.py`, `selection.txt` and `digests.txt` matched the prompt's sha256; all seven `c1-` files matched `digests.txt`. Start state: HEAD `646c4b1d` on `main`, `git status --porcelain` empty, no `.agent/STOP`. The saved block copy `.agent/authored/f060-r1.md` has 174 lines and sha256 `1c801d4735553277a3434deadb87836f04a4a2dea13e8dd4735576e1a5ac1795`, equal to `block.md`.
 
-1. Gate 1 (before C3): status showed exactly the three modified files; `python3 .remedy-wt/f141-r11/prep/verify.py .` — every line `True`, C3 `absent`, last line `ALL True`.
-2. Gate 2: `git diff --numstat` — `12 3 README.md`, `1 1 docs/roadmap/STATUS.md`, `1 1 scripts/self_use_queue.json`.
-3. Gate 3: `python3 .remedy-wt/f141-r11/prep/run_selection.py . ...` — `paths 75`, `exit 0`, `3454 passed, 2 skipped in 21.19s`; no FAILED, ERROR or `process(es) behind` line; two SKIPPED lines (install smoke is opt-in; the D12 quarantine of the deleted reviewer agent file).
-4. Gate 4: `python3 -m apps.cli.main integrity check --json` — `fail_count` 1, only `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`; open findings through `open_finding_ids`: `88`.
-5. Gate 5 (after the pull request) is reported in the session reply.
+1. Gate 1: `git status --porcelain` empty; `python3 .remedy-wt/f060-r1/prep/verify.py .` — every line `True`, C4 `absent`, last line `ALL True`.
+2. Gate 2: `python3 -m ruff check` over the three Python files C2 and C3 touched — `All checks passed!`
+3. Gate 3: `python3 .remedy-wt/f060-r1/prep/run_selection.py . .remedy-wt/f060-r1-worker/selection-output.txt` — `paths 74`, `exit 0`, `3402 passed, 2 skipped in 27.08s`; no FAILED, ERROR or `process(es) behind` line; two SKIPPED lines (the D12 quarantine of the deleted reviewer agent file; install smoke is opt-in).
+4. Gate 4: `python3 -m apps.cli.main integrity check --json` — exit 1, `fail_count` 1, only `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`, the same twelve as before the round.
+5. Gate 5: `open_finding_ids` over `.agent/live_review.md` — `88`.
+6. Gate 6: `git diff --stat 646c4b1d7 HEAD -- packages/orchestration/review_zip.py` — no output.
 
 ## Authored-text proofs
 
-C1: the five prepared `c1-` files are byte copies, proven equal by a Python bytes comparison at copy time and again by `verify.py`. C2: the prepared Built State is a byte copy, proven the same way. C3: the three prepared `c3-` files are byte copies, proven by a Python bytes comparison at copy time.
+C1: the seven prepared `c1-` files are byte copies, proven equal by sha256 at copy time and again by `verify.py`. C2 and C3 are the worker's own code and tests, not authored text.
 
 ## Deviations & assumptions
 
-None. The rotation commit was skipped as the block orders (DECISION F141 D8).
+- The Session line carries the template's `rounds so far 1` suffix after the block's `SESSION 1 of feature F060 · round 1`.
+- Gate 6 was run as `git -C . diff ...` from the primary checkout; gates 1, 3 and 5 ran from the checkout root with relative paths.
+- Assumption: where the block leaves the wording open, the refusal for a missing parent folder reads `The folder for the certificate does not exist: <folder>`, and the other refusals name the offending value in a sentence of their own.
+- No mutation red-proofs and no full-suite run, as the block orders.
 
 ## Next
 
 1. Phase 1 rule 1: `.agent/STOP`.
-2. The Open PR Gate, which merges F141's pull request in the NEXT session and never in this one.
-3. Rule A5, which proposes the next feature.
+2. Phase 1 rule 2: the Open PR Gate.
+3. Book round 1's verdict in the next round's first commit.
+4. Round 2: a finished job's sources and claims.
 
 Operator questions open: 3.
-Open findings: 88, read by gate 4's second command (`scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`) at commit `3578bc0c6` (C1 `1344b0cd7` booked round 10).
+Open findings: 88.
 
 ## For the operator, in plain sentences
 
-Remedy now has one table that says, for each autonomy level, what the work it runs may do: read the project, write into its files, commit, push, change a dependency, delete files or run a migration, spend above the cost threshold, and reach the network. Each place that does such a thing asks that one table. An action the table marks as asking goes ahead only with your approval of that one case, given by the flags you already type, a yes at a prompt or an answer to a decision, and every such approval is written down. A new setting can forbid every push, and there is no flag that skips the table. The status overview lists the table. The whole test collection ran on the code that ships and passed. The review package is named `remedy-review-20261021-131628-READY_FOR_REVIEW.zip` and sits in `~/Repos/remedy-history/zips`. A pull request is open and will be merged at the start of the next session unless you merge it earlier. Three questions wait for you, each already answered with the session's recommendation, and one of them is this feature's table.
+Remedy has started a new piece of work: a certificate for a finished job. The certificate is a single archive that holds the files that show how the job ended, together with a list that names each file by its fingerprint and size and states what the job claims about itself. Large files such as a long diff or log are left out when the size budget would be exceeded, and the list then says where to fetch them and what fingerprint they must have. A certificate shows that its files are intact and agree with each other; it does not show who made it, and it says so in its own text. Remedy refuses to overwrite a certificate that already exists, and it reopens each new one and checks it before it appears. Nothing yet creates a certificate on its own; that comes in a later round. The whole test collection ran and passed, and the one known set of open serious findings is unchanged. Three questions still wait for you.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `1344b0cd7` |
-| C2 | done | `3578bc0c6` |
-| Rotation commit | skipped | DECISION F141 D8: no rotation this round |
-| C3 | done | this commit |
+| C0 | done | branch created on `646c4b1d7` |
+| C1 | done | `840be0cbf` |
+| C2 | done | `14365874c` |
+| C3 | done | `6feff114c` |
+| C4 | done | this commit |
 | Gate 1 | done | `ALL True` |
-| Gate 2 | done | numstat as above |
-| Gate 3 | done | exit 0, 3454 passed, 2 skipped |
-| Gate 4 | done | `fail_count` 1 (`high_blockers_open`, twelve findings); open findings 88 |
-| Gate 5 | pending | reported in the final reply |
-| Push | pending | reported in the final reply |
-| Pull request | pending | reported in the final reply |
+| Gate 2 | done | `All checks passed!` |
+| Gate 3 | done | exit 0, 3402 passed, 2 skipped |
+| Gate 4 | done | `fail_count` 1 (`high_blockers_open`, the same twelve) |
+| Gate 5 | done | 88 |
+| Gate 6 | done | no output |
