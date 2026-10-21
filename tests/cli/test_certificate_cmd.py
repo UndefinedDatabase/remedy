@@ -167,6 +167,22 @@ class TestJobCertificateWrites:
         assert (here / f"remedy-certificate-{jid}-2.zip").is_file()
         assert [line["issue"] for line in _issue_lines(jid)] == [1, 2]
 
+    def test_a_relative_out_is_recorded_in_the_issue_record_as_an_absolute_path(
+            self, tmp_path, monkeypatch, capsys):
+        job = _ended_job()
+        jid = str(job.job_id)
+        here = tmp_path / "relative_here"
+        here.mkdir()
+        monkeypatch.chdir(here)
+        code, _text = _run(["job", "certificate", jid, "--out", "cert.zip"], capsys)
+        assert code == 0
+        written = here / "cert.zip"
+        assert written.is_file()
+        lines = _issue_lines(jid)
+        assert len(lines) == 1
+        assert os.path.isabs(lines[0]["path"])
+        assert lines[0]["path"] == str(written.absolute())
+
 
 class TestJobCertificateRefusals:
     def test_a_running_job_exits_3_as_not_ready(self, capsys):
