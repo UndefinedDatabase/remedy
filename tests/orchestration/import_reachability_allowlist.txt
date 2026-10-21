@@ -99,6 +99,7 @@ packages.orchestration._symbols
 packages.orchestration.agent_loop
 packages.orchestration.agent_run_trace
 packages.orchestration.api_clients
+packages.orchestration.apply_permissions
 packages.orchestration.approval_queue
 packages.orchestration.archive_plan
 packages.orchestration.artifact_contract_gate
