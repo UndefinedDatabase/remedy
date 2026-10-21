@@ -1,7 +1,8 @@
 """exec-1018c — `docs/system/api-release-matrix-v1.json` is the public surface the code offers, version by version.
 
 The release of PRs 360-364 moves the public API and the machine client interface from 1.17 to 1.21.
-The matrix lists every route, story key, story word and order phase with the version that added it,
+The matrix lists every route, story key, story word, insight word (DECISION F313 D1) and order phase
+with the version that added it,
 and the value changes of existing fields per version. These tests hold it to the code: nothing the
 code offers is missing from it, nothing it lists is gone, and its current version is the code's.
 """
@@ -13,6 +14,7 @@ from pathlib import Path
 from apps.cli.client_interface import CLIENT_INTERFACE_VERSION
 from apps.cli.client_interface_story import CLIENT_STORY_ANSWER_KEYS
 from packages.orchestration.client_story_words import story_words
+from packages.orchestration.job_insight import insight_words
 from packages.orchestration.order_cancel import ORDER_PHASES
 from packages.orchestration.order_jobs import ORDER_JOB_PHASES
 from packages.orchestration.public_api import PUBLIC_API_VERSION
@@ -32,6 +34,8 @@ def _code_inventory() -> dict[str, set[str]]:
              "order_job_phases": set(ORDER_JOB_PHASES)}
     for key, words in story_words().items():
         found[f"story.{key}"] = set(words)
+    for key, words in insight_words().items():
+        found[f"insight.{key}"] = set(words)
     return found
 
 

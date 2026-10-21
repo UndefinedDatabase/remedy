@@ -390,7 +390,7 @@ may only grow.
 > Regenerate it from the repository root with
 > `python3 -c "from packages.orchestration.public_api import write_public_api_page; write_public_api_page()"`.
 
-API version: `1.21`.
+API version: `1.22`.
 
 | Method | Path | Query or body | Answers as | Refusals | Deprecated | Description |
 |---|---|---|---|---|---|---|
