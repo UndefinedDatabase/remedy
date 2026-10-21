@@ -10,6 +10,7 @@ apps.cli.client_interface_insight
 apps.cli.client_interface_story
 apps.cli.command_catalog
 apps.cli.command_catalog_cancel
+apps.cli.command_catalog_certificate
 apps.cli.command_catalog_client
 apps.cli.command_catalog_do
 apps.cli.command_catalog_doctor
@@ -23,6 +24,7 @@ apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
 apps.cli.commands.cancel_cmd
+apps.cli.commands.certificate_cmd
 apps.cli.commands.change
 apps.cli.commands.chat_cmd
 apps.cli.commands.ci_cmd
@@ -233,6 +235,10 @@ packages.orchestration.job_apply_baseline
 packages.orchestration.job_apply_pending
 packages.orchestration.job_burn
 packages.orchestration.job_cancel
+packages.orchestration.job_certificate
+packages.orchestration.job_certificate_claims
+packages.orchestration.job_certificate_sources
+packages.orchestration.job_certificate_verify
 packages.orchestration.job_digest
 packages.orchestration.job_evidence
 packages.orchestration.job_input_definition
@@ -332,6 +338,7 @@ packages.orchestration.result_tour
 packages.orchestration.review_reports
 packages.orchestration.review_scope
 packages.orchestration.review_subject
+packages.orchestration.review_zip
 packages.orchestration.reviewer
 packages.orchestration.roadmap_index
 packages.orchestration.role_config
