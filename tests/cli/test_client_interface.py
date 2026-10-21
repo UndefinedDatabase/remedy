@@ -55,7 +55,6 @@ from apps.cli.client_interface import (
     CLIENT_INTERFACE_PAGE_PATH,
     CLIENT_INTERFACE_VERSION,
     CLIENT_OPERATION_IDS,
-    DIGEST_KEY_TREE,
     EXECUTION_CONFIG_KEY_TREE,
     JOB_BUDGETS_KEY_TREE,
     JOB_REPORT_KEY_TREES,
@@ -68,6 +67,7 @@ from apps.cli.client_interface import (
     render_client_interface_markdown,
     write_client_interface_page,
 )
+from apps.cli.client_interface_digest import DIGEST_KEY_TREE
 from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command

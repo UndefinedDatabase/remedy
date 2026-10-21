@@ -4,6 +4,7 @@
 # A deletion round removes an entry in the same commit that removes its module.
 # Blank lines and lines beginning with a hash are ignored by the reader.
 apps.cli.client_interface
+apps.cli.client_interface_digest
 apps.cli.client_interface_execution
 apps.cli.client_interface_story
 apps.cli.command_catalog
