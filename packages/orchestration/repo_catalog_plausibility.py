@@ -79,6 +79,8 @@ def _read_package_lock_json(path: Path) -> frozenset[str]:
 def _read_toml_package_names(path: Path) -> frozenset[str]:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     tables = data.get("package")
+    if tables is None:
+        return frozenset()  # R-1302: a project with no dependencies locks no package
     if not isinstance(tables, list):
         raise ValueError("not the expected mapping")
     names: set[str] = set()
