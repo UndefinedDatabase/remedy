@@ -248,7 +248,7 @@ def push_permission_refusals(job_id: str | None) -> list[str]:
     """``[reason]`` when the push action is denied for JOB_ID's pinned level, else ``[]``."""
     try:
         require_permission("push", PermissionRequest(
-            level=pinned_job_level(job_id), subject="the push of a remedy do walk", job_id=job_id,
+            level=pinned_job_level(job_id), subject="the push of a walk of remedy do run", job_id=job_id,
         ))
     except PermissionRefusedError as exc:
         return [exc.reason]
@@ -261,7 +261,7 @@ def grant_push_permission(job_id: str | None, approval_ref: str) -> str:
     """``""`` once the push is granted (an `ask` cell is audited by the check), else the refusal."""
     try:
         require_permission("push", PermissionRequest(
-            level=pinned_job_level(job_id), subject="the push of a remedy do walk", job_id=job_id,
+            level=pinned_job_level(job_id), subject="the push of a walk of remedy do run", job_id=job_id,
             approval=InstanceApproval(APPROVAL_KIND_FLAG, approval_ref),
         ))
     except PermissionRefusedError as exc:
