@@ -383,6 +383,17 @@ class FailoverLinkAttempt:
         }
 
 
+# WHY: one real provider call a failed-over call made, so each is booked on its own (R-1276).
+@dataclass(frozen=True)
+class FailoverCall:
+    """A provider and model the walk really called, and its answer — `None` for the answer the
+    walk returns, which the booking reads from that answer itself."""
+
+    provider: str
+    model: str
+    output: Any = None
+
+
 # WHY: what a failed-over call discloses — the model Remedy meant to use versus the one it did.
 @dataclass(frozen=True)
 class FailoverDisclosure:
@@ -417,6 +428,17 @@ def _hand_hint(provider: Any, method: str, *args: Any) -> None:
     hint = getattr(provider, method, None)
     if callable(hint):
         hint(*args)
+
+
+# WHY: a failed-over call is several real calls, and each one is booked (R-1276).
+def _with_calls(out: Any, calls: list[FailoverCall]) -> Any:
+    """Attach to `out` every real call behind it as `failover_calls`, when there was more than one."""
+    if len(calls) > 1:
+        out.failover_calls = tuple(
+            FailoverCall(call.provider, call.model, None if call.output is out else call.output)
+            for call in calls
+        )
+    return out
 
 
 # WHY: the walk itself — wraps a role's provider and, on a trigger, tries each link in order
@@ -547,6 +569,7 @@ class FailoverProvider:
         method: str,
         prompt: str,
         attempts: list[FailoverLinkAttempt],
+        calls: list[FailoverCall],
         *,
         primary_error: str,
         primary_skipped: bool,
@@ -559,6 +582,7 @@ class FailoverProvider:
         timeout, a non-zero exit, a rate limit or a stream cap ends the walk with that failure, which
         the transport retries own, and neither holds the primary down nor turns resume off. A link
         that serves outside a hold opens one; a link that serves during a hold leaves it as it is.
+        Every link that was really called joins `calls` (R-1276).
         """
         for position, link in enumerate(self._links, start=1):
             link_out, attempt = self._call_link(
@@ -566,6 +590,8 @@ class FailoverProvider:
                 timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             attempts.append(attempt)
+            if link_out is not None:
+                calls.append(FailoverCall(link.provider, link.model, link_out))
             if link_out is None or is_failover_trigger(link_out):
                 continue
             served = not attempt.error
@@ -589,22 +615,24 @@ class FailoverProvider:
         resume: str | None,
     ) -> Any:
         attempts: list[FailoverLinkAttempt] = []
+        calls: list[FailoverCall] = []
         held = self._clock() < self._held_until
         if held:
             # While the primary is held down: every link first, the primary only when all trigger.
             link_out = self._walk_links(
-                method, prompt, attempts, primary_error="", primary_skipped=True,
+                method, prompt, attempts, calls, primary_error="", primary_skipped=True,
                 timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             if link_out is not None:
-                return link_out
+                return _with_calls(link_out, calls)
         out = getattr(self._primary, method)(
             prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume
         )
+        calls.append(FailoverCall(self._intended_provider, self._intended_model, out))
         if not is_failover_trigger(out):
             if held:
                 self._held_until = float("-inf")
-            return out
+            return _with_calls(out, calls)
         if not held:
             if resume:
                 # The run's own resume fallback calls again at full content with no session
@@ -612,13 +640,13 @@ class FailoverProvider:
                 # it never opened.
                 return out
             link_out = self._walk_links(
-                method, prompt, attempts, primary_error=getattr(out, "error", "") or "",
+                method, prompt, attempts, calls, primary_error=getattr(out, "error", "") or "",
                 primary_skipped=False, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
             if link_out is not None:
-                return link_out
+                return _with_calls(link_out, calls)
         out.failover_disclosure = self._disclosure(getattr(out, "error", "") or "", attempts, None)
-        return out
+        return _with_calls(out, calls)
 
     def build(
         self,

@@ -4349,7 +4349,7 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
             "seq": seq,
             "round": a.round,
             "role": a.role,
-            "provider": a.provider,
+            "provider": a.provider, "model": a.model,
             "is_retry": a.is_retry,
             "is_parse_retry": a.is_parse_retry,
             "stream_call_id": a.stream_call_id,

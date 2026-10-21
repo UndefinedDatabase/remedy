@@ -33,6 +33,7 @@ from packages.orchestration.model_failover import (
     FAILOVER_RULE_NAMES,
     LOCAL_PROVIDERS,
     RULE_CORE_ROLE_ON_LOCAL_PROVIDER,
+    FailoverCall,
     FailoverChainError,
     FailoverChainRefused,
     FailoverChainViolation,
@@ -833,6 +834,68 @@ class _HintedStub(_StubProvider):
         self.prefixes.append(prefix)
 
 
+class TestEveryRealCallIsBooked:
+    """R-1276: the walk attaches every real call behind its answer, in the order it made them."""
+
+    def test_a_backup_that_serves_carries_the_failed_primary_and_itself(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("ollama", "small", "mid"),), build_link=lambda the_link: link_provider,
+        )
+        out = fp.build("p1")
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "sonnet", primary.last_build_output),
+            FailoverCall("ollama", "small", None),
+        )
+
+    def test_a_chain_that_runs_out_carries_every_link_after_the_primarys_own_answer(self):
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link1 = _StubProvider("l1", build_error=_DOWN)
+        chain = (FailoverLink("nope", "m0", "mid"), FailoverLink("ollama", "m1", "mid"))
+
+        def build_link(link):
+            if link.provider == "nope":
+                raise RuntimeError("Unknown provider: 'nope'")
+            return link1
+
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=chain, build_link=build_link,
+        )
+        out = fp.build("p1")
+        assert out is primary.last_build_output
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "sonnet", None),
+            FailoverCall("ollama", "m1", link1.last_build_output),
+        )
+
+    def test_a_primary_that_serves_carries_no_calls(self):
+        primary = _StubProvider("claude-cli")
+        fp = FailoverProvider(
+            primary, role="builder", intended_provider="claude-cli", intended_model="sonnet",
+            links=(FailoverLink("ollama", "m1", "mid"),), build_link=lambda the_link: primary,
+        )
+        assert not hasattr(fp.build("p1"), "failover_calls")
+
+    def test_a_held_primary_that_serves_after_its_links_carries_them_all(self):
+        clock = _ListClock()
+        primary = _StubProvider("claude-cli", build_error=_DOWN)
+        link_provider = _StubProvider("l1")
+        fp = _held_wrapper(primary, link_provider, clock, 60)
+        fp.build("p1")
+        link_provider._build_error = _DOWN
+        primary._build_error = ""
+        clock.now = 10
+        out = fp.build("p2")
+        assert out is primary.last_build_output
+        assert out.failover_calls == (
+            FailoverCall("claude-cli", "opus", link_provider.last_build_output),
+            FailoverCall("claude-cli", "sonnet", None),
+        )
+
+
 class TestALinkIsBuiltOnceAndHearsEachCall:
     """R-1278: a link is built once per wrapper and hears the round, kind and prefix of each call."""
 
@@ -931,6 +994,41 @@ tier = "mid"
         assert sorted(p.name for p in streams.iterdir()) == ["attempt-01", "attempt-02"]
         assert "Builder made changes" in (streams / "attempt-02" / "raw_stream.jsonl").read_text()
         assert "Builder made changes" not in (streams / "attempt-01" / "raw_stream.jsonl").read_text()
+
+    def test_each_real_call_is_booked_with_its_own_model_and_stream(self, monkeypatch, tmp_path):
+        """R-1276: the failed primary and the backup that served are two attempts, each with its own
+        provider, model, error and stream, and the run's callback hears both."""
+        import os
+
+        from packages.orchestration.pingpong_loop import PingPongResult
+        from packages.orchestration.pingpong_provider_call import _call_with_retry
+        from packages.orchestration.role_provider_factory import create_role_provider
+
+        monkeypatch.setenv("PATH", f"{_outage_or_stream_claude(tmp_path)}{os.pathsep}{os.environ['PATH']}")
+        _configure_chains_toml(monkeypatch, tmp_path, '''
+[[remedy.model_failover.chains.builder]]
+provider = "claude-cli"
+model = "backup-model"
+tier = "mid"
+''')
+        fp = create_role_provider(
+            "claude-cli", role="builder", staging_dir=str(tmp_path), model="primary-model",
+            stream_evidence=True, stream_evidence_dir=str(tmp_path / "evidence"),
+        )
+        fp.begin_stream_call(1, "attempt")
+        result = PingPongResult(builder_provider="claude-cli", builder_model="primary-model")
+        heard = []
+        out = _call_with_retry(lambda: fp.build("do it"), result=result, role="builder",
+                               provider="claude-cli", on_provider_attempt=heard.append, round_num=1)
+
+        assert not out.error
+        rows = [(a.provider, a.model, bool(a.error), a.stream_call_id) for a in result.provider_attempts]
+        assert rows == [
+            ("claude-cli", "primary-model", True, "streams/builder/round-01/attempt-01"),
+            ("claude-cli", "backup-model", False, "streams/builder/round-01/attempt-02"),
+        ]
+        assert heard == result.provider_attempts
+        assert result.provider_attempts[1].usage_actuals["input_tokens"] == 3
 
 
 class _ListClock:
@@ -1194,6 +1292,10 @@ tier = "mid"
         assert failover["primary_error"].startswith(
             "provider_error: RuntimeError: claude CLI not found on PATH"
         )
+        # R-1276: the run books both real calls, and its evidence names each one's provider and model.
+        booked = [(a["provider"], a["model"]) for a in record["provider_evidence"]["provider_attempts"]
+                  if a["role"] == "builder"]
+        assert booked[:2] == [("claude-cli", "primary-model"), ("fake", "stand-in")]
 
     def test_a_chain_that_runs_out_leaves_the_primarys_own_failure(self, monkeypatch, tmp_path):
         from packages.orchestration.pingpong_loop import export_pingpong_json, run_pingpong

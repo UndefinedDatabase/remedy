@@ -876,3 +876,15 @@ class TestRateLimitWaitExportSurface:
 
         assert "rate_limit_waits" in exported
         assert exported["rate_limit_waits"] == []
+
+
+class TestEveryAttemptNamesItsModel:
+    """R-1276: a call no backup touched is booked under its configured provider and model."""
+
+    @pytest.mark.unit
+    def test_an_ordinary_call_is_booked_under_the_roles_configured_model(self):
+        result = PingPongResult(builder_model="m-config")
+        _call_with_retry(lambda: BuilderOutput(summary="ok", provider="acme"),
+                         result=result, role="builder", provider="acme")
+
+        assert [(a.provider, a.model) for a in result.provider_attempts] == [("acme", "m-config")]

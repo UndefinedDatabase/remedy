@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from packages.orchestration.model_failover import FailoverCall
 from packages.orchestration.provider_timeouts import (
     is_nonzero_exit_error,
     is_timeout_error,
@@ -48,6 +49,8 @@ class ProviderAttempt:
     stream_artifact_refs: list[str] = field(default_factory=list)
     # R-0807: the loop round this invocation belongs to (0 = not recorded).
     round: int = 0
+    # R-1276: the model this invocation ran on — a backup link's own, else the role's configured one.
+    model: str = ""
 
 
 def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> None:
@@ -86,20 +89,33 @@ def _record_attempt(
     is_retry: bool = False,
     is_parse_retry: bool = False,
     round_num: int = 0,
-) -> None:
-    """Record a provider attempt for usage accounting."""
-    result.provider_attempts.append(ProviderAttempt(
-        round=round_num,
-        role=role,
-        provider=provider,
-        usage_actuals=getattr(out, "usage_actuals", None),
-        actual_missing_reason=getattr(out, "actual_missing_reason", ""),
-        is_retry=is_retry,
-        is_parse_retry=is_parse_retry,
-        error=getattr(out, "error", ""),
-        stream_call_id=getattr(out, "stream_call_id", "") or "",
-        stream_artifact_refs=list(getattr(out, "stream_artifact_refs", []) or []),
-    ))
+) -> list[ProviderAttempt]:
+    """Book every real provider invocation behind ``out`` for usage accounting; return the rows.
+
+    One row under the configured ``provider`` and the role's configured model, unless a failover
+    walk made more than one call: then one row per call, under the provider and model that served
+    or failed it, each read from that call's own answer (R-1276).
+    """
+    configured_model = getattr(result, f"{role}_model", "") or ""
+    calls = getattr(out, "failover_calls", None) or (FailoverCall(provider, configured_model),)
+    rows: list[ProviderAttempt] = []
+    for call in calls:
+        answer = out if call.output is None else call.output
+        rows.append(ProviderAttempt(
+            round=round_num,
+            role=role,
+            provider=call.provider,
+            model=call.model,
+            usage_actuals=getattr(answer, "usage_actuals", None),
+            actual_missing_reason=getattr(answer, "actual_missing_reason", ""),
+            is_retry=is_retry,
+            is_parse_retry=is_parse_retry,
+            error=getattr(answer, "error", ""),
+            stream_call_id=getattr(answer, "stream_call_id", "") or "",
+            stream_artifact_refs=list(getattr(answer, "stream_artifact_refs", []) or []),
+        ))
+    result.provider_attempts.extend(rows)
+    return rows
 
 
 def _record_rate_limit_wait(result: PingPongResult, acquired: RateLimitAcquireResult) -> None:
@@ -140,7 +156,7 @@ def _call_with_retry(
     Only retries on timeout or nonzero exit (detected via error string) — plus, when
     a governor is active for this call, on a rate limit (R-0373; see the decision below).
     Never retries review rejects. Records retry evidence on result.
-    Every call (initial + retries) is recorded as a ProviderAttempt.
+    Every real call (initial + retries, and each one a failover walk made) is a ProviderAttempt.
 
     ``stop_check`` (F018) is evaluated before each transport retry. A budget
     exhaustion observed between retries prevents the next call from starting.
@@ -179,11 +195,10 @@ def _call_with_retry(
     out = call_fn()
     # The parse-retry call is itself a retry of the logical review; its transport
     # retries stay part of that ONE logical parse retry.
-    _record_attempt(result, out, role, provider,
-                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry,
-                    round_num=round_num)
-    if on_provider_attempt is not None:
-        on_provider_attempt(result.provider_attempts[-1])
+    for _row in _record_attempt(result, out, role, provider, is_retry=is_parse_retry,
+                                is_parse_retry=is_parse_retry, round_num=round_num):
+        if on_provider_attempt is not None:
+            on_provider_attempt(_row)
     for attempt in range(MAX_RETRIES):
         if not out.error:
             return out
@@ -256,10 +271,9 @@ def _call_with_retry(
         if on_call is not None:
             on_call(attempt + 2, True)
         out = call_fn()
-        _record_attempt(result, out, role, provider,
-                        is_retry=True, is_parse_retry=is_parse_retry,
-                        round_num=round_num)
-        if on_provider_attempt is not None:
-            on_provider_attempt(result.provider_attempts[-1])
+        for _row in _record_attempt(result, out, role, provider, is_retry=True,
+                                    is_parse_retry=is_parse_retry, round_num=round_num):
+            if on_provider_attempt is not None:
+                on_provider_attempt(_row)
 
     return out

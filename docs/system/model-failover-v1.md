@@ -81,7 +81,10 @@ A round's builder or reviewer entry carries a `failover` key when the walk reach
 `reason` (`failover:provider_unavailable`), `role`, `intended` (provider and model), `used` (the
 link that served, or `null` when the chain ran out or a backup answered with a failure),
 `primary_error`, `primary_skipped`, and
-`attempts` (position, provider, model and error of each link tried). `remedy run show` prints one
+`attempts` (position, provider, model and error of each link tried). Every real call behind a
+failed-over call is booked as a provider attempt of its own, under the provider and model that
+served or failed it, so the call count, the cost coverage and the call budget see each one.
+`remedy run show` prints one
 line, `Failover:`, built of these sentences: "1 call was served by a backup model because its usual
 provider could not be reached." (or "N calls were served by backup models because their usual
 provider could not be reached."), "1 call found no backup model that served it." (or "N calls
