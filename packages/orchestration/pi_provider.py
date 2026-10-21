@@ -628,7 +628,7 @@ class PiProvider:
 
     def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
         """Tell this provider which round and kind its next call belongs to (DECISION F311 D2):
-        the shape `pingpong_loop._begin_stream_call` already calls on any provider that has it."""
+        the shape `pingpong_provider_call._begin_stream_call` already calls on any provider that has it."""
         self._stream_round = round_no
         self._stream_kind = kind
 

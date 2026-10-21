@@ -567,7 +567,8 @@ def test_rules_too_large_for_one_call_stop_it_before_pi_starts_and_say_so(fake_p
 def test_a_failed_calls_measured_tokens_reach_the_runs_usage_and_so_the_budgets(fake_pi, workspace):
     """A Pi builder that used two turns and then crashed spent 220 tokens; the run's usage, which the
     job's and the order's budgets read, carries them instead of reporting the call unmeasured."""
-    from packages.orchestration.pingpong_loop import PingPongResult, _aggregate_usage_actuals, _record_attempt
+    from packages.orchestration.pingpong_loop import PingPongResult, _aggregate_usage_actuals
+    from packages.orchestration.pingpong_provider_call import _record_attempt
 
     fake_pi.behave(stdout=good_stream(), exit=3, stderr="boom")
     failed = PiProvider(role="builder", cwd=str(workspace)).build("x")

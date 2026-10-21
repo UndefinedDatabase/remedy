@@ -22,7 +22,7 @@ import pytest
 from packages.orchestration import pingpong_provider
 from packages.orchestration.call_identity import prepare_call_input
 from packages.orchestration.claude_cli_command import CLAUDE_CLI_UNSET_MODEL
-from packages.orchestration.pingpong_loop import PingPongResult, _call_with_retry, run_pingpong
+from packages.orchestration.pingpong_loop import PingPongResult, run_pingpong
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_JSON_SCHEMA,
     ClaudeCliProvider,
@@ -30,6 +30,7 @@ from packages.orchestration.pingpong_provider import (
     _to_json_schema_str,
     build_claude_cli_args,
 )
+from packages.orchestration.pingpong_provider_call import _call_with_retry
 from packages.orchestration.provider_timeouts import is_nonzero_exit_error, is_timeout_error
 from packages.orchestration.rate_governor import is_rate_limit_error
 
@@ -317,7 +318,7 @@ class TestARefusedResumeIsNotRetried:
         assert out.error.startswith("provider_error:")
         assert is_nonzero_exit_error(out.error) is True
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_call_with_retry_runs_a_resumed_builder_failure_once_but_retries_a_plain_one(
         self, _sleep,
     ) -> None:
@@ -348,7 +349,7 @@ class TestARefusedResumeIsNotRetried:
         assert result2.retries_used == 2
         assert out2.error.startswith("provider_error:")
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_call_with_retry_runs_a_resumed_reviewer_failure_once(
         self, _sleep, monkeypatch,
     ) -> None:
@@ -480,7 +481,7 @@ class TestRunPingpongResumesOnClaudeCli:
 
         return _run, state
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_repair_round_resumes_both_builder_and_reviewer_sessions(
         self, _sleep, demo_repo: Path,
     ) -> None:
@@ -511,7 +512,7 @@ class TestRunPingpongResumesOnClaudeCli:
         assert round2.reviewer_output.resume_used is True
         assert round2.reviewer_output.resume_session_ref == "sess-r1"
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_a_refused_builder_resume_falls_back_once(
         self, _sleep, demo_repo: Path,
     ) -> None:

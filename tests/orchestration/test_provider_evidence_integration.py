@@ -19,7 +19,6 @@ import pytest
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     PingPongRound,
-    ProviderAttempt,
     _aggregate_usage_actuals,
     _build_provider_evidence,
     _build_token_accounting,
@@ -29,6 +28,7 @@ from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
     ReviewerOutput,
 )
+from packages.orchestration.pingpong_provider_call import ProviderAttempt
 from packages.orchestration.token_truth import build_token_truth
 
 

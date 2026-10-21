@@ -198,12 +198,16 @@ with the code that calls it.
   execution configuration and its two serializers, `packages/orchestration/execution_config.py`.
   Outside those steps, F308 moved the split of a task whose context exceeds its class cap to
   `split_task_over_class_cap` in `packages/orchestration/run_task_list.py`.
-- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the context
-  pack and the prompt builders, the staging, diff and target guard, and the export and token
-  accounting, each to a module of its own. Step (1), done by F058: the construction of a role's
-  provider, `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first
-  part of the export: a call's own fields and the reader of a parked run's sessions,
-  `packages/orchestration/pingpong_call_record.py`.
+- `packages/orchestration/pingpong_loop.py`: the construction of a role's provider, the provider
+  call with its retry and its booking, the context pack and the prompt builders, the staging, diff
+  and target guard, and the export and token accounting, each to a module of its own. Step (1),
+  done by F058: the construction of a role's provider,
+  `packages/orchestration/role_provider_factory.py`. Step (2), done by F058, the first part of the
+  export: a call's own fields and the reader of a parked run's sessions,
+  `packages/orchestration/pingpong_call_record.py`. Step (3), done by F307: the provider call —
+  `ProviderAttempt`, the two stream hints, the attempt booking, the rate-limit wait and
+  `_call_with_retry` — `packages/orchestration/pingpong_provider_call.py`; the failure status,
+  the call identity and the post-mortem stay, beside the run that calls them.
 - `packages/orchestration/ui_server.py`: the command channel's checks, each to a module of its
   own. The event stream, the dashboard builders, the launch helpers and the frontend's automatic
   build with its T20 ignore were deleted with the old cockpit (amend1015f D19 and D3), and the
@@ -352,7 +356,7 @@ with the code that calls it.
 | 145 | `packages/orchestration/context_coverage.py` | `derive_context_coverage` |
 | 103 | `apps/cli/commands/dev.py` | `_dev_status` |
 | 143 | `packages/orchestration/pingpong_job.py` | `_stop_job` |
-| 143 | `packages/orchestration/pingpong_loop.py` | `_call_with_retry` |
+| 143 | `packages/orchestration/pingpong_provider_call.py` | `_call_with_retry` |
 | 143 | `packages/orchestration/token_authority.py` | `validate_token_truth` |
 | 142 | `packages/orchestration/repository_snapshot.py` | `build_snapshot_truth` |
 | 142 | `packages/orchestration/stream_evidence.py` | `run_streamed_command` |
@@ -439,7 +443,7 @@ with the code that calls it.
 |---|---|
 | 6207 | `packages/orchestration/run_manifest.py` |
 | 5331 | `packages/orchestration/pingpong_job.py` |
-| 5192 | `packages/orchestration/pingpong_loop.py` |
+| 4953 | `packages/orchestration/pingpong_loop.py` |
 | 1826 | `packages/orchestration/ui_server.py` |
 | 3495 | `scripts/build_review_manifest.py` |
 | 2992 | `packages/orchestration/job_evidence.py` |

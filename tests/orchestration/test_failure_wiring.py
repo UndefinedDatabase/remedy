@@ -18,10 +18,10 @@ from packages.orchestration import failure_postmortem as FP
 from packages.orchestration.data_paths import run_dir, runs_dir
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
-    _call_with_retry,
     _record_call_failure,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
+from packages.orchestration.pingpong_provider_call import _call_with_retry
 from packages.orchestration.worktrees import WorktreeConflictError, WorktreeLockError
 
 
@@ -58,7 +58,7 @@ def _timeout_out() -> BuilderOutput:
 
 
 class TestOneLogicalCallOnePostmortem:
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_timeout_exhaustion_writes_exactly_one_call_postmortem(self, sleep):
         """Retries are exhausted; the call is abandoned. One record, with the evidence."""
         result = PingPongResult(job_id="J1", task_id="T001")
@@ -89,7 +89,7 @@ class TestOneLogicalCallOnePostmortem:
         assert record["job_id"] == "J1" and record["task_id"] == "T001"
         assert all(not r.startswith("/") for r in record["evidence_refs"])
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_a_recovered_retry_writes_no_postmortem_at_all(self, _sleep):
         """The negative proof. A call that fails, retries and SUCCEEDS is not a failure."""
         result = PingPongResult(job_id="J1", task_id="T001")
@@ -389,7 +389,7 @@ class TestTheRealClaudeTimeoutMessage:
         assert FP.classify(FP.FailureSignals(error_text=CLAUDE_TIMEOUT)).failure_class is (
             FP.FailureClass.PROVIDER_TIMEOUT)
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_the_retry_path_treats_the_real_message_as_retryable(self, sleep):
         result = PingPongResult()
         calls = [0]
@@ -408,7 +408,7 @@ class TestTheRealClaudeTimeoutMessage:
         _record_call_failure(result, out, role="builder", provider="claude-cli", round_no=1)
         assert _postmortems(result) == [], "a recovered retry records nothing"
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_exhausted_real_timeouts_write_exactly_one_provider_timeout_record(self, _s):
         result = PingPongResult(job_id="J1", task_id="T001")
         out = _call_with_retry(
@@ -789,7 +789,7 @@ class TestDataRootSymlinksExemptNothing:
 # ---------------------------------------------------------------------------
 
 class TestRetryEvidenceIsCallLocal:
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_a_recovered_builder_timeout_never_classifies_a_later_reviewer_failure(
         self, _sleep,
     ):
@@ -828,7 +828,7 @@ class TestRetryEvidenceIsCallLocal:
         # ...and the run-global summary is untouched for compatibility.
         assert result.retries_used == 1 and len(result.retry_reasons) == 1
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_builder_exhaustion_carries_only_builder_reasons(self, _sleep):
         result = PingPongResult(job_id="J1", task_id="T001")
         reasons: list[str] = []
@@ -841,7 +841,7 @@ class TestRetryEvidenceIsCallLocal:
         assert record["retries_used"] == 2
         assert all(r.startswith("builder:") for r in record["retry_reasons"])
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_a_reviewer_parse_retry_shares_the_reviewer_evidence_only(self, _sleep):
         """One logical reviewer call = its attempt plus its single parse retry."""
         result = PingPongResult(job_id="J1", task_id="T001")
@@ -872,7 +872,7 @@ class TestRetryEvidenceIsCallLocal:
         assert record["failure_class"] == "parse"
         assert not any("builder:" in r for r in record["retry_reasons"])
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_a_recovered_parse_retry_writes_nothing(self, _sleep):
         result = PingPongResult(job_id="J1", task_id="T001")
         reasons: list[str] = []

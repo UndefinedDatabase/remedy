@@ -16,7 +16,6 @@ import pytest
 
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
-    _call_with_retry,
     export_pingpong_json,
     run_pingpong,
 )
@@ -25,6 +24,7 @@ from packages.orchestration.pingpong_provider import (
     FakeProvider,
     ReviewerOutput,
 )
+from packages.orchestration.pingpong_provider_call import _call_with_retry
 from packages.orchestration.provider_timeouts import (
     PROFILES,
 )
@@ -124,7 +124,7 @@ class TestCallWithRetry:
         assert result.retries_used == 0
         assert result.retry_reasons == []
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_timeout_retries_once(self, mock_sleep):
         result = PingPongResult()
         calls = [0]
@@ -142,7 +142,7 @@ class TestCallWithRetry:
         assert "TimeoutExpired" in result.retry_reasons[0]
         mock_sleep.assert_called_once_with(30)
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_nonzero_exit_retries(self, mock_sleep):
         result = PingPongResult()
         calls = [0]
@@ -169,7 +169,7 @@ class TestCallWithRetry:
         assert val is out
         assert result.retries_used == 0
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_provider_error_with_blocked_verdict_retries(self, mock_sleep):
         """A provider error that sets verdict=blocked should still retry."""
         result = PingPongResult()
@@ -189,7 +189,7 @@ class TestCallWithRetry:
         assert out.verdict == "pass"
         assert result.retries_used == 1
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_max_retries_bounded(self, mock_sleep):
         result = PingPongResult()
 
@@ -262,7 +262,7 @@ class TestTimeoutProfileIntegration:
 # ---------------------------------------------------------------------------
 
 class TestRetryIntegration:
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_timeout_once_provider_retries(self, mock_sleep, tmp_path):
         provider = TimeoutOnceFakeProvider()
         result = run_pingpong(
@@ -277,7 +277,7 @@ class TestRetryIntegration:
         # Should continue after retry (may pass, exhaust rounds, or exhaust repair)
         assert result.retries_used == 1
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_nonzero_exit_once_retries(self, mock_sleep, tmp_path):
         provider = NonzeroExitOnceFakeProvider()
         result = run_pingpong(
@@ -289,7 +289,7 @@ class TestRetryIntegration:
         assert result.retries_used == 1
         assert "exited" in result.retry_reasons[0]
 
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_reviewer_timeout_once_retries(self, mock_sleep, tmp_path):
         """Reviewer provider timeout triggers retry (finding 7 fix)."""
         provider = ReviewerTimeoutOnceFakeProvider(pass_on_round=1)
@@ -381,7 +381,7 @@ class TestTimeoutPrecedence:
 # F057 T003 — the rate-governor seam inside _call_with_retry
 #
 # These live HERE, and not in tests/orchestration/test_rate_governor.py, because the
-# code under test is the SEAM in packages/orchestration/pingpong_loop.py, not the
+# code under test is the SEAM in packages/orchestration/pingpong_provider_call.py, not the
 # governor: AGENTS.md's Code Discoverability rule names a test file after the source it
 # covers, and this file already owns _call_with_retry. test_rate_governor.py still owns
 # the governor's own behaviour. Do not re-litigate the split; move the tests only if the
@@ -389,7 +389,7 @@ class TestTimeoutPrecedence:
 #
 # Every governor below runs on an INJECTED FakeClock and its sleep — no test here sleeps
 # for real, and none asserts on wall-clock duration. The transport backoff at
-# pingpong_loop._time.sleep is patched separately; it is F001's, not F057's.
+# pingpong_provider_call._time.sleep is patched separately; it is F001's, not F057's.
 # ---------------------------------------------------------------------------
 
 #: A rate-limit error that the EXISTING transport predicates also call retryable
@@ -443,7 +443,7 @@ def _observe_cooldown(governor: ProviderRateGovernor, provider: str) -> float:
 
 class TestRateGovernorSeam:
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_rate_limited_retry_waits_and_records_one_event(self, mock_sleep):
         clock = SeamFakeClock()
         governor = _seam_governor(clock)
@@ -475,7 +475,7 @@ class TestRateGovernorSeam:
         assert event["waited_s"] > 0.0
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_stop_during_the_wait_ends_the_call_without_counting_a_retry(self, mock_sleep):
         clock = SeamFakeClock()
         governor = _seam_governor(clock)
@@ -510,7 +510,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits[0]["waited_s"] > 0.0
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_empty_provider_skips_the_governor_entirely(self, mock_sleep):
         clock = SeamFakeClock()
         governor = _seam_governor(clock)
@@ -541,7 +541,7 @@ class TestRateGovernorSeam:
         assert governor.total_waited_s() == 0.0
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_no_governor_leaves_retry_behaviour_identical(self, mock_sleep):
         result = PingPongResult()
         calls = [0]
@@ -561,7 +561,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits == []
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_first_call_is_paced_by_a_cooldown_already_running(self, mock_sleep):
         clock = SeamFakeClock()
         governor = _seam_governor(clock)
@@ -590,7 +590,7 @@ class TestRateGovernorSeam:
         assert sum(clock.sleeps) == cooldown_s
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_bare_rate_limit_is_retried_when_a_governor_is_active(self, mock_sleep):
         """R-0373: without the seam's own rule this error never reaches the governor."""
         clock = SeamFakeClock()
@@ -621,7 +621,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits[0]["waited_s"] > 0.0
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_bare_rate_limit_without_a_governor_is_still_not_retried(self, mock_sleep):
         """The pre-F057 path is untouched: no governor, no new retryable error class."""
         result = PingPongResult()
@@ -640,7 +640,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits == []
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_review_reject_is_never_retried_even_with_a_governor(self, mock_sleep):
         """The reject carries the rate-limit wording ON PURPOSE.
 
@@ -678,7 +678,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits == []
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_provider_error_prefixed_reviewer_rate_limit_is_retried(self, mock_sleep):
         """R-0378: the ``provider_error:`` prefix is what keeps a reviewer rate limit paced.
 
@@ -711,7 +711,7 @@ class TestRateGovernorSeam:
         assert result.rate_limit_waits[0]["waited_s"] > 0.0
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_parse_retry_rate_limit_is_paced_end_to_end(self, mock_sleep, tmp_path):
         """R-0374: the reviewer PARSE-RETRY call site is paced by the governor too.
 
@@ -829,7 +829,7 @@ class TestRateLimitWaitExportSurface:
     """The exported run JSON carries the waits that ``_record_rate_limit_wait`` recorded."""
 
     @pytest.mark.unit
-    @patch("packages.orchestration.pingpong_loop._time.sleep")
+    @patch("packages.orchestration.pingpong_provider_call._time.sleep")
     def test_paced_run_exports_its_rate_limit_waits(self, mock_sleep):
         result = _paced_builder_result(SeamFakeClock())
 

@@ -1132,7 +1132,7 @@ tier = "mid"
         import packages.orchestration.pingpong_loop as loop
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        monkeypatch.setattr("packages.orchestration.pingpong_provider_call._time.sleep", lambda seconds: None)
         _configure_chains_toml(monkeypatch, tmp_path, f'''
 [[remedy.model_failover.chains.{role}]]
 provider = "fake"
@@ -1236,7 +1236,7 @@ class TestFailoverOnTheGapsThatHappenInPractice:
         fake.chmod(0o755)
         monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        monkeypatch.setattr("packages.orchestration.pingpong_loop._time.sleep", lambda seconds: None)
+        monkeypatch.setattr("packages.orchestration.pingpong_provider_call._time.sleep", lambda seconds: None)
         _configure_chains_toml(monkeypatch, tmp_path, '''
 [[remedy.model_failover.chains.builder]]
 provider = "fake"
