@@ -126,18 +126,19 @@ class JsonLogFormatter(logging.Formatter):
         return json.dumps(entry, ensure_ascii=False)
 
 
-# One plain line per record for a reader without a JSON tool; redacted like the JSON line.
+# One plain line per record for a reader without a JSON tool; the message and the exception are
+# redacted on their own, like the JSON line's, so the time, level and ids survive (R-1280).
 class TextLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         line = (
             f"{log_timestamp(record.created)} {record.levelname} {record.name} "
             f"job={getattr(record, 'job_id', None) or '-'} "
             f"task={getattr(record, 'task_id', None) or '-'} "
-            f"run={getattr(record, 'run_id', None) or '-'} {record.getMessage()}"
+            f"run={getattr(record, 'run_id', None) or '-'} {redact_text(record.getMessage())}"
         )
         if record.exc_info:
-            line += "\n" + self.formatException(record.exc_info)
-        return redact_text(line)
+            line += "\n" + redact_text(self.formatException(record.exc_info))
+        return line
 
 
 # Several processes share the file (the supervisor runs every job as a process of its own), so a

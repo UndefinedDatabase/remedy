@@ -181,6 +181,16 @@ def test_json_false_writes_a_text_line(tmp_path):
     assert re.match(r"^\S+ INFO packages\.orchestration\.fixture job=j1 task=- run=- plain words$", line)
 
 
+def test_a_private_key_in_a_text_line_hides_only_the_message(tmp_path):
+    """R-1280, DECISION F307 D5: the time, level, logger and ids of the line survive."""
+    _, path = _setup(tmp_path, "json_lines = false\n")
+    with bind_log_context(job_id="j1"):
+        CHILD.info("bad key %s", "-----BEGIN RSA " + "PRIVATE KEY-----\nMIIEabcdef")
+    (line,) = _lines(path)
+    assert re.match(
+        r"^\S+ INFO packages\.orchestration\.fixture job=j1 task=- run=- \[PRIVATE_KEY_REDACTED\]$", line)
+
+
 def test_default_level_writes_info_and_not_debug(tmp_path):
     _, path = _setup(tmp_path)
     CHILD.debug("quiet one")

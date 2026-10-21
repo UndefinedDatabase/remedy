@@ -54,22 +54,24 @@ def config_digest() -> str:
     return "sha256:" + sha256(text.encode("utf-8")).hexdigest()
 
 
-# The report text: header lines, the traceback, the notice; all redacted like evidence.
+# The report text: header lines, the traceback, the notice. The command, the error and each
+# traceback entry are redacted on their own, so a private key hides only its part (R-1280).
 def render_crash_report(
     error: BaseException, *, command: str, when: datetime, version: str, digest: str,
 ) -> str:
     moment = when if when.tzinfo is not None else when.replace(tzinfo=timezone.utc)
     stamp = moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    trace = "".join(
-        traceback.format_exception(type(error), error, error.__traceback__)
-    ).rstrip("\n")
+    trace = "\n".join(
+        redact_text(entry.rstrip("\n"))
+        for entry in traceback.format_exception(type(error), error, error.__traceback__)
+    )
     lines = [
         "# Remedy crash report",
         "",
         f"- time: {stamp}",
         f"- version: {version}",
-        f"- command: {command}",
-        f"- error: {type(error).__name__}: {error}",
+        f"- command: {redact_text(command)}",
+        f"- error: {redact_text(f'{type(error).__name__}: {error}')}",
         f"- configuration digest: {digest}",
         "",
         "## Traceback",
@@ -80,7 +82,7 @@ def render_crash_report(
         "",
         CRASH_NOTICE,
     ]
-    return home_relative_text(redact_text("\n".join(lines) + "\n"))
+    return home_relative_text("\n".join(lines) + "\n")
 
 
 # Write one report (folder 0700, file 0600); None on any write failure so the real error is never hidden.
