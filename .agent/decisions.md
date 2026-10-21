@@ -30839,3 +30839,13 @@ CHOSEN: (1) `packages/orchestration/mcp_tools.py` holds `MCP_TOOL_NAMES = ("evid
 ALTERNATIVES CONSIDERED: (a) calling the tools' functions in-process — rejected: a child per call answers exactly what the twin command answers, as the public API's write routes do, and keeps one failing call from ending the server; (b) a `--json` envelope for `client mcp` — rejected: its standard output is the protocol's channel; (c) `read_only` with `supports_json` declared — rejected: the command has no `--json`, and declaring one it ignores would be a false catalog entry.
 
 HOW TO REVERSE: delete `mcp_tools.py`, `client_mcp_cmd.py`, the catalog entry, the page and its index line, their tests, and this paragraph.
+
+## DECISION F303 D6 — the closure's evidence run gets a data root of its own, so the data root guard watches only what the run writes (2026-10-21)
+
+THE PROBLEM: the evidence job of F303's round 7 ran its 11122 tests with none failing, and still exited 1, because the data root guard of finding R-0803 in `tests/conftest.py` found the operator's data root changed after the run, and on this machine the operator's installed supervisor and the universe edition write that root while a run is going (Gate F303 R7, R-1411). The bundle builder refuses a bundle whose recorded command did not exit 0, so the package cannot be built while that root is busy.
+
+CHOSEN: the evidence script of round 8, `.agent/authored/f303-r8-create_f303_evidence.py`, runs its collect-only and its test run with `REMEDY_DATA_DIR` set to a fresh, empty folder, `.remedy-wt/f303-r8-evidence-data`, which it makes before the run and which no other process knows. The guard records whatever `resolve_data_root()` answers at the start of a run, so it then watches that folder: a test that wrote into the run's configured data root would still turn the run red, and nothing outside the run can. Every other part of the script is round 7's; the recorded command text is unchanged, and this paragraph and the script's docstring are where the variable is stated. The operator's real data root was watched by the same guard during the closure's one full suite of round 6, which read no guard line.
+
+ALTERNATIVES CONSIDERED: (a) running the evidence job again unchanged — rejected: a run of twenty minutes is as exposed as the one that failed, and a second red would cost another round; (b) stopping the operator's service for the run — rejected: a session never stops the operator's processes; (c) changing the guard in `tests/conftest.py` — rejected for a closure: it is a change to a gate of every run, which belongs to the paydown that owns R-1411.
+
+HOW TO REVERSE: drop the variable from the next evidence script, and delete this paragraph.

@@ -4,16 +4,16 @@
 Everything the edition `remedy` needs is published under `/api/v1`, contract-tested, and nothing
 outside the contract document is served; a steering note reaches a job through the API; and the
 public API's verify, gate status and evidence bundle are offered as MCP tools behind an allowlist
-closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D5).
+closed by default (docs/roadmap/features/T12_F303.md; DECISIONs F303 D1 to D6).
 
 ## Current Step
-Round 7 (session 2), the closure's evidence round: book round 6, resolve R-1329 and R-1407 to
-R-1410, the evidence job `f303r7e1001` and the review package.
+Round 8 (session 2), the closure's evidence round again: book round 7, register R-1411, DECISION
+F303 D6, and the evidence job `f303r8e1001` with a data root of its own, then the review package.
 
 ## Next Steps
-1. Round 8, the closing round: the rotation, SU-072's consumed_by, the STATUS flip with the README
+1. Round 9, the closing round: the rotation, SU-072's consumed_by, the STATUS flip with the README
    sync, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F303 does not own (DECISION F310 D7).
-- The operator's live service writes the data root the suite's guard watches (Gate F303 R5).
+- The operator's live service writes the data root the guard watches (R-1411, owned by F307).
