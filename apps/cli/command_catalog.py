@@ -30,6 +30,7 @@ from dataclasses import replace
 # the names it uses, and every other consumer imports each name from its own module (operator
 # amendment amend1014-luna-mission-fixes D.2).
 from apps.cli.command_catalog_cancel import JOB_CANCEL_COMMANDS
+from apps.cli.command_catalog_certificate import JOB_CERTIFICATE_COMMANDS, VERIFY_COMMANDS
 from apps.cli.command_catalog_client import CLIENT_COMMANDS
 from apps.cli.command_catalog_do import DO_COMMANDS
 from apps.cli.command_catalog_doctor import DOCTOR_COMMANDS
@@ -99,6 +100,7 @@ GROUPS: dict[str, GroupDef] = {
     "data": GroupDef("data", "Data", "The data root's disk footprint, per directory class.", user_facing=False, feature="F276", reach="job-path"),
     "serve": GroupDef("serve", "Serve", "The supervisor the command line hands the cockpit's commands to, one per data root.", user_facing=False, feature="F200", reach="job-path"),
     "client": GroupDef("client", "Client", "What a program that drives Remedy's command line can rely on.", user_facing=False, feature="F298", reach="golden-path"),
+    "verify": GroupDef("verify", "Verify", "Check the certificate of a job under its mission on any machine, with no data folder.", user_facing=False, feature="F060", reach="job-path"),
     "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False, feature="F266", reach="teacher"),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True, feature="F080", reach="self-build"),
@@ -171,8 +173,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
         related=("job.show", "job.stop"),
         exit_codes=(0, 1, 2, 3),
     ),
@@ -212,8 +212,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
         related=("chat.send", "chat.show", "serve.start"),
         exit_codes=(0, 1, 2, 3),
     ),
@@ -1704,6 +1702,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=True,
     ),
+    *JOB_CERTIFICATE_COMMANDS,
     CommandEntry(
         command_id="job.apply",
         group_id="job",
@@ -2164,6 +2163,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
+    *VERIFY_COMMANDS,
     # ── self-repair (self-repair proposals — metadata only) ──────────────
 )
 

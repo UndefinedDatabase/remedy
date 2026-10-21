@@ -47,6 +47,7 @@
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | HTTP clients | [http-clients.md](guides/http-clients.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
+| job certificate | [job-certificate-v1.md](system/job-certificate-v1.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
 | machine client | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | system |
 | public HTTP API | [public-http-api-v1.md](system/public-http-api-v1.md) | system |
@@ -117,6 +118,7 @@ Specifications and design documents for the built system.
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone — command deleted by F280 round 3 |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
+| [job-certificate-v1.md](system/job-certificate-v1.md) | A job's certificate: what `remedy job certificate` packs from a job that has ended, what `remedy verify` checks on any machine, and why a certificate proves integrity and is not a signature |
 | [machine-client-contract-v1.md](system/machine-client-contract-v1.md) | The machine client contract: the order file, the commands, flags, JSON keys and exit codes of the path from an order to its proof, which command answers each decision, what Remedy never does on a machine order, and `remedy client interface`, which prints the interface as data read from the code; the page's last section is that interface, generated |
 | [review-reports-v1.md](system/review-reports-v1.md) | Review reports: `remedy do run --capture-review` and the API's `capture_review` leave one JSON report per walk under the data root's `review_reports/`, written at the start and finished however the walk ends; `make_review_zip.sh` packages the newest ten with an index |
 | [public-http-api-v1.md](system/public-http-api-v1.md) | The public HTTP API: routes under `/api/v1` on the supervisor's socket and its TCP port, each answering what its twin command answers with `--json`, the bearer token, the version and deprecation rule, the exclusion list, and a route table generated from the registry |

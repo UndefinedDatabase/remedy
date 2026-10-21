@@ -292,7 +292,7 @@ class _SilentParser(argparse.ArgumentParser):
 
 _DEFAULT_COMMAND: dict[str, str] = {
     "ui": "start", "do": "run", "init": "run", "status": "run", "absorb": "run",
-    "chat": "send"}
+    "chat": "send", "verify": "run"}
 _ALWAYS_INJECT: set[str] = {"init", "status", "absorb"}
 
 

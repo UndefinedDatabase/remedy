@@ -31,6 +31,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
         blocker,
         brain,
         cancel_cmd,
+        certificate_cmd,
         change,
         chat_cmd,
         ci_cmd,
@@ -82,6 +83,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
     )
 
     table: dict[str, Callable[[argparse.Namespace], None]] = {}
-    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, cancel_cmd, job_pause_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd, chat_cmd, job_plan_cmd, job_veto_cmd, job_inject_cmd, job_ownership_cmd, job_rerun_cmd, job_steer_cmd, job_preview_cmd, serve_cmd, client_cmd, stats_calls_cmd, repo_catalog_cmd, doctor_health_cmd, doctor_logs_cmd):
+    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, cancel_cmd, certificate_cmd, job_pause_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teacher_cmd, study_cmd, contract_cmd, data_cmd, absorb_cmd, chat_cmd, job_plan_cmd, job_veto_cmd, job_inject_cmd, job_ownership_cmd, job_rerun_cmd, job_steer_cmd, job_preview_cmd, serve_cmd, client_cmd, stats_calls_cmd, repo_catalog_cmd, doctor_health_cmd, doctor_logs_cmd):
         table.update(mod.COMMAND_HANDLERS)
     return table

@@ -296,7 +296,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Luna gate C: the certificate (operator ruling amend1006-luna-control-plane)
 
-- [ ] F060 — Long-run certificate
+- [x] F060 — Long-run certificate (T001–T003 complete; R-1404, R-1405 and R-1406 resolved; accepted 2026-10-21 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f060r6e1001 · package remedy-review-20261021-150936-READY_FOR_REVIEW.zip · SHA-256 97f5c525bc0d5a06a9935df49fbc999ea26913d8789c047561ac86aff4569cec · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c9b3cbc4b82312d9c3c2b5180ced6dbb45673a08)
 
 ## Tier 12 — Luna gate C: the headless API (operator ruling amend1006-luna-control-plane)
 

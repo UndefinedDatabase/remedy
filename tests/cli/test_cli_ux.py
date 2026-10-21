@@ -25,6 +25,7 @@ _INTERNAL_GROUPS = {
     "snapshot", "self", "ci", "integrity", "dev", "study", "data", "serve", "client",
     # amend1015f D22: `ui` holds only the two warning aliases of `serve` now.
     "ui",
+    "verify",
 }
 
 
@@ -775,14 +776,15 @@ class TestGroupDefIntegrity:
         assert sorted(kept - set(GROUPS)) == []
 
     def test_catalog_partition_matches_d4(self):
-        """The catalog carries exactly 35 groups partitioned as DECISION amend0905-vocab D4 names them.
+        """The catalog carries exactly 36 groups partitioned as DECISION amend0905-vocab D4 names them.
 
         The 31st is F276's advanced `data` group, added after D4 was ruled; the 32nd is F263's
         visible `absorb`, the first reserved slot D4 named, and the 33rd is F264's visible `chat`,
         the second. The 34th is F200's advanced `serve` group (DECISION F200 D2), and the 35th is
-        F298's advanced `client` group (DECISION F298 D2).
+        F298's advanced `client` group (DECISION F298 D2); the 36th is F060's advanced
+        `verify` group (DECISION F060 D4).
         """
-        assert len(GROUPS) == 35
+        assert len(GROUPS) == 36
 
         # Only roadmap should be hidden
         hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}
