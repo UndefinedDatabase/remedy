@@ -46,6 +46,8 @@ CERTIFICATE_CLAIM_KEYS = ("terminal_state", "dod_summary", "cost", "cost_basis",
 CERTIFICATE_NOT_A_SIGNATURE = (
     "This certificate proves that its members are intact and agree with each other. "
     "It is not a signature: it does not prove who made it.")
+# WHY: the default byte budget of a certificate (DECISION F060 D2); a command flag may change it.
+CERTIFICATE_DEFAULT_MAX_BYTES = 8 * 1024 * 1024
 
 
 # WHY: one named error for every refusal, so callers catch the certificate and nothing broader.
