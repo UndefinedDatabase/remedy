@@ -1,122 +1,107 @@
-# Handback — F311 round 2
+# Handback — F311 round 3
 
 ## Session
 
-SESSION 1 of feature F311 · round 2
+SESSION 1 of feature F311 · round 3
 
 Context self-assessment: this session verified every prepared file's digest before using it,
-executed C1 to C4 exactly as the block ordered, found one gate-1 line unfixable without an
-amend or rebase the block forbids (declared below, not a stop condition), and gates 2 to 5 each
-passed on their first run.
+executed C1 to C6 exactly as the block ordered, and all five gates passed on their first run,
+with no stop condition met.
 
-Fortschritt: ~45 % (pulse, reader and stall reading landed · twins and routes open) — Schätzung
+Fortschritt: ~65 % (pulse, reader and twins landed · routes and closure open) — Schätzung
 
 ## Range
 
-Review of `4ed1b3dee70eac63f4b1f5c4607a252934cb7da3`..HEAD (C1 to C4 below, then this commit,
-C5, which also carries this handback).
+Review of `f2b64f6c6`..HEAD (C1 to C6 below, then this commit, C7, which also carries this
+handback).
 
 ## Commits
 
-### b78128011 F311 R2 C1: book round 1, register R-1383, the D3 addendum, the plan
-242 insertions, 13 deletions.
+### 06b4eddbf F311 R3 C1: book round 2, resolve R-1383, register R-1384 to R-1388, D3's second addendum, D5
+253 insertions, 12 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f311-r2.md` | +218 (new file) | byte copy of `block.md` |
-| `.agent/decisions.md` | +8 | byte copy appending DECISION F311 D3's addendum |
-| `.agent/live_review.md` | +4 | byte copy booking round 1's PASS verdict and registering R-1383 |
-| `.agent/plan.md` | +11/-13 | byte copy rewritten for round 2 |
+| `.agent/authored/f311-r3.md` | +210 (new file) | byte copy of `block.md` |
+| `.agent/decisions.md` | +18 | byte copy appending D3's second addendum and DECISION F311 D5 |
+| `.agent/live_review.md` | +14 | byte copy booking round 2's PASS verdict and registering R-1384 to R-1388 |
+| `.agent/plan.md` | +10/-12 | byte copy rewritten for round 3 |
 | `.agent/prose_slips.md` | +1 | byte copy appending one line |
 
-### ce81ee7dd F311 R2 C2: the story's open decision and the worked seconds become public (structure step)
-8 insertions, 6 deletions.
+### 4a5faa883 F311 R3 C2: the insight survives a job whose budgets do not validate, and reads its own apply
+11 insertions, 7 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/budget_stop.py` | +3/-2 | `_work_seconds` renamed `budget_work_seconds`, one WHY line, its caller re-pointed |
-| `packages/orchestration/client_diff.py` | +2/-2 | its import and call re-pointed to `job_story_open_decision` |
-| `packages/orchestration/client_story.py` | +3/-2 | `_open_decision` renamed `job_story_open_decision`, one WHY line, its caller re-pointed |
+| `packages/orchestration/job_insight.py` | +11/-7 | R-1384: `effective_job_budgets` guarded against `ValueError`/`TypeError`; R-1385: `apply_wait` reads the job's own result alone, `order_record_payload` no longer called; R-1386: the entry's own WHY comment; the docstring names D3's second addendum |
 
-### 105378025 F311 R2 C3: the reader of now and insight, the stall reading and the model server
-343 insertions, 2 deletions.
+### 19ade9ab1 F311 R3 C3: R-1384, R-1385, R-1387 and R-1388, tested
+74 insertions, 2 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/guides/environment.md` | +1 | byte copy registering `insight.stall_seconds` |
-| `packages/orchestration/config_keys_ui.py` | +17/-2 | byte copy adding the `insight.stall_seconds` `ConfigKeySpec` |
-| `packages/orchestration/job_insight.py` | +323 (new file) | `job_insight_entry`, `insight_advice`, `job_insight`, `now_insight`, `model_server_state`, `fetch_ollama_json`, `insight_stall_seconds` and the vocabulary constants (DECISIONs F311 D1, D3 and its addendum, D4) |
-| `tests/test_no_orphan_modules.py` | +2 | `ALLOWED_UNWIRED` entry for `job_insight.py` |
+| `tests/orchestration/test_job_insight.py` | +56/-1 | R-1384 (bad `budgets` reads every limit None), R-1385 (a pending job behind an `awaiting_apply` order reads `plan`, not `apply_wait`), R-1388 (`budget.used` decoded exactly) |
+| `tests/orchestration/test_worker_pulse.py` | +18/-1 | R-1387: a fixture saves and resets the four context variables `bind_job_clock` sets, around the R-1383 test |
 
-### 1c83f4e93 F311 R2 C4: the reader, the stall reading, the probe and R-1383, tested
-352 insertions, 2 deletions.
+### f85ff2429 F311 R3 C4: the digest's key tree moves to client_interface_digest.py (structure step)
+105 insertions, 93 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/conftest.py` | +12/-2 | `_no_live_pi_reach` also replaces `job_insight.fetch_ollama_json`, hand-saved and restored |
-| `tests/orchestration/test_job_insight.py` | +317 (new file) | every phase word, every stall reason but `waiting_lock` with their advice, the threshold and its env var, the lines clamp, `model_server_state`'s three shapes, `now_insight`'s order filter, redaction, the answer keys |
-| `tests/orchestration/test_worker_pulse.py` | +23 | R-1383: `bind_job_clock` binds a fresh pulse for a job with an id |
+| `apps/cli/client_interface.py` | +1/-91 | `DIGEST_KEY_TREE` and `TOKENS_BY_KIND_KEY_TREE` moved out, one import added; `wc -l` 1000 → 910 |
+| `apps/cli/client_interface_digest.py` | +101 (new file) | the moved tree and its comment, byte for byte, plus its dependency |
+| `tests/cli/test_client_interface.py` | +1/-1 | import line re-pointed |
+| `tests/cli/test_status_cmd.py` | +1/-1 | import line re-pointed |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1 | `apps.cli.client_interface_digest` added |
+
+### 1bfa17c74 F311 R3 C5: the twins client.now and client.insight, and the interface's insight key
+263 insertions, 8 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/cli/client_interface.py` | +19/-2 | the twins join `CLIENT_OPERATION_IDS`, `OPERATION_REFUSAL_TOKENS`, `OPERATION_ANSWER_KEYS`, `ANSWER_KEY_TREES`; `client.interface` gains `insight`; `build_client_interface` and the page renderer call the new words |
+| `apps/cli/client_interface_insight.py` | +74 (new file) | `CLIENT_NOW_ANSWER_KEYS`, `CLIENT_INSIGHT_ANSWER_KEYS`, the shared `JOB_ENTRY_KEY_TREE`, `CLIENT_NOW_KEY_TREE`, `CLIENT_INSIGHT_KEY_TREE`, `INSIGHT_WORDS_KEY_TREE`, `INSIGHT_WORD_LABELS`, `render_insight_words_lines` |
+| `apps/cli/command_catalog_client.py` | +30 | the `client.now` and `client.insight` catalog entries, directly before `client.diff` |
+| `apps/cli/commands/client_cmd.py` | +54 | `_cmd_client_now`, `_cmd_client_insight`, `_client_insight_lines`, two `COMMAND_HANDLERS` entries, docstring sentence |
+| `docs/system/machine-client-contract-v1.md` | +63/-1 | regenerated by `write_client_interface_page()` |
+| `packages/orchestration/job_insight.py` | +21/-3 | `insight_words()`, `INSIGHT_MODEL_SERVER_STATES`, `model_server_state` reads its two words from it |
+| `tests/orchestration/import_reachability_allowlist.txt` | +2 | `apps.cli.client_interface_insight`, `packages.orchestration.job_insight` added |
+| `tests/test_no_orphan_modules.py` | -2 | the `job_insight.py` `ALLOWED_UNWIRED` entry removed: it is wired now |
+
+### a8ecfd462 F311 R3 C6: the twins and the insight key, tested
+185 insertions, 2 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/cli/test_client_insight_cmd.py` | +156 (new file) | the twins driven as real subprocesses: `client now`, `client insight` by prefix and full id, `--lines 2`, `--lines abc`, an unknown id, an ambiguous prefix, both human lines |
+| `tests/cli/test_client_interface.py` | +29/-2 | the vocabulary test's `insight` key, the two hand-verified splat sites, the real-run answer-keys test driving `client.now`/`client.insight`, the answer-tree and page-read-back coverage of `insight` |
 
 ## External actions
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` at this round's start:
-`[]`, no open PR — the Open PR Gate passes trivially. No other `gh` command this round. No
-worktree add/remove of my own. The push is ordered to run after this commit, so its outcome is
-reported in the final reply only; no pull request is opened (forbidden this round).
+`git branch --show-current` read `feature/f311-insight` before every commit. No `gh` command,
+no worktree add/remove, no pull request (forbidden this round). The push is ordered to run after
+this commit, so its outcome is reported in the final reply only.
 
 ## Verification
 
-Gates run once each, after C4 and before this commit.
+Gates run once each, after C6 and before this commit.
 
-1. `git status --porcelain` → empty. Then
-   `python3 .remedy-wt/f311-r2/prep/verify.py .`:
+1. `git status --porcelain` → empty. Then `python3 .remedy-wt/f311-r3/prep/verify.py .`: every
+   line `True` except `absent	C7` (not yet made), last line `ALL True`.
+2. `python3 -m ruff check` over every Python file C2 to C6 touched (`job_insight.py`,
+   `test_job_insight.py`, `test_worker_pulse.py`, `client_interface.py`,
+   `client_interface_digest.py`, `client_interface_insight.py`, `command_catalog_client.py`,
+   `client_cmd.py`, `test_client_interface.py`, `test_status_cmd.py`,
+   `test_no_orphan_modules.py`, `test_client_insight_cmd.py`) → `All checks passed!`
+3. `python3 .remedy-wt/f311-r3/prep/run_selection.py . .remedy-wt/f311-r3-worker/selection-output.txt`:
    ```
-   True	b78128011 single parent equal to the commit before it
-   True	ce81ee7dd single parent equal to the commit before it
-   True	105378025 single parent equal to the commit before it
-   True	1c83f4e93 single parent equal to the commit before it
-   True	every commit carries an F311 R2 Cn subject: 4 of 4
-   True	C1 paths exactly [...]: [same]
-   True	C2 paths exactly its set: [same]
-   True	C3 paths exactly its set: [same]
-   True	C4 paths all under tests/: [...]
-   absent	C5
-   True	C1 .agent/authored/f311-r2.md equals block.md
-   True	C1 .agent/live_review.md equals dry-live_review.md
-   True	C1 .agent/decisions.md equals dry-decisions.md
-   True	C1 .agent/prose_slips.md equals dry-prose_slips.md
-   True	C1 .agent/plan.md equals dry-plan.md
-   True	C2 client_story names only job_story_open_decision
-   True	C2 client_diff re-pointed
-   True	C2 budget_stop names only budget_work_seconds
-   True	C2 client_diff.py differs from the base only by the rename and its WHY line
-   True	C2 budget_stop.py differs from the base only by the rename and its WHY line
-   True	C2 client_story.py differs from the base only by the rename and its WHY line
-   True	C3 config_keys_ui.py equals dry-config_keys_ui.py
-   True	C3 environment.md equals dry-environment.md
-   True	C3 job_insight.py holds every named def and constant (14 checks)
-   False	C3 job_insight.py has one network read
-   True	C3 the unwired list names job_insight.py
-   True	pingpong_job.py, pingpong_loop.py, pingpong_provider.py, config.py, stream_evidence.py byte-identical to the base
-   True	apps/ untouched
-   True	C4 touches test_job_insight.py, conftest.py, test_worker_pulse.py
-   ALL False
-   ```
-   The one `False` line is explained in Deviations below; nothing else in this round's own
-   self-check failed.
-2. `python3 -m ruff check` over every Python file C2, C3 and C4 touched (`budget_stop.py`,
-   `client_diff.py`, `client_story.py`, `job_insight.py`, `config_keys_ui.py`,
-   `test_no_orphan_modules.py`, `conftest.py`, `test_worker_pulse.py`, `test_job_insight.py`) →
-   `All checks passed!`
-3. `python3 .remedy-wt/f311-r2/prep/run_selection.py . .remedy-wt/f311-r2-worker/selection-output.txt`:
-   ```
-   paths 94
+   paths 92
    exit 0
-   4142 passed, 2 skipped in 57.20s
+   4361 passed, 2 skipped in 57.00s
    SKIPPED [1] tests/test_agent_tooling.py:43: D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted deliberately in 219dd32 (finding R-0074 — superseded by the split workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The read-only reviewer contract now lives there. Backlog: re-pin this contract on the split-workflow docs, or retire the test.
    SKIPPED [1] tests/test_install_smoke.py:175: install smoke is opt-in: set REMEDY_INSTALL_SMOKE=1 on a host with network access
    ```
-   No `FAILED` or `ERROR` line, no `process(es) behind` line.
+   No `FAILED` or `ERROR` line, no `process(es) behind` line; the two standing skips only.
 4. `python3 -m apps.cli.main integrity check --json` → exit 1, `fail_count` 1:
    ```
    {"check_count": 6, "checks": [..., {"message": "12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362", "name": "high_blockers_open", "status": "fail"}], "error": "integrity_failed", "fail_count": 1, "message": "integrity gate failed with 1 failing check(s)", "ok": false, "passed": false, "schema_version": 1, "version": 1}
@@ -124,79 +109,76 @@ Gates run once each, after C4 and before this commit.
    The one failing check is `high_blockers_open`, naming exactly the twelve ids of DECISION
    F310 D7 that remain open and no other.
 5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`
-   → `88`, the rule `open_finding_ids` applies (every `^- R-\d+ — ` paragraph minus every
-   `^Done: R-\d+ — ` line), measured at `1c83f4e93` (this round's C4, before this commit): one
-   more than round 1's 87, the one new registration this round made (R-1383), and resolved none.
+   → `92`, the rule `open_finding_ids` applies (every `^- R-\d+ — ` paragraph minus every
+   `^Done: R-\d+ — ` line), measured at `a8ecfd462` (this round's C6, before this commit): four
+   more than round 2's 88 (R-1384 to R-1388 registered, minus R-1383 resolved), and this round
+   repaired all five without resolving any of its own new registrations yet (that bookkeeping is
+   the next round's).
 
 ## Authored-text proofs
 
-C1's five byte copies (`.agent/authored/f311-r2.md` ← `block.md`; `.agent/live_review.md` ←
+C1's five byte copies (`.agent/authored/f311-r3.md` ← `block.md`; `.agent/live_review.md` ←
 `dry-live_review.md`; `.agent/decisions.md` ← `dry-decisions.md`; `.agent/prose_slips.md` ←
-`dry-prose_slips.md`; `.agent/plan.md` ← `dry-plan.md`) and C3's two (`config_keys_ui.py` ←
-`dry-config_keys_ui.py`; `environment.md` ← `dry-environment.md`) were each proved equal by a
-Python sha256 reader before their commit, and `verify.py`'s lines above confirm the same
-equality again. The five prepared files named with a digest in the prompt (`block.md`,
-`verify.py`, `run_selection.py`, `selection.txt`, `digests.txt`) matched before any of them was
-used, and the seven further files `digests.txt` itself digests (`dry-live_review.md`,
-`dry-decisions.md`, `dry-prose_slips.md`, `dry-plan.md`, `dry-config_keys_ui.py`,
-`dry-environment.md`) plus `src-decisions.md` all matched their listed sha256 before use.
+`dry-prose_slips.md`; `.agent/plan.md` ← `dry-plan.md`) were each proved equal by a Python
+sha256 reader before their commit, and `verify.py`'s lines above confirm the same equality
+again. The five prepared files named with a digest in the prompt (`block.md`, `verify.py`,
+`run_selection.py`, `selection.txt`, `digests.txt`) matched before any of them was used, and the
+seven further files `digests.txt` itself digests (`dry-live_review.md`, `dry-decisions.md`,
+`dry-prose_slips.md`, `dry-plan.md`, `src-catalog.py`, `src-decisions.md`, `src-ledger.md`) all
+matched their listed sha256 before use. C5's catalog insertion (`src-catalog.py`'s bytes
+directly before the `client.diff` entry) is confirmed byte for byte by `verify.py`'s own check
+above.
 
 ## Deviations & assumptions
 
-One self-found defect, not fixed, because fixing it needs an operation this round forbids.
-`job_insight.py`'s module docstring, committed in C3, names `urlopen` a second time in prose
-(explaining what `fetch_ollama_json` raises), beside the one real call in its body; `verify.py`'s
-`C3 job_insight.py has one network read` check counts both and reads `False`. I found this only
-at gate 1, after C3 and C4 had already landed. The check is pinned to C3's own commit (`show(c3,
-path)`), so the only way to make it read `True` is to rewrite what C3 committed — an amend or a
-rebase, both named forbidden by this round's Constraints and by the standing git safety rules I
-run under, and unreachable any other way: a further commit renaming the tag, or an untagged
-fixup commit, both break the `every commit carries an F311 R2 Cn subject` count the same
-`verify.py` run already prints `True` for, trading one `False` line for a different one while
-still leaving C3's own snapshot unread as `True`. I therefore left C3 exactly as committed,
-reverted the one uncommitted edit I had tried in the working tree so `git status --porcelain`
-stays empty, and record this here instead: the defect is cosmetic prose only, costs nothing on
-disk, and the next round may correct the docstring's wording in a commit of its own that touches
-`job_insight.py` for an unrelated reason.
-
-No other departure from the block's ordered commit sequence occurred: C1 to C4 landed exactly as
-ordered, no existing test went red because of C2 or C3, the one bare `SimpleNamespace` I first
-wrote for the R-1383 test leaked a context-var closure that crashed an unrelated later test on
-its next call (`job.budgets` missing) — found and fixed before committing C4 by using a real
-`JobPlan` instead, which is what the block's parenthetical ("a saved record") already pointed at
-— and no gate needed a re-run once each had its final input.
+None. C1 to C6 landed exactly as the block ordered, no existing test went red because of C2, C4
+or C5, and every gate passed on its first run with no re-run needed. One correction was made
+inside C5/C6 before either commit existed: the first draft of `CLIENT_INSIGHT_ANSWER_KEYS`
+placed `stalled` before `stall_reason`, which the ordering test caught before any commit; it was
+reordered and no commit ever carried the wrong order, so it is not a departure from the block's
+sequence, only a fact about how C5's draft was reached.
 
 ## For the operator, in plain sentences
 
-Remedy can now work out, for one job that is running right now, which part of the job it is in,
-whether its worker has gone quiet for longer than is normal, and if so what that quiet means and
-what you could do about it. It also knows how to ask the local model server whether it is up and
-which model it is holding in memory. None of this is reachable over the network yet; this round
-only built and tested the part that works it out from what is already saved on disk. A small
-wording slip was found in one file's own explanatory comment, not in anything the file actually
-does, and is left for a later commit to tidy rather than reopening a commit that already landed.
+Remedy now has two commands a program or a person can run to see what it is doing right now:
+one that lists every running job with its stage, its worker and whether the local model server
+answers, and one that looks into a single job the way the first command's list does, plus the
+worker's recent output and a short list of suggestions for what to do next. Both speak the same
+closed vocabulary the machine interface already publishes, so a client that reads that
+vocabulary once understands everything either command can say. Underneath, five small defects
+the previous round's reviewer found were repaired: a job with a broken budget setting no longer
+breaks the whole picture, a job waiting behind another job's pending approval no longer gets
+blamed for that other job's wait, a stray comment was put right, a test was made to clean up
+after itself so it cannot poison a later one, and a budget figure is now checked against an
+exact number instead of only against today's accidental correctness. A structural tidy-up moved
+one long table of names out of the file that was approaching its size limit, into a file of its
+own, changing nothing it answers.
 
 ## Next
 
 In order: Phase 1 rule 1 (`.agent/STOP`) — absent, no action needed; rule 2, the Open PR Gate —
-already checked at this round's start, no open pull request, nothing to merge; book round 2's
-verdict in the next round's first commit; then the twins `client.now` and `client.insight`.
-Operator questions open: 1. Open findings: 88 (gate 5, rule `open_finding_ids`, measured at
-`1c83f4e93`).
+already checked at this round's start, no open pull request, nothing to merge; book round 3's
+verdict in the next round's first commit; then the two routes. Operator questions open: 1. Open
+findings: 92 (gate 5, rule `open_finding_ids`, measured at `a8ecfd462`).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | `b78128011` |
-| C2 | done | `ce81ee7dd` |
-| C3 | done | `105378025` |
-| C4 | done | `1c83f4e93` |
-| C5 | done | this commit |
-| Gate 1 | deviated | one line `False` (`C3 job_insight.py has one network read`), unfixable without a forbidden amend/rebase; see Deviations |
+| C1 | done | `06b4eddbf` |
+| C2 | done | `4a5faa883` |
+| C3 | done | `19ade9ab1` |
+| C4 | done | `f85ff2429` |
+| C5 | done | `1bfa17c74` |
+| C6 | done | `a8ecfd462` |
+| Gate 1 | done | every line `True`, last `ALL True` |
 | Gate 2 | done | `All checks passed!` |
-| Gate 3 | done | exit 0, `4142 passed, 2 skipped in 57.20s` |
-| Gate 4 | done | `fail_count` 1 on the standing twelve; 88 open findings |
-| Gate 5 | done | `88` |
-| R-1383 | done | repaired and tested this round (C4); its resolution is for the reviewer to record |
+| Gate 3 | done | exit 0, `4361 passed, 2 skipped in 57.00s` |
+| Gate 4 | done | `fail_count` 1 on the standing twelve |
+| Gate 5 | done | `92` |
+| R-1384 | done | repaired (C2) and tested (C3); its resolution is for the reviewer to record |
+| R-1385 | done | repaired (C2) and tested (C3); its resolution is for the reviewer to record |
+| R-1386 | done | repaired (C2); its resolution is for the reviewer to record |
+| R-1387 | done | tested (C3); its resolution is for the reviewer to record |
+| R-1388 | done | tested (C3); its resolution is for the reviewer to record |
 | Push | pending | reported in the final reply only |
