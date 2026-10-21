@@ -6,15 +6,12 @@ and what the operator can do, in closed words (`docs/roadmap/features/T12_F311.m
 F311 D1 to D6).
 
 ## Current Step
-Round 5 (session 1), the closure's integration-gate round: book round 4, register R-1389 and add
-its test; F311's Built State; the checklist's consolidation pass; the closure's self-use item run
-to its approval gate; and the feature's one full suite with its CPU cost.
+Round 6 (session 1), the closure's evidence round: book round 5, resolve R-1389, the staging
+reclaim, the evidence job `f311r6e1001` and the review package.
 
 ## Next Steps
-1. The evidence round: book round 5, resolve R-1389, register every self-use run defect, the
-   evidence bundle and the review package.
-2. The closing round: the STATUS line, the README, the self-use queue's `consumed_by`, the PR.
+1. The closing round: the rotation or its recorded skip, SU-067's `consumed_by`, the STATUS line
+   with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F311 does not own (DECISION F310 D7, Q20).
-- The self-use run spends real provider calls, within the `self_use` role's budget.
