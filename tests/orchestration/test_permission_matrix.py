@@ -36,6 +36,7 @@ from packages.orchestration.permission_matrix import (
     InstanceApproval,
     PermissionRefusedError,
     PermissionRequest,
+    permission_status_rows,
     pin_job_level,
     pinned_job_level,
     push_allowed_by_config,
@@ -540,3 +541,44 @@ def test_pin_job_level_with_an_empty_id_writes_nothing(tmp_path):
     root = tmp_path / "data"
     assert pin_job_level("", root=root) == AUTONOMY_DEFAULT_LEVEL
     assert not root.exists()
+
+
+# ---------------------------------------------------------------------------
+# (k) permission_status_rows, the status answer's `autonomy.permissions` (DECISION F141 D7 (1))
+# ---------------------------------------------------------------------------
+
+
+def test_permission_status_rows_answers_eight_rows_in_order_with_seven_keys():
+    rows = permission_status_rows("L2", push_allowed=True)
+    assert [row["action"] for row in rows] == list(PERMISSION_ACTIONS)
+    for row in rows:
+        assert set(row) == {"action", "words", "L2", "L3", "L4", "L5", "now"}
+
+
+def test_permission_status_rows_write_worktree_now_differs_by_level():
+    l3_row = next(row for row in permission_status_rows("L3", push_allowed=True)
+                  if row["action"] == "write_worktree")
+    assert l3_row["now"] == PERMISSION_ASK
+    l4_row = next(row for row in permission_status_rows("L4", push_allowed=True)
+                  if row["action"] == "write_worktree")
+    assert l4_row["now"] == PERMISSION_ALLOW
+
+
+def test_permission_status_rows_with_push_disallowed_denies_now_and_keeps_cells():
+    push_row = next(row for row in permission_status_rows("L2", push_allowed=False)
+                    if row["action"] == "push")
+    assert push_row["now"] == PERMISSION_DENY
+    assert (push_row["L2"], push_row["L3"], push_row["L4"], push_row["L5"]) == (
+        PERMISSION_ASK, PERMISSION_ASK, PERMISSION_ASK, PERMISSION_ASK,
+    )
+
+
+def test_permission_status_rows_with_push_allowed_none_the_push_row_now_is_none():
+    push_row = next(row for row in permission_status_rows("L2", push_allowed=None)
+                    if row["action"] == "push")
+    assert push_row["now"] is None
+
+
+def test_permission_status_rows_with_level_none_every_now_is_none():
+    rows = permission_status_rows(None, push_allowed=True)
+    assert all(row["now"] is None for row in rows)
