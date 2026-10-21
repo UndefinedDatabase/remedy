@@ -30594,3 +30594,13 @@ CHOSEN: (1) `resolve_commit_chain` and `commit_patch_bytes` in `packages/orchest
 ALTERNATIVES CONSIDERED: (a) the review base moved back to session 1's fork `e688b30f3` — rejected: the package would then claim everything `main` gained since that fork, F310 to F313 among it, as F078's work; (b) `-m`, a diff against every parent — rejected: a merge of `main` into a branch would then also list everything `main` brought; (c) the merge's second parent's commits added to the chain — rejected: they do not lie on the path from the base, and the chain's rule that an unrelated commit never appears is what keeps a package honest.
 
 HOW TO REVERSE: drop the three `--diff-merges=1` arguments and the test class, and rewrite this paragraph; a branch that merges work from before its base then cannot package again.
+
+## DECISION F078 D9 — F078's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/`, `scripts/rotate_live_review.py` nor `scripts/check_agent_hygiene.py` has changed since F313's closure (`git log ff309f737..c8d3c1b8a` names none of them).
+
+CHOSEN: F078's closure skips the rotation commit, as the closures of F310 to F313 did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
