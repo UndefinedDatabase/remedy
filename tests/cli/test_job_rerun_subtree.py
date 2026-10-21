@@ -173,3 +173,22 @@ class TestRerunSubtreeRefusalExitCodes:
             ["job", "rerun-subtree", "0123456789abcdef", "T001", "--json"], capsys)
         assert code == 1
         assert json.loads(out)["error"] == "invalid_job_id"
+
+
+class TestRerunSubtreeCostPreviewSeam:
+    def test_confirm_cost_preview_receives_the_jobs_full_id(self, repo, monkeypatch):
+        from apps.cli.commands import job_rerun_cmd
+
+        job = _completed_job(repo, monkeypatch)
+        job_id = job.job_id
+        seen: dict = {}
+
+        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name, json_output=False,
+                          job_id=None, yes_flag="--yes"):
+            seen["job_id"] = job_id
+            return True
+
+        monkeypatch.setattr(job_rerun_cmd, "confirm_cost_preview", fake_confirm)
+        job_rerun_cmd._cmd_rerun_subtree(job_id, "T002", yes=True)
+
+        assert seen["job_id"] == job_id
