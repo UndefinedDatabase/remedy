@@ -618,6 +618,11 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
     terminal move, the iteration limit, a stop request, or a refusal that had
     to be escalated — every one of them an honest status, printed here.
     """
+    from packages.orchestration.autonomy_gate import (
+        AutonomyConfigError,
+        autonomy_start_scope,
+        load_autonomy_policy,
+    )
     from packages.orchestration.orchestrator_loop import (
         TERMINAL_NO_PROVIDER,
         ledger_path,
@@ -637,15 +642,23 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
         fail("invalid_argument", str(exc), json_output=json_output,
              exit_code=EXIT_USAGE)
 
+    try:
+        policy = load_autonomy_policy()
+    except AutonomyConfigError as exc:
+        fail("mission_error", str(exc), json_output=json_output)
+
     call_fn = None if no_llm else _orchestrator_call_fn()
     # `_orchestrator_call_fn` is unconditionally `make_structured_call_fn`,
     # which is Ollama-backed, so the provider is named here exactly as the plan
     # site above names it. Under `--no-llm` there is no call and so no trace to
     # label. The label reaches the prompt trace through `run_mission`'s own
     # per-iteration recorder (DECISION F105 D11).
-    result = run_mission(mission.id, limits, project_id=project_id,
-                         call_fn=call_fn,
-                         provider="ollama", provider_kind="ollama")
+    # DECISION F078 D2 (1): this command's own start is the manual grant of the FIRST job the run
+    # dispatches; every further dispatch in the same run is the mission loop's own.
+    with autonomy_start_scope(policy, manual_starts=1):
+        result = run_mission(mission.id, limits, project_id=project_id,
+                             call_fn=call_fn,
+                             provider="ollama", provider_kind="ollama")
     entries = read_ledger(project_id, mission.id)
 
     if json_output:
@@ -657,10 +670,12 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
             iterations=result.iterations,
             max_iterations=limits.max_iterations,
             ledger_entries=len(entries),
+            autonomy_level=policy.level,
         )
         return
 
     print(mission.id)
+    print(f"  Autonomy level: {policy.level}")
     print(f"  Terminal: {result.terminal}")
     if result.detail:
         print(f"  {result.detail}")

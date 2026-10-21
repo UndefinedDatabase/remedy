@@ -27,11 +27,25 @@ def dispatch_milestone_job(project_id: str, mission_id: str, payload: dict[str, 
     DoD, contract slice, repository grant and milestone key are attached before it runs
     through ``execute`` or ``execute_dispatched_job``, and its gate result then decides the
     milestone's contract criteria. Answers the loop's ``MoveOutcome``. When the mission's upkeep
-    job is due, that job runs instead, through :func:`run_upkeep_job`.
+    job is due, that job runs instead, through :func:`run_upkeep_job`. A start the autonomy level
+    refuses ends the run as ``deferred_by_autonomy`` before any job exists (DECISION F078 D2).
     """
     from packages.orchestration import orchestrator_loop as loop
+    from packages.orchestration.autonomy_gate import (
+        TERMINAL_AUTONOMY_DEFERRED,
+        claim_loop_start,
+        deferral_detail,
+    )
     from packages.orchestration.mission_followup import continue_mission
     from packages.orchestration.mission_upkeep import make_upkeep_job_if_due
+
+    verdict = claim_loop_start(project_id, mission_id, payload["milestone_id"], root=root, now=now)
+    if verdict is not None and not verdict.allowed:
+        return loop.MoveOutcome(
+            status=TERMINAL_AUTONOMY_DEFERRED,
+            detail=deferral_detail(verdict, project_id, mission_id, payload["milestone_id"]),
+            terminal=True,
+        )
 
     # DECISION F301 D1 (9): when upkeep is due, its job runs in place of this dispatch. The loop
     # never skips one; the model is asked again at its next iteration.

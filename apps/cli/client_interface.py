@@ -189,8 +189,8 @@ OPERATION_ANSWER_KEYS: dict[str, tuple[str, ...]] = {
         "stopped_before_apply", "unmet_blocking_criteria", "waiting_job_ids",
     ),
     "status.run": (
-        "client", "decisions_open", "degraded", "jobs", "project", "runtime", "runtime_warning",
-        "scope", "skipped_files", "stops_pending",
+        "autonomy", "client", "decisions_open", "degraded", "jobs", "project", "runtime",
+        "runtime_warning", "scope", "skipped_files", "stops_pending",
     ),
     "decision.resolve": (
         "answer", "answers", "assumption_log", "budgets", "closed_decisions", "cross_references",
@@ -466,6 +466,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "status.run": {
         "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}, "rehearsed": {}}},
         "client": DIGEST_KEY_TREE,
+        "autonomy": {"level": {}, "config_path": {}, "error": {}, "deferred_starts": {}},
     },
     "job.run": JOB_REPORT_KEY_TREES,
     "job.resume": {

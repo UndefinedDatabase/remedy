@@ -37,6 +37,8 @@ A run stops on any of these conditions:
 - Budget exhausted (token budget reached)
 - Operator stopped (manual stop command)
 - Iteration cap reached (`--iterations`)
+- Autonomy level (at the default level the loop starts no job of its own: the next job waits for
+  you to run the same command again; see `autonomy-levels-v1.md`)
 - No safe next action
 - Internal error
 

@@ -21,6 +21,7 @@
 | acceptance checks | [acceptance-checks-v1.md](system/acceptance-checks-v1.md) | system |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
+| autonomy levels | [autonomy-levels-v1.md](system/autonomy-levels-v1.md) | system |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
@@ -100,6 +101,7 @@ Specifications and design documents for the built system.
 | [acceptance-checks-v1.md](system/acceptance-checks-v1.md) | A mission's acceptance checks on a project's own test command: where the command comes from (`.remedy/config.toml`, `package.json`, a `tests` folder), the project's own environment it runs in, and the state `unchecked` of a project that names no test command |
 | [agent-tooling-audit.md](system/agent-tooling-audit.md) | Audit of agent tooling (Pi.dev, Claude Code, VS Code MCP) |
 | [architecture.md](system/architecture.md) | High-level Remedy architecture |
+| [autonomy-levels-v1.md](system/autonomy-levels-v1.md) | Who may start work on Remedy's own initiative: the levels L2 to L5 and their one start check, the refusals of a level without the passed gauntlet or a decision record, the record of level changes, and the mission loop's deferred starts |
 | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | Mission tripwires (no-progress, burn anomaly, goal drift), the pause-only action, and the mission watchdog/resume/show surface |
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |

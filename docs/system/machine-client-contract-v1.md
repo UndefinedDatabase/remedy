@@ -475,9 +475,10 @@ Description: Show project status overview, across its repos and missions.
 
 Exit codes: `0`, `1`, `2`.
 Refusal tokens: none.
-Answer keys: `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime`, `runtime_warning`, `scope`, `skipped_files`, `stops_pending`.
+Answer keys: `autonomy`, `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime`, `runtime_warning`, `scope`, `skipped_files`, `stops_pending`.
 Keys under the answer keys: see below.
 
+- `autonomy`: `config_path`, `deferred_starts`, `error`, `level`
 - `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
   - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`

@@ -1,19 +1,18 @@
-# Plan — F313 Contract 1.22 for the Orb
+# Plan — F078 Autonomy levels
 
 ## Goal
-Remedy ships what F310, F311 and F312 added to its clients as contract 1.22: both versions, the
-release matrix, the two pages and recorded answers for the universe's kit
-(`docs/roadmap/features/T12_F313.md`, DECISIONs F313 D1 to D3). Accepted PASS_WITH_RISKS on
-2026-10-21.
+A configured autonomy level, `L2` to `L5`, states what Remedy may start on its own; one shared
+check answers every starting seam from a sixteen-cell matrix, a level of `L3` or higher needs the
+passed gauntlet, every level change needs a decision record, and the level is visible where it
+matters (docs/roadmap/features/T3_F078.md; DECISIONs F078 D1 to D3).
 
 ## Current Step
-Round 6 (session 1), the closing round: book round 5, DECISION F313 D3 (no rotation this closure),
-accept F313 in STATUS with the README sync and SU-068's `consumed_by`, and open the pull request,
-left unmerged.
+Session 1 ended at the operator's stop after round 3 on `feature/f078-autonomy-levels`. Round 4
+is prepared and not started: book round 3, harden the two numeric caps, prove each level's
+increment end to end and every existing gate at `L5`, bring the page up to date, and add one line
+each to the files of F063 and F068.
 
 ## Next Steps
-1. The next session: Phase 1 rule 1 (`.agent/STOP`), then the Open PR Gate merges F313's pull
-   request; then Rule A5 proposes the next feature, F078.
-
-## Risks
-- The integrity check fails on High findings F313 does not own (DECISION F310 D7, Q20).
+1. Round 4, as `.agent/handoff.md` names it.
+2. The closure sequence: the one full suite, the consolidation pass, the self-use run, the
+   evidence and the package, the Built State, the STATUS line and the pull request.
