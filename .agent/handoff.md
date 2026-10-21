@@ -1,112 +1,99 @@
-# Handback — F078 session 1 ends at the operator's stop, after round 3; round 4 is prepared and not started
+# Handback — F078 round 4: the first branch merged onto main, round 3 booked, the L5 caps refused when not a number
 
 ## Session
 
-SESSION 1 of feature F078 · rounds so far 3 (all reviewed) · round 4 prepared, not delegated
+SESSION 2 of feature F078 · round 4 · rounds so far 4
 
-The session ended because the operator's stop file appeared at 22:27 (author `remedy-stop`,
-reason "remedy-stop-loop von decodeux"); it was not the weekly usage cap. No commit was half
-written when it appeared: round 3 was committed, pushed and reviewed, and round 4 existed only as
-prepared files in the reviewer's scratch folder. Context self-assessment: three delegated rounds
-ran without one authoring error that reached the product, and two reviewer slips are recorded in
-`.agent/prose_slips.md` or carried below; the context was far from exhausted.
+Context self-assessment: this worker applied prepared files only and wrote no code, and the context was far from exhausted.
 
-Fortschritt: ~75 % (T001, T002 and the level shown and the caps of L5 landed and proven · the end-to-end proof, the page's last sections and the closure open) — Schätzung
+Fortschritt: ~80 % (T001, T002 and most of T003 landed, F078 merged onto main · the end-to-end proof per level, the contract question and the closure open) — Schätzung
 
 ## Range
 
-This commit only: the handoff and the plan, on top of round 3's handback `4e510e81b`.
+Review of `ff309f737`..`HEAD` on `feature/f078-autonomy-levels-2` (base: `main` at `ff309f737`, the merge of pull request 372). The second parent of C1 is `9d3187143`, the end of session 1's branch.
 
 ## Commits
 
-### (this commit) F078 S1: handback at the operator's stop, round 3's verdict and round 4 prepared
+### ec9812cdf F078 R4 C1: merge the F078 branch onto main, its block copies free of this machine's paths
+Merge commit; parents `ff309f737` and `9d3187143`; tree `0e5df856096409002b9622062da3e4c381f550c1`. The merge stopped on conflicts in `.agent/context.md`, `.agent/decisions.md`, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/operator_questions.md`, `.agent/plan.md`, `.agent/prose_slips.md`, `docs/roadmap/STATUS.md`, `docs/system/structure-ledger-v1.md`, `packages/orchestration/config.py`, `tests/orchestration/import_reachability_allowlist.txt` and `tests/test_structure_ratchet.py`; the reviewer's tree replaced the working tree and index. Paths whose content differs from both parents (`git diff-tree --cc --name-only`, as run at C1):
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | full rewrite | this handback, the durable carrier of round 3's verdict |
-| `.agent/plan.md` | rewrite | the current step: round 4 prepared and not started |
+| `.agent/authored/f078-r1.md`, `f078-r2.md`, `f078-r3.md` | redacted | block copies free of machine paths |
+| `.agent/decisions.md`, `.agent/handoff.md`, `.agent/live_review.md`, `.agent/operator_questions.md`, `.agent/prose_slips.md` | resolved | conflict resolution by the prepared tree |
+| `apps/cli/client_interface.py`, `docs/README.md`, `docs/guides/environment.md`, `docs/roadmap/STATUS.md`, `docs/system/machine-client-contract-v1.md`, `docs/system/structure-ledger-v1.md` | resolved | main and the first branch both changed them |
+| `packages/orchestration/config.py`, `packages/orchestration/data_paths.py`, `tests/cli/test_mission_cmd.py`, `tests/cli/test_status_cmd.py`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/test_structure_ratchet.py` | resolved | main and the first branch both changed them |
 
-The session's rounds, all on `feature/f078-autonomy-levels`, from `main` at `e688b30f3`:
-- Round 1 `f11a6933a`..`4b72b06d5`: the claim, the watchdog keys moved to
-  `packages/orchestration/config_keys_autonomy.py`, T001. VERDICT FAIL on R-1321, booked.
-- Round 2 `059dc68eb`..`80f4ab23e`: R-1321 repaired, the mission loop's start check, the page,
-  operator question Q19. VERDICT PASS, booked.
-- Round 3 `fd11c4a1d`..`4e510e81b`: `_cmd_status`'s step (3), the level in `remedy status` and
-  `remedy mission run`, the caps of L5. VERDICT PASS, carried below and booked by round 4's C1.
+Oversize declaration: this merge commit adds more than 500 lines against its first parent. It is the feature's one oversize commit; reason: a merge commit is one indivisible object; its lines are session 1's commits, each reviewed in its own round.
+
+### 6b7d084a1 F078 R4 C2: book round 3, DECISION F078 D4, the plan and the context
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f078-r4.md` | +124/-0 | new: the block of this round |
+| `.agent/context.md` | +10/-13 | rewritten |
+| `.agent/decisions.md` | +10/-0 | DECISION F078 D4 |
+| `.agent/live_review.md` | +23/-16 | round 3's verdict booked |
+| `.agent/plan.md` | +12/-6 | rewritten |
+| `.agent/prose_slips.md` | +2/-0 | two prose-slip lines |
+
+### 8b5806da0 F078 R4 C3: an L5 cap that is not a number of at least 0 is refused
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/autonomy_gate.py` | +14/-2 | new `_idea_cap_number`; the two cap reads call it |
+| `tests/orchestration/test_autonomy_gate.py` | +36/-0 | seven new cases before the environment test |
+
+### (this commit) F078 R4 C4: handback
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | full rewrite | this handback |
 
 ## External actions
 
-- The Open PR Gate merged pull request 338 (F055) as `e688b30f3` at the start of the session,
-  after the reviewer verified F055's round 9 (booked in F078 round 1).
-- Every round pushed; the branch has no pull request yet. No other provider call, no staging
-  reclaim, no self-use run.
+- `git checkout -b feature/f078-autonomy-levels-2` from `main` at `ff309f737`; no pull. No pull request is open and none was created.
+- `git push -u origin feature/f078-autonomy-levels-2` after this commit: result in the worker's final reply.
 
 ## Verification
 
-Round 3's verdict, reached by the reviewer of session 1 and booked by nobody yet, is carried here
-under operator amendment amend0827-process-diet rule 1. Its gate entry is prepared byte for byte as
-the tail of `.remedy-wt/f078-r4/prep/dry-live_review.md`:
-- `verify.py` of round 3: `ALL True` (every parent, C1's five files byte-identical, every commit
-  inside its paths, `_cmd_status` from 179 to 155 lines with its row and `MAX_FUNCTION_LINES`
-  lowered by 24, C3 line-neutral on `_cmd_status`, every authored sentence present).
-- The reviewer's re-run of round 3's selection at `4e510e81b`: 84 paths, `3833 passed, 3 skipped`,
-  exit 0, equal to the worker's run.
-- Seventeen mutations in the disposable worktree `.remedy-wt/f078-s1/mut-r3`, removed afterwards,
-  each red beside an unmutated control at `199 passed`, before and after.
-- Round 2's mutations (fifteen, control `49 passed`) and selection (`4093 passed, 4 skipped`) are
-  booked in the ledger already.
-- `git worktree list` after both mutation runs: no `mut-r2` or `mut-r3` worktree left.
+1. `git status --porcelain` printed nothing; `verify.py` on the checkout: every line `True`, C4 `absent`, last line `ALL True`.
+2. `python3 -m ruff check` on the four named files: exit 0, `All checks passed!`.
+3. `run_selection.py`: `paths 92`, `exit 0`, `4551 passed, 3 skipped in 48.91s`; no FAILED or ERROR line and no "process(es) behind" line. SKIPPED lines: `tests/test_agent_tooling.py:43` (D12 quarantine, F252), `tests/regression/test_f293_acceptance.py:195` (main holds F293), `tests/test_install_smoke.py:175` (install smoke is opt-in).
+4. `python3 -m apps.cli.main integrity check --json`: exit 1, `fail_count` 1, the one failing check `high_blockers_open`: `12 open blocker/high: R-1335, R-1336, R-1337, R-1338, R-1345, R-1346, R-1348, R-1349, R-1359, R-1360, R-1361, R-1362`.
+5. `python3 -c "import scripts.rotate_live_review as r; print(len(r.open_finding_ids(open('.agent/live_review.md').read())))"`: `87`.
 
 ## Authored-text proofs
 
-No authored text was applied to a file this commit except this handoff and the plan, each a byte
-copy of the reviewer's prepared file, its sha256 reported in the final reply.
+C2: each of the six prepared files is a byte copy; sha256 of copy equals sha256 of source for all six. `.agent/authored/f078-r4.md` is 124 lines with sha256 `ea3cb94d1c87d0f9a1335dbc3c0436f905b6feb38bce041b4d5a54bb67e9ab12`. C3: both prepared files are byte copies, sha256 equal. C1's tree equals the prepared `0e5df856096409002b9622062da3e4c381f550c1`. All prepared digests were checked before use.
 
 ## Deviations & assumptions
 
-- Round 3's review ran round 2's selection on round 3's tree by mistake before round 3's own run,
-  green; the prose-slip line for it is prepared in round 4's `dry-prose_slips.md`.
-- `claim_idea_start` uses the two numeric caps as read, so a cap written as a quoted string would
-  end in a `TypeError` instead of a refusal. Nothing calls it in production; round 4's C2 hardens
-  it, and round 3's gate entry says so.
-- The stop file `.agent/STOP` is the operator's and stays untracked; this commit does not touch it.
+- None in the commit sequence. Gate 4 exits 1 by design (the one expected failing check).
+- C4's changed-files table for C1 lists paths as `git diff-tree --cc --name-only` printed them at C1; the count is the same at C4.
 
 ## For the operator, in plain sentences
 
-Remedy now has an autonomy level that decides what it may start on its own. At the default level,
-every start is yours: a mission run starts the job you asked for and then waits, keeps a note
-of the next job, and tells you to run the same command again. Raising the level needs the passed
-test campaign and a short written reason, both checked, and every change of level is written
-down. The status overview now ends with the level and any start that is waiting. The caps for the
-highest level, which will let Remedy start its own idea drafts one day, are in place but nothing
-uses them yet. One question for you is open: whether mission runs should stop after each job at
-the default level, as they do now. The session stopped because you asked it to, after three
-reviewed rounds; the next round is prepared and waits.
+The autonomy work has moved onto a second branch, because the first one had fallen behind the main line and had to be merged with it. The first branch may now be deleted. The merge is done, and the notes of the first branch no longer carry paths from this machine. The highest level's daily limits are now checked more strictly: a limit that is written as text, as true or false, or as a negative number is refused with a clear message instead of failing in the middle of a comparison. Nothing starts work on its own yet at that level. Two questions for you remain open. The next round will prove each level from start to finish.
 
 ## Next
 
-1. Phase 1 rule 1: `.agent/STOP` — present at this handoff; the next session starts only once it
-   is gone.
-2. Phase 1 rule 2: the Open PR Gate — no pull request is open.
-3. Round 4, prepared under `.remedy-wt/f078-r4/prep/` on the base
-   `4e510e81b` (block `block.md`, 136 lines, sha256
-   `7fda1acb7e42320cc22185233f4b494cce713d188b42297ba18dd7cd91beb3a6`; `verify.py`
-   `ec76152efa8a13f86faa3ea5aa40d4d06626942fd08cf0996f8732a7ab176584`; `run_selection.py`
-   `beefca458d448d174d6824c785abc88051fa13bd03694b3a180e95e089556e39`; `selection.txt`
-   `44a9cab795f69d3ed37cd14fc769295a105e0717e4ba7ff7b5e60f115d99f34a`). Because this commit moves
-   the branch past that base, the next reviewer re-prepares it before delegating: the base becomes
-   this commit, `verify.py`'s `BASE` follows, and C1's `dry-plan.md` names session 2; C1 still
-   books round 3's verdict and the prose slip exactly as prepared.
-4. Then the closure sequence.
+1. Phase 1 rule 1: `.agent/STOP`.
+2. Phase 1 rule 2: the Open PR Gate.
+3. Book round 4's verdict in the next round's first commit.
+4. Round 5: each level's increment end to end, every gate at L5, the status key's contract question, the page and the files of F063 and F068.
 
-Operator questions open: 1.
-Open findings: 40 (R-1246, R-1276 to R-1313 and R-1319, all owned by F307).
+Operator questions open: 2.
+Open findings: 87 (rule: `scripts.rotate_live_review.open_finding_ids` over `.agent/live_review.md`, gate 5 at commit `8b5806da0`).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| Round 1 | done | FAIL on R-1321, booked; repaired in round 2 |
-| Round 2 | done | PASS, booked |
-| Round 3 | done | PASS, carried in this handoff |
-| Round 4 | skipped | the operator's stop arrived after it was prepared and before it was delegated |
-| Closure | skipped | not reached |
+| C0 | done | branch created from `ff309f737` |
+| C1 | done | merge `ec9812cdf`, tree as prepared |
+| C2 | done | `6b7d084a1` |
+| C3 | done | `8b5806da0` |
+| C4 | done | this commit |
+| Gate 1 | done | ALL True |
+| Gate 2 | done | All checks passed |
+| Gate 3 | done | 4551 passed, 3 skipped |
+| Gate 4 | done | fail_count 1, the twelve findings |
+| Gate 5 | done | 87 |
