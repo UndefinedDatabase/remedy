@@ -87,8 +87,9 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: F313 (DECISION F313 D1) to `1.22` (`client.now`, `client.insight` and the `insight` words),
 #: F078 (DECISION F078 D6) to `1.23` (`status.run`'s `autonomy`),
 #: F141 (DECISION F141 D7) to `1.24` (`autonomy`'s `push_allowed` and `permissions`), and
-#: F303 (DECISION F303 D3) to `1.25` (`job.steer`).
-CLIENT_INTERFACE_VERSION = "1.25"
+#: F303 (DECISION F303 D3) to `1.25` (`job.steer`), and
+#: F307 (DECISION F307 D11) to `1.26` (an order's `repo_path`).
+CLIENT_INTERFACE_VERSION = "1.26"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -650,7 +651,7 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
             "orders": {"order_id": {}, "text": {}, "source_path": {}, "source_sha256": {},
                        "created_at": {}, "target_commit": {}, "kind": {}, "budgets": {"*": {}},
                        "correlation_id": {}, "plan_source": {}, "reopened_from": {},
-                       "sealed": {"*": {}}},
+                       "sealed": {"*": {}}, "repo_path": {}},
             "alias_of": {},
         },
     },

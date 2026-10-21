@@ -285,6 +285,9 @@ permission matrix with `action`, its `words`, the cells `L2` to `L5` and `now`, 
 level in force with the push switch applied. `docs/system/permission-matrix-v1.md` says what
 each cell means.
 
+Since interface 1.26 each of a mission's `orders` may carry `repo_path`, the repository root the
+order was accepted for; an order accepted before 1.26 carries none.
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -308,7 +311,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.25`.
+Interface version: `1.26`.
 
 ### Envelope
 
@@ -882,7 +885,7 @@ Keys under the answer keys: see below.
     - `milestones`: `depends_on`, `dod_ref`, `goal`, `id`, `jobs_draft`, `rationale`
       - `jobs_draft`: `est_band`, `goal`, `title`
   - `order`: `source_path`, `source_sha256`, `text`
-  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `plan_source`, `reopened_from`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
+  - `orders`: `budgets`, `correlation_id`, `created_at`, `kind`, `order_id`, `plan_source`, `reopened_from`, `repo_path`, `sealed`, `source_path`, `source_sha256`, `target_commit`, `text`
     - `budgets`: `*`
     - `sealed`: `*`
 

@@ -90,8 +90,9 @@ PUBLIC_API_PREFIX = "/api/v1"
 #: the decision route's `resumed` and `resume_refused` after an `extend`, and F078 (DECISION F078 D6)
 #: to `1.23` for the interface's status answer `autonomy`, with no change over HTTP, and F141
 #: (DECISION F141 D7) to `1.24` for `autonomy`'s `push_allowed` and `permissions`, with none either,
-#: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`.
-PUBLIC_API_VERSION = "1.25"
+#: and F303 (DECISION F303 D3) to `1.25` for `POST /api/v1/jobs/{job}/note`, and F307
+#: (DECISION F307 D11) to `1.26` for an order's `repo_path`, with no change over HTTP.
+PUBLIC_API_VERSION = "1.26"
 
 #: The feature file's initial exclusion list, in its order. These operator-console commands change
 #: or recover this machine, its configuration or its queue, and are never reachable over this API.
