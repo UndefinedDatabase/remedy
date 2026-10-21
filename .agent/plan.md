@@ -7,14 +7,15 @@ small bundle, and `remedy verify <bundle>` checks every member and every claim o
 the failing member named (docs/roadmap/features/T3_F060.md; DECISIONs F060 D1 to D4).
 
 ## Current Step
-Round 4 (session 1): book round 3 and resolve R-1405, record DECISION F060 D4, and land T003:
-`remedy job certificate` and `remedy verify`, their tests, the standalone check in a fresh folder
-with no data folder, and the page `docs/system/job-certificate-v1.md`.
+Round 5 (session 1), the closure's integration-gate round: book round 4 and register R-1406, run
+the closure's self-use item to its approval gate, repair R-1406, write the Built State, add F060's
+consolidation paragraph to the checklist, and run the feature's one full suite.
 
 ## Next Steps
-1. The closure sequence (`docs/roadmap/STATUS_closure_protocol.md`): the one full suite, the
-   evidence package, the Built State and the STATUS flip, the pull request left unmerged.
+1. The evidence bundle and the review package, or a repair round naming every bad node id.
+2. The closing round: the Built State's closure facts, the STATUS line, the README and the pull
+   request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F060 does not own (DECISION F310 D7, Q20).
-- `command_catalog.py` is on the structure ledger; its edit must stay line-neutral.
+- The self-use run makes real provider calls within the self-use role's budget.
