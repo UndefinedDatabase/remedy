@@ -8,16 +8,14 @@ from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DE
 to D7).
 
 ## Current Step
-Round 9 (session 1), the closure's first repair round (operator amendments amend0917-throughput
-rule 2 and amend0921-operator-feedback rule 1): book round 8, resolve R-1401, register R-1402 and
-R-1403, repair R-1402, and run the feature's one full suite again on the repaired tree, whose
-transcript replaces round 8's at the same path.
+Round 10 (session 2), the closure's evidence round (`docs/roadmap/STATUS_closure_protocol.md`
+steps 1 and 2): book round 9 and resolve R-1402, commit the evidence script, reclaim the staging
+copies, run the evidence job `f141r10e1001` and build the review package.
 
 ## Next Steps
-1. The next session: review round 9 and book its verdict; then the evidence bundle and the review
-   package (a green suite), or the second repair round (a red one, at most three).
-2. The closing round: the STATUS line, the README sync, `SU-070`'s `consumed_by` and the pull
-   request.
+1. The closing round: book round 10, the Built State brought current, the ledger rotation or its
+   recorded skip, the STATUS line with the README sync and `SU-070`'s `consumed_by`, and the pull
+   request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
