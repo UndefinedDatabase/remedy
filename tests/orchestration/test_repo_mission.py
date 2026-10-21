@@ -15,6 +15,7 @@ from packages.orchestration.mission_state import (
     MISSION_STATUS_ACHIEVED,
     MissionOrder,
     create_mission,
+    link_job_to_mission,
     list_missions,
     list_missions_safe,
     load_mission,
@@ -423,3 +424,53 @@ def test_a_follow_up_job_belongs_to_the_current_order_batch(tmp_path, monkeypatc
     [row] = order_batch_view(mission)
     assert row["order_id"] == batch.order_id and str(follow.job_id) in row["job_ids"]
     assert _unfinished_jobs(mission, batch.order_id)
+
+
+def _fold_sealed(mission):
+    """The mission as a fold leaves it: its last batch already sealed, with no plan and no contract."""
+    from dataclasses import replace
+
+    last = replace(mission.orders[-1], sealed={"sealed_at": "t", "plan_version": 0, "plan": None,
+                                               "contract": None})
+    return replace(mission, orders=(*mission.orders[:-1], last))
+
+
+def test_a_contract_written_after_a_fold_sealed_the_last_order_is_sealed_again(tmp_path):
+    """R-1285, DECISION F307 D7: the next order re-seals a batch whose slots changed after the fold."""
+    from dataclasses import replace
+
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, _ = accept_order(project, repo, _order("one"), root=tmp_path)
+    save_mission(replace(_fold_sealed(mission), contract={"criteria": ["late"]}), tmp_path)
+
+    later, _ = accept_order(project, repo, _order("two"), root=tmp_path)
+
+    assert later.orders[0].sealed["contract"] == {"criteria": ["late"]}
+    assert later.orders[0].sealed["sealed_at"] != "t"
+
+
+def test_a_sealed_order_whose_slots_did_not_change_is_left_as_sealed(tmp_path):
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, _ = accept_order(project, repo, _order("one"), root=tmp_path)
+    save_mission(_fold_sealed(mission), tmp_path)
+
+    later, _ = accept_order(project, repo, _order("two"), root=tmp_path)
+
+    assert later.orders[0].sealed["sealed_at"] == "t"
+
+
+def test_a_legacy_missions_jobs_take_the_legacy_batch_id_with_its_first_new_order(tmp_path):
+    """R-1299: the legacy batch shows its jobs, and the order file's unfinished work is still found."""
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    legacy = create_mission(str(project.id), "an old goal", root=tmp_path)
+    link_job_to_mission(str(project.id), legacy.id, "job-a", "initial", root=tmp_path)
+
+    later, batch = accept_order(project, repo, _order("new"), root=tmp_path)
+
+    legacy_id = f"legacy-{legacy.id[:12]}"
+    assert [order.order_id for order in later.orders] == [legacy_id, batch.order_id]
+    assert [link.order_id for link in later.job_links] == [legacy_id]
+    assert order_batch_view(later)[0]["job_ids"] == ["job-a"]

@@ -42,6 +42,7 @@ from packages.orchestration.mission_record import (
     PLAN_VERSIONS_KEY,
     Mission,
     MissionError,
+    MissionJobLink,
     MissionOrder,
     MissionOrderBatch,
 )
@@ -133,24 +134,34 @@ def canonical_candidates(project_id: str, key: str, root: Path | None = None) ->
 # ---------------------------------------------------------------------------
 
 
-def _seal(mission: Mission) -> tuple[MissionOrderBatch, ...]:
-    """The mission's batches with the current one sealed, a legacy order made a batch first."""
-    orders = mission.orders
+def _seal(mission: Mission) -> tuple[tuple[MissionOrderBatch, ...], tuple[MissionJobLink, ...]]:
+    """The mission's batches with the current one sealed, and its job links.
+
+    A legacy order is made a batch first, and the links without an order id take that batch's id,
+    as the reconcile gives them (R-1299). A last batch a fold already sealed is sealed again when
+    the mission's plan or contract changed after it, so the next order does not drop them (R-1285).
+    """
+    orders, links = mission.orders, mission.job_links
     if not orders and (mission.order is not None or mission.job_links):
         order = mission.order or MissionOrder(text=mission.goal)
+        legacy_id = f"legacy-{mission.id[:12]}"
         orders = (MissionOrderBatch(
-            order_id=f"legacy-{mission.id[:12]}", text=order.text, source_path=order.source_path,
+            order_id=legacy_id, text=order.text, source_path=order.source_path,
             source_sha256=order.source_sha256, created_at=mission.created_at),)
-    if not orders or orders[-1].sealed is not None:
-        return orders
+        links = tuple(replace(link, order_id=link.order_id or legacy_id) for link in links)
+    if not orders:
+        return orders, links
     plan = mission.mission_plan
     # The chain stays in the mission's plan slot; a sealed batch keeps its own body only
     # (operator amendment amend1014-luna-mission-fixes A.1), so the record grows by one plan.
     body = ({k: v for k, v in plan.items() if k != PLAN_VERSIONS_KEY}
             if isinstance(plan, dict) else plan)
+    last = orders[-1].sealed
+    if last is not None and last.get("plan") == body and last.get("contract") == mission.contract:
+        return orders, links
     sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get(PLAN_VERSION_KEY, 0)),
               "plan": body, "contract": mission.contract}
-    return (*orders[:-1], replace(orders[-1], sealed=sealed))
+    return (*orders[:-1], replace(orders[-1], sealed=sealed)), links
 
 
 def _target_commit(repo_root: str | Path) -> str:
@@ -224,9 +235,10 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
             source_sha256=order.source_sha256, created_at=_utc_now(),
             target_commit=_target_commit(repo_root), kind=kind, budgets=budgets,
             correlation_id=correlation_id, reopened_from=reopened)
+        orders, links = _seal(mission)
         mission = replace(
             mission, repo=key, status=MISSION_STATUS_ACTIVE, order=order, contract=None,
-            orders=(*_seal(mission), batch))
+            orders=(*orders, batch), job_links=links)
         save_mission(mission, root)
     return mission, batch
 
