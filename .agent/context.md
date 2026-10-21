@@ -1,12 +1,14 @@
 # Context — F078 Autonomy levels
 
 ## Active Branch
-feature/f078-autonomy-levels, from `main` at `e688b30f3` (the merge commit of pull request 338).
+`feature/f078-autonomy-levels-2`, from `main` at `ff309f737` (the merge commit of pull request
+372), whose first commit merges session 1's `feature/f078-autonomy-levels` at `9d3187143`
+(DECISION F078 D4).
 
 ## Scope
-F078 (Tier 3), as `docs/roadmap/features/T3_F078.md` and DECISION F078 D1 state: the autonomy
-level, its one start check and matrix, its refusals and change record, the seams that start jobs,
-the caps of `L5`, and showing the level.
+F078 (Tier 3), as `docs/roadmap/features/T3_F078.md` and DECISIONs F078 D1 to D4 state: the
+autonomy level, its one start check and matrix, its refusals and change record, the seams that
+start jobs, the caps of `L5`, and showing the level.
 
 ## Do not touch
 Approval semantics, budget mechanics and the gauntlet's pass definition. A level only answers who
@@ -20,12 +22,7 @@ changes no behaviour.
   structural step is proved by the unchanged tests.
 
 ## Constraints
-- Every pytest run in a round is targeted; the closure runs the one full suite.
-- A round touching `docs/roadmap/**` also gates `tests/docs/`.
-- Per amend0930-test-load: no block, worker or reviewer sets `REMEDY_TEST_MAX_WORKERS`, passes a
-  larger `-n`, or starts two test runs at once; mutation red-proofs are run by the reviewer only.
-- Destructive verification runs only inside a disposable git worktree under `.remedy-wt/`.
-- The functions and files on `docs/system/structure-ledger-v1.md` may not grow.
-
-## Steps
-The item-status table for each round lives in that round's handback, `.agent/handoff.md`.
+- One full pytest suite per feature, in the closure's integration-gate round; every round runs
+  its own selection once (operator amendments amend0917-throughput and amend0930-test-load).
+- The structure ratchet: no listed function or file grows; new logic goes into new modules.
+- No file under `.agent/` gains this machine's absolute paths; the commit hook refuses them.

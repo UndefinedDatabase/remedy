@@ -1,25 +1,30 @@
 # Live Review — F078 Autonomy levels
 
 > Round-by-round review record, re-headed at the F078 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F055, whose STATUS
-> line went `[x]` on its own branch at `306ae4a24`; pull request 338 merged it into `main` as
-> `e688b30f3`. F055's round 9 was reviewed after its own handback, so operator amendment
-> amend0827-process-diet rule 1 books its verdict here, in the first commit of the next round that
-> is happening anyway; its gate entry is appended at the end of this record by this claim. Only
-> the heading, this paragraph and the Steps section below are rewritten; everything else from the
-> Findings heading to the end of the file as it stood at `e688b30f3` is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head. The
-> open set at `e688b30f3`, computed with `open_finding_ids` from `scripts/rotate_live_review.py`,
-> is R-1246, R-1276 to R-1313 and R-1319; F307 owns every id in it.
+> docs/agents/planner_reviewer_prompt.md §1, and re-headed again in session 2 after the merge
+> that carries F078 onto `main` (DECISION F078 D4). Session 1 claimed F078 on
+> `feature/f078-autonomy-levels`, forked from `main` at `e688b30f3`, and ended at an operator stop
+> after three reviewed rounds; `main` meanwhile re-headed its own copy of this record for F310 to
+> F313, the last of which pull request 372 merged as `ff309f737`. Session 2 continues on
+> `feature/f078-autonomy-levels-2`, whose first commit merges the first branch at `9d3187143` into
+> `main` at `ff309f737`. That merge keeps everything from the Findings heading to the end of the
+> file as it stood at `ff309f737` BYTE-IDENTICAL and appends after it, byte-identical, what the
+> first branch had appended to its own copy: the gate of F055's round 9, the gates of F078's rounds
+> 1 and 2, and F078's R-1321 with its resolution. Finding ids continue the monotonic R-XXXX series,
+> with one collision DECISION F078 D4 records: F078's R-1321 of 2026-10-14 and the different
+> R-1321 the operator session of amend1015 minted on `main` the next day, both resolved, so F078's
+> is written "R-1321 (F078)" wherever the two must be told apart. The open set at `ff309f737`,
+> computed with `open_finding_ids` from `scripts/rotate_live_review.py`, holds 87 ids, the lowest
+> R-1246 and the highest R-1381; F078 owns none of them.
 
 ## Steps
 
-THE ORDER BELOW IS DECISION F078 D1's. The first round claims F078, re-heads this record, books
-F055's round 9, moves the four watchdog keys of the config registry to a module of their own, and
-lands T001: the three autonomy keys, the start matrix with its one check, and the loading of the
-level with its refusals and its record of changes. The second round puts the check at the seams
-that start jobs and keeps every refused start. The third lands the caps of the highest level and
-shows the level where it matters. Then the closure.
+THE ORDER BELOW IS DECISIONS F078 D1 TO D4's. Session 1 claimed F078 and landed T001, T002, and
+of T003 the level shown and the caps of L5, in three reviewed rounds. Session 2's first round,
+round 4, merges the first branch onto `main`, books round 3 and refuses an L5 cap that is not a
+number. The next round proves each level's increment end to end and every existing gate at L5,
+settles whether the status answer's new key is a contract change, and brings the page and two
+feature files up to date. Then the closure.
 
 ## Findings
 DECISION F085 D5, applied at da47ee40, closes "The R44 block is the first measured under this
@@ -470,3 +475,5 @@ Gate: F078 R1 — the F078 round 1 entry, the claim, the keys step and T001, ove
 Gate: F078 R2 — the F078 round 2 entry, the repair of R-1321 and the mission loop's T002, over `4b72b06d5`..`80f4ab23e` (6 commits, each single-parent; insertions by `git show --shortstat`: `059dc68eb` 218, `07b47f955` 107, `d2989abc0` 177, `4c237b14a` 421, `f693d0951` 67, `80f4ab23e` 190). VERDICT PASS. The reviewer's `verify.py` read every commit's parent equal to the commit before it and the first equal to the base, C1's four paths and C5's three byte-identical to the prepared files, C6's operator question byte-identical, every commit inside its paths, C2 resolving the config path and catching the decode failure, C3's terminal, record file, authored deferral sentence and four functions, the check in `dispatch_milestone_job` before the upkeep check and before any job exists, `remedy mission run`'s loop inside the start scope, the gate no longer an allowed orphan, and the ratchet, the structure page, `orchestrator_loop.py` and `config.py` untouched, `ALL True`. The reviewer re-ran the selection in the primary checkout at `80f4ab23e`: 87 paths, `4093 passed, 4 skipped` with exit 0, equal to the worker's one run. Fifteen mutations in the disposable worktree `.remedy-wt/f078-s1/mut-r2`, removed afterwards, each turned `tests/orchestration/test_autonomy_gate.py` and `tests/orchestration/test_autonomy_seams.py` red beside an unmutated control at `49 passed`, before and after: the loop allowed at `L3` flipped (3 failed), the environment never refused (2), `passed` never read (1), a change accepted without its record (4), the record never checked to exist (1), the previous level read across files (2), the config path not resolved (1), the decode failure not caught (1), no scope ever seen (2), the manual grant never spent (1), the deferral never recorded (1), the taken line never recorded (1), the deferral not ending the run (2), `remedy mission run` opening no scope (1) and swallowing a refused configuration (1). The first six prove round 1's code as well, whose bytes C2 changed only where R-1321 required. The worker declared one deviation, accepted: the reviewer's `verify.py` read an f-string's literal tail twice, so it counted the unreadable-evidence sentence twice; the worker rewrote that one `raise` as a concatenation with the same words and amended C2 before anything was pushed (`.agent/prose_slips.md`).
 
 Done: R-1321 — RESOLVED at F078 R2 by C2, `07b47f955`. `load_autonomy_policy` keys the record of level changes, and fills `AutonomyPolicy.config_path`, with the level's config file resolved to one absolute path, and resolves both supporting paths the same way; the refusal sentences still name the file as the report holds it. Reading the gauntlet evidence refuses on any `OSError` or `ValueError` with the authored "is not a gauntlet matrix Remedy can read." MEASURED BY THE REVIEWER in the disposable worktree at `80f4ab23e`: with the resolution removed, the test of two projects in two folders loaded with the relative default path turned red (1 failed); with the handler narrowed back to `json.JSONDecodeError`, the test of evidence that is not UTF-8 turned red (1 failed); each green again without the mutation.
+
+Gate: F078 R3 — the F078 round 3 entry, `_cmd_status`'s structural step, the level shown and the caps of L5, over `80f4ab23e`..`4e510e81b` (5 commits, each single-parent; insertions by `git show --numstat`: `fd11c4a1d` 215, `fb461c34e` 40, `12d3a5949` 237, `e51b0da74` 315, `4e510e81b` 150). VERDICT PASS, reached by session 1's reviewer and carried by the handoff of `9d3187143` (79 insertions, the handoff and the plan at the operator's stop), booked here by operator amendment amend0827-process-diet rule 1. As that handoff records: the round's `verify.py` read `ALL True`, `_cmd_status` falling from 179 to 155 lines with its row and `MAX_FUNCTION_LINES` lowered by 24 and C3 line-neutral on it; the reviewer's re-run of the selection read 84 paths, `3833 passed, 3 skipped` with exit 0; seventeen mutations in a disposable worktree, removed afterwards, each red beside an unmutated control at `199 passed`. Session 1's reviewer carried one note into this round, that `claim_idea_start` compares the two numeric caps as read, so a cap written as a quoted string ends in a `TypeError` instead of a refusal; round 4's C3 repairs it. Session 2's reviewer re-ran round 3's own tests, `tests/cli/test_status_cmd.py` and `tests/orchestration/test_autonomy_gate.py`, inside round 4's selection over the merged tree: green.
