@@ -138,6 +138,8 @@ def seal_current_order_batch(mission: Mission) -> tuple[tuple[MissionOrderBatch,
     A legacy order is made a batch first, and the links without an order id take that batch's id,
     as the reconcile gives them (R-1299). A last batch a fold already sealed is sealed again when
     the mission's plan or contract changed after it, so the next order does not drop them (R-1285).
+    A batch no plan was made for, whose plan slot still holds the version the batch before it
+    sealed, seals no plan rather than that one (R-1298).
     """
     orders, links = mission.orders, mission.job_links
     if not orders and (mission.order is not None or mission.job_links):
@@ -150,15 +152,19 @@ def seal_current_order_batch(mission: Mission) -> tuple[tuple[MissionOrderBatch,
     if not orders:
         return orders, links
     plan = mission.mission_plan
+    version = int((plan or {}).get(PLAN_VERSION_KEY, 0))
     # The chain stays in the mission's plan slot; a sealed batch keeps its own body only
     # (operator amendment amend1014-luna-mission-fixes A.1), so the record grows by one plan.
     body = ({k: v for k, v in plan.items() if k != PLAN_VERSIONS_KEY}
             if isinstance(plan, dict) else plan)
+    before = orders[-2].sealed if len(orders) > 1 else None
+    if before is not None and before.get("plan_version") == version:
+        body = None
     last = orders[-1].sealed
     if last is not None and last.get("plan") == body and last.get("contract") == mission.contract:
         return orders, links
-    sealed = {"sealed_at": _utc_now(), "plan_version": int((plan or {}).get(PLAN_VERSION_KEY, 0)),
-              "plan": body, "contract": mission.contract}
+    sealed = {"sealed_at": _utc_now(), "plan_version": version, "plan": body,
+              "contract": mission.contract}
     return (*orders[:-1], replace(orders[-1], sealed=sealed)), links
 
 
@@ -283,6 +289,27 @@ def unlink_order_jobs(project_id: str, mission_id: str, job_ids: list[str],
         if len(kept) == len(current.job_links):
             return current
         mission = replace(current, job_links=kept)
+        save_mission(mission, root)
+    return mission
+
+
+def withdraw_order_batch(project_id: str, mission_id: str, order_id: str,
+                         root: Path | None = None) -> Mission:
+    """Take back an order whose planning failed (R-1298): its batch leaves the mission and the
+    current-order slots return to the order before it, so no empty batch stays current. Only
+    the last batch, and only while no job is linked to it, is taken back."""
+    with repo_mission_lock(project_id, root):
+        mission = load_mission(project_id, mission_id, root)
+        if (not mission.orders or mission.orders[-1].order_id != order_id
+                or any(link.order_id == order_id for link in mission.job_links)):
+            return mission
+        batch, rest = mission.orders[-1], mission.orders[:-1]
+        previous = rest[-1] if rest else None
+        order = (MissionOrder(text=previous.text, source_path=previous.source_path,
+                              source_sha256=previous.source_sha256) if previous else None)
+        contract = (previous.sealed or {}).get("contract") if previous else None
+        mission = replace(mission, orders=rest, order=order, contract=contract,
+                          status=batch.reopened_from or mission.status)
         save_mission(mission, root)
     return mission
 

@@ -105,3 +105,10 @@ directory directly under `reconcile-backups/`, that holds no mission file or tha
 but project directories, and it swaps each project's restored copy in with two renames, so a
 failed restore leaves the current directories in place; a project the backup does not hold is
 left as it is.
+
+## An order whose plan was not made
+When an order's planning fails, `remedy do` takes the order's batch back out of every mission that
+accepted it, so the order before it is the current one again; a batch a job already belongs to is
+never taken back. An order over several repositories is planned in the lead repository's mission
+only, and the batch it leaves in each other mission seals no plan when the next order arrives,
+rather than the plan of the order before it, which that mission's plan slot still holds.

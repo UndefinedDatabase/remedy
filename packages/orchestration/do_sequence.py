@@ -696,7 +696,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                 write_template_contract(str(target.id), ctx.project_missions[str(target.id)][0],
                                         template)
     except (ContractTemplateError, ContractError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}" + _withdraw_unplanned_order(ctx)
     contract_note = (f"contract template {template}, {how}" if template is not None
                      else "no contract template, none proposed from the order")
 
@@ -722,7 +722,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         outcome = plan_mission(project_id, ctx.mission_id, call_fn, repo_root=ctx.repo_root,
                                provider=planner_name, provider_kind=planner_name)
     except (MissionPlanInProgressError, MissionError) as exc:
-        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}"
+        return DO_STEP_FAILED, f"mission {ctx.mission_id} was not planned: {exc}" + _withdraw_unplanned_order(ctx)
     kept_note = ""
     if call_fn is not None:
         outcome, kept_note = _deterministic_plan_for_invented_scope(ctx, project_id, outcome, planner_name)
@@ -732,6 +732,16 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         f"mission {ctx.mission_id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
         f"lane: {lane.lane} ({lane.reason}){kept_note}; {contract_note}")
+
+
+def _withdraw_unplanned_order(ctx: DoContext) -> str:
+    """Take the order back out of every mission that accepted it, when its planning failed; the
+    note for the step's detail (R-1298, DECISION F307 D10)."""
+    from packages.orchestration.repo_mission import withdraw_order_batch
+
+    for project_id, (mission_id, order_id) in ctx.project_missions.items():
+        withdraw_order_batch(project_id, mission_id, order_id)
+    return "; the order was taken back out of its mission(s), so no unplanned order stays current"
 
 
 def _deterministic_plan_for_invented_scope(

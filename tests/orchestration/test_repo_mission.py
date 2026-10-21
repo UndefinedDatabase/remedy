@@ -473,3 +473,68 @@ def test_a_legacy_missions_jobs_take_the_legacy_batch_id_with_its_first_new_orde
     assert [order.order_id for order in later.orders] == [legacy_id, batch.order_id]
     assert [link.order_id for link in later.job_links] == [legacy_id]
     assert order_batch_view(later)[0]["job_ids"] == ["job-a"]
+
+
+def test_an_order_no_plan_was_made_for_seals_no_plan(tmp_path):
+    """R-1298, DECISION F307 D10: a batch the mission was never planned for seals no plan, not the
+    plan of the order before it, which its plan slot still holds."""
+    from dataclasses import replace
+
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, _ = accept_order(project, repo, _order("one"), root=tmp_path)
+    save_mission(replace(mission, mission_plan={"_version": 1, "milestones": ["m"]}), tmp_path)
+    accept_order(project, repo, _order("two, never planned"), root=tmp_path)
+
+    later, _ = accept_order(project, repo, _order("three"), root=tmp_path)
+
+    assert later.orders[0].sealed["plan"] == {"_version": 1, "milestones": ["m"]}
+    assert later.orders[1].sealed["plan"] is None
+    assert later.orders[1].sealed["plan_version"] == 1
+
+
+def test_an_order_planned_after_the_one_before_seals_its_own_plan(tmp_path):
+    """R-1298: the control — a batch that was planned keeps its own plan."""
+    from dataclasses import replace
+
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, _ = accept_order(project, repo, _order("one"), root=tmp_path)
+    save_mission(replace(mission, mission_plan={"_version": 1, "milestones": ["m"]}), tmp_path)
+    second, _ = accept_order(project, repo, _order("two"), root=tmp_path)
+    save_mission(replace(second, mission_plan={"_version": 2, "milestones": ["n"]}), tmp_path)
+
+    later, _ = accept_order(project, repo, _order("three"), root=tmp_path)
+
+    assert later.orders[1].sealed["plan"] == {"_version": 2, "milestones": ["n"]}
+
+
+def test_an_order_whose_planning_failed_is_taken_back(tmp_path):
+    """R-1298: the batch leaves the mission and the order before it is the current one again."""
+    from packages.orchestration.repo_mission import withdraw_order_batch
+
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, first = accept_order(project, repo, _order("one"), root=tmp_path)
+    save_mission(mission.__class__(**{**mission.__dict__, "contract": {"criteria": ["c"]}}), tmp_path)
+    _, second = accept_order(project, repo, _order("two"), root=tmp_path)
+
+    back = withdraw_order_batch(str(project.id), mission.id, second.order_id, root=tmp_path)
+
+    assert [b.order_id for b in back.orders] == [first.order_id]
+    assert back.order.text == "one" and back.contract == {"criteria": ["c"]}
+    assert load_mission(str(project.id), mission.id, tmp_path).orders == back.orders
+
+
+def test_an_order_with_a_linked_job_is_never_taken_back(tmp_path):
+    """R-1298: a batch a job already belongs to stays, so no job loses its order."""
+    from packages.orchestration.repo_mission import withdraw_order_batch
+
+    repo = _repo(tmp_path, "app")
+    project = _project(repo)
+    mission, batch = accept_order(project, repo, _order("one"), root=tmp_path)
+    link_order_job(str(project.id), mission.id, batch.order_id, "job-a", root=tmp_path)
+
+    kept = withdraw_order_batch(str(project.id), mission.id, batch.order_id, root=tmp_path)
+
+    assert [b.order_id for b in kept.orders] == [batch.order_id]
