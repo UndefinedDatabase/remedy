@@ -114,3 +114,74 @@ class TestReconcileRefusesEveryJobThatHasNotEnded:
         [refusal] = report["refused"]
         assert any(paused in reason and "paused" in reason for reason in refusal["reasons"])
         assert len(list_missions(project_id, tmp_path)) == 2
+
+
+def _stamped(project_id, root, mission, key):
+    """Stamp a saved mission with a repository key, keeping its links."""
+    from dataclasses import replace
+
+    from packages.orchestration.mission_state import load_mission, save_mission
+
+    save_mission(replace(load_mission(project_id, mission.id, root), repo=key), root)
+
+
+class TestReconcileGroupsPerRepository:
+    """R-1295: each repository a project holds has its own one mission, so duplicates fold per key."""
+
+    def test_legacy_duplicates_fold_when_a_second_repositorys_mission_is_the_newest(self, tmp_path):
+        project_id = str(uuid4())
+        first = _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        other = _legacy(project_id, tmp_path, "other repository", ["j3"], 9)
+        _stamped(project_id, tmp_path, other, f"{project_id}:0123456789ab")
+
+        report = reconcile_repo_missions(apply=True, root=tmp_path)
+
+        assert not report["refused"]
+        live = {m.id: m for m in list_missions(project_id, tmp_path)}
+        assert set(live) == {first.id, other.id}
+        assert live[first.id].job_ids() == ("j1", "j2") and live[other.id].job_ids() == ("j3",)
+
+    def test_duplicates_of_two_repositories_each_fold_into_their_own_mission(self, tmp_path):
+        project_id = str(uuid4())
+        key = f"{project_id}:0123456789ab"
+        first = _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        second = _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        other = _legacy(project_id, tmp_path, "other first", ["j3"], 7)
+        other_dup = _legacy(project_id, tmp_path, "other second", ["j4"], 9)
+        for mission, stamp in ((first, project_id), (second, project_id), (other, key), (other_dup, key)):
+            _stamped(project_id, tmp_path, mission, stamp)
+
+        report = reconcile_repo_missions(apply=True, root=tmp_path)
+
+        assert not report["refused"]
+        live = {m.id: m for m in list_missions(project_id, tmp_path)}
+        assert set(live) == {first.id, other.id}
+        assert live[first.id].job_ids() == ("j1", "j2") and live[other.id].job_ids() == ("j3", "j4")
+        assert live[first.id].repo == project_id and live[other.id].repo == key
+
+
+class TestAFoldedDuplicateKeepsItsCurrentOrder:
+    def test_a_duplicates_unsealed_last_batch_keeps_its_plan_and_contract(self, tmp_path):
+        """R-1284: a duplicate's current plan and contract live in its slots; the fold seals them
+        into its last batch before the batches are merged."""
+        from dataclasses import replace
+
+        from packages.orchestration.mission_record import MissionOrderBatch
+        from packages.orchestration.mission_state import load_mission, save_mission
+
+        project_id = str(uuid4())
+        first = _legacy(project_id, tmp_path, "first", ["j1"], 0)
+        dup = _legacy(project_id, tmp_path, "second", ["j2"], 5)
+        batch = MissionOrderBatch(order_id="b" * 32, text="second", created_at="2026-01-01T00:05:00+00:00")
+        current = load_mission(project_id, dup.id, tmp_path)
+        save_mission(replace(
+            current, orders=(batch,), mission_plan={"milestones": ["m1"]}, contract={"goal": "second"},
+            job_links=tuple(replace(link, order_id=batch.order_id) for link in current.job_links)), tmp_path)
+
+        reconcile_repo_missions(apply=True, root=tmp_path)
+
+        [live] = list_missions(project_id, tmp_path)
+        assert live.id == first.id and live.job_ids() == ("j1", "j2")
+        sealed = next(b for b in live.orders if b.order_id == batch.order_id).sealed
+        assert sealed["plan"] == {"milestones": ["m1"]} and sealed["contract"] == {"goal": "second"}

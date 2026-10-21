@@ -132,7 +132,7 @@ def canonical_candidates(project_id: str, key: str, root: Path | None = None) ->
 # ---------------------------------------------------------------------------
 
 
-def _seal(mission: Mission) -> tuple[tuple[MissionOrderBatch, ...], tuple[MissionJobLink, ...]]:
+def seal_current_order_batch(mission: Mission) -> tuple[tuple[MissionOrderBatch, ...], tuple[MissionJobLink, ...]]:
     """The mission's batches with the current one sealed, and its job links.
 
     A legacy order is made a batch first, and the links without an order id take that batch's id,
@@ -233,7 +233,7 @@ def accept_order(project: Any, repo_root: str | Path, order: MissionOrder, *,
             source_sha256=order.source_sha256, created_at=_utc_now(),
             target_commit=_target_commit(repo_root), kind=kind, budgets=budgets,
             correlation_id=correlation_id, reopened_from=reopened)
-        orders, links = _seal(mission)
+        orders, links = seal_current_order_batch(mission)
         mission = replace(
             mission, repo=key, status=MISSION_STATUS_ACTIVE, order=order, contract=None,
             orders=(*orders, batch), job_links=links)

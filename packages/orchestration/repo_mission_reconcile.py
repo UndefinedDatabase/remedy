@@ -54,7 +54,7 @@ from packages.orchestration.mission_state import (
     save_mission,
 )
 from packages.orchestration.pingpong_job import JOB_TERMINAL_STATES
-from packages.orchestration.repo_mission import canonical_candidates
+from packages.orchestration.repo_mission import canonical_candidates, seal_current_order_batch
 
 BACKUP_DIRNAME = "reconcile-backups"
 #: The labels of a job a fold may move: one that ended, and one whose record is gone. Anything
@@ -75,20 +75,25 @@ def _legacy_batch(mission: Mission, link_roles: dict[str, str]) -> MissionOrderB
 
 
 def _groups(project_id: str, root: Path | None) -> tuple[list[tuple[Mission, list[Mission]]], list[str]]:
-    """``[(canonical, [duplicates])]`` of one project, and the reasons it cannot be folded."""
+    """``[(canonical, [duplicates])]`` of one project, one per repository key, and the reasons
+    it cannot be folded.
+
+    Each repository a project holds has its own one mission (DECISION amend1011b D1), so the
+    duplicates are grouped per key, an unstamped record counting as the project's own
+    repository's (R-1295). A legacy umbrella joins the group of the project's own repository.
+    """
     missions, degraded, skipped = list_missions_safe(project_id, root)
     refused = [f"record {name} cannot be read" for name in skipped] if degraded else []
-    own = [m for m in missions if not m.project_ids]
-    if len({m.repo for m in own if m.repo}) > 1:
-        refused.append("the project holds missions of several repositories; fold them by hand")
-    keyed = canonical_candidates(project_id, own[0].repo or project_id, root) if own else []
+    keys = sorted({m.repo or project_id for m in missions if not m.project_ids})
     umbrellas = [m for m in missions if m.project_ids]
-    groups = [(keyed[0], keyed[1:])] if keyed and (len(keyed) > 1 or umbrellas) else []
-    if umbrellas and not keyed:
+    if umbrellas and project_id not in keys:
         refused.append("a legacy cross-repository mission has no mission of its own project to join")
-    for umbrella in umbrellas:
-        if groups:
-            groups[0][1].append(umbrella)
+    groups: list[tuple[Mission, list[Mission]]] = []
+    for key in keys:
+        keyed = [m for m in canonical_candidates(project_id, key, root) if not m.project_ids]
+        dups = [*keyed[1:], *(umbrellas if key == project_id else [])]
+        if keyed and dups:
+            groups.append((keyed[0], dups))
     return groups, refused
 
 
@@ -252,7 +257,9 @@ def _fold_group(project_id: str, canonical: Mission, dups: list[Mission], root: 
     for source in sources:
         legacy_id = f"legacy-{source.id[:12]}"
         if source.orders and source is not canonical:
-            batches.update({b.order_id: b for b in source.orders})
+            # A duplicate's current plan and contract live in its slots; seal them into its
+            # last batch first, or the alias record drops them (R-1284).
+            batches.update({b.order_id: b for b in seal_current_order_batch(source)[0]})
         elif not source.orders:
             roles[legacy_id] = {link.job_id: link.role for link in source.job_links}
         for link in source.job_links:
