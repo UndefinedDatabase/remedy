@@ -489,18 +489,29 @@ def autonomy_status_summary(
     with ``record=False``: every check it performs still runs, but an accepted change is never
     appended, so a command that only reports the level never writes the record a later refusal
     might then contradict. A refused configuration answers `level` and `config_path` as None and
-    `error` as the refusal's own sentence.
+    `error` as the refusal's own sentence. Since DECISION F141 D7 it also answers `push_allowed`
+    and `permissions`, the permission matrix at the level in force.
     """
+    from packages.orchestration.permission_matrix import permission_status_rows, push_allowed_by_config
+
+    try:
+        push_allowed = push_allowed_by_config(config)
+    except AutonomyConfigError:
+        push_allowed = None
     try:
         policy = load_autonomy_policy(config, root=root, record=False)
     except AutonomyConfigError as exc:
         return {
             "level": None, "config_path": None, "error": str(exc),
             "deferred_starts": len(open_deferred_starts(root)),
+            "push_allowed": push_allowed,
+            "permissions": permission_status_rows(None, push_allowed=push_allowed),
         }
     return {
         "level": policy.level, "config_path": policy.config_path, "error": None,
         "deferred_starts": len(open_deferred_starts(root)),
+        "push_allowed": push_allowed,
+        "permissions": permission_status_rows(policy.level, push_allowed=push_allowed),
     }
 
 

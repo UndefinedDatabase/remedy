@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from packages.common.secure_fs import durable_write_json
 from packages.orchestration.autonomy_gate import AUTONOMY_DEFAULT_LEVEL, AUTONOMY_LEVELS, AutonomyConfigError
@@ -266,6 +266,27 @@ def pin_job_level(
         "level": policy.level, "pinned_at": when.isoformat(), "config_path": policy.config_path,
     })
     return policy.level
+
+
+# One row per action, for a client that reads the whole table at once (DECISION F141 D7 (1)):
+# the status answer's `autonomy.permissions`, read fresh from the constants at every call.
+def permission_status_rows(level: str | None, *, push_allowed: bool | None) -> list[dict[str, Any]]:
+    rows = []
+    for action in PERMISSION_ACTIONS:
+        if level is None or (action == "push" and push_allowed is None):
+            now = None
+        else:
+            now = permission_cell(action, level, push_allowed=push_allowed if action == "push" else True)
+        rows.append({
+            "action": action,
+            "words": PERMISSION_ACTION_WORDS[action],
+            "L2": PERMISSION_MATRIX[(action, "L2")],
+            "L3": PERMISSION_MATRIX[(action, "L3")],
+            "L4": PERMISSION_MATRIX[(action, "L4")],
+            "L5": PERMISSION_MATRIX[(action, "L5")],
+            "now": now,
+        })
+    return rows
 
 
 def _lowest_allowing_level(action: str) -> str | None:

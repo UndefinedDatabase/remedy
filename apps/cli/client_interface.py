@@ -84,8 +84,9 @@ from packages.orchestration.order_jobs import ORDER_JOB_PHASES, ORDER_JOBS_KEY_T
 #: `client.diff` (DECISION amend1015c D5), exec-1017 to `1.17` (verification, turns), exec-1017b to `1.18` (job.stop, jobs),
 #: exec-1017c to `1.19` (`job.abandon`, `client.cancel-order`, order `phase`, `cancel`), exec-1018 to `1.20` (new story reasons, phase `checked`), exec-1018b to `1.21` (story `end`),
 #: F313 (DECISION F313 D1) to `1.22` (`client.now`, `client.insight` and the `insight` words),
-#: F078 (DECISION F078 D6) to `1.23` (`status.run`'s `autonomy`).
-CLIENT_INTERFACE_VERSION = "1.23"
+#: F078 (DECISION F078 D6) to `1.23` (`status.run`'s `autonomy`),
+#: F141 (DECISION F141 D7) to `1.24` (`autonomy`'s `push_allowed` and `permissions`).
+CLIENT_INTERFACE_VERSION = "1.24"
 
 #: The catalog commands a machine client uses: the path of DECISION F295 D17's page (propose,
 #: read, answer, run on, approve and apply, prove), the hunk decision a client may choose, the
@@ -467,7 +468,10 @@ ANSWER_KEY_TREES: dict[str, dict[str, Any]] = {
     "status.run": {
         "jobs": {"*": {"job_id": {}, "short_id": {}, "name": {}, "state": {}, "rehearsed": {}}},
         "client": DIGEST_KEY_TREE,
-        "autonomy": {"level": {}, "config_path": {}, "error": {}, "deferred_starts": {}},
+        "autonomy": {
+            "level": {}, "config_path": {}, "error": {}, "deferred_starts": {}, "push_allowed": {},
+            "permissions": {"action": {}, "words": {}, "L2": {}, "L3": {}, "L4": {}, "L5": {}, "now": {}},
+        },
     },
     "job.run": JOB_REPORT_KEY_TREES,
     "job.resume": {

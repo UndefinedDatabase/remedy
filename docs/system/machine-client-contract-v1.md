@@ -279,6 +279,12 @@ the refusal's sentence as `error` when the configured level cannot be used, and 
 `deferred_starts` how many starts the level made wait for a person.
 `docs/system/autonomy-levels-v1.md` says what each level lets Remedy start by itself.
 
+Since interface 1.24 `autonomy` also answers `push_allowed`, whether the configuration lets
+Remedy push at all (null when it cannot be read), and `permissions`, one row per action of the
+permission matrix with `action`, its `words`, the cells `L2` to `L5` and `now`, the cell at the
+level in force with the push switch applied. `docs/system/permission-matrix-v1.md` says what
+each cell means.
+
 ## What Remedy never does on a machine order
 
 - It never applies without `--approve`, and never commits or pushes without their own flags.
@@ -302,7 +308,7 @@ one major version it only grows. Under a key, `*` stands for keys that are data,
 path, a job id or a job state. A key whose keys are not fixed is marked so, and a key that
 repeats the object that holds it holds that object's keys again, to any depth.
 
-Interface version: `1.23`.
+Interface version: `1.24`.
 
 ### Envelope
 
@@ -484,7 +490,8 @@ Refusal tokens: none.
 Answer keys: `autonomy`, `client`, `decisions_open`, `degraded`, `jobs`, `project`, `runtime`, `runtime_warning`, `scope`, `skipped_files`, `stops_pending`.
 Keys under the answer keys: see below.
 
-- `autonomy`: `config_path`, `deferred_starts`, `error`, `level`
+- `autonomy`: `config_path`, `deferred_starts`, `error`, `level`, `permissions`, `push_allowed`
+  - `permissions`: `L2`, `L3`, `L4`, `L5`, `action`, `now`, `words`
 - `client`: `awaiting_apply`, `decisions`, `degraded`, `job_window`, `jobs`, `projects`, `read_at`, `skipped_files`, `supervisor`, `version`
   - `decisions`: `age_seconds`, `blockers`, `clarifications`, `created_at`, `decision_id`, `default`, `job_id`, `options`, `project_id`, `question`, `severity`, `type`
     - `clarifications`: `default`, `id`, `question`
