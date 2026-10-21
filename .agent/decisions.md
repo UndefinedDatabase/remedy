@@ -30489,3 +30489,13 @@ CHOSEN: (1) The recorder serves a stub of the local model server on a free port 
 ALTERNATIVES CONSIDERED: (a) the closed port of D2 (2) — rejected for the reason above; (b) freezing the clock of the children — rejected: no seam of the command line takes a clock, and adding one for a recording changes the product.
 
 HOW TO REVERSE: point the recorder at a closed port, drop the stub, and rewrite this paragraph.
+
+## DECISION F313 D3 — F313's closure leaves the ledger unrotated, for the reason of DECISION F310 D8 (2026-10-21, R-1376)
+
+THE PROBLEM: operator amendment amend0905-throughput makes the rotation of `.agent/live_review.md` a step of every closure sequence, and DECISION F310 D8 recorded that the agent-state check of the commit hook refuses a rotation that moves a record holding a path of this machine (finding R-1376, owned by F307, still open). Neither `.githooks/`, `scripts/rotate_live_review.py` nor `scripts/check_agent_hygiene.py` has changed since F311's closure (`git log 25ab7c98b..957398a5b` names none of them).
+
+CHOSEN: F313's closure skips the rotation commit, as F310's, F312's and F311's did. Nothing is lost: the next closure whose hook allows it moves every record this one would have moved.
+
+ALTERNATIVES CONSIDERED: the same as DECISION F310 D8's, rejected for the same reasons.
+
+HOW TO REVERSE: run the rotation as its own commit once the hook allows it, and delete this paragraph.
