@@ -69,6 +69,7 @@ from apps.cli.client_interface import (
 )
 from apps.cli.client_interface_digest import DIGEST_KEY_TREE
 from apps.cli.client_interface_execution import CLIENT_EXECUTION_ANSWER_KEYS
+from apps.cli.client_interface_insight import INSIGHT_WORD_LABELS
 from apps.cli.client_interface_story import STORY_WORD_LABELS
 from apps.cli.command_catalog import ArgDef, get_command
 from apps.cli.commands import collect_all_handlers
@@ -506,7 +507,7 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
     "apps.cli.commands.client_cmd:_cmd_client_interface:**interface": (
         frozenset({
             "answer_trees", "answers", "approval_recommendations", "approval_risks", "budget_kinds",
-            "contract_templates", "digest", "envelope", "exit_codes", "interface_version",
+            "contract_templates", "digest", "envelope", "exit_codes", "insight", "interface_version",
             "job_states", "mission_statuses", "operations", "order_job_phases", "order_phases", "story",
         }),
         "the keys build_client_interface in apps/cli/client_interface.py returns",
@@ -594,6 +595,19 @@ UNRESOLVED_ANSWER_SITES: dict[str, tuple[frozenset[str], str]] = {
         "the keys run_record_payload in packages/orchestration/serve_runs.py returns, shared "
         "with GET /api/v1/jobs/{job}/run and the 202 answer of POST /api/v1/jobs/{job}/run "
         "(DECISION F253 D20)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_now:**answer": (
+        frozenset({"jobs", "orders", "model_server", "workers", "stall_threshold_s"}),
+        "the keys now_insight in packages/orchestration/job_insight.py returns, shared with "
+        "GET /api/v1/now (DECISION F311 D1)",
+    ),
+    "apps.cli.commands.client_cmd:_cmd_client_insight:**answer": (
+        frozenset({
+            "job", "order", "project", "state", "phase", "task", "round", "worker", "budget",
+            "last_output_s", "stalled", "stall_reason", "waiting_on", "stream", "advice",
+        }),
+        "the keys job_insight in packages/orchestration/job_insight.py returns, shared with "
+        "GET /api/v1/jobs/{job}/insight (DECISION F311 D1)",
     ),
 }
 
@@ -1379,6 +1393,10 @@ def test_the_interface_answer_trees_name_exactly_what_their_code_builds():
     assert ast.unparse(values["story"]) == "story_words()"
     assert set(trees["story"]) == _returned_dict_keys(
         "packages/orchestration/client_story_words.py", "story_words")
+    # The insight's words (DECISION F311 D5): one key, five flat lists of words.
+    assert ast.unparse(values["insight"]) == "insight_words()"
+    assert set(trees["insight"]) == _returned_dict_keys(
+        "packages/orchestration/job_insight.py", "insight_words")
     # `ast.unparse` writes a comprehension's tuple target in brackets on Python 3.10 and without
     # them on 3.12, so the expected source is unparsed by the running interpreter too (R-1182).
     assert ast.unparse(values["answers"]) == ast.unparse(ast.parse(
@@ -1481,6 +1499,12 @@ def test_a_real_runs_answers_return_only_keys_the_interface_names(tmp_path):
     env["REMEDY_OLLAMA_HOST"] = "http://127.0.0.1:9"
     offered = answer("client.execution", ["client", "execution"], 0)
     assert {("roles", "builder", "providers", "offered_over_http")} <= _key_paths(_key_tree(offered))
+    # The insight's twins (DECISION F311 D1), its Ollama still pointed at the closed port above.
+    now = answer("client.now", ["client", "now"], 0)
+    assert {("model_server", "state")} <= _key_paths(_key_tree(now))
+    insighted = answer("client.insight", ["client", "insight", job_id[:8]], 0)
+    assert insighted["phase"] in ("ended", "apply_wait")
+    assert {("budget", "used", "tokens")} <= _key_paths(_key_tree(insighted))
     assert sorted(answers) == sorted(OPERATION_ANSWER_KEYS)
     # The run reaches the levels the trees name under the answers of `remedy do`, `remedy job run`,
     # `remedy job apply`, `remedy status`, `remedy change proof`, `remedy patch hunks`,
@@ -1585,8 +1609,9 @@ def _read_tree(bullets: list[str]) -> dict:
 def _read_page_section(section: str) -> dict:
     """The interface read back from its rendered section, line by line."""
     read: dict = {"envelope": {}, "exit_codes": [], "operations": [], "answers": {},
-                  "answer_trees": {}, "story": {"phrases": {}, "reasons": {}}}
+                  "answer_trees": {}, "story": {"phrases": {}, "reasons": {}}, "insight": {}}
     story_labels = {label: key for key, label in STORY_WORD_LABELS}
+    insight_labels = {label: key for key, label in INSIGHT_WORD_LABELS}
     labels = {"Job states": "job_states", "Mission statuses": "mission_statuses",
               "Phases of an order's jobs": "order_job_phases", "Phases of an order": "order_phases",
               "Contract templates": "contract_templates", "Budget kinds": "budget_kinds",
@@ -1621,6 +1646,8 @@ def _read_page_section(section: str) -> dict:
         elif label.startswith(("Story phrase `", "Story reason `")):
             kind = "phrases" if label.startswith("Story phrase") else "reasons"
             read["story"][kind][label.split("`")[1]] = _listed_words(line, label)
+        elif label in insight_labels:
+            read["insight"][insight_labels[label]] = _listed_words(line, label)
         elif label == "Command id":
             operation["command_id"] = _listed_words(line, label)[0]
         elif label == "Description":
