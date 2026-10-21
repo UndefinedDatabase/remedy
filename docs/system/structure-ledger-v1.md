@@ -240,7 +240,9 @@ with the code that calls it.
 - `packages/orchestration/pingpong_provider.py`: the claude CLI's command line, the output
   contracts, the parsing of the reviewer's answer, the fake provider and the Ollama provider, each
   to a module of its own. Step (1), done by F302: the claude CLI's command line,
-  `packages/orchestration/claude_cli_command.py`.
+  `packages/orchestration/claude_cli_command.py`. Step (2), done by F307: the Ollama provider,
+  `packages/orchestration/pingpong_provider_ollama.py`, which `create_provider` imports when it
+  builds one.
 - `packages/orchestration/config.py`: `ConfigKeySpec` to `packages/orchestration/config_key_spec.py`,
   then the key registry one contiguous group at a time, each to a module of its own that
   `_CONFIG_KEY_SPECS` splices in at the group's own place, so the registry and the environment guide
@@ -453,7 +455,7 @@ with the code that calls it.
 | 2255 | `packages/orchestration/orchestrator_loop.py` |
 | 1898 | `scripts/remedy_smoke.sh` |
 | 1983 | `packages/runtimes/dev_server.py` |
-| 1964 | `packages/orchestration/pingpong_provider.py` |
+| 1765 | `packages/orchestration/pingpong_provider.py` |
 | 1879 | `packages/orchestration/token_ledger.py` |
 | 1816 | `packages/orchestration/long_run_executor.py` |
 | 1545 | `packages/orchestration/config.py` |

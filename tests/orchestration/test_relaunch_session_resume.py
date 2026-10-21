@@ -39,8 +39,8 @@ from packages.orchestration.pingpong_provider import (
     ClaudeCliProvider,
     ClaudeProvider,
     FakeProvider,
-    OllamaPingPongProvider,
 )
+from packages.orchestration.pingpong_provider_ollama import OllamaPingPongProvider
 from packages.orchestration.safe_points import request_stop
 from tests.orchestration.test_job_stop_integration import (  # noqa: F401
     _ONE_TASK_JOB,
