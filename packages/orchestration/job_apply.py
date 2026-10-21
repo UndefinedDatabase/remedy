@@ -952,12 +952,12 @@ def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list
     elif mode in ("message", "auto"):
         found = [f"{COMMIT_REFUSED}: {s}" for s in _commit_refusals(target, planned)]
     else:
-        return apply_permission_refusals(job, result)
+        return apply_permission_refusals(job, result, planned, [])
     if result.push:
         refusals, result.push_open_criteria, result.push_unchecked_criteria = (
             _push_refusals(job, target))
         found += [f"{PUSH_REFUSED}: {s}" for s in refusals]
-    return found + apply_permission_refusals(job, result)
+    return found + apply_permission_refusals(job, result, planned, found)
 
 
 def _commit_applied_files(job: Any, result: JobApplyResult, target: Path,
