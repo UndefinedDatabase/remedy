@@ -695,7 +695,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
         assert body["verdict"] == "PASS"
         assert [c["check"] for c in body["checks"]] == [
             c["check"] for c in expected["checks"]]
-        assert len(body["checks"]) == 9
+        assert len(body["checks"]) == 10
         assert body == expected
 
     ledger = projects_dir() / "alpha" / LEDGER_FILENAME
@@ -705,7 +705,7 @@ def test_the_health_route_answers_the_doctor_health_command(tcp_server, unix_ser
         assert status == 503, body
         assert body["ok"] is False
         assert body["error"] == "health_failed"
-        assert body["message"] == "1 of 9 health checks failed"
+        assert body["message"] == "1 of 10 health checks failed"
         ledgers = next(c for c in body["checks"] if c["check"] == "ledgers")
         assert ledgers["level"] == "FAIL"
 

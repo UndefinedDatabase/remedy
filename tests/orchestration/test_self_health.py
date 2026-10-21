@@ -25,6 +25,7 @@ from packages.orchestration.self_health import (
     HEALTH_PASS,
     HEALTH_WARN,
     LEDGER_HINT,
+    LOGS_HINT,
     PROVIDER_HINT,
     RECLAIM_HINT,
     SNAPSHOT_HINT,
@@ -34,6 +35,7 @@ from packages.orchestration.self_health import (
     check_crash_reports,
     check_disk_floor,
     check_ledger_integrity,
+    check_logs_writable,
     check_providers,
     check_snapshot_manifests,
     check_staging_copies,
@@ -484,11 +486,11 @@ def test_providers_a_key_of_spaces_counts_as_unset():
 # --- the set ----------------------------------------------------------------
 
 
-def test_run_health_checks_answers_nine_checks_in_order():
+def test_run_health_checks_answers_ten_checks_in_order():
     results = run_health_checks()
     assert [r.check for r in results] == [
         "config", "ledgers", "snapshots", "worktrees", "providers", "default_chain", "staging_copies", "disk",
-        "crash_reports"]
+        "crash_reports", "logs"]
 
 
 # --- crash reports ----------------------------------------------------------
@@ -535,3 +537,51 @@ def test_as_json_has_exactly_the_four_keys_in_order():
     payload = HealthCheckResult("c", HEALTH_WARN, "d", "h").as_json()
     assert list(payload) == ["check", "level", "detail", "hint"]
     assert payload == {"check": "c", "level": HEALTH_WARN, "detail": "d", "hint": "h"}
+
+
+# --- the operations log (R-1292) --------------------------------------------
+
+_AS_ROOT = os.geteuid() == 0
+
+
+def test_logs_a_writable_folder_passes_and_leaves_nothing_behind(tmp_path):
+    folder = tmp_path / "logs"
+    folder.mkdir()
+    (folder / "remedy.log").write_text("a line\n", encoding="utf-8")
+    result = check_logs_writable(tmp_path)
+    assert (result.check, result.level) == ("logs", HEALTH_PASS)
+    assert sorted(p.name for p in folder.iterdir()) == ["remedy.log"]
+    assert (folder / "remedy.log").read_text(encoding="utf-8") == "a line\n"
+
+
+def test_logs_a_missing_folder_is_probed_in_the_data_root_and_never_made(tmp_path):
+    result = check_logs_writable(tmp_path)
+    assert result.level == HEALTH_PASS
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.skipif(_AS_ROOT, reason="root writes through any mode")
+def test_logs_a_folder_that_cannot_be_written_warns_naming_it(tmp_path):
+    folder = tmp_path / "logs"
+    folder.mkdir(mode=0o500)
+    try:
+        result = check_logs_writable(tmp_path)
+    finally:
+        folder.chmod(0o700)
+    assert (result.check, result.level, result.hint) == ("logs", HEALTH_WARN, LOGS_HINT)
+    assert result.detail.startswith(f"the operations log under {folder} cannot be written: ")
+
+
+@pytest.mark.skipif(_AS_ROOT, reason="root writes through any mode")
+def test_logs_a_log_file_that_cannot_be_appended_to_warns(tmp_path):
+    folder = tmp_path / "logs"
+    folder.mkdir()
+    log = folder / "remedy.log"
+    log.write_text("", encoding="utf-8")
+    log.chmod(0o400)
+    try:
+        result = check_logs_writable(tmp_path)
+    finally:
+        log.chmod(0o600)
+    assert (result.level, result.hint) == (HEALTH_WARN, LOGS_HINT)
+    assert sorted(p.name for p in folder.iterdir()) == ["remedy.log"]

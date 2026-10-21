@@ -1,14 +1,16 @@
 # Self-health v1: Remedy checks its own health
 
-> Status (F199, 2026-10-13): built. The command, its nine checks, the crash report and the
+> Status (F199, 2026-10-13): built. The command, its ten checks (the tenth, `logs`, added by F307),
+> the crash report and the
 > supervisor's health route exist. DECISIONs F199 D1 and D2 in `.agent/decisions.md` hold the rules
 > this page states; the feature is `docs/roadmap/features/T12_F199.md`.
 
 ## What it does
 
 `remedy doctor health` looks at Remedy itself and prints one line per check, each PASS, WARN or
-FAIL, with a one-line fix under every check that has something to fix. It only reads. It writes no
-file, opens each cost ledger without the right to change it, and calls no provider and no network.
+FAIL, with a one-line fix under every check that has something to fix. It only reads, with one
+exception: the `logs` check writes one probe file of its own and removes it at once. It opens each
+cost ledger without the right to change it, and calls no provider and no network.
 
 The exit code is 0 when no check is FAIL, whether the worst result is PASS or WARN, and 1 when any
 check is FAIL. A WARN is told to the operator and never enforced. A CI step that runs the command
@@ -29,6 +31,7 @@ The checks run in this order.
 | `staging_copies` | The size of leftover staging copies that `remedy data reclaim --orphans` would free, against `data.reclaim_warn_gb` | The size is at or above the warning level, or cannot be measured | Never | Preview with `remedy data reclaim --orphans`, then free with `--apply` |
 | `disk` | The free disk, as the budget guard reads it, against `budget.min_free_disk_bytes` | The free disk cannot be read | The free disk is below the configured floor | Free disk space under the data root, or lower the floor; `remedy data reclaim --orphans` previews what Remedy's own staging copies would free |
 | `crash_reports` | The crash reports under `<data root>/crash/` modified in the last 7 days | One or more such reports exist (the detail counts them and names the newest) | Never | Read the newest report; it holds the traceback with secrets removed and stays on this machine; a report older than 7 days no longer warns |
+| `logs` | Whether Remedy can still write its operations log under `<data root>/logs/`: it writes one probe file of its own there, or in the data root while that folder does not exist yet, removes it at once, and opens an existing `remedy.log` for appending without writing to it | The probe or the log file cannot be written (the detail names the folder) | Never | Make the named folder writable for this user, or free disk space under it; until then Remedy drops every line of its operations log silently |
 
 With no floor configured, the `disk` check passes and says so. With no ledger yet, the `ledgers`
 check passes and says so; so do `snapshots` with no snapshot and `worktrees` with no registered

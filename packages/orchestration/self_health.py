@@ -3,7 +3,7 @@
 DECISION F199 D1 fixes the shape: every check answers one `HealthCheckResult`
 (PASS, WARN or FAIL, a detail and a hint that names what to do). No check
 repairs, moves or deletes anything, and no check calls a provider; each one
-only reads. Round 2 wires these checks into the command.
+only reads, except `logs`, which writes one probe file of its own and removes it (R-1292). Round 2 wires these checks into the command.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from packages.orchestration.repository_snapshot import (
     SNAPSHOT_DIR_NAME,
     check_snapshot_integrity,
 )
+from packages.orchestration.structured_log import LOG_FILE_NAME, logs_dir
 from packages.orchestration.token_ledger import LEDGER_FILENAME
 from packages.orchestration.worktrees import WorktreeError, list_worktrees
 
@@ -396,6 +397,39 @@ def check_crash_reports(root: Path | None = None) -> HealthCheckResult:
         f"the newest is {rel}", CRASH_HINT)
 
 
+# The one next step for an operations log that cannot be written.
+LOGS_HINT: str = (
+    "make the named folder writable for this user, or free disk space under it; until then Remedy "
+    "drops every line of its operations log silently"
+)
+
+
+# Check `logs`: the operations log can still be written. The one check that writes: one probe file of
+# its own, removed at once, so a dead log is reported instead of losing lines unseen (R-1292).
+def check_logs_writable(root: Path | None = None) -> HealthCheckResult:
+    folder = logs_dir(root)
+    # The folder is made by the first line written, so while it does not exist the probe goes
+    # into the data root and the check never makes it.
+    target = folder if folder.is_dir() else folder.parent
+    if not target.is_dir():
+        return _result("logs", HEALTH_PASS, "no data root yet; the first command that logs makes it")
+    probe = target / f".remedy-health-probe-{os.getpid()}"
+    try:
+        descriptor = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.write(descriptor, b"probe\n")
+        finally:
+            os.close(descriptor)
+        probe.unlink()
+        log_file = folder / LOG_FILE_NAME
+        if log_file.exists():
+            os.close(os.open(log_file, os.O_WRONLY | os.O_APPEND))
+    except OSError as error:
+        return _result(
+            "logs", HEALTH_WARN, f"the operations log under {folder} cannot be written: {error}", LOGS_HINT)
+    return _result("logs", HEALTH_PASS, f"the operations log under {folder} can be written")
+
+
 # The fixed order `remedy doctor health` prints the checks in.
 def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]:
     return (
@@ -408,6 +442,7 @@ def run_health_checks(root: Path | None = None) -> tuple[HealthCheckResult, ...]
         check_staging_copies(root),
         check_disk_floor(),
         check_crash_reports(root),
+        check_logs_writable(root),
     )
 
 
