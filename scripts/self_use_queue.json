@@ -545,6 +545,14 @@
       "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/test_cmds.py:108\n\n## Task 1\nLine 108 of `apps/cli/commands/test_cmds.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception as exc:  # noqa: BLE001 — job lookup failure is reported, not raised, from a read command\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nFiles:\n- apps/cli/commands/test_cmds.py\n- tests/test_ble001_ratchet.py\n\nAcceptance:\n- The handler at line 108 of `apps/cli/commands/test_cmds.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/test_cmds.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
       "consumed_by": "F313",
       "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/test_cmds.py:1:except Exception as exc:  # noqa: BLE001 — job lookup failure is reported, not raised, from a read command)"
+    },
+    {
+      "id": "SU-069",
+      "title": "Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:257",
+      "why": "except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result",
+      "job_markdown": "# Job: Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:257\n\n## Task 1\nLine 257 of `apps/cli/commands/worker_facade_cmd.py` excuses a blind exception handler from ruff's BLE001 rule:\n\n    except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result\n\nNarrow this handler to the exception types the code it guards can really raise, and delete its `# noqa: BLE001` mark. In the same change lower `MAX_EXCUSED` in `tests/test_ble001_ratchet.py` by one, because that test holds the number of marks equal to it. Add no mark anywhere else, and do not edit any file under `.agent/`.\n\nFiles:\n- apps/cli/commands/worker_facade_cmd.py\n- tests/test_ble001_ratchet.py\n\nAcceptance:\n- The handler at line 257 of `apps/cli/commands/worker_facade_cmd.py` no longer carries a `# noqa: BLE001` mark, and `python3 -m ruff check apps/cli/commands/worker_facade_cmd.py` reports nothing.\n- `python3 -m pytest -q tests/test_ble001_ratchet.py` passes, with `MAX_EXCUSED` one lower than before.\n- No file under `.agent/` is changed by this task.\n",
+      "consumed_by": "",
+      "provenance": "generated (self-use-generator tier 4, excused handler, apps/cli/commands/worker_facade_cmd.py:1:except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result)"
     }
   ]
 }

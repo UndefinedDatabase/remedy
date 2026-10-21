@@ -1,0 +1,5 @@
+Entry ID: SU-069
+Entry Title: Narrow the excused handler at apps/cli/commands/worker_facade_cmd.py:257
+Entry Provenance: generated (self-use-generator tier 4, excused handler, apps/cli/commands/worker_facade_cmd.py:1:except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result)
+Entry Consumed By: 
+Job File Path: ~/Repos/remedy/.remedy-wt/f078-r7-selfuse/SU-069.md

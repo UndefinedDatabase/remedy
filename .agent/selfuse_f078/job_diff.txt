@@ -1,0 +1,27 @@
+$ git diff HEAD...remedy/job-4ef9b1c80c774ba2  (exit 0)
+diff --git a/apps/cli/commands/worker_facade_cmd.py b/apps/cli/commands/worker_facade_cmd.py
+index c5d1220ab..9f33b92bd 100644
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -254,7 +254,7 @@ def doctor_core_report() -> DoctorCoreReport:
+                 _check(name, False, f"{attr} not found in {module}")
+             else:
+                 _check(name, True, f"{attr} available")
+-        except Exception as exc:  # noqa: BLE001 — an import probe failure is that check's own result
++        except ImportError as exc:
+             _check(name, False, _safe_err(exc))
+ 
+     _try_import("worker_facade", "apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS")
+diff --git a/tests/test_ble001_ratchet.py b/tests/test_ble001_ratchet.py
+index 1fa195707..e1cce97e9 100644
+--- a/tests/test_ble001_ratchet.py
++++ b/tests/test_ble001_ratchet.py
+@@ -18,7 +18,7 @@ REASONED = re.compile(r"^ — \S")
+ 
+ #: The number of excused blind handlers when BLE001 was turned on. Only ever falls: the
+ #: commit that removes a mark lowers this number in the same commit, and it is never raised.
+-MAX_EXCUSED = 282
++MAX_EXCUSED = 281
+ 
+ 
+ def _marks() -> list[tuple[str, int, str]]:
