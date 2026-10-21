@@ -74,6 +74,9 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "cycle_healed",
         "cycle_loop_terminal",
         "cycle_repair_round",
+        # `deferred`, `started` and `taken` key the records of `<data root>/autonomy/`
+        # (DECISION F078 D7).
+        "deferred",
         "diff_repair_applied",
         "diff_repair_not_used",
         "job_burn_tripped",
@@ -122,9 +125,11 @@ EVENT_NAMES: frozenset[str] = frozenset(
         "snapshot_create_completed",
         "snapshot_verified",
         "source_patch_applied",
+        "started",
         "steering_message_consumed",
         "steering_message_received",
         "subtree_rerun_prepared",
+        "taken",
         "task_completed",
         "task_decision_answered",
         "task_injected",
