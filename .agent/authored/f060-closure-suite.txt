@@ -1,0 +1,27 @@
+command: python3 -m pytest -n auto -q
+real exit code: 0
+wall time: 338.8s (the launcher's reading); pytest's own reported wall time: 337.96s (0:05:37)
+summary line: 22947 passed, 11 skipped, 1 warning in 337.96s (0:05:37)
+bad node ids (failed + errors): NONE
+leftover processes: NONE
+tree it ran on: 3b0db49b0 (F060 R5 C5: the checklist's consolidation pass for F060)
+tree note: C1, C2, C4 and C5 changed only .agent/ files, the self-use queue, the feature file and the checklist page; C3 added one test
+reflog before: 3b0db49b0 HEAD@{2026-10-21 14:33:42 +0200}: commit: F060 R5 C5: the checklist's consolidation pass for F060
+reflog after: 3b0db49b0 HEAD@{2026-10-21 14:33:42 +0200}: commit: F060 R5 C5: the checklist's consolidation pass for F060
+reflog unchanged during the run: yes
+cost command: python3 scripts/closure_suite_cost.py --feature F060 --record ~/.remedy-loop/test_load.jsonl
+cost exit code: 0
+Test load: 1311.49 CPU seconds, 337.97 wall seconds, 22958 tests collected, exit status 0, recorded 2026-10-21T12:39:23Z
+This closure's suite used 1311.49 CPU seconds, 2.5 percent more than F141's 1280.00, within the 10 percent limit.
+The limit is the larger of 10 percent and the largest spread between full-suite runs of the record that collected the same tests, 0 percent.
+The test modules whose CPU time rose most since F141's closure run:
+  +4.57 s  tests/cli/test_do_sequence_cli.py (32.27 -> 36.84)
+  +3.60 s  tests/test_grouped_cli.py (23.79 -> 27.39)
+  +2.29 s  tests/cli/test_do_pi_default.py (4.42 -> 6.71)
+  +2.22 s  tests/cli/test_status_cmd.py (5.87 -> 8.09)
+  +2.16 s  tests/orchestration/test_review_manual_completion_shapes.py (2.33 -> 4.49)
+  +2.10 s  tests/orchestration/test_repo_mission.py (2.66 -> 4.76)
+  +1.75 s  tests/orchestration/test_task_deliverables.py (3.17 -> 4.92)
+  +1.56 s  tests/orchestration/test_run_manifest_task_lifecycle_binding.py (2.83 -> 4.39)
+  +1.41 s  tests/cli/test_certificate_cmd.py (0.00 -> 1.41)
+  +1.38 s  tests/orchestration/test_job_task_runner.py (18.48 -> 19.86)
