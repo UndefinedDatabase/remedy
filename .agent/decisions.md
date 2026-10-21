@@ -30428,3 +30428,13 @@ CHOSEN: one new key, `insight`, whose value is `job_insight.insight_words()`: `p
 ALTERNATIVES CONSIDERED: six top-level keys — rejected: four of them would be lists beside the story's single key, and a `now` key would repeat the operation's own entry.
 
 HOW TO REVERSE: replace the key with the six keys, and rewrite this paragraph.
+
+## DECISION F311 D6 — the two routes are listed `since 1.21` until F313 raises the version, and `lines` is read once (2026-10-21)
+
+THE PROBLEM: `GET /api/v1/now` and `GET /api/v1/jobs/{job}/insight` join the public API while its version stays `1.21` (the feature file's Do-not-touch: F313 raises it), and `tests/orchestration/test_api_release_matrix.py` requires every route in the matrix with a version no later than the current one. The route and the command line also both read a `lines` value a person typed.
+
+CHOSEN: `docs/system/api-release-matrix-v1.json` lists both routes `since 1.21`; F313, which raises the version to `1.22`, moves them to `1.22` with the rest of its contract. `job_insight.insight_lines(raw)` reads a `lines` value for both: a whole number as typed, anything else `INSIGHT_LINES_DEFAULT`; `job_insight` then clamps it to 0 to 200. A client token reads `GET /api/v1/now` filtered to its own projects' jobs and orders, as `GET /api/v1/digest` is filtered, and `GET /api/v1/jobs/{job}/insight` refuses another project's job with 403, as the story does.
+
+ALTERNATIVES CONSIDERED: (a) listing them `since 1.22` now — rejected: the matrix test refuses a version later than the current one, and raising it is F313's; (b) refusing a `lines` that is not a whole number — rejected: a refusal token of its own for a display length buys a client nothing.
+
+HOW TO REVERSE: date the two routes otherwise in the matrix, or add the refusal, and rewrite this paragraph.
