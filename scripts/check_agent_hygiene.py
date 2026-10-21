@@ -3,7 +3,8 @@
 
 Historical development records remain readable in Git, so scanning whole files would make every
 future state update impossible. The commit hook instead scans only added lines and newly staged
-binary members. Deletions are always allowed.
+binary members. Deletions are always allowed, and so is the ledger rotation's move: a line added to
+the archive that the same commit deletes from the ledger is a record Git already holds.
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ import argparse
 import re
 import subprocess
 import sys
+from collections import Counter
+from collections.abc import Iterator
 from pathlib import PurePosixPath
 from typing import NamedTuple
 
@@ -43,6 +46,13 @@ _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("private network address", re.compile(r"(?<!\d)(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})(?!\d)")),
 )
 
+# The finding ledger and the archive its rotation moves records into, byte-verbatim
+# (`scripts/rotate_live_review.py`, R-1376).
+LIVE_REVIEW_LEDGER_PATH = ".agent/live_review.md"
+LIVE_REVIEW_ARCHIVE_PATH = ".agent/live_review_archive.md"
+
+_HUNK_HEADER = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
 
 def _is_agent_path(path: str) -> bool:
     normalized = str(PurePosixPath(path.replace("\\", "/")))
@@ -61,26 +71,58 @@ def scan_agent_text(path: str, text: str, *, start_line: int = 1) -> list[Findin
     return findings
 
 
+def _diff_path(raw: str, prefix: str) -> str:
+    return "" if raw == "/dev/null" else raw.removeprefix(prefix)
+
+
+# Yields (in a file header, old path, new path, line) for every line of a zero-context diff. A
+# file's header runs from its `diff --git` line to its first hunk, so a body line that starts with
+# `+++ ` or `--- ` is content, never a file name (R-1412).
+def _walk_staged_diff(diff_text: str) -> Iterator[tuple[bool, str, str, str]]:
+    old_path = new_path = ""
+    in_header = True
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            in_header, old_path, new_path = True, "", ""
+        elif in_header and line.startswith("--- "):
+            old_path = _diff_path(line[4:], "a/")
+        elif in_header and line.startswith("+++ "):
+            new_path = _diff_path(line[4:], "b/")
+        elif line.startswith("@@ "):
+            in_header = False
+            yield True, old_path, new_path, line
+            continue
+        yield in_header, old_path, new_path, line
+
+
+# The lines the diff deletes from the ledger, counted, which the archive may receive unscanned.
+def _ledger_lines_deleted(diff_text: str) -> Counter[str]:
+    deleted: Counter[str] = Counter()
+    for in_header, old_path, _new_path, line in _walk_staged_diff(diff_text):
+        if not in_header and old_path == LIVE_REVIEW_LEDGER_PATH and line.startswith("-"):
+            deleted[line[1:]] += 1
+    return deleted
+
+
 def scan_staged_diff(diff_text: str) -> list[Finding]:
     """Scan added lines and binary additions from a zero-context staged Git diff."""
+    movable = _ledger_lines_deleted(diff_text)
     findings: list[Finding] = []
-    current_path = ""
     target_line = 0
-    for line in diff_text.splitlines():
-        if line.startswith("+++ "):
-            raw = line[4:]
-            current_path = "" if raw == "/dev/null" else raw.removeprefix("b/")
+    for in_header, _old_path, path, line in _walk_staged_diff(diff_text):
+        if in_header:
+            hunk = _HUNK_HEADER.match(line)
+            if hunk:
+                target_line = int(hunk.group(1))
+            elif line.startswith("Binary files ") and " and b/.agent/" in line and line.endswith(" differ"):
+                binary = line.rsplit(" and b/", 1)[1].removesuffix(" differ")
+                findings.append(Finding(binary, 0, "binary agent-state file"))
             continue
-        hunk = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
-        if hunk:
-            target_line = int(hunk.group(1))
-            continue
-        if line.startswith("Binary files ") and " and b/.agent/" in line and line.endswith(" differ"):
-            path = line.rsplit(" and b/", 1)[1].removesuffix(" differ")
-            findings.append(Finding(path, 0, "binary agent-state file"))
-            continue
-        if line.startswith("+") and not line.startswith("+++"):
-            findings.extend(scan_agent_text(current_path, line[1:], start_line=target_line))
+        if line.startswith("+"):
+            if path == LIVE_REVIEW_ARCHIVE_PATH and movable[line[1:]] > 0:
+                movable[line[1:]] -= 1
+            else:
+                findings.extend(scan_agent_text(path, line[1:], start_line=target_line))
             target_line += 1
         elif line.startswith(" "):
             target_line += 1
