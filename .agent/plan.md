@@ -6,13 +6,12 @@ release matrix, the two pages and recorded answers for the universe's kit
 (`docs/roadmap/features/T12_F313.md`, DECISIONs F313 D1 and D2).
 
 ## Current Step
-Round 4 (session 1), the closure's integration-gate round: book round 3, F313's Built State, the
-checklist's consolidation pass, the self-use item run to its approval gate, and the one full suite
-with its CPU cost.
+Round 5 (session 1), the closure's evidence round: book round 4, save the evidence script, the
+staging reclaim, the evidence job `f313r5e1001` and the review package.
 
 ## Next Steps
-1. The closure's evidence round: the staging reclaim, the evidence job and the review package.
-2. The closing round: the STATUS line, the README and the pull request, left unmerged.
+1. The closing round: the rotation or its recorded skip, SU-068's `consumed_by`, the STATUS flip
+   with the README sync, and the pull request, left unmerged.
 
 ## Risks
 - The integrity check fails on High findings F313 does not own (DECISION F310 D7, Q20).
