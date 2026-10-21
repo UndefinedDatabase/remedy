@@ -173,6 +173,7 @@ def do_mission_push_refusals(ctx: DoContext, repos: list[str] | None = None,
     asked of the walk's mission rather than of one job's, and of the upstream of each
     of *repos*, the walk's own repository when none is given (DECISION F205 D4).
     """
+    from packages.orchestration.apply_permissions import push_permission_refusals
     from packages.orchestration.job_apply import mission_push_refusals, upstream_push_refusals
     from packages.orchestration.mission_state import load_mission
 
@@ -184,7 +185,11 @@ def do_mission_push_refusals(ctx: DoContext, repos: list[str] | None = None,
     refusals, still_open, unchecked = mission_push_refusals(read_mission)
     upstream = [refusal for repo in (repos or [ctx.repo_root])
                 for refusal in upstream_push_refusals(Path(repo))]
-    return upstream + refusals, still_open, unchecked
+    # DECISION F141 D3 (4): the walk's own push asks the permission matrix too, after the
+    # upstreams' refusals and before the mission's.
+    last_job_id = ctx.landed[-1]["job_id"] if ctx.landed else None
+    permission = push_permission_refusals(last_job_id)
+    return upstream + permission + refusals, still_open, unchecked
 
 
 def _do_push_record(ctx: DoContext, sha: str, still_open: list[str], unchecked: list[str], *,
@@ -219,6 +224,7 @@ def do_push_mission(ctx: DoContext) -> tuple[str, str]:
     each repository its jobs landed in, in the order its first commit landed
     (DECISION F205 D4).
     """
+    from packages.orchestration.apply_permissions import grant_push_permission
     from packages.orchestration.job_apply import (
         push_open_criteria_sentence,
         push_to_upstream,
@@ -242,6 +248,11 @@ def do_push_mission(ctx: DoContext) -> tuple[str, str]:
             f"and they stay on {last['branch']}: {' '.join(refusals)}")
     pushed: list[str] = []
     for repo, entry in lasts.items():
+        # DECISION F141 D3 (4): one grant per repository, naming what let this push happen.
+        if (denied := grant_push_permission(entry.get("job_id"), ctx.push_source)):
+            before = f"; pushed before it: {'; '.join(pushed)}" if pushed else ""
+            ctx.push_outcome["error"] = denied
+            return DO_STEP_FAILED, f"{denied}{before}{named}"
         outcome = push_to_upstream(Path(repo), entry["sha"], entry["branch"])
         ctx.push_outcome["repositories"].append({
             "repo": repo, "sha": entry["sha"], "branch": entry["branch"],
