@@ -8,9 +8,9 @@ from the constant, and no bypass parameter (docs/roadmap/features/T7_F141.md; DE
 to D7).
 
 ## Current Step
-Round 7 (session 1): book round 6, resolve R-1400, DECISION F141 D7, then the matrix in the status
-answer for the Orb (contract 1.24) and a fixture per level through the real seams (T003's last
-items).
+Round 7 (session 1) landed: contract 1.24 (the status answer's `autonomy` carries the permission
+matrix) and the fixture per level through the real seams (T003's last items). T001 to T003 are now
+all landed.
 
 ## Next Steps
 1. The closure sequence, per `docs/roadmap/STATUS_closure_protocol.md`: the Built State, the
@@ -21,3 +21,5 @@ items).
 - `job_apply.py`, `job.py`, `exec_guard.py` and `_cmd_status` are at or above the structure
   ledger's limits; every edit there stays line-neutral.
 - The integrity check fails on High findings F141 does not own (DECISION F310 D7, Q20).
+- Round 7's own gate 1 run disagreed with itself over one line unrelated to this round's files;
+  the next round's first commit should look at that checker's own wording before trusting it again.
