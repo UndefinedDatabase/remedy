@@ -6,6 +6,8 @@ SESSION 5 of feature F307 · round 21 · rounds so far 21
 
 Context self-assessment: this worker verified every prepared digest before any write, applied C1 by a byte-proof script, applied C2 by `git apply` from the reviewer's cut patch with no hand-retyping, read the staged diff in full against the patch before committing, and ran each gate once; context is ample and nothing was lost.
 
+Session end (the reviewer, after its verdict on round 21): this session ran three delegated rounds, 19 to 21, below the floor of four, because the next item, R-1331, needs a fresh session to plan it whole: its repair reaches the command line, the public HTTP API and the run story, and three structural steps of listed code come first (DECISION F307 D21 (3)). It closed T013, T015 and R-1332, and registered and repaired R-1417, a test round 19 had left red because its selection read no test that reads a changed page by its path; no prose slip was written. Context self-assessment: the method of building every product commit by script in the disposable dry tree and comparing the worker's commit by bytes held in rounds 20 and 21; round 19, written by the worker from a DECISION with no dry run, is the one that let a red test through.
+
 Fortschritt: ~85 % (T001 to T006, T008 to T011, T013 to T015, R-1280, R-1290, R-1292, R-1297, R-1298, R-1301, R-1414 to R-1417 landed, R-1281's writer part landed, R-1332 under review · the rest open) — Schätzung
 
 ## Range
@@ -79,15 +81,54 @@ None before this commit; the push follows it and is reported in the session repl
 
 None. The commit sequence landed exactly as ordered (C1 to C3), each touching only its named paths. No mutation red-proof, no full suite outside the selection, `REMEDY_TEST_MAX_WORKERS` never set, `.data` never read, no amend, rebase, force-push or `--no-verify`, no PR; each gate ran once and never concurrently.
 
+## Reviewer verdict of round 21 (carried here under amend0827 rule 1)
+
+VERDICT PASS. Book these two paragraphs byte for byte, each preceded by one empty line, at the end of
+`.agent/live_review.md` in the next round's first commit:
+
+Gate: F307 R21 — the F307 round 21 entry, over `ea002803e`..`4ef1304f8` (3 commits, each single-parent; insertions by `git show --shortstat`: `b57860bb4` 105, `40404da36` 147, `4ef1304f8` 41). VERDICT PASS, verified by dry run, bytes identical: the product tree of `40404da36` equals the reviewer's dry-run commit `99d1974a6`, the ledger and the decisions file each equal their pre-image plus the prepared slice, and the plan and the saved block equal the prepared files. `pingpong_job.py` kept its 4943 lines. In a disposable worktree at `99d1974a6`, seven mutations each turned their tests red: the wrapper stamping nothing, the stamp never saved, `run_job` not wrapped, a job with no record saved, a finish time overwritten, a job that is not blocked stamped, and the returned job keeping no time. The selection, 379 paths, read `12701 passed, 6 skipped` with exit 0, the worker's one run the same; ruff read clean over the three Python files, the integrity check `fail_count` 0, and the open set 15 ids.
+
+Done: R-1332 — RESOLVED at F307 R21 by `40404da36`, by a wrapper of `run_job` that covers every blocking path, not `_block_job` alone (DECISION F307 D21 (1)): `test_a_job_a_run_leaves_blocked_keeps_the_time_it_ended`, which reloads the blocked job and reads its finish time, `test_a_run_that_finds_its_task_already_blocked_keeps_a_finish_time_too`, `test_a_run_of_a_job_with_no_record_writes_no_record` and `test_the_wrapper_leaves_a_finish_time_and_a_job_that_is_not_blocked_alone`, in `tests/orchestration/test_job_run_finish.py`. RED BEFORE: in a disposable worktree at `99d1974a6`, the seven mutations above each turned one of them red. GREEN AFTER: the selection read `12701 passed, 6 skipped` at `99d1974a6`.
+
+## Scoping note for R-1331 (the reviewer, for the next session)
+
+- The finding asks for a retry that puts a job's blocked and failed tasks back to `pending`, offered over the
+  public API, with the story's `retry` pointing at it. The run story offers `none` for a failed job today
+  (`_next` in `packages/orchestration/client_story.py`, amend1015c D3), and `retry` is still a published word of
+  `STORY_NEXT_ACTIONS`.
+- The reset has a precedent: `remedy job edit-task` resets a failed task and restores every `skipped` task after it
+  (`packages/orchestration/task_edit_runtime.py`, its step S7). The veto fold in `pingpong_job.py` restores only the
+  skipped tasks a veto does not make unreachable (`_tv.veto_unreachable`); a retry should follow the veto fold, since
+  a skip a completed, paused or stopped episode's run manifest recorded must stay skipped. The reset clears the
+  job's `error` and `finished_at`, as `fold_subtree_rerun` does.
+- Listed code it reaches, each needing its structural step first: `_cmd_job_run` (205 lines) in
+  `apps/cli/commands/do_cmd.py`, whose step (1) makes the refusals before anything runs one function;
+  `apps/cli/command_catalog.py` (2293 lines), whose next step moves one catalog group out, the `job` group holding
+  `job.run`; and `packages/orchestration/public_api.py`, whose step (3) moves the page's rendering out, while the run
+  route's flags are built in `_start_run_answer` there.
+- A `--retry` switch of `remedy job run` is no plain run, so `_cmd_job_run` must not forward it to the supervisor as
+  one (`_plain`), or must forward the switch. Over HTTP: a `retry` flag in the body of
+  `POST /api/v1/jobs/{job}/run`, which the story's `next.route` cannot carry, or a route of its own,
+  `POST /api/v1/jobs/{job}/retry`, which the release matrix's route inventory records as added at 1.27. The second
+  lets the story's `retry` point at a route as it is.
+- Tests that pin today's answer and would change: `test_a_provider_failure_reads_failed_and_offers_no_retry`
+  (`tests/orchestration/test_client_story.py`), `test_a_failed_run_reads_failed_and_offers_no_retry`
+  (`tests/orchestration/test_do_then_story.py`), the run route's body pin in `tests/ui_server/test_public_api.py`,
+  and the paragraph on `retry` in `docs/system/public-http-api-v1.md`.
+
 ## For the operator, in plain sentences
 
 A job that stops with a problem now records when it stopped, so its story shows the real end time instead of a guess from its log.
+
+This working session finished three groups of repairs. A program that reads Remedy's overview now sees every order a mission was given and which order each job belongs to. A practice run on Remedy's stand-in model now shows token figures like a real run, and still no money. A job that stops with a problem now records when it stopped. About five sixths of this batch of repairs is done; the next session starts with letting a person try a failed step of a job again, for example once the model that failed is back.
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
 2. Rule 2: the Open PR Gate.
-3. Review round 21's handback and book its verdict, with R-1332, in the next round's first commit.
-4. R-1331 after its three structural steps (DECISION F307 D21 (3)).
+3. Round 21 is reviewed (PASS): book the two paragraphs of the section "Reviewer verdict of round 21" above in
+   the next round's first commit.
+4. R-1331, per the scoping note above, after its three structural steps (DECISION F307 D21 (3)); then
+   T017 to T020, T021 and the closure sequence. Session 6 of F307 begins; the soft limit is 8 sessions.
 
-Operator questions open: 0. Open findings count gate 5 printed: 15.
+Operator questions open: 0. Open findings count gate 5 printed: 15; it reads 14 once round 21's resolution is booked.
