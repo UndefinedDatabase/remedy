@@ -257,6 +257,7 @@ packages.orchestration.job_tokens
 packages.orchestration.lessons
 packages.orchestration.list_options
 packages.orchestration.llm_planner
+packages.orchestration.local_endpoints
 packages.orchestration.long_run_executor
 packages.orchestration.manifest_schema
 packages.orchestration.manual_attestation
@@ -426,6 +427,7 @@ packages.orchestration.tool_sandbox
 packages.orchestration.toolchain
 packages.orchestration.trust_report
 packages.orchestration.serve_http_handler
+packages.orchestration.side_role_routing
 packages.orchestration.tier_escalation
 packages.orchestration.tier_outcomes
 packages.orchestration.verified_repair

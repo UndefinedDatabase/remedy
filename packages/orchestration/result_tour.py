@@ -34,6 +34,7 @@ from packages.orchestration.failure_postmortem import FailureSignals, classify
 from packages.orchestration.intake import make_structured_call_fn
 from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.run_report import NOT_RECORDED, ReportSources, build_report_sources
+from packages.orchestration.side_role_routing import side_role_call_fn
 from packages.orchestration.structured_outputs import run_structured_call
 
 TOUR_SCHEMA = "remedy.tour.v1"
@@ -853,16 +854,15 @@ def tour_model_written() -> bool:
 
 
 def tour_call_fn() -> Callable[[str, int], str] | None:
-    """Build a call_fn for the `summary` role, or None.
+    """Build a call_fn for the `summary` role, or None, as `artifact_summary.summary_call_fn` does.
 
-    Mirrors `artifact_summary.summary_call_fn`: `resolve_role_config("summary")`
-    supplies the model, `make_structured_call_fn` does the rest. Honest `None`
-    under the same conditions that factory already returns `None` for — never
-    raises. This call site is one of the eleven entries of
-    `model_routing.ROLE_CONFIG_CALL_SITES`.
+    A summary role mapped to a local endpoint runs there (F113); otherwise `resolve_role_config`
+    supplies the model and `make_structured_call_fn` does the rest. Honest `None` under the same
+    conditions that factory returns `None` for — never raises. One of `model_routing.ROLE_CONFIG_CALL_SITES`.
     """
     role_cfg = resolve_role_config("summary")
-    return make_structured_call_fn(GeneratedTourContent, model=role_cfg.model)
+    return side_role_call_fn(
+        "summary", GeneratedTourContent, lambda: make_structured_call_fn(GeneratedTourContent, model=role_cfg.model))
 
 
 # ---------------------------------------------------------------------------

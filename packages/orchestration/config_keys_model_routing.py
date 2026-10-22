@@ -22,6 +22,11 @@ ESCALATION_AFTER_FAILURES_CONFIG_KEY: str = "model_escalation.after_failures"
 ESCALATION_AFTER_FAILURES_DEFAULT: int = 2
 ESCALATION_TIERS_CONFIG_KEY: str = "model_escalation.tiers"
 
+# The local endpoints and the side roles mapped to them, spelled once here and read by
+# packages/orchestration/local_endpoints.py and side_role_routing.py (F113, DECISION F113 D1).
+LOCAL_ENDPOINTS_CONFIG_KEY: str = "local_routing.endpoints"
+SIDE_ROLES_CONFIG_KEY: str = "local_routing.side_roles"
+
 MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     # F110's per-project override map, and the first TABLE-VALUED key in this
     # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
@@ -136,6 +141,36 @@ MODEL_ROUTING_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=dict,
         entry_type=dict,
+        default=None,
+    ),
+    # WHY: F113's model servers of the operator's own, which only a side role may run on.
+    ConfigKeySpec(
+        key=LOCAL_ENDPOINTS_CONFIG_KEY,
+        env_var="REMEDY_LOCAL_ROUTING_ENDPOINTS",
+        description=(
+            "The local model servers a side role may run on (F113); each entry of the "
+            "[remedy.local_routing.endpoints] sub-table names a server and holds a table of exactly "
+            "base_url, an http or https address of an Ollama server, and model; a server that does not "
+            "answer, or does not list its model, is unavailable and the role falls back; a table that "
+            "cannot be read is refused with the fault named, and no role runs locally; configured in "
+            "TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        entry_type=dict,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key=SIDE_ROLES_CONFIG_KEY,
+        env_var="REMEDY_LOCAL_ROUTING_SIDE_ROLES",
+        description=(
+            "Which side role runs on which local server (F113); each entry of the "
+            "[remedy.local_routing.side_roles] sub-table maps a role to a server named in "
+            "local_routing.endpoints; only summary, teacher and study may be mapped, and a table that "
+            "maps any other role is refused whole with the hard rule core_role_on_local_provider "
+            "named; configured in TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        entry_type=str,
         default=None,
     ),
     # WHY here: the provider-execution keys live in this module; `config.py` may not grow.
