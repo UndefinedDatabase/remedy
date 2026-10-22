@@ -19,3 +19,8 @@ fix1022-review-findings states them: R-1422 to R-1425. Nothing else.
 ## Constraints
 - Under 500 insertions per commit; commit subjects carry no leading-slash tokens.
 - No ratchet or ceiling raised by hand; no assertion weakened.
+- Each part runs its own pytest selection once; the finish runs ruff, `tests/docs`, the canary and
+  the fast lane, as the order states.
+
+## Steps
+The item-status table of the four findings lives in `.agent/handoff.md`.
